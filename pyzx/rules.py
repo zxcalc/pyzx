@@ -1,14 +1,32 @@
 import igraph as ig
 
-def bialg(g, v0, v1):
+def match_bialg(g, interior=False):
+    for e in g.es:
+        v0 = e.source
+        v1 = e.target
+        v0t = g.vs[v0]['t']
+        v1t = g.vs[v1]['t']
+        if ((v0t == 1 and v1t == 2) or (v0t == 2 and v1t == 1)):
+            if (
+                not interior or (
+                all([n['t'] == v1t for n in g.vs[v0].neighbors()]) and
+                all([n['t'] == v0t for n in g.vs[v1].neighbors()]))
+            ):
+                return [v0,v1]
+    return None
+
+def bialg(g, match, check=False):
+    v0 = match[0]
+    v1 = match[1]
     v0t = g.vs[v0]['t']
     v1t = g.vs[v1]['t']
-    match = (
-        g.are_connected(v0,v1) and
-        ((v0t == 1 and v1t == 2) or
-         (v0t == 2 and v1t == 1))
-    )
-    if not match: return False
+
+    if check:
+        if not (
+            g.are_connected(v0,v1) and
+            ((v0t == 1 and v1t == 2) or
+            (v0t == 2 and v1t == 1))
+        ): return False
     
     n0 = [n for n in g.vs[v0].neighbors() if n.index != v1]
     n1 = [n for n in g.vs[v1].neighbors() if n.index != v0]
