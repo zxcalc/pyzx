@@ -11,11 +11,11 @@ def load_qgraph(fname):
         if 'data' not in attr:
             g.add_vertex(name=name)
         else:
-            g.add_vertex(name=name, t=attr['data']['type'], label=attr['data']['value'])
+            g.add_vertex(name=name, t=attr['data']['type'], phase=attr['data']['value'])
         layout.append(attr['annotation']['coord'])
     
     for name,attr in j.get('wire_vertices',{}).items():
-        g.add_vertex(name=name,t='boundary')
+        g.add_vertex(name=name,t='B')
         layout.append(attr['annotation']['coord'])
     for edge in j['undir_edges'].values():
         g.add_edge(edge['src'],edge['tgt'])
