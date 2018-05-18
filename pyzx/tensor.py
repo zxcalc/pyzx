@@ -7,6 +7,8 @@ def contract_all(tensors,conns):
     Contract the tensors inside the list tensors
     according to the connectivities in conns
 
+    Due to limitations in numpy, only up to 26 contractions can be done.
+
     Example input:
     tensors = [np.random.rand(2,3),np.random.rand(3,4,5),np.random.rand(3,4)]
     conns = [((0,1),(2,0)), ((1,1),(2,1))]
@@ -38,6 +40,23 @@ def contract_all(tensors,conns):
 
         # contract the indices
         inds[n][j] = inds[m][i]
+
+    #There are now 'holes' in the used indices.
+    #Since numpy only supports indices up to 26, we will
+    #lower the indices down as much as possible before continuing.
+    used_indices = set()
+    for l in inds:
+        used_indices.update(l)
+    remap = {k:v for (v,k) in enumerate(list(used_indices))}
+    for i in range(len(inds)):
+      inds[i] = [remap[j] for j in inds[i]]
+    s2 = set()
+    for i in sublistout:
+        s2.add(remap[i])
+    sublistout = s2
+    
+    print(inds)
+    print(sublistout)
 
     # zip and flatten the tensors and indices
     args = [subarg for arg in zip(tensors,inds) for subarg in arg]
@@ -111,7 +130,11 @@ def zx_graph_to_tensor(g):
         contraction_count[e.source] += 1
         contraction_count[e.target] += 1
 
+    #print(conns)
+
     return contract_all(tensors, conns)
+
+
 
 if __name__ == '__main__':
     import igraph as ig
@@ -122,4 +145,8 @@ if __name__ == '__main__':
     g.add_vertex(t='B')
     g.add_edges([(0,1),(1,2),(1,2),(2,3)])
 
-    print(zx_graph_to_tensor(g))
+    import examples
+
+    g = examples.t_to_zx(examples.zigzag(7))
+
+    #print(zx_graph_to_tensor(g))
