@@ -1,4 +1,4 @@
-import igraph as ig
+from .graph import Graph
 
 def complimentarity():
     g = ig.Graph()
@@ -13,12 +13,12 @@ def cnots():
 	g = ig.Graph()
 
 
-def zigzag(sz):
-    g = ig.Graph()
+def zigzag(sz, backend=None):
+    g = Graph(backend)
     g.add_vertices(2*sz+4)
     for i in range(1,sz+1):
-        g.vs[2*i]['t'] = (i%2)+1
-        g.vs[2*i+1]['t'] = (i%2)+1
+        g.set_type(2*i, (i%2)+1)
+        g.set_type(2*i+1, (i%2)+1)
     g.add_edges([(0,2),(1,3)])
     g.add_edges([(2*i,2*i+2) for i in range(1,sz)])
     g.add_edges([(2*i,2*i+3) for i in range(1,sz)])

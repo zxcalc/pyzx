@@ -1,60 +1,44 @@
-import igraph as ig
-
-def match_bialg(g, interior=False):
-    for e in g.es:
-        v0 = e.source
-        v1 = e.target
-        v0t = g.vs[v0]['t']
-        v1t = g.vs[v1]['t']
+def match_bialg_parallel(g, num=100):
+    candidates = g.edge_set()
+    #return candidates
+    i = 0
+    m = []
+    while (num == -1 or i < num) and len(candidates) > 0:
+        v0, v1 = g.edge_st(candidates.pop())
+        v0t = g.get_type(v0)
+        v1t = g.get_type(v1)
         if ((v0t == 1 and v1t == 2) or (v0t == 2 and v1t == 1)):
+            v0n = [n for n in g.get_neighbours(v0) if not g.is_equal(n,v1)]
+            v1n = [n for n in g.get_neighbours(v1) if not g.is_equal(n,v0)]
             if (
-                not interior or (
-                all([n['t'] == v1t for n in g.vs[v0].neighbors()]) and
-                all([n['t'] == v0t for n in g.vs[v1].neighbors()]))
-            ):
-                return [v0,v1]
-    return None
+                all([g.get_type(n) == v1t for n in v0n]) and
+                all([g.get_type(n) == v0t for n in v1n])):
+                i += 1
+                for v in v0n:
+                    for c in g.get_incident_edges(v): candidates.discard(c)
+                for v in v1n:
+                    for c in g.get_incident_edges(v): candidates.discard(c)
+                v0n = g.verts_as_int(v0n)
+                v1n = g.verts_as_int(v1n)
+                v0 = g.vert_as_int(v0)
+                v1 = g.vert_as_int(v1)
+                m.append([v0,v1,v0n,v1n])
+    return m
 
-def bialg(g, match, check=False):
-    v0 = match[0]
-    v1 = match[1]
-    v0t = g.vs[v0]['t']
-    v1t = g.vs[v1]['t']
 
-    if check:
-        if not (
-            g.are_connected(v0,v1) and
-            ((v0t == 1 and v1t == 2) or
-            (v0t == 2 and v1t == 1))
-        ): return False
+def bialg_parallel(g, matches):
+    del_verts = []
+    add_edges = []
+    del_edges = []
+    for m in matches:
+        del_verts.append(m[0])
+        del_verts.append(m[1])
+        es = [(i,j) for i in m[2] for j in m[3]]
+        for e in es:
+            if g.is_connected(e[0], e[1]): del_edges.append(e)
+            else: add_edges.append(e)
     
-    n0 = [n for n in g.vs[v0].neighbors() if n.index != v1]
-    n1 = [n for n in g.vs[v1].neighbors() if n.index != v0]
-    
-    # add dummy nodes around v0, v1 as necessary.
-    for i in range(len(n0)):
-        if (n0[i]['t'] != v1t):
-            g.add_vertex()
-            newv = g.vs[len(g.vs)-1]
-            newv['t'] = v1t
-            g.delete_edges([(v0,n0[i].index)])
-            g.add_edges([(n0[i].index, newv.index), (newv.index, v0)])
-            n0[i] = newv
-    
-    for i in range(len(n1)):
-        if (n1[i]['t'] != v0t):
-            g.add_vertex()
-            newv = g.vs[len(g.vs)-1]
-            newv['t'] = v0t
-            g.delete_edges([(v1,n1[i].index)])
-            g.add_edges([(v1,newv.index),(newv.index,n1[i].index)])
-            n1[i] = newv
-    
-    for s in n0:
-        for t in n1:
-            if g.are_connected(s,t): g.delete_edges([(s,t)])
-            else: g.add_edge(s,t)
-    
-    # delete vertices at the end so we don't mess up indices
-    g.delete_vertices([v0,v1] + [v for v in n0 + n1 if v.degree() < 2])
-    return True
+    g.remove_edges(del_edges)
+    g.add_edges(add_edges)
+    g.remove_vertices(del_verts)
+    g.remove_solo_vertices()
