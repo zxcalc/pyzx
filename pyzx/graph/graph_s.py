@@ -114,5 +114,8 @@ class GraphS(BaseGraph):
 	def get_type(self, vertex):
 		return self.ty[vertex]
 
+	def get_types(self):
+		return self.ty
+
 	def set_type(self, vertex, t):
 		self.ty[vertex] = t

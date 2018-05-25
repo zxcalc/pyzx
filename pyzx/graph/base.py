@@ -102,6 +102,11 @@ class BaseGraph(object):
 	def get_type(self, vertex):
 		raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
+	def get_types(self):
+		'''Should return a list/dictionary/numpy.array such that the indices correspond
+		to the vertices and return the types'''
+		raise NotImplementedError("Not implemented on backend " + type(self).backend)
+
 	def set_type(self, vertex, t):
 		raise NotImplementedError("Not implemented on backend" + type(self).backend)
 
