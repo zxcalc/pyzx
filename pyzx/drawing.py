@@ -21,14 +21,16 @@ def simple_layers(g):
     return layers
 
 def draw(g):
-    for v in g.vs:
+    if g.backend != 'igraph':
+        raise NotImplementedError("Drawing not implemented on backend " + g.backend)
+    for v in g.graph.vs:
         v['color'] = vcol(v['t'])
         v['label'] = v.index
-    layers = simple_layers(g)
-    layout = g.layout_sugiyama(layers=layers)
+    layers = simple_layers(g.graph)
+    layout = g.graph.layout_sugiyama(layers=layers)
     layout.transform(lambda t: (t[1],-t[0]))
     layout.fit_into([len(layers)/(max(layers)+1),max(layers)+1])
-    return ig.plot(g, layout=layout,
+    return ig.plot(g.graph, layout=layout,
                    vertex_size=5,
                    vertex_label_size=8,
                    vertex_label_dist=2,

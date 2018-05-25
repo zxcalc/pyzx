@@ -40,15 +40,15 @@ class GraphIG(BaseGraph):
 		'''Iterator over all the edges'''
 		return range(len(self.graph.es))
 
+	def edge(self, s, t):
+		return self.graph.es[s,t][0].index
+
 	def edge_set(self):
 		return set(range(len(self.graph.es)))
 
 	def edge_st(self, edge):
 		'''Returns a tuple of source/target of the given edge'''
 		edge = self.graph.es[edge]
-		return (edge.source, edge.target)
-		if type(edge)==int:
-			edge = self.graph.es[edge]
 		return (edge.source, edge.target)
 
 
