@@ -54,3 +54,6 @@ def bialg(g, matches):
     g.remove_vertices(del_verts)
     g.remove_solo_vertices()
 
+def match_spider(g):
+    pass
+
