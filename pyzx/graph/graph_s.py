@@ -80,6 +80,9 @@ class GraphS(BaseGraph):
 			for v1 in adj:
 				if v1 > v0: yield (v0,v1)
 
+	def edge(self, s, t):
+		return (s,t) if s < t else (t,s)
+
 	# def edges_as_int(self, edges):
 	# 	'''Takes a list of edges and ensures they are represented as integers'''
 	# 	raise NotImplementedError("Not implemented on backend" + backend)

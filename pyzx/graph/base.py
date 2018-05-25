@@ -51,28 +51,32 @@ class BaseGraph(object):
 		'''Iterator over all the vertices'''
 		raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
-	def verts_as_int(self, verts):
-		'''Takes a list of vertices and ensures they are represented as integers'''
-		raise NotImplementedError("Not implemented on backend " + type(self).backend)
+	# def verts_as_int(self, verts):
+	# 	'''Takes a list of vertices and ensures they are represented as integers'''
+	# 	raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
-	def vert_as_int(self, vert):
-		return self.verts_as_int([vert])[0]
+	# def vert_as_int(self, vert):
+	# 	return self.verts_as_int([vert])[0]
 
 	def edges(self):
 		'''Iterator that returns all the edge objects'''
 		raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
-	def edges_as_int(self, edges):
-		'''Takes a list of edges and ensures they are represented as integers'''
-		raise NotImplementedError("Not implemented on backend " + type(self).backend)
+	# def edges_as_int(self, edges):
+	# 	'''Takes a list of edges and ensures they are represented as integers'''
+	# 	raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
-	def edge_as_int(self, edge):
-		return self.edges_as_int([edge])[0]
+	# def edge_as_int(self, edge):
+	# 	return self.edges_as_int([edge])[0]
 
 	def edge_set(self):
 		'''Returns the edges as a set. Should be overloaded if the backend
 		supplies a cheaper version than this.'''
 		return set(self.edges_as_int(self.edges()))
+
+	def edge(self, s, t):
+		'''Returns the edge with the given source/target'''
+		raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
 	def edge_st(self, edge):
 		'''Returns a tuple of source/target of the given edge.'''
@@ -95,9 +99,9 @@ class BaseGraph(object):
 		'''Returns whether there v1 and v2 share an edge'''
 		raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
-	def is_equal(self,v1,v2):
-		'''Returns whether v1 and v2 represent the same vertex'''
-		raise NotImplementedError("Not implemented on backend " + type(self).backend)
+	# def is_equal(self,v1,v2):
+	# 	'''Returns whether v1 and v2 represent the same vertex'''
+	# 	raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
 	def get_type(self, vertex):
 		raise NotImplementedError("Not implemented on backend " + type(self).backend)
