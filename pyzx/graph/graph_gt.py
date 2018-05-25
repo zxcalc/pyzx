@@ -25,7 +25,7 @@ class GraphGT(BaseGraph):
 
 	def remove_edges(self, edges):
 		for e in edges:
-			if type(e)==tuple:
+			if isinstance(e,tuple):
 				self.graph.remove_edge(self.graph.edge(e[0],e[1]))
 			else:
 				self.graph.remove_edge(e)
@@ -85,3 +85,7 @@ class GraphGT(BaseGraph):
 
 	def set_type(self, vertex, t):
 		self.graph.vp.type[vertex] = t
+
+	def add_attribute(self, attrib_name, default=0):
+		self.graph.vertex_properties[attrib_name] = self.graph.new_vertex_property('int')
+		self.graph.vertex_properties[attrib_name].set_value(default)

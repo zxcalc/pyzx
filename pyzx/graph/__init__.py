@@ -1,4 +1,4 @@
-__all__ = ['backends', 'Graph']
+__all__ = ['backends', 'Graph','typeB','typeZ','typeX']
 
 backends = {}
 try:
@@ -25,7 +25,9 @@ if backends:
 else:
 	raise ImportError("No graph backend found. Please install one of graph_tool, igraph or networkx")
 
-
+typeB = 0
+typeZ = 1
+typeX = 2
 
 def Graph(backend: str=None):
 	if backend:

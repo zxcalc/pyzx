@@ -1,6 +1,10 @@
 import numpy as np
 np.set_printoptions(suppress=True)
 from math import pi
+from .graph import *
+import examples
+
+qpi = 0.25*pi
 
 def contract_all(tensors,conns):
     '''
@@ -86,13 +90,7 @@ Xphase = X_to_tensor(2,0.5*np.pi)
 had = np.sqrt(2)*np.exp(-1j*0.25*np.pi) * (S @ Xphase @ S)
 #print(had)
 
-import sys
-from io import StringIO
-
 def phase_to_number(s):
-    old = sys.stdout
-    stdout = StringIO()
-    sys.stdout = stdout
     s = s.replace("\\pi", "pi")
     exec("print({})".format(s))
     sys.stdout = old
@@ -107,9 +105,9 @@ def zx_graph_to_tensor(g):
     tensors = []
     ids = {}
 
-    for v in g.vs:
-        if v['t'] == 'Z':
-            phase = phase_to_number(v.attributes().get('phase',"0.0"))
+    for v in g.vertices():
+        if g.get_type(v) == typeZ:
+            phase = g.get_attribute(v,'phase')
             ids[v.index] = len(tensors)
             tensors.append(Z_to_tensor(v.degree(),phase))
         elif v['t'] == 'X':
@@ -137,12 +135,11 @@ def zx_graph_to_tensor(g):
 
 
 if __name__ == '__main__':
-    import igraph as ig
-    g = ig.Graph()
-    g.add_vertex(t='B')
-    g.add_vertex(t='Z',phase='0.0')
-    g.add_vertex(t='X',phase='0.0')
-    g.add_vertex(t='B')
+    g = Graph('igraph')
+    g.add_vertex(t=typeB)
+    g.add_vertex(t=typeZ,phase='0.0')
+    g.add_vertex(t=typeX,phase='0.0')
+    g.add_vertex(t=typeB)
     g.add_edges([(0,1),(1,2),(1,2),(2,3)])
 
     import examples

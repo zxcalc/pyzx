@@ -70,7 +70,7 @@ class BaseGraph(object):
 		return self.edges_as_int([edge])[0]
 
 	def edge_set(self):
-		'''Returns a set of indices of edges. Should be overloaded if the backend
+		'''Returns the edges as a set. Should be overloaded if the backend
 		supplies a cheaper version than this.'''
 		return set(self.edges_as_int(self.edges()))
 
@@ -103,4 +103,10 @@ class BaseGraph(object):
 		raise NotImplementedError("Not implemented on backend" + backend)
 
 	def set_type(self, vertex, t):
+		raise NotImplementedError("Not implemented on backend" + backend)
+
+	def add_attribute(self,attrib_name, default=0):
+		raise NotImplementedError("Not implemented on backend" + backend)
+
+	def get_attribute(self, vertex, attrib_name):
 		raise NotImplementedError("Not implemented on backend" + backend)
