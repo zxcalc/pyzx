@@ -10,20 +10,20 @@ class BaseGraph(object):
 		return str(self)
 
 	def add_vertices(self, amount, vertex_data=None):
-		raise NotImplementedError("Not implemented on backend" + backend)
+		raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
 	def add_vertex(self):
 		self.add_vertices(1)
 
 	def add_edges(self, edges, vertex_data=None):
-		raise NotImplementedError("Not implemented on backend" + backend)
+		raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
 	def add_edge(self, edge, edge_data=None):
 		if edge_data: self.add_edges([edge],[edge_data])
 		else: self.add_edges([edge])
 
 	def remove_vertices(self, vertices):
-		raise NotImplementedError("Not implemented on backend" + backend)
+		raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
 	def remove_vertex(self, vertex):
 		self.remove_vertices([vertex])
@@ -34,37 +34,37 @@ class BaseGraph(object):
 		self.remove_vertices([v for v in self.vertices() if self.get_vertex_degree(v)==0])
 
 	def remove_edges(self, edges):
-		raise NotImplementedError("Not implemented on backend" + backend)
+		raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
 	def remove_edge(self, edge):
 		self.remove_edge([edge])
 
 	def num_vertices(self):
 		'''Returns the amount of vertices in the graph'''
-		raise NotImplementedError("Not implemented on backend" + backend)
+		raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
 	def num_edges(self):
 		'''Returns the amount of edges in the graph'''
-		raise NotImplementedError("Not implemented on backend" + backend)
+		raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
 	def vertices(self):
 		'''Iterator over all the vertices'''
-		raise NotImplementedError("Not implemented on backend" + backend)
+		raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
 	def verts_as_int(self, verts):
 		'''Takes a list of vertices and ensures they are represented as integers'''
-		raise NotImplementedError("Not implemented on backend" + backend)
+		raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
 	def vert_as_int(self, vert):
 		return self.verts_as_int([vert])[0]
 
 	def edges(self):
 		'''Iterator that returns all the edge objects'''
-		raise NotImplementedError("Not implemented on backend" + backend)
+		raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
 	def edges_as_int(self, edges):
 		'''Takes a list of edges and ensures they are represented as integers'''
-		raise NotImplementedError("Not implemented on backend" + backend)
+		raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
 	def edge_as_int(self, edge):
 		return self.edges_as_int([edge])[0]
@@ -76,31 +76,31 @@ class BaseGraph(object):
 
 	def edge_st(self, edge):
 		'''Returns a tuple of source/target of the given edge.'''
-		raise NotImplementedError("Not implemented on backend" + backend)
+		raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
 	def get_neighbours(self, vertex):
 		'''Returns all neighbouring vertices of the given vertex'''
-		raise NotImplementedError("Not implemented on backend" + backend)
+		raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
 	def get_vertex_degree(self, vertex):
 		'''Returns the degree of the given vertex'''
-		raise NotImplementedError("Not implemented on backend" + backend)
+		raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
 	def get_incident_edges(self, vertex):
 		'''Returns all neighbouring edges of the given vertex.
 		These should be integers'''
-		raise NotImplementedError("Not implemented on backend" + backend)
+		raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
 	def is_connected(self,v1,v2):
 		'''Returns whether there v1 and v2 share an edge'''
-		raise NotImplementedError("Not implemented on backend" + backend)
+		raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
 	def is_equal(self,v1,v2):
 		'''Returns whether v1 and v2 represent the same vertex'''
-		raise NotImplementedError("Not implemented on backend" + backend)
+		raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
 	def get_type(self, vertex):
-		raise NotImplementedError("Not implemented on backend" + backend)
+		raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
 	def set_type(self, vertex, t):
-		raise NotImplementedError("Not implemented on backend" + backend)
+		raise NotImplementedError("Not implemented on backend " + type(self).backend)

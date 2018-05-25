@@ -1,6 +1,9 @@
+
+from .graph_s import GraphS
+
 __all__ = ['backends', 'Graph']
 
-backends = {}
+backends = {'simple': True}
 try:
 	import graph_tool.all as gt
 	from .graph_gt import GraphGT
@@ -27,10 +30,11 @@ else:
 
 
 
-def Graph(backend: str=None):
+def Graph(backend: str='simple'):
 	if backend:
 		if backend not in backends:
 			raise KeyError("Unavailable backend '{}'".format(backend))
+		if backend == 'simple': return GraphS()
 		if backend == 'graph_tool': return GraphGT()
 		if backend == 'igraph': return GraphIG()
 		if backend == 'networkx': return GraphNX()
