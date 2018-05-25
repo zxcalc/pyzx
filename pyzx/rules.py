@@ -1,4 +1,19 @@
-def match_bialg_parallel(g, num=100):
+def match_bialg(g):
+    for e in g.edges():
+        v0, v1 = g.edge_st(e)
+        v0t = g.get_type(v0)
+        v1t = g.get_type(v1)
+        if ((v0t == 1 and v1t == 2) or (v0t == 2 and v1t == 1)):
+            v0n = [n for n in g.get_neighbours(v0) if not n == v1]
+            v1n = [n for n in g.get_neighbours(v1) if not n == v0]
+            if (
+                all([g.get_type(n) == v1t for n in v0n]) and
+                all([g.get_type(n) == v0t for n in v1n])):
+                return [[v0,v1,v0n,v1n]]
+    return []
+
+
+def match_bialg_parallel(g, num=-1):
     candidates = g.edge_set()
     
     i = 0
@@ -18,15 +33,11 @@ def match_bialg_parallel(g, num=100):
                     for c in g.get_incident_edges(v): candidates.discard(c)
                 for v in v1n:
                     for c in g.get_incident_edges(v): candidates.discard(c)
-                #v0n = g.verts_as_int(v0n)
-                #v1n = g.verts_as_int(v1n)
-                #v0 = g.vert_as_int(v0)
-                #v1 = g.vert_as_int(v1)
                 m.append([v0,v1,v0n,v1n])
     return m
 
 
-def bialg_parallel(g, matches):
+def bialg(g, matches):
     del_verts = []
     add_edges = []
     del_edges = []
@@ -42,3 +53,4 @@ def bialg_parallel(g, matches):
     g.add_edges(add_edges)
     g.remove_vertices(del_verts)
     g.remove_solo_vertices()
+
