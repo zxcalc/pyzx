@@ -62,6 +62,25 @@ def match_spider(g):
             return [[v0,v1]]
     return []
 
+def match_spider_parallel(g, num=-1):
+    candidates = g.edge_set()
+    types = g.get_types()
+    
+    i = 0
+    m = []
+    while (num == -1 or i < num) and len(candidates) > 0:
+        v0, v1 = g.edge_st(candidates.pop())
+        v0t = types[v0]
+        v1t = types[v1]
+        if (v0t == v1t):
+                i += 1
+                for v in g.get_neighbours(v0):
+                    for c in g.get_incident_edges(v): candidates.discard(c)
+                for v in g.get_neighbours(v1):
+                    for c in g.get_incident_edges(v): candidates.discard(c)
+                m.append([v0,v1])
+    return m
+
 def spider(g, matches):
     del_verts = []
     add_edges = []
