@@ -1,3 +1,4 @@
+import random
 from .graph import Graph
 
 def complimentarity():
@@ -9,8 +10,31 @@ def complimentarity():
     g.add_edges([(0,1),(1,2),(1,2),(2,3)])
     return g
 
-def cnots():
-	g = ig.Graph()
+def cnots(qubits, depth, backend=None):
+    g = Graph(backend)
+    q = list(range(qubits)) # qubit register, initialised with input
+    v = qubits              # index of next vertex to add
+    #ty = qubits * [0]
+    es = []
+    for i in range(depth):
+        c = random.randint(0, qubits-1)
+        t = random.randint(0, qubits-2)
+        if t >= c: t += 1
+        es += [(q[c], v), (q[t], v+1), (v, v+1)]
+        q[c] = v
+        q[t] = v+1
+        v += 2
+    es += [(q[i],v+i) for i in range(qubits)]
+    v += qubits
+
+    g.add_vertices(v)
+    g.add_edges(es)
+
+    ty = (qubits * [0]) + [i % 2 + 1 for i in range(depth * 2)] + (qubits * [0])
+
+    for i in range(v):
+        g.set_type(i, ty[i])
+    return g
 
 
 def zigzag(sz, backend=None):
