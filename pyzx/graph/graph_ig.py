@@ -86,6 +86,9 @@ class GraphIG(BaseGraph):
 		#else:
 		#	return v['t']
 
+	def get_types(self):
+		return self.graph.vs['t']
+
 	def set_type(self, v, t):
 		self.graph.vs[v]['t'] = t
 		#if isinstance(v, int):

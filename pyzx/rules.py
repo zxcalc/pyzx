@@ -15,19 +15,20 @@ def match_bialg(g):
 
 def match_bialg_parallel(g, num=-1):
     candidates = g.edge_set()
+    types = g.get_types()
     
     i = 0
     m = []
     while (num == -1 or i < num) and len(candidates) > 0:
         v0, v1 = g.edge_st(candidates.pop())
-        v0t = g.get_type(v0)
-        v1t = g.get_type(v1)
+        v0t = types[v0]
+        v1t = types[v1]
         if ((v0t == 1 and v1t == 2) or (v0t == 2 and v1t == 1)):
             v0n = [n for n in g.get_neighbours(v0) if not n == v1]
             v1n = [n for n in g.get_neighbours(v1) if not n == v0]
             if (
-                all([g.get_type(n) == v1t for n in v0n]) and
-                all([g.get_type(n) == v0t for n in v1n])):
+                all([types[n] == v1t for n in v0n]) and
+                all([types[n] == v0t for n in v1n])):
                 i += 1
                 for v in v0n:
                     for c in g.get_incident_edges(v): candidates.discard(c)
