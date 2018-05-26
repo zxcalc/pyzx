@@ -1,3 +1,4 @@
+from fractions import Fraction
 from .base import BaseGraph
 
 class GraphS(BaseGraph):
@@ -8,6 +9,7 @@ class GraphS(BaseGraph):
 		super().__init__()
 		self.graph = dict()
 		self.ty = dict()
+		self.angle = dict()
 		self.vdata = dict()
 		self.vindex = 0
 		self.nedges = 0
@@ -16,6 +18,7 @@ class GraphS(BaseGraph):
 		for i in range(self.vindex, self.vindex + amount):
 			self.graph[i] = dict()
 			self.ty[i] = 0
+			self.angle[i] = 0
 		self.vindex += amount
 
 	def add_vertex(self):
@@ -137,3 +140,12 @@ class GraphS(BaseGraph):
 			self.vdata[v][key] = val
 		else:
 			self.vdata[v] = {key:val}
+
+	def get_angle(self, vertex):
+		return self.angle[vertex]
+
+	def set_angle(self, vertex, angle):
+		self.angle[vertex] = angle
+
+	def get_angles(self):
+		return self.angle

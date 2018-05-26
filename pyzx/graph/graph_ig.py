@@ -7,6 +7,8 @@ class GraphIG(BaseGraph):
 	def __init__(self):
 		super().__init__()
 		self.graph = ig.Graph(directed=False)
+		self.graph.vs['angle'] = None
+		self.graph.vs['type'] = None
 
 	def add_vertices(self, amount, vertex_data=None):
 		self.graph.add_vertices(amount)
@@ -86,13 +88,14 @@ class GraphIG(BaseGraph):
 	# 	return v1.index == v2.index
 
 	def get_type(self, v):
-		return self.graph.vs[v]['t']
+		t = self.graph.vs[v]['type']
+		return t if t != None else 0
 
 	def get_types(self):
-		return self.graph.vs['t']
+		return self.graph.vs['type']
 
 	def set_type(self, v, t):
-		self.graph.vs[v]['t'] = t
+		self.graph.vs[v]['type'] = t
 
 	def get_vdata(self, v, key, default=0):
 		try:
@@ -104,3 +107,13 @@ class GraphIG(BaseGraph):
 
 	def set_vdata(self, v, key, val):
 		self.graph.vs[v][key] = val
+
+	def get_angle(self, vertex):
+		a = self.graph.vs[vertex]['angle']
+		return a if a != None else 0
+
+	def set_angle(self, vertex, angle):
+		self.graph.vs[vertex]['angle'] = angle
+
+	def get_angles(self):
+		return [a if a != None else 0 for a in self.graph.vs['angle']]

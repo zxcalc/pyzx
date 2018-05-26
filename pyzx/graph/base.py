@@ -148,6 +148,15 @@ class BaseGraph(object):
 	# def add_attribute(self, attrib_name, default=0):
 	# 	raise NotImplementedError("Not implemented on backend" + type(self).backend)
 
+	def get_angle(self, vertex):
+		raise NotImplementedError("Not implemented on backend" + type(self).backend)
+
+	def set_angle(self, vertex, angle):
+		raise NotImplementedError("Not implemented on backend" + type(self).backend)
+
+	def get_angles(self):
+		raise NotImplementedError("Not implemented on backend" + type(self).backend)
+
 	def get_vdata(self, vertex, key, default=0):
 		raise NotImplementedError("Not implemented on backend" + type(self).backend)
 
