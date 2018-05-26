@@ -16,6 +16,9 @@ def cnots(qubits, depth, backend=None):
     v = qubits              # index of next vertex to add
     #ty = qubits * [0]
     es = []
+
+    qs = list(range(qubits))
+    ds = [0] * qubits
     for i in range(depth):
         c = random.randint(0, qubits-1)
         t = random.randint(0, qubits-2)
@@ -23,9 +26,14 @@ def cnots(qubits, depth, backend=None):
         es += [(q[c], v), (q[t], v+1), (v, v+1)]
         q[c] = v
         q[t] = v+1
+        ds += [i+1,i+1]
+        qs += [c,t]
         v += 2
     es += [(q[i],v+i) for i in range(qubits)]
     v += qubits
+
+    qs += list(range(qubits))
+    ds += [depth+1] * qubits
 
     g.add_vertices(v)
     g.add_edges(es)
@@ -34,6 +42,8 @@ def cnots(qubits, depth, backend=None):
 
     for i in range(v):
         g.set_type(i, ty[i])
+        g.set_vdata(i, 'q', qs[i])
+        g.set_vdata(i, 'd', ds[i])
     return g
 
 

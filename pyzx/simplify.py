@@ -3,28 +3,32 @@ from .rules import *
 def bialg_simp(g):
     i = 0
     new_matches = True
+    print('bialg_simp')
     while new_matches:
         i += 1
         new_matches = False
         m = match_bialg_parallel(g)
         if len(m) > 0:
+            print(len(m), end='', flush=True)
             bialg(g, m)
-            print(str(len(m)) + ' bialg')
+            print('. ', end='', flush=True)
             new_matches = True
-    print('finished in ' + str(i) + ' iterations')
+    print('\nfinished in ' + str(i) + ' iterations')
 
 def spider_simp(g):
     i = 0
     new_matches = True
+    print('spider_simp')
     while new_matches:
         i += 1
         new_matches = False
         m = match_spider_parallel(g)
         if len(m) > 0:
+            print(len(m), end='', flush=True)
             spider(g, m)
-            print(str(len(m)) + ' spider')
+            print('. ', end='', flush=True)
             new_matches = True
-    print('finished in ' + str(i) + ' iterations')
+    print('\nfinished in ' + str(i) + ' iterations')
 
 def phase_free_simp(g):
     spider_simp(g)

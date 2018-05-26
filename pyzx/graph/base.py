@@ -107,11 +107,11 @@ class BaseGraph(object):
 
 	def edge_s(self, edge):
 		'''Returns the source of the given edge.'''
-		return self.edge_st()[0]
+		return self.edge_st(edge)[0]
 
 	def edge_t(self, edge):
 		'''Returns the target of the given edge.'''
-		return self.edge_st()[1]
+		return self.edge_st(edge)[1]
 
 	def get_neighbours(self, vertex):
 		'''Returns all neighbouring vertices of the given vertex'''

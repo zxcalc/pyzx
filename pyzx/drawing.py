@@ -33,6 +33,9 @@ def dag_layout(g, sort=True):
     layout.fit_into([len(layers)/(max(layers)+1),max(layers)+1])
     return layout
 
+def circuit_layout(g):
+    return [(g.get_vdata(v,'d'),g.get_vdata(v,'q')) for v in g.vertices()]
+
 def draw(g, layout=None):
     if g.backend != 'igraph':
         raise NotImplementedError("Drawing not implemented on backend " + g.backend)
