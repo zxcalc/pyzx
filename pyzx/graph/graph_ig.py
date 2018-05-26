@@ -6,7 +6,7 @@ class GraphIG(BaseGraph):
 	backend = 'igraph'
 	def __init__(self):
 		super().__init__()
-		self.graph = ig.Graph()
+		self.graph = ig.Graph(directed=False)
 
 	def add_vertices(self, amount, vertex_data=None):
 		self.graph.add_vertices(amount)
@@ -47,10 +47,16 @@ class GraphIG(BaseGraph):
 		return set(range(len(self.graph.es)))
 
 	def edge_st(self, edge):
-		'''Returns a tuple of source/target of the given edge'''
 		edge = self.graph.es[edge]
 		return (edge.source, edge.target)
 
+	def edge_s(self, edge):
+		edge = self.graph.es[edge]
+		return edge.source
+
+	def edge_t(self, edge):
+		edge = self.graph.es[edge]
+		return edge.target
 
 	def get_neighbours(self, vertex):
 		'''Returns a tuple of source/target of the given edge'''
@@ -81,17 +87,20 @@ class GraphIG(BaseGraph):
 
 	def get_type(self, v):
 		return self.graph.vs[v]['t']
-		#if isinstance(v, int):
-		#	return self.graph.vs[v]['t']
-		#else:
-		#	return v['t']
 
 	def get_types(self):
 		return self.graph.vs['t']
 
 	def set_type(self, v, t):
 		self.graph.vs[v]['t'] = t
-		#if isinstance(v, int):
-		#	self.graph.vs[v]['t'] = t
-		#else:
-		#	v['t'] = t
+
+	def get_vdata(self, v, key, default=0):
+		try:
+			val = self.graph.vs[v][key]
+			if not val: val = default
+		except KeyError:
+			val = default
+		return val
+
+	def set_vdata(self, v, key, val):
+		self.graph.vs[v][key] = val

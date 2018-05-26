@@ -1,3 +1,4 @@
+
 def match_bialg(g):
     for e in g.edges():
         v0, v1 = g.edge_st(e)
@@ -39,20 +40,26 @@ def match_bialg_parallel(g, num=-1):
 
 
 def bialg(g, matches):
-    del_verts = []
-    add_edges = []
-    del_edges = []
+    rem_verts = []
+    add_edges = set()
+    rem_edges = set()
     for m in matches:
-        del_verts.append(m[0])
-        del_verts.append(m[1])
-        es = [(i,j) for i in m[2] for j in m[3]]
+        rem_verts.append(m[0])
+        rem_verts.append(m[1])
+        es = [(i,j) if i < j else (j,i) for i in m[2] for j in m[3]]
         for e in es:
-            if g.is_connected(e[0], e[1]): del_edges.append(e)
-            else: add_edges.append(e)
+            # Edges can appear multiple times. Every time an edge is encountered,
+            # toggle whether it will be added/deleted.
+            if g.is_connected(e[0], e[1]):
+                if e in rem_edges: rem_edges.remove(e)
+                else: rem_edges.add(e)
+            else:
+                if e in add_edges: add_edges.remove(e)
+                else: add_edges.add(e)
     
-    g.remove_edges(del_edges)
+    g.remove_edges(rem_edges)
     g.add_edges(add_edges)
-    g.remove_vertices(del_verts)
+    g.remove_vertices(rem_verts)
     g.remove_solo_vertices()
 
 def match_spider(g):
@@ -82,14 +89,14 @@ def match_spider_parallel(g, num=-1):
     return m
 
 def spider(g, matches):
-    del_verts = []
+    rem_verts = []
     add_edges = []
-    del_edges = []
+    rem_edges = []
     types = g.get_types()
 
     for m in matches:
         # always delete the second vertex in the match
-        del_verts.append(m[1])
+        rem_verts.append(m[1])
         
         v0 = m[0]
 
@@ -101,11 +108,11 @@ def spider(g, matches):
             if v0 == v1: continue
             if g.is_connected(v0, v1):
                 if types[v0] != types[v1]:
-                    del_edges.append((v0,v1))
+                    rem_edges.append((v0,v1))
             else: add_edges.append((v0,v1))
     
-    g.remove_edges(del_edges)
+    g.remove_edges(rem_edges)
     g.add_edges(add_edges)
-    g.remove_vertices(del_verts)
+    g.remove_vertices(rem_verts)
     g.remove_solo_vertices()
 

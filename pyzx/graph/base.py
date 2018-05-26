@@ -1,3 +1,5 @@
+from . import *
+
 class BaseGraph(object):
 	'''Base class for the specific Graph classes with the methods that each Graph class should implement'''
 	backend = 'None'
@@ -8,6 +10,27 @@ class BaseGraph(object):
 
 	def __repr__(self):
 		return str(self)
+
+	def copy(self, backend=None):
+		'''Create a copy of the graph, with the given backend. Note the
+		copy will have consecutive vertex indices, even if the original
+		graph did not.
+		'''
+		if (backend == None):
+			backend = type(self).backend
+		g = Graph(backend = backend)
+
+		g.add_vertices(self.num_vertices())
+		ty = self.get_types()
+		vtab = dict()
+		i = 0
+		for v in self.vertices():
+			vtab[v] = i
+			g.set_type(i, ty[v])
+			i += 1
+		g.add_edges([(vtab[self.edge_s(e)], vtab[self.edge_t(e)]) for e in self.edges()])
+		return g
+
 
 	def add_vertices(self, amount, vertex_data=None):
 		raise NotImplementedError("Not implemented on backend " + type(self).backend)
@@ -82,6 +105,14 @@ class BaseGraph(object):
 		'''Returns a tuple of source/target of the given edge.'''
 		raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
+	def edge_s(self, edge):
+		'''Returns the source of the given edge.'''
+		return self.edge_st()[0]
+
+	def edge_t(self, edge):
+		'''Returns the target of the given edge.'''
+		return self.edge_st()[1]
+
 	def get_neighbours(self, vertex):
 		'''Returns all neighbouring vertices of the given vertex'''
 		raise NotImplementedError("Not implemented on backend " + type(self).backend)
@@ -114,8 +145,11 @@ class BaseGraph(object):
 	def set_type(self, vertex, t):
 		raise NotImplementedError("Not implemented on backend" + type(self).backend)
 
-	def add_attribute(self,attrib_name, default=0):
+	# def add_attribute(self, attrib_name, default=0):
+	# 	raise NotImplementedError("Not implemented on backend" + type(self).backend)
+
+	def get_vdata(self, vertex, key, default=0):
 		raise NotImplementedError("Not implemented on backend" + type(self).backend)
 
-	def get_attribute(self, vertex, attrib_name):
+	def set_vdata(self, vertex, key, val):
 		raise NotImplementedError("Not implemented on backend" + type(self).backend)

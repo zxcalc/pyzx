@@ -8,6 +8,7 @@ class GraphS(BaseGraph):
 		super().__init__()
 		self.graph = dict()
 		self.ty = dict()
+		self.vdata = dict()
 		self.vindex = 0
 		self.nedges = 0
 
@@ -122,3 +123,17 @@ class GraphS(BaseGraph):
 
 	def set_type(self, vertex, t):
 		self.ty[vertex] = t
+
+	def get_vdata(self, v, key, default=0):
+		if v in self.vdata:
+			t = self.vdata[v]
+			if key in t: return t[key]
+			else: return default
+		else:
+			return default
+
+	def set_vdata(self, v, key, val):
+		if v in self.vdata:
+			self.vdata[v][key] = val
+		else:
+			self.vdata[v] = {key:val}
