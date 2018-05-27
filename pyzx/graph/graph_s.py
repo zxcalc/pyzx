@@ -45,6 +45,8 @@ class GraphS(BaseGraph):
 			# remove the vertex
 			del self.graph[v]
 			del self.ty[v]
+			self.vdata.pop(v,None)
+			del self.angle[v]
 
 	def remove_vertex(self, vertex):
 		self.remove_vertices([vertex])
@@ -145,7 +147,7 @@ class GraphS(BaseGraph):
 		return self.angle[vertex]
 
 	def set_angle(self, vertex, angle):
-		self.angle[vertex] = angle
+		self.angle[vertex] = angle % 2
 
 	def get_angles(self):
 		return self.angle

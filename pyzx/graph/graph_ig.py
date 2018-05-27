@@ -113,7 +113,7 @@ class GraphIG(BaseGraph):
 		return a if a != None else 0
 
 	def set_angle(self, vertex, angle):
-		self.graph.vs[vertex]['angle'] = angle
+		self.graph.vs[vertex]['angle'] = angle % 2
 
 	def get_angles(self):
 		return [a if a != None else 0 for a in self.graph.vs['angle']]

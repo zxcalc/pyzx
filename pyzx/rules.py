@@ -95,6 +95,8 @@ def spider(g, matches):
     types = g.get_types()
 
     for m in matches:
+        g.set_angle(m[0], g.get_angle(m[0]) + g.get_angle(m[1]))
+
         # always delete the second vertex in the match
         rem_verts.append(m[1])
         
