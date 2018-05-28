@@ -45,24 +45,24 @@ def dag_layout(g, sort=True):
     return layout
 
 def circuit_layout(g):
-    return [(g.get_vdata(v,'d'),g.get_vdata(v,'q')) for v in g.vertices()]
+    return {v:(g.get_vdata(v,'d'),-g.get_vdata(v,'q')) for v in g.vertices()}
 
 def draw(g, layout=None):
-    g1 = g.copy(backend='igraph')
+    #g1 = g.copy(backend='igraph')
     #if g.backend != 'igraph':
     #    raise NotImplementedError("Drawing not implemented on backend " + g.backend)
-    for v in g1.graph.vs:
-        v['color'] = vcol(v['type'])
+    for v in g.graph.vs:
+        v['color'] = vcol(v['_t'])
         #a = v['angle']
-        #v['label'] = angle_to_s(a) if a else '' #v.index
+        #v['label'] = angle_to_s(v['_a'])
     if not layout:
-        layout = dag_layout(g1)
+        layout = dag_layout(g)
     
-    return ig.plot(g1.graph, layout=layout,
+    return ig.plot(g.graph, layout=layout,
                    vertex_size=5,
                    vertex_label_size=8,
                    vertex_label_dist=2,
                    vertex_label_color='blue',
-                   vertex_label=[angle_to_s(g1.get_angle(v)) for v in g1.vertices()],
+                   vertex_label=g.graph.vs['_a'],
                    keep_aspect_ratio=True,
                    bbox=[600,200])
