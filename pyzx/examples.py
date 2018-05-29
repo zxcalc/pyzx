@@ -12,13 +12,28 @@ def complimentarity():
 
 def cnots(qubits, depth, backend=None):
     g = Graph(backend)
-    q = list(range(qubits)) # qubit register, initialised with input
-    v = qubits              # index of next vertex to add
-    #ty = qubits * [0]
-    es = []
 
-    qs = list(range(qubits))
-    ds = [0] * qubits
+    # initialise and add input row
+
+    q = list(range(qubits))   # qubit index, initialised with input
+    r = 1                     # current rank
+    ty = [0] * qubits         # types of vertices
+    qs = list(range(qubits))  # tracks qubit indices of vertices
+    rs = [0] * qubits         # tracks rank of vertices
+    v = qubits                # next vertex to add
+    es = [] # edges to add
+
+    # initial row of Z
+    for i in range(qubits):
+        es.append((q[i], v))
+        q[i] = v
+        rs.append(r)
+        qs.append(i)
+        ty.append(1)
+        v += 1
+    r += 1
+
+    # random CNOTs
     for i in range(depth):
         c = random.randint(0, qubits-1)
         t = random.randint(0, qubits-2)
@@ -26,24 +41,47 @@ def cnots(qubits, depth, backend=None):
         es += [(q[c], v), (q[t], v+1), (v, v+1)]
         q[c] = v
         q[t] = v+1
-        ds += [i+1,i+1]
+        rs += [r,r]
         qs += [c,t]
+        ty += [1,2]
         v += 2
-    es += [(q[i],v+i) for i in range(qubits)]
+        r += 1
+
+    # final row of Z
+    for i in range(qubits):
+        es.append((q[i], v))
+        q[i] = v
+        rs.append(r)
+        qs.append(i)
+        ty.append(1)
+        v += 1
+    r += 1
+
+    # outputs
+    qs += list(range(qubits))
+    rs += [r] * qubits
+    ty += [0] * qubits
+    es += [(q[i], v+i) for i in range(qubits)]
     v += qubits
 
-    qs += list(range(qubits))
-    ds += [depth+1] * qubits
 
     g.add_vertices(v)
     g.add_edges(es)
 
-    ty = (qubits * [0]) + [i % 2 + 1 for i in range(depth * 2)] + (qubits * [0])
+    # ty = (
+    #   (qubits * [0]) + (qubits * [1]) +
+    #   [i % 2 + 1 for i in range(depth * 2)] +
+    #   (qubits * [1]) + (qubits * [0])
+    # )
 
     for i in range(v):
         g.set_type(i, ty[i])
         g.set_vdata(i, 'q', qs[i])
-        g.set_vdata(i, 'd', ds[i])
+        g.set_vdata(i, 'r', rs[i])
+
+    for i in range(qubits):
+        g.set_vdata(i, 'i', True)
+        g.set_vdata(v-i-1, 'o', True)
     return g
 
 
