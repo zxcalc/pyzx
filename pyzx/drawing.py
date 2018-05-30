@@ -92,45 +92,37 @@ def pack_circuit_nf(g, nf):
 def circuit_layout(g):
     return {v:(g.get_vdata(v,'r'),-g.get_vdata(v,'q')) for v in g.vertices()}
 
-def draw(g, layout, labels=False):
-    minX = 0
-    minY = 0
-    maxX = 1
-    maxY = 1
-    for _,p in layout.items():
-        if p[0] < minX: minX = p[0]
-        if p[0] > maxX: maxX = p[0]
-        if p[1] < minY: minY = p[1]
-        if p[1] > maxY: maxY = p[1]
-    fig1 = plt.figure(1, (10, 5))
-    ax = fig1.add_axes([0.1, 0.1, 0.9, 0.9], frameon=False, aspect=1)
+def draw(g, layout=None, labels=False, figsize=(8,2)):
+    fig1 = plt.figure(figsize=figsize)
+    ax = fig1.add_axes([0, 0, 1, 1], frameon=False)
     ax.xaxis.set_visible(False)
     ax.yaxis.set_visible(False)
+
+    if not layout:
+        layout = circuit_layout(g)
     
     for e in g.edges():
         sp = layout[g.edge_s(e)]
         tp = layout[g.edge_t(e)]
-        #ax.add_line(lines.Line2D([sp[0],tp[0]],[sp[1],tp[1]], color='black', zorder=0))
-        plt.plot([sp[0],tp[0]],[sp[1],tp[1]], 'k', zorder=0, linewidth=0.8)
+        ax.add_line(lines.Line2D([sp[0],tp[0]],[sp[1],tp[1]], color='black', linewidth=0.8, zorder=0))
+        #plt.plot([sp[0],tp[0]],[sp[1],tp[1]], 'k', zorder=0, linewidth=0.8)
     
     for v in g.vertices():
         p = layout[v]
         t = g.get_type(v)
         a = g.get_angle(v)
         
+        sz = 0.2
         col = 'black'
         if t == 1: col = 'green'
         elif t == 2: col = 'red'
+        else: sz = 0.1
             
-        ax.add_patch(patches.Circle(p, 0.2, facecolor=col, edgecolor='black', zorder=1))
-        
-        #plt.plot(p[0], p[1], 'o', color=col, markersize=4)
-        if labels:
-            plt.text(p[0], p[1]+0.3, str(v), ha='center', color='gray', fontsize=5)
-        
-        if a:
-            plt.text(p[0], p[1]-0.7, angle_to_s(a), ha='center', color='blue', fontsize=8)
-            
+        ax.add_patch(patches.Circle(p, sz, facecolor=col, edgecolor='black', zorder=1))
+        if labels: plt.text(p[0]+0.3, p[1]+0.3, str(v), ha='center', color='gray', fontsize=5)
+        if a: plt.text(p[0], p[1]-0.7, angle_to_s(a), ha='center', color='blue', fontsize=8)
+    
+    ax.axis('equal')
     plt.show()
 
 # def draw(g, layout=None):
