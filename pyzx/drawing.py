@@ -97,13 +97,13 @@ def draw(g, layout, labels=False):
     minY = 0
     maxX = 1
     maxY = 1
-    #for _,p in layout.items():
-    #    if p[0] < minX: minX = p[0]
-    #    if p[0] > maxX: maxX = p[0]
-    #    if p[1] < minY: minY = p[1]
-    #    if p[1] > maxY: maxY = p[1]
+    for _,p in layout.items():
+        if p[0] < minX: minX = p[0]
+        if p[0] > maxX: maxX = p[0]
+        if p[1] < minY: minY = p[1]
+        if p[1] > maxY: maxY = p[1]
     fig1 = plt.figure(1, (10, 5))
-    ax = fig1.add_axes([0, 0, 1, 0.5], frameon=False, aspect=1)
+    ax = fig1.add_axes([0.1, 0.1, 0.9, 0.9], frameon=False, aspect=1)
     ax.xaxis.set_visible(False)
     ax.yaxis.set_visible(False)
     
