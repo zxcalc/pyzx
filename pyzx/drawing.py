@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 from matplotlib import patches, lines
 from fractions import Fraction
+import math
 
 def angle_to_s(a):
     if not a: return ''
@@ -105,6 +106,16 @@ def draw(g, layout=None, labels=False, figsize=(8,2)):
         sp = layout[g.edge_s(e)]
         tp = layout[g.edge_t(e)]
         ax.add_line(lines.Line2D([sp[0],tp[0]],[sp[1],tp[1]], color='black', linewidth=0.8, zorder=0))
+        if g.get_edge_type(e[0],e[1]) == 2: #hadamard edge
+            x,y = (sp[0]-tp[0]), (sp[1]-tp[1])
+            w = 0.3
+            h = 0.2
+            l = math.sqrt(w*w+h*h)
+            angle = math.atan2(y,x)
+            angle2 = math.atan2(h,w)
+            centre = (tp[0] +x/2 - l/2*math.cos(angle+angle2), tp[1] +y/2 - l/2*math.sin(angle+angle2))
+            ax.add_patch(patches.Rectangle(centre,w,h,angle=angle/math.pi*180,facecolor='yellow'))
+
         #plt.plot([sp[0],tp[0]],[sp[1],tp[1]], 'k', zorder=0, linewidth=0.8)
     
     for v in g.vertices():

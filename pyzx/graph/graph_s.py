@@ -24,10 +24,44 @@ class GraphS(BaseGraph):
 		self.add_vertices(1)
 
 	def add_edges(self, edges, vertex_data=None):
-		for s,t in edges:
-			self.nedges += 1
-			self.graph[s][t] = True
-			self.graph[t][s] = True
+		'''Takes either a list of (source, target) indices to add,
+		or a (source, target):(normal_edge_count, hadamard_edge_count) dictionary'''
+		if isinstance(edges, (list,set)):
+			for s,t in edges:
+				self.nedges += 1
+				self.graph[s][t] = 1
+				self.graph[t][s] = 1
+			return
+		if not isinstance(edges, dict):
+			raise TypeError("Wrong type of edge list type " + str(type(edges)))
+		for (v1,v2),(n1,n2) in edges.items():
+			conn_type = self.graph.get(v1,{}).get(v2,0) #check whether they were connected
+			if conn_type == 1: n1 += 1 #and add to the relevant edge count
+			elif conn_type == 2: n2 += 2
+			t1 = self.get_type(v1)
+			t2 = self.get_type(v2)
+			if t1 == t2: 		#types are equal, 
+				n1 = bool(n1) 	#so normal edges fuse
+				n2 = n2%2 		#while hadamard edges go modulo 2
+				if n1 and n2:	#reduction rule for when both edges appear
+					new_type = 1
+					self.add_angle(v1,1) #add pi phase to one of the nodes
+				else: new_type = 1 if n1 else (2 if n2 else 0)
+			else:				#types are different
+				n1 = n1%2		#so normal edges go modulo 2
+				n2 = bool(n2)	#while hadamard edges fuse
+				if n1 and n2:	#reduction rule for when both edges appear
+					new_type = 2
+					self.add_angle(v1,1) #add pi phase to one of the nodes
+				else: new_type = 1 if n1 else (2 if n2 else 0)
+			if new_type: #They are connected, so update the graph
+				self.graph[s][t] = new_type
+				self.graph[t][s] = new_type
+				if not conn_type: self.nedges += 1 #they didn't used to be connected
+			elif conn_type: #They were connected, but not anymore, so update the graph
+				del self.graph[s][t]
+				del self.graph[t][s]
+				self.nedges -= 1
 
 	def add_edge(self, edge, edge_data=None):
 		if edge_data: self.add_edges([edge],[edge_data])
@@ -98,6 +132,9 @@ class GraphS(BaseGraph):
 	def is_connected(self,v1,v2):
 		return v2 in self.graph[v1]
 
+	def get_edge_type(self, v1,v2):
+		return self.graph[v1][v2]
+
 	def get_type(self, vertex):
 		return self.ty[vertex]
 
@@ -120,10 +157,13 @@ class GraphS(BaseGraph):
 			self.vdata[v] = {key:val}
 
 	def get_angle(self, vertex):
-		return self.angle[vertex]
+		return self.angle.get(vertex,Fraction(1))
 
 	def set_angle(self, vertex, angle):
 		self.angle[vertex] = angle % 2
+
+	def add_angle(self, vertex, angle):
+		self.angle[vertex] = (self.angle.get(vertex,Fraction(1)) + angle) % 2
 
 	def get_angles(self):
 		return self.angle
