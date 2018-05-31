@@ -24,12 +24,11 @@ class BaseGraph(object):
 		ty = self.get_types()
 		an = self.get_angles()
 		vtab = dict()
-		i = 0
-		for v in self.vertices():
+		for i,v in enumerate(self.vertices()):
 			vtab[v] = i
 			g.set_type(i, ty[v])
 			g.set_angle(i, an[v])
-			i += 1
+			
 		g.add_edges([(vtab[self.edge_s(e)], vtab[self.edge_t(e)]) for e in self.edges()])
 		return g
 

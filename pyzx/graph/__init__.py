@@ -6,7 +6,8 @@ typeB = 0
 typeZ = 1
 typeX = 2
 
-def Graph(backend: str='simple'):
+def Graph(backend: str=None):
+	if not backend: backend = 'simple'
 	if backend:
 		if backend not in backends:
 			raise KeyError("Unavailable backend '{}'".format(backend))
@@ -14,9 +15,6 @@ def Graph(backend: str='simple'):
 		if backend == 'graph_tool': return GraphGT()
 		if backend == 'igraph': return GraphIG()
 		if backend == 'networkx': return GraphNX()
-	#if 'graph_tool' in backends: return GraphGT()
-	#if 'igraph' in backends: return GraphIG()
-	#if 'networkx' in backends: return GraphNX()
 	return GraphS()
 
 from .graph_s import GraphS

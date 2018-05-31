@@ -52,8 +52,7 @@ class GraphS(BaseGraph):
 		self.remove_vertices([vertex])
 
 	def remove_solo_vertices(self):
-		'''Deletes all vertices that are not connected to any other vertex.
-		Should be replaced by a faster alternative if available in the backend'''
+		'''Deletes all vertices that are not connected to any other vertex.'''
 		self.remove_vertices([v for v in self.vertices() if self.get_vertex_degree(v)==0])
 
 	def remove_edges(self, edges):
@@ -74,13 +73,6 @@ class GraphS(BaseGraph):
 	def vertices(self):
 		return self.graph.keys()
 
-	# def verts_as_int(self, verts):
-	# 	'''Takes a list of vertices and ensures they are represented as integers'''
-	# 	raise NotImplementedError("Not implemented on backend" + backend)
-
-	# def vert_as_int(self, vert):
-	# 	return self.verts_as_int([vert])[0]
-
 	def edges(self):
 		for v0,adj in self.graph.items():
 			for v1 in adj:
@@ -89,16 +81,7 @@ class GraphS(BaseGraph):
 	def edge(self, s, t):
 		return (s,t) if s < t else (t,s)
 
-	# def edges_as_int(self, edges):
-	# 	'''Takes a list of edges and ensures they are represented as integers'''
-	# 	raise NotImplementedError("Not implemented on backend" + backend)
-
-	# def edge_as_int(self, edge):
-	# 	return self.edges_as_int([edge])[0]
-
 	def edge_set(self):
-		'''Returns a set of indices of edges. Should be overloaded if the backend
-		supplies a cheaper version than this.'''
 		return set(self.edges())
 
 	def edge_st(self, edge):
@@ -116,10 +99,6 @@ class GraphS(BaseGraph):
 	def is_connected(self,v1,v2):
 		return v2 in self.graph[v1]
 
-	# def is_equal(self,v1,v2):
-	# 	'''Returns whether v1 and v2 represent the same vertex'''
-	# 	raise NotImplementedError("Not implemented on backend" + backend)
-
 	def get_type(self, vertex):
 		return self.ty[vertex]
 
@@ -131,9 +110,7 @@ class GraphS(BaseGraph):
 
 	def get_vdata(self, v, key, default=0):
 		if v in self.vdata:
-			t = self.vdata[v]
-			if key in t: return t[key]
-			else: return default
+			return self.vdata[v].get(key,default)
 		else:
 			return default
 

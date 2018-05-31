@@ -1,14 +1,6 @@
 import random
 from .graph import Graph
 
-def complimentarity():
-    g = ig.Graph()
-    g.add_vertex(t='B')
-    g.add_vertex(t='Z',phase='0.0')
-    g.add_vertex(t='X',phase='0.0')
-    g.add_vertex(t='B')
-    g.add_edges([(0,1),(1,2),(1,2),(2,3)])
-    return g
 
 def cnots(qubits, depth, backend=None):
     g = Graph(backend)
@@ -112,11 +104,3 @@ def zigzag2(sz, backend=None):
     g.add_edges([(4*i+2,4*i+3+2) for i in range(0,sz//2)])
     g.add_edges([(2*sz,2*sz+2),(2*sz+1,2*sz+3)])
     return g
-
-def t_to_zx(g):
-	'''takes a graph where the 't' attributes are ints, and turns it into 'Z', 'X', or 'B' '''
-	names = ['B', 'Z', 'X']
-	for v in g.vs:
-		if not v['t']: v['t'] = 'B'
-		else: v['t'] = names[v['t']]
-	return g
