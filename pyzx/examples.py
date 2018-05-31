@@ -1,8 +1,8 @@
 import random
-from .graph import Graph
+from .graph.graph import Graph
 
 
-def cnots(qubits, depth, backend=None):
+def cnots(qubits, depth, backend=None, keynames=('q','r')):
     g = Graph(backend)
 
     # initialise and add input row
@@ -68,8 +68,8 @@ def cnots(qubits, depth, backend=None):
 
     for i in range(v):
         g.set_type(i, ty[i])
-        g.set_vdata(i, 'q', qs[i])
-        g.set_vdata(i, 'r', rs[i])
+        g.set_vdata(i, keynames[0], qs[i])
+        g.set_vdata(i, keynames[1], rs[i])
 
     for i in range(qubits):
         g.set_vdata(i, 'i', True)

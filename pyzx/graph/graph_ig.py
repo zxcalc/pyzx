@@ -5,7 +5,6 @@ from .base import BaseGraph
 class GraphIG(BaseGraph):
 	backend = 'igraph'
 	def __init__(self):
-		super().__init__()
 		self.graph = ig.Graph(directed=False)
 		self.graph.vs['_a'] = None
 		self.graph.vs['_t'] = None

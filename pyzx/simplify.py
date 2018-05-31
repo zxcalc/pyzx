@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 from .rules import *
 
 def bialg_simp(g):

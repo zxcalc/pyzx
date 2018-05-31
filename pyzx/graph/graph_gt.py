@@ -5,7 +5,6 @@ from .base import BaseGraph
 class GraphGT(BaseGraph):
 	backend = 'graph_tool'
 	def __init__(self):
-		super().__init__()
 		self.graph = gt.Graph(directed=False)
 		self.graph.set_fast_edge_removal()
 		self.graph.vp.type = self.graph.new_vertex_property('int')

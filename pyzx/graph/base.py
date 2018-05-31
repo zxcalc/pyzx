@@ -1,5 +1,3 @@
-from . import *
-
 class BaseGraph(object):
 	'''Base class for the specific Graph classes with the methods that each Graph class should implement'''
 	backend = 'None'
@@ -16,6 +14,7 @@ class BaseGraph(object):
 		copy will have consecutive vertex indices, even if the original
 		graph did not.
 		'''
+		from .graph import Graph
 		if (backend == None):
 			backend = type(self).backend
 		g = Graph(backend = backend)

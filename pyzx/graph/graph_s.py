@@ -6,7 +6,6 @@ class GraphS(BaseGraph):
 	backend = 'simple'
 
 	def __init__(self):
-		super().__init__()
 		self.graph = dict()
 		self.ty = dict()
 		self.angle = dict()
