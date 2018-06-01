@@ -133,7 +133,7 @@ def draw(g, layout=None, labels=False, figsize=(8,2)):
             
         ax.add_patch(patches.Circle(p, sz, facecolor=col, edgecolor='black', zorder=1))
         if labels: plt.text(p[0]+0.3, p[1]+0.3, str(v), ha='center', color='gray', fontsize=5)
-        if a: plt.text(p[0], p[1]-0.7, angle_to_s(a), ha='center', color='blue', fontsize=8)
+        if a: plt.text(p[0]+0.25, p[1]-0.25, angle_to_s(a), ha='left', color='blue', fontsize=12)
     
     ax.axis('equal')
     plt.show()

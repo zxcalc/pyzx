@@ -88,7 +88,7 @@ def json_to_graph(js):
         v = edges.get(tuple(l),[0,0])
         v[1] += 1
         edges[tuple(l)] = v
-    g.add_edges(edges)
+    g.add_edge_table(edges)
 
     return g
 
@@ -97,7 +97,7 @@ def json_from_graph(g):
     wire_vs = {}
     edges = {}
     names = {}
-    freenamesv = ["v"+str(i) for i in range(g.num_vertices())]
+    freenamesv = ["v"+str(i) for i in range(g.num_vertices()+g.num_edges())]
     freenamesb = ["b"+str(i) for i in range(g.num_vertices())]
     for v in g.vertices():
         t = g.get_type(v)
@@ -123,9 +123,25 @@ def json_from_graph(g):
             phase = _phase_to_quanto_value(g.get_angle(v))
             if phase: node_vs[name]["data"]["value"] = phase
             if not node_vs[name]["data"]: del node_vs[name]["data"]
-    for i, e in enumerate(g.edges()):
+
+    i = 0
+    for e in g.edges():
         s,t = g.edge_st(e)
-        edges["e"+ str(i)] = {"src": names[s],"tgt": names[t]}
+        t = g.get_edge_type(s,t)
+        if t == 1:
+            edges["e"+ str(i)] = {"src": names[s],"tgt": names[t]}
+            i += 1
+        else:
+            x1,y1 = g.get_vdata(s,'x'), g.get_vdata(s,'y')
+            x2,y2 = g.get_vdata(t,'x'), g.get_vdata(t,'y')
+            hadname = freenamesv.pop(0)
+            node_vs[name] = {"annotation": {"coord":[(x1+x2)/2,(y1+y2)/2]},
+                             "data": {"type": "hadamard"}}
+            edges["e"+str(i)] = {"src": names[s],"tgt": hadname}
+            i += 1
+            edges["e"+str(i)] = {"src": names[t],"tgt": hadname}
+            i += 1
+
 
     return json.dumps({"wire_vertices": wire_vs, 
             "node_vertices": node_vs, 

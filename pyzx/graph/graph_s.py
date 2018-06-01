@@ -96,7 +96,7 @@ class GraphS(BaseGraph):
 		return v2 in self.graph[v1]
 
 	def get_edge_type(self, v1,v2):
-		return self.graph.get(v1,{},).get(v2,0)
+		return self.graph.get(v1,{}).get(v2,0)
 
 	def get_type(self, vertex):
 		return self.ty[vertex]
