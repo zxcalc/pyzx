@@ -110,11 +110,13 @@ def draw(g, layout=None, labels=False, figsize=(8,2)):
             x,y = (sp[0]-tp[0]), (sp[1]-tp[1])
             w = 0.3
             h = 0.2
-            l = math.sqrt(w*w+h*h)
+            diag = math.sqrt(w*w+h*h)
             angle = math.atan2(y,x)
             angle2 = math.atan2(h,w)
-            centre = (tp[0] +x/2 - l/2*math.cos(angle+angle2), tp[1] +y/2 - l/2*math.sin(angle+angle2))
-            ax.add_patch(patches.Rectangle(centre,w,h,angle=angle/math.pi*180,facecolor='yellow'))
+            pos = 0.5 if x == 0 or y == 0 else 0.4
+            centre = (tp[0] + pos*x - diag/2*math.cos(angle+angle2),
+                      tp[1] + pos*y - diag/2*math.sin(angle+angle2))
+            ax.add_patch(patches.Rectangle(centre,w,h,angle=angle/math.pi*180,facecolor='yellow',edgecolor='black'))
 
         #plt.plot([sp[0],tp[0]],[sp[1],tp[1]], 'k', zorder=0, linewidth=0.8)
     
