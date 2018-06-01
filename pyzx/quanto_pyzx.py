@@ -3,10 +3,6 @@ from .graph.graph import Graph
 import json
 from fractions import Fraction
 
-
-
-print("Loaded module")
-
 def _quanto_value_to_phase(s):
     if not s: return Fraction(0)
     if r'\pi' in s:
@@ -37,7 +33,11 @@ def json_to_graph(js):
     g = Graph('simple')
     v = 0
     names = {}
+    hadamards = {}
     for name,attr in j.get('node_vertices',{}).items():
+        if 'data' in attr and 'type' in attr['data'] and attr['data']['type'] = "hadamard":
+            hadamards[name] = []
+            continue
         g.add_vertex()
         g.set_vdata(v,'name',name)
         names[name] = v
@@ -66,9 +66,28 @@ def json_to_graph(js):
         g.set_vdata(v, 'x', c[0])
         g.set_vdata(v, 'y', c[1])
         v += 1
-    edges = []
+
+    edges = {}
     for edge in j.get('undir_edges',{}).values():
-        edges.append((names[edge['src']],names[edge['tgt']]))
+        n1, n2 = edge['src'], edge['tgt']
+        if n1 in hadamards and n2 in hadamards:
+            raise TypeError("Can't parse graphs with adjacent Hadamard nodes")
+        if n1 in hadamards: 
+            hadamards[n1].append(names[n2])
+            continue
+        if n2 in hadamards:
+            hadamards[n2].append(names[n1])
+            continue
+
+        v = edges.get((names[n1],names[n2]),[0,0])
+        v[0] += 1
+        edges[(names[n1],names[n2])] = v
+
+    for had, l in hadamards.items():
+        if len(l) != 2: raise TypeError("Can't parse graphs with irregular Hadamard nodes")
+        v = edges.get(tuple(l),[0,0])
+        v[1] += 1
+        edges[tuple(l)] = v
     g.add_edges(edges)
 
     return g
