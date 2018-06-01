@@ -1,5 +1,7 @@
 from __future__ import print_function
 
+__all__ = ['bialg_simp','spider_simp', 'phase_free_simp']
+
 from .rules import *
 
 def bialg_simp(g):

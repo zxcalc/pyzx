@@ -1,8 +1,10 @@
+__all__ = ['tensorfy']
+
 import numpy as np
 np.set_printoptions(suppress=True)
 from math import pi
 from .graph import *
-import examples
+from . import examples
 
 qpi = 0.25*pi
 
@@ -97,7 +99,7 @@ def phase_to_number(s):
     return float(stdout.getvalue().strip())
 
 
-def zx_graph_to_tensor(g):
+def tensorfy(g):
     '''Takes in a igraph.Graph.
     All nodes should have a 't' attribute valued in 'Z', 'X' or 'B' (for boundary)
     Outputs a multidimensional numpy array

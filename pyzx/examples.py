@@ -1,3 +1,5 @@
+__all__ = ['cnots','zigzag', 'zigzag2']
+
 import random
 from .graph.graph import Graph
 

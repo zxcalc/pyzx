@@ -35,7 +35,7 @@ def json_to_graph(js):
     names = {}
     hadamards = {}
     for name,attr in j.get('node_vertices',{}).items():
-        if 'data' in attr and 'type' in attr['data'] and attr['data']['type'] = "hadamard":
+        if 'data' in attr and 'type' in attr['data'] and attr['data']['type'] == "hadamard":
             hadamards[name] = []
             continue
         g.add_vertex()
