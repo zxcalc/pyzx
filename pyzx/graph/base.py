@@ -32,24 +32,59 @@ class BaseGraph(object):
 		return g
 
 
-	def add_vertices(self, amount, vertex_data=None):
+	def add_vertices(self, amount):
 		raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
 	def add_vertex(self):
 		self.add_vertices(1)
 
-	def add_edges(self, edges, vertex_data=None):
+	def add_edges(self, edges, edgetype=1):
 		raise NotImplementedError("Not implemented on backend " + type(self).backend)
+
+	def add_edge(self, edge, edgetype=1):
+		self.add_edges([edge], edgetype)
 
 	def add_edge_table(self, etab):
 		'''Takes a dictionary mapping (s,t) --> (#edges, #h-edges) to add, and selectively adds
 		or deletes edges to produce that ZX diagram which would result from adding (#edges, #h-edges),
 		then removing all parallel edges using Hopf/spider laws.'''
-		pass
+		add = [[],[],[]] # a hack because add[edge_type] will now refer to the correct list
+		remove = []
+		add_pi_phase = []
+		for (v1,v2),(n1,n2) in etab.items():
+			conn_type = self.get_edge_type(v1,v2)
+			if conn_type == 1: n1 += 1 #and add to the relevant edge count
+			elif conn_type == 2: n2 += 2
+			t1 = self.get_type(v1)
+			t2 = self.get_type(v2)
+			if t1 == t2: 		#types are equal, 
+				n1 = bool(n1) 	#so normal edges fuse
+				n2 = n2%2 		#while hadamard edges go modulo 2
+				if n1 and n2:	#reduction rule for when both edges appear
+					new_type = 1
+					add_pi_phase.append(v1)
+				else: new_type = 1 if n1 else (2 if n2 else 0)
+			else:				#types are different
+				n1 = n1%2		#so normal edges go modulo 2
+				n2 = bool(n2)	#while hadamard edges fuse
+				if n1 and n2:	#reduction rule for when both edges appear
+					new_type = 2
+					add_pi_phase.append(v1)
+				else: new_type = 1 if n1 else (2 if n2 else 0)
+			if new_type: #They are connected, so update the graph
+				if not conn_type: #new edge added
+					add[new_type].append((v1,v2))
+				elif conn_type != new_type: #type of edge has changed
+					remove.append((v1,v2))
+					add[new_type].append((v1,v2))
+			elif conn_type: #They were connected, but not anymore, so update the graph
+				remove.append((v1,v2))
 
-	def add_edge(self, edge, edge_data=None):
-		if edge_data: self.add_edges([edge],[edge_data])
-		else: self.add_edges([edge])
+		for v in add_pi_phase:
+			self.add_angle(v, 1)
+		self.remove_edges(remove)
+		self.add_edges(add[1],1)
+		self.add_edges(add[2],2)
 
 	def remove_vertices(self, vertices):
 		raise NotImplementedError("Not implemented on backend " + type(self).backend)
@@ -136,9 +171,9 @@ class BaseGraph(object):
 		'''Returns whether there v1 and v2 share an edge'''
 		raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
-	# def is_equal(self,v1,v2):
-	# 	'''Returns whether v1 and v2 represent the same vertex'''
-	# 	raise NotImplementedError("Not implemented on backend " + type(self).backend)
+	def get_edge_type(self,v1,v2):
+		'''Returns the type of the edge connecting v1 and v2. If they are not connected it returns 0'''
+		raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
 	def get_type(self, vertex):
 		raise NotImplementedError("Not implemented on backend " + type(self).backend)
@@ -159,6 +194,9 @@ class BaseGraph(object):
 
 	def set_angle(self, vertex, angle):
 		raise NotImplementedError("Not implemented on backend" + type(self).backend)
+
+	def add_angle(self, vertex, angle):
+		self.set_angle(vertex,self.get_angle(vertex)+angle)
 
 	def get_angles(self):
 		raise NotImplementedError("Not implemented on backend" + type(self).backend)
