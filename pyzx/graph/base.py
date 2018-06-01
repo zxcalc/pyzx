@@ -41,6 +41,12 @@ class BaseGraph(object):
 	def add_edges(self, edges, vertex_data=None):
 		raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
+	def add_edge_table(self, etab):
+		'''Takes a dictionary mapping (s,t) --> (#edges, #h-edges) to add, and selectively adds
+		or deletes edges to produce that ZX diagram which would result from adding (#edges, #h-edges),
+		then removing all parallel edges using Hopf/spider laws.'''
+		pass
+
 	def add_edge(self, edge, edge_data=None):
 		if edge_data: self.add_edges([edge],[edge_data])
 		else: self.add_edges([edge])
