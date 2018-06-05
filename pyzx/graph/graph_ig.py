@@ -8,6 +8,7 @@ class GraphIG(BaseGraph):
 		self.graph = ig.Graph(directed=False)
 		self.graph.vs['_a'] = None
 		self.graph.vs['_t'] = None
+		self.graph.es['_t'] = None
 
 	def add_vertices(self, amount, vertex_data=None):
 		self.graph.add_vertices(amount)
@@ -75,17 +76,6 @@ class GraphIG(BaseGraph):
 	def is_connected(self,v1,v2):
 		return self.graph.are_connected(v1,v2)
 
-	# def is_equal(self,v1,v2):
-	# 	'''Returns whether v1 and v2 represent the same vertex'''
-	# 	return v1 == v2
-	# 	if isinstance(v1,int):
-	# 		if isinstance(v2,int):
-	# 			return v1 == v2
-	# 		return v1 == v2.index
-	# 	if isinstance(v2,int):
-	# 		return v1.index == v2
-	# 	return v1.index == v2.index
-
 	def get_type(self, v):
 		t = self.graph.vs[v]['_t']
 		return t if t != None else 0
@@ -96,6 +86,9 @@ class GraphIG(BaseGraph):
 	def set_type(self, v, t):
 		self.graph.vs[v]['_t'] = t
 
+	def get_vdata_keys(self, v):
+		return [a for a in self.graph.vertex_attributes() if a != '_a' and a != '_t']
+
 	def get_vdata(self, v, key, default=0):
 		try:
 			val = self.graph.vs[v][key]
@@ -103,6 +96,13 @@ class GraphIG(BaseGraph):
 		except KeyError:
 			val = default
 		return val
+
+	def set_edge_type(self, e, t):
+		self.graph.es[e]['_t'] = t
+
+	def get_edge_type(self, e):
+		t = self.graph.es[e]['_t']
+		return 1 if t == None else t
 
 	def set_vdata(self, v, key, val):
 		self.graph.vs[v][key] = val

@@ -95,8 +95,14 @@ class GraphS(BaseGraph):
 	def is_connected(self,v1,v2):
 		return v2 in self.graph[v1]
 
-	def get_edge_type(self, v1,v2):
-		return self.graph.get(v1,{}).get(v2,0)
+	def get_edge_type(self, e):
+		v1,v2 = e
+		return self.graph[v1][v2]
+
+	def set_edge_type(self, e, t):
+		v1,v2 = e
+		self.graph[v1][v2] = t
+		self.graph[v2][v1] = t
 
 	def get_type(self, vertex):
 		return self.ty[vertex]
@@ -106,6 +112,9 @@ class GraphS(BaseGraph):
 
 	def set_type(self, vertex, t):
 		self.ty[vertex] = t
+
+	def get_vdata_keys(self, v):
+		return self.vdata.get(v, {}).keys()
 
 	def get_vdata(self, v, key, default=0):
 		if v in self.vdata:

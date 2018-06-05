@@ -106,7 +106,7 @@ def draw(g, layout=None, labels=False, figsize=(8,2)):
         sp = layout[g.edge_s(e)]
         tp = layout[g.edge_t(e)]
         ax.add_line(lines.Line2D([sp[0],tp[0]],[sp[1],tp[1]], color='black', linewidth=0.8, zorder=0))
-        if g.get_edge_type(e[0],e[1]) == 2: #hadamard edge
+        if g.get_edge_type(e) == 2: #hadamard edge
             x,y = (sp[0]-tp[0]), (sp[1]-tp[1])
             w = 0.3
             h = 0.2

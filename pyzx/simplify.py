@@ -37,3 +37,14 @@ def spider_simp(g):
 def phase_free_simp(g):
     spider_simp(g)
     bialg_simp(g)
+
+
+def to_green(g):
+    ty = g.get_types()
+    for v in g.vertices():
+        if ty[v] == 2:
+            g.set_type(v, 1)
+            for e in g.get_incident_edges(v):
+                et = g.get_edge_type(e)
+                if et == 2: g.set_edge_type(e,1)
+                elif et == 1: g.set_edge_type(e,2)

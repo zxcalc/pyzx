@@ -118,3 +118,66 @@ def spider(g, matches):
     g.remove_vertices(rem_verts)
     g.remove_solo_vertices()
 
+
+def match_pivot(g):
+    # TODO: optimise for single-match case
+    return match_pivot_parallel(g, num=1)
+
+
+def match_pivot_parallel(g, num=-1, check_edge_types=False):
+    candidates = g.edge_set()
+    types = g.get_types()
+    
+    i = 0
+    m = []
+    while (num == -1 or i < num) and len(candidates) > 0:
+        v0, v1 = g.edge_st(candidates.pop())
+        v0t = types[v0]
+        v1t = types[v1]
+        if not (v0t == 1 and v1t == 1): continue
+        if check_edge_types and not (
+            all(g.get_edge_type(e) == 2 for e in g.get_incident_edges(v0)) and
+            all(g.get_edge_type(e) == 2 for e in g.get_incident_edges(v0))
+            ): continue
+                
+        v0n = frozenset(n for n in g.get_neighbours(v0) if not n == v1)
+        v1n = frozenset(n for n in g.get_neighbours(v1) if not n == v0)
+
+        if not (
+            all([types[n] == v1t for n in v0n]) and
+            all([types[n] == v0t for n in v1n])): continue
+
+        i += 1
+        for v in v0n:
+            for c in g.get_incident_edges(v): candidates.discard(c)
+        for v in v1n:
+            for c in g.get_incident_edges(v): candidates.discard(c)
+        n0 = list(v0n - v1n)
+        n01 = list(v0n & v1n)
+        n1 = list(v1n - v0n)
+        m.append([v0,v1,n0,n1,n01])
+    return m
+
+
+def pivot(g, matches):
+    rem_verts = []
+    add_edges = set()
+    rem_edges = set()
+    for m in matches:
+        rem_verts.append(m[0])
+        rem_verts.append(m[1])
+        es = [(i,j) if i < j else (j,i) for i in m[2] for j in m[3]]
+        for e in es:
+            # Edges can appear multiple times. Every time an edge is encountered,
+            # toggle whether it will be added/deleted.
+            if g.is_connected(e[0], e[1]):
+                if e in rem_edges: rem_edges.remove(e)
+                else: rem_edges.add(e)
+            else:
+                if e in add_edges: add_edges.remove(e)
+                else: add_edges.add(e)
+    
+    g.remove_edges(rem_edges)
+    g.add_edges(add_edges)
+    g.remove_vertices(rem_verts)
+    g.remove_solo_vertices()

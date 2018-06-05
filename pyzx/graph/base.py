@@ -10,8 +10,11 @@ class BaseGraph(object):
 		return str(self)
 
 	def copy(self, backend=None):
-		'''Create a copy of the graph, with the given backend. Note the
-		copy will have consecutive vertex indices, even if the original
+		'''Create a copy of the graph. Optionally, the 'backend' parameter can be given
+		to create a copy of the graph with a given backend. If it is omitted, the copy
+		will have the same backend.
+
+		Note the copy will have consecutive vertex indices, even if the original
 		graph did not.
 		'''
 		from .graph import Graph
@@ -27,6 +30,8 @@ class BaseGraph(object):
 			vtab[v] = i
 			g.set_type(i, ty[v])
 			g.set_angle(i, an[v])
+			for k in self.get_vdata_keys(v):
+				g.set_vdata(i, k, self.get_vdata(v, k))
 			
 		g.add_edges([(vtab[self.edge_s(e)], vtab[self.edge_t(e)]) for e in self.edges()])
 		return g
@@ -171,8 +176,12 @@ class BaseGraph(object):
 		'''Returns whether there v1 and v2 share an edge'''
 		raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
-	def get_edge_type(self,v1,v2):
-		'''Returns the type of the edge connecting v1 and v2. If they are not connected it returns 0'''
+	def get_edge_type(self, e):
+		'''Returns the type of the given edge.'''
+		raise NotImplementedError("Not implemented on backend " + type(self).backend)
+
+	def set_edge_type(self, e, t):
+		'''Sets the type of the given edge.'''
 		raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
 	def get_type(self, vertex):
@@ -199,6 +208,11 @@ class BaseGraph(object):
 		self.set_angle(vertex,self.get_angle(vertex)+angle)
 
 	def get_angles(self):
+		raise NotImplementedError("Not implemented on backend" + type(self).backend)
+
+	def get_vdata_keys(self, vertex):
+		'''Get an iterable containg all of the keys with data on a given vertex. Used
+		e.g. in making a copy of the graph in a backend-independent way.'''
 		raise NotImplementedError("Not implemented on backend" + type(self).backend)
 
 	def get_vdata(self, vertex, key, default=0):
