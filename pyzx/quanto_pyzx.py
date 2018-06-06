@@ -70,8 +70,12 @@ def json_to_graph(js):
     edges = {}
     for edge in j.get('undir_edges',{}).values():
         n1, n2 = edge['src'], edge['tgt']
-        if n1 in hadamards and n2 in hadamards:
-            raise TypeError("Can't parse graphs with adjacent Hadamard nodes")
+        if n1 in hadamards and n2 in hadamards: #Both 
+            g.add_vertex()
+            g.set_type(v,1)
+            hadamards[n1].append(v)
+            hadamards[n2].append(v)
+            continue
         if n1 in hadamards: 
             hadamards[n1].append(names[n2])
             continue
@@ -83,7 +87,7 @@ def json_to_graph(js):
         v[0] += 1
         edges[(names[n1],names[n2])] = v
 
-    for had, l in hadamards.items():
+    for l in hadamards.values():
         if len(l) != 2: raise TypeError("Can't parse graphs with irregular Hadamard nodes")
         v = edges.get(tuple(l),[0,0])
         v[1] += 1
