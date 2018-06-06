@@ -1,43 +1,46 @@
 from __future__ import print_function
 
-__all__ = ['bialg_simp','spider_simp', 'phase_free_simp']
+__all__ = ['bialg_simp','spider_simp', 'phase_free_simp', 'pivot_simp', 'lcomp_simp', 'clifford_simp']
 
 from .rules import *
 
-def bialg_simp(g):
+def simp(g, name, match, rewrite):
     i = 0
     new_matches = True
-    print('bialg_simp')
+    print(name)
     while new_matches:
         i += 1
         new_matches = False
-        m = match_bialg_parallel(g)
+        m = match(g)
         if len(m) > 0:
             print(len(m), end='', flush=True)
-            bialg(g, m)
+            rewrite(g, m)
             print('. ', end='', flush=True)
             new_matches = True
     print('\nfinished in ' + str(i) + ' iterations')
 
+def pivot_simp(g):
+    return simp(g, 'pivot_simp', match_pivot_parallel, pivot)
+
+def lcomp_simp(g):
+    return simp(g, 'lcomp_simp', match_lcomp_parallel, lcomp)
+
+def bialg_simp(g):
+    return simp(g, 'bialg_simp', match_bialg_parallel, bialg)
+
 def spider_simp(g):
-    i = 0
-    new_matches = True
-    print('spider_simp')
-    while new_matches:
-        i += 1
-        new_matches = False
-        m = match_spider_parallel(g)
-        if len(m) > 0:
-            print(len(m), end='', flush=True)
-            spider(g, m)
-            print('. ', end='', flush=True)
-            new_matches = True
-    print('\nfinished in ' + str(i) + ' iterations')
+    return simp(g, 'spider_simp', match_spider_parallel, spider)
 
 def phase_free_simp(g):
     spider_simp(g)
     bialg_simp(g)
 
+def clifford_simp(g):
+    spider_simp(g)
+    to_gh(g)
+    lcomp_simp(g)
+    pivot_simp(g)
+    to_rg(g)
 
 def to_gh(g):
     ty = g.get_types()
