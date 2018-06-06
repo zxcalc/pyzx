@@ -56,47 +56,49 @@ class BaseGraph(object):
 		'''Takes a dictionary mapping (s,t) --> (#edges, #h-edges) to add, and selectively adds
 		or deletes edges to produce that ZX diagram which would result from adding (#edges, #h-edges),
 		then removing all parallel edges using Hopf/spider laws.'''
-		add = [[],[],[]] # a hack because add[edge_type] will now refer to the correct list
-		remove = []
-		add_pi_phase = []
+		add = ([],[]) # list of edges and h-edges to add
+		remove = []   # list of edges to remove
+		#add_pi_phase = []
 		for (v1,v2),(n1,n2) in etab.items():
 			conn_type = self.get_edge_type(self.edge(v1,v2))
 			if conn_type == 1: n1 += 1 #and add to the relevant edge count
 			elif conn_type == 2: n2 += 1
+			
 			t1 = self.get_type(v1)
 			t2 = self.get_type(v2)
-			if t1 == t2: 		#types are equal, 
+			if t1 == t2: 		#types are equal,
 				n1 = bool(n1) 	#so normal edges fuse
 				n2 = n2%2 		#while hadamard edges go modulo 2
-				if n1 and n2:	#reduction rule for when both edges appear
+				if n1 != 0 and n2 != 0:  #reduction rule for when both edges appear
 					new_type = 1
-					add_pi_phase.append(v1)
-				elif n1: new_type = 1
-				elif n2: new_type = 2
+					self.add_angle(v1, 1)
+					#add_pi_phase.append(v1)
+				elif n1 != 0: new_type = 1
+				elif n2 != 0: new_type = 2
 				else: new_type = 0
 			else:				#types are different
 				n1 = n1%2		#so normal edges go modulo 2
 				n2 = bool(n2)	#while hadamard edges fuse
-				if n1 and n2:	#reduction rule for when both edges appear
+				if n1 != 0 and n2 != 0:  #reduction rule for when both edges appear
 					new_type = 2
-					add_pi_phase.append(v1)
-				elif n1: new_type = 1
-				elif n2: new_type = 2
+					self.add_angle(v1, 1)
+					#add_pi_phase.append(v1)
+				elif n1 != 0: new_type = 1
+				elif n2 != 0: new_type = 2
 				else: new_type = 0
-			if new_type: #They are connected, so update the graph
-				if not conn_type: #new edge added
-					add[new_type].append((v1,v2))
+			if new_type != 0: # They should be connected, so update the graph
+				if conn_type == 0: #new edge added
+					add[new_type-1].append((v1,v2))
 				elif conn_type != new_type: #type of edge has changed
-					remove.append((v1,v2))
-					add[new_type].append((v1,v2))
-			elif conn_type: #They were connected, but not anymore, so update the graph
-				remove.append((v1,v2))
+					self.set_edge_type(self.edge(v1,v2), new_type)
+			elif conn_type != 0: #They were connected, but not anymore, so update the graph
+				remove.append(self.edge(v1,v2))
 
-		for v in add_pi_phase:
-			self.add_angle(v, 1)
+		#for v in add_pi_phase:
+		#	self.add_angle(v, 1)
 		self.remove_edges(remove)
-		self.add_edges(add[1],1)
-		self.add_edges(add[2],2)
+		self.add_edges(add[0],1)
+		self.add_edges(add[1],2)
 
 	def remove_vertices(self, vertices):
 		raise NotImplementedError("Not implemented on backend " + type(self).backend)

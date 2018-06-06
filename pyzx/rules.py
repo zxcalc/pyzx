@@ -235,7 +235,7 @@ def lcomp(g, matches):
         rem.append(m[0])
         for i in range(len(m[1])):
             g.add_angle(m[1][i], -a)
-            for j in range(i, len(m[1])):
+            for j in range(i+1, len(m[1])):
                 e = (m[1][i],m[1][j])
                 if (e[0] > e[1]): e = (e[1],e[0])
                 he = etab.get(e, (0,0))[1]
