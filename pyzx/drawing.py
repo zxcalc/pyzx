@@ -93,7 +93,7 @@ def pack_circuit_nf(g, nf):
 def circuit_layout(g):
     return {v:(g.get_vdata(v,'r'),-g.get_vdata(v,'q')) for v in g.vertices()}
 
-def draw(g, layout=None, labels=False, figsize=(8,2)):
+def draw(g, layout=None, labels=False, figsize=(8,2), h_edge_draw='box'):
     fig1 = plt.figure(figsize=figsize)
     ax = fig1.add_axes([0, 0, 1, 1], frameon=False)
     ax.xaxis.set_visible(False)
@@ -105,11 +105,14 @@ def draw(g, layout=None, labels=False, figsize=(8,2)):
     for e in g.edges():
         sp = layout[g.edge_s(e)]
         tp = layout[g.edge_t(e)]
-        ax.add_line(lines.Line2D([sp[0],tp[0]],[sp[1],tp[1]], color='black', linewidth=0.8, zorder=0))
-        if g.get_edge_type(e[0],e[1]) == 2: #hadamard edge
+        et = g.get_edge_type(e)
+
+        ecol = '#0099ff' if h_edge_draw == 'blue' and et == 2 else 'black'
+        ax.add_line(lines.Line2D([sp[0],tp[0]],[sp[1],tp[1]], color=ecol, linewidth=0.8, zorder=0))
+        if h_edge_draw == 'box' and et == 2: #hadamard edge
             x,y = (sp[0]-tp[0]), (sp[1]-tp[1])
-            w = 0.3
-            h = 0.2
+            w = 0.2
+            h = 0.15
             diag = math.sqrt(w*w+h*h)
             angle = math.atan2(y,x)
             angle2 = math.atan2(h,w)
@@ -132,7 +135,7 @@ def draw(g, layout=None, labels=False, figsize=(8,2)):
         else: sz = 0.1
             
         ax.add_patch(patches.Circle(p, sz, facecolor=col, edgecolor='black', zorder=1))
-        if labels: plt.text(p[0]+0.3, p[1]+0.3, str(v), ha='center', color='gray', fontsize=5)
+        if labels: plt.text(p[0]+0.25, p[1]+0.25, str(v), ha='center', color='gray', fontsize=5)
         if a: plt.text(p[0]+0.25, p[1]-0.25, angle_to_s(a), ha='left', color='blue', fontsize=12)
     
     ax.axis('equal')

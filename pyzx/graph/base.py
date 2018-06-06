@@ -10,8 +10,11 @@ class BaseGraph(object):
 		return str(self)
 
 	def copy(self, backend=None):
-		'''Create a copy of the graph, with the given backend. Note the
-		copy will have consecutive vertex indices, even if the original
+		'''Create a copy of the graph. Optionally, the 'backend' parameter can be given
+		to create a copy of the graph with a given backend. If it is omitted, the copy
+		will have the same backend.
+
+		Note the copy will have consecutive vertex indices, even if the original
 		graph did not.
 		'''
 		from .graph import Graph
@@ -27,8 +30,13 @@ class BaseGraph(object):
 			vtab[v] = i
 			g.set_type(i, ty[v])
 			g.set_angle(i, an[v])
-			
-		g.add_edges([(vtab[self.edge_s(e)], vtab[self.edge_t(e)]) for e in self.edges()])
+			for k in self.get_vdata_keys(v):
+				g.set_vdata(i, k, self.get_vdata(v, k))
+		
+		etab = { e : (vtab[self.edge_s(e)], vtab[self.edge_t(e)]) for e in self.edges() }
+		g.add_edges(etab.values())
+		for e,(s,t) in etab.items():
+			g.set_edge_type(g.edge(s,t), self.get_edge_type(e))
 		return g
 
 
@@ -52,9 +60,9 @@ class BaseGraph(object):
 		remove = []
 		add_pi_phase = []
 		for (v1,v2),(n1,n2) in etab.items():
-			conn_type = self.get_edge_type(v1,v2)
+			conn_type = self.get_edge_type(self.edge(v1,v2))
 			if conn_type == 1: n1 += 1 #and add to the relevant edge count
-			elif conn_type == 2: n2 += 2
+			elif conn_type == 2: n2 += 1
 			t1 = self.get_type(v1)
 			t2 = self.get_type(v2)
 			if t1 == t2: 		#types are equal, 
@@ -63,14 +71,18 @@ class BaseGraph(object):
 				if n1 and n2:	#reduction rule for when both edges appear
 					new_type = 1
 					add_pi_phase.append(v1)
-				else: new_type = 1 if n1 else (2 if n2 else 0)
+				elif n1: new_type = 1
+				elif n2: new_type = 2
+				else: new_type = 0
 			else:				#types are different
 				n1 = n1%2		#so normal edges go modulo 2
 				n2 = bool(n2)	#while hadamard edges fuse
 				if n1 and n2:	#reduction rule for when both edges appear
 					new_type = 2
 					add_pi_phase.append(v1)
-				else: new_type = 1 if n1 else (2 if n2 else 0)
+				elif n1: new_type = 1
+				elif n2: new_type = 2
+				else: new_type = 0
 			if new_type: #They are connected, so update the graph
 				if not conn_type: #new edge added
 					add[new_type].append((v1,v2))
@@ -133,10 +145,15 @@ class BaseGraph(object):
 	# def edge_as_int(self, edge):
 	# 	return self.edges_as_int([edge])[0]
 
+	def vertex_set(self):
+		'''Returns the vertices as a set. Should be overloaded if the backend
+		supplies a cheaper version than this.'''
+		return set(self.vertices())
+
 	def edge_set(self):
 		'''Returns the edges as a set. Should be overloaded if the backend
 		supplies a cheaper version than this.'''
-		return set(self.edges_as_int(self.edges()))
+		return set(self.edges())
 
 	def edge(self, s, t):
 		'''Returns the edge with the given source/target'''
@@ -171,8 +188,12 @@ class BaseGraph(object):
 		'''Returns whether there v1 and v2 share an edge'''
 		raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
-	def get_edge_type(self,v1,v2):
-		'''Returns the type of the edge connecting v1 and v2. If they are not connected it returns 0'''
+	def get_edge_type(self, e):
+		'''Returns the type of the given edge.'''
+		raise NotImplementedError("Not implemented on backend " + type(self).backend)
+
+	def set_edge_type(self, e, t):
+		'''Sets the type of the given edge.'''
 		raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
 	def get_type(self, vertex):
@@ -199,6 +220,11 @@ class BaseGraph(object):
 		self.set_angle(vertex,self.get_angle(vertex)+angle)
 
 	def get_angles(self):
+		raise NotImplementedError("Not implemented on backend" + type(self).backend)
+
+	def get_vdata_keys(self, vertex):
+		'''Get an iterable containg all of the keys with data on a given vertex. Used
+		e.g. in making a copy of the graph in a backend-independent way.'''
 		raise NotImplementedError("Not implemented on backend" + type(self).backend)
 
 	def get_vdata(self, vertex, key, default=0):
