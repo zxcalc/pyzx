@@ -97,7 +97,10 @@ class GraphS(BaseGraph):
 
 	def get_edge_type(self, e):
 		v1,v2 = e
-		return self.graph[v1][v2]
+		try:
+			return self.graph[v1][v2]
+		except KeyError:
+			return 0
 
 	def set_edge_type(self, e, t):
 		v1,v2 = e

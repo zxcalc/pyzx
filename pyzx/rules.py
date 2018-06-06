@@ -1,3 +1,5 @@
+from fractions import Fraction
+
 
 def match_bialg(g):
     for e in g.edges():
@@ -64,6 +66,7 @@ def bialg(g, matches):
 
 def match_spider(g):
     for e in g.edges():
+        if g.get_edge_type(e) != 1: continue
         v0, v1 = g.edge_st(e)
         if (g.get_type(v0) == g.get_type(v1)):
             return [[v0,v1]]
@@ -76,7 +79,9 @@ def match_spider_parallel(g, num=-1):
     i = 0
     m = []
     while (num == -1 or i < num) and len(candidates) > 0:
-        v0, v1 = g.edge_st(candidates.pop())
+        e = candidates.pop()
+        if g.get_edge_type(e) != 1: continue
+        v0, v1 = g.edge_st(e)
         v0t = types[v0]
         v1t = types[v1]
         if (v0t == v1t):
@@ -121,7 +126,7 @@ def spider(g, matches):
 
 def match_pivot(g):
     # TODO: optimise for single-match case
-    return match_pivot_parallel(g, num=1)
+    return match_pivot_parallel(g, num=1, check_edge_types=True)
 
 
 def match_pivot_parallel(g, num=-1, check_edge_types=False):
@@ -131,10 +136,18 @@ def match_pivot_parallel(g, num=-1, check_edge_types=False):
     i = 0
     m = []
     while (num == -1 or i < num) and len(candidates) > 0:
-        v0, v1 = g.edge_st(candidates.pop())
+        e = candidates.pop()
+        if not check_edge_types and g.get_edge_type(e) != 2: continue
+        v0, v1 = g.edge_st(e)
+
         v0t = types[v0]
         v1t = types[v1]
         if not (v0t == 1 and v1t == 1): continue
+
+        v0a = g.get_angle(v0)
+        v1a = g.get_angle(v1)
+        if not ((v0a == 0 or v0a == 1) and (v1a == 0 or v1a == 1)): continue
+
         if check_edge_types and not (
             all(g.get_edge_type(e) == 2 for e in g.get_incident_edges(v0)) and
             all(g.get_edge_type(e) == 2 for e in g.get_incident_edges(v0))
@@ -163,21 +176,53 @@ def pivot(g, matches):
     rem_verts = []
     add_edges = set()
     rem_edges = set()
+    etab = dict()
     for m in matches:
+        es = ([(s,t) if s > t else (t,s) for s in m[2] for t in m[3]] +
+              [(s,t) if s > t else (t,s) for s in m[2] for t in m[4]] +
+              [(s,t) if s > t else (t,s) for s in m[3] for t in m[4]])
+        
+        v0a = g.get_angle(m[0])
+        v1a = g.get_angle(m[1])
+        for v in m[2]: g.add_angle(v, v1a)
+        for v in m[3]: g.add_angle(v, v0a)
+        for v in m[4]: g.add_angle(v, v0a + v1a + 1)
+
         rem_verts.append(m[0])
         rem_verts.append(m[1])
-        es = [(i,j) if i < j else (j,i) for i in m[2] for j in m[3]]
         for e in es:
-            # Edges can appear multiple times. Every time an edge is encountered,
-            # toggle whether it will be added/deleted.
-            if g.is_connected(e[0], e[1]):
-                if e in rem_edges: rem_edges.remove(e)
-                else: rem_edges.add(e)
-            else:
-                if e in add_edges: add_edges.remove(e)
-                else: add_edges.add(e)
-    
-    g.remove_edges(rem_edges)
-    g.add_edges(add_edges)
+            nhe = etab.get(e, (0,0))[1]
+            etab[e] = (0,nhe+1)
+
+    g.add_edge_table(etab)
     g.remove_vertices(rem_verts)
     g.remove_solo_vertices()
+
+
+def match_lc(g):
+    return match_lc_parallel(g, num=1, check_edge_types=True)
+
+def match_lc_parallel(g, num=-1, check_edge_types=False):
+    candidates = g.vertex_set()
+    types = g.get_types()
+    
+    i = 0
+    m = []
+    while (num == -1 or i < num) and len(candidates) > 0:
+        v = candidates.pop()
+        vt = types[v]
+        va = g.get_angle(v)
+        
+        if not (va == Fraction(1,2) or va == Fraction(3,2)): continue
+
+        if check_edge_types and not (
+            all(g.get_edge_type(e) == 2 for e in g.get_incident_edges(v))
+            ): continue
+                
+        vn = list(g.get_neighbours(v))
+
+        if not all(types[n] == vt for n in vn): continue
+
+        for n in vn: candidates.discard(n)
+        m.append([v,vn])
+    return m

@@ -101,8 +101,11 @@ class GraphIG(BaseGraph):
 		self.graph.es[e]['_t'] = t
 
 	def get_edge_type(self, e):
-		t = self.graph.es[e]['_t']
-		return 1 if t == None else t
+		if e in self.graph.es:
+			t = self.graph.es[e]['_t']
+			return 1 if t == None else t
+		else:
+			return 0
 
 	def set_vdata(self, v, key, val):
 		self.graph.vs[v][key] = val

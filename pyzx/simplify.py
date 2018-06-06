@@ -39,7 +39,7 @@ def phase_free_simp(g):
     bialg_simp(g)
 
 
-def to_green(g):
+def to_gh(g):
     ty = g.get_types()
     for v in g.vertices():
         if ty[v] == 2:
@@ -48,3 +48,14 @@ def to_green(g):
                 et = g.get_edge_type(e)
                 if et == 2: g.set_edge_type(e,1)
                 elif et == 1: g.set_edge_type(e,2)
+
+def to_rg(g):
+    ty = g.get_types()
+    for v in g.vertices():
+        if all(g.get_edge_type(e) == 2 for e in g.get_incident_edges(v)):
+            if ty[v] == 1:
+                g.set_type(v, 2)
+                for e in g.get_incident_edges(v): g.set_edge_type(e, 1)
+            elif ty[v] == 2:
+                g.set_type(v, 1)
+                for e in g.get_incident_edges(v): g.set_edge_type(e, 1)
