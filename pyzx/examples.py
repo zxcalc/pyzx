@@ -86,7 +86,7 @@ def accept(p):
 def random_phase():
     return Fraction(random.randint(1,4),2)
 
-def cliffords(qubits, depth, backend=None, keynames=('q','r')):
+def cliffords(qubits, depth, no_hadamard=False,backend=None, keynames=('q','r')):
     #randomness parameters
     p_two_qubit = 0.4 #whether to add a edge between two qubits
     p_cnot = 0.4 # whether to CNOT or to CZ
@@ -124,17 +124,23 @@ def cliffords(qubits, depth, backend=None, keynames=('q','r')):
         t = random.randint(0, qubits-2)
         if t >= c: t += 1
         if accept(p_two_qubit):
-            if accept(p_cnot): es1.append((v, v+1))
-            else: es2.append((v,v+1))
+            if no_hadamard or accept(p_cnot): 
+                es1.append((v, v+1))
+                ty += [1,2]
+            else: 
+                es2.append((v,v+1))
+                t = random.randint(1,2)
+                ty += [t,t]
             if accept(p_phase): phases[v] = random_phase()
             if accept(p_phase): phases[v+1] = random_phase()
         else:
             phases[v] = random_phase()
             phases[v+1] = random_phase()
+            ty += [1,2]
         
-        if accept(p_had): es2.append((q[c],v))
+        if not no_hadamard and accept(p_had): es2.append((q[c],v))
         else: es1.append((q[c],v))
-        if accept(p_had): es2.append((q[t],v+1))
+        if not no_hadamard and accept(p_had): es2.append((q[t],v+1))
         else: es1.append((q[t],v+1))
 
         q[c] = v
@@ -142,7 +148,6 @@ def cliffords(qubits, depth, backend=None, keynames=('q','r')):
         
         rs += [r,r]
         qs += [c,t]
-        ty += [1,2]
         v += 2
         r += 1
 
