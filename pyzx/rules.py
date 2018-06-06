@@ -199,10 +199,10 @@ def pivot(g, matches):
     g.remove_solo_vertices()
 
 
-def match_lc(g):
-    return match_lc_parallel(g, num=1, check_edge_types=True)
+def match_lcomp(g):
+    return match_lcomp_parallel(g, num=1, check_edge_types=True)
 
-def match_lc_parallel(g, num=-1, check_edge_types=False):
+def match_lcomp_parallel(g, num=-1, check_edge_types=False):
     candidates = g.vertex_set()
     types = g.get_types()
     
@@ -226,3 +226,19 @@ def match_lc_parallel(g, num=-1, check_edge_types=False):
         for n in vn: candidates.discard(n)
         m.append([v,vn])
     return m
+
+def lcomp(g, matches):
+    etab = dict()
+    rem = []
+    for m in matches:
+        a = g.get_angle(m[0])
+        rem.append(m[0])
+        for i in range(len(m[1])):
+            g.add_angle(m[1][i], -a)
+            for j in range(i, len(m[1])):
+                e = (m[1][i],m[1][j])
+                if (e[0] > e[1]): e = (e[1],e[0])
+                he = etab.get(e, (0,0))[1]
+                etab[e] = (0, he+1)
+    g.add_edge_table(etab)
+    g.remove_vertices(rem)
