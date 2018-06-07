@@ -148,17 +148,46 @@ def match_pivot_parallel(g, num=-1, check_edge_types=False):
         v1a = g.get_angle(v1)
         if not ((v0a == 0 or v0a == 1) and (v1a == 0 or v1a == 1)): continue
 
-        if check_edge_types and not (
-            all(g.get_edge_type(e) == 2 for e in g.get_incident_edges(v0)) and
-            all(g.get_edge_type(e) == 2 for e in g.get_incident_edges(v0))
-            ): continue
-                
-        v0n = frozenset(n for n in g.get_neighbours(v0) if not n == v1)
-        v1n = frozenset(n for n in g.get_neighbours(v1) if not n == v0)
+        invalid_edge = False
 
-        if not (
-            all([types[n] == v1t for n in v0n]) and
-            all([types[n] == v0t for n in v1n])): continue
+        v0n = set()
+        v0b = set()
+        for n in g.get_neighbours(v0):
+            if types[n] == 0:
+                v0b.add(n)
+                continue
+
+            et = g.get_edge_type(g.edge(v0,n))
+            if n == v1 and et == 2: pass
+            elif types[n] == 1 and et == 2: v0n.add(n)
+            elif types[n] == 0: v0b.add(n)
+            else:
+                invalid_edge = True
+                break
+
+        if invalid_edge: continue
+
+        v1n = set()
+        v1b = set()
+        for n in g.get_neighbours(v1):
+            if types[n] == 0:
+                v1b.add(n)
+                continue
+
+            et = g.get_edge_type(g.edge(v1,n))
+            if n == v0 and et == 2: pass
+            elif types[n] == 1 and et == 2: v1n.add(n)
+            elif types[n] == 0: v1b.add(n)
+            else:
+                invalid_edge = True
+                break
+
+        if invalid_edge: continue
+
+        if not (len(v0b) + len(v1b) <= 1): continue
+                
+        #v0n = frozenset(n for n in g.get_neighbours(v0) if not n == v1)
+        #v1n = frozenset(n for n in g.get_neighbours(v1) if not n == v0)
 
         i += 1
         for v in v0n:
@@ -168,28 +197,57 @@ def match_pivot_parallel(g, num=-1, check_edge_types=False):
         n0 = list(v0n - v1n)
         n01 = list(v0n & v1n)
         n1 = list(v1n - v0n)
-        m.append([v0,v1,n0,n1,n01])
+        b0 = list(v0b)
+        b1 = list(v1b)
+        m.append([v0,v1,b0,b1,n0,n1,n01])
     return m
 
 
 def pivot(g, matches):
+    '''Perform a pivoting rewrite, given a list of matches. A match is itself a list where:
+
+    m[0] : first vertex in pivot
+    m[1] : second vertex in pivot
+    m[2] : list of zero or one boundaries adjacent to m[0]
+    m[3] : list of zero or one boundaries adjacent to m[1]
+    m[4] : list of (non-boundary) vertices adjacent to m[0] only
+    m[5] : list of (non-boundary) vertices adjacent to m[1] only
+    m[6] : list of (non-boundary) vertices adjacent to m[0] and m[1]
+    '''
     rem_verts = []
     add_edges = set()
     rem_edges = set()
     etab = dict()
     for m in matches:
-        es = ([(s,t) if s > t else (t,s) for s in m[2] for t in m[3]] +
-              [(s,t) if s > t else (t,s) for s in m[2] for t in m[4]] +
-              [(s,t) if s > t else (t,s) for s in m[3] for t in m[4]])
+        es = ([(s,t) if s < t else (t,s) for s in m[4] for t in m[5]] +
+              [(s,t) if s < t else (t,s) for s in m[5] for t in m[6]] +
+              [(s,t) if s < t else (t,s) for s in m[4] for t in m[6]])
         
-        v0a = g.get_angle(m[0])
-        v1a = g.get_angle(m[1])
-        for v in m[2]: g.add_angle(v, v1a)
-        for v in m[3]: g.add_angle(v, v0a)
-        for v in m[4]: g.add_angle(v, v0a + v1a + 1)
+        for v in m[6]: g.add_angle(v, 1)
 
-        rem_verts.append(m[0])
-        rem_verts.append(m[1])
+        for i in range(2):
+            if len(m[i+2]) == 0:
+                # if there is no boundary, the vertex is destroyed, depositing
+                # its angle on its new neighbours.
+                a = g.get_angle(m[i])
+                rem_verts.append(m[i])
+
+                g.add_angle(m[1-i], a)
+                for v in m[(1-i)+4]: g.add_angle(v, a)
+                for v in m[6]: g.add_angle(v, a)
+            else:
+                # toggle whether the boundary is an h-edge or a normal edge
+                e = g.edge(m[i], m[i+2][0])
+                g.set_edge_type(e, 2 if g.get_edge_type(e) == 1 else 1)
+
+                # the vertices m[i] and m[1-i] need to trade places. The easiest
+                # way to do that is add the symmetric difference of their neighbourhoods
+                # as h-edges, which happens to be in m[4] + m[5].
+                for v in m[4] + m[5]:
+                    e = (m[i],v) if m[i] < v else (v, m[i])
+                    nhe = etab.get(e, (0,0))[1]
+                    etab[e] = (0,nhe+1)
+
         for e in es:
             nhe = etab.get(e, (0,0))[1]
             etab[e] = (0,nhe+1)

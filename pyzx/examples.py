@@ -89,9 +89,9 @@ def random_phase():
 def cliffords(qubits, depth, backend=None, keynames=('q','r')):
     #randomness parameters
     p_two_qubit = 0.4 #whether to add a edge between two qubits
-    p_cnot = 0.4 # whether to CNOT or to CZ
+    p_cnot = 1 #0.4 # whether to CNOT or to CZ
     p_phase = 0.6 #probability of adding a phase to a node
-    p_had = 0.2 # probability of adding a hadamard on a qubit
+    p_had = 0 #0.2 # probability of adding a hadamard on a qubit
 
 
     g = Graph(backend)
@@ -142,7 +142,7 @@ def cliffords(qubits, depth, backend=None, keynames=('q','r')):
         
         rs += [r,r]
         qs += [c,t]
-        ty += [1,2]
+        ty += [1,2] # TODO: this makes things that are not unitary with H-edges
         v += 2
         r += 1
 
@@ -172,8 +172,8 @@ def cliffords(qubits, depth, backend=None, keynames=('q','r')):
         g.set_type(i, ty[i])
         g.set_vdata(i, keynames[0], qs[i])
         g.set_vdata(i, keynames[1], rs[i])
-    for v, phase in phases.items():
-        g.set_angle(v,phase)
+    for w, phase in phases.items():
+        g.set_angle(w,phase)
 
     for i in range(qubits):
         g.set_vdata(i, 'i', True)

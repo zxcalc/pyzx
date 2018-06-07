@@ -1,5 +1,5 @@
 import matplotlib.pyplot as plt
-from matplotlib import patches, lines
+from matplotlib import patches, lines, path
 from fractions import Fraction
 import math
 
@@ -67,28 +67,48 @@ def pack_circuit_ranks(g):
         g.set_vdata(v, 'r', new_rank[g.get_vdata(v, 'r')])
 
 
-def pack_circuit_nf(g, nf):
+def pack_circuit_nf(g, nf='grg'):
     x_index = 0
     ty = g.get_types()
-    for v in g.vertices():
-        if g.get_vdata(v, 'i'):
-            g.set_vdata(v, 'r', 0)
-        elif g.get_vdata(v, 'o'):
-            g.set_vdata(v, 'r', 4)
-        elif ty[v] == 2:
-            g.set_vdata(v, 'r', 2)
-            g.set_vdata(v, 'q', x_index)
-            x_index += 1
-        elif ty[v] == 1:
-            for w in g.get_neighbours(v):
-                if g.get_vdata(w, 'i'):
-                    g.set_vdata(v, 'r', 1)
-                    g.set_vdata(v, 'q', g.get_vdata(w, 'q'))
-                    break
-                elif g.get_vdata(w, 'o'):
-                    g.set_vdata(v, 'r', 3)
-                    g.set_vdata(v, 'q', g.get_vdata(w, 'q'))
-                    break
+
+    if nf == 'grg':
+        for v in g.vertices():
+            if g.get_vdata(v, 'i'):
+                g.set_vdata(v, 'r', 0)
+            elif g.get_vdata(v, 'o'):
+                g.set_vdata(v, 'r', 4)
+            elif ty[v] == 2:
+                g.set_vdata(v, 'r', 2)
+                g.set_vdata(v, 'q', x_index)
+                x_index += 1
+            elif ty[v] == 1:
+                for w in g.get_neighbours(v):
+                    if g.get_vdata(w, 'i'):
+                        g.set_vdata(v, 'r', 1)
+                        g.set_vdata(v, 'q', g.get_vdata(w, 'q'))
+                        break
+                    elif g.get_vdata(w, 'o'):
+                        g.set_vdata(v, 'r', 3)
+                        g.set_vdata(v, 'q', g.get_vdata(w, 'q'))
+                        break
+    elif nf == 'gslc':
+        for v in g.vertices():
+            if g.get_vdata(v, 'i'):
+                g.set_vdata(v, 'r', 0)
+            elif g.get_vdata(v, 'o'):
+                g.set_vdata(v, 'r', 4)
+            elif ty[v] == 1:
+                for w in g.get_neighbours(v):
+                    if g.get_vdata(w, 'i'):
+                        g.set_vdata(v, 'r', 1)
+                        #g.set_vdata(v, 'q', g.get_vdata(w, 'q'))
+                        break
+                    elif g.get_vdata(w, 'o'):
+                        g.set_vdata(v, 'r', 3)
+                        #g.set_vdata(v, 'q', g.get_vdata(w, 'q'))
+                        break
+    else:
+        raise ValueError("Unknown normal form: " + str(nf))
 
 def circuit_layout(g):
     return {v:(g.get_vdata(v,'r'),-g.get_vdata(v,'q')) for v in g.vertices()}
@@ -107,18 +127,32 @@ def draw(g, layout=None, labels=False, figsize=(8,2), h_edge_draw='box'):
         tp = layout[g.edge_t(e)]
         et = g.get_edge_type(e)
 
+        
+        dx = tp[0] - sp[0]
+        dy = tp[1] - sp[1]
+        bend_wire = (dx == 0) and h_edge_draw == 'blue'
         ecol = '#0099ff' if h_edge_draw == 'blue' and et == 2 else 'black'
-        ax.add_line(lines.Line2D([sp[0],tp[0]],[sp[1],tp[1]], color=ecol, linewidth=0.8, zorder=0))
+
+        if bend_wire:
+            bend = 0.25
+            mid = (sp[0] + 0.5 * dx + bend * dy, sp[1] + 0.5 * dy - bend * dx)
+
+            pth = path.Path([sp,mid,tp], [path.Path.MOVETO, path.Path.CURVE3, path.Path.LINETO])
+            patch = patches.PathPatch(pth, edgecolor=ecol, linewidth=0.8, fill=False)
+            ax.add_patch(patch)
+        else:
+            pos = 0.5 if dx == 0 or dy == 0 else 0.4
+            mid = (sp[0] + pos*dx, sp[1] + pos*dy)
+            ax.add_line(lines.Line2D([sp[0],tp[0]],[sp[1],tp[1]], color=ecol, linewidth=0.8, zorder=0))
+
         if h_edge_draw == 'box' and et == 2: #hadamard edge
-            x,y = (sp[0]-tp[0]), (sp[1]-tp[1])
             w = 0.2
             h = 0.15
             diag = math.sqrt(w*w+h*h)
-            angle = math.atan2(y,x)
+            angle = math.atan2(dy,dx)
             angle2 = math.atan2(h,w)
-            pos = 0.5 if x == 0 or y == 0 else 0.4
-            centre = (tp[0] + pos*x - diag/2*math.cos(angle+angle2),
-                      tp[1] + pos*y - diag/2*math.sin(angle+angle2))
+            centre = (mid[0] - diag/2*math.cos(angle+angle2),
+                      mid[1] - diag/2*math.sin(angle+angle2))
             ax.add_patch(patches.Rectangle(centre,w,h,angle=angle/math.pi*180,facecolor='yellow',edgecolor='black'))
 
         #plt.plot([sp[0],tp[0]],[sp[1],tp[1]], 'k', zorder=0, linewidth=0.8)
