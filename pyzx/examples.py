@@ -129,8 +129,8 @@ def cliffords(qubits, depth, no_hadamard=False,backend=None, keynames=('q','r'))
                 ty += [1,2]
             else: 
                 es2.append((v,v+1))
-                t = random.randint(1,2)
-                ty += [t,t]
+                typ = random.randint(1,2)
+                ty += [typ,typ]
             if accept(p_phase): phases[v] = random_phase()
             if accept(p_phase): phases[v+1] = random_phase()
         else:
@@ -167,7 +167,6 @@ def cliffords(qubits, depth, no_hadamard=False,backend=None, keynames=('q','r'))
     ty += [0] * qubits
     es1 += [(q[i], v+i) for i in range(qubits)]
     v += qubits
-
 
     g.add_vertices(v)
     g.add_edges(es1,1)

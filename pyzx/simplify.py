@@ -13,9 +13,11 @@ def simp(g, name, match, rewrite):
         new_matches = False
         m = match(g)
         if len(m) > 0:
-            print(len(m), end='', flush=True)
+            print(len(m), end='')
+            #print(len(m), end='', flush=True) #flush only supported on Python >3.3
             rewrite(g, m)
-            print('. ', end='', flush=True)
+            print(len(m), end='')
+            #print('. ', end='', flush=True)
             new_matches = True
     print('\nfinished in ' + str(i) + ' iterations')
 

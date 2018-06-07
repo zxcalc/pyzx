@@ -1,5 +1,8 @@
-import matplotlib.pyplot as plt
-from matplotlib import patches, lines
+try:
+    import matplotlib.pyplot as plt
+    from matplotlib import patches, lines
+except:
+    plt = None
 from fractions import Fraction
 import math
 
@@ -90,8 +93,8 @@ def pack_circuit_nf(g, nf):
                     g.set_vdata(v, 'q', g.get_vdata(w, 'q'))
                     break
 
-def circuit_layout(g):
-    return {v:(g.get_vdata(v,'r'),-g.get_vdata(v,'q')) for v in g.vertices()}
+def circuit_layout(g,keys = ('r','q')):
+    return {v:(g.get_vdata(v,keys[0]),-g.get_vdata(v,keys[1])) for v in g.vertices()}
 
 def draw(g, layout=None, labels=False, figsize=(8,2), h_edge_draw='box'):
     fig1 = plt.figure(figsize=figsize)
