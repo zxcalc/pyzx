@@ -157,3 +157,71 @@ def graph_to_json(g):
             "node_vertices": node_vs, 
             "undir_edges": edges})
 
+
+class RewriteMaker(object):
+    def __init__(self,rewriter):
+        self.rewriter = rewriter
+        self.steps = []
+        self.names = []
+
+    def start(self, js):
+        self.steps = []
+        self.names = []
+        g = json_to_graph(js)
+        for s,n in self.rewriter(g):
+            self.steps.append(graph_to_json(s))
+            self.names.append(n)
+
+        return len(self.steps)
+
+    def get_step(self, index):
+        return self.steps[index]
+
+    def get_name(self, index):
+        return self.names[index]
+
+try:
+    import quanto.util.Scripting as quanto
+except ImportError:
+    print("Not running in Quantomatic")
+
+def register_python_simproc(name, rewriter):
+    maker = RewriteMaker(rewriter)
+    simproc = quanto.JSON_REWRITE_STEPS(maker.start, maker.get_step, maker.get_name)
+    quanto.register_simproc(name, simproc)
+
+from . import simplify
+from . import rules
+
+def simp_iter(g, name, match, rewrite):
+    i = 0
+    new_matches = True
+    while new_matches:
+        i += 1
+        new_matches = False
+        m = match(g)
+        if len(m) > 0:
+            rewrite(g, m)
+            yield g, name+str(i)
+            new_matches = True
+
+def pivot_iter(g):
+    return simp_iter(g, 'pivot', rules.match_pivot_parallel, rules.pivot)
+
+def lcomp_iter(g):
+    return simp_iter(g, 'lcomp', rules.match_lcomp_parallel, rules.lcomp)
+
+def bialg_iter(g):
+    return simp_iter(g, 'bialg', rules.match_bialg_parallel, rules.bialg)
+
+def spider_iter(g):
+    return simp_iter(g, 'spider', rules.match_spider_parallel, rules.spider)
+
+def clifford_iter(g):
+    for d  in spider_iter(g): yield d
+    simplify.to_gh(g)
+    yield g, "to_gh"
+    for d in lcomp_iter(g): yield d
+    for d in pivot_iter(g): yield d
+    simplify.to_rg(g)
+    yield g, "to_rg"
