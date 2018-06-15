@@ -33,6 +33,9 @@ def bialg_simp(g):
 def spider_simp(g):
     return simp(g, 'spider_simp', match_spider_parallel, spider)
 
+def id_simp(g):
+    return simp(g, 'id_simp', match_ids_parallel, remove_ids)
+
 def phase_free_simp(g):
     spider_simp(g)
     bialg_simp(g)
@@ -43,6 +46,8 @@ def clifford_simp(g):
     lcomp_simp(g)
     pivot_simp(g)
     to_rg(g)
+    id_simp(g)
+
 
 def to_gh(g):
     ty = g.get_types()

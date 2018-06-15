@@ -189,6 +189,7 @@ def register_python_simproc(name, rewriter):
     maker = RewriteMaker(rewriter)
     simproc = quanto.JSON_REWRITE_STEPS(maker.start, maker.get_step, maker.get_name)
     quanto.register_simproc(name, simproc)
+    output.println("registered simproc " + name)
 
 from . import simplify
 from . import rules
@@ -217,6 +218,9 @@ def bialg_iter(g):
 def spider_iter(g):
     return simp_iter(g, 'spider', rules.match_spider_parallel, rules.spider)
 
+def id_iter(g):
+    return simp_iter(g, 'id', rules.match_ids_parallel, rules.remove_ids)
+
 def clifford_iter(g):
     for d  in spider_iter(g): yield d
     simplify.to_gh(g)
@@ -225,3 +229,4 @@ def clifford_iter(g):
     for d in pivot_iter(g): yield d
     simplify.to_rg(g)
     yield g, "to_rg"
+    for d in id_iter(g): yield d

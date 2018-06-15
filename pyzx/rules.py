@@ -97,6 +97,7 @@ def spider(g, matches):
     rem_verts = []
     add_edges = []
     rem_edges = []
+    etab = dict()
     types = g.get_types()
 
     for m in matches:
@@ -113,13 +114,17 @@ def spider(g, matches):
         #  - if the colors are the same, do nothing (specialness)
         for v1 in g.get_neighbours(m[1]):
             if v0 == v1: continue
-            if g.is_connected(v0, v1):
-                if types[v0] != types[v1]:
-                    rem_edges.append((v0,v1))
-            else: add_edges.append((v0,v1))
+            e = (v0,v1)
+            if e not in etab: etab[e] = [0,0]
+            etab[e][g.get_edge_type((m[1],v1))-1] += 1
+            #if g.is_connected(v0, v1):
+            #    if types[v0] != types[v1]:
+            #        rem_edges.append((v0,v1))
+            #else: add_edges.append((v0,v1))
     
-    g.remove_edges(rem_edges)
-    g.add_edges(add_edges)
+    #g.remove_edges(rem_edges)
+    #g.add_edges(add_edges)
+    g.add_edge_table(etab)
     g.remove_vertices(rem_verts)
     g.remove_solo_vertices()
 
@@ -174,8 +179,6 @@ def match_pivot_parallel(g, num=-1, check_edge_types=False):
 
 def pivot(g, matches):
     rem_verts = []
-    add_edges = set()
-    rem_edges = set()
     etab = dict()
     for m in matches:
         es = ([(s,t) if s > t else (t,s) for s in m[2] for t in m[3]] +
@@ -240,5 +243,43 @@ def lcomp(g, matches):
                 if (e[0] > e[1]): e = (e[1],e[0])
                 he = etab.get(e, (0,0))[1]
                 etab[e] = (0, he+1)
+    g.add_edge_table(etab)
+    g.remove_vertices(rem)
+
+
+def match_ids(g):
+    return match_ids_parallel(g, num=1)
+
+def match_ids_parallel(g, num=-1):
+    candidates = g.vertex_set()
+    types = g.get_types()
+    phases = g.get_angles()
+
+    i = 0
+    m = []
+
+    while (num == -1 or i < num) and len(candidates) > 0:
+        v = candidates.pop()
+        if phases[v] != 0: continue
+        neigh = g.get_neighbours(v)
+        if len(neigh) != 2: continue
+        v0, v1 = neigh
+        candidates.discard(v0)
+        candidates.discard(v1)
+        if g.get_edge_type((v,v0)) != g.get_edge_type((v,v1)): #exactly one of them is a hadamard edge
+            m.append((v,v0,v1,2))
+        else: m.append((v,v0,v1,1))
+    return m
+    g.add_edge_table(etab)
+    g.remove_vertices(rem_verts)
+
+def remove_ids(g, matches):
+    etab = dict()
+    rem = []
+    for m in matches:
+        rem.append(m[0])
+        e = (m[1],m[2])
+        if not e in etab: etab[e] = [0,0]
+        etab[e][m[3]-1] += 1
     g.add_edge_table(etab)
     g.remove_vertices(rem)
