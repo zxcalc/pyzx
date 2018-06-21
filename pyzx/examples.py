@@ -83,18 +83,17 @@ def cnots(qubits, depth, backend=None, keynames=('q','r')):
 def accept(p):
     return p>random.random()
 
-def random_phase():
+def random_phase(add_t):
+    if add_t:
+        return Fraction(random.randint(1,8),4)
     return Fraction(random.randint(1,4),2)
 
-def cliffords(qubits, depth, no_hadamard=False,backend=None, keynames=('q','r')):
+def cliffords(qubits, depth, no_hadamard=False,t_gates=False,backend=None, keynames=('q','r')):
     #randomness parameters
     p_two_qubit = 0.4 #whether to add a edge between two qubits
     p_cnot = 0.4 # whether to CNOT or to CZ
     p_phase = 0.6 #probability of adding a phase to a node
     p_had = 0.2 # probability of adding a hadamard on a qubit
-
-
-    g = Graph(backend)
 
     # initialise and add input row
 
@@ -131,11 +130,11 @@ def cliffords(qubits, depth, no_hadamard=False,backend=None, keynames=('q','r'))
                 es2.append((v,v+1))
                 typ = random.randint(1,2)
                 ty += [typ,typ]
-            if accept(p_phase): phases[v] = random_phase()
-            if accept(p_phase): phases[v+1] = random_phase()
+            if accept(p_phase): phases[v] = random_phase(t_gates)
+            if accept(p_phase): phases[v+1] = random_phase(t_gates)
         else:
-            phases[v] = random_phase()
-            phases[v+1] = random_phase()
+            phases[v] = random_phase(t_gates)
+            phases[v+1] = random_phase(t_gates)
             ty += [1,2]
         
         if not no_hadamard and accept(p_had): es2.append((q[c],v))
@@ -167,6 +166,8 @@ def cliffords(qubits, depth, no_hadamard=False,backend=None, keynames=('q','r'))
     ty += [0] * qubits
     es1 += [(q[i], v+i) for i in range(qubits)]
     v += qubits
+
+    g = Graph(backend)
 
     g.add_vertices(v)
     g.add_edges(es1,1)

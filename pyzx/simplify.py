@@ -5,7 +5,8 @@ try:
 except ImportError:
     pass
 
-__all__ = ['bialg_simp','spider_simp', 'phase_free_simp', 'pivot_simp', 'lcomp_simp', 'clifford_simp']
+__all__ = ['bialg_simp','spider_simp', 'phase_free_simp', 'pivot_simp', 
+        'lcomp_simp', 'clifford_simp', 't_count']
 
 from .rules import *
 
@@ -79,13 +80,18 @@ def to_rg(g):
                 for e in g.get_incident_edges(v): g.set_edge_type(e, 1)
 
 
+def t_count(g):
+    count = 0
+    for a in g.get_angles().values():
+        if a.denominator == 4:
+            count += 1
+    return count
 
 def _worker(arg):
     match, rewrite, g, kwargname, kwarg = arg
     m =  match(g, **{kwargname:kwarg})
     if m: return (len(m),rewrite(g, m))
     return None
-
 
 def simp_threaded(g, name, match, rewrite, uses_verts=False,safe=False,skip_unthreaded_pass=False):
     nthreads = 5
