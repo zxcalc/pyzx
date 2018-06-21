@@ -69,10 +69,40 @@ class GraphS(BaseGraph):
 	def vertices(self):
 		return self.graph.keys()
 
+	def vertices_in_range(self,start, end):
+		'''Returns all vertices with index between start and end
+		that only have neighbours whose indices are between start and end'''
+		for v in self.graph.keys():
+			if not start<v<end: continue
+			if all(start<v2<end for v2 in self.graph[v]):
+				yield v
+
 	def edges(self):
 		for v0,adj in self.graph.items():
 			for v1 in adj:
 				if v1 > v0: yield (v0,v1)
+
+	def edges_in_range(self,start, end,safe=False):
+		'''like self.edges, but only returns edges that belong to vertices 
+		that are only directly connected to other vertices with 
+		index between start and end.
+		If safe=True then it also checks that every neighbour is only connected to vertices with the right index'''
+		if not safe:
+			for v0,adj in self.graph.items():
+				if not (start<v0<end): continue
+				#verify that all neighbours are in range
+				if all(start<v1<end for v1 in adj):
+					for v1 in adj:
+						if v1 > v0: yield (v0,v1)
+		else:
+			for v0,adj in self.graph.items():
+				if not (start<v0<end): continue
+				#verify that all neighbours are in range, and that each neighbour
+				# is only connected to vertices that are also in range
+				if all(start<v1<end for v1 in adj) and all(all(start<v2<end for v2 in self.graph[v1]) for v1 in adj):
+					for v1 in adj:
+						if v1 > v0:
+							yield (v0,v1)
 
 	def edge(self, s, t):
 		return (s,t) if s < t else (t,s)

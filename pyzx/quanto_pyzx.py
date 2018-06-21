@@ -202,7 +202,10 @@ def simp_iter(g, name, match, rewrite):
         new_matches = False
         m = match(g)
         if len(m) > 0:
-            rewrite(g, m)
+            etab, rem_verts, check_solo_vertices = rewrite(g, m)
+            g.add_edge_table(etab)
+            g.remove_vertices(rem_verts)
+            if check_solo_vertices: g.remove_solo_vertices()
             yield g, name+str(i)
             new_matches = True
 

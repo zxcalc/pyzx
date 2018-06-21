@@ -2,22 +2,25 @@ from fractions import Fraction
 
 
 def match_bialg(g):
+    types = g.get_types()
     for e in g.edges():
         v0, v1 = g.edge_st(e)
-        v0t = g.get_type(v0)
-        v1t = g.get_type(v1)
+        v0t = types[v0]
+        v1t = types[v1]
         if ((v0t == 1 and v1t == 2) or (v0t == 2 and v1t == 1)):
             v0n = [n for n in g.get_neighbours(v0) if not n == v1]
             v1n = [n for n in g.get_neighbours(v1) if not n == v0]
             if (
-                all([g.get_type(n) == v1t for n in v0n]) and
-                all([g.get_type(n) == v0t for n in v1n])):
+                all([types[n] == v1t for n in v0n]) and
+                all([types[n] == v0t for n in v1n])):
                 return [[v0,v1,v0n,v1n]]
     return []
 
 
-def match_bialg_parallel(g, num=-1):
-    candidates = g.edge_set()
+def match_bialg_parallel(g, num=-1, edgelist=-1):
+    #TODO: make it be hadamard edge aware
+    if edgelist!=-1: candidates = set(edgelist)
+    else: candidates = g.edge_set()
     types = g.get_types()
     
     i = 0
@@ -43,8 +46,9 @@ def match_bialg_parallel(g, num=-1):
 
 def bialg(g, matches):
     rem_verts = []
-    add_edges = set()
-    rem_edges = set()
+    etab = dict()
+    #add_edges = set()
+    #rem_edges = set()
     for m in matches:
         rem_verts.append(m[0])
         rem_verts.append(m[1])
@@ -52,17 +56,19 @@ def bialg(g, matches):
         for e in es:
             # Edges can appear multiple times. Every time an edge is encountered,
             # toggle whether it will be added/deleted.
-            if g.is_connected(e[0], e[1]):
-                if e in rem_edges: rem_edges.remove(e)
-                else: rem_edges.add(e)
-            else:
-                if e in add_edges: add_edges.remove(e)
-                else: add_edges.add(e)
+            if e in etab: etab[e][0] += 1
+            else: etab[e] = [1,0]
+            # if g.is_connected(e[0], e[1]):
+            #     if e in rem_edges: rem_edges.remove(e)
+            #     else: rem_edges.add(e)
+            # else:
+            #     if e in add_edges: add_edges.remove(e)
+            #     else: add_edges.add(e)
     
-    g.remove_edges(rem_edges)
-    g.add_edges(add_edges)
-    g.remove_vertices(rem_verts)
-    g.remove_solo_vertices()
+    return (etab, rem_verts, True)
+    #g.add_edge_table(etab)
+    #g.remove_vertices(rem_verts)
+    #g.remove_solo_vertices()
 
 def match_spider(g):
     for e in g.edges():
@@ -72,8 +78,9 @@ def match_spider(g):
             return [[v0,v1]]
     return []
 
-def match_spider_parallel(g, num=-1):
-    candidates = g.edge_set()
+def match_spider_parallel(g, num=-1, edgelist=-1):
+    if edgelist!=-1: candidates = set(edgelist)
+    else: candidates = g.edge_set()
     types = g.get_types()
     
     i = 0
@@ -95,18 +102,15 @@ def match_spider_parallel(g, num=-1):
 
 def spider(g, matches):
     rem_verts = []
-    add_edges = []
-    rem_edges = []
     etab = dict()
     types = g.get_types()
 
     for m in matches:
-        g.set_angle(m[0], g.get_angle(m[0]) + g.get_angle(m[1]))
+        v0 = m[0]
+        g.set_angle(v0, g.get_angle(v0) + g.get_angle(m[1]))
 
         # always delete the second vertex in the match
         rem_verts.append(m[1])
-        
-        v0 = m[0]
 
         # edges from the second vertex are transferred to the first. If there is already
         # an edge there, avoid parallel edges using the following rules:
@@ -117,16 +121,11 @@ def spider(g, matches):
             e = (v0,v1)
             if e not in etab: etab[e] = [0,0]
             etab[e][g.get_edge_type((m[1],v1))-1] += 1
-            #if g.is_connected(v0, v1):
-            #    if types[v0] != types[v1]:
-            #        rem_edges.append((v0,v1))
-            #else: add_edges.append((v0,v1))
     
-    #g.remove_edges(rem_edges)
-    #g.add_edges(add_edges)
-    g.add_edge_table(etab)
-    g.remove_vertices(rem_verts)
-    g.remove_solo_vertices()
+    return (etab, rem_verts, True)
+    #g.add_edge_table(etab)
+    #g.remove_vertices(rem_verts)
+    #g.remove_solo_vertices()
 
 
 def match_pivot(g):
@@ -134,9 +133,11 @@ def match_pivot(g):
     return match_pivot_parallel(g, num=1, check_edge_types=True)
 
 
-def match_pivot_parallel(g, num=-1, check_edge_types=False):
-    candidates = g.edge_set()
+def match_pivot_parallel(g, num=-1, check_edge_types=False, edgelist=-1):
+    if edgelist!=-1: candidates = set(edgelist)
+    else: candidates = g.edge_set()
     types = g.get_types()
+    angles = g.get_angles()
     
     i = 0
     m = []
@@ -149,13 +150,13 @@ def match_pivot_parallel(g, num=-1, check_edge_types=False):
         v1t = types[v1]
         if not (v0t == 1 and v1t == 1): continue
 
-        v0a = g.get_angle(v0)
-        v1a = g.get_angle(v1)
+        v0a = angles[v0]
+        v1a = angles[v1]
         if not ((v0a == 0 or v0a == 1) and (v1a == 0 or v1a == 1)): continue
 
         if check_edge_types and not (
             all(g.get_edge_type(e) == 2 for e in g.get_incident_edges(v0)) and
-            all(g.get_edge_type(e) == 2 for e in g.get_incident_edges(v0))
+            all(g.get_edge_type(e) == 2 for e in g.get_incident_edges(v1))
             ): continue
                 
         v0n = frozenset(n for n in g.get_neighbours(v0) if not n == v1)
@@ -197,16 +198,18 @@ def pivot(g, matches):
             nhe = etab.get(e, (0,0))[1]
             etab[e] = (0,nhe+1)
 
-    g.add_edge_table(etab)
-    g.remove_vertices(rem_verts)
-    g.remove_solo_vertices()
+    return (etab, rem_verts, True)
+    #g.add_edge_table(etab)
+    #g.remove_vertices(rem_verts)
+    #g.remove_solo_vertices()
 
 
 def match_lcomp(g):
     return match_lcomp_parallel(g, num=1, check_edge_types=True)
 
-def match_lcomp_parallel(g, num=-1, check_edge_types=False):
-    candidates = g.vertex_set()
+def match_lcomp_parallel(g, num=-1, check_edge_types=False, vertexlist=-1):
+    if vertexlist!=-1: candidates = set(vertexlist)
+    else: candidates = g.vertex_set()
     types = g.get_types()
     
     i = 0
@@ -243,15 +246,18 @@ def lcomp(g, matches):
                 if (e[0] > e[1]): e = (e[1],e[0])
                 he = etab.get(e, (0,0))[1]
                 etab[e] = (0, he+1)
-    g.add_edge_table(etab)
-    g.remove_vertices(rem)
+
+    return (etab, rem, False)
+    #g.add_edge_table(etab)
+    #g.remove_vertices(rem)
 
 
 def match_ids(g):
     return match_ids_parallel(g, num=1)
 
-def match_ids_parallel(g, num=-1):
-    candidates = g.vertex_set()
+def match_ids_parallel(g, num=-1, vertexlist=-1):
+    if vertexlist!=-1: candidates = set(vertexlist)
+    else: candidates = g.vertex_set()
     types = g.get_types()
     phases = g.get_angles()
 
@@ -270,8 +276,6 @@ def match_ids_parallel(g, num=-1):
             m.append((v,v0,v1,2))
         else: m.append((v,v0,v1,1))
     return m
-    g.add_edge_table(etab)
-    g.remove_vertices(rem_verts)
 
 def remove_ids(g, matches):
     etab = dict()
@@ -281,5 +285,6 @@ def remove_ids(g, matches):
         e = (m[1],m[2])
         if not e in etab: etab[e] = [0,0]
         etab[e][m[3]-1] += 1
-    g.add_edge_table(etab)
-    g.remove_vertices(rem)
+    return (etab, rem, False)
+    #g.add_edge_table(etab)
+    #g.remove_vertices(rem)

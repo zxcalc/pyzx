@@ -1,4 +1,4 @@
-__all__ = ['cnots','zigzag', 'zigzag2']
+__all__ = ['cnots','zigzag', 'zigzag2','cliffords']
 
 import random
 from fractions import Fraction
