@@ -113,7 +113,7 @@ def pack_circuit_nf(g, nf='grg'):
 def circuit_layout(g):
     return {v:(g.get_vdata(v,'r'),-g.get_vdata(v,'q')) for v in g.vertices()}
 
-def draw(g, layout=None, labels=False, figsize=(8,2), h_edge_draw='box'):
+def draw(g, layout=None, labels=False, figsize=(8,2), h_edge_draw='blue'):
     fig1 = plt.figure(figsize=figsize)
     ax = fig1.add_axes([0, 0, 1, 1], frameon=False)
     ax.xaxis.set_visible(False)
