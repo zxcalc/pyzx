@@ -95,8 +95,10 @@ def match_spider_parallel(g, num=-1):
 
 def spider(g, matches):
     rem_verts = []
-    add_edges = []
-    rem_edges = []
+    #add_edges = []
+    #rem_edges = []
+
+    etab = dict()
     types = g.get_types()
 
     for m in matches:
@@ -107,19 +109,19 @@ def spider(g, matches):
         
         v0 = m[0]
 
-        # edges from the second vertex are transferred to the first. If there is already
-        # an edge there, avoid parallel edges using the following rules:
-        #  - if the colors are different, remove the existing edge (hopf)
-        #  - if the colors are the same, do nothing (specialness)
+        # edges from the second vertex are transferred to the first
         for v1 in g.get_neighbours(m[1]):
             if v0 == v1: continue
-            if g.is_connected(v0, v1):
-                if types[v0] != types[v1]:
-                    rem_edges.append((v0,v1))
-            else: add_edges.append((v0,v1))
+            et = g.get_edge_type(g.edge(m[1],v1))
+            vp = (v0,v1) if v0 < v1 else (v1,v0)
+            es,hes = etab.get(vp, (0,0))
+            if et == 1: es += 1
+            elif et == 2: hes += 1
+            etab[vp] = (es,hes)
     
-    g.remove_edges(rem_edges)
-    g.add_edges(add_edges)
+    #g.remove_edges(rem_edges)
+    #g.add_edges(add_edges)
+    g.add_edge_table(etab)
     g.remove_vertices(rem_verts)
     g.remove_solo_vertices()
 
@@ -153,10 +155,9 @@ def match_pivot_parallel(g, num=-1, check_edge_types=False):
         v0n = set()
         v0b = set()
         for n in g.get_neighbours(v0):
-            if types[n] == 0:
-                v0b.add(n)
-                continue
-
+            #if g.get_angle(n).denominator > 2:
+            #    invalid_edge = True
+            #    break
             et = g.get_edge_type(g.edge(v0,n))
             if n == v1 and et == 2: pass
             elif types[n] == 1 and et == 2: v0n.add(n)
@@ -170,10 +171,9 @@ def match_pivot_parallel(g, num=-1, check_edge_types=False):
         v1n = set()
         v1b = set()
         for n in g.get_neighbours(v1):
-            if types[n] == 0:
-                v1b.add(n)
-                continue
-
+            #if g.get_angle(n).denominator > 2:
+            #    invalid_edge = True
+            #    break
             et = g.get_edge_type(g.edge(v1,n))
             if n == v0 and et == 2: pass
             elif types[n] == 1 and et == 2: v1n.add(n)
@@ -185,9 +185,6 @@ def match_pivot_parallel(g, num=-1, check_edge_types=False):
         if invalid_edge: continue
 
         if not (len(v0b) + len(v1b) <= 1): continue
-                
-        #v0n = frozenset(n for n in g.get_neighbours(v0) if not n == v1)
-        #v1n = frozenset(n for n in g.get_neighbours(v1) if not n == v0)
 
         i += 1
         for v in v0n:
@@ -263,6 +260,7 @@ def match_lcomp(g):
 def match_lcomp_parallel(g, num=-1, check_edge_types=False):
     candidates = g.vertex_set()
     types = g.get_types()
+    angles = g.get_angles()
     
     i = 0
     m = []
@@ -279,7 +277,7 @@ def match_lcomp_parallel(g, num=-1, check_edge_types=False):
                 
         vn = list(g.get_neighbours(v))
 
-        if not all(types[n] == vt for n in vn): continue
+        if not all(types[n] == vt for n in vn): continue # and angles[n].denominator <= 2
 
         for n in vn: candidates.discard(n)
         m.append([v,vn])
