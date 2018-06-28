@@ -6,8 +6,6 @@ try:
 except:
     np = None
 from math import pi
-from .graph import *
-from . import examples
 
 qpi = 0.25*pi
 
@@ -62,7 +60,8 @@ def contract_all(tensors,conns):
     s2 = set()
     for i in sublistout:
         s2.add(remap[i])
-    sublistout = s2
+    sublistout = list(s2)
+    sublistout.sort()
     
     print(inds)
     print(sublistout)
@@ -82,7 +81,7 @@ def Z_to_tensor(arity, phase):
     return m
 
 def X_to_tensor(arity, phase):
-    m = np.ones(2**arity,dtype = complex)
+    m = np.ones(2**arity, dtype = complex)
     for i in range(2**arity):
         if bin(i).count("1")%2 == 0: 
             m[i] += np.exp(1j*phase)
@@ -96,43 +95,40 @@ def X_to_tensor(arity, phase):
 #had = np.sqrt(2)*np.exp(-1j*0.25*np.pi) * (S @ Xphase @ S)
 #print(had)
 
-def phase_to_number(s):
-    s = s.replace("\\pi", "pi")
-    exec("print({})".format(s))
-    sys.stdout = old
-    return float(stdout.getvalue().strip())
-
 
 def tensorfy(g):
-    '''Takes in a igraph.Graph.
-    All nodes should have a 't' attribute valued in 'Z', 'X' or 'B' (for boundary)
-    Outputs a multidimensional numpy array
+    '''Takes in a Graph and outputs a multidimensional numpy array
     representing the linear map the ZX-diagram implements'''
     tensors = []
-    ids = {}
+    int_vertices = {}
+    inputs = []
+
+    types = g.get_types()
+    phases = g.get_angles()
 
     for v in g.vertices():
-        if g.get_type(v) == typeZ:
-            phase = g.get_attribute(v,'phase')
-            ids[v.index] = len(tensors)
-            tensors.append(Z_to_tensor(v.degree(),phase))
-        elif v['t'] == 'X':
-            phase = phase_to_number(v.attributes().get('phase',"0.0"))
-            ids[v.index] = len(tensors)
-            tensors.append(X_to_tensor(v.degree(),phase))
-        elif v['t'] == 'B':
-            pass
+        if types[v] in (1,2):
+            phase = pi*phases[v]
+            int_vertices[v] = len(tensors)
+            d = g.get_vertex_degree(v)
+            tensors.append(Z_to_tensor(d,phase) if types[v] == 1 else X_to_tensor(d,phase))
+        elif types[v] == 0:
+            if g.get_vdata(v,'i'):
+                inputs.append(v)
         else:
-            raise Exception("Wrong type for node '{}'".format(v['t']))
+            raise Exception("Wrong type for node with index {!s}: {!s}".format(v,types[v]))
 
     conns = []
-    contraction_count = {i:0 for i in ids}
-    for e in g.es:
-        if not (e.source in ids and e.target in ids): continue
-        conns.append(((ids[e.source],contraction_count[e.source]),
-                     (ids[e.target],contraction_count[e.target])))
-        contraction_count[e.source] += 1
-        contraction_count[e.target] += 1
+    contraction_count = {v:0 for v in int_vertices}
+    for v in inputs:
+        for n in g.get_neighbours(v): contraction_count[n] += 1
+    for e in g.edges():
+        s,t = g.edge_st(e)
+        if not (s in int_vertices and t in int_vertices): continue
+        conns.append(((int_vertices[s],contraction_count[s]),
+                     (int_vertices[t],contraction_count[t])))
+        contraction_count[s] += 1
+        contraction_count[t] += 1
 
     #print(conns)
 
@@ -141,12 +137,6 @@ def tensorfy(g):
 
 
 if __name__ == '__main__':
-    g = Graph('igraph')
-    g.add_vertex(t=typeB)
-    g.add_vertex(t=typeZ,phase='0.0')
-    g.add_vertex(t=typeX,phase='0.0')
-    g.add_vertex(t=typeB)
-    g.add_edges([(0,1),(1,2),(1,2),(2,3)])
 
     import examples
 
