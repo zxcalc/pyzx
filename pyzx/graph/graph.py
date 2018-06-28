@@ -5,14 +5,16 @@ typeZ = 1
 typeX = 2
 
 def Graph(backend=None):
+	'''Returns an instance of an implementation of BaseGraph. 
+	By default GraphS is used. Other options are 'graph_tool' and 'igraph'. '''
 	if not backend: backend = 'simple'
 	if backend:
 		if backend not in backends:
 			raise KeyError("Unavailable backend '{}'".format(backend))
 		if backend == 'simple': return GraphS()
-		if backend == 'graph_tool': return GraphGT()
+		if backend == 'graph_tool': 
+			return GraphGT()
 		if backend == 'igraph': return GraphIG()
-		if backend == 'networkx': return GraphNX()
 	return GraphS()
 
 from .graph_s import GraphS
@@ -29,14 +31,3 @@ try:
 	backends['igraph'] = ig 
 except ImportError:
 	pass
-try:
-	import networkx as nx
-	from .graph_nx import GraphNX
-	backends['networkx'] = nx
-except ImportError:
-	pass
-
-if backends:
-	print("Available backends: " + ", ".join(backends.keys()))
-else:
-	raise ImportError("No graph backend found. Please install one of graph_tool, igraph or networkx")

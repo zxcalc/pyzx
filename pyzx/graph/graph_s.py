@@ -2,9 +2,11 @@ from fractions import Fraction
 from .base import BaseGraph
 
 class GraphS(BaseGraph):
-	'''Base class for the specific Graph classes with the methods that each Graph class should implement'''
+	'''Implementation of the Graph backend in pure Python.'''
 	backend = 'simple'
 
+	#The documentation of what these methods do 
+	#can be found in base.BaseGraph
 	def __init__(self):
 		self.graph = dict()
 		self.ty = dict()
