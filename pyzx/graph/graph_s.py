@@ -8,8 +8,8 @@ class GraphS(BaseGraph):
 	def __init__(self):
 		self.graph = dict()
 		self.ty = dict()
-		self.angle = dict()
-		self.vdata = dict()
+		self._phase = dict()
+		self._vdata = dict()
 		self.vindex = 0
 		self.nedges = 0
 
@@ -17,14 +17,13 @@ class GraphS(BaseGraph):
 		for i in range(self.vindex, self.vindex + amount):
 			self.graph[i] = dict()
 			self.ty[i] = 0
-			self.angle[i] = 0
+			self._phase[i] = 0
 		self.vindex += amount
 
 	def add_vertex(self):
 		self.add_vertices(1)
 
 	def add_edges(self, edges, edgetype=1):
-		'''Adds a list of (source,target) edges'''
 		for s,t in edges:
 			self.nedges += 1
 			self.graph[s][t] = edgetype
@@ -41,15 +40,14 @@ class GraphS(BaseGraph):
 			# remove the vertex
 			del self.graph[v]
 			del self.ty[v]
-			self.vdata.pop(v,None)
-			del self.angle[v]
+			self._vdata.pop(v,None)
+			del self._phase[v]
 
 	def remove_vertex(self, vertex):
 		self.remove_vertices([vertex])
 
-	def remove_solo_vertices(self):
-		'''Deletes all vertices that are not connected to any other vertex.'''
-		self.remove_vertices([v for v in self.vertices() if self.get_vertex_degree(v)==0])
+	def remove_isolated_vertices(self):
+		self.remove_vertices([v for v in self.vertices() if self.vertex_degree(v)==0])
 
 	def remove_edges(self, edges):
 		for s,t in edges:
@@ -113,19 +111,19 @@ class GraphS(BaseGraph):
 	def edge_st(self, edge):
 		return edge
 
-	def get_neighbours(self, vertex):
+	def neighbours(self, vertex):
 		return self.graph[vertex].keys()
 
-	def get_vertex_degree(self, vertex):
+	def vertex_degree(self, vertex):
 		return len(self.graph[vertex])
 
-	def get_incident_edges(self, vertex):
+	def incident_edges(self, vertex):
 		return [(vertex, v1) if v1 > vertex else (v1, vertex) for v1 in self.graph[vertex]]
 
-	def is_connected(self,v1,v2):
+	def connected(self,v1,v2):
 		return v2 in self.graph[v1]
 
-	def get_edge_type(self, e):
+	def edge_type(self, e):
 		v1,v2 = e
 		try:
 			return self.graph[v1][v2]
@@ -137,38 +135,39 @@ class GraphS(BaseGraph):
 		self.graph[v1][v2] = t
 		self.graph[v2][v1] = t
 
-	def get_type(self, vertex):
+	def type(self, vertex):
 		return self.ty[vertex]
 
-	def get_types(self):
+	def types(self):
 		return self.ty
 
 	def set_type(self, vertex, t):
 		self.ty[vertex] = t
 
-	def get_vdata_keys(self, v):
-		return self.vdata.get(v, {}).keys()
+	def phase(self, vertex):
+		return self._phase.get(vertex,Fraction(1))
 
-	def get_vdata(self, v, key, default=0):
-		if v in self.vdata:
-			return self.vdata[v].get(key,default)
+	def phases(self):
+		return self._phase
+
+	def set_phase(self, vertex, phase):
+		self._phase[vertex] = Fraction(phase) % 2
+
+	def add_to_phase(self, vertex, phase):
+		self._phase[vertex] = (self._phase.get(vertex,Fraction(1)) + phase) % 2
+
+
+	def vdata_keys(self, v):
+		return self._vdata.get(v, {}).keys()
+
+	def vdata(self, v, key, default=0):
+		if v in self._vdata:
+			return self._vdata[v].get(key,default)
 		else:
 			return default
 
 	def set_vdata(self, v, key, val):
-		if v in self.vdata:
-			self.vdata[v][key] = val
+		if v in self._vdata:
+			self._vdata[v][key] = val
 		else:
-			self.vdata[v] = {key:val}
-
-	def get_angle(self, vertex):
-		return self.angle.get(vertex,Fraction(1))
-
-	def set_angle(self, vertex, angle):
-		self.angle[vertex] = Fraction(angle) % 2
-
-	def add_angle(self, vertex, angle):
-		self.angle[vertex] = (self.angle.get(vertex,Fraction(1)) + angle) % 2
-
-	def get_angles(self):
-		return self.angle
+			self._vdata[v] = {key:val}

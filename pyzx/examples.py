@@ -142,13 +142,13 @@ def cliffordT(qubits, depth, p_t = 0.1):
         elif p > 1 - p_cnot - p_hsh:
             # apply HSH gate
             g.set_type(v-1, 2)
-            g.set_angle(v-1, Fraction(1,2))
+            g.set_phase(v-1, Fraction(1,2))
         elif p > 1 - p_cnot - p_hsh - p_s:
             # apply S gate
-            g.set_angle(v-1, Fraction(1,2))
+            g.set_phase(v-1, Fraction(1,2))
         else:
             # apply T gate
-            g.set_angle(v-1, Fraction(1,4))
+            g.set_phase(v-1, Fraction(1,4))
 
     for i in range(qubits):
         g.add_vertex()
@@ -261,7 +261,7 @@ def cliffords(qubits, depth, no_hadamard=False,t_gates=False,backend=None, keyna
         g.set_vdata(i, keynames[0], qs[i])
         g.set_vdata(i, keynames[1], rs[i])
     for w, phase in phases.items():
-        g.set_angle(w,phase)
+        g.set_phase(w,phase)
 
     for i in range(qubits):
         g.set_vdata(i, 'i', True)

@@ -2,6 +2,7 @@ import graph_tool.all as gt
 
 from .base import BaseGraph
 
+#DEPRECATED
 class GraphGT(BaseGraph):
 	backend = 'graph_tool'
 	def __init__(self):

@@ -21,10 +21,10 @@ def simp(g, name, match, rewrite):
         if len(m) > 0:
             print(len(m), end='')
             #print(len(m), end='', flush=True) #flush only supported on Python >3.3
-            etab, rem_verts, check_solo_vertices = rewrite(g, m)
+            etab, rem_verts, check_isolated_vertices = rewrite(g, m)
             g.add_edge_table(etab)
             g.remove_vertices(rem_verts)
-            if check_solo_vertices: g.remove_solo_vertices()
+            if check_isolated_vertices: g.remove_isolated_vertices()
             print('. ', end='')
             #print('. ', end='', flush=True)
             new_matches = True
@@ -59,12 +59,12 @@ def clifford_simp(g):
     #id_simp(g)
 
 def to_gh(g):
-    ty = g.get_types()
+    ty = g.types()
     for v in g.vertices():
         if ty[v] == 2:
             g.set_type(v, 1)
-            for e in g.get_incident_edges(v):
-                et = g.get_edge_type(e)
+            for e in g.incident_edges(v):
+                et = g.edge_type(e)
                 if et == 2: g.set_edge_type(e,1)
                 elif et == 1: g.set_edge_type(e,2)
 
@@ -73,26 +73,26 @@ def to_rg(g, select=None):
     By default, the predicate is set to greedily reducing the number of h-edges.'''
     if not select:
         select = lambda v: (
-            len([e for e in g.get_incident_edges(v) if g.get_edge_type(e) == 1]) <
-            len([e for e in g.get_incident_edges(v) if g.get_edge_type(e) == 2])
+            len([e for e in g.incident_edges(v) if g.edge_type(e) == 1]) <
+            len([e for e in g.incident_edges(v) if g.edge_type(e) == 2])
             )
 
-    ty = g.get_types()
+    ty = g.types()
     for v in g.vertices():
         if select(v):
             if ty[v] == 1:
                 g.set_type(v, 2)
-                for e in g.get_incident_edges(v):
-                    g.set_edge_type(e, 1 if g.get_edge_type(e) == 2 else 2)
+                for e in g.incident_edges(v):
+                    g.set_edge_type(e, 1 if g.edge_type(e) == 2 else 2)
             elif ty[v] == 2:
                 g.set_type(v, 1)
-                for e in g.get_incident_edges(v):
-                    g.set_edge_type(e, 1 if g.get_edge_type(e) == 2 else 2)
+                for e in g.incident_edges(v):
+                    g.set_edge_type(e, 1 if g.edge_type(e) == 2 else 2)
 
 
 def t_count(g):
     count = 0
-    for a in g.get_angles().values():
+    for a in g.phases().values():
         if a.denominator == 4:
             count += 1
     return count
@@ -130,7 +130,7 @@ def simp_threaded(g, name, match, rewrite, uses_verts=False,safe=False,skip_unth
                                         #set(g.edges_in_range(j*sep,(j+1)*sep,safe))) for j in range(nthreads)),
                                 chunksize=1)
 
-        check_solo_vertices = False
+        check_isolated_vertices = False
         for j,r in enumerate(results):
             if not r: continue
             new_matches = True
@@ -144,8 +144,8 @@ def simp_threaded(g, name, match, rewrite, uses_verts=False,safe=False,skip_unth
                         raise Exception("Deleting vertices outside of chunk")
             g.add_edge_table(etab)
             g.remove_vertices(rem_verts)
-            check_solo_vertices = check
-        if check_solo_vertices: g.remove_solo_vertices() 
+            check_isolated_vertices = check
+        if check_isolated_vertices: g.remove_isolated_vertices() 
         if new_matches: i += 1
         print('. ', end='')
     pool.close()
@@ -159,10 +159,10 @@ def simp_threaded(g, name, match, rewrite, uses_verts=False,safe=False,skip_unth
             m = match(g)
             if len(m) > 0:
                 print(len(m), end='')
-                etab, rem_verts, check_solo_vertices = rewrite(g, m)
+                etab, rem_verts, check_isolated_vertices = rewrite(g, m)
                 g.add_edge_table(etab)
                 g.remove_vertices(rem_verts)
-                if check_solo_vertices: g.remove_solo_vertices()
+                if check_isolated_vertices: g.remove_isolated_vertices()
                 print('. ', end='')
                 new_matches = True
             if new_matches: i += 1
@@ -191,8 +191,8 @@ def lcomp_threaded(g):
             print(len(matches), end='')
             vs, ns = [], []
             for v, neighbours in matches:
-                a = g.get_angle(v)
-                for v2 in neighbours: g.add_angle(v2, -a)
+                a = g.phase(v)
+                for v2 in neighbours: g.add_to_phase(v2, -a)
                 vs.append(v)
                 ns.append(neighbours)
             for etab in pool.map(_lcomp_do, (ns[i:i + 10] for i in range(0, len(ns), 10))):

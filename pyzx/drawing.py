@@ -6,7 +6,7 @@ except:
 from fractions import Fraction
 import math
 
-def angle_to_s(a):
+def phase_to_s(a):
     if not a: return ''
     if not isinstance(a, Fraction):
         a = Fraction(a)
@@ -28,6 +28,7 @@ def ecol(t):
     return 'black'
 
 
+#TODO: Update this to work again
 def simple_layers(g, sort):
     topo = g.as_directed(mutual=False).topological_sorting() if sort else range(len(g.vs))
     layers = len(g.vs) * [-1]
@@ -64,49 +65,49 @@ def pack_indices(lst):
     return d
 
 def pack_circuit_ranks(g):
-    ranks = [g.get_vdata(v, 'r') for v in g.vertices()]
+    ranks = [g.vdata(v, 'r') for v in g.vertices()]
     new_rank = pack_indices(ranks)
     for v in g.vertices():
-        g.set_vdata(v, 'r', new_rank[g.get_vdata(v, 'r')])
+        g.set_vdata(v, 'r', new_rank[g.vdata(v, 'r')])
 
 
 def pack_circuit_nf(g, nf='grg'):
     x_index = 0
-    ty = g.get_types()
+    ty = g.types()
 
     if nf == 'grg':
         for v in g.vertices():
-            if g.get_vdata(v, 'i'):
+            if g.vdata(v, 'i'):
                 g.set_vdata(v, 'r', 0)
-            elif g.get_vdata(v, 'o'):
+            elif g.vdata(v, 'o'):
                 g.set_vdata(v, 'r', 4)
             elif ty[v] == 2:
                 g.set_vdata(v, 'r', 2)
                 g.set_vdata(v, 'q', x_index)
                 x_index += 1
             elif ty[v] == 1:
-                for w in g.get_neighbours(v):
-                    if g.get_vdata(w, 'i'):
+                for w in g.neighbours(v):
+                    if g.vdata(w, 'i'):
                         g.set_vdata(v, 'r', 1)
-                        g.set_vdata(v, 'q', g.get_vdata(w, 'q'))
+                        g.set_vdata(v, 'q', g.vdata(w, 'q'))
                         break
-                    elif g.get_vdata(w, 'o'):
+                    elif g.vdata(w, 'o'):
                         g.set_vdata(v, 'r', 3)
-                        g.set_vdata(v, 'q', g.get_vdata(w, 'q'))
+                        g.set_vdata(v, 'q', g.vdata(w, 'q'))
                         break
     elif nf == 'gslc':
         for v in g.vertices():
-            if g.get_vdata(v, 'i'):
+            if g.vdata(v, 'i'):
                 g.set_vdata(v, 'r', 0)
-            elif g.get_vdata(v, 'o'):
+            elif g.vdata(v, 'o'):
                 g.set_vdata(v, 'r', 4)
             elif ty[v] == 1:
-                for w in g.get_neighbours(v):
-                    if g.get_vdata(w, 'i'):
+                for w in g.neighbours(v):
+                    if g.vdata(w, 'i'):
                         g.set_vdata(v, 'r', 1)
                         #g.set_vdata(v, 'q', g.get_vdata(w, 'q'))
                         break
-                    elif g.get_vdata(w, 'o'):
+                    elif g.vdata(w, 'o'):
                         g.set_vdata(v, 'r', 3)
                         #g.set_vdata(v, 'q', g.get_vdata(w, 'q'))
                         break
@@ -114,7 +115,7 @@ def pack_circuit_nf(g, nf='grg'):
         raise ValueError("Unknown normal form: " + str(nf))
 
 def circuit_layout(g,keys = ('r','q')):
-    return {v:(g.get_vdata(v,keys[0]),-g.get_vdata(v,keys[1])) for v in g.vertices()}
+    return {v:(g.vdata(v,keys[0]),-g.vdata(v,keys[1])) for v in g.vertices()}
 
 def draw(g, layout=None, labels=False, figsize=(8,2), h_edge_draw='blue'):
     fig1 = plt.figure(figsize=figsize)
@@ -128,7 +129,7 @@ def draw(g, layout=None, labels=False, figsize=(8,2), h_edge_draw='blue'):
     for e in g.edges():
         sp = layout[g.edge_s(e)]
         tp = layout[g.edge_t(e)]
-        et = g.get_edge_type(e)
+        et = g.edge_type(e)
 
         
         dx = tp[0] - sp[0]
@@ -162,8 +163,8 @@ def draw(g, layout=None, labels=False, figsize=(8,2), h_edge_draw='blue'):
     
     for v in g.vertices():
         p = layout[v]
-        t = g.get_type(v)
-        a = g.get_angle(v)
+        t = g.type(v)
+        a = g.phase(v)
         
         sz = 0.2
         col = 'black'
@@ -173,27 +174,7 @@ def draw(g, layout=None, labels=False, figsize=(8,2), h_edge_draw='blue'):
             
         ax.add_patch(patches.Circle(p, sz, facecolor=col, edgecolor='black', zorder=1))
         if labels: plt.text(p[0]+0.25, p[1]+0.25, str(v), ha='center', color='gray', fontsize=5)
-        if a: plt.text(p[0], p[1]-0.5, angle_to_s(a), ha='center', color='blue', fontsize=8)
+        if a: plt.text(p[0], p[1]-0.5, phase_to_s(a), ha='center', color='blue', fontsize=8)
     
     ax.axis('equal')
     plt.show()
-
-# def draw(g, layout=None):
-#     #g1 = g.copy(backend='igraph')
-#     #if g.backend != 'igraph':
-#     #    raise NotImplementedError("Drawing not implemented on backend " + g.backend)
-#     for v in g.graph.vs:
-#         v['color'] = vcol(v['_t'])
-#         #a = v['angle']
-#         #v['label'] = angle_to_s(v['_a'])
-#     if not layout:
-#         layout = dag_layout(g)
-    
-#     return ig.plot(g.graph, layout=layout,
-#                    vertex_size=5,
-#                    vertex_label_size=8,
-#                    vertex_label_dist=2,
-#                    vertex_label_color='blue',
-#                    vertex_label=g.graph.vs['_a'],
-#                    keep_aspect_ratio=True,
-#                    bbox=[600,200])

@@ -47,12 +47,12 @@ def json_to_graph(js):
             elif d['type'] == 'X': g.set_type(v,2)
             else: raise TypeError("unsupported type '{}'".format(d['type']))
             if 'value' in d:
-                g.set_angle(v,_quanto_value_to_phase(d['value']))
+                g.set_phase(v,_quanto_value_to_phase(d['value']))
             else:
-                g.set_angle(v,Fraction(0,1))
+                g.set_phase(v,Fraction(0,1))
         else:
             g.set_type(v,1)
-            g.set_angle(v,Fraction(0,1))
+            g.set_phase(v,Fraction(0,1))
         c = attr['annotation']['coord']
         g.set_vdata(v, 'x', c[0])
         g.set_vdata(v, 'y', c[1])
@@ -108,9 +108,9 @@ def graph_to_json(g):
     freenamesv = ["v"+str(i) for i in range(g.num_vertices()+g.num_edges())]
     freenamesb = ["b"+str(i) for i in range(g.num_vertices())]
     for v in g.vertices():
-        t = g.get_type(v)
-        coord = [g.get_vdata(v,'x'),g.get_vdata(v,'y')]
-        name = g.get_vdata(v, 'name')
+        t = g.type(v)
+        coord = [g.vdata(v,'x'),g.vdata(v,'y')]
+        name = g.vdata(v, 'name')
         if not name:
             if t == 0: name = freenamesb.pop(0)
             else: name = freenamesv.pop(0)
@@ -128,20 +128,20 @@ def graph_to_json(g):
             if t==2: node_vs[name]["data"]["type"] = "X"
             elif t==1:node_vs[name]["data"]["type"] = "Z"
             elif t!=1: raise Exception("Unkown type "+ str(t))
-            phase = _phase_to_quanto_value(g.get_angle(v))
+            phase = _phase_to_quanto_value(g.phase(v))
             if phase: node_vs[name]["data"]["value"] = phase
             if not node_vs[name]["data"]: del node_vs[name]["data"]
 
     i = 0
     for e in g.edges():
         src,tgt = g.edge_st(e)
-        t = g.get_edge_type((src,tgt))
+        t = g.edge_type((src,tgt))
         if t == 1:
             edges["e"+ str(i)] = {"src": names[src],"tgt": names[tgt]}
             i += 1
         elif t==2: #hadamard edge
-            x1,y1 = g.get_vdata(src,'x'), g.get_vdata(src,'y')
-            x2,y2 = g.get_vdata(tgt,'x'), g.get_vdata(tgt,'y')
+            x1,y1 = g.vdata(src,'x'), g.vdata(src,'y')
+            x2,y2 = g.vdata(tgt,'x'), g.vdata(tgt,'y')
             hadname = freenamesv.pop(0)
             node_vs[hadname] = {"annotation": {"coord":[(x1+x2)/2.0,(y1+y2)/2.0]},
                              "data": {"type": "hadamard"}}
@@ -202,10 +202,10 @@ def simp_iter(g, name, match, rewrite):
         new_matches = False
         m = match(g)
         if len(m) > 0:
-            etab, rem_verts, check_solo_vertices = rewrite(g, m)
+            etab, rem_verts, check_isolated_vertices = rewrite(g, m)
             g.add_edge_table(etab)
             g.remove_vertices(rem_verts)
-            if check_solo_vertices: g.remove_solo_vertices()
+            if check_isolated_vertices: g.remove_isolated_vertices()
             yield g, name+str(i)
             new_matches = True
 

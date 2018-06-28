@@ -103,17 +103,17 @@ def tensorfy(g):
     int_vertices = {}
     inputs = []
 
-    types = g.get_types()
-    phases = g.get_angles()
+    types = g.types()
+    phases = g.phases()
 
     for v in g.vertices():
         if types[v] in (1,2):
             phase = pi*phases[v]
             int_vertices[v] = len(tensors)
-            d = g.get_vertex_degree(v)
+            d = g.vertex_degree(v)
             tensors.append(Z_to_tensor(d,phase) if types[v] == 1 else X_to_tensor(d,phase))
         elif types[v] == 0:
-            if g.get_vdata(v,'i'):
+            if g.vdata(v,'i'):
                 inputs.append(v)
         else:
             raise Exception("Wrong type for node with index {!s}: {!s}".format(v,types[v]))
@@ -121,7 +121,7 @@ def tensorfy(g):
     conns = []
     contraction_count = {v:0 for v in int_vertices}
     for v in inputs:
-        for n in g.get_neighbours(v): contraction_count[n] += 1
+        for n in g.neighbours(v): contraction_count[n] += 1
     for e in g.edges():
         s,t = g.edge_st(e)
         if not (s in int_vertices and t in int_vertices): continue
