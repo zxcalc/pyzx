@@ -88,12 +88,95 @@ def random_phase(add_t):
         return Fraction(random.randint(1,8),4)
     return Fraction(random.randint(1,4),2)
 
+def cliffordT(qubits, depth, p_t = 0.1):
+    g = Graph()
+    qs = list(range(qubits))  # tracks qubit indices of vertices
+    v = 0                     # next vertex to add
+
+    p_s = (1 - p_t) / 3.0
+    p_hsh = (1 - p_t) / 3.0
+    p_cnot = (1 - p_t) / 3.0
+    
+
+    for i in range(qubits):
+        g.add_vertex()
+        g.set_vdata(v, 'q', i)
+        g.set_vdata(v, 'r', 0)
+        g.set_type(v, 0)
+        v += 1
+
+    for i in range(qubits):
+        g.add_vertex()
+        g.set_vdata(v, 'q', i)
+        g.set_vdata(v, 'r', 1)
+        g.set_type(v, 1)
+        g.add_edge((qs[i], v))
+        qs[i] = v
+        v += 1
+
+    for r in range(2, depth+2):
+        p = random.random()
+        q0 = random.randrange(qubits)
+
+        g.add_vertex()
+        g.set_vdata(v, 'q', q0)
+        g.set_vdata(v, 'r', r)
+        g.set_type(v, 1)
+        g.add_edge((qs[q0], v))
+        qs[q0] = v
+        v += 1
+
+        if p > 1 - p_cnot:
+            # apply CNOT gate
+            q1 = random.randrange(qubits-1)
+            if q1 >= q0: q1 += 1
+
+            g.add_vertex()
+            g.set_vdata(v, 'q', q1)
+            g.set_vdata(v, 'r', r)
+            g.set_type(v, 2)
+            g.add_edge((qs[q1], v))
+            g.add_edge((v-1,v))
+            qs[q1] = v
+            v += 1
+        elif p > 1 - p_cnot - p_hsh:
+            # apply HSH gate
+            g.set_type(v-1, 2)
+            g.set_angle(v-1, Fraction(1,2))
+        elif p > 1 - p_cnot - p_hsh - p_s:
+            # apply S gate
+            g.set_angle(v-1, Fraction(1,2))
+        else:
+            # apply T gate
+            g.set_angle(v-1, Fraction(1,4))
+
+    for i in range(qubits):
+        g.add_vertex()
+        g.set_vdata(v, 'q', i)
+        g.set_vdata(v, 'r', depth+2)
+        g.set_type(v, 1)
+        g.add_edge((qs[i], v))
+        qs[i] = v
+        v += 1
+
+    for i in range(qubits):
+        g.add_vertex()
+        g.set_vdata(v, 'q', i)
+        g.set_vdata(v, 'r', depth+3)
+        g.set_type(v, 0)
+        g.add_edge((qs[i], v))
+        v += 1
+
+    return g
+
+
+
 def cliffords(qubits, depth, no_hadamard=False,t_gates=False,backend=None, keynames=('q','r')):
     #randomness parameters
     p_two_qubit = 0.4 #whether to add a edge between two qubits
-    p_cnot = 0.4 # whether to CNOT or to CZ
+    p_cnot = 1 #0.4 # whether to CNOT or to CZ
     p_phase = 0.6 #probability of adding a phase to a node
-    p_had = 0.2 # probability of adding a hadamard on a qubit
+    p_had = 0 #0.2 # probability of adding a hadamard on a qubit
 
     # initialise and add input row
 
@@ -177,8 +260,8 @@ def cliffords(qubits, depth, no_hadamard=False,t_gates=False,backend=None, keyna
         g.set_type(i, ty[i])
         g.set_vdata(i, keynames[0], qs[i])
         g.set_vdata(i, keynames[1], rs[i])
-    for v, phase in phases.items():
-        g.set_angle(v,phase)
+    for w, phase in phases.items():
+        g.set_angle(w,phase)
 
     for i in range(qubits):
         g.set_vdata(i, 'i', True)

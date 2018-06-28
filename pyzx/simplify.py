@@ -6,7 +6,7 @@ except ImportError:
     pass
 
 __all__ = ['bialg_simp','spider_simp', 'phase_free_simp', 'pivot_simp', 
-        'lcomp_simp', 'clifford_simp', 't_count']
+        'lcomp_simp', 'clifford_simp', 't_count', 'to_gh', 'to_rg']
 
 from .rules import *
 
@@ -52,11 +52,11 @@ def phase_free_simp(g):
 def clifford_simp(g):
     spider_simp(g)
     to_gh(g)
+    pivot_simp(g)
     lcomp_simp(g)
     pivot_simp(g)
-    to_rg(g)
-    id_simp(g)
-
+    #to_rg(g)
+    #id_simp(g)
 
 def to_gh(g):
     ty = g.get_types()
@@ -68,16 +68,26 @@ def to_gh(g):
                 if et == 2: g.set_edge_type(e,1)
                 elif et == 1: g.set_edge_type(e,2)
 
-def to_rg(g):
+def to_rg(g, select=None):
+    '''Turn into RG form by colour-changing vertices which satisfy the given predicate.
+    By default, the predicate is set to greedily reducing the number of h-edges.'''
+    if not select:
+        select = lambda v: (
+            len([e for e in g.get_incident_edges(v) if g.get_edge_type(e) == 1]) <
+            len([e for e in g.get_incident_edges(v) if g.get_edge_type(e) == 2])
+            )
+
     ty = g.get_types()
     for v in g.vertices():
-        if all(g.get_edge_type(e) == 2 for e in g.get_incident_edges(v)):
+        if select(v):
             if ty[v] == 1:
                 g.set_type(v, 2)
-                for e in g.get_incident_edges(v): g.set_edge_type(e, 1)
+                for e in g.get_incident_edges(v):
+                    g.set_edge_type(e, 1 if g.get_edge_type(e) == 2 else 2)
             elif ty[v] == 2:
                 g.set_type(v, 1)
-                for e in g.get_incident_edges(v): g.set_edge_type(e, 1)
+                for e in g.get_incident_edges(v):
+                    g.set_edge_type(e, 1 if g.get_edge_type(e) == 2 else 2)
 
 
 def t_count(g):

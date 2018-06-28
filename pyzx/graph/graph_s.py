@@ -58,7 +58,7 @@ class GraphS(BaseGraph):
 			del self.graph[t][s]
 
 	def remove_edge(self, edge):
-		self.remove_edge([edge])
+		self.remove_edges([edge])
 
 	def num_vertices(self):
 		return len(self.graph)
@@ -165,7 +165,7 @@ class GraphS(BaseGraph):
 		return self.angle.get(vertex,Fraction(1))
 
 	def set_angle(self, vertex, angle):
-		self.angle[vertex] = angle % 2
+		self.angle[vertex] = Fraction(angle) % 2
 
 	def add_angle(self, vertex, angle):
 		self.angle[vertex] = (self.angle.get(vertex,Fraction(1)) + angle) % 2
