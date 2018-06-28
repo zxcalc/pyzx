@@ -56,7 +56,7 @@ def clifford_simp(g):
     lcomp_simp(g)
     pivot_simp(g)
     #to_rg(g)
-    #id_simp(g)
+    id_simp(g)
 
 def to_gh(g):
     ty = g.types()

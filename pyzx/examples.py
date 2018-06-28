@@ -167,6 +167,10 @@ def cliffordT(qubits, depth, p_t = 0.1):
         g.add_edge((qs[i], v))
         v += 1
 
+    for i in range(qubits):
+        g.set_vdata(i, 'i', True)
+        g.set_vdata(v-i-1, 'o', True)
+
     return g
 
 
