@@ -1,7 +1,10 @@
 __all__ = ['tensorfy']
 
-import numpy as np
-np.set_printoptions(suppress=True)
+try:
+    import numpy as np
+    np.set_printoptions(suppress=True)
+except:
+    np = None
 from math import pi
 from .graph import *
 from . import examples
@@ -66,9 +69,10 @@ def contract_all(tensors,conns):
 
     # zip and flatten the tensors and indices
     args = [subarg for arg in zip(tensors,inds) for subarg in arg]
+    args.append(sublistout)
 
     # assuming there are no multiple contractions, we're done here
-    return np.einsum(*args,sublistout)
+    return np.einsum(*args)
 
 
 def Z_to_tensor(arity, phase):
@@ -86,10 +90,10 @@ def X_to_tensor(arity, phase):
             m[i] -= np.exp(1j*phase)
     return np.power(np.sqrt(0.5),arity)*m.reshape([2]*arity)
 
-S = Z_to_tensor(2,0.5*np.pi)
-Xphase = X_to_tensor(2,0.5*np.pi)
+#S = Z_to_tensor(2,0.5*np.pi)
+#Xphase = X_to_tensor(2,0.5*np.pi)
 
-had = np.sqrt(2)*np.exp(-1j*0.25*np.pi) * (S @ Xphase @ S)
+#had = np.sqrt(2)*np.exp(-1j*0.25*np.pi) * (S @ Xphase @ S)
 #print(had)
 
 def phase_to_number(s):

@@ -1,3 +1,4 @@
 notebooks/.ipynb_checkpoints
 *.pyc
 .vscode
+*.class

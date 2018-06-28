@@ -1,4 +1,4 @@
-__all__ = ['cnots','zigzag', 'zigzag2']
+__all__ = ['cnots','zigzag', 'zigzag2','cliffords']
 
 import random
 from fractions import Fraction
@@ -83,9 +83,10 @@ def cnots(qubits, depth, backend=None, keynames=('q','r')):
 def accept(p):
     return p>random.random()
 
-def random_phase():
+def random_phase(add_t):
+    if add_t:
+        return Fraction(random.randint(1,8),4)
     return Fraction(random.randint(1,4),2)
-
 
 def cliffordT(qubits, depth, p_t = 0.1):
     g = Graph()
@@ -170,17 +171,12 @@ def cliffordT(qubits, depth, p_t = 0.1):
 
 
 
-
-
-def cliffords(qubits, depth, backend=None, keynames=('q','r')):
+def cliffords(qubits, depth, no_hadamard=False,t_gates=False,backend=None, keynames=('q','r')):
     #randomness parameters
     p_two_qubit = 0.4 #whether to add a edge between two qubits
     p_cnot = 1 #0.4 # whether to CNOT or to CZ
     p_phase = 0.6 #probability of adding a phase to a node
     p_had = 0 #0.2 # probability of adding a hadamard on a qubit
-
-
-    g = Graph(backend)
 
     # initialise and add input row
 
@@ -210,17 +206,23 @@ def cliffords(qubits, depth, backend=None, keynames=('q','r')):
         t = random.randint(0, qubits-2)
         if t >= c: t += 1
         if accept(p_two_qubit):
-            if accept(p_cnot): es1.append((v, v+1))
-            else: es2.append((v,v+1))
-            if accept(p_phase): phases[v] = random_phase()
-            if accept(p_phase): phases[v+1] = random_phase()
+            if no_hadamard or accept(p_cnot): 
+                es1.append((v, v+1))
+                ty += [1,2]
+            else: 
+                es2.append((v,v+1))
+                typ = random.randint(1,2)
+                ty += [typ,typ]
+            if accept(p_phase): phases[v] = random_phase(t_gates)
+            if accept(p_phase): phases[v+1] = random_phase(t_gates)
         else:
-            phases[v] = random_phase()
-            phases[v+1] = random_phase()
+            phases[v] = random_phase(t_gates)
+            phases[v+1] = random_phase(t_gates)
+            ty += [1,2]
         
-        if accept(p_had): es2.append((q[c],v))
+        if not no_hadamard and accept(p_had): es2.append((q[c],v))
         else: es1.append((q[c],v))
-        if accept(p_had): es2.append((q[t],v+1))
+        if not no_hadamard and accept(p_had): es2.append((q[t],v+1))
         else: es1.append((q[t],v+1))
 
         q[c] = v
@@ -228,7 +230,6 @@ def cliffords(qubits, depth, backend=None, keynames=('q','r')):
         
         rs += [r,r]
         qs += [c,t]
-        ty += [1,2] # TODO: this makes things that are not unitary with H-edges
         v += 2
         r += 1
 
@@ -249,6 +250,7 @@ def cliffords(qubits, depth, backend=None, keynames=('q','r')):
     es1 += [(q[i], v+i) for i in range(qubits)]
     v += qubits
 
+    g = Graph(backend)
 
     g.add_vertices(v)
     g.add_edges(es1,1)

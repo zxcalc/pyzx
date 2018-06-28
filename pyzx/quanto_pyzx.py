@@ -49,10 +49,10 @@ def json_to_graph(js):
             if 'value' in d:
                 g.set_angle(v,_quanto_value_to_phase(d['value']))
             else:
-                g.set_angle(v,0.0)
+                g.set_angle(v,Fraction(0,1))
         else:
             g.set_type(v,1)
-            g.set_angle(v,0.0)
+            g.set_angle(v,Fraction(0,1))
         c = attr['annotation']['coord']
         g.set_vdata(v, 'x', c[0])
         g.set_vdata(v, 'y', c[1])
@@ -73,8 +73,12 @@ def json_to_graph(js):
         if n1 in hadamards and n2 in hadamards: #Both 
             g.add_vertex()
             g.set_type(v,1)
+            name = "v"+str(len(names))
+            g.set_vdata(v, 'name',name)
+            names[name] = v
             hadamards[n1].append(v)
             hadamards[n2].append(v)
+            v+=1
             continue
         if n1 in hadamards: 
             hadamards[n1].append(names[n2])
@@ -96,7 +100,7 @@ def json_to_graph(js):
 
     return g
 
-def json_from_graph(g):
+def graph_to_json(g):
     node_vs = {}
     wire_vs = {}
     edges = {}
@@ -130,24 +134,102 @@ def json_from_graph(g):
 
     i = 0
     for e in g.edges():
-        s,t = g.edge_st(e)
-        t = g.get_edge_type(s,t)
+        src,tgt = g.edge_st(e)
+        t = g.get_edge_type((src,tgt))
         if t == 1:
-            edges["e"+ str(i)] = {"src": names[s],"tgt": names[t]}
+            edges["e"+ str(i)] = {"src": names[src],"tgt": names[tgt]}
+            i += 1
+        elif t==2: #hadamard edge
+            x1,y1 = g.get_vdata(src,'x'), g.get_vdata(src,'y')
+            x2,y2 = g.get_vdata(tgt,'x'), g.get_vdata(tgt,'y')
+            hadname = freenamesv.pop(0)
+            node_vs[hadname] = {"annotation": {"coord":[(x1+x2)/2.0,(y1+y2)/2.0]},
+                             "data": {"type": "hadamard"}}
+            edges["e"+str(i)] = {"src": names[src],"tgt": hadname}
+            i += 1
+            edges["e"+str(i)] = {"src": names[tgt],"tgt": hadname}
             i += 1
         else:
-            x1,y1 = g.get_vdata(s,'x'), g.get_vdata(s,'y')
-            x2,y2 = g.get_vdata(t,'x'), g.get_vdata(t,'y')
-            hadname = freenamesv.pop(0)
-            node_vs[name] = {"annotation": {"coord":[(x1+x2)/2,(y1+y2)/2]},
-                             "data": {"type": "hadamard"}}
-            edges["e"+str(i)] = {"src": names[s],"tgt": hadname}
-            i += 1
-            edges["e"+str(i)] = {"src": names[t],"tgt": hadname}
-            i += 1
+            raise TypeError("Edge of type 0")
 
 
     return json.dumps({"wire_vertices": wire_vs, 
             "node_vertices": node_vs, 
             "undir_edges": edges})
 
+
+class RewriteMaker(object):
+    def __init__(self,rewriter):
+        self.rewriter = rewriter
+        self.steps = []
+        self.names = []
+
+    def start(self, js):
+        self.steps = []
+        self.names = []
+        g = json_to_graph(js)
+        for s,n in self.rewriter(g):
+            self.steps.append(graph_to_json(s))
+            self.names.append(n)
+
+        return len(self.steps)
+
+    def get_step(self, index):
+        return self.steps[index]
+
+    def get_name(self, index):
+        return self.names[index]
+
+try:
+    import quanto.util.Scripting as quanto
+except ImportError:
+    print("Not running in Quantomatic")
+
+def register_python_simproc(name, rewriter):
+    maker = RewriteMaker(rewriter)
+    simproc = quanto.JSON_REWRITE_STEPS(maker.start, maker.get_step, maker.get_name)
+    quanto.register_simproc(name, simproc)
+    output.println("registered simproc " + name)
+
+from . import simplify
+from . import rules
+
+def simp_iter(g, name, match, rewrite):
+    i = 0
+    new_matches = True
+    while new_matches:
+        i += 1
+        new_matches = False
+        m = match(g)
+        if len(m) > 0:
+            etab, rem_verts, check_solo_vertices = rewrite(g, m)
+            g.add_edge_table(etab)
+            g.remove_vertices(rem_verts)
+            if check_solo_vertices: g.remove_solo_vertices()
+            yield g, name+str(i)
+            new_matches = True
+
+def pivot_iter(g):
+    return simp_iter(g, 'pivot', rules.match_pivot_parallel, rules.pivot)
+
+def lcomp_iter(g):
+    return simp_iter(g, 'lcomp', rules.match_lcomp_parallel, rules.lcomp)
+
+def bialg_iter(g):
+    return simp_iter(g, 'bialg', rules.match_bialg_parallel, rules.bialg)
+
+def spider_iter(g):
+    return simp_iter(g, 'spider', rules.match_spider_parallel, rules.spider)
+
+def id_iter(g):
+    return simp_iter(g, 'id', rules.match_ids_parallel, rules.remove_ids)
+
+def clifford_iter(g):
+    for d  in spider_iter(g): yield d
+    simplify.to_gh(g)
+    yield g, "to_gh"
+    for d in lcomp_iter(g): yield d
+    for d in pivot_iter(g): yield d
+    simplify.to_rg(g)
+    yield g, "to_rg"
+    for d in id_iter(g): yield d
