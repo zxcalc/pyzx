@@ -2,8 +2,9 @@
 from . import tensor
 
 from .graph.graph import Graph
-from .drawing import draw
+from .drawing import *
 from .rules import *
 from .simplify import *
 from .examples import *
 from .io import *
+from .extract import *

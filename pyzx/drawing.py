@@ -1,3 +1,5 @@
+__all__ = ['draw', 'pack_circuit_ranks', 'pack_circuit_nf']
+
 try:
     import matplotlib.pyplot as plt
     from matplotlib import patches, lines, path
