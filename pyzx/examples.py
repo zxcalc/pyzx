@@ -7,6 +7,8 @@ from .graph.graph import Graph
 
 
 def cnots(qubits, depth, backend=None, keynames=('q','r')):
+    '''Generates a circuit consisting of randomly placed CNOT gates.
+    qubits'''
     g = Graph(backend)
 
     # initialise and add input row
@@ -268,7 +270,11 @@ def cliffords(qubits, depth, no_hadamard=False,t_gates=False,backend=None, keyna
         g.set_vdata(v-i-1, 'o', True)
     return g
 
+
+#TODO: Add rank information
 def zigzag(sz, backend=None):
+    '''Returns a 2 qubit phaseless circuit that resembles 
+    a long sequence of zigzags'''
     g = Graph(backend)
     g.add_vertices(2*sz+4)
     for i in range(1,sz+1):
@@ -282,7 +288,10 @@ def zigzag(sz, backend=None):
     g.add_edges([(2*sz,2*sz+2),(2*sz+1,2*sz+3)])
     return g
 
+#TODO: Add rank information
 def zigzag2(sz, backend=None):
+    '''Returns a 2 qubit phaseless circuit that resembles 
+    a long sequence of zigzags'''
     g = Graph(backend)
     g.add_vertices(2*sz+4)
     for i in range(1,sz+1):
