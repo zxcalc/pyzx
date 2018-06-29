@@ -101,6 +101,7 @@ def cliffordT(qubits, depth, p_t = 0.1):
     g = Graph()
     qs = list(range(qubits))  # tracks qubit indices of vertices
     v = 0                     # next vertex to add
+    r = 0                     # current row
 
     p_s = (1 - p_t) / 3.0
     p_hsh = (1 - p_t) / 3.0
@@ -110,20 +111,24 @@ def cliffordT(qubits, depth, p_t = 0.1):
     for i in range(qubits):
         g.add_vertex()
         g.set_vdata(v, 'q', i)
-        g.set_vdata(v, 'r', 0)
+        g.set_vdata(v, 'r', r)
         g.set_type(v, 0)
         v += 1
+
+    r += 1
 
     for i in range(qubits):
         g.add_vertex()
         g.set_vdata(v, 'q', i)
-        g.set_vdata(v, 'r', 1)
+        g.set_vdata(v, 'r', r)
         g.set_type(v, 1)
         g.add_edge((qs[i], v))
         qs[i] = v
         v += 1
 
-    for r in range(2, depth+2):
+    r += 1
+
+    for i in range(2, depth+2):
         p = random.random()
         q0 = random.randrange(qubits)
 
@@ -134,6 +139,7 @@ def cliffordT(qubits, depth, p_t = 0.1):
         g.add_edge((qs[q0], v))
         qs[q0] = v
         v += 1
+        r += 1
 
         if p > 1 - p_cnot:
             # apply CNOT gate
@@ -148,6 +154,7 @@ def cliffordT(qubits, depth, p_t = 0.1):
             g.add_edge((v-1,v))
             qs[q1] = v
             v += 1
+            r += 1
         elif p > 1 - p_cnot - p_hsh:
             # apply HSH gate
             g.set_type(v-1, 2)
@@ -162,19 +169,23 @@ def cliffordT(qubits, depth, p_t = 0.1):
     for i in range(qubits):
         g.add_vertex()
         g.set_vdata(v, 'q', i)
-        g.set_vdata(v, 'r', depth+2)
+        g.set_vdata(v, 'r', r)
         g.set_type(v, 1)
         g.add_edge((qs[i], v))
         qs[i] = v
         v += 1
 
+    r += 1
+
     for i in range(qubits):
         g.add_vertex()
         g.set_vdata(v, 'q', i)
-        g.set_vdata(v, 'r', depth+3)
+        g.set_vdata(v, 'r', r)
         g.set_type(v, 0)
         g.add_edge((qs[i], v))
         v += 1
+
+    
 
     for i in range(qubits):
         g.set_vdata(i, 'i', True)
