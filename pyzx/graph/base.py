@@ -96,7 +96,7 @@ class BaseGraph(object, metaclass=DocstringMeta):
 				n2 = n2%2 		#while hadamard edges go modulo 2
 				if n1 != 0 and n2 != 0:  #reduction rule for when both edges appear
 					new_type = 1
-					self.add_phase(v1, 1)
+					self.add_to_phase(v1, 1)
 					#add_pi_phase.append(v1)
 				elif n1 != 0: new_type = 1
 				elif n2 != 0: new_type = 2
@@ -106,7 +106,7 @@ class BaseGraph(object, metaclass=DocstringMeta):
 				n2 = bool(n2)	#while hadamard edges fuse
 				if n1 != 0 and n2 != 0:  #reduction rule for when both edges appear
 					new_type = 2
-					self.add_phase(v1, 1)
+					self.add_to_phase(v1, 1)
 					#add_pi_phase.append(v1)
 				elif n1 != 0: new_type = 1
 				elif n2 != 0: new_type = 2

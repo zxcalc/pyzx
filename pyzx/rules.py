@@ -202,7 +202,7 @@ def pivot(g, matches):
               [(s,t) if s < t else (t,s) for s in m[5] for t in m[6]] +
               [(s,t) if s < t else (t,s) for s in m[4] for t in m[6]])
         
-        for v in m[6]: g.add_phase(v, 1)
+        for v in m[6]: g.add_to_phase(v, 1)
 
         for i in range(2):
             if len(m[i+2]) == 0:
@@ -211,9 +211,9 @@ def pivot(g, matches):
                 a = g.phase(m[i])
                 rem_verts.append(m[i])
 
-                g.add_phase(m[1-i], a)
-                for v in m[(1-i)+4]: g.add_phase(v, a)
-                for v in m[6]: g.add_phase(v, a)
+                g.add_to_phase(m[1-i], a)
+                for v in m[(1-i)+4]: g.add_to_phase(v, a)
+                for v in m[6]: g.add_to_phase(v, a)
             else:
                 # toggle whether the boundary is an h-edge or a normal edge
                 e = g.edge(m[i], m[i+2][0])
@@ -271,7 +271,7 @@ def lcomp(g, matches):
         a = g.phase(m[0])
         rem.append(m[0])
         for i in range(len(m[1])):
-            g.add_phase(m[1][i], -a)
+            g.add_to_phase(m[1][i], -a)
             for j in range(i+1, len(m[1])):
                 e = (m[1][i],m[1][j])
                 if (e[0] > e[1]): e = (e[1],e[0])
