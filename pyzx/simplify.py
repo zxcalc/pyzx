@@ -1,3 +1,6 @@
+"""Contains simplification procedures based in the rewrite rules in rules_.
+"""
+
 from __future__ import print_function
 
 try:
@@ -11,6 +14,14 @@ __all__ = ['bialg_simp','spider_simp', 'phase_free_simp', 'pivot_simp',
 from .rules import *
 
 def simp(g, name, match, rewrite):
+    """Helper method for generating simplification strategies based on rules in rules_.
+    It keeps matching and rewriting with the given methods until it can no longer do so.
+    Example usage: ``simp(g, 'spider_simp', rules.match_spider_parallel, rules.spider)``
+
+    :param g: The graph that needs to be simplified.
+    :param str name: The name of this rewrite rule.
+    :param match: One of the ``match_*`` functions of rules_.
+    :param rewrite: One of the rewrite functions of rules_."""
     i = 0
     new_matches = True
     print(name)
@@ -46,10 +57,14 @@ def id_simp(g):
     return simp(g, 'id_simp', match_ids_parallel, remove_ids)
 
 def phase_free_simp(g):
+    '''Performs the following set of simplifications on the graph:
+    spider -> bialg'''
     spider_simp(g)
     bialg_simp(g)
 
 def clifford_simp(g):
+    '''Performs the following set of simplifications on the graph:
+    spider -> pivot -> lcomp -> pivot -> id'''
     spider_simp(g)
     to_gh(g)
     pivot_simp(g)
@@ -69,8 +84,8 @@ def to_gh(g):
                 elif et == 1: g.set_edge_type(e,2)
 
 def to_rg(g, select=None):
-    '''Turn into RG form by colour-changing vertices which satisfy the given predicate.
-    By default, the predicate is set to greedily reducing the number of h-edges.'''
+    """Turn into RG form by colour-changing vertices which satisfy the given predicate.
+    By default, the predicate is set to greedily reducing the number of h-edges."""
     if not select:
         select = lambda v: (
             len([e for e in g.incident_edges(v) if g.edge_type(e) == 1]) <
@@ -88,6 +103,50 @@ def to_rg(g, select=None):
                 g.set_type(v, 1)
                 for e in g.incident_edges(v):
                     g.set_edge_type(e, 1 if g.edge_type(e) == 2 else 2)
+
+
+
+
+def simp_iter(g, name, match, rewrite):
+    i = 0
+    new_matches = True
+    while new_matches:
+        i += 1
+        new_matches = False
+        m = match(g)
+        if len(m) > 0:
+            etab, rem_verts, check_isolated_vertices = rewrite(g, m)
+            g.add_edge_table(etab)
+            g.remove_vertices(rem_verts)
+            if check_isolated_vertices: g.remove_isolated_vertices()
+            yield g, name+str(i)
+            new_matches = True
+
+def pivot_iter(g):
+    return simp_iter(g, 'pivot', match_pivot_parallel, pivot)
+
+def lcomp_iter(g):
+    return simp_iter(g, 'lcomp', match_lcomp_parallel, lcomp)
+
+def bialg_iter(g):
+    return simp_iter(g, 'bialg', match_bialg_parallel, bialg)
+
+def spider_iter(g):
+    return simp_iter(g, 'spider', match_spider_parallel, spider)
+
+def id_iter(g):
+    return simp_iter(g, 'id', match_ids_parallel, remove_ids)
+
+def clifford_iter(g):
+    for d  in spider_iter(g): yield d
+    to_gh(g)
+    yield g, "to_gh"
+    for d in lcomp_iter(g): yield d
+    for d in pivot_iter(g): yield d
+    to_rg(g)
+    yield g, "to_rg"
+    for d in id_iter(g): yield d
+
 
 
 def t_count(g):

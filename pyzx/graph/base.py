@@ -16,8 +16,9 @@ class DocstringMeta(abc.ABCMeta):
                         pass
         return cls
 
-class BaseGraph(object, metaclass=DocstringMeta):
+class BaseGraph(object):
 	'''Base class that list the methods an implementation should implement'''
+	__metaclass__ = DocstringMeta
 	backend = 'None'
 
 	def __str__(self):

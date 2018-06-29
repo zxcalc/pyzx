@@ -1,7 +1,34 @@
+"""
+This file contains rewrite rules for ZX-graphs based on the ZX-calculus.
+
+The current rewrites are based on:
+
+- Spider fusion.
+- The bialgebra equation.
+- Local Complementation.
+- Pivotting.
+- Removing of identities.
+
+Each of these rewrite rules consists of three methods:
+
+- ``match_*`` finds a single match of the rule in a graph.
+- ``match_*_parallel`` finds as many non-overlapping matches as possible.
+- The final method takes a list of matches produced by these methods and returns
+  a 3-tuple ``(edge_table, verts_to_remove, check_for_isolated_vertices)``.
+  ``edge_table`` should be fed to :meth:`~graph.base.BaseGraph.add_edge_table`, 
+  ``verts_to_remove`` to :meth:`~graph.base.BaseGraph.remove_vertices`
+  and if ``check_for_isolated_vertices`` is ``True``, then 
+  :meth:`graph.base.BaseGraph.remove_isolated_vertices`
+  should be called.
+
+These rewrite rules are used in the simplification procedures of :mod:`simplify`.
+"""
+
 from fractions import Fraction
 
 
 def match_bialg(g):
+    """Does the same as :func:`match_bialg_parallel` but with ``num=1``."""
     types = g.types()
     for e in g.edges():
         v0, v1 = g.edge_st(e)
@@ -17,8 +44,17 @@ def match_bialg(g):
     return []
 
 
+#TODO: make it be hadamard edge aware
 def match_bialg_parallel(g, num=-1, edgelist=-1):
-    #TODO: make it be hadamard edge aware
+    """Finds noninteracting matchings of the bialgebra rule.
+    
+    :param g: An instance of a ZX-graph.
+    :param num: Maximal amount of matchings to find. If -1 (the default)
+       tries to find as many as possible.
+    :param edgelist: List of edges to consider. If -1 (the default), looks 
+       at all edges.
+    :rtype: List of 4-tuples ``(v1, v2, neighbours_of_v1,neighbours_of_v2)``
+    """
     if edgelist!=-1: candidates = set(edgelist)
     else: candidates = g.edge_set()
     types = g.types()
@@ -45,6 +81,8 @@ def match_bialg_parallel(g, num=-1, edgelist=-1):
 
 
 def bialg(g, matches):
+    """Performs a certain type of bialgebra rewrite given matchings supplied by
+    ``match_bialg(_parallel)``."""
     rem_verts = []
     etab = dict()
     for m in matches:
@@ -58,6 +96,7 @@ def bialg(g, matches):
     return (etab, rem_verts, True)
 
 def match_spider(g):
+    """Does the same as :func:`match_spider_parallel` but with ``num=1``."""
     for e in g.edges():
         if g.edge_type(e) != 1: continue
         v0, v1 = g.edge_st(e)
@@ -66,6 +105,15 @@ def match_spider(g):
     return []
 
 def match_spider_parallel(g, num=-1, edgelist=-1):
+    """Finds noninteracting matchings of the spider fusion rule.
+    
+    :param g: An instance of a ZX-graph.
+    :param num: Maximal amount of matchings to find. If -1 (the default)
+       tries to find as many as possible.
+    :param edgelist: List of edges to consider. If -1 (the default), looks 
+       at all edges.
+    :rtype: List of 2-tuples ``(v1, v2)``
+    """
     if edgelist!=-1: candidates = set(edgelist)
     else: candidates = g.edge_set()
     types = g.types()
@@ -88,6 +136,8 @@ def match_spider_parallel(g, num=-1, edgelist=-1):
     return m
 
 def spider(g, matches):
+    '''Performs spider fusion given a list of matchings from ``match_spider(_parallel)``
+    '''
     rem_verts = []
     etab = dict()
     types = g.types()
@@ -108,13 +158,24 @@ def spider(g, matches):
     
     return (etab, rem_verts, True)
 
-
+# TODO: optimise for single-match case
 def match_pivot(g):
-    # TODO: optimise for single-match case
+    """Does the same as :func:`match_pivot_parallel` but with ``num=1``."""
     return match_pivot_parallel(g, num=1, check_edge_types=True)
 
 
 def match_pivot_parallel(g, num=-1, check_edge_types=False, edgelist=-1):
+    """Finds noninteracting matchings of the pivot rule.
+    
+    :param g: An instance of a ZX-graph.
+    :param num: Maximal amount of matchings to find. If -1 (the default)
+       tries to find as many as possible.
+    :param check_edge_types: Whether the method has to check if all the edges involved
+       are of the correct type (Hadamard edges).
+    :param edgelist: List of edges to consider. If -1 (the default), looks 
+       at all edges.
+    :rtype: List of 7-tuples. See :func:`pivot` for the details.
+    """
     if edgelist!=-1: candidates = set(edgelist)
     else: candidates = g.edge_set()
     types = g.types()
@@ -185,16 +246,17 @@ def match_pivot_parallel(g, num=-1, check_edge_types=False, edgelist=-1):
 
 
 def pivot(g, matches):
-    '''Perform a pivoting rewrite, given a list of matches. A match is itself a list where:
+    """Perform a pivoting rewrite, given a list of matches as returned by
+    ``match_pivot(_parallel)``. A match is itself a list where:
 
-    m[0] : first vertex in pivot
-    m[1] : second vertex in pivot
-    m[2] : list of zero or one boundaries adjacent to m[0]
-    m[3] : list of zero or one boundaries adjacent to m[1]
-    m[4] : list of (non-boundary) vertices adjacent to m[0] only
-    m[5] : list of (non-boundary) vertices adjacent to m[1] only
-    m[6] : list of (non-boundary) vertices adjacent to m[0] and m[1]
-    '''
+    ``m[0]`` : first vertex in pivot.
+    ``m[1]`` : second vertex in pivot.
+    ``m[2]`` : list of zero or one boundaries adjacent to ``m[0]``.
+    ``m[3]`` : list of zero or one boundaries adjacent to ``m[1]``.
+    ``m[4]`` : list of (non-boundary) vertices adjacent to ``m[0]`` only.
+    ``m[5]`` : list of (non-boundary) vertices adjacent to ``m[1]`` only.
+    ``m[6]`` : list of (non-boundary) vertices adjacent to ``m[0]`` and ``m[1]``.
+    """
     rem_verts = []
     etab = dict()
     for m in matches:
@@ -202,7 +264,7 @@ def pivot(g, matches):
               [(s,t) if s < t else (t,s) for s in m[5] for t in m[6]] +
               [(s,t) if s < t else (t,s) for s in m[4] for t in m[6]])
         
-        for v in m[6]: g.add_phase(v, 1)
+        for v in m[6]: g.add_to_phase(v, 1)
 
         for i in range(2):
             if len(m[i+2]) == 0:
@@ -211,9 +273,9 @@ def pivot(g, matches):
                 a = g.phase(m[i])
                 rem_verts.append(m[i])
 
-                g.add_phase(m[1-i], a)
-                for v in m[(1-i)+4]: g.add_phase(v, a)
-                for v in m[6]: g.add_phase(v, a)
+                g.add_to_phase(m[1-i], a)
+                for v in m[(1-i)+4]: g.add_to_phase(v, a)
+                for v in m[6]: g.add_to_phase(v, a)
             else:
                 # toggle whether the boundary is an h-edge or a normal edge
                 e = g.edge(m[i], m[i+2][0])
@@ -235,9 +297,21 @@ def pivot(g, matches):
 
 
 def match_lcomp(g):
+    """Same as :func:`match_lcomp_parallel`, but with ``num=1``"""
     return match_lcomp_parallel(g, num=1, check_edge_types=True)
 
 def match_lcomp_parallel(g, num=-1, check_edge_types=False, vertexlist=-1):
+    """Finds noninteracting matchings of the local complementation rule.
+    
+    :param g: An instance of a ZX-graph.
+    :param num: Maximal amount of matchings to find. If -1 (the default)
+       tries to find as many as possible.
+    :param check_edge_types: Whether the method has to check if all the edges involved
+       are of the correct type (Hadamard edges).
+    :param vertexlist: List of vertices to consider. If -1 (the default), looks 
+       at all vertices.
+    :rtype: List of 2-tuples ``(vertex, neighbours)``.
+    """
     if vertexlist!=-1: candidates = set(vertexlist)
     else: candidates = g.vertex_set()
     types = g.types()
@@ -265,13 +339,16 @@ def match_lcomp_parallel(g, num=-1, check_edge_types=False, vertexlist=-1):
     return m
 
 def lcomp(g, matches):
+    """Performs a local complementation based rewrite rule on the given graph with the
+    given ``matches`` returned from ``match_lcomp(_parallel)``. See *insert paper here* 
+    for more details on the rewrite"""
     etab = dict()
     rem = []
     for m in matches:
         a = g.phase(m[0])
         rem.append(m[0])
         for i in range(len(m[1])):
-            g.add_phase(m[1][i], -a)
+            g.add_to_phase(m[1][i], -a)
             for j in range(i+1, len(m[1])):
                 e = (m[1][i],m[1][j])
                 if (e[0] > e[1]): e = (e[1],e[0])
@@ -282,9 +359,19 @@ def lcomp(g, matches):
 
 
 def match_ids(g):
+    """Finds a single identity node. See :func:`match_ids_parallel`."""
     return match_ids_parallel(g, num=1)
 
 def match_ids_parallel(g, num=-1, vertexlist=-1):
+    """Finds noninteracting identity nodes.
+    
+    :param g: An instance of a ZX-graph.
+    :param num: Maximal amount of matchings to find. If -1 (the default)
+       tries to find as many as possible.
+    :param vertexlist: List of vertices to consider. If -1 (the default), looks 
+       at all vertices.
+    :rtype: List of 4-tuples ``(identity_vertex, neighbour1, neighbour2, edge_type)``.
+    """
     if vertexlist!=-1: candidates = set(vertexlist)
     else: candidates = g.vertex_set()
     types = g.types()
@@ -307,6 +394,8 @@ def match_ids_parallel(g, num=-1, vertexlist=-1):
     return m
 
 def remove_ids(g, matches):
+    """Given the output of ``match_ids(_parallel)``, returns a list of edges to add,
+    and vertices to remove."""
     etab = dict()
     rem = []
     for m in matches:

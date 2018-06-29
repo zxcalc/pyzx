@@ -179,4 +179,6 @@ def draw(g, layout=None, labels=False, figsize=(8,2), h_edge_draw='blue'):
         if a: plt.text(p[0], p[1]-0.5, phase_to_s(a), ha='center', color='blue', fontsize=8)
     
     ax.axis('equal')
-    plt.show()
+    plt.close()
+    return fig1
+    #plt.show()

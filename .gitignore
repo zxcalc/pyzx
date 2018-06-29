@@ -3,3 +3,4 @@ doc/_build
 *.pyc
 .vscode
 *.class
+*.ipynb_checkpoints

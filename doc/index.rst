@@ -12,6 +12,7 @@ PyZX
    
    gettingstarted
    generate
+   simplify
    graph
 
 

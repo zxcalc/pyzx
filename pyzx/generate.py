@@ -1,4 +1,4 @@
-__all__ = ['cnots','zigzag', 'zigzag2','cliffords']
+__all__ = ['cnots','zigzag', 'zigzag2','cliffords', 'cliffordT']
 
 import random
 from fractions import Fraction
@@ -189,7 +189,7 @@ def cliffords(qubits, depth, no_hadamard=False,t_gates=False,backend=None, keyna
     p_two_qubit = 0.4 #whether to add a edge between two qubits
     p_cnot = 1 #0.4 # whether to CNOT or to CZ
     p_phase = 0.6 #probability of adding a phase to a node
-    p_had = 0 #0.2 # probability of adding a hadamard on a qubit
+    p_had = 0.2 # probability of adding a hadamard on a qubit
 
     # initialise and add input row
 
