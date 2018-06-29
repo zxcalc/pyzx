@@ -74,6 +74,7 @@ def clifford_simp(g):
     id_simp(g)
 
 def to_gh(g):
+    """Turns every red node into a green node by changing regular edges into hadamard edges"""
     ty = g.types()
     for v in g.vertices():
         if ty[v] == 2:
@@ -84,8 +85,10 @@ def to_gh(g):
                 elif et == 1: g.set_edge_type(e,2)
 
 def to_rg(g, select=None):
-    """Turn into RG form by colour-changing vertices which satisfy the given predicate.
-    By default, the predicate is set to greedily reducing the number of h-edges."""
+    """Turn green nodes into red nodes by colour-changing vertices which satisfy the predicate ``select``.
+    By default, the predicate is set to greedily reducing the number of Hadamard-edges.
+    :param g: A ZX-graph.
+    :param select: A function taking in vertices and returning ``True`` or ``False``."""
     if not select:
         select = lambda v: (
             len([e for e in g.incident_edges(v) if g.edge_type(e) == 1]) <
@@ -108,6 +111,7 @@ def to_rg(g, select=None):
 
 
 def simp_iter(g, name, match, rewrite):
+    """Version of :func:`simp` that instead of performing all rewrites at ones, returns an iterator."""
     i = 0
     new_matches = True
     while new_matches:
@@ -150,6 +154,7 @@ def clifford_iter(g):
 
 
 def t_count(g):
+    """Returns the amount of T-gates in ``g``."""
     count = 0
     for a in g.phases().values():
         if a.denominator == 4:
@@ -163,6 +168,7 @@ def _worker(arg):
     return None
 
 def simp_threaded(g, name, match, rewrite, uses_verts=False,safe=False,skip_unthreaded_pass=False):
+    """Version of :func:`simp` that uses :mod:`multiprocessing`."""
     nthreads = 5
     i = 0
     new_matches = True

@@ -3,6 +3,8 @@ import igraph as ig
 from .base import BaseGraph
 
 class GraphIG(BaseGraph):
+	"""Implementation of :class:`~graph.base.BaseGraph` using ``python-igraph`` 
+	as its backend"""
 	backend = 'igraph'
 	def __init__(self):
 		self.graph = ig.Graph(directed=False)

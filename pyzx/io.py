@@ -5,7 +5,7 @@ from .graph.graph import Graph
 from .simplify import id_simp
 
 def read_quipper_file(fname, backend=None, keynames=('q','r')):
-    '''Reads in the ASCII description of a circuit as outputted by Quipper'''
+    """Reads in the ASCII description of a circuit as outputted by Quipper."""
     f = open(fname, 'r')
     lines = f.read().splitlines()
     f.close()
@@ -145,8 +145,8 @@ def _phase_to_quanto_value(p):
 
 
 def json_to_graph(js):
-    '''Converts the json representation of a .qgraph Quantomatic graph into
-    a pyzx graph'''
+    """Converts the json representation of a .qgraph Quantomatic graph into
+    a pyzx graph."""
     j = json.loads(str(js))
     g = Graph('simple')
     v = 0
@@ -219,7 +219,7 @@ def json_to_graph(js):
     return g
 
 def graph_to_json(g):
-    '''Converts a pyzx graph into json output compatible with Quantomatic'''
+    """Converts a PyZX graph into JSON output compatible with Quantomatic."""
     node_vs = {}
     wire_vs = {}
     edges = {}

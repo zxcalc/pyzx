@@ -7,15 +7,15 @@ from .graph.graph import Graph
 
 
 def cnots(qubits, depth, backend=None, keynames=('q','r')):
-    '''Generates a circuit consisting of randomly placed CNOT gates.
+    """Generates a circuit consisting of randomly placed CNOT gates.
 
     :param qubits: Amount of qubits in circuit
     :param depth: Depth of circuit
-    :param backend: None or string representing which backend to use
-    :param keynames: Which names to use for the vertex data
+    :param backend: When given, should be one of the possible :ref:`graph_api` backends.
+    :param keynames: Which names to use for the vertex data of qubit index and rank.
     :type keynames: 2-tuple of strings
     :rtype: Instance of graph of the given backend
-    '''
+    """
     g = Graph(backend)
 
     # initialise and add input row
@@ -97,8 +97,16 @@ def random_phase(add_t):
         return Fraction(random.randint(1,8),4)
     return Fraction(random.randint(1,4),2)
 
-def cliffordT(qubits, depth, p_t = 0.1):
-    g = Graph()
+def cliffordT(qubits, depth, p_t = 0.1, backend=None):
+    """Generates a circuit consisting of randomly placed Clifford+T gates.
+
+    :param qubits: Amount of qubits in circuit.
+    :param depth: Depth of circuit.
+    :param p_t: Probability that each gate is a T-gate.
+    :param backend: When given, should be one of the possible :ref:`graph_api` backends.
+    :rtype: Instance of graph of the given backend.
+    """
+    g = Graph(backend)
     qs = list(range(qubits))  # tracks qubit indices of vertices
     v = 0                     # next vertex to add
     r = 0                     # current row
@@ -196,6 +204,18 @@ def cliffordT(qubits, depth, p_t = 0.1):
 
 
 def cliffords(qubits, depth, no_hadamard=False,t_gates=False,backend=None, keynames=('q','r')):
+    """Generates a circuit consisting of randomly placed Clifford gates.
+    Uses a different approach to generating Clifford circuits then :func:`cliffordT`.
+
+    :param qubits: Amount of qubits in circuit.
+    :param depth: Depth of circuit.
+    :param no_hadamard: Whether hadamard edges are allowed to be placed.
+    :param backend: When given, should be one of the possible :ref:`graph_api` backends.
+    :param keynames: Which names to use for the vertex data of qubit index and rank.
+    :type keynames: 2-tuple of strings
+    :rtype: Instance of graph of the given backend.
+    """
+
     #randomness parameters
     p_two_qubit = 0.4 #whether to add a edge between two qubits
     p_cnot = 1 #0.4 # whether to CNOT or to CZ
@@ -295,8 +315,8 @@ def cliffords(qubits, depth, no_hadamard=False,t_gates=False,backend=None, keyna
 
 #TODO: Add rank information
 def zigzag(sz, backend=None):
-    '''Returns a 2 qubit phaseless circuit that resembles 
-    a long sequence of zigzags'''
+    """Returns a 2 qubit phaseless circuit that resembles 
+    a long sequence of zigzags"""
     g = Graph(backend)
     g.add_vertices(2*sz+4)
     for i in range(1,sz+1):
@@ -312,8 +332,8 @@ def zigzag(sz, backend=None):
 
 #TODO: Add rank information
 def zigzag2(sz, backend=None):
-    '''Returns a 2 qubit phaseless circuit that resembles 
-    a long sequence of zigzags'''
+    """Returns a 2 qubit phaseless circuit that resembles 
+    a long sequence of zigzags"""
     g = Graph(backend)
     g.add_vertices(2*sz+4)
     for i in range(1,sz+1):

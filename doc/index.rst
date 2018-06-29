@@ -13,7 +13,9 @@ PyZX
    gettingstarted
    generate
    simplify
+   extract
    graph
+   io
 
 
 Indices and tables

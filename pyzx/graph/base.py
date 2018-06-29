@@ -17,7 +17,10 @@ class DocstringMeta(abc.ABCMeta):
         return cls
 
 class BaseGraph(object):
-	'''Base class that list the methods an implementation should implement'''
+	"""Base class for letting graph backends interact with PyZX.
+	For a backend to work with PyZX, there should be a class that implements
+	all the methods of this class. For implementations of this class see 
+	:class:`~graph.graph_s.GraphS` or :class `~graph.graph_ig.GraphIG`."""
 	__metaclass__ = DocstringMeta
 	backend = 'None'
 
@@ -29,13 +32,13 @@ class BaseGraph(object):
 		return str(self)
 
 	def copy(self, backend=None):
-		'''Create a copy of the graph. Optionally, the 'backend' parameter can be given
+		"""Create a copy of the graph. Optionally, the 'backend' parameter can be given
 		to create a copy of the graph with a given backend. If it is omitted, the copy
 		will have the same backend.
 
 		Note the copy will have consecutive vertex indices, even if the original
 		graph did not.
-		'''
+		"""
 		from .graph import Graph #imported here to prevent circularity
 		if (backend == None):
 			backend = type(self).backend
@@ -60,28 +63,28 @@ class BaseGraph(object):
 
 
 	def add_vertices(self, amount):
-		'''Add an amount of vertices to the graph'''
+		"""Add an amount of vertices to the graph"""
 		raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
 	def add_vertex(self):
-		'''Add a single vertex to the graph'''
+		"""Add a single vertex to the graph"""
 		self.add_vertices(1)
 
 	def add_edges(self, edges, edgetype=1):
-		'''Adds a list of edges to the graph. 
+		"""Adds a list of edges to the graph. 
 		If edgetype is 1 (the default), these will be regular edges.
-		If edgetype is 2, these edges will be Hadamard edges.'''
+		If edgetype is 2, these edges will be Hadamard edges."""
 		raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
 	def add_edge(self, edge, edgetype=1):
-		'''Adds a single edge of the given type (1=regular, 2=Hadamard edge)'''
+		"""Adds a single edge of the given type (1=regular, 2=Hadamard edge)"""
 		self.add_edges([edge], edgetype)
 
 	def add_edge_table(self, etab):
-		'''Takes a dictionary mapping (source,target) --> (#edges, #h-edges) specifying that
+		"""Takes a dictionary mapping (source,target) --> (#edges, #h-edges) specifying that
 		#edges regular edges must be added between source and target and $h-edges Hadamard edges.
 		The method selectively adds or removes edges to produce that ZX diagram which would 
-		result from adding (#edges, #h-edges), and then removing all parallel edges using Hopf/spider laws.'''
+		result from adding (#edges, #h-edges), and then removing all parallel edges using Hopf/spider laws."""
 		add = ([],[]) # list of edges and h-edges to add
 		remove = []   # list of edges to remove
 		#add_pi_phase = []
@@ -125,132 +128,132 @@ class BaseGraph(object):
 		self.add_edges(add[1],2)
 
 	def remove_vertices(self, vertices):
-		'''Removes the list of vertices from the graph'''
+		"""Removes the list of vertices from the graph"""
 		raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
 	def remove_vertex(self, vertex):
-		'''Removes the given vertex from the graph'''
+		"""Removes the given vertex from the graph"""
 		self.remove_vertices([vertex])
 
 	def remove_isolated_vertices(self):
-		'''Deletes all vertices that are not connected to any other vertex.
-		Should be replaced by a faster alternative if available in the backend'''
+		"""Deletes all vertices that are not connected to any other vertex.
+		Should be replaced by a faster alternative if available in the backend"""
 		self.remove_vertices([v for v in self.vertices() if self.vertex_degree(v)==0])
 
 	def remove_edges(self, edges):
-		'''Removes the list of edges from the graph'''
+		"""Removes the list of edges from the graph"""
 		raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
 	def remove_edge(self, edge):
-		'''Removes the given edge from the graph'''
+		"""Removes the given edge from the graph"""
 		self.remove_edge([edge])
 
 	def num_vertices(self):
-		'''Returns the amount of vertices in the graph'''
+		"""Returns the amount of vertices in the graph"""
 		raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
 	def num_edges(self):
-		'''Returns the amount of edges in the graph'''
+		"""Returns the amount of edges in the graph"""
 		raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
 	def vertices(self):
-		'''Iterator over all the vertices'''
+		"""Iterator over all the vertices"""
 		raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
 	def edges(self):
-		'''Iterator that returns all the edges. Output type depends on implementation in backend'''
+		"""Iterator that returns all the edges. Output type depends on implementation in backend"""
 		raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
 	def vertex_set(self):
-		'''Returns the vertices of the graph as a Python set. 
-		Should be overloaded if the backend supplies a cheaper version than this.'''
+		"""Returns the vertices of the graph as a Python set. 
+		Should be overloaded if the backend supplies a cheaper version than this."""
 		return set(self.vertices())
 
 	def edge_set(self):
-		'''Returns the edges of the graph as a Python set. 
-		Should be overloaded if the backend supplies a cheaper version than this.'''
+		"""Returns the edges of the graph as a Python set. 
+		Should be overloaded if the backend supplies a cheaper version than this."""
 		return set(self.edges())
 
 	def edge(self, s, t):
-		'''Returns the edge object with the given source/target'''
+		"""Returns the edge object with the given source/target"""
 		raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
 	def edge_st(self, edge):
-		'''Returns a tuple of source/target of the given edge.'''
+		"""Returns a tuple of source/target of the given edge."""
 		raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
 	def edge_s(self, edge):
-		'''Returns the source of the given edge.'''
+		"""Returns the source of the given edge."""
 		return self.edge_st(edge)[0]
 
 	def edge_t(self, edge):
-		'''Returns the target of the given edge.'''
+		"""Returns the target of the given edge."""
 		return self.edge_st(edge)[1]
 
 	def neighbours(self, vertex):
-		'''Returns all neighbouring vertices of the given vertex'''
+		"""Returns all neighbouring vertices of the given vertex"""
 		raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
 	def vertex_degree(self, vertex):
-		'''Returns the degree of the given vertex'''
+		"""Returns the degree of the given vertex"""
 		raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
 	def incident_edges(self, vertex):
-		'''Returns all neighbouring edges of the given vertex.'''
+		"""Returns all neighbouring edges of the given vertex."""
 		raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
 	def connected(self,v1,v2):
-		'''Returns whether vertices v1 and v2 share an edge'''
+		"""Returns whether vertices v1 and v2 share an edge"""
 		raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
 	def edge_type(self, e):
-		'''Returns the type of the given edge:
-		1 if it is regular, 2 if it is a Hadamard edge, 0 if the edge is not in the graph'''
+		"""Returns the type of the given edge:
+		1 if it is regular, 2 if it is a Hadamard edge, 0 if the edge is not in the graph"""
 		raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
 	def set_edge_type(self, e, t):
-		'''Sets the type of the given edge.'''
+		"""Sets the type of the given edge."""
 		raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
 	def type(self, vertex):
-		'''Returns the type of the given vertex:
-		0 if it is a boundary, 1 if is a Z node, 2 if it a X node'''
+		"""Returns the type of the given vertex:
+		0 if it is a boundary, 1 if is a Z node, 2 if it a X node"""
 		raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
 	def types(self):
-		'''Returns a mapping of vertices to their types'''
+		"""Returns a mapping of vertices to their types"""
 		raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
 	def set_type(self, vertex, t):
-		'''Sets the type of the given vertex to t'''
+		"""Sets the type of the given vertex to t"""
 		raise NotImplementedError("Not implemented on backend" + type(self).backend)
 
 	def phase(self, vertex):
-		'''Returns the phase value of the given vertex'''
+		"""Returns the phase value of the given vertex"""
 		raise NotImplementedError("Not implemented on backend" + type(self).backend)
 
 	def phases(self):
-		'''Returns a mapping of vertices to their phase values'''
+		"""Returns a mapping of vertices to their phase values"""
 		raise NotImplementedError("Not implemented on backend" + type(self).backend)
 
 	def set_phase(self, vertex, phase):
-		'''Sets the phase of the vertex to the given value'''
+		"""Sets the phase of the vertex to the given value"""
 		raise NotImplementedError("Not implemented on backend" + type(self).backend)
 
 	def add_to_phase(self, vertex, phase):
-		'''Add the given phase to the phase value of the given vertex'''
+		"""Add the given phase to the phase value of the given vertex"""
 		self.set_phase(vertex,self.phase(vertex)+phase)
 
 	def vdata_keys(self, vertex):
-		'''Returns an iterable of the vertex data key names.
-		Used e.g. in making a copy of the graph in a backend-independent way.'''
+		"""Returns an iterable of the vertex data key names.
+		Used e.g. in making a copy of the graph in a backend-independent way."""
 		raise NotImplementedError("Not implemented on backend" + type(self).backend)
 
 	def vdata(self, vertex, key, default=0):
-		'''Returns the data value of the given vertex associated to the key.
-		If this key has no value associated with it, it returns the default value.'''
+		"""Returns the data value of the given vertex associated to the key.
+		If this key has no value associated with it, it returns the default value."""
 		raise NotImplementedError("Not implemented on backend" + type(self).backend)
 
 	def set_vdata(self, vertex, key, val):
-		'''Sets the vertex data associated to key to val'''
+		"""Sets the vertex data associated to key to val"""
 		raise NotImplementedError("Not implemented on backend" + type(self).backend)

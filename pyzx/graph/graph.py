@@ -5,8 +5,11 @@ typeZ = 1
 typeX = 2
 
 def Graph(backend=None):
-	'''Returns an instance of an implementation of BaseGraph. 
-	By default GraphS is used. Other options are 'graph_tool' and 'igraph'. '''
+	"""Returns an instance of an implementation of :class:`~graph.base.BaseGraph`. 
+	By default :class:`~graph.graph_s.GraphS` is used. 
+	Currently ``backend`` is allowed to be `simple` (for the default),
+	or 'graph_tool' and 'igraph'.
+	**Note**: graph_tool is currently not fully supported."""
 	if not backend: backend = 'simple'
 	if backend:
 		if backend not in backends:

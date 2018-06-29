@@ -36,13 +36,25 @@ Backends
 
 ZX-graphs can be represented internally in different ways. PyZX currently supports using either ``python-igraph``, or the built-in implementation :class:`graph.graph_s.GraphS` (the default). Each implementation should implement the methods of :class:`graph.base.BaseGraph`.
 
+.. _graph_api:
 
 Graph API
 ---------
-
+ZX-graphs are internally represented by instances of classes that implement the methods of :class:`~graph.base.BaseGraph`. These methods are listed below. Complete implementations of these methods are currently supplied in :class:`~graph.graph_s.GraphS` and :class:`~graph.graph_ig.GraphIG`:
 
 .. module:: graph
 
+.. autoclass:: graph.graph_s.GraphS
+
+.. autoclass:: graph.graph_ig.GraphIG
+
+To create a graph of a specific backend a convenience method ``Graph`` is supplied:
+
+.. function:: Graph(backend=None)
+   
+   If backend is given it should be a string. If it is ``'simple'`` an instance of :class:`~graph.graph_s.GraphS` is returned (this is the default). If it is ``'igraph'`` an instance of :class:`~graph.graph_ig.GraphIG` is returned.
+
+Both these implementations implement the following methods of BaseGraph:
 
 .. autoclass:: graph.base.BaseGraph
    :members:

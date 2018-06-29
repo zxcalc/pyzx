@@ -10,7 +10,7 @@ from math import pi
 qpi = 0.25*pi
 
 def contract_all(tensors,conns):
-    '''
+    """
     Contract the tensors inside the list tensors
     according to the connectivities in conns
 
@@ -21,7 +21,7 @@ def contract_all(tensors,conns):
     conns = [((0,1),(2,0)), ((1,1),(2,1))]
     returned shape in this case is (2,3,5)
     Taken from https://stackoverflow.com/questions/42034480/efficient-tensor-contraction-in-python
-    '''
+    """
 
     ndims = [t.ndim for t in tensors]
     totdims = sum(ndims)
@@ -97,8 +97,8 @@ def X_to_tensor(arity, phase):
 
 
 def tensorfy(g):
-    '''Takes in a Graph and outputs a multidimensional numpy array
-    representing the linear map the ZX-diagram implements'''
+    """Takes in a Graph and outputs a multidimensional numpy array
+    representing the linear map the ZX-diagram implements"""
     tensors = []
     int_vertices = {}
     inputs = []
