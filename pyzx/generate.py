@@ -8,7 +8,14 @@ from .graph.graph import Graph
 
 def cnots(qubits, depth, backend=None, keynames=('q','r')):
     '''Generates a circuit consisting of randomly placed CNOT gates.
-    qubits'''
+
+    :param qubits: Amount of qubits in circuit
+    :param depth: Depth of circuit
+    :param backend: None or string representing which backend to use
+    :param keynames: Which names to use for the vertex data
+    :type keynames: 2-tuple of strings
+    :rtype: Instance of graph of the given backend
+    '''
     g = Graph(backend)
 
     # initialise and add input row

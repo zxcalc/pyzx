@@ -5,6 +5,6 @@ from .graph.graph import Graph
 from .drawing import *
 from .rules import *
 from .simplify import *
-from .examples import *
+from .generate import *
 from .io import *
 from .extract import *

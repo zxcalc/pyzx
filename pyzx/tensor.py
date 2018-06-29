@@ -138,8 +138,8 @@ def tensorfy(g):
 
 if __name__ == '__main__':
 
-    import examples
+    import generate
 
-    g = examples.t_to_zx(examples.zigzag(7))
+    g = generate.zigzag(7)
 
     #print(zx_graph_to_tensor(g))
