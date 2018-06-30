@@ -13,7 +13,7 @@ __all__ = ['bialg_simp','spider_simp', 'phase_free_simp', 'pivot_simp',
 
 from .rules import *
 
-def simp(g, name, match, rewrite):
+def simp(g, name, match, rewrite, quiet=False):
     """Helper method for generating simplification strategies based on rules in rules_.
     It keeps matching and rewriting with the given methods until it can no longer do so.
     Example usage: ``simp(g, 'spider_simp', rules.match_spider_parallel, rules.spider)``
@@ -24,54 +24,54 @@ def simp(g, name, match, rewrite):
     :param rewrite: One of the rewrite functions of rules_."""
     i = 0
     new_matches = True
-    print(name)
+    if not quiet: print(name)
     while new_matches:
         i += 1
         new_matches = False
         m = match(g)
         if len(m) > 0:
-            print(len(m), end='')
+            if not quiet: print(len(m), end='')
             #print(len(m), end='', flush=True) #flush only supported on Python >3.3
             etab, rem_verts, check_isolated_vertices = rewrite(g, m)
             g.add_edge_table(etab)
             g.remove_vertices(rem_verts)
             if check_isolated_vertices: g.remove_isolated_vertices()
-            print('. ', end='')
+            if not quiet: print('. ', end='')
             #print('. ', end='', flush=True)
             new_matches = True
-    print('\nfinished in ' + str(i) + ' iterations')
+    if not quiet: print('\nfinished in ' + str(i) + ' iterations')
 
-def pivot_simp(g):
-    return simp(g, 'pivot_simp', match_pivot_parallel, pivot)
+def pivot_simp(g, quiet=False):
+    return simp(g, 'pivot_simp', match_pivot_parallel, pivot, quiet=quiet)
 
-def lcomp_simp(g):
-    return simp(g, 'lcomp_simp', match_lcomp_parallel, lcomp)
+def lcomp_simp(g, quiet=False):
+    return simp(g, 'lcomp_simp', match_lcomp_parallel, lcomp, quiet=quiet)
 
-def bialg_simp(g):
-    return simp(g, 'bialg_simp', match_bialg_parallel, bialg)
+def bialg_simp(g, quiet=False):
+    return simp(g, 'bialg_simp', match_bialg_parallel, bialg, quiet=quiet)
 
-def spider_simp(g):
-    return simp(g, 'spider_simp', match_spider_parallel, spider)
+def spider_simp(g, quiet=False):
+    return simp(g, 'spider_simp', match_spider_parallel, spider, quiet=quiet)
 
-def id_simp(g):
-    return simp(g, 'id_simp', match_ids_parallel, remove_ids)
+def id_simp(g, quiet=False):
+    return simp(g, 'id_simp', match_ids_parallel, remove_ids, quiet=quiet)
 
-def phase_free_simp(g):
+def phase_free_simp(g, quiet=False):
     '''Performs the following set of simplifications on the graph:
     spider -> bialg'''
-    spider_simp(g)
-    bialg_simp(g)
+    spider_simp(g, quiet=quiet)
+    bialg_simp(g, quiet=quiet)
 
-def clifford_simp(g):
+def clifford_simp(g, quiet=False):
     '''Performs the following set of simplifications on the graph:
     spider -> pivot -> lcomp -> pivot -> id'''
-    spider_simp(g)
+    spider_simp(g, quiet=quiet)
     to_gh(g)
-    pivot_simp(g)
-    lcomp_simp(g)
-    pivot_simp(g)
+    pivot_simp(g, quiet=quiet)
+    lcomp_simp(g, quiet=quiet)
+    pivot_simp(g, quiet=quiet)
     #to_rg(g)
-    id_simp(g)
+    id_simp(g, quiet=quiet)
 
 def to_gh(g):
     """Turns every red node into a green node by changing regular edges into hadamard edges"""
@@ -111,7 +111,7 @@ def to_rg(g, select=None):
 
 
 def simp_iter(g, name, match, rewrite):
-    """Version of :func:`simp` that instead of performing all rewrites at ones, returns an iterator."""
+    """Version of :func:`simp` that instead of performing all rewrites at once, returns an iterator."""
     i = 0
     new_matches = True
     while new_matches:
