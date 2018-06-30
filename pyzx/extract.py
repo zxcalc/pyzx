@@ -75,7 +75,38 @@ def cut_at_row(g, row):
 def cut_rank(g, left, right):
     return bi_adj(g, left, right).rank()
 
-def cut1_extract(g, qubits):
+def greedy_cut_extract(g, qubits):
+    max_r = max(g.vdata(v,'r') for v in g.vertices()) - 1
+    for v in g.vertices():
+        if any(g.vdata(w,'o') for w in g.neighbours(v)):
+            g.set_vdata(v, 'r', max_r)
+
+    ts = sorted([v for v in g.vertices() if g.phase(v).denominator > 2 and g.vdata(v,'r') < max_r],
+          key=lambda v: g.vdata(v,'r'))
+    while len(ts) > 0:
+        row = [ts.pop(0)]
+        while True:
+            left,right = split(g, below=g.vdata(row[0], 'r'), above=g.vdata(row[-1], 'r'))
+            rank = cut_rank(g, left, right)
+
+            if rank + len(row) <= qubits:
+                if len(ts) > 0: row.append(ts.pop(0))
+                else: break
+            else:
+                ts.insert(0, row.pop())
+                break
+        if len(row) == 0:
+            print("FAILED at row", row, "with rank", rank, ">=", qubits, "qubits")
+            return False
+
+        cut_edges(g, left, right)
+        for i,v in enumerate(row):
+            g.set_vdata(v,'q',rank+i)
+            if rank > 0:
+                g.set_vdata(v,'r',g.vdata(g.vindex()-1,'r'))
+    return True
+
+def single_cut_extract(g, qubits):
     max_r = max(g.vdata(v,'r') for v in g.vertices()) - 1
     for v in g.vertices():
         if any(g.vdata(w,'o') for w in g.neighbours(v)):
@@ -92,6 +123,8 @@ def cut1_extract(g, qubits):
             return False
         cut_edges(g, left, right)
         g.set_vdata(t,'q',qubits-1)
+        if rank > 0:
+            g.set_vdata(t,'r',g.vdata(g.vindex()-1,'r'))
     return True
 
 
