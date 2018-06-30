@@ -51,6 +51,11 @@ def cut_edges(g, left, right):
                 g.set_edge_type(g.edge(vi + cut_rank + j, right[i]), 2)
     
 
+def split(g, below, above):
+    left = [v for v in g.vertices() if g.vdata(v, 'r') < below]
+    right = [v for v in g.vertices() if g.vdata(v, 'r') > above]
+    return (left,right)
+
 def cut_at_row(g, row):
     left = [v for v in g.vertices() if g.vdata(v, 'r') <= row]
     right = [v for v in g.vertices() if g.vdata(v, 'r') > row]
@@ -65,6 +70,29 @@ def cut_at_row(g, row):
 #         elif r1 > r:
 #             g.set_vdata(w, 'r', r1+1)
 #     cut_at_row(g, r)
+
+
+def cut_rank(g, left, right):
+    return bi_adj(g, left, right).rank()
+
+def cut1_extract(g, qubits):
+    max_r = max(g.vdata(v,'r') for v in g.vertices()) - 1
+    for v in g.vertices():
+        if any(g.vdata(w,'o') for w in g.neighbours(v)):
+            g.set_vdata(v, 'r', max_r)
+
+    ts = sorted([v for v in g.vertices() if g.phase(v).denominator > 2 and g.vdata(v,'r') < max_r],
+          key=lambda v: g.vdata(v,'r'))
+    for t in ts:
+        row = g.vdata(t, 'r')
+        left,right = split(g, below=row, above=row)
+        rank = cut_rank(g, left, right)
+        if (rank >= qubits):
+            print("FAILED at", t, "with rank", rank, ">=", qubits, "qubits")
+            return False
+        cut_edges(g, left, right)
+        g.set_vdata(t,'q',qubits-1)
+    return True
 
 
 def cut_extract(g, qubits):
@@ -93,17 +121,21 @@ def cut_extract(g, qubits):
             return True
         
         row0 = []
+        rank = bi_adj(g, last_row, row1).rank()
         m = None
         while len(row1) != 0:
-            v = row1.pop(0)
-            m1 = bi_adj(g, last_row, row1)
-            if m1.rank() + len(row0) + 1 > qubits:
-                row1.insert(0,v)
+            for i,v in enumerate(row1):
+                new_row1 = row1[0:i] + row1[i+1:len(row1)]
+                new_rank = bi_adj(g, last_row, new_row1).rank()
+                if new_rank < rank:
+                    row0.append(v)
+                    row1 = new_row1
+                    break
+            if new_rank == rank:
                 break
             else:
-                row0.append(v)
-                m = m1
-        if m == None:
+                rank = new_rank
+        if len(row0) == 0:
             if not cut:
                 print('could not solve row ', last_row, ' trying cut at ', row1[0])
                 cut = True

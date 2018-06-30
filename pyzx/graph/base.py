@@ -61,14 +61,19 @@ class BaseGraph(object):
 			g.set_edge_type(g.edge(s,t), self.edge_type(e))
 		return g
 
+	def vindex(self):
+		'''The index given to the next vertex added to the graph. It should always
+		be equal to max(g.vertices()) + 1.'''
+		raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
 	def add_vertices(self, amount):
-		"""Add an amount of vertices to the graph"""
+		'''Add the given amount of vertices, and return the indices of the
+		new vertices added to the graph, namely: range(g.vindex() - amount, g.vindex())'''
 		raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
 	def add_vertex(self):
-		"""Add a single vertex to the graph"""
-		self.add_vertices(1)
+		'''Add a single vertex to the graph and return its index'''
+		return self.add_vertices(1)[0]
 
 	def add_edges(self, edges, edgetype=1):
 		"""Adds a list of edges to the graph. 

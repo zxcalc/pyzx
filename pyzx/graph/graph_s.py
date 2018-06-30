@@ -12,18 +12,19 @@ class GraphS(BaseGraph):
 		self.ty = dict()
 		self._phase = dict()
 		self._vdata = dict()
-		self.vindex = 0
+		self._vindex = 0
 		self.nedges = 0
 
+	def vindex(self):
+		return self._vindex
+
 	def add_vertices(self, amount):
-		for i in range(self.vindex, self.vindex + amount):
+		for i in range(self._vindex, self._vindex + amount):
 			self.graph[i] = dict()
 			self.ty[i] = 0
 			self._phase[i] = 0
-		self.vindex += amount
-
-	def add_vertex(self):
-		self.add_vertices(1)
+		self._vindex += amount
+		return range(self._vindex - amount, self._vindex)
 
 	def add_edges(self, edges, edgetype=1):
 		for s,t in edges:

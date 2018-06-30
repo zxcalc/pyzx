@@ -12,6 +12,10 @@ class GraphIG(BaseGraph):
 		self.graph.vs['_t'] = None
 		self.graph.es['_t'] = None
 
+	# since igraph uses consecutive indexing, vindex() == num_vertices()
+	def vindex(self):
+		return self.num_vertices()
+
 	def add_vertices(self, amount, vertex_data=None):
 		self.graph.add_vertices(amount)
 

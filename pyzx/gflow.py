@@ -32,4 +32,24 @@
 # end
 #
 
+def gflow(g):
+	inputs = set()
+	outputs = set()
+	l = dict()
+	g = dict()
+	for v in g.vertices():
+		l[v] = 0
+		intputs.add(v) if g.vdata(v, 'i')
+		outputs.add(v) if g.vdata(v, 'o')
+
+	k = 0
+	while True:
+		correct = set()
+
+		if len(correct) == 0:
+			break
+		else:
+			outputs |= correct
+			k += 1
+
 
