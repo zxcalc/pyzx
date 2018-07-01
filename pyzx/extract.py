@@ -1,7 +1,11 @@
 __all__ = ['cut_extract']
 
 from .linalg import Mat2
+from .drawing import pack_circuit_ranks
 
+def before(g, vs):
+    min_r = min(g.vdata(v, 'r') for v in vs)
+    return [w for w in g.vertices() if g.vdata(w, 'r') < min_r and any(g.connected(v, w) for v in vs)]
 
 def after(g, vs):
     max_r = max(g.vdata(v, 'r') for v in vs)
@@ -71,11 +75,28 @@ def cut_at_row(g, row):
 #             g.set_vdata(w, 'r', r1+1)
 #     cut_at_row(g, r)
 
+def unspider(g, v):
+    r = g.vdata(v, 'r')
+    w = g.add_vertex()
+    g.set_type(w, 1)
+    g.set_vdata(w, 'q', g.vdata(v, 'q'))
+    g.set_vdata(w, 'r', r-1)
+    ns = list(g.neighbours(v))
+    for n in ns:
+        if g.vdata(n, 'r') < r:
+            e = g.edge(n,v)
+            g.add_edge((n,w), edgetype=g.edge_type(e))
+            g.remove_edge(e)
+    g.add_edge((w, v))
+
+
+
 
 def cut_rank(g, left, right):
     return bi_adj(g, left, right).rank()
 
 def greedy_cut_extract(g, qubits):
+    pack_circuit_ranks(g)
     max_r = max(g.vdata(v,'r') for v in g.vertices()) - 1
     for v in g.vertices():
         if any(g.vdata(w,'o') for w in g.neighbours(v)):
@@ -87,10 +108,14 @@ def greedy_cut_extract(g, qubits):
         row = [ts.pop(0)]
         while True:
             left,right = split(g, below=g.vdata(row[0], 'r'), above=g.vdata(row[-1], 'r'))
+            #left = before(g, row)
+            #right = after(g, row)
             rank = cut_rank(g, left, right)
 
             if rank + len(row) <= qubits:
-                if len(ts) > 0: row.append(ts.pop(0))
+                # only consume t on consecutive rows
+                if len(ts) > 0 and g.vdata(row[-1], 'r') + 1 == g.vdata(ts[0], 'r'):
+                    row.append(ts.pop(0))
                 else: break
             else:
                 ts.insert(0, row.pop())
@@ -100,10 +125,12 @@ def greedy_cut_extract(g, qubits):
             return False
 
         cut_edges(g, left, right)
+        r = g.vdata(g.vindex()-1,'r')
         for i,v in enumerate(row):
             g.set_vdata(v,'q',rank+i)
             if rank > 0:
-                g.set_vdata(v,'r',g.vdata(g.vindex()-1,'r'))
+                g.set_vdata(v,'r',r)
+                unspider(g, v)
     return True
 
 def single_cut_extract(g, qubits):

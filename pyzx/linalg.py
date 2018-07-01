@@ -46,12 +46,12 @@ class Mat2:
             self.data[r][c1] = v
 
     
-    def gauss(self, reduce=False, x=None, y=None):
+    def gauss(self, full_reduce=False, x=None, y=None):
         """Compute the echelon form. Returns the number of non-zero rows in the result, i.e.
         the rank of the matrix.
 
-        The parameter 'reduce' determines whether to compute the full row-reduced form, useful
-        e.g. for matrix inversion.
+        The parameter 'full_reduce' determines whether to compute the full row-reduced form,
+        useful e.g. for matrix inversion.
 
         Contains two convenience parameters for saving the primitive row operations. Suppose
         the row-reduced form of m is computed as:
@@ -64,6 +64,7 @@ class Mat2:
         row_swap() and row_add(), and y any object that implements col_swap() and col_add().
         """
         p = 0
+        pcols = []
         r = 0
         pivot_row = 0
         while p < self.cols():
@@ -79,11 +80,25 @@ class Mat2:
                         self.row_add(pivot_row, r1)
                         if x != None: x.row_add(pivot_row, r1)
                         if y != None: y.col_add(r1, pivot_row)
+                if full_reduce: pcols.append(p)
                 pivot_row += 1
             except StopIteration:
                 pass
             p += 1
-        return pivot_row
+        rank = pivot_row
+
+        if full_reduce:
+            pivot_row -= 1
+            while pivot_row > 0:
+                pcol = pcols.pop()
+                for r in range(0, pivot_row):
+                    if self.data[r][pcol] != 0:
+                        self.row_add(pivot_row, r)
+                        if x != None: x.row_add(pivot_row, r)
+                        if y != None: y.col_add(r, pivot_row)
+                pivot_row -= 1
+
+        return rank
 
     def rank(self):
         """Returns the rank of the matrix."""
@@ -109,3 +124,29 @@ class Mat2:
         m0 = Mat2([[row[i] for i in range(rank)] for row in m0.data])
         m1 = Mat2([m1.data[i] for i in range(rank)])
         return (m0, m1)
+
+    def inverse(self):
+        """Returns the inverse of m is invertible and None otherwise."""
+        if self.rows() != self.cols(): return None
+        m = self.copy()
+        inv = Mat2.id(self.rows())
+        rank = m.gauss(x=inv, full_reduce=True)
+        if rank < self.rows(): return None
+        else: return inv
+
+    def solve(self, b):
+        """Return a vector x such that M * x = b, or None if there is no solution."""
+        m = self.copy()
+        x = b.copy()
+        rank = m.gauss(x=x, full_reduce=True)
+
+        # check for inconsistencies, i.e. zero LHS with non-zero RHS
+        i = x.rows() - 1
+        while i > rank - 1:
+            if x.data[i][0] != 0:
+                return None
+            i -= 1
+        return x
+
+
+
