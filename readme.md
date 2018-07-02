@@ -13,7 +13,7 @@ It currently allows you to:
 
 ## Installation
 
-The core of PyZX is Pure Python and will run on Python 2.7 or 3.x without any additional dependencies. To get the most out of it however, you should install matplotlib and numpy. If [python-igraph](http://igraph.org/python/) is installed it can be used to speed up some operations.
+The core of PyZX is Pure Python and will run on Python 2.7 or 3.x without any additional dependencies. To get the most out of it however, you should install ``matplotlib`` and ``numpy``. If [python-igraph](http://igraph.org/python/) is installed it can be used to speed up some operations.
 
 
 ## Usage
@@ -26,7 +26,7 @@ qubit_amount = 5
 gate_count = 40
 #Generate random circuit of Clifford gates
 circuit = zx.cliffords(qubit_amount, gate_count)
-#If running in Jupyter, draw the diagram
+#If running in Jupyter, draw the circuit
 zx.draw(circuit)
 #Use one of the built-in rewriting strategies to simplify the circuit
 zx.clifford_simp(circuit)

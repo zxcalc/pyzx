@@ -84,6 +84,7 @@ def clifford_simp(g, quiet=False):
     spider -> pivot -> lcomp -> pivot -> id'''
     spider_simp(g, quiet=quiet)
     to_gh(g)
+    spider_simp(g, quiet=quiet)
     pivot_simp(g, quiet=quiet)
     lcomp_simp(g, quiet=quiet)
     pivot_simp(g, quiet=quiet)
@@ -159,9 +160,11 @@ def id_iter(g):
     return simp_iter(g, 'id', match_ids_parallel, remove_ids)
 
 def clifford_iter(g):
-    for d  in spider_iter(g): yield d
+    for d in spider_iter(g): yield d
     to_gh(g)
     yield g, "to_gh"
+    for d in spider_iter(g): yield d
+    for d in pivot_iter(g): yield d
     for d in lcomp_iter(g): yield d
     for d in pivot_iter(g): yield d
     to_rg(g)
