@@ -18,25 +18,25 @@
 __all__ = ['cut_extract']
 
 from .linalg import Mat2
-from .drawing import pack_circuit_ranks
+from .drawing import pack_circuit_rows
 
 def before(g, vs):
-    min_r = min(g.vdata(v, 'r') for v in vs)
-    return [w for w in g.vertices() if g.vdata(w, 'r') < min_r and any(g.connected(v, w) for v in vs)]
+    min_r = min(g.row(v) for v in vs)
+    return [w for w in g.vertices() if g.row(w) < min_r and any(g.connected(v, w) for v in vs)]
 
 def after(g, vs):
-    max_r = max(g.vdata(v, 'r') for v in vs)
-    return [w for w in g.vertices() if g.vdata(w, 'r') > max_r and any(g.connected(v, w) for v in vs)]
+    max_r = max(g.row(v) for v in vs)
+    return [w for w in g.vertices() if g.row(w) > max_r and any(g.connected(v, w) for v in vs)]
 def bi_adj(g, vs, ws):
     return Mat2([[1 if g.connected(v,w) else 0 for v in vs] for w in ws])
 
 def cut_edges(g, left, right):
     m = bi_adj(g, left, right)
-    max_r = max(g.vdata(v, 'r') for v in left)
+    max_r = max(g.row(v) for v in left)
     for v in g.vertices():
-        r = g.vdata(v,'r')
+        r = g.row(v)
         if (r > max_r):
-            g.set_vdata(v, 'r', r+2)
+            g.set_row(v, r+2)
     x,y = m.factor()
 
     for v1 in left:
@@ -44,20 +44,15 @@ def cut_edges(g, left, right):
             if (g.connected(v1,v2)):
                 g.remove_edge(g.edge(v1,v2))
     
-    vi = g.num_vertices()
+    vi = g.vindex()
     cut_rank = y.rows()
     g.add_vertices(2*cut_rank)
     
     for i in range(cut_rank):
-        v = vi+i
-        g.set_type(v,1)
-        g.set_vdata(v, 'q', i)
-        g.set_vdata(v, 'r', max_r+1)
+        g.add_vertex(1,i,max_r+1)
     for i in range(cut_rank):
+        g.add_vertex(1,i,max_r+2)
         v = vi+cut_rank+i
-        g.set_type(v,1)
-        g.set_vdata(v, 'q', i)
-        g.set_vdata(v, 'r', max_r+2)
         g.add_edge((vi+i,v))
         g.set_edge_type(g.edge(vi+i,v), 2)
     for i in range(y.rows()):
@@ -73,13 +68,13 @@ def cut_edges(g, left, right):
     
 
 def split(g, below, above):
-    left = [v for v in g.vertices() if g.vdata(v, 'r') < below]
-    right = [v for v in g.vertices() if g.vdata(v, 'r') > above]
+    left = [v for v in g.vertices() if g.row(v) < below]
+    right = [v for v in g.vertices() if g.row(v) > above]
     return (left,right)
 
 def cut_at_row(g, row):
-    left = [v for v in g.vertices() if g.vdata(v, 'r') <= row]
-    right = [v for v in g.vertices() if g.vdata(v, 'r') > row]
+    left = [v for v in g.vertices() if g.row(v) <= row]
+    right = [v for v in g.vertices() if g.row(v) > row]
     cut_edges(g, left, right)
 
 # def cut_at_vertex(g, v):
@@ -93,45 +88,40 @@ def cut_at_row(g, row):
 #     cut_at_row(g, r)
 
 def unspider(g, v):
-    r = g.vdata(v, 'r')
-    w = g.add_vertex()
-    g.set_type(w, 1)
-    g.set_vdata(w, 'q', g.vdata(v, 'q'))
-    g.set_vdata(w, 'r', r-1)
+    r = g.row(v)
+    w = g.add_vertex(1,g.qubit(v),r-1)
     ns = list(g.neighbours(v))
     for n in ns:
-        if g.vdata(n, 'r') < r:
+        if g.row(n) < r:
             e = g.edge(n,v)
             g.add_edge((n,w), edgetype=g.edge_type(e))
             g.remove_edge(e)
     g.add_edge((w, v))
 
 
-
-
 def cut_rank(g, left, right):
     return bi_adj(g, left, right).rank()
 
 def greedy_cut_extract(g, qubits):
-    pack_circuit_ranks(g)
-    max_r = max(g.vdata(v,'r') for v in g.vertices()) - 1
+    pack_circuit_rows(g)
+    max_r = g.depth() - 1
     for v in g.vertices():
-        if any(g.vdata(w,'o') for w in g.neighbours(v)):
-            g.set_vdata(v, 'r', max_r)
+        if any(w in g.outputs for w in g.neighbours(v)):
+            g.set_row(v, max_r)
 
-    ts = sorted([v for v in g.vertices() if g.phase(v).denominator > 2 and g.vdata(v,'r') < max_r],
-          key=lambda v: g.vdata(v,'r'))
+    ts = sorted([v for v in g.vertices() if g.phase(v).denominator > 2 and g.row(v) < max_r],
+          key=lambda v: g.row(v))
     while len(ts) > 0:
         row = [ts.pop(0)]
         while True:
-            left,right = split(g, below=g.vdata(row[0], 'r'), above=g.vdata(row[-1], 'r'))
+            left,right = split(g, below=g.row(row[0]), above=g.row(row[-1]))
             #left = before(g, row)
             #right = after(g, row)
             rank = cut_rank(g, left, right)
 
             if rank + len(row) <= qubits:
                 # only consume t on consecutive rows
-                if len(ts) > 0 and g.vdata(row[-1], 'r') + 1 == g.vdata(ts[0], 'r'):
+                if len(ts) > 0 and g.row(row[-1]) + 1 == g.row(ts[0]):
                     row.append(ts.pop(0))
                 else: break
             else:
@@ -142,33 +132,33 @@ def greedy_cut_extract(g, qubits):
             return False
 
         cut_edges(g, left, right)
-        r = g.vdata(g.vindex()-1,'r')
+        r = g.row(g.vindex()-1)
         for i,v in enumerate(row):
-            g.set_vdata(v,'q',rank+i)
+            g.set_qubit(v,rank+i)
             if rank > 0:
-                g.set_vdata(v,'r',r)
+                g.set_row(v,r)
                 unspider(g, v)
     return True
 
 def single_cut_extract(g, qubits):
-    max_r = max(g.vdata(v,'r') for v in g.vertices()) - 1
+    max_r = max(g.row(v) for v in g.vertices()) - 1
     for v in g.vertices():
-        if any(g.vdata(w,'o') for w in g.neighbours(v)):
-            g.set_vdata(v, 'r', max_r)
+        if any(w in g.outputs for w in g.neighbours(v)):
+            g.set_row(v, max_r)
 
-    ts = sorted([v for v in g.vertices() if g.phase(v).denominator > 2 and g.vdata(v,'r') < max_r],
-          key=lambda v: g.vdata(v,'r'))
+    ts = sorted([v for v in g.vertices() if g.phase(v).denominator > 2 and g.row(v) < max_r],
+          key=lambda v: g.row(v))
     for t in ts:
-        row = g.vdata(t, 'r')
+        row = g.row(v)
         left,right = split(g, below=row, above=row)
         rank = cut_rank(g, left, right)
         if (rank >= qubits):
             print("FAILED at", t, "with rank", rank, ">=", qubits, "qubits")
             return False
         cut_edges(g, left, right)
-        g.set_vdata(t,'q',qubits-1)
+        g.set_qubit(t,qubits-1)
         if rank > 0:
-            g.set_vdata(t,'r',g.vdata(g.vindex()-1,'r'))
+            g.set_row(t,g.row(g.vindex()-1))
     return True
 
 
@@ -267,10 +257,7 @@ class CNOTMaker(object):
         self.r += 1
     
     def add_node(self, q, t, update_index=True):
-        self.g.add_vertex()
-        self.g.set_vdata(self.v, 'q', q)
-        self.g.set_vdata(self.v , 'r', self.r)
-        self.g.set_type(self.v, t)
+        self.g.add_vertex(t,q,self.r)
         if update_index:
             self.g.add_edge((self.qs[q],self.v))
             self.qs[q] = self.v

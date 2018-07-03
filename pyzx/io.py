@@ -40,7 +40,6 @@ def read_quipper_file(fname, backend=None, keynames=('q','r')):
             raise TypeError("Unsupported type " + t)
     
     qubits = len(inputs)
-    g = Graph(backend)
     q = list(range(qubits))
     r = 1                     # current rank
     ty = [0] * qubits         # types of vertices
@@ -112,28 +111,22 @@ def read_quipper_file(fname, backend=None, keynames=('q','r')):
 
     g = Graph(backend)
 
-    g.add_vertices(v)
+    for i in range(v):
+        g.add_vertex(ty[i],qs[i],rs[i])
+    for v, phase in phases.items():
+        g.set_phase(v,phase)
+
     g.add_edges(es1,1)
     g.add_edges(es2,2)
 
-    for i in range(v):
-        g.set_type(i, ty[i])
-        g.set_vdata(i, keynames[0], qs[i])
-        g.set_vdata(i, keynames[1], rs[i])
-    for v, phase in phases.items():
-        g.set_angle(v,phase)
-
     for i in range(qubits):
-        g.set_vdata(i, 'i', True)
-        g.set_vdata(v-i-1, 'o', True)
+        g.inputs.append(i)
+        g.outputs.append(v-i-1)
 
     #remove the identity nodes introduced for the hadamard gates
-    id_simp(g)
+    id_simp(g, quiet=True)
 
     return g
-
-
-
 
 def _quanto_value_to_phase(s):
     if not s: return Fraction(0)
@@ -165,7 +158,7 @@ def json_to_graph(js):
     """Converts the json representation of a .qgraph Quantomatic graph into
     a pyzx graph."""
     j = json.loads(str(js))
-    g = Graph('simple')
+    g = Graph()
     v = 0
     names = {}
     hadamards = {}
@@ -173,7 +166,8 @@ def json_to_graph(js):
         if 'data' in attr and 'type' in attr['data'] and attr['data']['type'] == "hadamard":
             hadamards[name] = []
             continue
-        g.add_vertex()
+        c = attr['annotation']['coord']
+        g.add_vertex(qubit=c[0], row=c[1])
         g.set_vdata(v,'name',name)
         names[name] = v
         if 'data' in attr:
@@ -188,26 +182,24 @@ def json_to_graph(js):
         else:
             g.set_type(v,1)
             g.set_phase(v,Fraction(0,1))
-        c = attr['annotation']['coord']
-        g.set_vdata(v, 'x', c[0])
-        g.set_vdata(v, 'y', c[1])
+        
+        #g.set_vdata(v, 'x', c[0])
+        #g.set_vdata(v, 'y', c[1])
         v += 1
     for name,attr in j.get('wire_vertices',{}).items():
-        g.add_vertex()
+        c = attr['annotation']['coord']
+        g.add_vertex(0,c[0],c[1])
         g.set_vdata(v,'name',name)
         names[name] = v
-        g.set_type(v,0)
-        c = attr['annotation']['coord']
-        g.set_vdata(v, 'x', c[0])
-        g.set_vdata(v, 'y', c[1])
+        #g.set_vdata(v, 'x', c[0])
+        #g.set_vdata(v, 'y', c[1])
         v += 1
 
     edges = {}
     for edge in j.get('undir_edges',{}).values():
         n1, n2 = edge['src'], edge['tgt']
         if n1 in hadamards and n2 in hadamards: #Both 
-            g.add_vertex()
-            g.set_type(v,1)
+            g.add_vertex(ty=1)
             name = "v"+str(len(names))
             g.set_vdata(v, 'name',name)
             names[name] = v
@@ -245,7 +237,7 @@ def graph_to_json(g):
     freenamesb = ["b"+str(i) for i in range(g.num_vertices())]
     for v in g.vertices():
         t = g.type(v)
-        coord = [g.vdata(v,'x'),g.vdata(v,'y')]
+        coord = [g.row(v),g.qubit(v)]
         name = g.vdata(v, 'name')
         if not name:
             if t == 0: name = freenamesb.pop(0)
@@ -276,8 +268,8 @@ def graph_to_json(g):
             edges["e"+ str(i)] = {"src": names[src],"tgt": names[tgt]}
             i += 1
         elif t==2: #hadamard edge
-            x1,y1 = g.vdata(src,'x'), g.vdata(src,'y')
-            x2,y2 = g.vdata(tgt,'x'), g.vdata(tgt,'y')
+            x1,y1 = g.row(src), g.qubit(src)
+            x2,y2 = g.row(tgt), g.qubit(tgt)
             hadname = freenamesv.pop(0)
             node_vs[hadname] = {"annotation": {"coord":[(x1+x2)/2.0,(y1+y2)/2.0]},
                              "data": {"type": "hadamard"}}

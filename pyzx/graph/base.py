@@ -79,18 +79,35 @@ class BaseGraph(object):
 		return g
 
 	def vindex(self):
-		'''The index given to the next vertex added to the graph. It should always
-		be equal to max(g.vertices()) + 1.'''
+		"""The index given to the next vertex added to the graph. It should always
+		be equal to max(g.vertices()) + 1."""
+		raise NotImplementedError("Not implemented on backend " + type(self).backend)
+
+	def depth(self):
+		"""Returns the value of the highest row number given to a vertex.
+		This is -1 when no rows have been set."""
+		raise NotImplementedError("Not implemented on backend " + type(self).backend)
+
+	def qubit_count(self):
+		"""Returns the value of the highest qubit index given to a vertex.
+		This is -1 when no qubit indices have been set."""
 		raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
 	def add_vertices(self, amount):
-		'''Add the given amount of vertices, and return the indices of the
-		new vertices added to the graph, namely: range(g.vindex() - amount, g.vindex())'''
+		"""Add the given amount of vertices, and return the indices of the
+		new vertices added to the graph, namely: range(g.vindex() - amount, g.vindex())"""
 		raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
-	def add_vertex(self):
-		'''Add a single vertex to the graph and return its index'''
-		return self.add_vertices(1)[0]
+	def add_vertex(self, ty=0, qubit=-1, row=-1, phase=0):
+		"""Add a single vertex to the graph and return its index.
+		The optional parameters allow you to respectively set
+		the type, qubit index, row index and phase of the vertex."""
+		v = self.add_vertices(1)[0]
+		if ty: self.set_type(v, ty)
+		if qubit!=-1: self.set_qubit(v, qubit)
+		if row!=-1: self.set_row(v, row)
+		if phase: self.set_phase(v, phase)
+		return v
 
 	def add_edges(self, edges, edgetype=1):
 		"""Adds a list of edges to the graph. 
@@ -203,11 +220,9 @@ class BaseGraph(object):
 	def edge_st(self, edge):
 		"""Returns a tuple of source/target of the given edge."""
 		raise NotImplementedError("Not implemented on backend " + type(self).backend)
-
 	def edge_s(self, edge):
 		"""Returns the source of the given edge."""
 		return self.edge_st(edge)[0]
-
 	def edge_t(self, edge):
 		"""Returns the target of the given edge."""
 		return self.edge_st(edge)[1]
@@ -232,7 +247,6 @@ class BaseGraph(object):
 		"""Returns the type of the given edge:
 		1 if it is regular, 2 if it is a Hadamard edge, 0 if the edge is not in the graph"""
 		raise NotImplementedError("Not implemented on backend " + type(self).backend)
-
 	def set_edge_type(self, e, t):
 		"""Sets the type of the given edge."""
 		raise NotImplementedError("Not implemented on backend " + type(self).backend)
@@ -241,41 +255,57 @@ class BaseGraph(object):
 		"""Returns the type of the given vertex:
 		0 if it is a boundary, 1 if is a Z node, 2 if it a X node"""
 		raise NotImplementedError("Not implemented on backend " + type(self).backend)
-
 	def types(self):
 		"""Returns a mapping of vertices to their types"""
 		raise NotImplementedError("Not implemented on backend " + type(self).backend)
-
 	def set_type(self, vertex, t):
 		"""Sets the type of the given vertex to t"""
 		raise NotImplementedError("Not implemented on backend" + type(self).backend)
-
+	
 	def phase(self, vertex):
 		"""Returns the phase value of the given vertex"""
 		raise NotImplementedError("Not implemented on backend" + type(self).backend)
-
 	def phases(self):
 		"""Returns a mapping of vertices to their phase values"""
 		raise NotImplementedError("Not implemented on backend" + type(self).backend)
-
 	def set_phase(self, vertex, phase):
 		"""Sets the phase of the vertex to the given value"""
 		raise NotImplementedError("Not implemented on backend" + type(self).backend)
-
 	def add_to_phase(self, vertex, phase):
 		"""Add the given phase to the phase value of the given vertex"""
 		self.set_phase(vertex,self.phase(vertex)+phase)
+
+	def qubit(self, vertex):
+		"""Returns the qubit index associated to the vertex. 
+		If no index has been set, returns -1."""
+		raise NotImplementedError("Not implemented on backend" + type(self).backend)
+	def qubits(self):
+		"""Returns a mapping of vertices to their qubit index"""
+		raise NotImplementedError("Not implemented on backend" + type(self).backend)
+	def set_qubit(self, vertex, q):
+		"""Sets the qubit index associated to the vertex."""
+		raise NotImplementedError("Not implemented on backend" + type(self).backend)
+
+	def row(self, vertex):
+		"""Returns the row that the vertex is positioned at. 
+		If no row has been set, returns -1."""
+		raise NotImplementedError("Not implemented on backend" + type(self).backend)
+	def rows(self):
+		"""Returns a mapping of vertices to their row index"""
+		raise NotImplementedError("Not implemented on backend" + type(self).backend)
+	def set_row(self, vertex, r):
+		"""Sets the row the vertex should be positioned at."""
+		raise NotImplementedError("Not implemented on backend" + type(self).backend)
+
 
 	def vdata_keys(self, vertex):
 		"""Returns an iterable of the vertex data key names.
 		Used e.g. in making a copy of the graph in a backend-independent way."""
 		raise NotImplementedError("Not implemented on backend" + type(self).backend)
-
 	def vdata(self, vertex, key, default=0):
 		"""Returns the data value of the given vertex associated to the key.
 		If this key has no value associated with it, it returns the default value."""
 		raise NotImplementedError("Not implemented on backend" + type(self).backend)
-
 	def set_vdata(self, vertex, key, val):
 		"""Sets the vertex data associated to key to val"""
 		raise NotImplementedError("Not implemented on backend" + type(self).backend)

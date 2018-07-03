@@ -26,14 +26,23 @@ class GraphS(BaseGraph):
 	#can be found in base.BaseGraph
 	def __init__(self):
 		self.graph = dict()
-		self.ty = dict()
-		self._phase = dict()
-		self._vdata = dict()
 		self._vindex = 0
 		self.nedges = 0
+		self.ty = dict()
+		self._phase = dict()
+		self._qindex = dict()
+		self._maxq = -1
+		self._rindex = dict()
+		self._maxr = -1
 
-	def vindex(self):
-		return self._vindex
+		self.inputs = []
+		self.outputs = []
+		self._vdata = dict()
+		
+
+	def vindex(self): return self._vindex
+	def depth(self): return self._maxr
+	def qubit_count(self): return self.maxq
 
 	def add_vertices(self, amount):
 		for i in range(self._vindex, self._vindex + amount):
@@ -124,10 +133,8 @@ class GraphS(BaseGraph):
 
 	def edge(self, s, t):
 		return (s,t) if s < t else (t,s)
-
 	def edge_set(self):
 		return set(self.edges())
-
 	def edge_st(self, edge):
 		return edge
 
@@ -157,37 +164,45 @@ class GraphS(BaseGraph):
 
 	def type(self, vertex):
 		return self.ty[vertex]
-
 	def types(self):
 		return self.ty
-
 	def set_type(self, vertex, t):
 		self.ty[vertex] = t
 
 	def phase(self, vertex):
 		return self._phase.get(vertex,Fraction(1))
-
 	def phases(self):
 		return self._phase
-
 	def set_phase(self, vertex, phase):
 		self._phase[vertex] = Fraction(phase) % 2
-
 	def add_to_phase(self, vertex, phase):
 		self._phase[vertex] = (self._phase.get(vertex,Fraction(1)) + phase) % 2
 
+	def qubit(self, vertex):
+		return self._qindex.get(vertex,-1)
+	def qubits(self):
+		return self._qindex
+	def set_qubit(self, vertex, q):
+		if q > self._maxq: self._maxq = q
+		self._qindex[vertex] = q
 
-	def vdata_keys(self, v):
-		return self._vdata.get(v, {}).keys()
+	def row(self, vertex):
+		return self._rindex.get(vertex, -1)
+	def rows(self):
+		return self._rindex
+	def set_row(self, vertex, r):
+		if r > self._maxr: self._maxr = r
+		self._rindex[vertex] = r
 
-	def vdata(self, v, key, default=0):
-		if v in self._vdata:
-			return self._vdata[v].get(key,default)
+	def vdata_keys(self, vertex):
+		return self._vdata.get(vertex, {}).keys()
+	def vdata(self, vertex, key, default=0):
+		if vertex in self._vdata:
+			return self._vdata[vertex].get(key,default)
 		else:
 			return default
-
-	def set_vdata(self, v, key, val):
-		if v in self._vdata:
-			self._vdata[v][key] = val
+	def set_vdata(self, vertex, key, val):
+		if vertex in self._vdata:
+			self._vdata[vertex][key] = val
 		else:
-			self._vdata[v] = {key:val}
+			self._vdata[vertex] = {key:val}

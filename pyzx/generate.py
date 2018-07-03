@@ -23,18 +23,14 @@ from fractions import Fraction
 from .graph.graph import Graph
 
 
-def cnots(qubits, depth, backend=None, keynames=('q','r')):
+def cnots(qubits, depth, backend=None):
     """Generates a circuit consisting of randomly placed CNOT gates.
 
     :param qubits: Amount of qubits in circuit
     :param depth: Depth of circuit
     :param backend: When given, should be one of the possible :ref:`graph_api` backends.
-    :param keynames: Which names to use for the vertex data of qubit index and rank.
-    :type keynames: 2-tuple of strings
     :rtype: Instance of graph of the given backend
     """
-    g = Graph(backend)
-
     # initialise and add input row
 
     q = list(range(qubits))   # qubit index, initialised with input
@@ -86,24 +82,16 @@ def cnots(qubits, depth, backend=None, keynames=('q','r')):
     es += [(q[i], v+i) for i in range(qubits)]
     v += qubits
 
-
-    g.add_vertices(v)
-    g.add_edges(es)
-
-    # ty = (
-    #   (qubits * [0]) + (qubits * [1]) +
-    #   [i % 2 + 1 for i in range(depth * 2)] +
-    #   (qubits * [1]) + (qubits * [0])
-    # )
+    g = Graph(backend)
 
     for i in range(v):
-        g.set_type(i, ty[i])
-        g.set_vdata(i, keynames[0], qs[i])
-        g.set_vdata(i, keynames[1], rs[i])
+        g.add_vertex(ty[i],qs[i],rs[i])
+
+    g.add_edges(es)
 
     for i in range(qubits):
-        g.set_vdata(i, 'i', True)
-        g.set_vdata(v-i-1, 'o', True)
+        g.inputs.append(i)
+        g.outputs.append(v-i-1)
     return g
 
 def accept(p):
@@ -134,33 +122,23 @@ def cliffordT(qubits, depth, p_t = 0.1, backend=None):
     
 
     for i in range(qubits):
-        g.add_vertex()
-        g.set_vdata(v, 'q', i)
-        g.set_vdata(v, 'r', r)
-        g.set_type(v, 0)
+        g.add_vertex(0,i,r)
+        g.inputs.append(v)
         v += 1
-
     r += 1
 
     for i in range(qubits):
-        g.add_vertex()
-        g.set_vdata(v, 'q', i)
-        g.set_vdata(v, 'r', r)
-        g.set_type(v, 1)
+        g.add_vertex(1,i,r)
         g.add_edge((qs[i], v))
         qs[i] = v
         v += 1
-
     r += 1
 
     for i in range(2, depth+2):
         p = random.random()
         q0 = random.randrange(qubits)
 
-        g.add_vertex()
-        g.set_vdata(v, 'q', q0)
-        g.set_vdata(v, 'r', r)
-        g.set_type(v, 1)
+        g.add_vertex(1,q0,r)
         g.add_edge((qs[q0], v))
         qs[q0] = v
         v += 1
@@ -171,15 +149,11 @@ def cliffordT(qubits, depth, p_t = 0.1, backend=None):
             q1 = random.randrange(qubits-1)
             if q1 >= q0: q1 += 1
 
-            g.add_vertex()
-            g.set_vdata(v, 'q', q1)
-            g.set_vdata(v, 'r', r)
-            g.set_type(v, 2)
+            g.add_vertex(2,q1,r-1)
             g.add_edge((qs[q1], v))
             g.add_edge((v-1,v))
             qs[q1] = v
             v += 1
-            r += 1
         elif p > 1 - p_cnot - p_hsh:
             # apply HSH gate
             g.set_type(v-1, 2)
@@ -192,35 +166,23 @@ def cliffordT(qubits, depth, p_t = 0.1, backend=None):
             g.set_phase(v-1, Fraction(1,4))
 
     for i in range(qubits):
-        g.add_vertex()
-        g.set_vdata(v, 'q', i)
-        g.set_vdata(v, 'r', r)
-        g.set_type(v, 1)
+        g.add_vertex(1,i,r)
         g.add_edge((qs[i], v))
         qs[i] = v
         v += 1
-
     r += 1
 
     for i in range(qubits):
-        g.add_vertex()
-        g.set_vdata(v, 'q', i)
-        g.set_vdata(v, 'r', r)
-        g.set_type(v, 0)
+        g.add_vertex(0,i,r)
         g.add_edge((qs[i], v))
+        g.outputs.append(v)
         v += 1
-
-    
-
-    for i in range(qubits):
-        g.set_vdata(i, 'i', True)
-        g.set_vdata(v-i-1, 'o', True)
 
     return g
 
 
 
-def cliffords(qubits, depth, no_hadamard=False,t_gates=False,backend=None, keynames=('q','r')):
+def cliffords(qubits, depth, no_hadamard=False,t_gates=False,backend=None):
     """Generates a circuit consisting of randomly placed Clifford gates.
     Uses a different approach to generating Clifford circuits then :func:`cliffordT`.
 
@@ -228,8 +190,6 @@ def cliffords(qubits, depth, no_hadamard=False,t_gates=False,backend=None, keyna
     :param depth: Depth of circuit.
     :param no_hadamard: Whether hadamard edges are allowed to be placed.
     :param backend: When given, should be one of the possible :ref:`graph_api` backends.
-    :param keynames: Which names to use for the vertex data of qubit index and rank.
-    :type keynames: 2-tuple of strings
     :rtype: Instance of graph of the given backend.
     """
 
@@ -312,21 +272,19 @@ def cliffords(qubits, depth, no_hadamard=False,t_gates=False,backend=None, keyna
     v += qubits
 
     g = Graph(backend)
-
-    g.add_vertices(v)
-    g.add_edges(es1,1)
-    g.add_edges(es2,2)
+    
 
     for i in range(v):
-        g.set_type(i, ty[i])
-        g.set_vdata(i, keynames[0], qs[i])
-        g.set_vdata(i, keynames[1], rs[i])
+        g.add_vertex(ty[i],qs[i], rs[i])
     for w, phase in phases.items():
         g.set_phase(w,phase)
 
+    g.add_edges(es1,1)
+    g.add_edges(es2,2)
+
     for i in range(qubits):
-        g.set_vdata(i, 'i', True)
-        g.set_vdata(v-i-1, 'o', True)
+        g.inputs.append(i)
+        g.outputs.append(v-i-1)
     return g
 
 

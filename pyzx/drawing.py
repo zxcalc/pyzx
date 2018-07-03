@@ -83,11 +83,11 @@ def pack_indices(lst):
             i += 1
     return d
 
-def pack_circuit_ranks(g):
-    ranks = [g.vdata(v, 'r') for v in g.vertices()]
-    new_rank = pack_indices(ranks)
+def pack_circuit_rows(g):
+    rows = [g.row(v) for v in g.vertices()]
+    new_rows = pack_indices(rows)
     for v in g.vertices():
-        g.set_vdata(v, 'r', new_rank[g.vdata(v, 'r')])
+        g.set_row(v, new_rank[g.row(v)])
 
 
 def pack_circuit_nf(g, nf='grg'):
@@ -96,45 +96,45 @@ def pack_circuit_nf(g, nf='grg'):
 
     if nf == 'grg':
         for v in g.vertices():
-            if g.vdata(v, 'i'):
-                g.set_vdata(v, 'r', 0)
-            elif g.vdata(v, 'o'):
-                g.set_vdata(v, 'r', 4)
+            if v in g.inputs:
+                g.set_row(v, 0)
+            elif v in g.outputs:
+                g.set_row(v, 4)
             elif ty[v] == 2:
-                g.set_vdata(v, 'r', 2)
-                g.set_vdata(v, 'q', x_index)
+                g.set_row(v 2)
+                g.set_qubit(v, x_index)
                 x_index += 1
             elif ty[v] == 1:
                 for w in g.neighbours(v):
-                    if g.vdata(w, 'i'):
-                        g.set_vdata(v, 'r', 1)
-                        g.set_vdata(v, 'q', g.vdata(w, 'q'))
+                    if w in g.inputs:
+                        g.set_row(v,1)
+                        g.set_qubit(v, g.qubit(w))
                         break
-                    elif g.vdata(w, 'o'):
-                        g.set_vdata(v, 'r', 3)
-                        g.set_vdata(v, 'q', g.vdata(w, 'q'))
+                    elif v in g.outputs:
+                        g.set_row(v,3)
+                        g.set_qubit(v, g.qubit(w))
                         break
     elif nf == 'gslc':
         for v in g.vertices():
-            if g.vdata(v, 'i'):
-                g.set_vdata(v, 'r', 0)
-            elif g.vdata(v, 'o'):
-                g.set_vdata(v, 'r', 4)
+            if v in g.inputs:
+                g.set_row(v,0)
+            elif v in g.outputs:
+                g.set_row(v, 4)
             elif ty[v] == 1:
                 for w in g.neighbours(v):
-                    if g.vdata(w, 'i'):
-                        g.set_vdata(v, 'r', 1)
+                    if w in g.inputs:
+                        g.set_row(v,1)
                         #g.set_vdata(v, 'q', g.get_vdata(w, 'q'))
                         break
-                    elif g.vdata(w, 'o'):
-                        g.set_vdata(v, 'r', 3)
+                    elif w in g.outputs:
+                        g.set_row(v,3)
                         #g.set_vdata(v, 'q', g.get_vdata(w, 'q'))
                         break
     else:
         raise ValueError("Unknown normal form: " + str(nf))
 
 def circuit_layout(g,keys = ('r','q')):
-    return {v:(g.vdata(v,keys[0]),-g.vdata(v,keys[1])) for v in g.vertices()}
+    return {v:(g.row(v),-g.qubit(v)) for v in g.vertices()}
 
 def draw(g, layout=None, labels=False, figsize=(8,2), h_edge_draw='blue'):
     fig1 = plt.figure(figsize=figsize)
