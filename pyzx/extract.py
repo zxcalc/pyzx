@@ -244,3 +244,72 @@ def cut_extract(g, qubits):
                 g.set_vdata(v,'r',max_r+2)
             
         last_row = list(range(g.num_vertices()-extra,g.num_vertices())) + row0
+
+
+class CNOTMaker(object):
+    def __init__(self, qubits):
+        self.qubits = qubits
+        self.g = zx.Graph()
+        self.qs = list(range(qubits))  # tracks qubit indices of vertices
+        self.v = 0                     # next vertex to add
+        self.r = 0                     # current row
+        
+        for i in range(qubits):
+            self.add_node(i, 0, False)
+            self.g.set_vdata(self.v, 'i', True)
+            self.v += 1
+        self.r += 1
+    
+    def finish(self):
+        for i in range(self.qubits):
+            self.add_node(i, 0)
+            self.g.set_vdata(self.v-1, 'o', True)
+        self.r += 1
+    
+    def add_node(self, q, t, update_index=True):
+        self.g.add_vertex()
+        self.g.set_vdata(self.v, 'q', q)
+        self.g.set_vdata(self.v , 'r', self.r)
+        self.g.set_type(self.v, t)
+        if update_index:
+            self.g.add_edge((self.qs[q],self.v))
+            self.qs[q] = self.v
+            self.v += 1
+    
+    def row_swap(self, r1, r2):
+        print("row_swap", r1,r2)
+        self.add_node(r1, 1)
+        self.add_node(r2, 1)
+        self.r += 1
+        self.add_node(r1, 1, False)
+        self.g.add_edge((self.qs[r2],self.v))
+        self.v += 1
+        self.add_node(r2, 1, False)
+        self.g.add_edge((self.qs[r1],self.v))
+        self.qs[r1] = self.v - 1
+        self.qs[r2] = self.v
+        self.v += 1
+        self.r += 1
+    
+    def row_add(self, r1, r2):
+        print("row_add", r1,r2)
+        self.add_node(r1, 2)
+        self.add_node(r2, 1)
+        self.g.add_edge((self.qs[r1],self.qs[r2]))
+        self.r += 1
+
+
+def cnot_extract(g, left, right):
+    """left should be a column of green nodes, right should be a column of red nodes.
+    They are connected by regular edges. Returns a CNOT circuit giving this connectivity."""
+    if len(left) != len(right):
+        raise ValueError("Amount of qubits should match on left and right side")
+    qubits = len(left)
+    m = bi_adj(g,left,right)
+    if m.rank() != qubits:
+        raise ValueError("Adjency matrix rank does not match amount of qubits")
+    c = CNOTMaker(qubits)
+    m.gauss(full_reduce=True,x=c)
+    c.finish()
+    # TODO: Actually put the cnot circuit into g
+    return c
