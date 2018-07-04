@@ -15,7 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-__all__ = ['draw', 'pack_circuit_ranks', 'pack_circuit_nf']
+__all__ = ['draw', 'pack_circuit_rows', 'pack_circuit_nf']
 
 try:
     import matplotlib.pyplot as plt
@@ -101,7 +101,7 @@ def pack_circuit_nf(g, nf='grg'):
             elif v in g.outputs:
                 g.set_row(v, 4)
             elif ty[v] == 2:
-                g.set_row(v 2)
+                g.set_row(v, 2)
                 g.set_qubit(v, x_index)
                 x_index += 1
             elif ty[v] == 1:

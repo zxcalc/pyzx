@@ -48,7 +48,7 @@ class BaseGraph(object):
 	def __repr__(self):
 		return str(self)
 
-	def copy(self, backend=None):
+	def copy(self, adjoint=False, backend=None):
 		"""Create a copy of the graph. Optionally, the 'backend' parameter can be given
 		to create a copy of the graph with a given backend. If it is omitted, the copy
 		will have the same backend.
@@ -56,21 +56,36 @@ class BaseGraph(object):
 		Note the copy will have consecutive vertex indices, even if the original
 		graph did not.
 		"""
-		from .graph import Graph #imported here to prevent circularity
+		from .graph import Graph # imported here to prevent circularity
 		if (backend == None):
 			backend = type(self).backend
 		g = Graph(backend = backend)
+		mult = 1
+		if adjoint: mult = -1
 
-		g.add_vertices(self.num_vertices())
+		#g.add_vertices(self.num_vertices())
 		ty = self.types()
-		an = self.phases()
+		ph = self.phases()
+		qs = self.qubits()
+		rs = self.rows()
+		maxr = self.depth()
 		vtab = dict()
-		for i,v in enumerate(self.vertices()):
+		for v in self.vertices():
+			i = g.add_vertex(ty[v],phase=mult*ph[v])
+			if v in qs: g.set_qubit(i,qs[v])
+			if v in rs: 
+				if adjoint: g.set_row(i, maxr-rs[v])
+				else: g.set_row(i, rs[v])
 			vtab[v] = i
-			g.set_type(i, ty[v])
-			g.set_phase(i, an[v])
 			for k in self.vdata_keys(v):
 				g.set_vdata(i, k, self.vdata(v, k))
+
+		for i in self.inputs:
+			if adjoint: g.outputs.append(vtab[i])
+			else: g.inputs.append(vtab[i])
+		for o in self.outputs:
+			if adjoint: g.inputs.append(vtab[o])
+			else: g.outputs.append(vtab[o])
 		
 		etab = {e:(vtab[self.edge_s(e)],vtab[self.edge_t(e)]) for e in self.edges()}
 		g.add_edges(etab.values())
