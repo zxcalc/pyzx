@@ -49,11 +49,12 @@ class BaseGraph(object):
 		return str(self)
 
 	def copy(self, adjoint=False, backend=None):
-		"""Create a copy of the graph. Optionally, the 'backend' parameter can be given
-		to create a copy of the graph with a given backend. If it is omitted, the copy
-		will have the same backend.
+		"""Create a copy of the graph. If ``adjoint`` is set, 
+		the adjoint of the graph will be returned (inputs and outputs flipped, phases reversed).
+		When ``backend`` is set, a copy of the graph with the given backend is produced. 
+		By default the copy will have the same backend.
 
-		Note the copy will have consecutive vertex indices, even if the original
+		`Note`: The copy will have consecutive vertex indices, even if the original
 		graph did not.
 		"""
 		from .graph import Graph # imported here to prevent circularity
