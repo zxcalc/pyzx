@@ -63,18 +63,19 @@ class BaseGraph(object):
 		mult = 1
 		if adjoint: mult = -1
 
-		g.add_vertices(self.num_vertices())
+		#g.add_vertices(self.num_vertices())
 		ty = self.types()
 		ph = self.phases()
 		qs = self.qubits()
 		rs = self.rows()
+		maxr = self.depth()
 		vtab = dict()
-		verts = self.vertices()
-		if adjoint: verts = reversed(verts)
-		for i,v in enumerate(verts):
+		for v in self.vertices():
 			i = g.add_vertex(ty[v],phase=mult*ph[v])
 			if v in qs: g.set_qubit(i,qs[v])
-			if v in rs: g.set_row(i, rs[v])
+			if v in rs: 
+				if adjoint: g.set_row(i, maxr-rs[v])
+				else: g.set_row(i, rs[v])
 			vtab[v] = i
 			for k in self.vdata_keys(v):
 				g.set_vdata(i, k, self.vdata(v, k))
