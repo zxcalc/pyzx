@@ -93,6 +93,50 @@ class BaseGraph(object):
 		for e,(s,t) in etab.items():
 			g.set_edge_type(g.edge(s,t), self.edge_type(e))
 		return g
+	def adjoint(self):
+		"""Returns a new graph equal to the adjoint of this graph."""
+		return self.copy(adjoint=True)
+
+	def replace_subgraph(self, left_row, right_row, replace):
+		"""Deletes the subgraph of all nodes with rank strictly between ``left_row``
+		and ``right_row`` and replaces it with the graph ``replace``.
+		The amount of nodes on the left row should match the amount of inputs of 
+		the replacement graph and the same for the right row and the outputs.
+		The graphs are glued together based on the qubit index of the vertices."""
+		qleft = [v for v in self.vertices() if self.row(v)==left_row]
+		qright= [v for v in self.vertices() if self.row(v)==right_row]
+		if len(qleft) != len(replace.inputs):
+			raise TypeError("Inputs do not match glueing vertices")
+		if len(qright) != len(replace.outputs):
+			raise TypeError("Outputs do not match glueing vertices")
+		if set(self.qubit(v) for v in qleft) != set(replace.qubit(v) for v in replace.inputs):
+			raise TypeError("Input qubit indices do not match")
+		if set(self.qubit(v) for v in qright)!= set(replace.qubit(v) for v in replace.outputs):
+			raise TypeError("Output qubit indices do not match")
+		
+		self.remove_vertices([v for v in self.vertices() if left_row<self.row(v)<right_row])
+		self.remove_edges([self.edge(s,t) for s in qleft for t in qright if self.connected(s,t)])
+		rdepth = replace.depth()
+		for v in (v for v in self.vertices() if self.row(v)>=right_row):
+			self.set_row(v, self.row(v)+rdepth)
+
+		vtab = {}
+		for v in replace.vertices():
+			if v in replace.inputs or v in replace.outputs: continue
+			vtab[v] = self.add_vertex(replace.type(v),replace.qubit(v),
+								replace.row(v)+left_row,replace.phase(v))
+		for v in replace.inputs:
+			vtab[v] = [i for i in qleft if self.qubit(i) == replace.qubit(v)][0]
+
+		for v in replace.outputs:
+			vtab[v] = [i for i in qright if self.qubit(i) == replace.qubit(v)][0]
+
+		etab = {e:(vtab[replace.edge_s(e)],vtab[replace.edge_t(e)]) for e in replace.edges()}
+		self.add_edges(etab.values())
+		for e,(s,t) in etab.items():
+			self.set_edge_type(self.edge(s,t), replace.edge_type(e))
+
+
 
 	def vindex(self):
 		"""The index given to the next vertex added to the graph. It should always
@@ -183,28 +227,28 @@ class BaseGraph(object):
 		self.add_edges(add[1],2)
 
 	def remove_vertices(self, vertices):
-		"""Removes the list of vertices from the graph"""
+		"""Removes the list of vertices from the graph."""
 		raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
 	def remove_vertex(self, vertex):
-		"""Removes the given vertex from the graph"""
+		"""Removes the given vertex from the graph."""
 		self.remove_vertices([vertex])
 
 	def remove_isolated_vertices(self):
 		"""Deletes all vertices that are not connected to any other vertex.
-		Should be replaced by a faster alternative if available in the backend"""
+		Should be replaced by a faster alternative if available in the backend."""
 		self.remove_vertices([v for v in self.vertices() if self.vertex_degree(v)==0])
 
 	def remove_edges(self, edges):
-		"""Removes the list of edges from the graph"""
+		"""Removes the list of edges from the graph."""
 		raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
 	def remove_edge(self, edge):
-		"""Removes the given edge from the graph"""
+		"""Removes the given edge from the graph."""
 		self.remove_edge([edge])
 
 	def num_vertices(self):
-		"""Returns the amount of vertices in the graph"""
+		"""Returns the amount of vertices in the graph."""
 		raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
 	def num_edges(self):
@@ -212,11 +256,11 @@ class BaseGraph(object):
 		raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
 	def vertices(self):
-		"""Iterator over all the vertices"""
+		"""Iterator over all the vertices."""
 		raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
 	def edges(self):
-		"""Iterator that returns all the edges. Output type depends on implementation in backend"""
+		"""Iterator that returns all the edges. Output type depends on implementation in backend."""
 		raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
 	def vertex_set(self):
@@ -230,7 +274,7 @@ class BaseGraph(object):
 		return set(self.edges())
 
 	def edge(self, s, t):
-		"""Returns the edge object with the given source/target"""
+		"""Returns the edge object with the given source/target."""
 		raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
 	def edge_st(self, edge):
@@ -244,11 +288,11 @@ class BaseGraph(object):
 		return self.edge_st(edge)[1]
 
 	def neighbours(self, vertex):
-		"""Returns all neighbouring vertices of the given vertex"""
+		"""Returns all neighbouring vertices of the given vertex."""
 		raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
 	def vertex_degree(self, vertex):
-		"""Returns the degree of the given vertex"""
+		"""Returns the degree of the given vertex."""
 		raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
 	def incident_edges(self, vertex):
@@ -256,12 +300,12 @@ class BaseGraph(object):
 		raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
 	def connected(self,v1,v2):
-		"""Returns whether vertices v1 and v2 share an edge"""
+		"""Returns whether vertices v1 and v2 share an edge."""
 		raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
 	def edge_type(self, e):
 		"""Returns the type of the given edge:
-		1 if it is regular, 2 if it is a Hadamard edge, 0 if the edge is not in the graph"""
+		1 if it is regular, 2 if it is a Hadamard edge, 0 if the edge is not in the graph."""
 		raise NotImplementedError("Not implemented on backend " + type(self).backend)
 	def set_edge_type(self, e, t):
 		"""Sets the type of the given edge."""
@@ -269,26 +313,26 @@ class BaseGraph(object):
 
 	def type(self, vertex):
 		"""Returns the type of the given vertex:
-		0 if it is a boundary, 1 if is a Z node, 2 if it a X node"""
+		0 if it is a boundary, 1 if is a Z node, 2 if it a X node."""
 		raise NotImplementedError("Not implemented on backend " + type(self).backend)
 	def types(self):
-		"""Returns a mapping of vertices to their types"""
+		"""Returns a mapping of vertices to their types."""
 		raise NotImplementedError("Not implemented on backend " + type(self).backend)
 	def set_type(self, vertex, t):
-		"""Sets the type of the given vertex to t"""
+		"""Sets the type of the given vertex to t."""
 		raise NotImplementedError("Not implemented on backend" + type(self).backend)
 	
 	def phase(self, vertex):
-		"""Returns the phase value of the given vertex"""
+		"""Returns the phase value of the given vertex."""
 		raise NotImplementedError("Not implemented on backend" + type(self).backend)
 	def phases(self):
-		"""Returns a mapping of vertices to their phase values"""
+		"""Returns a mapping of vertices to their phase values."""
 		raise NotImplementedError("Not implemented on backend" + type(self).backend)
 	def set_phase(self, vertex, phase):
-		"""Sets the phase of the vertex to the given value"""
+		"""Sets the phase of the vertex to the given value."""
 		raise NotImplementedError("Not implemented on backend" + type(self).backend)
 	def add_to_phase(self, vertex, phase):
-		"""Add the given phase to the phase value of the given vertex"""
+		"""Add the given phase to the phase value of the given vertex."""
 		self.set_phase(vertex,self.phase(vertex)+phase)
 
 	def qubit(self, vertex):
@@ -296,7 +340,7 @@ class BaseGraph(object):
 		If no index has been set, returns -1."""
 		raise NotImplementedError("Not implemented on backend" + type(self).backend)
 	def qubits(self):
-		"""Returns a mapping of vertices to their qubit index"""
+		"""Returns a mapping of vertices to their qubit index."""
 		raise NotImplementedError("Not implemented on backend" + type(self).backend)
 	def set_qubit(self, vertex, q):
 		"""Sets the qubit index associated to the vertex."""
@@ -307,13 +351,14 @@ class BaseGraph(object):
 		If no row has been set, returns -1."""
 		raise NotImplementedError("Not implemented on backend" + type(self).backend)
 	def rows(self):
-		"""Returns a mapping of vertices to their row index"""
+		"""Returns a mapping of vertices to their row index."""
 		raise NotImplementedError("Not implemented on backend" + type(self).backend)
 	def set_row(self, vertex, r):
 		"""Sets the row the vertex should be positioned at."""
 		raise NotImplementedError("Not implemented on backend" + type(self).backend)
 
 	def set_position(self, vertex, q, r):
+		"""Set both the qubit index and row index of the vertex."""
 		self.set_qubit(vertex, q)
 		self.set_row(vertex, r)
 
@@ -326,5 +371,5 @@ class BaseGraph(object):
 		If this key has no value associated with it, it returns the default value."""
 		raise NotImplementedError("Not implemented on backend" + type(self).backend)
 	def set_vdata(self, vertex, key, val):
-		"""Sets the vertex data associated to key to val"""
+		"""Sets the vertex data associated to key to val."""
 		raise NotImplementedError("Not implemented on backend" + type(self).backend)

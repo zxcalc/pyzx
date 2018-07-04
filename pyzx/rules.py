@@ -143,7 +143,7 @@ def match_spider_parallel(g, num=-1, edgelist=-1):
         v0, v1 = g.edge_st(e)
         v0t = types[v0]
         v1t = types[v1]
-        if (v0t == v1t):
+        if (v0t == v1t and v0t!=0):
                 i += 1
                 for v in g.neighbours(v0):
                     for c in g.incident_edges(v): candidates.discard(c)

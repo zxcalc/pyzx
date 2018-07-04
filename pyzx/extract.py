@@ -19,6 +19,7 @@ __all__ = ['cut_extract']
 
 from .linalg import Mat2
 from .drawing import pack_circuit_rows
+from .graph import Graph
 
 def before(g, vs):
     min_r = min(g.row(v) for v in vs)
@@ -46,25 +47,31 @@ def cut_edges(g, left, right):
     
     vi = g.vindex()
     cut_rank = y.rows()
-    g.add_vertices(2*cut_rank)
+    #g.add_vertices(2*cut_rank)
+    left_verts = []
+    right_verts = []
     
     for i in range(cut_rank):
-        g.add_vertex(1,i,max_r+1)
-    for i in range(cut_rank):
-        g.add_vertex(1,i,max_r+2)
-        v = vi+cut_rank+i
-        g.add_edge((vi+i,v))
-        g.set_edge_type(g.edge(vi+i,v), 2)
+        v1 = g.add_vertex(1,i,max_r+1)
+        v2 = g.add_vertex(1,i,max_r+2)
+        #v = vi+cut_rank+i
+        #g.add_edge((vi+i,v))
+        g.add_edge((v1,v2),2)
+        left_verts.append(v1)
+        right_verts.append(v2)
+        #g.set_edge_type(g.edge(vi+i,v), 2)
     for i in range(y.rows()):
         for j in range(y.cols()):
             if (y.data[i][j]):
-                g.add_edge((left[j], vi + i))
-                g.set_edge_type(g.edge(left[j], vi + i), 2)
+                g.add_edge((left[j],left_verts[i]),2)
+                #g.add_edge((left[j], vi + i))
+                #g.set_edge_type(g.edge(left[j], vi + i), 2)
     for i in range(x.rows()):
         for j in range(x.cols()):
             if (x.data[i][j]):
-                g.add_edge((vi + cut_rank + j, right[i]))
-                g.set_edge_type(g.edge(vi + cut_rank + j, right[i]), 2)
+                g.add_edge((right_verts[j],right[i]),2)
+                #g.add_edge((vi + cut_rank + j, right[i]))
+                #g.set_edge_type(g.edge(vi + cut_rank + j, right[i]), 2)
     
 
 def split(g, below, above):
@@ -102,7 +109,7 @@ def unspider(g, v):
 def cut_rank(g, left, right):
     return bi_adj(g, left, right).rank()
 
-def greedy_cut_extract(g, qubits):
+def greedy_cut_extract(g, qubits, max_t=-1):
     pack_circuit_rows(g)
     max_r = g.depth() - 1
     for v in g.vertices():
@@ -110,7 +117,7 @@ def greedy_cut_extract(g, qubits):
             g.set_row(v, max_r)
 
     ts = sorted([v for v in g.vertices() if g.phase(v).denominator > 2 and g.row(v) < max_r],
-          key=lambda v: g.row(v))
+          key=g.row)
     while len(ts) > 0:
         row = [ts.pop(0)]
         while True:
@@ -239,21 +246,21 @@ def cut_extract(g, qubits):
 class CNOTMaker(object):
     def __init__(self, qubits):
         self.qubits = qubits
-        self.g = zx.Graph()
+        self.g = Graph()
         self.qs = list(range(qubits))  # tracks qubit indices of vertices
         self.v = 0                     # next vertex to add
         self.r = 0                     # current row
         
         for i in range(qubits):
             self.add_node(i, 0, False)
-            self.g.set_vdata(self.v, 'i', True)
+            self.g.inputs.append(self.v)
             self.v += 1
         self.r += 1
     
     def finish(self):
         for i in range(self.qubits):
             self.add_node(i, 0)
-            self.g.set_vdata(self.v-1, 'o', True)
+            self.g.outputs.append(self.v-1)
         self.r += 1
     
     def add_node(self, q, t, update_index=True):
@@ -286,9 +293,12 @@ class CNOTMaker(object):
         self.r += 1
 
 
-def cnot_extract(g, left, right):
-    """left should be a column of green nodes, right should be a column of red nodes.
-    They are connected by regular edges. Returns a CNOT circuit giving this connectivity."""
+def clifford_extract(g, left_row, right_row):
+    """Given a Clifford diagram in normal form, constructs a Clifford circuit.
+    ``left_row`` and ``right_row`` should point to adjacent rows of green nodes
+    that are interconnected with Hadamard edges."""
+    qleft = [v for v in g.vertices() if g.row(v)==left_row]
+    qright= [v for v in g.vertices() if g.row(v)==right_row]
     if len(left) != len(right):
         raise ValueError("Amount of qubits should match on left and right side")
     qubits = len(left)
@@ -298,5 +308,5 @@ def cnot_extract(g, left, right):
     c = CNOTMaker(qubits)
     m.gauss(full_reduce=True,x=c)
     c.finish()
-    # TODO: Actually put the cnot circuit into g
+    g.replace_subgraph(left_row, right_row, c.g)
     return c

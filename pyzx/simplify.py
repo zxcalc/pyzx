@@ -90,6 +90,7 @@ def clifford_simp(g, quiet=False):
     pivot_simp(g, quiet=quiet)
     #to_rg(g)
     id_simp(g, quiet=quiet)
+    spider_simp(g, quiet=quiet)
 
 def to_gh(g):
     """Turns every red node into a green node by changing regular edges into hadamard edges"""
@@ -170,6 +171,7 @@ def clifford_iter(g):
     to_rg(g)
     yield g, "to_rg"
     for d in id_iter(g): yield d
+    for d in spider_iter(g): yield d
 
 
 

@@ -87,7 +87,7 @@ def pack_circuit_rows(g):
     rows = [g.row(v) for v in g.vertices()]
     new_rows = pack_indices(rows)
     for v in g.vertices():
-        g.set_row(v, new_rank[g.row(v)])
+        g.set_row(v, new_rows[g.row(v)])
 
 
 def pack_circuit_nf(g, nf='grg'):
@@ -110,7 +110,7 @@ def pack_circuit_nf(g, nf='grg'):
                         g.set_row(v,1)
                         g.set_qubit(v, g.qubit(w))
                         break
-                    elif v in g.outputs:
+                    elif w in g.outputs:
                         g.set_row(v,3)
                         g.set_qubit(v, g.qubit(w))
                         break
