@@ -311,6 +311,9 @@ class BaseGraph(object):
 		"""Sets the row the vertex should be positioned at."""
 		raise NotImplementedError("Not implemented on backend" + type(self).backend)
 
+	def set_position(self, vertex, q, r):
+		self.set_qubit(vertex, q)
+		self.set_row(vertex, r)
 
 	def vdata_keys(self, vertex):
 		"""Returns an iterable of the vertex data key names.
