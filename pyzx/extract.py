@@ -109,11 +109,7 @@ def unspider(g, v):
 def cut_rank(g, left, right):
     return bi_adj(g, left, right).rank()
 
-
-# Solved most bugs I think, but it will probably still fail when
-# it encounters a qubit that has no nodes on it 
-# (so when input is directly connected to output)
-def greedy_cut_extract(g, qubits):
+def normalise(g):
     max_r = g.depth() - 1
     for v in g.vertices():
         if g.type(v) == 0 : continue
@@ -128,6 +124,12 @@ def greedy_cut_extract(g, qubits):
                 break
 
     pack_circuit_rows(g)
+
+# Solved most bugs I think, but it will probably still fail when
+# it encounters a qubit that has no nodes on it 
+# (so when input is directly connected to output)
+def greedy_cut_extract(g, qubits, iterate=False):
+    normalise(g)
     max_r = g.depth() - 1
 
     #ts = sorted([v for v in g.vertices() if g.phase(v).denominator > 2 and 1 < g.row(v) < max_r],key=g.row)
@@ -148,18 +150,20 @@ def greedy_cut_extract(g, qubits):
             else:
                 ts.insert(0, row.pop())
                 left,right = split(g, below=g.row(row[0]), above=g.row(row[-1]))
+                rank = cut_rank(g, left, right)
                 break
         if len(row) == 0:
             print("FAILED at row", row, "with rank", rank, ">=", qubits, "qubits")
             return False
 
         cut_edges(g, left, right)
-        r = g.row(g.vindex()-1)
+        #r = g.row(g.vindex()-1)
+        r = max(g.row(v) for v in left)+2
         for i,v in enumerate(row):
             g.set_qubit(v,rank+i)
-            if rank > 0:
-                g.set_row(v,r)
-                unspider(g, v)
+            g.set_row(v,r)
+            unspider(g, v)
+        if iterate: yield g
     pack_circuit_rows(g)
     return True
 
@@ -361,7 +365,6 @@ def clifford_extract(g, left_row, right_row):
     m.gauss(full_reduce=True,x=c)
     c.finish()
     g.replace_subgraph(left_row, right_row, c.g)
-    return c
 
 
 def circuit_extract(g):

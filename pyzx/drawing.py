@@ -136,7 +136,7 @@ def pack_circuit_nf(g, nf='grg'):
 def circuit_layout(g,keys = ('r','q')):
     return {v:(g.row(v),-g.qubit(v)) for v in g.vertices()}
 
-def draw(g, layout=None, labels=False, figsize=(8,2), h_edge_draw='blue'):
+def draw(g, layout=None, labels=False, figsize=(8,2), h_edge_draw='blue', rows=None):
     fig1 = plt.figure(figsize=figsize)
     ax = fig1.add_axes([0, 0, 1, 1], frameon=False)
     ax.xaxis.set_visible(False)
@@ -144,8 +144,16 @@ def draw(g, layout=None, labels=False, figsize=(8,2), h_edge_draw='blue'):
 
     if not layout:
         layout = circuit_layout(g)
+
+    if rows:
+        minrow,maxrow = rows
+        vertices = [v for v in g.vertices() if minrow<=g.row(v)<=maxrow]
+        edges = [e for e in g.edges() if g.edge_s(e) in vertices and g.edge_t(e) in vertices]
+    else:
+        vertices = g.vertices()
+        edges = g.edges()
     
-    for e in g.edges():
+    for e in edges:
         sp = layout[g.edge_s(e)]
         tp = layout[g.edge_t(e)]
         et = g.edge_type(e)
@@ -180,7 +188,7 @@ def draw(g, layout=None, labels=False, figsize=(8,2), h_edge_draw='blue'):
 
         #plt.plot([sp[0],tp[0]],[sp[1],tp[1]], 'k', zorder=0, linewidth=0.8)
     
-    for v in g.vertices():
+    for v in vertices:
         p = layout[v]
         t = g.type(v)
         a = g.phase(v)
