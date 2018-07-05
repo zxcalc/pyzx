@@ -15,7 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-__all__ = ['cut_extract']
+#__all__ = ['cut_extract']
 
 from .linalg import Mat2
 from .drawing import pack_circuit_rows
@@ -109,15 +109,29 @@ def unspider(g, v):
 def cut_rank(g, left, right):
     return bi_adj(g, left, right).rank()
 
-def greedy_cut_extract(g, qubits, max_t=-1):
-    pack_circuit_rows(g)
+
+# Solved most bugs I think, but it will probably still fail when
+# it encounters a qubit that has no nodes on it 
+# (so when input is directly connected to output)
+def greedy_cut_extract(g, qubits):
     max_r = g.depth() - 1
     for v in g.vertices():
-        if any(w in g.outputs for w in g.neighbours(v)):
-            g.set_row(v, max_r)
+        if g.type(v) == 0 : continue
+        for w in g.neighbours(v):
+            if w in g.inputs:
+                g.set_row(v,1)
+                g.set_qubit(v, g.qubit(w))
+                break
+            elif w in g.outputs:
+                g.set_row(v, max_r)
+                g.set_qubit(v, g.qubit(w))
+                break
 
-    ts = sorted([v for v in g.vertices() if g.phase(v).denominator > 2 and g.row(v) < max_r],
-          key=g.row)
+    pack_circuit_rows(g)
+    max_r = g.depth() - 1
+
+    #ts = sorted([v for v in g.vertices() if g.phase(v).denominator > 2 and 1 < g.row(v) < max_r],key=g.row)
+    ts = sorted([v for v in g.vertices() if 1 < g.row(v) < max_r],key=g.row)
     while len(ts) > 0:
         row = [ts.pop(0)]
         while True:
@@ -133,6 +147,7 @@ def greedy_cut_extract(g, qubits, max_t=-1):
                 else: break
             else:
                 ts.insert(0, row.pop())
+                left,right = split(g, below=g.row(row[0]), above=g.row(row[-1]))
                 break
         if len(row) == 0:
             print("FAILED at row", row, "with rank", rank, ">=", qubits, "qubits")
@@ -145,6 +160,7 @@ def greedy_cut_extract(g, qubits, max_t=-1):
             if rank > 0:
                 g.set_row(v,r)
                 unspider(g, v)
+    pack_circuit_rows(g)
     return True
 
 def single_cut_extract(g, qubits):
@@ -271,7 +287,7 @@ class CNOTMaker(object):
             self.v += 1
     
     def row_swap(self, r1, r2):
-        print("row_swap", r1,r2)
+        #print("row_swap", r1,r2)
         self.add_node(r1, 1)
         self.add_node(r2, 1)
         self.r += 1
@@ -286,7 +302,7 @@ class CNOTMaker(object):
         self.r += 1
     
     def row_add(self, r1, r2):
-        print("row_add", r1,r2)
+        #print("row_add", r1,r2)
         self.add_node(r1, 2)
         self.add_node(r2, 1)
         self.g.add_edge((self.qs[r1],self.qs[r2]))
@@ -297,16 +313,59 @@ def clifford_extract(g, left_row, right_row):
     """Given a Clifford diagram in normal form, constructs a Clifford circuit.
     ``left_row`` and ``right_row`` should point to adjacent rows of green nodes
     that are interconnected with Hadamard edges."""
+    qubits = g.qubit_count()
     qleft = [v for v in g.vertices() if g.row(v)==left_row]
     qright= [v for v in g.vertices() if g.row(v)==right_row]
-    if len(left) != len(right):
+    qleft.sort(key=g.qubit)
+    qright.sort(key=g.qubit)
+    for q in range(qubits):
+        no_left = False
+        if len(qleft) <= q or g.qubit(qleft[q]) != q: #missing vertex
+            vert = max((v for v in g.vertices() if g.qubit(v)==q and g.row(v)<left_row), key=g.row)
+            conn = min((n for n in g.neighbours(vert) if g.qubit(n)==q and g.row(n)>=right_row),key=g.row)
+            e = g.edge(vert, conn)
+            t = g.edge_type(e)
+            g.remove_edge(e)
+            v1 = g.add_vertex(1,q,left_row)
+            g.add_edge((vert,v1),3-t)
+            g.add_edge((v1,conn), 2)
+            qleft.insert(q,v1)
+            no_left = True
+        else:
+            v1 = qleft[q]
+        if len(qright) <= q or g.qubit(qright[q]) != q: #missing vertex
+            if no_left: vert = conn
+            else: vert = min((v for v in g.vertices() if g.qubit(v)==q and g.row(v)>right_row), key=g.row)
+            conn2 = max((n for n in g.neighbours(vert) if g.qubit(n)==q and g.row(n)<=left_row),key=g.row)
+            if v1 != conn2: raise TypeError("vertices mismatching")
+            e = g.edge(conn2,vert)
+            t = g.edge_type(e)
+            g.remove_edge(e)
+            v2 = g.add_vertex(1,q,right_row)
+            g.add_edge((conn2,v2),2)
+            g.add_edge((v2,vert),3-t)
+            qright.insert(q,v2)
+
+    if len(qleft) != len(qright):
         raise ValueError("Amount of qubits should match on left and right side")
-    qubits = len(left)
-    m = bi_adj(g,left,right)
+    m = bi_adj(g,qleft,qright)
     if m.rank() != qubits:
         raise ValueError("Adjency matrix rank does not match amount of qubits")
+    for v in qright:
+        g.set_type(v,2)
+        for e in g.incident_edges(v):
+            if (g.row(g.edge_s(e)) <= right_row
+                and g.row(g.edge_t(e)) <= left_row): continue
+            g.set_edge_type(e,3-g.edge_type(e)) # 2 -> 1, 1 -> 2
     c = CNOTMaker(qubits)
     m.gauss(full_reduce=True,x=c)
     c.finish()
     g.replace_subgraph(left_row, right_row, c.g)
     return c
+
+
+def circuit_extract(g):
+    qubits = g.qubit_count()
+    greedy_cut_extract(g,qubits)
+    for i in reversed(range(1,g.depth()-1,2)):
+        clifford_extract(g,i,i+1)

@@ -44,7 +44,7 @@ class GraphS(BaseGraph):
 	def depth(self): 
 		self._maxr = max(self._rindex.values())
 		return self._maxr
-	def qubit_count(self): return self._maxq
+	def qubit_count(self): return self._maxq + 1
 
 	def add_vertices(self, amount):
 		for i in range(self._vindex, self._vindex + amount):

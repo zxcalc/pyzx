@@ -116,7 +116,7 @@ class BaseGraph(object):
 		
 		self.remove_vertices([v for v in self.vertices() if left_row<self.row(v)<right_row])
 		self.remove_edges([self.edge(s,t) for s in qleft for t in qright if self.connected(s,t)])
-		rdepth = replace.depth()
+		rdepth = replace.depth() -1
 		for v in (v for v in self.vertices() if self.row(v)>=right_row):
 			self.set_row(v, self.row(v)+rdepth)
 
