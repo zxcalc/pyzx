@@ -168,8 +168,8 @@ def clifford_iter(g):
     for d in pivot_iter(g): yield d
     for d in lcomp_iter(g): yield d
     for d in pivot_iter(g): yield d
-    to_rg(g)
-    yield g, "to_rg"
+    #to_rg(g)
+    #yield g, "to_rg"
     for d in id_iter(g): yield d
     for d in spider_iter(g): yield d
 

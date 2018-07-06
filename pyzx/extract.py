@@ -369,6 +369,6 @@ def clifford_extract(g, left_row, right_row):
 
 def circuit_extract(g):
     qubits = g.qubit_count()
-    greedy_cut_extract(g,qubits)
+    for i in greedy_cut_extract(g,qubits): pass
     for i in reversed(range(1,g.depth()-1,2)):
         clifford_extract(g,i,i+1)
