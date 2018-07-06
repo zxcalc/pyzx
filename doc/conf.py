@@ -14,8 +14,9 @@
 #
 import os
 import sys
-sys.path.insert(0, os.path.abspath('..\\pyzx'))
+sys.path.insert(0, os.path.abspath('../pyzx'))
 sys.path.insert(0, os.path.abspath('..'))
+sys.path.insert(0, os.path.abspath('pyzx'))
 
 import pyzx
 

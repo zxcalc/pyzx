@@ -15,7 +15,11 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import igraph as ig
+try:
+	import igraph as ig
+except ImportError:
+	print("python-igraph not available")
+	ig = None
 
 from .base import BaseGraph
 
