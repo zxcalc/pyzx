@@ -61,7 +61,6 @@ def pop_and_shift(verts, indices):
     return res
 
 
-# TODO: Support Hadamard gates
 def tensorfy(g):
     """Takes in a Graph and outputs a multidimensional numpy array
     representing the linear map the ZX-diagram implements.
@@ -86,27 +85,36 @@ def tensorfy(g):
         indices[i] = [qubits + g.qubit(i)]
     
     for r in sorted(verts_row.keys()):
-        if r == 0 or r == depth: continue #inputs and outputs
+        if r == 0: continue #inputs already taken care of
         for v in sorted(verts_row[r]):
             neigh = list(g.neighbours(v))
-            phase = pi*phases[v]
-            t = Z_to_tensor(len(neigh),phase) if types[v] == 1 else X_to_tensor(len(neigh),phase)
+            d = len(neigh)
+            if v in g.outputs: 
+                #print("output")
+                if d != 1: raise ValueError("Weird output")
+                d += 1
+                t = id2
+            else:
+                phase = pi*phases[v]
+                t = Z_to_tensor(d,phase) if types[v] == 1 else X_to_tensor(d,phase)
             nn = list(filter(lambda n: rows[n]<r or (rows[n]==r and n<v), neigh))
+            ety = {n:g.edge_type(g.edge(v,n)) for n in nn}
+            nn.sort(key=lambda n: ety[n])
+            for n in nn:
+                if ety[n] == 2: #Hadamard edge
+                    t = np.tensordot(t,had,(0,0)) # Hadamard edges are moved to the last index of t
             #print(neigh, nn)
-            contr = pop_and_shift(nn,indices)
+            contr = pop_and_shift(nn,indices) #the last indices in contr correspond to hadamard contractions
             #print(contr)
-            tensor = np.tensordot(tensor,t,axes=(contr,list(range(len(contr)))))
-            indices[v] = list(range(len(tensor.shape)-len(neigh)+len(contr), len(tensor.shape)))
+            tensor = np.tensordot(tensor,t,axes=(contr,list(range(len(t.shape)-len(contr),len(t.shape)))))
+            indices[v] = list(range(len(tensor.shape)-d+len(contr), len(tensor.shape)))
             #print(indices)
             #print(tensor)
     
-    perm = inputs
+    perm = inputs.copy()
     for o in sorted(g.outputs,key=g.qubit):
-        n = g.neighbours(o)
-        if len(n) != 1: raise ValueError("Weird output")
-        n = list(n)[0]
-        if len(indices[n]) != 1: raise ValueError("Weird output")
-        inputs.append(indices[n][0])
+        if len(indices[o]) != 1: raise ValueError("Weird output")
+        perm.append(indices[o][0])
     
     tensor = np.transpose(tensor,perm)
         
