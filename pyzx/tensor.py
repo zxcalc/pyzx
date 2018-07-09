@@ -75,6 +75,7 @@ def tensorfy(g):
         if r in verts_row: verts_row[r].append(v)
         else: verts_row[r] = [v]
     
+    had = 1/sqrt(2)*np.mat([[1,1],[1,-1]])
     id2 = np.identity(2)
     tensor = np.identity(2)
     qubits = g.qubit_count()
@@ -111,7 +112,7 @@ def tensorfy(g):
             #print(indices)
             #print(tensor)
     
-    perm = inputs.copy()
+    perm = list(range(qubits))
     for o in sorted(g.outputs,key=g.qubit):
         if len(indices[o]) != 1: raise ValueError("Weird output")
         perm.append(indices[o][0])
