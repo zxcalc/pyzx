@@ -22,7 +22,7 @@ try:
     np.set_printoptions(suppress=True)
 except:
     np = None
-from math import pi
+from math import pi, sqrt
 
 
 def Z_to_tensor(arity, phase):

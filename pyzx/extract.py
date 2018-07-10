@@ -376,3 +376,5 @@ def circuit_extract(g):
     if greedy_cut_extract(g,qubits):
         for i in reversed(range(1,g.depth()-1,2)):
             clifford_extract(g,i,i+1)
+        return True
+    else: return False
