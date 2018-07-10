@@ -23,7 +23,7 @@ The current rewrites are based on:
 - Spider fusion.
 - The bialgebra equation.
 - Local Complementation.
-- Pivotting.
+- Pivoting.
 - Removing of identities.
 
 Each of these rewrite rules consists of three methods:
@@ -110,7 +110,7 @@ def bialg(g, matches):
             if e in etab: etab[e][0] += 1
             else: etab[e] = [1,0]
     
-    return (etab, rem_verts, True)
+    return (etab, rem_verts, [], True)
 
 def match_spider(g):
     """Does the same as :func:`match_spider_parallel` but with ``num=1``."""
@@ -173,7 +173,7 @@ def spider(g, matches):
             if e not in etab: etab[e] = [0,0]
             etab[e][g.edge_type((m[1],v1))-1] += 1
     
-    return (etab, rem_verts, True)
+    return (etab, rem_verts, [], True)
 
 # TODO: optimise for single-match case
 def match_pivot(g):
@@ -275,6 +275,7 @@ def pivot(g, matches):
     ``m[6]`` : list of (non-boundary) vertices adjacent to ``m[0]`` and ``m[1]``.
     """
     rem_verts = []
+    rem_edges = []
     etab = dict()
     for m in matches:
         es = ([(s,t) if s < t else (t,s) for s in m[4] for t in m[5]] +
@@ -284,33 +285,34 @@ def pivot(g, matches):
         for v in m[6]: g.add_to_phase(v, 1)
 
         for i in range(2):
+            # if m[i] has a phase, it will get copied on to the neighbours of m[1-i]:
+            a = g.phase(m[i])
+            for v in m[(1-i)+4]: g.add_to_phase(v, a)
+            for v in m[6]: g.add_to_phase(v, a)
+
+
             if len(m[i+2]) == 0:
-                # if there is no boundary, the vertex is destroyed, depositing
-                # its phase on its new neighbours.
-                a = g.phase(m[i])
-                rem_verts.append(m[i])
-
-                g.add_to_phase(m[1-i], a)
-                for v in m[(1-i)+4]: g.add_to_phase(v, a)
-                for v in m[6]: g.add_to_phase(v, a)
+                # if there is no boundary, the other vertex is destroyed
+                rem_verts.append(m[1-i])
             else:
-                # toggle whether the boundary is an h-edge or a normal edge
+                # if there is a boundary, toggle whether it is an h-edge or a normal edge
+                # and point it at the other vertex
                 e = g.edge(m[i], m[i+2][0])
-                g.set_edge_type(e, 2 if g.edge_type(e) == 1 else 1)
+                new_e = (m[1-i], m[i+2][0])
+                if new_e[0] > new_e[1]: new_e = (new_e[1],new_e[0])
+                ne,nhe = etab.get(new_e, (0,0))
+                if g.edge_type(e) == 1: nhe += 1
+                elif g.edge_type(e) == 2: ne += 1
+                etab[new_e] = (ne,nhe)
+                rem_edges.append(e)
+                
 
-                # the vertices m[i] and m[1-i] need to trade places. The easiest
-                # way to do that is add the symmetric difference of their neighbourhoods
-                # as h-edges, which happens to be in m[4] + m[5].
-                for v in m[4] + m[5]:
-                    e = (m[i],v) if m[i] < v else (v, m[i])
-                    nhe = etab.get(e, (0,0))[1]
-                    etab[e] = (0,nhe+1)
 
         for e in es:
             nhe = etab.get(e, (0,0))[1]
             etab[e] = (0,nhe+1)
 
-    return (etab, rem_verts, True)
+    return (etab, rem_verts, rem_edges, True)
 
 
 def match_lcomp(g):
@@ -372,7 +374,7 @@ def lcomp(g, matches):
                 he = etab.get(e, (0,0))[1]
                 etab[e] = (0, he+1)
 
-    return (etab, rem, False)
+    return (etab, rem, [], False)
 
 
 def match_ids(g):
@@ -420,5 +422,5 @@ def remove_ids(g, matches):
         e = (m[1],m[2])
         if not e in etab: etab[e] = [0,0]
         etab[e][m[3]-1] += 1
-    return (etab, rem, False)
+    return (etab, rem, [], False)
     

@@ -128,7 +128,7 @@ def normalise(g):
 # Solved most bugs I think, but it will probably still fail when
 # it encounters a qubit that has no nodes on it 
 # (so when input is directly connected to output)
-def greedy_cut_extract(g, qubits, iterate=False):
+def greedy_cut_extract(g, qubits):
     normalise(g)
     max_r = g.depth() - 1
 
@@ -142,19 +142,23 @@ def greedy_cut_extract(g, qubits, iterate=False):
             #right = after(g, row)
             rank = cut_rank(g, left, right)
 
-            if rank + len(row) <= qubits:
+            if rank + len(row) == qubits:
                 # only consume t on consecutive rows
                 if len(ts) > 0 and g.row(row[-1]) + 1 == g.row(ts[0]):
                     row.append(ts.pop(0))
                 else: break
-            else:
+            elif rank + len(row) > qubits:
+                if len(row) == 1:
+                    print("FAILED at row", row, "with rank", rank, ">=", qubits, "qubits")
+                    return False
                 ts.insert(0, row.pop())
                 left,right = split(g, below=g.row(row[0]), above=g.row(row[-1]))
                 rank = cut_rank(g, left, right)
                 break
-        if len(row) == 0:
-            print("FAILED at row", row, "with rank", rank, ">=", qubits, "qubits")
-            return False
+            else:
+                print("got len(row) + rank < qubits. For circuits, this should not happen!")
+                return False
+        
 
         cut_edges(g, left, right)
         #r = g.row(g.vindex()-1)
@@ -163,7 +167,7 @@ def greedy_cut_extract(g, qubits, iterate=False):
             g.set_qubit(v,rank+i)
             g.set_row(v,r)
             unspider(g, v)
-        if iterate: yield g
+        #if iterate: yield g
     pack_circuit_rows(g)
     return True
 
@@ -369,6 +373,6 @@ def clifford_extract(g, left_row, right_row):
 
 def circuit_extract(g):
     qubits = g.qubit_count()
-    for i in greedy_cut_extract(g,qubits): pass
-    for i in reversed(range(1,g.depth()-1,2)):
-        clifford_extract(g,i,i+1)
+    if greedy_cut_extract(g,qubits):
+        for i in reversed(range(1,g.depth()-1,2)):
+            clifford_extract(g,i,i+1)

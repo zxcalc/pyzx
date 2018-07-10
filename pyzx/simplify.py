@@ -49,8 +49,9 @@ def simp(g, name, match, rewrite, quiet=False):
         if len(m) > 0:
             if not quiet: print(len(m), end='')
             #print(len(m), end='', flush=True) #flush only supported on Python >3.3
-            etab, rem_verts, check_isolated_vertices = rewrite(g, m)
+            etab, rem_verts, rem_edges, check_isolated_vertices = rewrite(g, m)
             g.add_edge_table(etab)
+            g.remove_edges(rem_edges)
             g.remove_vertices(rem_verts)
             if check_isolated_vertices: g.remove_isolated_vertices()
             if not quiet: print('. ', end='')
@@ -138,8 +139,9 @@ def simp_iter(g, name, match, rewrite):
         new_matches = False
         m = match(g)
         if len(m) > 0:
-            etab, rem_verts, check_isolated_vertices = rewrite(g, m)
+            etab, rem_verts, rem_edges, check_isolated_vertices = rewrite(g, m)
             g.add_edge_table(etab)
+            g.remove_edges(rem_edges)
             g.remove_vertices(rem_verts)
             if check_isolated_vertices: g.remove_isolated_vertices()
             yield g, name+str(i)
@@ -221,7 +223,7 @@ def simp_threaded(g, name, match, rewrite, uses_verts=False,safe=False,skip_unth
         for j,r in enumerate(results):
             if not r: continue
             new_matches = True
-            amount, (etab, rem_verts, check) = r
+            amount, (etab, rem_verts, rem_edges, check) = r
             print(amount, end=',')
             if uses_verts and not chunks[j].issuperset(set(rem_verts)):
                 raise Exception("Deleting vertices outside of chunk: ", chunks[j], set(rem_verts))
@@ -230,6 +232,7 @@ def simp_threaded(g, name, match, rewrite, uses_verts=False,safe=False,skip_unth
                     if not (j*sep<v<(j+1)*sep):
                         raise Exception("Deleting vertices outside of chunk")
             g.add_edge_table(etab)
+            g.remove_edges(rem_edges)
             g.remove_vertices(rem_verts)
             check_isolated_vertices = check
         if check_isolated_vertices: g.remove_isolated_vertices() 
@@ -246,8 +249,9 @@ def simp_threaded(g, name, match, rewrite, uses_verts=False,safe=False,skip_unth
             m = match(g)
             if len(m) > 0:
                 print(len(m), end='')
-                etab, rem_verts, check_isolated_vertices = rewrite(g, m)
+                etab, rem_verts, rem_edges, check_isolated_vertices = rewrite(g, m)
                 g.add_edge_table(etab)
+                g.remove_edges(rem_edges)
                 g.remove_vertices(rem_verts)
                 if check_isolated_vertices: g.remove_isolated_vertices()
                 print('. ', end='')
