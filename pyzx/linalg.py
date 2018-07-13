@@ -88,9 +88,9 @@ class Mat2(object):
             try:
                 r0 = next(i for i in range(pivot_row, self.rows()) if self.data[i][p] != 0)
                 if r0 != pivot_row:
-                    self.row_swap(r0, pivot_row)
-                    if x != None: x.row_swap(r0, pivot_row)
-                    if y != None: y.col_swap(r0, pivot_row)
+                    self.row_add(r0, pivot_row)
+                    if x != None: x.row_add(r0, pivot_row)
+                    if y != None: y.col_add(pivot_row, r0)
 
                 for r1 in range(pivot_row+1, self.rows()):
                     if pivot_row != r1 and self.data[r1][p] != 0:

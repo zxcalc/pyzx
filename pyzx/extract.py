@@ -20,6 +20,7 @@
 from .linalg import Mat2
 from .drawing import pack_circuit_rows
 from .graph import Graph
+from .simplify import id_simp
 
 def before(g, vs):
     min_r = min(g.row(v) for v in vs)
@@ -31,7 +32,7 @@ def after(g, vs):
 def bi_adj(g, vs, ws):
     return Mat2([[1 if g.connected(v,w) else 0 for v in vs] for w in ws])
 
-def cut_edges(g, left, right):
+def cut_edges(g, left, right, available=None):
     m = bi_adj(g, left, right)
     max_r = max(g.row(v) for v in left)
     for v in g.vertices():
@@ -47,19 +48,26 @@ def cut_edges(g, left, right):
     
     vi = g.vindex()
     cut_rank = y.rows()
+
     #g.add_vertices(2*cut_rank)
     left_verts = []
     right_verts = []
     
-    for i in range(cut_rank):
-        v1 = g.add_vertex(1,i,max_r+1)
-        v2 = g.add_vertex(1,i,max_r+2)
+    if available == None:
+        qs = range(cut_rank)
+    else:
+        qs = available
+
+    for i in qs:
+        v1 = g.add_vertex(1,i,max_r+3)
+        v2 = g.add_vertex(1,i,max_r+4)
         #v = vi+cut_rank+i
         #g.add_edge((vi+i,v))
         g.add_edge((v1,v2),2)
         left_verts.append(v1)
         right_verts.append(v2)
         #g.set_edge_type(g.edge(vi+i,v), 2)
+
     for i in range(y.rows()):
         for j in range(y.cols()):
             if (y.data[i][j]):
@@ -159,14 +167,24 @@ def greedy_cut_extract(g, qubits):
                 print("got len(row) + rank < qubits. For circuits, this should not happen!")
                 return False
         
-
-        cut_edges(g, left, right)
-        #r = g.row(g.vindex()-1)
         r = max(g.row(v) for v in left)+2
-        for i,v in enumerate(row):
-            g.set_qubit(v,rank+i)
+        available = set(range(qubits))
+        for v in row:
+            q = g.qubit(v)
+            if q in available:
+                available.remove(q)
+            else:
+                q = available.pop()
+                g.set_qubit(v, q)
             g.set_row(v,r)
             unspider(g, v)
+
+        cut_edges(g, left, right, available)
+        
+        # for i,v in enumerate(row):
+        #     g.set_qubit(v,rank+i)
+        #     g.set_row(v,r)
+        #     unspider(g, v)
         #if iterate: yield g
     pack_circuit_rows(g)
     return True
@@ -268,8 +286,9 @@ def cut_extract(g, qubits):
 
 
 class CNOTMaker(object):
-    def __init__(self, qubits):
+    def __init__(self, qubits, cnot_swaps=False):
         self.qubits = qubits
+        self.cnot_swaps = cnot_swaps
         self.g = Graph()
         self.qs = list(range(qubits))  # tracks qubit indices of vertices
         self.v = 0                     # next vertex to add
@@ -296,18 +315,23 @@ class CNOTMaker(object):
     
     def row_swap(self, r1, r2):
         #print("row_swap", r1,r2)
-        self.add_node(r1, 1)
-        self.add_node(r2, 1)
-        self.r += 1
-        self.add_node(r1, 1, False)
-        self.g.add_edge((self.qs[r2],self.v))
-        self.v += 1
-        self.add_node(r2, 1, False)
-        self.g.add_edge((self.qs[r1],self.v))
-        self.qs[r1] = self.v - 1
-        self.qs[r2] = self.v
-        self.v += 1
-        self.r += 1
+        if self.cnot_swaps:
+            self.row_add(r1, r2)
+            self.row_add(r2, r1)
+            self.row_add(r1, r2)
+        else:
+            self.add_node(r1, 1)
+            self.add_node(r2, 1)
+            self.r += 1
+            self.add_node(r1, 1, False)
+            self.g.add_edge((self.qs[r2],self.v))
+            self.v += 1
+            self.add_node(r2, 1, False)
+            self.g.add_edge((self.qs[r1],self.v))
+            self.qs[r1] = self.v - 1
+            self.qs[r2] = self.v
+            self.v += 1
+            self.r += 1
     
     def row_add(self, r1, r2):
         #print("row_add", r1,r2)
@@ -365,7 +389,7 @@ def clifford_extract(g, left_row, right_row):
             if (g.row(g.edge_s(e)) <= right_row
                 and g.row(g.edge_t(e)) <= left_row): continue
             g.set_edge_type(e,3-g.edge_type(e)) # 2 -> 1, 1 -> 2
-    c = CNOTMaker(qubits)
+    c = CNOTMaker(qubits, cnot_swaps=True)
     m.gauss(full_reduce=True,x=c)
     c.finish()
     g.replace_subgraph(left_row, right_row, c.g)
@@ -376,5 +400,9 @@ def circuit_extract(g):
     if greedy_cut_extract(g,qubits):
         for i in reversed(range(1,g.depth()-1,2)):
             clifford_extract(g,i,i+1)
+        id_simp(g, quiet=True)
+        pack_circuit_rows(g)
         return True
-    else: return False
+    else:
+        return False
+

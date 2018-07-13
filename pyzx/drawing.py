@@ -141,6 +141,9 @@ def draw(g, layout=None, labels=False, figsize=(8,2), h_edge_draw='blue', rows=N
     ax = fig1.add_axes([0, 0, 1, 1], frameon=False)
     ax.xaxis.set_visible(False)
     ax.yaxis.set_visible(False)
+    vs_on_row = dict()  # count the vertices on each row
+    for v in g.vertices():
+        vs_on_row[g.row(v)] = vs_on_row.get(g.row(v), 0) + 1
 
     if not layout:
         layout = circuit_layout(g)
@@ -157,11 +160,12 @@ def draw(g, layout=None, labels=False, figsize=(8,2), h_edge_draw='blue', rows=N
         sp = layout[g.edge_s(e)]
         tp = layout[g.edge_t(e)]
         et = g.edge_type(e)
+        n_row = vs_on_row.get(g.row(g.edge_s(e)), 0)
 
         
         dx = tp[0] - sp[0]
         dy = tp[1] - sp[1]
-        bend_wire = (dx == 0) and h_edge_draw == 'blue'
+        bend_wire = (dx == 0) and h_edge_draw == 'blue' and n_row > 2
         ecol = '#0099ff' if h_edge_draw == 'blue' and et == 2 else 'black'
 
         if bend_wire:
