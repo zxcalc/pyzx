@@ -22,9 +22,9 @@ Here ``5`` is the number of qubits the circuit acts on, and ``10`` is the depth 
 
 We can also reduce the circuit using the rules from ZX-calculus::
 	
-	>>> zx.clifford_simp(circ)  # simplifies the circuit
-	>>> zx.drawing.pack_circuit_nf(circ,'gslc')  # makes it more presentable
-	>>> zx.draw(circ)
+	>>> zx.clifford_simp(circuit)  # simplifies the circuit
+	>>> zx.drawing.pack_circuit_nf(circuit,'gslc')  # makes it more presentable
+	>>> zx.draw(circuit)
 
 .. figure::  _static/clifford_simp.png
    :align:   center

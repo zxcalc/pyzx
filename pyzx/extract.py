@@ -15,7 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-#__all__ = ['cut_extract']
+__all__ = ['circuit_extract', 'clifford_extract', 'greedy_cut_extract']
 
 from .linalg import Mat2
 from .drawing import pack_circuit_rows
@@ -137,6 +137,11 @@ def normalise(g):
 # it encounters a qubit that has no nodes on it 
 # (so when input is directly connected to output)
 def greedy_cut_extract(g, qubits):
+    """Given a graph that has been put into semi-normal form by
+    :func:`simplify.clifford_simp` it cuts the graph at $\pi/4$ nodes
+    so that it is easier to get a circuit back out again.
+    It tries to get as many $\pi/4$ gates on the same row as possible
+    as to reduce the T-depth of the circuit."""
     normalise(g)
     max_r = g.depth() - 1
 
@@ -396,6 +401,8 @@ def clifford_extract(g, left_row, right_row):
 
 
 def circuit_extract(g):
+    """Given a graph put into semi-normal form by :func:`simplify.clifford_simp`, 
+    it turns the graph back into a circuit."""
     qubits = g.qubit_count()
     if greedy_cut_extract(g,qubits):
         for i in reversed(range(1,g.depth()-1,2)):
