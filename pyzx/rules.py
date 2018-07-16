@@ -215,32 +215,30 @@ def match_pivot_parallel(g, num=-1, check_edge_types=False, edgelist=-1):
 
         invalid_edge = False
 
-        v0n = set()
-        v0b = set()
-        for n in g.neighbours(v0):
+        v0n = list(g.neighbours(v0))
+        v0b = []
+        for n in v0n:
             #if g.phase(n).denominator > 2:
             #    invalid_edge = True
             #    break
             et = g.edge_type(g.edge(v0,n))
-            if n == v1 and et == 2: pass
-            elif types[n] == 1 and et == 2: v0n.add(n)
-            elif types[n] == 0: v0b.add(n)
+            if types[n] == 1 and et == 2: pass
+            elif types[n] == 0: v0b.append(n)
             else:
                 invalid_edge = True
                 break
 
         if invalid_edge: continue
 
-        v1n = set()
-        v1b = set()
-        for n in g.neighbours(v1):
+        v1n = list(g.neighbours(v1))
+        v1b = []
+        for n in v1n:
             #if g.phase(n).denominator > 2:
             #    invalid_edge = True
             #    break
             et = g.edge_type(g.edge(v1,n))
-            if n == v0 and et == 2: pass
-            elif types[n] == 1 and et == 2: v1n.add(n)
-            elif types[n] == 0: v1b.add(n)
+            if types[n] == 1 and et == 2: pass
+            elif types[n] == 0: v1b.append(n)
             else:
                 invalid_edge = True
                 break
@@ -253,12 +251,12 @@ def match_pivot_parallel(g, num=-1, check_edge_types=False, edgelist=-1):
             for c in g.incident_edges(v): candidates.discard(c)
         for v in v1n:
             for c in g.incident_edges(v): candidates.discard(c)
-        n0 = list(v0n - v1n)
-        n01 = list(v0n & v1n)
-        n1 = list(v1n - v0n)
+        #n0 = list(v0n - v1n)
+        #n01 = list(v0n & v1n)
+        #n1 = list(v1n - v0n)
         b0 = list(v0b)
         b1 = list(v1b)
-        m.append([v0,v1,b0,b1,n0,n1,n01])
+        m.append([v0,v1,b0,b1])
     return m
 
 
@@ -270,25 +268,33 @@ def pivot(g, matches):
     ``m[1]`` : second vertex in pivot.
     ``m[2]`` : list of zero or one boundaries adjacent to ``m[0]``.
     ``m[3]`` : list of zero or one boundaries adjacent to ``m[1]``.
-    ``m[4]`` : list of (non-boundary) vertices adjacent to ``m[0]`` only.
-    ``m[5]`` : list of (non-boundary) vertices adjacent to ``m[1]`` only.
-    ``m[6]`` : list of (non-boundary) vertices adjacent to ``m[0]`` and ``m[1]``.
     """
     rem_verts = []
     rem_edges = []
     etab = dict()
     for m in matches:
-        es = ([(s,t) if s < t else (t,s) for s in m[4] for t in m[5]] +
-              [(s,t) if s < t else (t,s) for s in m[5] for t in m[6]] +
-              [(s,t) if s < t else (t,s) for s in m[4] for t in m[6]])
+        # compute:
+        #  n[0] <- non-boundary neighbours of m[0] only
+        #  n[1] <- non-boundary neighbours of m[1] only
+        #  n[2] <- non-boundary neighbours of m[0] and m[1]
+        n = [set(g.neighbours(m[0])), set(g.neighbours(m[1]))]
+        for i in range(2):
+            n[i].remove(m[1-i])
+            if len(m[i+2]) == 1: n[i].remove(m[i+2][0])
+        n.append(n[0] & n[1])
+        n[0] = n[0] - n[2]
+        n[1] = n[1] - n[2]
+        es = ([(s,t) if s < t else (t,s) for s in n[0] for t in n[1]] +
+              [(s,t) if s < t else (t,s) for s in n[1] for t in n[2]] +
+              [(s,t) if s < t else (t,s) for s in n[0] for t in n[2]])
         
-        for v in m[6]: g.add_to_phase(v, 1)
+        for v in n[2]: g.add_to_phase(v, 1)
 
         for i in range(2):
             # if m[i] has a phase, it will get copied on to the neighbours of m[1-i]:
             a = g.phase(m[i])
-            for v in m[(1-i)+4]: g.add_to_phase(v, a)
-            for v in m[6]: g.add_to_phase(v, a)
+            for v in n[1-i]: g.add_to_phase(v, a)
+            for v in n[2]: g.add_to_phase(v, a)
 
 
             if len(m[i+2]) == 0:

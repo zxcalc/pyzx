@@ -144,11 +144,9 @@ def greedy_cut_extract(g, qubits):
     as to reduce the T-depth of the circuit."""
     normalise(g)
     max_r = g.depth() - 1
-
-    #ts = sorted([v for v in g.vertices() if g.phase(v).denominator > 2 and 1 < g.row(v) < max_r],key=g.row)
-    ts = sorted([v for v in g.vertices() if 1 < g.row(v) < max_r],key=g.row)
-    while len(ts) > 0:
-        row = [ts.pop(0)]
+    i_vs = sorted([v for v in g.vertices() if 1 < g.row(v) < max_r],key=g.row)
+    while len(i_vs) > 0:
+        row = [i_vs.pop(0)]
         while True:
             left,right = split(g, below=g.row(row[0]), above=g.row(row[-1]))
             #left = before(g, row)
@@ -156,16 +154,17 @@ def greedy_cut_extract(g, qubits):
             rank = cut_rank(g, left, right)
 
             if rank + len(row) == qubits:
-                # only consume t on consecutive rows
-                if len(ts) > 0 and g.row(row[-1]) + 1 == g.row(ts[0]):
-                    row.append(ts.pop(0))
+                if len(i_vs) > 0:
+                    row.append(i_vs.pop(0))
                 else: break
             elif rank + len(row) > qubits:
                 if len(row) == 1:
                     print("FAILED at row", row, "with rank", rank, ">=", qubits, "qubits")
                     return False
-                ts.insert(0, row.pop())
+                i_vs.insert(0, row.pop())
                 left,right = split(g, below=g.row(row[0]), above=g.row(row[-1]))
+                if len(left) + len(right) + len(row) != len(g.vertices()):
+                    print("row partition does not cover entire graph!")
                 rank = cut_rank(g, left, right)
                 break
             else:
@@ -388,12 +387,12 @@ def clifford_extract(g, left_row, right_row):
     m = bi_adj(g,qleft,qright)
     if m.rank() != qubits:
         raise ValueError("Adjency matrix rank does not match amount of qubits")
-    for v in qright:
-        g.set_type(v,2)
-        for e in g.incident_edges(v):
-            if (g.row(g.edge_s(e)) <= right_row
-                and g.row(g.edge_t(e)) <= left_row): continue
-            g.set_edge_type(e,3-g.edge_type(e)) # 2 -> 1, 1 -> 2
+    #for v in qright:
+    #    g.set_type(v,2)
+    #    for e in g.incident_edges(v):
+    #        if (g.row(g.edge_s(e)) <= right_row
+    #            and g.row(g.edge_t(e)) <= left_row): continue
+    #        g.set_edge_type(e,3-g.edge_type(e)) # 2 -> 1, 1 -> 2
     c = CNOTMaker(qubits, cnot_swaps=True)
     m.gauss(full_reduce=True,x=c)
     c.finish()
