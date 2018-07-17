@@ -322,8 +322,8 @@ class CNOTMaker(object):
     
     def row_add(self, r1, r2):
         #print("row_add", r1,r2)
-        self.add_node(r1, 2)
-        self.add_node(r2, 1)
+        self.add_node(r1, 1)
+        self.add_node(r2, 2)
         self.g.add_edge((self.qs[r1],self.qs[r2]))
         self.r += 1
 
@@ -341,7 +341,13 @@ def clifford_extract(g, left_row, right_row, cnot_blocksize=2):
         no_left = False
         if len(qleft) <= q or g.qubit(qleft[q]) != q: #missing vertex
             vert = max((v for v in g.vertices() if g.qubit(v)==q and g.row(v)<left_row), key=g.row)
-            conn = min((n for n in g.neighbours(vert) if g.qubit(n)==q and g.row(n)>=right_row),key=g.row)
+            neigh = [n for n in g.neighbours(vert) if g.qubit(n)==q and g.row(n)>=right_row]
+            if neigh:
+                conn = min(neigh,key=g.row)
+            else:
+                neigh = [n for n in g.neighbours(vert) if g.row(n)>=right_row]
+                if len(neigh) > 1: raise TypeError("Too many neighbours")
+                conn = neigh[0]
             e = g.edge(vert, conn)
             t = g.edge_type(e)
             g.remove_edge(e)
@@ -355,8 +361,14 @@ def clifford_extract(g, left_row, right_row, cnot_blocksize=2):
         if len(qright) <= q or g.qubit(qright[q]) != q: #missing vertex
             if no_left: vert = conn
             else: vert = min((v for v in g.vertices() if g.qubit(v)==q and g.row(v)>right_row), key=g.row)
-            conn2 = max((n for n in g.neighbours(vert) if g.qubit(n)==q and g.row(n)<=left_row),key=g.row)
-            if v1 != conn2: raise TypeError("vertices mismatching")
+            neigh = [n for n in g.neighbours(vert) if g.qubit(n)==q and g.row(n)<=left_row]
+            if neigh:
+                conn2 = max(neigh,key=g.row)
+                if v1 != conn2: raise TypeError("vertices mismatching")
+            else:
+                neigh = [n for n in g.neighbours(vert) if g.row(n)==left_row]
+                if len(neigh) > 1: raise TypeError("Too many neighbours")
+                conn2 = neigh[0]
             e = g.edge(conn2,vert)
             t = g.edge_type(e)
             g.remove_edge(e)
@@ -370,16 +382,17 @@ def clifford_extract(g, left_row, right_row, cnot_blocksize=2):
     m = bi_adj(g,qleft,qright)
     if m.rank() != qubits:
         raise ValueError("Adjency matrix rank does not match amount of qubits")
-    #for v in qright:
-    #    g.set_type(v,2)
-    #    for e in g.incident_edges(v):
-    #        if (g.row(g.edge_s(e)) <= right_row
-    #            and g.row(g.edge_t(e)) <= left_row): continue
-    #        g.set_edge_type(e,3-g.edge_type(e)) # 2 -> 1, 1 -> 2
+    for v in qright:
+       g.set_type(v,2)
+       for e in g.incident_edges(v):
+           if (g.row(g.edge_s(e)) <= right_row
+               and g.row(g.edge_t(e)) <= left_row): continue
+           g.set_edge_type(e,3-g.edge_type(e)) # 2 -> 1, 1 -> 2
     c = CNOTMaker(qubits, cnot_swaps=True)
     m.gauss(full_reduce=True,x=c,blocksize=cnot_blocksize)
     c.finish()
-    g.replace_subgraph(left_row, right_row, c.g)
+
+    g.replace_subgraph(left_row, right_row, c.g.adjoint())
 
 
 def circuit_extract(g, cnot_blocksize=2):

@@ -3,7 +3,7 @@ Getting Started
 
 .. _gettingstarted:
 
-The best way to get started is to run the `Getting Started Notebook <_static/gettingstarted.ipynb>`_ in Jupyter. If you have a Microsoft account, then you can use Azure to run `this notebook <https://pyzx-johnie102.notebooks.azure.com/nb/notebooks/demos/gettingstarted.ipynb>`_ in your browser without having downloaded PyZX. If you don't want to follow those routes: this document contains the same general information.
+The best way to get started is to run the `Getting Started Notebook <_static/gettingstarted.ipynb>`_ in Jupyter. If you have a Microsoft account, then you can use Azure to run `this notebook <https://notebooks.azure.com/johnie102/libraries/pyzx/html/demos/gettingstarted.ipynb>`_ in your browser without having downloaded PyZX. If you don't want to follow those routes: this document contains the same general information.
 
 With PyZX you can create and simplify quantum circuits. Start by importing the library::
 	
