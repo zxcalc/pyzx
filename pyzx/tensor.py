@@ -15,7 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-__all__ = ['tensorfy']
+__all__ = ['tensorfy', 'compare_tensors']
 
 try:
     import numpy as np

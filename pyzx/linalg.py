@@ -15,6 +15,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+import math
+
 class Mat2(object):
     """A matrix over Z2, with methods for multiplication, primitive row and column
     operations, Gaussian elimination, rank, and epi-mono factorisation."""
@@ -63,12 +65,22 @@ class Mat2(object):
             self.data[r][c1] = v
 
     
-    def gauss(self, full_reduce=False, x=None, y=None):
+    def gauss(self, full_reduce=False, x=None, y=None, blocksize=2):
         """Compute the echelon form. Returns the number of non-zero rows in the result, i.e.
         the rank of the matrix.
 
         The parameter 'full_reduce' determines whether to compute the full row-reduced form,
-        useful e.g. for matrix inversion.
+        useful e.g. for matrix inversion and CNOT circuit synthesis.
+
+        The parameter 'blocksize' gives the size of the blocks in a block matrix for
+        performing Patel/Markov/Hayes optimisation, see:
+
+        K. Patel, I. Markov, J. Hayes. Optimal Synthesis of Linear Reversible
+        Circuits. QIC 2008
+
+        If blocksize is given as self.cols(), then
+        this is equivalent to just eliminating duplicate rows before doing normal
+        Gaussian elimination.
 
         Contains two convenience parameters for saving the primitive row operations. Suppose
         the row-reduced form of m is computed as:
@@ -77,43 +89,78 @@ class Mat2(object):
 
         Then, x --> g * x and y --> y * g^-1.
 
-        Note x and y need not be matrices. x can be any object that implements the methods
-        row_swap() and row_add(), and y any object that implements col_swap() and col_add().
+        Note x and y need not be matrices. x can be any object that implements the method
+        row_add(), and y any object that implements col_add().
         """
-        p = 0
-        pcols = []
-        r = 0
-        pivot_row = 0
-        while p < self.cols():
-            try:
-                r0 = next(i for i in range(pivot_row, self.rows()) if self.data[i][p] != 0)
-                if r0 != pivot_row:
-                    self.row_add(r0, pivot_row)
-                    if x != None: x.row_add(r0, pivot_row)
-                    if y != None: y.col_add(pivot_row, r0)
 
-                for r1 in range(pivot_row+1, self.rows()):
-                    if pivot_row != r1 and self.data[r1][p] != 0:
-                        self.row_add(pivot_row, r1)
-                        if x != None: x.row_add(pivot_row, r1)
-                        if y != None: y.col_add(r1, pivot_row)
-                if full_reduce: pcols.append(p)
-                pivot_row += 1
-            except StopIteration:
-                pass
-            p += 1
+
+        pcols = []
+        pivot_row = 0
+        for sec in range(math.ceil(self.cols() / blocksize)):
+            i0 = sec * blocksize
+            i1 = min(self.cols(), (sec+1) * blocksize)
+
+            # search for duplicate chunks of 'blocksize' bits and eliminate them
+            chunks = dict()
+            for r in range(pivot_row, self.rows()):
+                t = tuple(self.data[r][i0:i1])
+                if t in chunks:
+                    #print('hit (down)', r, chunks[t], t, i0, i1)
+                    self.row_add(chunks[t], r)
+                    if x != None: x.row_add(chunks[t], r)
+                    if y != None: y.col_add(r, chunks[t])
+                else:
+                    chunks[t] = r
+
+            p = i0
+            while p < i1:
+                try:
+                    r0 = next(i for i in range(pivot_row, self.rows()) if self.data[i][p] != 0)
+                    if r0 != pivot_row:
+                        self.row_add(r0, pivot_row)
+                        if x != None: x.row_add(r0, pivot_row)
+                        if y != None: y.col_add(pivot_row, r0)
+
+                    for r1 in range(pivot_row+1, self.rows()):
+                        if pivot_row != r1 and self.data[r1][p] != 0:
+                            self.row_add(pivot_row, r1)
+                            if x != None: x.row_add(pivot_row, r1)
+                            if y != None: y.col_add(r1, pivot_row)
+                    if full_reduce: pcols.append(p)
+                    pivot_row += 1
+                except StopIteration:
+                    pass
+                p += 1
+        
         rank = pivot_row
 
         if full_reduce:
             pivot_row -= 1
-            while pivot_row > 0:
-                pcol = pcols.pop()
-                for r in range(0, pivot_row):
-                    if self.data[r][pcol] != 0:
-                        self.row_add(pivot_row, r)
-                        if x != None: x.row_add(pivot_row, r)
-                        if y != None: y.col_add(r, pivot_row)
-                pivot_row -= 1
+
+            for sec in range(math.ceil(self.cols() / blocksize) - 1, -1, -1):
+                i0 = sec * blocksize
+                i1 = min(self.cols(), (sec+1) * blocksize)
+
+                # search for duplicate chunks of 'blocksize' bits and eliminate them
+                chunks = dict()
+                for r in range(pivot_row, -1, -1):
+                    t = tuple(self.data[r][i0:i1])
+                    if t in chunks:
+                        #print('hit (up)', r, chunks[t], t, i0, i1)
+                        self.row_add(chunks[t], r)
+                        if x != None: x.row_add(chunks[t], r)
+                        if y != None: y.col_add(r, chunks[t])
+                    else:
+                        chunks[t] = r
+
+                while len(pcols) != 0 and i0 <= pcols[-1] < i1:
+                    pcol = pcols.pop()
+                    for r in range(0, pivot_row):
+                        if self.data[r][pcol] != 0:
+                            self.row_add(pivot_row, r)
+                            if x != None: x.row_add(pivot_row, r)
+                            if y != None: y.col_add(r, pivot_row)
+                    pivot_row -= 1
 
         return rank
 
