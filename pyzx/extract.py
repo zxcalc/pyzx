@@ -58,8 +58,8 @@ def cut_edges(g, left, right, available=None):
         qs = available
 
     for i in qs:
-        v1 = g.add_vertex(1,i,max_r+3)
-        v2 = g.add_vertex(1,i,max_r+4)
+        v1 = g.add_vertex(1,i,max_r+1)
+        v2 = g.add_vertex(1,i,max_r+2)
         #v = vi+cut_rank+i
         #g.add_edge((vi+i,v))
         g.add_edge((v1,v2),2)
@@ -119,15 +119,21 @@ def cut_rank(g, left, right):
 # Solved most bugs I think, but it will probably still fail when
 # it encounters a qubit that has no nodes on it 
 # (so when input is directly connected to output)
-def greedy_cut_extract(g, qubits):
+def greedy_cut_extract(g):
     """Given a graph that has been put into semi-normal form by
     :func:`simplify.clifford_simp` it cuts the graph at $\pi/4$ nodes
     so that it is easier to get a circuit back out again.
     It tries to get as many $\pi/4$ gates on the same row as possible
     as to reduce the T-depth of the circuit."""
+    qubits = g.qubit_count()
     g.normalise()
     max_r = g.depth() - 1
     i_vs = sorted([v for v in g.vertices() if 1 < g.row(v) < max_r],key=g.row)
+    for i in range(len(i_vs)-1):
+        v = i_vs[i]
+        if g.row(v) == g.row(i_vs[i+1]):
+            g.set_row(v,g.row(v)-0.2)
+    g.pack_circuit_rows()
     while len(i_vs) > 0:
         row = [i_vs.pop(0)]
         while True:
@@ -163,10 +169,11 @@ def greedy_cut_extract(g, qubits):
             else:
                 q = available.pop()
                 g.set_qubit(v, q)
-            g.set_row(v,r)
-            unspider(g, v)
 
         cut_edges(g, left, right, available)
+        for v in row:
+            g.set_row(v,r)
+            unspider(g, v)
         
         # for i,v in enumerate(row):
         #     g.set_qubit(v,rank+i)
@@ -398,11 +405,10 @@ def clifford_extract(g, left_row, right_row, cnot_blocksize=2):
 def circuit_extract(g, cnot_blocksize=2):
     """Given a graph put into semi-normal form by :func:`simplify.clifford_simp`, 
     it turns the graph back into a circuit."""
-    qubits = g.qubit_count()
-    if greedy_cut_extract(g,qubits):
+    if greedy_cut_extract(g):
         for i in reversed(range(1,g.depth()-1,2)):
             clifford_extract(g,i,i+1, cnot_blocksize=cnot_blocksize)
-        id_simp(g, quiet=True)
+        #id_simp(g, quiet=True)
         g.pack_circuit_rows()
         return True
     else:

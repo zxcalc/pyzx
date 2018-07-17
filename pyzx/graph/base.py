@@ -192,17 +192,46 @@ class BaseGraph(object):
     def normalise(self):
         """Puts every node connecting to an input/output at the correct qubit index and row."""
         max_r = self.depth() - 1
-        for v in self.vertices():
-            if self.type(v) == 0 : continue
-            for w in self.neighbours(v):
-                if w in self.inputs:
-                    self.set_row(v,1)
-                    self.set_qubit(v, self.qubit(w))
-                    break
-                elif w in self.outputs:
-                    self.set_row(v, max_r)
-                    self.set_qubit(v, self.qubit(w))
-                    break
+        claimed = []
+        for i in self.inputs:
+            q = self.qubit(i)
+            n = list(self.neighbours(i))[0]
+            if self.type(n) in (1,2):
+                claimed.append(n)
+                self.set_row(n,1)
+                self.set_qubit(n, q)
+            else: #directly connected to output
+                e = self.edge(i, n)
+                t = self.edge_type(e)
+                self.remove_edge(e)
+                v = self.add_vertex(1,q,1)
+                self.add_edge((i,v),3-t)
+                self.add_edge((v,n), 2)
+                claimed.append(v)
+        for o in self.outputs:
+            q = self.qubit(o)
+            n = list(self.neighbours(o))[0]
+            if n not in claimed:
+                self.set_row(n,max_r)
+                self.set_qubit(n, q)
+            else:
+                e = self.edge(o, n)
+                t = self.edge_type(e)
+                self.remove_edge(e)
+                v = self.add_vertex(1,q,max_r)
+                self.add_edge((o,v),3-t)
+                self.add_edge((v,n), 2)
+        # for v in self.vertices():
+        #     if self.type(v) == 0 : continue
+        #     for w in self.neighbours(v):
+        #         if w in self.inputs:
+        #             self.set_row(v,1)
+        #             self.set_qubit(v, self.qubit(w))
+        #             break
+        #         elif w in self.outputs:
+        #             self.set_row(v, max_r)
+        #             self.set_qubit(v, self.qubit(w))
+        #             break
 
         self.pack_circuit_rows()
 
