@@ -15,7 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-__all__ = ['draw', 'pack_circuit_rows', 'pack_circuit_nf']
+__all__ = ['draw', 'pack_circuit_nf']
 
 try:
     import matplotlib.pyplot as plt
@@ -68,26 +68,6 @@ def dag_layout(g, sort=True):
     layout.transform(lambda t: (t[1],-t[0]))
     layout.fit_into([len(layers)/(max(layers)+1),max(layers)+1])
     return layout
-
-def pack_indices(lst):
-    d = dict()
-    if len(lst) == 0: return d
-    list.sort(lst)
-    i = 0
-    x = None
-    for j in range(len(lst)):
-        y = lst[j]
-        if y != x:
-            x = y
-            d[y] = i
-            i += 1
-    return d
-
-def pack_circuit_rows(g):
-    rows = [g.row(v) for v in g.vertices()]
-    new_rows = pack_indices(rows)
-    for v in g.vertices():
-        g.set_row(v, new_rows[g.row(v)])
 
 
 def pack_circuit_nf(g, nf='grg'):

@@ -3,7 +3,7 @@ Getting Started
 
 .. _gettingstarted:
 
-The best way to get started is to run the `Getting Started Notebook <_static/gettingstarted.ipynb>`_ in Jupyter. If you don't have Jupyter: this document contains the same information.
+The best way to get started is to run the `Getting Started Notebook <_static/gettingstarted.ipynb>`_ in Jupyter. If you have a Microsoft account, then you can use Azure to run `this notebook <https://pyzx-johnie102.notebooks.azure.com/nb/notebooks/demos/gettingstarted.ipynb>`_ in your browser without having downloaded PyZX. If you don't want to follow those routes: this document contains the same general information.
 
 With PyZX you can create and simplify quantum circuits. Start by importing the library::
 	
@@ -36,3 +36,9 @@ The circuit is represented internally as a graph::
 	>>> print(circuit)
 	Graph(40 vertices, 38 edges)
 
+
+This simplified ZX-graph no longer looks like a circuit. PyZX supplies some methods for turning a ZX-graph back into a circuit::
+	
+	>>> zx.drawing.pack_circuit_rows(circuit)
+	>>> zx.extract.clifford_extract(circuit,1,2)
+	>>> zx.draw(circuit)

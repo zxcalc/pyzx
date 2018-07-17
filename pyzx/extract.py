@@ -18,7 +18,6 @@
 __all__ = ['circuit_extract', 'clifford_extract', 'greedy_cut_extract']
 
 from .linalg import Mat2
-from .drawing import pack_circuit_rows
 from .graph import Graph
 from .simplify import id_simp
 
@@ -117,22 +116,6 @@ def unspider(g, v):
 def cut_rank(g, left, right):
     return bi_adj(g, left, right).rank()
 
-def normalise(g):
-    max_r = g.depth() - 1
-    for v in g.vertices():
-        if g.type(v) == 0 : continue
-        for w in g.neighbours(v):
-            if w in g.inputs:
-                g.set_row(v,1)
-                g.set_qubit(v, g.qubit(w))
-                break
-            elif w in g.outputs:
-                g.set_row(v, max_r)
-                g.set_qubit(v, g.qubit(w))
-                break
-
-    pack_circuit_rows(g)
-
 # Solved most bugs I think, but it will probably still fail when
 # it encounters a qubit that has no nodes on it 
 # (so when input is directly connected to output)
@@ -142,7 +125,7 @@ def greedy_cut_extract(g, qubits):
     so that it is easier to get a circuit back out again.
     It tries to get as many $\pi/4$ gates on the same row as possible
     as to reduce the T-depth of the circuit."""
-    normalise(g)
+    g.normalise()
     max_r = g.depth() - 1
 
     #ts = sorted([v for v in g.vertices() if g.phase(v).denominator > 2 and 1 < g.row(v) < max_r],key=g.row)
@@ -191,7 +174,7 @@ def greedy_cut_extract(g, qubits):
         #     g.set_row(v,r)
         #     unspider(g, v)
         #if iterate: yield g
-    pack_circuit_rows(g)
+    g.pack_circuit_rows()
     return True
 
 def single_cut_extract(g, qubits):
@@ -408,7 +391,7 @@ def circuit_extract(g):
         for i in reversed(range(1,g.depth()-1,2)):
             clifford_extract(g,i,i+1)
         id_simp(g, quiet=True)
-        pack_circuit_rows(g)
+        g.pack_circuit_rows()
         return True
     else:
         return False
