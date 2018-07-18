@@ -109,7 +109,7 @@ def tensorfy(g):
             #print(contr)
             tensor = np.tensordot(tensor,t,axes=(contr,list(range(len(t.shape)-len(contr),len(t.shape)))))
             indices[v] = list(range(len(tensor.shape)-d+len(contr), len(tensor.shape)))
-            mask = np.ma.masked_equal(tensor,0.0,copy=False)
+            
             if i % 10 == 0:
                 if np.abs(tensor).max() < 10**-6: # Values are becoming too small
                     tensor *= 10**4 # So scale all the numbers up
