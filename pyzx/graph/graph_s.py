@@ -100,7 +100,7 @@ class GraphS(BaseGraph):
 	def vertices(self):
 		return self.graph.keys()
 
-	def vertices_in_range(self,start, end):
+	def vertices_in_range(self, start, end):
 		"""Returns all vertices with index between start and end
 		that only have neighbours whose indices are between start and end"""
 		for v in self.graph.keys():
@@ -113,7 +113,7 @@ class GraphS(BaseGraph):
 			for v1 in adj:
 				if v1 > v0: yield (v0,v1)
 
-	def edges_in_range(self,start, end,safe=False):
+	def edges_in_range(self, start, end, safe=False):
 		"""like self.edges, but only returns edges that belong to vertices 
 		that are only directly connected to other vertices with 
 		index between start and end.

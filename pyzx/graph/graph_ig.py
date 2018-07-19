@@ -31,14 +31,27 @@ class GraphIG(BaseGraph):
 		self.graph = ig.Graph(directed=False)
 		self.graph.vs['_a'] = None
 		self.graph.vs['_t'] = None
+		self.graph.vs['_q'] = None
+		self.graph.vs['_r'] = None
 		self.graph.es['_t'] = None
+		self._maxq = -1
+		self._maxr = -1
+		self.inputs = []
+		self.outputs = []
 
 	# since igraph uses consecutive indexing, vindex() == num_vertices()
 	def vindex(self):
 		return self.num_vertices()
 
+	def depth(self): 
+		self._maxr = max(self._rindex.values())
+		return self._maxr
+	def qubit_count(self): return self._maxq + 1
+
 	def add_vertices(self, amount, vertex_data=None):
 		self.graph.add_vertices(amount)
+		n = self.num_vertices()
+		return range(n - amount, n)
 
 	def add_edges(self, edges, edge_data=None):
 		self.graph.add_edges(edges)
@@ -122,11 +135,27 @@ class GraphIG(BaseGraph):
 	def set_phase(self, vertex, phase):
 		self.graph.vs[vertex]['_a'] = phase % 2
 
+	def qubit(self, vertex):
+		return self.graph.vs[vertex]['_q'] or -1
+	def qubits(self):
+		return self.graph.vs['_q']
+	def set_qubit(self, vertex, q):
+		if q > self._maxq: self._maxq = q
+		self.graph.vs[vertex]['_q'] = q
+
+	def row(self, vertex):
+		return self.graph.vs[vertex]['_r'] or -1
+	def rows(self):
+		return self.graph.vs['_r']
+	def set_row(self, vertex, r):
+		if r > self._maxr: self._maxr = r
+		self.graph.vs[vertex]['_r'] = r
+
 	def set_vdata(self, v, key, val):
 		self.graph.vs[v][key] = val
 
 	def vdata_keys(self, v):
-		return [a for a in self.graph.vertex_attributes() if a != '_a' and a != '_t']
+		return [a for a in self.graph.vertex_attributes() if a != '_a' and a != '_t' and a != '_q' and a != '_r']
 
 	def vdata(self, v, key, default=0):
 		try:
