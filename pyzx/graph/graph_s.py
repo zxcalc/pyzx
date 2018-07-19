@@ -42,7 +42,8 @@ class GraphS(BaseGraph):
 
 	def vindex(self): return self._vindex
 	def depth(self): 
-		self._maxr = max(self._rindex.values())
+		if self._rindex: self._maxr = max(self._rindex.values())
+		else: self._maxr = -1
 		return self._maxr
 	def qubit_count(self): return self._maxq + 1
 
@@ -72,8 +73,10 @@ class GraphS(BaseGraph):
 			del self.graph[v]
 			del self.ty[v]
 			del self._phase[v]
-			del self._qindex[v]
-			del self._rindex[v]
+			try: del self._qindex[v]
+			except: pass
+			try: del self._rindex[v]
+			except: pass
 			self._vdata.pop(v,None)
 
 	def remove_vertex(self, vertex):

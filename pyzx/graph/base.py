@@ -192,6 +192,7 @@ class BaseGraph(object):
     def normalise(self):
         """Puts every node connecting to an input/output at the correct qubit index and row."""
         max_r = self.depth() - 1
+        if max_r <= 2: return
         claimed = []
         for i in self.inputs:
             q = self.qubit(i)
