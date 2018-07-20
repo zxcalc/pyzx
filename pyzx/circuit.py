@@ -3,19 +3,19 @@ from fractions import Fraction
 from .graph import Graph
 
 class Circuit(object):
-	"""Class for representing quantum circuits.
+    """Class for representing quantum circuits.
 
-	This is just a wrapper for a list of gates with methods for interconverting
-	between different representations of a quantum circuit."""
+    This is just a wrapper for a list of gates with methods for interconverting
+    between different representations of a quantum circuit."""
     def __init__(self, qubit_amount):
         self.q = qubit_amount
         self.gates = []
 
     @staticmethod
     def from_graph(g):
-    	"""Produces a :class:`Circuit` containing the gates of the given ZX-graph.
-    	If the ZX-graph is not circuit-like then the behaviour of this function
-    	is undefined."""
+        """Produces a :class:`Circuit` containing the gates of the given ZX-graph.
+        If the ZX-graph is not circuit-like then the behaviour of this function
+        is undefined."""
         c = Circuit(g.qubit_count())
         for r in range(1,g.depth()+1):
             for v in [v for v in g.vertices() if g.row(v)==r]:
@@ -64,7 +64,7 @@ class Circuit(object):
 
     @staticmethod
     def from_quipper_file(fname):
-    	"""Produces a :class:`Circuit` based on a Quipper ASCII description of a circuit."""
+        """Produces a :class:`Circuit` based on a Quipper ASCII description of a circuit."""
         f = open(fname, 'r')
         lines = f.read().splitlines()
         f.close()
@@ -83,7 +83,7 @@ class Circuit(object):
 
         c = Circuit(len(inputs))
         for gate in gates:
-        	if gate.startswith("Comment"): continue
+            if gate.startswith("Comment"): continue
             if not gate.startswith("QGate"):
                 raise TypeError("Unsupported expression: " + gate)
             l = gate.split("with")
@@ -109,8 +109,8 @@ class Circuit(object):
                 raise TypeError("Unsupported target: " + ctrls)
             ctrl = int(ctrls[1:])
             if gname == "not": c.add_gate("CNOT", target, ctrl)
-        	elif gname == "Z": c.add_gate("CZ", target, ctrl)
-        	elif gname == "X": c.add_gate("CX", target, ctrl)
+            elif gname == "Z": c.add_gate("CZ", target, ctrl)
+            elif gname == "X": c.add_gate("CX", target, ctrl)
             else:
                 raise TypeError("Unsupported controlled gate: " + gname)
             
@@ -119,27 +119,28 @@ class Circuit(object):
 
 
     def add_gate(self, gate, *args, **kwargs):
-    	"""Adds a gate to the circuit. ``gate`` can either be 
-    	an instance of a :class:`Gate`, or it can be the name of a gate,
-    	in which case additional arguments should be given.
+        """Adds a gate to the circuit. ``gate`` can either be 
+        an instance of a :class:`Gate`, or it can be the name of a gate,
+        in which case additional arguments should be given.
 
-    	Example::
-			
-			circuit.add_gate("CNOT", 1, 4) # adds a CNOT gate with target 1 and control 4
-			circuit.add_gate("ZPhase", 2, phase=Fraction(3,4)) # Adds a ZPhase gate on qubit 2 with phase 3/4
-    	"""
+        Example::
+            
+            circuit.add_gate("CNOT", 1, 4) # adds a CNOT gate with target 1 and control 4
+            circuit.add_gate("ZPhase", 2, phase=Fraction(3,4)) # Adds a ZPhase gate on qubit 2 with phase 3/4
+        """
         if isinstance(gate, str):
             gate_class = gate_types[gate]
             gate = gate_class(*args, **kwargs)
         self.gates.append(gate)
 
     def to_graph(self, backend=None):
-    	"""Turns the circuit into a ZX-Graph."""
+        """Turns the circuit into a ZX-Graph."""
         g = Graph(backend)
         qs = []
         r = 0
         for i in range(self.q):
             v = g.add_vertex(0,i,r)
+            g.inputs.append(v)
             qs.append(v)
 
         r += 1
@@ -150,12 +151,13 @@ class Circuit(object):
 
         for o in range(self.q):
             v = g.add_vertex(0,o,r)
+            g.outputs.append(v)
             g.add_edge((qs[o],v))
 
         return g
 
     def to_quipper(self):
-    	"""Produces a Quipper ASCII description of the circuit."""
+        """Produces a Quipper ASCII description of the circuit."""
         s = "Inputs: " + ", ".join("{!s}Qbit".format(i) for i in range(self.q)) + "\n"
         for g in self.gates:
             s += g.to_quipper() + "\n"
@@ -164,7 +166,7 @@ class Circuit(object):
 
 
 class Gate(object):
-	"""Base class for representing quantum gates."""
+    """Base class for representing quantum gates."""
     def graph_add_node(self, g, qs, t, q, r, phase=0):
         v = g.add_vertex(t,q,r,phase)
         g.add_edge((qs[q],v))

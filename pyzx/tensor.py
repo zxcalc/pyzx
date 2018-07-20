@@ -61,6 +61,7 @@ def pop_and_shift(verts, indices):
     return res
 
 
+#TODO: Currently id@id and SWAP produce the same tensor.
 def tensorfy(g):
     """Takes in a Graph and outputs a multidimensional numpy array
     representing the linear map the ZX-diagram implements.
@@ -127,7 +128,7 @@ def tensorfy(g):
 
 
 def compare_tensors(t1,t2):
-    epsilon = 10**-10
+    epsilon = 10**-14
     if np.allclose(t1,t2): return True
     for i,a in enumerate(t1.flat):
         if abs(a)>epsilon: 
