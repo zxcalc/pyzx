@@ -15,12 +15,26 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-__all__ = ['cnots','zigzag', 'zigzag2','cliffords', 'cliffordT']
+__all__ = ['cnots','zigzag', 'zigzag2','cliffords', 'cliffordT', 'identity']
 
 import random
 from fractions import Fraction
 
 from .graph.graph import Graph
+
+
+def identity(qubits, depth=1,backend=None):
+    """Generates an identity circuit on a given amount of qubits.
+    ``depth`` specifies at which row the outputs should be placed."""
+    g = Graph(backend)
+    for i in range(qubits):
+        v = g.add_vertex(0,i,0)
+        w = g.add_vertex(0,i,depth)
+        g.inputs.append(v)
+        g.outputs.append(w)
+        g.add_edge((v,w))
+
+    return g
 
 
 def cnots(qubits, depth, backend=None):

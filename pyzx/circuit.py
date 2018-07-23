@@ -1,3 +1,20 @@
+# PyZX - Python library for quantum circuit rewriting 
+#        and optimisation using the ZX-calculus
+# Copyright (C) 2018 - Aleks Kissinger and John van de Wetering
+
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 from fractions import Fraction
 
 from .graph import Graph
@@ -8,8 +25,14 @@ class Circuit(object):
     This is just a wrapper for a list of gates with methods for interconverting
     between different representations of a quantum circuit."""
     def __init__(self, qubit_amount):
-        self.q = qubit_amount
+        self.qubits = qubit_amount
         self.gates = []
+
+    def __str__(self):
+        return "Circuit({!s} qubits, {!s} gates)".format(self.qubits,len(self.gates))
+
+    def __repr__(self):
+        return str(self)
 
     @staticmethod
     def from_graph(g):
@@ -138,7 +161,7 @@ class Circuit(object):
         g = Graph(backend)
         qs = []
         r = 0
-        for i in range(self.q):
+        for i in range(self.qubits):
             v = g.add_vertex(0,i,r)
             g.inputs.append(v)
             qs.append(v)
@@ -149,7 +172,7 @@ class Circuit(object):
             gate.to_graph(g,qs,r)
             r += 1
 
-        for o in range(self.q):
+        for o in range(self.qubits):
             v = g.add_vertex(0,o,r)
             g.outputs.append(v)
             g.add_edge((qs[o],v))
@@ -158,11 +181,14 @@ class Circuit(object):
 
     def to_quipper(self):
         """Produces a Quipper ASCII description of the circuit."""
-        s = "Inputs: " + ", ".join("{!s}Qbit".format(i) for i in range(self.q)) + "\n"
+        s = "Inputs: " + ", ".join("{!s}Qbit".format(i) for i in range(self.qubits)) + "\n"
         for g in self.gates:
             s += g.to_quipper() + "\n"
-        s += "Outputs: " + ", ".join("{!s}Qbit".format(i) for i in range(self.q))
+        s += "Outputs: " + ", ".join("{!s}Qbit".format(i) for i in range(self.qubits))
         return s
+
+    def to_tensor(self):
+        return self.to_graph().to_tensor()
 
 
 class Gate(object):
@@ -182,6 +208,14 @@ class Gate(object):
 
     def __repr__(self):
         return str(self)
+
+    def __eq__(self, other):
+        for a in ["target","control","phase","adjoint"]:
+            if hasattr(self,a):
+                if not hasattr(other,a): return False
+                if getattr(self,a) != getattr(other,a): return False
+            elif hasattr(other,a): return False
+        return True
 
     def to_quipper(self):
         n = self.name if not hasattr(self, "quippername") else self.quippername

@@ -25,7 +25,7 @@ try:
 except ImportError:
     pass
 
-__all__ = ['bialg_simp','spider_simp', 'phase_free_simp', 'pivot_simp', 
+__all__ = ['bialg_simp','spider_simp', 'id_simp', 'phase_free_simp', 'pivot_simp', 
         'lcomp_simp', 'clifford_simp', 't_count', 'to_gh', 'to_rg']
 
 from .rules import *
@@ -93,7 +93,7 @@ def clifford_simp(g, quiet=False):
     id_simp(g, quiet=quiet)
     spider_simp(g, quiet=quiet)
 
-def to_gh(g):
+def to_gh(g,quiet=True):
     """Turns every red node into a green node by changing regular edges into hadamard edges"""
     ty = g.types()
     for v in g.vertices():

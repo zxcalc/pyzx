@@ -17,6 +17,8 @@
 
 import abc
 
+from pyzx.tensor import tensorfy
+
 class DocstringMeta(abc.ABCMeta):
     """Metaclass that allows docstring 'inheritance'"""
 
@@ -166,6 +168,9 @@ class BaseGraph(object):
                 other.set_edge_type(e, 3-other.edge_type(e)) # toggle the edge type
         d = self.depth()
         self.replace_subgraph(d-1,d,other)
+
+    def to_tensor(self):
+        return tensorfy(self)
 
     def vindex(self):
         """The index given to the next vertex added to the graph. It should always

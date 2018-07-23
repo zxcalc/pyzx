@@ -32,6 +32,10 @@ class Mat2(object):
     def __mul__(self, m):
         return Mat2([[sum(self.data[i][k] * m.data[k][j] for k in range(len(m.data))) % 2
                       for j in range(len(m.data[0]))] for i in range(len(self.data))])
+    def __eq__(self, other):
+        if not isinstance(other, Mat2): return False
+        if self.rows() != other.rows() or self.cols() != other.cols(): return False
+        return all(self.data[i][j] == other.data[i][j] for i in range(len(self.data)) for j in range(len(self.data[i])))
     def __str__(self):
         return "\n".join("[ " + 
             "  ".join(str(value) for value in row) +

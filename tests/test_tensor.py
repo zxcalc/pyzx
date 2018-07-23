@@ -1,16 +1,39 @@
+# PyZX - Python library for quantum circuit rewriting 
+#        and optimisation using the ZX-calculus
+# Copyright (C) 2018 - Aleks Kissinger and John van de Wetering
+
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 import unittest
+import random
 from fractions import Fraction
 import sys
-sys.path.append('..')
+if __name__ == '__main__':
+    sys.path.append('..')
+    sys.path.append('.')
 
 try:
     import numpy as np
-    from pyzx.tensor import tensorfy, compare_tensors
+    from pyzx.tensor import tensorfy, compare_tensors, compose_tensors, adjoint
 except ImportError:
     np = None
 
 from pyzx.graph import Graph
+from pyzx.generate import cliffords
+from pyzx.circuit import Circuit
 
+SEED = 1337
 
 @unittest.skipUnless(np, "numpy needs to be installed for this to run")
 class TestTensor(unittest.TestCase):
@@ -50,6 +73,58 @@ class TestTensor(unittest.TestCase):
         tensor1 = tensorfy(g)
         tensor2 = tensorfy(g2)
         self.assertTrue(compare_tensors(tensor1,tensor2))
+
+    def test_inequality_id_and_swap(self):
+        g = Graph()
+        i1 = g.add_vertex(0,0,0)
+        i2 = g.add_vertex(0,1,0)
+        o1 = g.add_vertex(0,0,1)
+        o2 = g.add_vertex(0,1,1)
+        g.inputs = [i1, i2]
+        g.outputs = [o1, o2]
+        g2 = g.copy()
+        g.add_edges([(i1,o2),(i2,o1)])
+        g2.add_edges([(i1,o1),(i2,o2)])
+        id_id = tensorfy(g2)
+        swap = tensorfy(g)
+        self.assertFalse(compare_tensors(id_id,swap))
+
+    def test_three_cnots_is_swap(self):
+        g = Graph()
+        i1 = g.add_vertex(0,0,0)
+        i2 = g.add_vertex(0,1,0)
+        o1 = g.add_vertex(0,0,1)
+        o2 = g.add_vertex(0,1,1)
+        g.inputs = [i1, i2]
+        g.outputs = [o1, o2]
+        g.add_edges([(i1,o2),(i2,o1)])
+        swap = tensorfy(g)
+        c = Circuit(2)
+        c.add_gate("CNOT",0,1)
+        c.add_gate("CNOT",1,0)
+        c.add_gate("CNOT",0,1)
+        three_cnots = tensorfy(c.to_graph())
+        self.assertTrue(compare_tensors(swap,three_cnots))
+
+    def test_compose(self):
+        random.seed(SEED)
+        circ1 = cliffords(3,15)
+        circ2 = cliffords(3,20)
+        t1 = tensorfy(circ1)
+        t2 = tensorfy(circ2)
+        comp1 = compose_tensors(t1,t2)
+        circ1.compose(circ2)
+        comp2 = tensorfy(circ1)
+        self.assertTrue(compare_tensors(comp1,comp2))
+
+    def test_adjoint(self):
+        random.seed(SEED)
+        circ = cliffords(3, 16)
+        t = tensorfy(circ)
+        t_adj = adjoint(t)
+        circ_adj = tensorfy(circ.adjoint())
+        self.assertTrue(compare_tensors(t_adj,circ_adj))
+
 
 if __name__ == '__main__':
     unittest.main()

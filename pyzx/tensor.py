@@ -15,7 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-__all__ = ['tensorfy', 'compare_tensors']
+__all__ = ['tensorfy', 'compare_tensors', 'compose_tensors', 'adjoint']
 
 try:
     import numpy as np
@@ -40,12 +40,6 @@ def X_to_tensor(arity, phase):
             m[i] -= np.exp(1j*phase)
     return np.power(np.sqrt(0.5),arity)*m.reshape([2]*arity)
 
-#S = Z_to_tensor(2,0.5*np.pi)
-#Xphase = X_to_tensor(2,0.5*np.pi)
-
-#had = np.sqrt(2)*np.exp(-1j*0.25*np.pi) * (S @ Xphase @ S)
-#print(had)
-
 
 def pop_and_shift(verts, indices):
     res = []
@@ -60,8 +54,6 @@ def pop_and_shift(verts, indices):
             indices[w] = l2
     return res
 
-
-#TODO: Currently id@id and SWAP produce the same tensor.
 def tensorfy(g):
     """Takes in a Graph and outputs a multidimensional numpy array
     representing the linear map the ZX-diagram implements.
@@ -130,6 +122,14 @@ def tensorfy(g):
 
 
 def compare_tensors(t1,t2):
+    """Returns true if ``t1`` and ``t2`` are tensors equal up to a nonzero number.
+
+    Example: To check whether two ZX-graphs are semantically the same you would do::
+
+        t1 = tensorfy(g1)
+        t2 = tensorfy(g2)
+        compare_tensors(t1,t2)
+    """
     epsilon = 10**-14
     if np.allclose(t1,t2): return True
     for i,a in enumerate(t1.flat):
@@ -139,3 +139,46 @@ def compare_tensors(t1,t2):
     else:
         raise ValueError("Tensor is too close to zero")
     return np.allclose(t1/a,t2/t2.flat[i])
+
+
+def compose_tensors(t1,t2):
+    """Returns a tensor that is the result of composing the tensors together as if they
+    were representing circuits::
+
+        t1 = tensorfy(circ1)
+        t2 = tensorfy(circ2)
+        circ1.compose(circ2)
+        t3 = tensorfy(circ1)
+        t4 = compose_tensors(t1,t2)
+        compare_tensors(t3,t4) # This is True
+
+    """
+
+    if len(t1.shape) != len(t2.shape):
+        raise TypeError("Tensors represent circuits of different amount of qubits, "
+                        "{!s} vs {!s}".format(len(t1.shape)//2,len(t2.shape)//2))
+    q = len(t1.shape)//2
+    contr1 = [2*i+1 for i in range(q)]
+    contr2 = [2*i for i in range(q)]
+    t = np.tensordot(t1,t2,axes=(contr1,contr2))
+    transp = []
+    for i in range(q):
+        transp.append(i)
+        transp.append(q+i)
+    return np.transpose(t,transp)
+
+
+def adjoint(t):
+    """Returns the adjoint of the tensor as if it were representing a circuit::
+
+        t = tensorfy(circ)
+        tadj = tensorfy(circ.adjoint())
+        compare_tensors(adjoint(t),tadj) # This is True
+
+    """
+    q = len(t.shape)//2
+    transp = []
+    for i in range(q):
+        transp.append(2*i+1)
+        transp.append(2*i)
+    return np.transpose(t.conjugate(),transp)
