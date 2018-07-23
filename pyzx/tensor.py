@@ -84,7 +84,8 @@ def tensorfy(g):
     inputs = sorted(g.inputs,key=g.qubit)
     indices = {}
     for i in inputs:
-        indices[i] = [qubits + g.qubit(i)]
+        #indices[i] = [qubits + g.qubit(i)]
+        indices[i] = [1 + 2*g.qubit(i)]
     
     for i,r in enumerate(sorted(verts_row.keys())):
         if r == 0: continue #inputs already taken care of
@@ -117,9 +118,10 @@ def tensorfy(g):
             #print(indices)
             #print(tensor)
     
-    perm = list(range(qubits))
-    for o in sorted(g.outputs,key=g.qubit):
+    perm = []
+    for i,o in enumerate(sorted(g.outputs,key=g.qubit)):
         if len(indices[o]) != 1: raise ValueError("Weird output")
+        perm.append(i)
         perm.append(indices[o][0])
     
     tensor = np.transpose(tensor,perm)
