@@ -31,11 +31,11 @@ Each of these rewrite rules consists of three methods:
 - ``match_*`` finds a single match of the rule in a graph.
 - ``match_*_parallel`` finds as many non-overlapping matches as possible.
 - The final method takes a list of matches produced by these methods and returns
-  a 3-tuple ``(edge_table, verts_to_remove, check_for_isolated_vertices)``.
+  a 4-tuple ``(edge_table, verts_to_remove, edges_to_remove, check_for_isolated_vertices)``.
   ``edge_table`` should be fed to :meth:`~graph.base.BaseGraph.add_edge_table`, 
-  ``verts_to_remove`` to :meth:`~graph.base.BaseGraph.remove_vertices`
-  and if ``check_for_isolated_vertices`` is ``True``, then 
-  :meth:`graph.base.BaseGraph.remove_isolated_vertices`
+  ``verts_to_remove`` to :meth:`~graph.base.BaseGraph.remove_vertices` (and similarly for ``edges_to_remove``).
+  If ``check_for_isolated_vertices`` is ``True``, then 
+  :meth:`~graph.base.BaseGraph.remove_isolated_vertices`
   should be called.
 
 These rewrite rules are used in the simplification procedures of :mod:`simplify`.

@@ -11,7 +11,7 @@ With PyZX you can create and simplify quantum circuits. Start by importing the l
 
 Then you can get a randomly generated Clifford circuit::
 	
-	>>> circuit = zx.cliffords(5, 10)
+	>>> circuit = zx.generate.cliffords(5, 10)
 
 Here ``5`` is the number of qubits the circuit acts on, and ``10`` is the depth of the generated circuit. We can visualise the circuit::
 	
@@ -22,8 +22,8 @@ Here ``5`` is the number of qubits the circuit acts on, and ``10`` is the depth 
 
 We can also reduce the circuit using the rules from ZX-calculus::
 	
-	>>> zx.clifford_simp(circuit)  # simplifies the circuit
-	>>> zx.drawing.pack_circuit_nf(circuit,'gslc')  # makes it more presentable
+	>>> zx.simplify.clifford_simp(circuit)  # simplifies the circuit
+	>>> circuit.normalise()  # makes it more presentable
 	>>> zx.draw(circuit)
 
 .. figure::  _static/clifford_simp.png

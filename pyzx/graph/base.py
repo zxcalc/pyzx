@@ -170,11 +170,12 @@ class BaseGraph(object):
         self.replace_subgraph(d-1,d,other)
 
     def to_tensor(self):
+        """Returns a representation of the graph as a tensor using :func:`~pyzx.tensor.tensorfy`"""
         return tensorfy(self)
 
     def vindex(self):
         """The index given to the next vertex added to the graph. It should always
-        be equal to max(g.vertices()) + 1."""
+        be equal to ``max(g.vertices()) + 1``."""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
     def depth(self):

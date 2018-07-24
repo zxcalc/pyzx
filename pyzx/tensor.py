@@ -169,13 +169,15 @@ def compose_tensors(t1,t2):
 
 
 def adjoint(t):
-    """Returns the adjoint of the tensor as if it were representing a circuit::
+    """Returns the adjoint of the tensor as if it were representing
+    a circuit::
 
         t = tensorfy(circ)
         tadj = tensorfy(circ.adjoint())
         compare_tensors(adjoint(t),tadj) # This is True
 
     """
+    
     q = len(t.shape)//2
     transp = []
     for i in range(q):
