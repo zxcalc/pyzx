@@ -23,7 +23,7 @@ Example scripts for Quantomatic::
     from quanto.util.Scripting import *
     from pyzx.io import graph_to_json
     from pyzx.generate import cliffords
-    g = cliffords(3,15,keynames=('y','x'))
+    g = cliffords(3,15)
     j = graph_to_json(g)
     new_graph_from_json(j)
 
@@ -46,7 +46,7 @@ from . import rules
 try:
     import quanto.util.Scripting as quanto
 except ImportError:
-    print("Not running in Quantomatic")
+    quanto = None
 
 
 class RewriteMaker(object):

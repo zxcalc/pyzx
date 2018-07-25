@@ -19,12 +19,19 @@ from fractions import Fraction
 import copy
 
 from .graph import Graph
+from .drawing import phase_to_s
+
+__all__ = ['Circuit']
 
 class Circuit(object):
     """Class for representing quantum circuits.
 
-    This is just a wrapper for a list of gates with methods for interconverting
-    between different representations of a quantum circuit."""
+    This class is mostly just a wrapper for a list of gates with methods for converting
+    between different representations of a quantum circuit.
+
+    The methods in this class that convert a specification of a circuit into an instance of this class,
+    generally do not check whether the specification is well-defined. If a bad input is given, 
+    the behaviour is undefined."""
     def __init__(self, qubit_amount):
         self.qubits = qubit_amount
         self.gates = []
@@ -150,7 +157,8 @@ class Circuit(object):
     @staticmethod
     def from_qasm_file(fname):
         """Produces a :class:`Circuit` based on a QASM description of a circuit.
-        It ignores all the non-unitary instructions in the file."""
+        It ignores all the non-unitary instructions like measurements in the file. 
+        It currently doesn't support custom gates that have parameters."""
         f = open(fname, 'r')
         s = f.read()
         f.close()
@@ -177,7 +185,16 @@ class Circuit(object):
         """Adds the gate of another circuit to this one. If ``mask`` is not given,
         then they must have the same amount of qubits and they are mapped one-to-one.
         If mask is given then it must be a list specifying to which qubits the qubits
-        in the given circuit correspond. """
+        in the given circuit correspond. 
+
+        Example::
+
+            c1 = Circuit(qubit_amount=4)
+            c2 = Circuit(qubit_amount=2)
+            c2.add_gate("CNOT",0,1)
+            c1.add_circuit(c2, mask=[0,3]) # Now c1 has a CNOT from the first to the last qubit
+
+        """
         if not mask:
             if self.qubits != circ.qubits: raise TypeError("Amount of qubits do not match")
             mask = list(range(len(circ.qubits)))
@@ -218,11 +235,22 @@ class Circuit(object):
         s += "Outputs: " + ", ".join("{!s}Qbit".format(i) for i in range(self.qubits))
         return s
 
+    def to_qasm(self):
+        """Produces a QASM description of the circuit."""
+        s = """OPENQASM 2.0;\ninclude "qelib1.inc";\n"""
+        s += "qreg q[{!s}];\n".format(self.qubits)
+        for g in self.gates:
+            s += g.to_qasm() + "\n"
+        return s
+
+
     def to_tensor(self):
+        """Returns a tensor describing the circuit."""
         return self.to_graph().to_tensor()
 
 
 class QASMParser(object):
+    """Class for parsing QASM source files into circuit descriptions."""
     def __init__(self):
         self.gates = []
         self.customgates = {}
@@ -358,6 +386,7 @@ class QASMParser(object):
         return gates
 
 
+
 class Gate(object):
     """Base class for representing quantum gates."""
     def __str__(self):
@@ -398,6 +427,18 @@ class Gate(object):
         s += ' with nocontrol'
         return s
 
+    def to_qasm(self):
+        args = []
+        for a in ["ctrl1","ctrl2", "control", "target"]:
+            if hasattr(self, a): args.append("q[{!s}]".format(getattr(self,a)))
+        n = self.qasm_name
+        if hasattr(self, "adjoint") and self.adjoint:
+            n = self.qasm_name_adjoint
+        param = ""
+        if hasattr(self, "printphase") and self.printphase:
+            param = "({})".format(phase_to_s(self.phase))
+        return "{}{} {};".format(n, param, ", ".join(args))
+
     def graph_add_node(self, g, qs, t, q, r, phase=0):
         v = g.add_vertex(t,q,r,phase)
         g.add_edge((qs[q],v))
@@ -407,6 +448,7 @@ class Gate(object):
 class ZPhase(Gate):
     name = 'ZPhase'
     printphase = True
+    qasm_name = 'rz'
     def __init__(self, target, phase):
         self.target = target
         self.phase = phase
@@ -418,12 +460,15 @@ class ZPhase(Gate):
 
 class Z(ZPhase):
     name = 'Z'
+    qasm_name = 'z'
     printphase = False
     def __init__(self, target):
         super().__init__(target, Fraction(1,1))
 
 class S(ZPhase):
     name = 'S'
+    qasm_name = 's'
+    qasm_name_adjoint = 'sdg'
     printphase = False
     def __init__(self, target, adjoint=False):
         super().__init__(target, Fraction(1,2)*(-1 if adjoint else 1))
@@ -431,6 +476,8 @@ class S(ZPhase):
 
 class T(ZPhase):
     name = 'T'
+    qasm_name = 't'
+    qasm_name_adjoint = 'tdg'
     printphase = False
     def __init__(self, target, adjoint=False):
         super().__init__(target, Fraction(1,4)*(-1 if adjoint else 1))
@@ -439,6 +486,7 @@ class T(ZPhase):
 class XPhase(Gate):
     name = 'XPhase'
     printphase = True
+    qasm_name = 'rx'
     def __init__(self, target, phase=0):
         self.target = target
         self.phase = phase
@@ -449,6 +497,7 @@ class XPhase(Gate):
 class NOT(XPhase):
     name = 'NOT'
     quippername = 'not'
+    qasm_name = 'x'
     printphase = False
     def __init__(self, target):
         super().__init__(target, phase = Fraction(1,1))
@@ -457,6 +506,7 @@ class NOT(XPhase):
 class CNOT(Gate):
     name = 'CNOT'
     quippername = 'not'
+    qasm_name = 'cx'
     def __init__(self, control, target):
         self.target = target
         self.control = control
@@ -468,6 +518,7 @@ class CNOT(Gate):
 class CZ(CNOT):
     name = 'CZ'
     quippername = 'Z'
+    qasm_name = 'cz'
     def to_graph(self, g, qs, r):
         t = self.graph_add_node(g,qs,1,self.target,r)
         c = self.graph_add_node(g,qs,1,self.control,r)
@@ -476,6 +527,7 @@ class CZ(CNOT):
 class CX(CNOT):
     name = 'CX'
     quippername = 'X'
+    qasm_name = 'undefined'
     def to_graph(self, g, qs, r):
         t = self.graph_add_node(g,qs,2,self.target,r)
         c = self.graph_add_node(g,qs,2,self.control,r)
@@ -484,6 +536,7 @@ class CX(CNOT):
 class HAD(Gate):
     name = 'HAD'
     quippername = 'H'
+    qasm_name = 'h'
     def __init__(self, target):
         self.target = target
 
@@ -495,6 +548,7 @@ class HAD(Gate):
 class Tofolli(Gate):
     name = 'Tof'
     quippername = 'not'
+    qasm_name = 'ccx'
     def __init__(self, ctrl1, ctrl2, target):
         self.target = target
         self.ctrl1 = ctrl1
@@ -532,6 +586,7 @@ class Tofolli(Gate):
 class CCZ(Tofolli):
     name = 'CCZ'
     quippername = 'Z'
+    qasm_name = 'ccz'
 
 gate_types = {
     "XPhase": XPhase,

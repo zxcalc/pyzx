@@ -29,7 +29,7 @@ We can also reduce the circuit using the rules from ZX-calculus::
 .. figure::  _static/clifford_simp.png
    :align:   center
 
-   The same circuit, but rewritten into a more compact form.
+   The same circuit, but rewritten into a more compact form. The blue lines represent edges which have a Hadamard gate on them.
 
 The circuit is represented internally as a graph::
 	

@@ -121,9 +121,9 @@ def cut_rank(g, left, right):
 # (so when input is directly connected to output)
 def greedy_cut_extract(g):
     """Given a graph that has been put into semi-normal form by
-    :func:`simplify.clifford_simp` it cuts the graph at $\pi/4$ nodes
+    :func:`simplify.clifford_simp` it cuts the graph at :math:`\pi/4` nodes
     so that it is easier to get a circuit back out again.
-    It tries to get as many $\pi/4$ gates on the same row as possible
+    It tries to get as many :math:`\pi/4` gates on the same row as possible
     as to reduce the T-depth of the circuit."""
     qubits = g.qubit_count()
     g.normalise()
@@ -336,9 +336,10 @@ class CNOTMaker(object):
 
 
 def clifford_extract(g, left_row, right_row, cnot_blocksize=2):
-    """Given a Clifford diagram in normal form, constructs a Clifford circuit.
-    ``left_row`` and ``right_row`` should point to adjacent rows of green nodes
-    that are interconnected with Hadamard edges."""
+    """When ``left_row`` and ``right_row`` are adjacent rows of green nodes
+    that are interconnected with Hadamard edges, that section of the graph
+    is equal to some permutation matrix. This permutation matrix can be 
+    decomposed as a series of CNOT gates. That is what this function does. """
     qubits = g.qubit_count()
     qleft = [v for v in g.vertices() if g.row(v)==left_row]
     qright= [v for v in g.vertices() if g.row(v)==right_row]

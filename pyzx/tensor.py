@@ -128,7 +128,7 @@ def compare_tensors(t1,t2):
 
         t1 = tensorfy(g1)
         t2 = tensorfy(g2)
-        compare_tensors(t1,t2)
+        compare_tensors(t1,t2) # True if g1 and g2 represent the same circuit
     """
     epsilon = 10**-14
     if np.allclose(t1,t2): return True

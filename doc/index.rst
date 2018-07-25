@@ -15,7 +15,7 @@ PyZX
    simplify
    extract
    graph
-   io
+   representations
 
 
 Indices and tables
