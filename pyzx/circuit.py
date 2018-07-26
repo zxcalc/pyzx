@@ -48,16 +48,26 @@ class Circuit(object):
         If the ZX-graph is not circuit-like then the behaviour of this function
         is undefined."""
         c = Circuit(g.qubit_count())
-        for r in range(1,g.depth()+1):
-            for v in [v for v in g.vertices() if g.row(v)==r]:
-                q = g.qubit(v)
-                phase = g.phase(v)
-                t = g.type(v)
-                neigh = [w for w in g.neighbours(v) if g.row(w)<r]
+        qs = g.qubits()
+        rs = g.rows()
+        ty = g.types()
+        phases = g.phases()
+        rows = {}
+        for v in g.vertices():
+            if v in g.inputs: continue
+            r = g.row(v)
+            if r in rows: rows[r].append(v)
+            else: rows[r] = [v]
+        for r in sorted(rows.keys()):
+            for v in rows[r]:
+                q = qs[v]
+                phase = phases[v]
+                t = ty[v]
+                neigh = [w for w in g.neighbours(v) if rs[w]<r]
                 if len(neigh) != 1:
                     raise TypeError("Graph doesn't seem circuit like: multiple parents")
                 n = neigh[0]
-                if g.qubit(n) != q:
+                if qs[n] != q:
                     raise TypeError("Graph doesn't seem circuit like: cross qubit connections")
                 if g.edge_type(g.edge(n,v)) == 2:
                     c.add_gate("HAD", q)
@@ -77,10 +87,10 @@ class Circuit(object):
                     if t == 1: c.add_gate("ZPhase", q, phase=phase)
                     else: c.add_gate("XPhase", q, phase=phase)
 
-                neigh = [w for w in g.neighbours(v) if g.row(w)==r and w<v]
+                neigh = [w for w in g.neighbours(v) if rs[w]==r and w<v]
                 for n in neigh:
-                    t2 = g.type(n)
-                    q2 = g.qubit(n)
+                    t2 = ty[n]
+                    q2 = qs[n]
                     if t == t2:
                         if g.edge_type(g.edge(v,n)) != 2:
                             raise TypeError("Invalid vertical connection between vertices of the same type")
@@ -197,7 +207,8 @@ class Circuit(object):
         """
         if not mask:
             if self.qubits != circ.qubits: raise TypeError("Amount of qubits do not match")
-            mask = list(range(len(circ.qubits)))
+            self.gates.extend(other.gates)
+            return
         elif len(mask) != circ.qubits: raise TypeError("Mask size does not match qubits")
         for gate in circ.gates:
             g = gate.reposition(mask)
