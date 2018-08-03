@@ -218,3 +218,48 @@ class Mat2(object):
 
 
 
+def xor_rows(l1, l2):
+    return [0 if l1[i]==l2[i] else 1 for i in range(len(l1))]
+
+def find_minimal_sums(m):
+    r = m.rows()
+    d = m.data
+    combs = {(i,):d[i] for i in range(r)}
+    combs2 = {}
+    while True:
+        combs2 = {}
+        for index,l in combs.items():
+            for k in range(max(index)+1,r):
+                row = xor_rows(combs[index],d[k])
+                if sum(row) == 1:
+                    return (*index,k)
+                combs2[(*index,k)] = row
+        if not combs2:
+            raise ValueError("Irreducible input has been given")
+        combs = combs2
+
+def greedy_reduction(m):
+    indices = find_minimal_sums(m)
+    indices = list(indices)
+    rows = {i:m.data[i] for i in indices}
+    weights = {i: sum(r) for i,r in rows.items()}
+    result = []
+    while len(indices)>1:
+        best = (-1,-1)
+        reduction = -10000
+        for i in indices:
+            for j in indices:
+                if j <= i: continue
+                w = sum(xor_rows(rows[i],rows[j]))
+                if weights[i] - w > reduction:
+                    best = (j,i) # "Add row j to i"
+                    reduction = weights[i] - w
+                if weights[j] - w > reduction:
+                    best = (i,j)
+                    reduction = weights[j] - w
+        result.append(best)
+        control, target = best
+        rows[target] = xor_rows(rows[control],rows[target])
+        weights[target] = weights[target] - reduction
+        indices.remove(control)
+    return result

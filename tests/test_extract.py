@@ -30,7 +30,7 @@ except ImportError:
 
 from pyzx.generate import cliffordT, cliffords
 from pyzx.simplify import clifford_simp
-from pyzx.extract import clifford_extract, greedy_cut_extract, circuit_extract
+from pyzx.extract import clifford_extract, greedy_cut_extract, circuit_extract, streaming_extract
 
 SEED = 1337
 
@@ -77,6 +77,17 @@ class TestExtract(unittest.TestCase):
                 t = tensorfy(circ)
                 circuit_extract(circ)
                 t2 = tensorfy(circ)
+                self.assertTrue(compare_tensors(t,t2))
+
+    def test_streaming_extract(self):
+        random.seed(SEED)
+        for i in range(5):
+            circ = cliffordT(4,50,0.1)
+            t = tensorfy(circ)
+            clifford_simp(circ,quiet=True)
+            with self.subTest(i=i):
+                c = streaming_extract(circ)
+                t2 = c.to_tensor()
                 self.assertTrue(compare_tensors(t,t2))
 
 if __name__ == '__main__':

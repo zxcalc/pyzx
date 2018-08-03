@@ -15,8 +15,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from . import tensor
-
 from .graph.graph import Graph
 from .drawing import *
 from .rules import *
@@ -24,3 +22,5 @@ from .simplify import *
 from .generate import *
 from .io import *
 from .extract import *
+from .tensor import *
+from .circuit import Circuit

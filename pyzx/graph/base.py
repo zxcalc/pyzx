@@ -201,6 +201,7 @@ class BaseGraph(object):
         if max_r <= 2: return
         claimed = []
         for i in self.inputs:
+            self.set_row(i,0)
             q = self.qubit(i)
             n = list(self.neighbours(i))[0]
             if self.type(n) in (1,2):
@@ -217,6 +218,7 @@ class BaseGraph(object):
                 claimed.append(v)
         for o in self.outputs:
             q = self.qubit(o)
+            self.set_row(o,max_r+1)
             n = list(self.neighbours(o))[0]
             if n not in claimed:
                 self.set_row(n,max_r)
@@ -228,17 +230,6 @@ class BaseGraph(object):
                 v = self.add_vertex(1,q,max_r)
                 self.add_edge((o,v),3-t)
                 self.add_edge((v,n), 2)
-        # for v in self.vertices():
-        #     if self.type(v) == 0 : continue
-        #     for w in self.neighbours(v):
-        #         if w in self.inputs:
-        #             self.set_row(v,1)
-        #             self.set_qubit(v, self.qubit(w))
-        #             break
-        #         elif w in self.outputs:
-        #             self.set_row(v, max_r)
-        #             self.set_qubit(v, self.qubit(w))
-        #             break
 
         self.pack_circuit_rows()
 

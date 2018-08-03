@@ -544,6 +544,19 @@ class CX(CNOT):
         c = self.graph_add_node(g,qs,2,self.control,r)
         g.add_edge((t,c),2)
 
+class SWAP(CNOT):
+    name = 'SWAP'
+    quippername = 'undefined'
+    qasm_name = 'undefined'
+
+    def to_graph(self, g, qs, r):
+        c1 = CNOT(self.control, self.target)
+        c2 = CNOT(self.target, self.control)
+        c1.to_graph(g,qs,r)
+        c2.to_graph(g,qs,r+1)
+        c1.to_graph(g,qs,r+2)
+        return 4
+
 class HAD(Gate):
     name = 'HAD'
     quippername = 'H'
@@ -609,6 +622,7 @@ gate_types = {
     "CNOT": CNOT,
     "CZ": CZ,
     "CX": CX,
+    "SWAP": SWAP,
     "HAD": HAD,
     "TOF": Tofolli,
     "CCZ": CCZ,
