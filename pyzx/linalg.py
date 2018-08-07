@@ -69,7 +69,7 @@ class Mat2(object):
             self.data[r][c1] = v
 
     
-    def gauss(self, full_reduce=False, x=None, y=None, blocksize=2):
+    def gauss(self, full_reduce=False, x=None, y=None, blocksize=6):
         """Compute the echelon form. Returns the number of non-zero rows in the result, i.e.
         the rank of the matrix.
 
