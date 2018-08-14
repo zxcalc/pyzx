@@ -266,94 +266,6 @@ class Circuit(object):
             g = gate.reposition(mask)
             self.add_gate(g)
 
-    def get_phase_polynomial_blocks(self):
-        """Tries to moves gates around such that as many ZPhase, CZ and CNOT gates 
-        are together, so that the resulting circuit can be seen as a sequence of 
-        phase polynomials separated by Hadamard gates. Returns a tuple ``circuit, partition`` where
-        the ``partition`` is a list, the odd elements of which are phase polynomials."""
-        partition = []
-        gates = {i:list() for i in range(self.qubits)}
-        for g in self.gates:
-            if isinstance(g,ZPhase):
-                gates[g.target].append(ZPhase(g.target,g.phase))
-            elif isinstance(g, HAD):
-                gates[g.target].append(g)
-            elif isinstance(g, CZ):
-                gates[g.control].append(g)
-                gates[g.target].append(g)
-            else:
-                raise TypeError("Unsupported gate {!s}. Make sure you are in GH-form.".format(g))
-
-        while any(gates.values()):
-            l = []
-            for q, gs in gates.items():
-                if gs and isinstance(gs[0], HAD):
-                    l.append(gs[0])
-                    gs.pop(0)
-            partition.append(l)
-            l = []
-            while True:
-                conns = []
-                for q in range(self.qubits):
-                    phases = []
-                    for i,g in enumerate(gates[q]):
-                        if isinstance(g, CZ):
-                            q2 = g.control if g.target==q else g.target
-                            conns.append((q,q2))
-                        elif isinstance(g, HAD):
-                            break
-                        elif isinstance(g, ZPhase):
-                            phases.append(i)
-                    for i in reversed(phases):
-                        l.append(gates[q].pop(i))
-                for i,j in conns.copy():
-                    if (j,i) in conns and (i,j) in conns:
-                        g = CZ(i,j)
-                        l.append(g)
-                        gates[i].remove(g)
-                        gates[j].remove(g)
-                        conns.remove((i,j))
-                        conns.remove((j,i))
-                
-                moved_gates = False
-                hadamard_blocked = []
-                conns = []
-                for q in range(self.qubits):
-                    if gates[q] and isinstance(gates[q][0],HAD):
-                        hadamard_blocked.append(q)
-                    else:
-                        for g in gates[q]:
-                            if isinstance(g,CZ):
-                                q2 = g.control if g.target==q else g.target
-                                conns.append((q,q2))
-                            elif isinstance(g,HAD):
-                                break
-
-                for q in hadamard_blocked:
-                    remove = []
-                    for i,g in enumerate(gates[q][1:]):
-                        if isinstance(g, CZ):
-                            q2 = g.control if g.target==q else g.target
-                            if q2 in hadamard_blocked: continue
-                            if (q2,q) not in conns: continue
-                            l.append(CNOT(q2,q))
-                            gates[q2].remove(CZ(q2,q))
-                            conns.remove((q2,q))
-                            remove.append(i)
-                            moved_gates = True
-                        elif isinstance(g, HAD): break
-                    for i in reversed(remove):
-                        gates[q].pop(i+1)
-                    if len(gates[q]) >= 2 and isinstance(gates[q][1], HAD): #double hadamard gate
-                        gates[q].pop(0)
-                        gates[q].pop(0)
-                if not moved_gates: break
-            if l: partition.append(l)
-        
-        c2 = Circuit(self.qubits)
-        for gs in partition: c2.gates.extend(gs)
-        return c2, partition
-
 
 class QASMParser(object):
     """Class for parsing QASM source files into circuit descriptions."""
@@ -495,6 +407,7 @@ class QASMParser(object):
 
 class Gate(object):
     """Base class for representing quantum gates."""
+    index = 0
     def __str__(self):
         attribs = []
         if hasattr(self, "control"): attribs.append(str(self.control))
@@ -512,6 +425,7 @@ class Gate(object):
                 if not hasattr(other,a): return False
                 if getattr(self,a) != getattr(other,a): return False
             elif hasattr(other,a): return False
+        if self.index != other.index: return False
         return True
 
     def copy(self):
@@ -626,12 +540,15 @@ class CNOT(Gate):
         rs[self.target] = r+1
         rs[self.control] = r+1
 
-class CZ(CNOT):
+class CZ(Gate):
     name = 'CZ'
     quippername = 'Z'
     qasm_name = 'cz'
-
+    def __init__(self, control, target):
+        self.target = target
+        self.control = control
     def __eq__(self,other):
+        if self.index != other.index: return False
         if (isinstance(other, type(self)) and (
             (self.target == other.target and self.control == other.control) or
             (self.target == other.control and self.control == other.target))):
@@ -696,6 +613,7 @@ class Tofolli(Gate):
     def __str__(self):
         return "{}(c1={!s},c2={!s},t={!s})".format(self.name,self.ctrl1,self.ctrl2,self.target)
     def __eq__(self, other):
+        if self.index != other.index: return False
         if type(self) != type(other): return False
         if (self.target == other.target and 
             ((self.ctrl1 == other.ctrl1 and self.ctrl2 == other.ctrl2) or
