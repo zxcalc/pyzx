@@ -13,7 +13,10 @@ It currently allows you to:
 
 ## Installation
 
-The core of PyZX is Pure Python and will run on Python 2.7 or 3.x without any additional dependencies. To get the most out of it however, you should install ``matplotlib`` and ``numpy``. If [python-igraph](http://igraph.org/python/) is installed it can be used to speed up some operations.
+To install pyzx from source, clone this repository, `cd` into it, and run:
+```
+pip install -e .
+```
 
 
 ## Usage
