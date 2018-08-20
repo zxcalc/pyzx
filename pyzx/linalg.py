@@ -69,7 +69,7 @@ class Mat2(object):
             self.data[r][c1] = v
 
     
-    def gauss(self, full_reduce=False, x=None, y=None, blocksize=2):
+    def gauss(self, full_reduce=False, x=None, y=None, blocksize=6):
         """Compute the echelon form. Returns the number of non-zero rows in the result, i.e.
         the rank of the matrix.
 
@@ -108,6 +108,7 @@ class Mat2(object):
             chunks = dict()
             for r in range(pivot_row, self.rows()):
                 t = tuple(self.data[r][i0:i1])
+                if not any(t): continue
                 if t in chunks:
                     #print('hit (down)', r, chunks[t], t, i0, i1)
                     self.row_add(chunks[t], r)
@@ -149,6 +150,7 @@ class Mat2(object):
                 chunks = dict()
                 for r in range(pivot_row, -1, -1):
                     t = tuple(self.data[r][i0:i1])
+                    if not any(t): continue
                     if t in chunks:
                         #print('hit (up)', r, chunks[t], t, i0, i1)
                         self.row_add(chunks[t], r)
@@ -216,12 +218,38 @@ class Mat2(object):
             i -= 1
         return x
 
+    def to_cnots(self, optimize=False):
+        """Returns a list of CNOTs that implements the matrix as a reversible circuit of qubits."""
+        if not optimize:
+            cn = CNOTMaker()
+            self.copy().gauss(full_reduce=True,x=cn, blocksize=6)
+        else:
+            best = 1000000
+            best_cn = None
+            for size in range(2,self.rows()):
+                cn = CNOTMaker()
+                self.copy().gauss(full_reduce=True,x=cn, blocksize=size)
+                if len(cn.cnots) < best:
+                    best = len(cn.cnots)
+                    best_cn = cn
+            cn = best_cn
+        return list(reversed(cn.cnots))
+
+from .circuit import CNOT
+class CNOTMaker:
+    def __init__(self):
+        self.cnots = []
+    def row_add(self, r1, r2):
+        self.cnots.append(CNOT(r1,r2))
+
 
 
 def xor_rows(l1, l2):
     return [0 if l1[i]==l2[i] else 1 for i in range(len(l1))]
 
 def find_minimal_sums(m):
+    """Returns a list of rows in m that can be added together to reduce one of the rows so that
+    it only contains a single 1. Used in :func:`greedy_reduction`"""
     r = m.rows()
     d = m.data
     combs = {(i,):d[i] for i in range(r)}
@@ -239,6 +267,9 @@ def find_minimal_sums(m):
         combs = combs2
 
 def greedy_reduction(m):
+    """Returns a list of tuples (r1,r2) that specify which row should be added to which other row
+    in order to reduce one row of m to only contain a single 1. 
+    Used in :func:`extract.streaming_extract`"""
     indices = find_minimal_sums(m)
     indices = list(indices)
     rows = {i:m.data[i] for i in indices}

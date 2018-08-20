@@ -420,7 +420,7 @@ def clifford_extract(g, left_row, right_row, cnot_blocksize=2):
     g.replace_subgraph(left_row, right_row, c.g.adjoint())
 
 
-def circuit_extract(g, cnot_blocksize=2,quiet=True):
+def circuit_extract(g, cnot_blocksize=6,quiet=True):
     """Given a graph put into semi-normal form by :func:`simplify.clifford_simp`, 
     it turns the graph back into a circuit."""
     if greedy_cut_extract(g, quiet):

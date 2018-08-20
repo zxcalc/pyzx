@@ -43,10 +43,12 @@ class Circuit(object):
         return str(self)
 
     @staticmethod
-    def from_graph(g):
+    def from_graph(g, split_phases=True):
         """Produces a :class:`Circuit` containing the gates of the given ZX-graph.
         If the ZX-graph is not circuit-like then the behaviour of this function
-        is undefined."""
+        is undefined.
+        ``split_phases`` governs whether nodes with phases should be split into
+        Z,S, and T gates or if generic ZPhase/XPhase gates should be used."""
         c = Circuit(g.qubit_count())
         qs = g.qubits()
         rs = g.rows()
@@ -73,7 +75,10 @@ class Circuit(object):
                     c.add_gate("HAD", q)
                 if t == 0: #vertex is an output
                     continue
-                if t == 1 and phase.denominator == 2:
+                if phase!=0 and not split_phases:
+                    if t == 1: c.add_gate("ZPhase", q, phase=phase)
+                    else: c.add_gate("XPhase", q, phase=phase)
+                elif t == 1 and phase.denominator == 2:
                     c.add_gate("S", q, adjoint=(phase.numerator==3))
                 elif t == 1 and phase.denominator == 4:
                     if phase.numerator in (1,7): c.add_gate("T", q, adjoint=(phase.numerator==7))
@@ -174,6 +179,53 @@ class Circuit(object):
         f.close()
         p = QASMParser()
         return p.parse(s)
+
+    def to_graph(self, compress_rows=True, backend=None):
+        """Turns the circuit into a ZX-Graph.
+        If ``compress_rows`` is set, it tries to put single qubit gates on different qubits,
+        on the same row."""
+        g = Graph(backend)
+        qs = []
+        rs = [0]*self.qubits
+        for i in range(self.qubits):
+            v = g.add_vertex(0,i,rs[i])
+            g.inputs.append(v)
+            qs.append(v)
+            rs[i] += 1
+
+        for gate in self.gates:
+            gate.to_graph(g,qs,rs)
+            if compress_rows and not isinstance(gate, (ZPhase, XPhase, HAD)):
+                r = max(rs)
+                rs = [r]*self.qubits
+
+        r = max(rs)
+        for o in range(self.qubits):
+            v = g.add_vertex(0,o,r)
+            g.outputs.append(v)
+            g.add_edge((qs[o],v))
+
+        return g
+
+    def to_quipper(self):
+        """Produces a Quipper ASCII description of the circuit."""
+        s = "Inputs: " + ", ".join("{!s}Qbit".format(i) for i in range(self.qubits)) + "\n"
+        for g in self.gates:
+            s += g.to_quipper() + "\n"
+        s += "Outputs: " + ", ".join("{!s}Qbit".format(i) for i in range(self.qubits))
+        return s
+
+    def to_qasm(self):
+        """Produces a QASM description of the circuit."""
+        s = """OPENQASM 2.0;\ninclude "qelib1.inc";\n"""
+        s += "qreg q[{!s}];\n".format(self.qubits)
+        for g in self.gates:
+            s += g.to_qasm() + "\n"
+        return s
+
+    def to_tensor(self):
+        """Returns a tensor describing the circuit."""
+        return self.to_graph().to_tensor()
                     
 
     def add_gate(self, gate, *args, **kwargs):
@@ -213,51 +265,6 @@ class Circuit(object):
         for gate in circ.gates:
             g = gate.reposition(mask)
             self.add_gate(g)
-
-    def to_graph(self, backend=None):
-        """Turns the circuit into a ZX-Graph."""
-        g = Graph(backend)
-        qs = []
-        r = 0
-        for i in range(self.qubits):
-            v = g.add_vertex(0,i,r)
-            g.inputs.append(v)
-            qs.append(v)
-
-        r += 1
-
-        for gate in self.gates:
-            d = gate.to_graph(g,qs,r)
-            if d: r += d
-            else: r += 1
-
-        for o in range(self.qubits):
-            v = g.add_vertex(0,o,r)
-            g.outputs.append(v)
-            g.add_edge((qs[o],v))
-
-        return g
-
-    def to_quipper(self):
-        """Produces a Quipper ASCII description of the circuit."""
-        s = "Inputs: " + ", ".join("{!s}Qbit".format(i) for i in range(self.qubits)) + "\n"
-        for g in self.gates:
-            s += g.to_quipper() + "\n"
-        s += "Outputs: " + ", ".join("{!s}Qbit".format(i) for i in range(self.qubits))
-        return s
-
-    def to_qasm(self):
-        """Produces a QASM description of the circuit."""
-        s = """OPENQASM 2.0;\ninclude "qelib1.inc";\n"""
-        s += "qreg q[{!s}];\n".format(self.qubits)
-        for g in self.gates:
-            s += g.to_qasm() + "\n"
-        return s
-
-
-    def to_tensor(self):
-        """Returns a tensor describing the circuit."""
-        return self.to_graph().to_tensor()
 
 
 class QASMParser(object):
@@ -400,6 +407,7 @@ class QASMParser(object):
 
 class Gate(object):
     """Base class for representing quantum gates."""
+    index = 0
     def __str__(self):
         attribs = []
         if hasattr(self, "control"): attribs.append(str(self.control))
@@ -417,6 +425,7 @@ class Gate(object):
                 if not hasattr(other,a): return False
                 if getattr(self,a) != getattr(other,a): return False
             elif hasattr(other,a): return False
+        if self.index != other.index: return False
         return True
 
     def copy(self):
@@ -465,8 +474,9 @@ class ZPhase(Gate):
         self.phase = phase
         self.name 
 
-    def to_graph(self, g, qs, r):
-        self.graph_add_node(g,qs,1,self.target,r,self.phase)
+    def to_graph(self, g, qs, rs):
+        self.graph_add_node(g,qs,1,self.target,rs[self.target],self.phase)
+        rs[self.target] += 1
 
 
 class Z(ZPhase):
@@ -502,8 +512,9 @@ class XPhase(Gate):
         self.target = target
         self.phase = phase
 
-    def to_graph(self, g, qs, r):
-        self.graph_add_node(g,qs,2,self.target,r,self.phase)
+    def to_graph(self, g, qs, rs):
+        self.graph_add_node(g,qs,2,self.target,rs[self.target],self.phase)
+        rs[self.target] += 1
 
 class NOT(XPhase):
     name = 'NOT'
@@ -521,41 +532,62 @@ class CNOT(Gate):
     def __init__(self, control, target):
         self.target = target
         self.control = control
-    def to_graph(self, g, qs, r):
+    def to_graph(self, g, qs, rs):
+        r = max(rs[self.target],rs[self.control])
         t = self.graph_add_node(g,qs,2,self.target,r)
         c = self.graph_add_node(g,qs,1,self.control,r)
         g.add_edge((t,c))
+        rs[self.target] = r+1
+        rs[self.control] = r+1
 
-class CZ(CNOT):
+class CZ(Gate):
     name = 'CZ'
     quippername = 'Z'
     qasm_name = 'cz'
-    def to_graph(self, g, qs, r):
+    def __init__(self, control, target):
+        self.target = target
+        self.control = control
+    def __eq__(self,other):
+        if self.index != other.index: return False
+        if (isinstance(other, type(self)) and (
+            (self.target == other.target and self.control == other.control) or
+            (self.target == other.control and self.control == other.target))):
+            return True
+        return False
+
+    def to_graph(self, g, qs, rs):
+        r = max(rs[self.target],rs[self.control])
         t = self.graph_add_node(g,qs,1,self.target,r)
         c = self.graph_add_node(g,qs,1,self.control,r)
         g.add_edge((t,c),2)
+        rs[self.target] = r+1
+        rs[self.control] = r+1
 
-class CX(CNOT):
+
+
+class CX(CZ):
     name = 'CX'
     quippername = 'X'
     qasm_name = 'undefined'
-    def to_graph(self, g, qs, r):
+    def to_graph(self, g, qs, rs):
+        r = max(rs[self.target],rs[self.control])
         t = self.graph_add_node(g,qs,2,self.target,r)
         c = self.graph_add_node(g,qs,2,self.control,r)
         g.add_edge((t,c),2)
+        rs[self.target] = r+1
+        rs[self.control] = r+1
 
-class SWAP(CNOT):
+class SWAP(CZ):
     name = 'SWAP'
     quippername = 'undefined'
     qasm_name = 'undefined'
 
-    def to_graph(self, g, qs, r):
+    def to_graph(self, g, qs, rs):
         c1 = CNOT(self.control, self.target)
         c2 = CNOT(self.target, self.control)
-        c1.to_graph(g,qs,r)
-        c2.to_graph(g,qs,r+1)
-        c1.to_graph(g,qs,r+2)
-        return 4
+        c1.to_graph(g,qs,rs)
+        c2.to_graph(g,qs,rs)
+        c1.to_graph(g,qs,rs)
 
 class HAD(Gate):
     name = 'HAD'
@@ -564,10 +596,11 @@ class HAD(Gate):
     def __init__(self, target):
         self.target = target
 
-    def to_graph(self,g, qs, r):
-        v = g.add_vertex(1,self.target,r)
+    def to_graph(self,g, qs, rs):
+        v = g.add_vertex(1,self.target,rs[self.target])
         g.add_edge((qs[self.target],v),2)
         qs[self.target] = v
+        rs[self.target] += 1
 
 class Tofolli(Gate):
     name = 'Tof'
@@ -580,6 +613,7 @@ class Tofolli(Gate):
     def __str__(self):
         return "{}(c1={!s},c2={!s},t={!s})".format(self.name,self.ctrl1,self.ctrl2,self.target)
     def __eq__(self, other):
+        if self.index != other.index: return False
         if type(self) != type(other): return False
         if (self.target == other.target and 
             ((self.ctrl1 == other.ctrl1 and self.ctrl2 == other.ctrl2) or
@@ -599,11 +633,11 @@ class Tofolli(Gate):
         s += ' with nocontrol'
         return s
 
-    def to_graph(self, g, qs, r):
+    def to_graph(self, g, qs, rs):
         mask = [self.ctrl1, self.ctrl2, self.target]
         for i,gate in enumerate(self.circuit_rep.gates):
             gate = gate.reposition(mask)
-            gate.to_graph(g,qs,r+i)
+            gate.to_graph(g,qs,rs)
         return i+1
 
 
