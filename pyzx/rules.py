@@ -44,6 +44,14 @@ These rewrite rules are used in the simplification procedures of :mod:`simplify`
 from fractions import Fraction
 
 
+def apply_rule(g, rewrite, m, check_isolated_vertices=True):
+    etab, rem_verts, rem_edges, check_isolated_vertices = rewrite(g, m)
+    g.add_edge_table(etab)
+    g.remove_edges(rem_edges)
+    g.remove_vertices(rem_verts)
+    if check_isolated_vertices: g.remove_isolated_vertices()
+
+
 def match_bialg(g):
     """Does the same as :func:`match_bialg_parallel` but with ``num=1``."""
     types = g.types()
@@ -174,6 +182,36 @@ def spider(g, matches):
             etab[e][g.edge_type((m[1],v1))-1] += 1
     
     return (etab, rem_verts, [], True)
+
+def unspider(g, m, qubit=-1, row=-1):
+    '''Undoes a single spider fusion, given a match ``m``. A match is a list with 3
+    elements given by:
+
+      m[0] : a vertex to unspider
+      m[1] : the neighbours of the new node, which should be a subset of the
+             neighbours of m[0]
+      m[2] : the phase of the new node. If omitted, the new node gets all of the phase of m[0]
+
+    Returns the index of the new node. Optional parameters ``qubit`` and ``row`` can be used
+    to position the new node. If they are omitted, they are set as the same as the old node.
+    '''
+    v = g.add_vertex(ty=g.type(m[0]))
+    g.set_qubit(v, qubit if qubit != -1 else g.qubit(m[0]))
+    g.set_row(v, row if row != -1 else g.row(m[0]))
+
+    g.add_edge((m[0], v))
+    for n in m[1]:
+        e = g.edge(m[0],n)
+        g.add_edge((v,n), edgetype=g.edge_type(e))
+        g.remove_edge(e)
+    if len(m) >= 3:
+        g.add_phase(v, m[2])
+        g.add_phase(m[0], Fraction(0) - m[2])
+    else:
+        g.set_phase(v, g.phase(m[0]))
+        g.set_phase(m[0], 0)
+    return v
+
 
 # TODO: optimise for single-match case
 def match_pivot(g):
