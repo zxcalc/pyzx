@@ -116,12 +116,18 @@ def random_phase(add_t):
         return Fraction(random.randint(1,8),4)
     return Fraction(random.randint(1,4),2)
 
-def cliffordT(qubits, depth, p_t = 0.1, backend=None):
-    """Generates a circuit consisting of randomly placed Clifford+T gates.
+def cliffordT(qubits, depth, p_t=None, p_s=None, p_hsh=None, p_cnot=None, backend=None):
+    """Generates a circuit consisting of randomly placed Clifford+T gates. Optionally, take
+    probabilities of adding T, S, HSH, and CNOT. If probabilities for only a subset of gates
+    is given, any remaining probability will be uniformly distributed among the remaining
+    gates.
 
     :param qubits: Amount of qubits in circuit.
     :param depth: Depth of circuit.
     :param p_t: Probability that each gate is a T-gate.
+    :param p_s: Probability that each gate is a S-gate.
+    :param p_hsh: Probability that each gate is a HSH-gate.
+    :param p_cnot: Probability that each gate is a CNOT-gate.
     :param backend: When given, should be one of the possible :ref:`graph_api` backends.
     :rtype: Instance of graph of the given backend.
     """
@@ -130,9 +136,27 @@ def cliffordT(qubits, depth, p_t = 0.1, backend=None):
     v = 0                     # next vertex to add
     r = 0                     # current row
 
-    p_s = (1 - p_t) / 3.0
-    p_hsh = (1 - p_t) / 3.0
-    p_cnot = (1 - p_t) / 3.0
+    num = 0.0
+    rest = 1.0
+    if p_t == None: num += 1.0
+    else: rest -= p_t
+    if p_s == None: num += 1.0
+    else: rest -= p_s
+    if p_hsh == None: num += 1.0
+    else: rest -= p_hsh
+    if p_cnot == None: num += 1.0
+    else: rest -= p_cnot
+
+    if rest < 0: raise ValueError("Probabilities are >1.")
+
+    if p_t == None: p_t = rest / num
+    if p_s == None: p_s = rest / num
+    if p_hsh == None: p_hsh = rest / num
+    if p_cnot == None: p_cnot = rest / num
+
+    #p_s = (1 - p_t) / 3.0
+    #p_hsh = (1 - p_t) / 3.0
+    #p_cnot = (1 - p_t) / 3.0
     
 
     for i in range(qubits):

@@ -82,7 +82,7 @@ def cut_edges(g, left, right, available=None):
     return left_verts
 
 
-def unspider(g, v):
+def unspider_by_row(g, v):
     r = g.row(v)
     w = g.add_vertex(1,g.qubit(v),r-1)
     ns = list(g.neighbours(v))
@@ -160,7 +160,7 @@ def greedy_cut_extract(g, quiet=True):
         cut_edges(g, left, right, available)
         for v in row:
             g.set_row(v,r)
-            unspider(g, v)
+            unspider_by_row(g, v)
 
         leftrow = r
         cuts += 1
@@ -173,7 +173,7 @@ def greedy_cut_extract(g, quiet=True):
         # for i,v in enumerate(row):
         #     g.set_qubit(v,rank+i)
         #     g.set_row(v,r)
-        #     unspider(g, v)
+        #     unspider_by_row(g, v)
         #if iterate: yield g
     if not quiet: print("\nDone, made {!s} cuts".format(cuts))
     g.pack_circuit_rows()
