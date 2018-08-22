@@ -30,7 +30,7 @@ __all__ = ['bialg_simp','spider_simp', 'id_simp', 'phase_free_simp', 'pivot_simp
 
 from .rules import *
 
-def simp(g, name, match, rewrite, quiet=False):
+def simp(g, name, match, rewrite, matchset=-1, quiet=False):
     """Helper method for generating simplification strategies based on rules in rules_.
     It keeps matching and rewriting with the given methods until it can no longer do so.
     Example usage: ``simp(g, 'spider_simp', rules.match_spider_parallel, rules.spider)``
@@ -41,12 +41,15 @@ def simp(g, name, match, rewrite, quiet=False):
     :param rewrite: One of the rewrite functions of rules_."""
     i = 0
     new_matches = True
-    if not quiet: print(name)
     while new_matches:
-        i += 1
         new_matches = False
-        m = match(g)
+        if matchset != -1:
+            m = match(g, matchset)
+        else:
+            m = match(g)
         if len(m) > 0:
+            i += 1
+            if i == 1 and not quiet: print("{}: ".format(name),end='')
             if not quiet: print(len(m), end='')
             #print(len(m), end='', flush=True) #flush only supported on Python >3.3
             etab, rem_verts, rem_edges, check_isolated_vertices = rewrite(g, m)
@@ -57,13 +60,14 @@ def simp(g, name, match, rewrite, quiet=False):
             if not quiet: print('. ', end='')
             #print('. ', end='', flush=True)
             new_matches = True
-    if not quiet: print('\nfinished in ' + str(i) + ' iterations')
+    if not quiet and i>0: print(' {!s} iterations'.format(i))
+    return i
 
-def pivot_simp(g, quiet=False):
-    return simp(g, 'pivot_simp', match_pivot_parallel, pivot, quiet=quiet)
+def pivot_simp(g, matchset=-1, quiet=False):
+    return simp(g, 'pivot_simp', match_pivot_parallel, pivot, matchset=matchset, quiet=quiet)
 
-def lcomp_simp(g, quiet=False):
-    return simp(g, 'lcomp_simp', match_lcomp_parallel, lcomp, quiet=quiet)
+def lcomp_simp(g, matchset=-1, quiet=False):
+    return simp(g, 'lcomp_simp', match_lcomp_parallel, lcomp, matchset=matchset, quiet=quiet)
 
 def bialg_simp(g, quiet=False):
     return simp(g, 'bialg_simp', match_bialg_parallel, bialg, quiet=quiet)
@@ -82,7 +86,8 @@ def phase_free_simp(g, quiet=False):
 
 def clifford_simp(g, quiet=False):
     '''Performs the following set of simplifications on the graph:
-    spider -> pivot -> lcomp -> pivot -> id'''
+    spider -> pivot -> lcomp -> pivot. It then applies identity and spider fusion
+    until it can't anymore.'''
     spider_simp(g, quiet=quiet)
     to_gh(g)
     spider_simp(g, quiet=quiet)
@@ -90,8 +95,12 @@ def clifford_simp(g, quiet=False):
     lcomp_simp(g, quiet=quiet)
     pivot_simp(g, quiet=quiet)
     #to_rg(g)
-    id_simp(g, quiet=quiet)
-    spider_simp(g, quiet=quiet)
+    while True:
+        i = id_simp(g, quiet=quiet)
+        if i> 0: 
+            j = spider_simp(g, quiet=quiet)
+            if j == 0: break
+        break
 
 def to_gh(g,quiet=True):
     """Turns every red node into a green node by changing regular edges into hadamard edges"""
@@ -322,3 +331,51 @@ def clifford_threaded(g):
     pivot_threaded(g)
     to_rg(g)
     id_threaded(g)
+
+
+
+
+def gadgetize(g):
+    phases = g.phases()
+    #qs = g.qubits()
+    rs = g.rows()
+    edges = []
+    for v in list(g.vertices()):
+        if phases[v] != 0 and phases[v].denominator > 2:
+            v1 = g.add_vertex(1,-1,rs[v]+0.5,0)
+            v2 = g.add_vertex(1,-2,rs[v]+0.5,phases[v])
+            g.set_phase(v, 0)
+            edges.append((v,v1))
+            edges.append((v1,v2))
+    g.add_edges(edges, 2)
+    return edges
+
+def full_reduce(g, quiet=True):
+    zx.simplify.clifford_simp(g,quiet=quiet)
+    if not quiet: print("Gadgetizing...")
+    es = gadgetize(g)
+    edges = [e for e in g.edges() if e not in es]
+    zx.simplify.pivot_simp(g,matchset=edges,quiet=quiet)
+    zx.simplify.lcomp_simp(g, quiet=quiet)
+    edges = [e for e in g.edges() if e not in es]
+    zx.simplify.pivot_simp(g,matchset=edges,quiet=quiet)
+    phases = g.phases()
+    for v in g.vertices():
+        if phases[v] != 0 and phases[v].denominator > 2 and len(list(g.neighbours(v)))==1:
+            n = list(g.neighbours(v))[0]
+            if phases[n] == 1:
+                g.set_phase(n, 0)
+                g.set_phase(v, -1*phases[v])
+                phases[n] = 0
+    zx.simplify.clifford_simp(g,quiet=quiet)
+
+def tcount(g):
+    count = 0
+    phases = g.phases()
+    for v in g.vertices():
+        if phases[v]!=0 and phases[v].denominator > 2:
+            count += 1
+    return count
+
+
+

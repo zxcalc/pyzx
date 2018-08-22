@@ -226,7 +226,7 @@ class Mat2(object):
         else:
             best = 1000000
             best_cn = None
-            for size in range(2,self.rows()):
+            for size in range(1,self.rows()):
                 cn = CNOTMaker()
                 self.copy().gauss(full_reduce=True,x=cn, blocksize=size)
                 if len(cn.cnots) < best:
@@ -252,6 +252,7 @@ def find_minimal_sums(m):
     it only contains a single 1. Used in :func:`greedy_reduction`"""
     r = m.rows()
     d = m.data
+    if any(sum(r)==1 for r in d): return []
     combs = {(i,):d[i] for i in range(r)}
     combs2 = {}
     while True:
@@ -263,7 +264,8 @@ def find_minimal_sums(m):
                     return (*index,k)
                 combs2[(*index,k)] = row
         if not combs2:
-            raise ValueError("Irreducible input has been given")
+            return None
+            #raise ValueError("Irreducible input has been given")
         combs = combs2
 
 def greedy_reduction(m):
@@ -271,6 +273,7 @@ def greedy_reduction(m):
     in order to reduce one row of m to only contain a single 1. 
     Used in :func:`extract.streaming_extract`"""
     indices = find_minimal_sums(m)
+    if not isinstance(indices, (list,tuple)): return indices
     indices = list(indices)
     rows = {i:m.data[i] for i in indices}
     weights = {i: sum(r) for i,r in rows.items()}

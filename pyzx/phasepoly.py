@@ -31,12 +31,23 @@ def circuit_phase_polynomial_blocks(circuit, optimize=False):
             if isinstance(g,ZPhase):
                 gates[g.target].append(ZPhase(g.target,g.phase))
             elif isinstance(g, HAD):
-                gates[g.target].append(g)
+                if gates[g.target] and isinstance(gates[g.target][-1], HAD):
+                    gates[g.target].pop()
+                else: gates[g.target].append(g)
             elif isinstance(g, CZ):
                 gates[g.control].append(g)
                 gates[g.target].append(g)
+            elif isinstance(g, CNOT): # We need to convert this CNOT to a CZ by adding hadamards at the control
+                if gates[g.target] and isinstance(gates[g.target][-1], HAD):
+                    gates[g.target].pop()
+                else:
+                    gates[g.target].append(HAD(g.target))
+                cz = CZ(g.control, g.target)
+                gates[g.control].append(cz)
+                gates[g.target].append(cz)
+                gates[g.target].append(HAD(g.target))
             else:
-                raise TypeError("Unsupported gate {!s}. Make sure you are in GH-form.".format(g))
+                raise TypeError("Unsupported gate {!s}. Make sure you are in GH+CNOT form.".format(g))
 
         partition = []
         while any(gates.values()): # We keep parsing untill all the gates have been consumed

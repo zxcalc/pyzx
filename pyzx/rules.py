@@ -181,7 +181,7 @@ def match_pivot(g):
     return match_pivot_parallel(g, num=1, check_edge_types=True)
 
 
-def match_pivot_parallel(g, num=-1, check_edge_types=False, edgelist=-1):
+def match_pivot_parallel(g, edgelist=-1, num=-1, check_edge_types=False):
     """Finds noninteracting matchings of the pivot rule.
     
     :param g: An instance of a ZX-graph.
@@ -325,7 +325,7 @@ def match_lcomp(g):
     """Same as :func:`match_lcomp_parallel`, but with ``num=1``"""
     return match_lcomp_parallel(g, num=1, check_edge_types=True)
 
-def match_lcomp_parallel(g, num=-1, check_edge_types=False, vertexlist=-1):
+def match_lcomp_parallel(g, vertexlist=-1, num=-1, check_edge_types=False):
     """Finds noninteracting matchings of the local complementation rule.
     
     :param g: An instance of a ZX-graph.
@@ -416,6 +416,7 @@ def match_ids_parallel(g, num=-1, vertexlist=-1):
         if g.edge_type((v,v0)) != g.edge_type((v,v1)): #exactly one of them is a hadamard edge
             m.append((v,v0,v1,2))
         else: m.append((v,v0,v1,1))
+        i += 1
     return m
 
 def remove_ids(g, matches):

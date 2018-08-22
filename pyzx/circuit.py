@@ -17,6 +17,7 @@
 
 from fractions import Fraction
 import copy
+import math
 
 from .graph import Graph
 from .drawing import phase_to_s
@@ -130,7 +131,33 @@ class Circuit(object):
         c = Circuit(len(inputs))
         for gate in gates:
             if gate.startswith("Comment"): continue
-            if not gate.startswith("QGate"):
+            if gate.startswith("QInit0"):
+                t = int(gate[gate.find('(')+1:gate.find(')')])
+                if t>=c.qubits: c.qubits = t+1
+                continue
+            if gate.startswith("QTerm0"): continue
+            if gate.startswith("QRot"):
+                i = gate.find("exp(")
+                if gate[i+4:i+8] == '-i%Z':
+                    gtype = "ZPhase"
+                elif gate[i+4:i+8] == '-i%X':
+                    gtype = "XPhase"
+                else:
+                    raise TypeError("Unsupported expression: " + gate) 
+                f = gate[gate.find(',')+1: gate.find(']')]
+                try:
+                    f = float(f)
+                except ValueError:
+                    raise TypeError("Unsupported expression: " + gate)
+                phase = Fraction(f/math.pi).limit_denominator()
+                target = gate[gate.rfind('(')+1:gate.rfind(')')]
+                try: 
+                    target = int(target)
+                except ValueError:
+                    raise TypeError("Unsupported expression: "+ gate)
+                c.add_gate(gtype, target, 2*phase)
+                continue
+            elif not gate.startswith("QGate"):
                 raise TypeError("Unsupported expression: " + gate)
             l = gate.split("with")
             g = l[0]
@@ -152,12 +179,19 @@ class Circuit(object):
             if ctrls.find(',')!=-1:
                 if ctrls.count(',') != 1: raise TypeError("Maximum two controls on gate allowed: " + gate)
                 if gname not in ("not", "Z"): raise TypeError("Two controls only allowed on 'not' and 'Z': "+ gate)
-                ctrl1, ctrl2 = ctrls.split(',',1)
-                if ctrl1.find('+') == -1 or ctrl2.find('+') == -1: raise TypeError("Unsupported controls: " + ctrls)
-                ctrl1 = int(ctrl1.strip()[1:])
-                ctrl2 = int(ctrl2.strip()[1:])
+                c1, c2 = ctrls.split(',',1)
+                ctrl1 = int(c1.strip()[1:])
+                ctrl2 = int(c2.strip()[1:])
+                nots = []
+                if c1.find('+') == -1:
+                    nots.append(ctrl1)
+                if c2.find('+') == -1:
+                    nots.append(ctrl2)
+                #if ctrl1.find('+') == -1 or ctrl2.find('+') == -1: raise TypeError("Unsupported controls: " + ctrls)
+                for t in nots: c.add_gate("NOT", t)
                 if gname == "not": c.add_gate("TOF", ctrl1, ctrl2, target)
                 elif gname == "Z": c.add_gate("CCZ", ctrl1, ctrl2, target)
+                for t in nots: c.add_gate("NOT", t)
                 continue
             elif ctrls.find('+')==-1:
                 raise TypeError("Unsupported control: " + ctrls)
@@ -179,6 +213,14 @@ class Circuit(object):
         f.close()
         p = QASMParser()
         return p.parse(s)
+
+    def to_basic_gates(self):
+        """Returns a new circuit with every gate expanded in terms of X/Z phases, Hadamards
+        and the 2-qubit gates CNOT, CZ, CX."""
+        c = Circuit(self.qubits)
+        for g in self.gates:
+            c.gates.extend(g.to_basic_gates())
+        return c
 
     def to_graph(self, compress_rows=True, backend=None):
         """Turns the circuit into a ZX-Graph.
@@ -265,6 +307,35 @@ class Circuit(object):
         for gate in circ.gates:
             g = gate.reposition(mask)
             self.add_gate(g)
+
+    def stats(self):
+        total = 0
+        tgates = 0
+        twoqubit = 0
+        hadamard = 0
+        clifford = 0
+        other = 0
+        for g in self.gates:
+            total += 1
+            if isinstance(g, (ZPhase, XPhase)):
+                if g.phase.denominator >= 4: tgates += 1
+                else: clifford += 1
+            elif isinstance(g, HAD):
+                hadamard += 1
+                clifford += 1
+            elif isinstance(g, (CZ,CX, CNOT)):
+                twoqubit += 1
+                clifford += 1
+            else:
+                other += 1
+        s = """Circuit on {} qubits with {} gates.
+        {} T-like gates
+        {} Cliffords among which 
+        {} 2-qubit gates and {} Hadamard gates.""".format(self.qubits, total, tgates, 
+            clifford, twoqubit, hadamard)
+        if other > 0:
+            s += "\nThere are {} gates of a different type".format(other)
+        return s
 
 
 class QASMParser(object):
@@ -439,6 +510,9 @@ class Gate(object):
             g.control = mask[g.control]
         return g
 
+    def to_basic_gates(self):
+        return [self]
+
     def to_quipper(self):
         n = self.name if not hasattr(self, "quippername") else self.quippername
         s = 'QGate["{}"]{}({!s})'.format(n,("*" if (hasattr(self,"adjoint") and self.adjoint) else ""),self.target)
@@ -478,6 +552,11 @@ class ZPhase(Gate):
         self.graph_add_node(g,qs,1,self.target,rs[self.target],self.phase)
         rs[self.target] += 1
 
+    def to_quipper(self):
+        if not self.printphase:
+            return super().to_quipper()
+        return 'QRot["exp(-i%Z)",{!s}]({!s})'.format(math.pi*self.phase/2,self.target)
+
 
 class Z(ZPhase):
     name = 'Z'
@@ -515,6 +594,12 @@ class XPhase(Gate):
     def to_graph(self, g, qs, rs):
         self.graph_add_node(g,qs,2,self.target,rs[self.target],self.phase)
         rs[self.target] += 1
+
+    def to_quipper(self):
+        if not self.printphase:
+            return super().to_quipper()
+        return 'QRot["exp(-i%X)",{!s}]({!s})'.format(math.pi*self.phase/2,self.target)
+
 
 class NOT(XPhase):
     name = 'NOT'
@@ -564,6 +649,38 @@ class CZ(Gate):
         rs[self.control] = r+1
 
 
+class ParityPhase(Gate):
+    name = 'ParityPhase'
+    quippername = 'undefined'
+    qasm_name = 'undefined'
+    printphase = True
+    def __init__(self, phase, *targets):
+        self.targets = targets
+        self.phase = phase
+
+    def __eq__(self, other):
+        if self.index != other.index: return False
+        if isinstance(other, type(self)) and set(self.targets) == set(other.targets) and self.phase == other.phase:
+            return True
+        return False
+
+    def __str__(self):
+        return "ParityPhase({!s},{!s})".format(self.phase, ", ".join(str(t) for t in self.targets))
+
+    def reposition(self, mask):
+        g = self.copy()
+        g.targets = [mask[t] for t in g.targets]
+        return g
+
+    def to_basic_gates(self):
+        cnots = [CNOT(self.targets[i],self.targets[i+1]) for i in range(len(self.targets)-1)]
+        p = ZPhase(self.targets[-1], self.phase)
+        return cnots + [p] + list(reversed(cnots))
+
+    def to_graph(self, g, qs, rs):
+        for gate in self.to_basic_gates():
+            gate.to_graph(g, qs, rs)
+
 
 class CX(CZ):
     name = 'CX'
@@ -582,12 +699,14 @@ class SWAP(CZ):
     quippername = 'undefined'
     qasm_name = 'undefined'
 
-    def to_graph(self, g, qs, rs):
+    def to_basic_gates(self):
         c1 = CNOT(self.control, self.target)
         c2 = CNOT(self.target, self.control)
-        c1.to_graph(g,qs,rs)
-        c2.to_graph(g,qs,rs)
-        c1.to_graph(g,qs,rs)
+        return [c1,c2,c1]
+
+    def to_graph(self, g, qs, rs):
+        for gate in self.to_basic_gates():
+            gate.to_graph(g,qs,rs)
 
 class HAD(Gate):
     name = 'HAD'
@@ -627,18 +746,19 @@ class Tofolli(Gate):
         g.ctrl2 = mask[g.ctrl2]
         return g
 
+    def to_basic_gates(self):
+        mask = [self.ctrl1, self.ctrl2, self.target]
+        return [g.reposition(mask) for g in self.circuit_rep.gates]
+
+    def to_graph(self, g, qs, rs):
+        for gate in self.to_basic_gates():
+            gate.to_graph(g, qs, rs)
+
     def to_quipper(self):
         s = 'QGate["{}"]({!s})'.format(self.quippername,self.target)
         s += ' with controls=[+{!s},+{!s}]'.format(self.ctrl1,self.ctrl2)
         s += ' with nocontrol'
         return s
-
-    def to_graph(self, g, qs, rs):
-        mask = [self.ctrl1, self.ctrl2, self.target]
-        for i,gate in enumerate(self.circuit_rep.gates):
-            gate = gate.reposition(mask)
-            gate.to_graph(g,qs,rs)
-        return i+1
 
 
 class CCZ(Tofolli):
@@ -655,6 +775,7 @@ gate_types = {
     "T": T,
     "CNOT": CNOT,
     "CZ": CZ,
+    "ParityPhase": ParityPhase,
     "CX": CX,
     "SWAP": SWAP,
     "HAD": HAD,

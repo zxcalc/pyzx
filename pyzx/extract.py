@@ -17,19 +17,19 @@
 
 __all__ = ['circuit_extract', 'clifford_extract', 'greedy_cut_extract']
 
-from .linalg import Mat2
+from fractions import Fraction
+
+from .linalg import Mat2, greedy_reduction
 from .graph import Graph
 from .simplify import id_simp
+from .circuit import Circuit, ParityPhase, CNOT, HAD, ZPhase, CZ
 
-def before(g, vs):
-    min_r = min(g.row(v) for v in vs)
-    return [w for w in g.vertices() if g.row(w) < min_r and any(g.connected(v, w) for v in vs)]
-def after(g, vs):
-    max_r = max(g.row(v) for v in vs)
-    return [w for w in g.vertices() if g.row(w) > max_r and any(g.connected(v, w) for v in vs)]
 
 def bi_adj(g, vs, ws):
     return Mat2([[1 if g.connected(v,w) else 0 for v in vs] for w in ws])
+
+def cut_rank(g, left, right):
+    return bi_adj(g, left, right).rank()
 
 def cut_edges(g, left, right, available=None):
     m = bi_adj(g, left, right)
@@ -79,27 +79,8 @@ def cut_edges(g, left, right, available=None):
                 g.add_edge((right_verts[j],right[i]),2)
                 #g.add_edge((vi + cut_rank + j, right[i]))
                 #g.set_edge_type(g.edge(vi + cut_rank + j, right[i]), 2)
-    
+    return left_verts
 
-def split(g, below, above):
-    left = [v for v in g.vertices() if g.row(v) < below]
-    right = [v for v in g.vertices() if g.row(v) > above]
-    return (left,right)
-
-def cut_at_row(g, row):
-    left = [v for v in g.vertices() if g.row(v) <= row]
-    right = [v for v in g.vertices() if g.row(v) > row]
-    cut_edges(g, left, right)
-
-# def cut_at_vertex(g, v):
-#     r = g.vdata(v, 'r')
-#     for w in g.vertices():
-#         r1 = g.vdata(w, 'r')
-#         if r1 == r and v != w:
-#             g.set_vdata(w, 'r', r+1)
-#         elif r1 > r:
-#             g.set_vdata(w, 'r', r1+1)
-#     cut_at_row(g, r)
 
 def unspider(g, v):
     r = g.row(v)
@@ -112,8 +93,6 @@ def unspider(g, v):
             g.remove_edge(e)
     g.add_edge((w, v))
 
-def cut_rank(g, left, right):
-    return bi_adj(g, left, right).rank()
 
 def greedy_cut_extract(g, quiet=True):
     """Given a graph that has been put into semi-normal form by
@@ -199,101 +178,6 @@ def greedy_cut_extract(g, quiet=True):
     if not quiet: print("\nDone, made {!s} cuts".format(cuts))
     g.pack_circuit_rows()
     return True
-
-def single_cut_extract(g, qubits):
-    max_r = max(g.row(v) for v in g.vertices()) - 1
-    for v in g.vertices():
-        if any(w in g.outputs for w in g.neighbours(v)):
-            g.set_row(v, max_r)
-
-    ts = sorted([v for v in g.vertices() if g.phase(v).denominator > 2 and g.row(v) < max_r],
-          key=lambda v: g.row(v))
-    for t in ts:
-        row = g.row(v)
-        left,right = split(g, below=row, above=row)
-        rank = cut_rank(g, left, right)
-        if (rank >= qubits):
-            print("FAILED at", t, "with rank", rank, ">=", qubits, "qubits")
-            return False
-        cut_edges(g, left, right)
-        g.set_qubit(t,qubits-1)
-        if rank > 0:
-            g.set_row(t,g.row(g.vindex()-1))
-    return True
-
-
-def cut_extract(g, qubits):
-    """A circuit extraction heuristic which exploits the bounded cut-rank of ZX-diagrams
-    which come from reducing circuits."""
-    cut = False
-    #last_row = [v for v in g.vertices() if g.type(v) == 1 and any(g.vdata(w, 'i') for w in g.neighbours(v))]
-    last_row = []
-    for v in g.vertices():
-        if len(last_row) < qubits:
-            if not g.vdata(v,'i'):
-                last_row.append(v)
-        else:
-            break
-
-
-    # if (len(last_row) != qubits):
-    #     print("expected a full row of green nodes at the input")
-    #     return False
-
-    while True:
-        row1 = after(g, last_row)
-        list.sort(row1)
-        if len(row1) == 0:
-            print('terminated normally')
-            return True
-        
-        row0 = []
-        rank = bi_adj(g, last_row, row1).rank()
-        m = None
-        while len(row1) != 0:
-            for i,v in enumerate(row1):
-                new_row1 = row1[0:i] + row1[i+1:len(row1)]
-                new_rank = bi_adj(g, last_row, new_row1).rank()
-                if new_rank < rank:
-                    row0.append(v)
-                    row1 = new_row1
-                    break
-            if new_rank == rank:
-                break
-            else:
-                rank = new_rank
-        if len(row0) == 0:
-            if not cut:
-                print('could not solve row ', last_row, ' trying cut at ', row1[0])
-                cut = True
-                
-                #cut_at_vertex(g, row1[0])
-                cut_at_row(g, g.vdata(row1[0],'r'))
-                continue
-            else:
-                print('no solution after cutting, giving up')
-                return False
-            
-        cut = False
-        max_r = max(g.vdata(v, 'r') for v in last_row)
-        extra = qubits - len(row0)
-        
-        if (len(row1) != 0):
-            cut_edges(g, last_row, row1)
-            taken = set(g.vdata(v,'q') for v in row0)
-            free = [q for q in range(0,qubits) if q not in taken]
-            for v in range(g.num_vertices()-extra,g.num_vertices()):
-                q = free.pop()
-                g.set_vdata(v-extra,'q',q)
-                g.set_vdata(v-extra,'r',max_r+1.75)
-                g.set_vdata(v,'q',q)
-                g.set_vdata(v,'r',max_r+2.25)
-                
-        for i,v in enumerate(row0):
-            if g.type(v) != 0:
-                g.set_vdata(v,'r',max_r+2)
-            
-        last_row = list(range(g.num_vertices()-extra,g.num_vertices())) + row0
 
 
 class CNOTMaker(object):
@@ -437,10 +321,9 @@ def circuit_extract(g, cnot_blocksize=6,quiet=True):
         return False
 
 
-from .linalg import greedy_reduction
-from .circuit import Circuit
 
-def streaming_extract(g):
+
+def streaming_extract(g, quiet=True, stopcount=-1):
     """Given a graph put into semi-normal form by :func:`simplify.clifford_simp`, 
     it extracts its equivalent set of gates into an instance of :class:`circuit.Circuit`.
     This method uses a different algorithm than :func:`circuit_extract`, and seems
@@ -452,6 +335,13 @@ def streaming_extract(g):
     phases = g.phases()
     c = Circuit(g.qubit_count())
     leftrow = 1
+
+    # First we check whether there are MS-gate like constructions, since we have to deal with them separately
+    special_nodes = {}
+    for v in g.vertices():
+        if len(list(g.neighbours(v))) == 1 and v not in g.inputs and v not in g.outputs:
+            n = list(g.neighbours(v))[0]
+            special_nodes[n] = v
     
     while True:
         left = [v for v in g.vertices() if rs[v] == leftrow]
@@ -509,9 +399,34 @@ def streaming_extract(g):
         if not good_verts:  # There are no 'easy' nodes we can use to progress
             if all(ty[v] == 0 for v in right): break # Actually we are done, since only outputs are left
             for v in boundary_verts: left.remove(v) # We don't care about the nodes only connected to outputs
+            
+            for n in right.intersection(special_nodes): # Neighbours that are phase gadgets
+                targets = set(g.neighbours(n))
+                targets.remove(special_nodes[n])
+                if targets.issubset(left): # Only connectivity on the lefthandside, so we can extract it
+                    #print("Found special node!")
+                    nphase = phases[n]
+                    if nphase not in (0,1):
+                        raise Exception("Can't parse ParityPhase with non-Pauli Phase")
+                    phase = phases[special_nodes[n]]
+                    c.add_gate("ParityPhase", phase*(-1 if nphase else 1), *[qs[t] for t in targets])
+                    # if len(targets) > 3:
+                    #     raise Exception("Parity phase node with more than 3 targets")
+                    # if len(targets) == 2:
+                    #     c.add_gate("ParityPhase2", qs[targets.pop()], qs[targets.pop()], phase)
+                    # if len(targets) == 3:
+                    #     c.add_gate("ParityPhase3", qs[targets.pop()], qs[targets.pop()], qs[targets.pop()], phase)
+                    g.remove_vertices([special_nodes[n],n])
+                    right.remove(n)
+            if stopcount != -1 and len(c.gates) > stopcount: return c
             right = list(right)
             m = bi_adj(g,right,left)
+            #print(m)
             sequence = greedy_reduction(m) # Find the optimal set of CNOTs we can apply to get a frontier we can work with
+            if not isinstance(sequence, list): # Couldn't find any reduction, hopefully because phase gadget is in the way
+                c.gates.extend(handle_phase_gadget(g, leftrow))
+                leftrow += 1
+                continue
             for control, target in sequence:
                 c.add_gate("CNOT", qs[left[target]], qs[left[control]])
                 # If a control is connected to an output, we need to add a new node.
@@ -534,13 +449,19 @@ def streaming_extract(g):
                     if m.data[target][k]: g.remove_edge((left[target],right[k]))
                     else: g.add_edge((left[target],right[k]), 2)
                 m.row_add(control, target)
-            d = [w for w in g.neighbours(left[target]) if rs[w]>leftrow] # The target should now only have a single future node
-            if len(d) != 1:
-                raise TypeError("Gaussian reduction did something wrong")
-            if ty[d[0]] != 0:
-                good_verts.append(left[target])
-                good_neighs.append(d[0])
-            else: continue
+            # d = [w for w in g.neighbours(left[target]) if rs[w]>leftrow] # The target should now only have a single future node
+            # if len(d) != 1:
+            #     raise TypeError("Gaussian reduction did something wrong")
+            for v in left:
+                d = [w for w in g.neighbours(v) if rs[w]>leftrow]
+                if len(d) == 1 and ty[d[0]] != 0:
+                    good_verts.append(v)
+                    good_neighs.append(d[0])
+            if not good_verts: continue
+            # if ty[d[0]] != 0:
+            #     good_verts.append(left[target])
+            #     good_neighs.append(d[0])
+            # else: continue
         
         for v in g.vertices():
             if rs[v] < leftrow: continue
@@ -550,6 +471,7 @@ def streaming_extract(g):
             g.set_row(v,leftrow+1) # Bring the new nodes of the frontier to the correct position
             g.set_qubit(v,qs[good_verts[i]])
         leftrow += 1
+        if stopcount != -1 and len(c.gates) > stopcount: return c
             
     swap_map = {}
     leftover_swaps = False
@@ -573,6 +495,160 @@ def streaming_extract(g):
             c.add_gate("SWAP", t1, t2)
     return c
 
+
+
+def handle_phase_gadget(g, leftrow):
+    q = g.qubit_count()
+    qs = g.qubits() # We are assuming this thing automatically updates
+    rs = g.rows()
+    special_nodes = {}
+    left = []
+    for v in g.vertices():
+        if len(list(g.neighbours(v))) == 1 and v not in g.inputs and v not in g.outputs:
+            n = list(g.neighbours(v))[0]
+            special_nodes[n] = v
+        if rs[v] == leftrow: left.append(v)
+    
+    neigh = set()
+    for v in left: neigh.update(w for w in g.neighbours(v) if rs[w]>leftrow)
+    gadgets = neigh.intersection(special_nodes) # These are the phase gadgets that are attached to the left row
+    if len(gadgets) == 0: raise ValueError("No phase gadget connected to this row")
+    for gadget in gadgets:
+        right = list(neigh.difference({gadget}))
+        if cut_rank(g, right, left + [gadget]) == q: # A good choice should allow us to cut the edges
+            break
+    else:
+        raise ValueError("No good cut for phase gadget found")
+    g.set_row(gadget,leftrow+1)
+    g.set_row(special_nodes[gadget],leftrow+1)
+    if len(right) == q:
+        print("No cutting necessary")
+        for w in right:
+            g.set_row(w, leftrow+2)
+    else:
+        right = cut_edges(g, left+[gadget], right)
+    # We have now prepared the stage to do the extraction of the phase gadget
+    
+    left.sort(key=g.qubit)
+    right.sort(key=g.qubit)
+    gadget_left = [v for v in left if g.connected(gadget, v)]
+    gadget_right = [w for w in right if g.connected(gadget, w)]
+    if not gadget_right or not gadget_left: #Only connected on leftside or rightside, so we are almost done
+        print("Simple phase gadget")
+        targets = gadget_left if not gadget_right else gadget_right
+        phase = g.phase(special_nodes[gadget])
+        gate = ParityPhase(phase, *targets)
+        g.remove_vertices([special_nodes[gadget],gadget])
+        if not gadget_right: # ParityPhase is on left side
+            return [gate]
+        m = bi_adj(g, right, left) # ParityPhase on the right side, which means we have to 
+        gates = m.to_cnots(optimize=True) # reduce everything before it to cnots
+        gates.append(gate)
+        for i in range(q):
+            for j in range(q):
+                if i ==j:
+                    if not g.connected(left[i], right[j]):
+                        g.add_edge((left[i],right[j]), 2)
+                else:
+                    if g.connected(left[i],right[j]):
+                        g.remove_edge((left[i],right[j]))
+        return gates
+    print("Complicated phase gadget") # targets on left and right, so need to do more preparation
+    gates = []
+    m = bi_adj(g, right, left)
+    #print(m,'.')
+    left_options = [v for v in left if any(g.connected(v,w) for w in gadget_right)]
+    if len(gadget_left) > 2:
+        raise Exception("Too many on the left. Not supported yet")
+    if len(gadget_left) == 1: # We need additional connectivity
+        v1 = gadget_left[0]
+        options = set(left_options).difference({v1})
+        print("left options", options)
+        if not options:
+            raise Exception("Not supported yet")
+        v2 = options.pop()
+        gates.append(CNOT(qs[v2],qs[v1]))
+        m.row_add(qs[v1],qs[v2])
+        g.add_edge((v2,gadget),2)
+        #print(m,'.')
+        gadget_left.append(v2)
+    
+    right_options = [w for w in right if any(g.connected(w,v) for v in gadget_left)]
+    return gates
+    gatesright = []
+    if len(gadget_right) > 2:
+        raise Exception("Too many on the right. Not supported yet")
+    if len(gadget_right) == 1:
+        w1 = gadget_right[0]
+        options = set(right_options).difference({w1})
+        print("right options", options)
+        if not options:
+            raise Exception("Not supported yet")
+        w2 = options.pop()
+        gatesright.append(CNOT(qs[w2],qs[w1])) # This gate needs to come after all the other gates we extracct
+        m.col_add(qs[w1],qs[w2])
+        g.add_edge((w2,gadget),2)
+        gadget_right.append(w2)
+        #print(m)
+        
+    for i in range(q):
+        for j in range(q):
+            if m.data[i][j] and not g.connected(left[i],right[j]):
+                g.add_edge((left[i],right[j]),2)
+            elif not m.data[i][j] and g.connected(left[i],right[j]):
+                g.remove_edge((left[i],right[j]))
+    
+    # We now need to move the vertices on the right that are connected to
+    # the phase gadget to the corresponding qubits of the left side
+    displaced_verts = set()
+    locations = set()
+    for v in gadget_left:
+        if sum(m.data[qs[v]]) != 1:
+            raise Exception("Not fully reduced on vertex {:d}".format(v))
+        w = next(w for w in gadget_right if g.connected(v,w))
+        if qs[w] != qs[v]: # We need to move w to the qubit position of v
+            if qs[v] in locations:
+                locations.remove(qs[v])
+            else:
+                w2 = right[qs[v]] # the vertex that is in the way
+                if w2 not in gadget_right:
+                    displaced_verts.add(w2)
+            locations.add(qs[w])
+            g.set_qubit(w, qs[v])
+        g.set_edge_type((v,w),1)
+    for w in displaced_verts: # Move vertices whose qubit location was dibsed to other location
+        g.set_qubit(w, locations.pop())
+    
+    #Now we can finally extract the phase gadget
+    targets = [qs[v] for v in gadget_left]
+    for t in targets: 
+        gates.extend([HAD(t),ZPhase(t,Fraction(-1,2)),HAD(t)])
+    phase = g.phase(special_nodes[gadget])
+    gates.append(ParityPhase(-phase, *targets))
+    for t in targets:
+        gates.extend([HAD(t),ZPhase(t, Fraction(1,2))])
+    # There might be some connectivity between things on the left and on the right that we
+    # need to take care of
+    for w in gadget_right:
+        conn = [v for v in left if v not in gadget_left and g.connected(v,w)]
+        for v in conn:
+            gates.append(CZ(qs[w], qs[v]))
+        g.remove_edges([(v,w) for v in conn])
+        g.set_row(w, leftrow+1)
+    
+    for v in left:
+        if v in gadget_left: continue
+        g.set_row(v, leftrow+1)
+    for gate in gatesright: # And finally we can add the gates on the rightside, taking care to change their qubit locations
+        gate.target = qs[right[gate.target]]
+        gate.control = qs[right[gate.control]]
+        gates.append(gate)
+    
+    g.remove_vertices([special_nodes[gadget],gadget])
+    
+    return gates
+
+
 def permutation_as_swaps(perm):
     swaps = []
     l = [perm[i] for i in range(len(perm))]
@@ -588,3 +664,58 @@ def permutation_as_swaps(perm):
         l[t2] = t1
         linv[t1] = t2
     return swaps
+
+
+
+
+
+
+# def single_cut_extract(g, qubits):
+#     max_r = max(g.row(v) for v in g.vertices()) - 1
+#     for v in g.vertices():
+#         if any(w in g.outputs for w in g.neighbours(v)):
+#             g.set_row(v, max_r)
+
+#     ts = sorted([v for v in g.vertices() if g.phase(v).denominator > 2 and g.row(v) < max_r],
+#           key=lambda v: g.row(v))
+#     for t in ts:
+#         row = g.row(v)
+#         left,right = split(g, below=row, above=row)
+#         rank = cut_rank(g, left, right)
+#         if (rank >= qubits):
+#             print("FAILED at", t, "with rank", rank, ">=", qubits, "qubits")
+#             return False
+#         cut_edges(g, left, right)
+#         g.set_qubit(t,qubits-1)
+#         if rank > 0:
+#             g.set_row(t,g.row(g.vindex()-1))
+#     return True
+
+# def before(g, vs):
+#     min_r = min(g.row(v) for v in vs)
+#     return [w for w in g.vertices() if g.row(w) < min_r and any(g.connected(v, w) for v in vs)]
+# def after(g, vs):
+#     max_r = max(g.row(v) for v in vs)
+#     return [w for w in g.vertices() if g.row(w) > max_r and any(g.connected(v, w) for v in vs)]
+
+# def split(g, below, above):
+#     left = [v for v in g.vertices() if g.row(v) < below]
+#     right = [v for v in g.vertices() if g.row(v) > above]
+#     return (left,right)
+
+# def cut_at_vertex(g, v):
+#     r = g.vdata(v, 'r')
+#     for w in g.vertices():
+#         r1 = g.vdata(w, 'r')
+#         if r1 == r and v != w:
+#             g.set_vdata(w, 'r', r+1)
+#         elif r1 > r:
+#             g.set_vdata(w, 'r', r1+1)
+#     cut_at_row(g, r)
+
+
+# def cut_at_row(g, row):
+#     left = [v for v in g.vertices() if g.row(v) <= row]
+#     right = [v for v in g.vertices() if g.row(v) > row]
+#     cut_edges(g, left, right)
+
