@@ -60,7 +60,7 @@ def json_to_graph(js):
             hadamards[name] = []
             continue
         c = attr['annotation']['coord']
-        g.add_vertex(qubit=c[0], row=c[1])
+        g.add_vertex(qubit=c[1], row=c[0])
         g.set_vdata(v,'name',name)
         names[name] = v
         if 'data' in attr:
@@ -81,7 +81,7 @@ def json_to_graph(js):
         v += 1
     for name,attr in j.get('wire_vertices',{}).items():
         c = attr['annotation']['coord']
-        g.add_vertex(0,c[0],c[1])
+        g.add_vertex(0,c[1],c[0])
         g.set_vdata(v,'name',name)
         names[name] = v
         #g.set_vdata(v, 'x', c[0])
@@ -139,7 +139,8 @@ def graph_to_json(g):
             try:
                 freenamesb.remove(name) if t==0 else freenamesv.remove(name)
             except:
-                print("couldn't remove name '{}'".format(name))
+                pass
+                #print("couldn't remove name '{}'".format(name))
         
         names[v] = name
         if t == 0:
