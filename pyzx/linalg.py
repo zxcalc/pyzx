@@ -44,6 +44,8 @@ class Mat2(object):
         return str(self)
     def copy(self):
         return Mat2([row.copy() for row in self.data])
+    def transpose(self):
+        return Mat2([[self.data[i][j] for i in range(self.rows())] for j in range(self.cols())])
     def rows(self):
         return len(self.data)
     def cols(self):

@@ -323,6 +323,14 @@ def circuit_extract(g, cnot_blocksize=6,quiet=True):
 
 
 
+def connectivity_from_biadj(g, m, left, right, edgetype=2):
+    for i in range(len(right)):
+        for j in range(len(left)):
+            if m.data[i][j] and not g.connected(right[i],left[j]):
+                g.add_edge((right[i],left[j]),edgetype)
+            elif not m.data[i][j] and g.connected(right[i],left[j]):
+                g.remove_edge((right[i],left[j]))
+
 def streaming_extract(g, quiet=True, stopcount=-1):
     """Given a graph put into semi-normal form by :func:`simplify.clifford_simp`, 
     it extracts its equivalent set of gates into an instance of :class:`circuit.Circuit`.
@@ -342,6 +350,8 @@ def streaming_extract(g, quiet=True, stopcount=-1):
         if len(list(g.neighbours(v))) == 1 and v not in g.inputs and v not in g.outputs:
             n = list(g.neighbours(v))[0]
             special_nodes[n] = v
+        if rs[v] > 1:
+            g.set_row(v, rs[v]+10)
     
     while True:
         left = [v for v in g.vertices() if rs[v] == leftrow]
@@ -410,12 +420,6 @@ def streaming_extract(g, quiet=True, stopcount=-1):
                         raise Exception("Can't parse ParityPhase with non-Pauli Phase")
                     phase = phases[special_nodes[n]]
                     c.add_gate("ParityPhase", phase*(-1 if nphase else 1), *[qs[t] for t in targets])
-                    # if len(targets) > 3:
-                    #     raise Exception("Parity phase node with more than 3 targets")
-                    # if len(targets) == 2:
-                    #     c.add_gate("ParityPhase2", qs[targets.pop()], qs[targets.pop()], phase)
-                    # if len(targets) == 3:
-                    #     c.add_gate("ParityPhase3", qs[targets.pop()], qs[targets.pop()], qs[targets.pop()], phase)
                     g.remove_vertices([special_nodes[n],n])
                     right.remove(n)
             if stopcount != -1 and len(c.gates) > stopcount: return c
@@ -424,8 +428,8 @@ def streaming_extract(g, quiet=True, stopcount=-1):
             #print(m)
             sequence = greedy_reduction(m) # Find the optimal set of CNOTs we can apply to get a frontier we can work with
             if not isinstance(sequence, list): # Couldn't find any reduction, hopefully because phase gadget is in the way
-                c.gates.extend(handle_phase_gadget(g, leftrow))
-                leftrow += 1
+                gates, leftrow = handle_phase_gadget(g, leftrow, quiet=quiet)
+                c.gates.extend(gates)
                 continue
             for control, target in sequence:
                 c.add_gate("CNOT", qs[left[target]], qs[left[control]])
@@ -497,7 +501,8 @@ def streaming_extract(g, quiet=True, stopcount=-1):
 
 
 
-def handle_phase_gadget(g, leftrow):
+def handle_phase_gadget(g, leftrow, quiet=True):
+    #raise Exception("Stop here")
     q = g.qubit_count()
     qs = g.qubits() # We are assuming this thing automatically updates
     rs = g.rows()
@@ -521,132 +526,96 @@ def handle_phase_gadget(g, leftrow):
         raise ValueError("No good cut for phase gadget found")
     g.set_row(gadget,leftrow+1)
     g.set_row(special_nodes[gadget],leftrow+1)
+
+    # Take care nothing is connected directly to an output
+    for i in range(len(right)):
+        w = right[i]
+        if w in g.outputs:
+            w2 = g.add_vertex(1, qs[w], rs[w]-1)
+            n = list(g.neighbours(w))[0] # Outputs should have unique neighbours
+            e = g.edge(n,w)
+            et = g.edge_type(e)
+            g.remove_edge(e)
+            g.add_edge((n,w2),2)
+            g.add_edge((w2,w),3-et)
+            right[i] = w2
+
     if len(right) == q:
-        print("No cutting necessary")
+        if not quiet: print("No cutting necessary")
         for w in right:
             g.set_row(w, leftrow+2)
     else:
         right = cut_edges(g, left+[gadget], right)
     # We have now prepared the stage to do the extraction of the phase gadget
     
+    phase = g.phase(special_nodes[gadget])
+    phase = -1*phase if g.phase(gadget) != 0 else phase
     left.sort(key=g.qubit)
     right.sort(key=g.qubit)
+    
+    m = bi_adj(g, right, left)
+    if m.rank() != q:
+        raise Exception("Rank doesn't match, say whaat")
+    operations = Circuit(q)
+    operations.row_add = lambda r1,r2: operations.gates.append((r1,r2))
+    m.gauss(full_reduce=True,x=operations)
+    gates = [CNOT(r2,r1) for r1,r2 in operations.gates]
+    m = bi_adj(g, right+[gadget], left)
+    for r1,r2 in operations.gates:
+        m.row_add(r1,r2)
+    connectivity_from_biadj(g, m, right+[gadget], left)
+    #return gates, leftrow
     gadget_left = [v for v in left if g.connected(gadget, v)]
     gadget_right = [w for w in right if g.connected(gadget, w)]
-    if not gadget_right or not gadget_left: #Only connected on leftside or rightside, so we are almost done
-        print("Simple phase gadget")
-        targets = gadget_left if not gadget_right else gadget_right
-        phase = g.phase(special_nodes[gadget])
+    targets = [qs[v] for v in gadget_left]
+    # We bring as many connections on the right to the left
+    for i in reversed(range(len(gadget_right))): # The following checks if every phase connected node is on the right
+        w = gadget_right[i]
+        v = next(v for v in left if g.connected(w,v))
+        g.set_edge_type((v,w),1)
+        g.set_qubit(w, qs[v])
+        if qs[w] not in targets:
+            gates.append(HAD(qs[w]))
+            gadget_right.pop(i)
+            targets.append(qs[w])
+            gadget_left.append(v)
+        else:
+            g.set_row(w, leftrow+1)
+    for w in right:
+        if w in gadget_right: continue
+        v = next(v for v in left if g.connected(w,v))
+        g.set_qubit(w, qs[v])
+
+    if not gadget_right: #Only connected on leftside so we are done
+        if not quiet: print("Simple phase gadget")
         gate = ParityPhase(phase, *targets)
         g.remove_vertices([special_nodes[gadget],gadget])
-        if not gadget_right: # ParityPhase is on left side
-            return [gate]
-        m = bi_adj(g, right, left) # ParityPhase on the right side, which means we have to 
-        gates = m.to_cnots(optimize=True) # reduce everything before it to cnots
         gates.append(gate)
-        for i in range(q):
-            for j in range(q):
-                if i ==j:
-                    if not g.connected(left[i], right[j]):
-                        g.add_edge((left[i],right[j]), 2)
-                else:
-                    if g.connected(left[i],right[j]):
-                        g.remove_edge((left[i],right[j]))
-        return gates
-    print("Complicated phase gadget") # targets on left and right, so need to do more preparation
-    gates = []
-    m = bi_adj(g, right, left)
-    #print(m,'.')
-    left_options = [v for v in left if any(g.connected(v,w) for w in gadget_right)]
-    if len(gadget_left) > 2:
-        raise Exception("Too many on the left. Not supported yet")
-    if len(gadget_left) == 1: # We need additional connectivity
-        v1 = gadget_left[0]
-        options = set(left_options).difference({v1})
-        print("left options", options)
-        if not options:
-            raise Exception("Not supported yet")
-        v2 = options.pop()
-        gates.append(CNOT(qs[v2],qs[v1]))
-        m.row_add(qs[v1],qs[v2])
-        g.add_edge((v2,gadget),2)
-        #print(m,'.')
-        gadget_left.append(v2)
+        return gates, leftrow
+
     
-    right_options = [w for w in right if any(g.connected(w,v) for v in gadget_left)]
-    return gates
-    gatesright = []
-    if len(gadget_right) > 2:
-        raise Exception("Too many on the right. Not supported yet")
-    if len(gadget_right) == 1:
-        w1 = gadget_right[0]
-        options = set(right_options).difference({w1})
-        print("right options", options)
-        if not options:
-            raise Exception("Not supported yet")
-        w2 = options.pop()
-        gatesright.append(CNOT(qs[w2],qs[w1])) # This gate needs to come after all the other gates we extracct
-        m.col_add(qs[w1],qs[w2])
-        g.add_edge((w2,gadget),2)
-        gadget_right.append(w2)
-        #print(m)
-        
-    for i in range(q):
-        for j in range(q):
-            if m.data[i][j] and not g.connected(left[i],right[j]):
-                g.add_edge((left[i],right[j]),2)
-            elif not m.data[i][j] and g.connected(left[i],right[j]):
-                g.remove_edge((left[i],right[j]))
-    
-    # We now need to move the vertices on the right that are connected to
-    # the phase gadget to the corresponding qubits of the left side
-    displaced_verts = set()
-    locations = set()
-    for v in gadget_left:
-        if sum(m.data[qs[v]]) != 1:
-            raise Exception("Not fully reduced on vertex {:d}".format(v))
-        w = next(w for w in gadget_right if g.connected(v,w))
-        if qs[w] != qs[v]: # We need to move w to the qubit position of v
-            if qs[v] in locations:
-                locations.remove(qs[v])
-            else:
-                w2 = right[qs[v]] # the vertex that is in the way
-                if w2 not in gadget_right:
-                    displaced_verts.add(w2)
-            locations.add(qs[w])
-            g.set_qubit(w, qs[v])
-        g.set_edge_type((v,w),1)
-    for w in displaced_verts: # Move vertices whose qubit location was dibsed to other location
-        g.set_qubit(w, locations.pop())
+    if not quiet: print("Complicated phase gadget") # targets on left and right, so need to do more
+    if len(gadget_right) % 2 != 0 or len(gadget_left) == 1:
+        raise Exception("Gadget seems non-unitary")
     
     #Now we can finally extract the phase gadget
-    targets = [qs[v] for v in gadget_left]
-    for t in targets: 
+    rtargets = []
+    for w in gadget_right: 
+        t = qs[w]
+        rtargets.append(t)
         gates.extend([HAD(t),ZPhase(t,Fraction(-1,2)),HAD(t)])
-    phase = g.phase(special_nodes[gadget])
-    gates.append(ParityPhase(-phase, *targets))
-    for t in targets:
+    if len(gadget_right)%4 != 0: # This is either 2 or 0
+        phase = (-phase)%2
+    gates.append(ParityPhase(phase, *targets))
+    for t in rtargets:
         gates.extend([HAD(t),ZPhase(t, Fraction(1,2))])
-    # There might be some connectivity between things on the left and on the right that we
-    # need to take care of
-    for w in gadget_right:
-        conn = [v for v in left if v not in gadget_left and g.connected(v,w)]
-        for v in conn:
-            gates.append(CZ(qs[w], qs[v]))
-        g.remove_edges([(v,w) for v in conn])
-        g.set_row(w, leftrow+1)
-    
     for v in left:
-        if v in gadget_left: continue
-        g.set_row(v, leftrow+1)
-    for gate in gatesright: # And finally we can add the gates on the rightside, taking care to change their qubit locations
-        gate.target = qs[right[gate.target]]
-        gate.control = qs[right[gate.control]]
-        gates.append(gate)
-    
+        if qs[v] not in rtargets:
+            g.set_row(v, leftrow+1)
+
     g.remove_vertices([special_nodes[gadget],gadget])
-    
-    return gates
+    if not quiet: print("end")
+    return gates, leftrow+1
 
 
 def permutation_as_swaps(perm):

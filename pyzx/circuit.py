@@ -665,7 +665,7 @@ class ParityPhase(Gate):
         return False
 
     def __str__(self):
-        return "ParityPhase({!s},{!s})".format(self.phase, ", ".join(str(t) for t in self.targets))
+        return "ParityPhase({!s}, {!s})".format(self.phase, ", ".join(str(t) for t in self.targets))
 
     def reposition(self, mask):
         g = self.copy()
