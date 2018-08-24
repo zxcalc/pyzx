@@ -15,7 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-__all__ = ['tensorfy', 'compare_tensors', 'compose_tensors', 'adjoint']
+__all__ = ['tensorfy', 'compare_tensors', 'compose_tensors', 'adjoint', 'is_unitary']
 
 try:
     import numpy as np
@@ -24,6 +24,7 @@ except:
     np = None
 from math import pi, sqrt
 
+from . import generate
 
 def Z_to_tensor(arity, phase):
     m = np.zeros([2]*arity, dtype = complex)
@@ -184,3 +185,10 @@ def adjoint(t):
         transp.append(2*i+1)
         transp.append(2*i)
     return np.transpose(t.conjugate(),transp)
+
+
+def is_unitary(g):
+    """Returns whether the given ZX-graph is equal to a unitary (up to a number)."""
+    adj = g.adjoint()
+    adj.compose(g)
+    return compare_tensors(adj.to_tensor(), generate.identity(g.qubit_count(),2).to_tensor())

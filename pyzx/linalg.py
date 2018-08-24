@@ -224,7 +224,7 @@ class Mat2(object):
         """Returns a list of CNOTs that implements the matrix as a reversible circuit of qubits."""
         if not optimize:
             cn = CNOTMaker()
-            self.copy().gauss(full_reduce=True,x=cn, blocksize=6)
+            self.copy().gauss(full_reduce=True,x=cn, blocksize=5)
         else:
             best = 1000000
             best_cn = None
@@ -235,14 +235,14 @@ class Mat2(object):
                     best = len(cn.cnots)
                     best_cn = cn
             cn = best_cn
-        return list(reversed(cn.cnots))
+        return cn.cnots # list(reversed(cn.cnots)) 
 
 from .circuit import CNOT
 class CNOTMaker:
     def __init__(self):
         self.cnots = []
     def row_add(self, r1, r2):
-        self.cnots.append(CNOT(r1,r2))
+        self.cnots.append(CNOT(r2,r1))
 
 
 

@@ -18,6 +18,8 @@
 from .circuit import Circuit, HAD, ZPhase, CNOT, CZ
 from .linalg import Mat2
 
+# TODO: Something going wrong in semantics here
+
 def circuit_phase_polynomial_blocks(circuit, optimize=False):
         """Tries to moves gates around such that as many ZPhase, CZ and CNOT gates 
         are together, so that the resulting circuit can be seen as a sequence of 
@@ -144,7 +146,7 @@ def circuit_phase_polynomial_blocks(circuit, optimize=False):
 
 
 
-
+# todo: Something going wrong in semantics here
 def optimize_block(block, qubit_count, quiet=True):
     q = qubit_count
     #First we construct the phase polynomial
@@ -208,7 +210,9 @@ def optimize_block(block, qubit_count, quiet=True):
         l = [int((v,) in p.terms) for v in variables]
         data.append(l)
     target_matrix = Mat2(data) * m.inverse()
-
+    # gates = target_matrix.to_cnots(optimize=True)
+    # for gate in reversed(gates):
+    #     cnots.append(CNOT(gate.target,gate.control))
     cnots = cnots + target_matrix.to_cnots(optimize=True)
     old_cnots = [g for g in block if isinstance(g,CNOT)]
 

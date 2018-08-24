@@ -427,7 +427,7 @@ def streaming_extract(g, quiet=True, stopcount=-1):
             m = bi_adj(g,right,left)
             #print(m)
             sequence = greedy_reduction(m) # Find the optimal set of CNOTs we can apply to get a frontier we can work with
-            if not isinstance(sequence, list): # Couldn't find any reduction, hopefully because phase gadget is in the way
+            if not isinstance(sequence, list): # Couldn't find any reduction, hopefully we can fix this
                 gates, leftrow = handle_phase_gadget(g, leftrow, quiet=quiet)
                 c.gates.extend(gates)
                 continue
@@ -502,7 +502,6 @@ def streaming_extract(g, quiet=True, stopcount=-1):
 
 
 def handle_phase_gadget(g, leftrow, quiet=True):
-    #raise Exception("Stop here")
     q = g.qubit_count()
     qs = g.qubits() # We are assuming this thing automatically updates
     rs = g.rows()
@@ -518,12 +517,46 @@ def handle_phase_gadget(g, leftrow, quiet=True):
     for v in left: neigh.update(w for w in g.neighbours(v) if rs[w]>leftrow)
     gadgets = neigh.intersection(special_nodes) # These are the phase gadgets that are attached to the left row
     if len(gadgets) == 0: raise ValueError("No phase gadget connected to this row")
+    all_verts = neigh.union(left)
     for gadget in gadgets:
-        right = list(neigh.difference({gadget}))
-        if cut_rank(g, right, left + [gadget]) == q: # A good choice should allow us to cut the edges
+        n = neigh.difference({gadget})
+        leftplusgadget = left + [gadget]
+        n = n.union([w for w in g.neighbours(gadget) if w not in left])
+        n = n.difference({special_nodes[gadget]})
+        right = list(n)
+        cr = cut_rank(g, right, leftplusgadget)
+        if cr == q: # A good choice should allow us to cut the edges
             break
     else:
         raise ValueError("No good cut for phase gadget found")
+        # for gadget in gadgets:
+        #     n = set(g.neighbours(gadget))
+        #     n.remove(special_nodes[gadget])
+        #     gadget_right = n.difference(left)
+        #     if len(gadget_right) < len(left) and all_verts.issuperset(n):
+        #         # the gadget only has connections to left and neigh
+        #         # and there aren't too many connections
+        #         other_right = neigh.difference(gadget_right)
+        #         other_right.remove(gadget)
+        #         annoying_left = [v for v in left if any(g.connected(v,w) for w in other_right)]
+        #         if len(gadget_right) + len(annoying_left) == len(left):
+        #             if not quiet: print("We have found a special match", gadget, annoying_left)
+        #             right = list(gadget_right)
+        #             for v in annoying_left:
+        #                 v1 = g.add_vertex(1,qs[v], leftrow+2)
+        #                 v2 = g.add_vertex(1,qs[v], leftrow+3)
+        #                 g.add_edges([(v,v1),(v1,v2)],2)
+        #                 for w in other_right:
+        #                     if not g.connected(v,w): continue
+        #                     e = g.edge(v,w)
+        #                     et = g.edge_type(e)
+        #                     g.remove_edge(e)
+        #                     g.add_edge((v2,w),et)
+        #                 right.append(v1)
+        #             break
+        # else:
+        #     raise ValueError("No good cut for phase gadget found")
+
     g.set_row(gadget,leftrow+1)
     g.set_row(special_nodes[gadget],leftrow+1)
 
