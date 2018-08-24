@@ -60,7 +60,7 @@ def json_to_graph(js):
             hadamards[name] = []
             continue
         c = attr['annotation']['coord']
-        g.add_vertex(qubit=c[1], row=c[0])
+        g.add_vertex(qubit=-c[1], row=c[0])
         g.set_vdata(v,'name',name)
         names[name] = v
         if 'data' in attr:
@@ -81,7 +81,7 @@ def json_to_graph(js):
         v += 1
     for name,attr in j.get('wire_vertices',{}).items():
         c = attr['annotation']['coord']
-        g.add_vertex(0,c[1],c[0])
+        g.add_vertex(0,-c[1],c[0])
         g.set_vdata(v,'name',name)
         names[name] = v
         #g.set_vdata(v, 'x', c[0])
@@ -130,7 +130,7 @@ def graph_to_json(g):
     freenamesb = ["b"+str(i) for i in range(g.num_vertices())]
     for v in g.vertices():
         t = g.type(v)
-        coord = [g.row(v),g.qubit(v)]
+        coord = [g.row(v),-g.qubit(v)]
         name = g.vdata(v, 'name')
         if not name:
             if t == 0: name = freenamesb.pop(0)
@@ -162,8 +162,8 @@ def graph_to_json(g):
             edges["e"+ str(i)] = {"src": names[src],"tgt": names[tgt]}
             i += 1
         elif t==2: #hadamard edge
-            x1,y1 = g.row(src), g.qubit(src)
-            x2,y2 = g.row(tgt), g.qubit(tgt)
+            x1,y1 = g.row(src), -g.qubit(src)
+            x2,y2 = g.row(tgt), -g.qubit(tgt)
             hadname = freenamesv.pop(0)
             node_vs[hadname] = {"annotation": {"coord":[(x1+x2)/2.0,(y1+y2)/2.0]},
                              "data": {"type": "hadamard"}}
