@@ -20,7 +20,7 @@ from .linalg import Mat2
 
 # TODO: Something going wrong in semantics here
 
-def circuit_phase_polynomial_blocks(circuit, optimize=False):
+def circuit_phase_polynomial_blocks(circuit, optimize=False, quiet=True):
         """Tries to moves gates around such that as many ZPhase, CZ and CNOT gates 
         are together, so that the resulting circuit can be seen as a sequence of 
         phase polynomials separated by Hadamard gates. Returns a tuple ``circuit, partition`` where
@@ -50,35 +50,49 @@ def circuit_phase_polynomial_blocks(circuit, optimize=False):
                 gates[g.target].append(HAD(g.target))
             else:
                 raise TypeError("Unsupported gate {!s}. Make sure you are in GH+CNOT form.".format(g))
-
         partition = []
-        while any(gates.values()): # We keep parsing untill all the gates have been consumed
+        while any(gates.values()): # We keep parsing until all the gates have been consumed
             had_layer = []
             l = []
+            claimed_qubits = set()
+            #print("before", gates)
             for q, gs in gates.items(): # Push a layer of hadamards back
-                if gs and isinstance(gs[0], HAD):
+                if q not in claimed_qubits and gs and isinstance(gs[0], HAD):
+                    claimed_qubits.add(q)
                     if len(gs) >= 3 and isinstance(gs[1], CZ) and isinstance(gs[2], HAD): #H-CZ-H
                         g = gs[1]
                         q2 = g.control if g.target==q else g.target
-                        index = gates[q2].index(CZ(q2,q))
-                        for i in range(1,index):
-                            if isinstance(gates[q2][i], HAD): # Can't consume CZ gate now, HAD in the way
-                                had_layer.append(gs[0])
-                                gs.pop(0)
-                                break
+                        #print(q, q2, gs, gates[q2])
+                        if q2 in claimed_qubits:
+                            had_layer.append(gs[0])
+                            gs.pop(0)
                         else:
-                            l.append(CNOT(q2,q)) #H-CZ-H = CNOT
-                            gs.pop(0)
-                            gs.pop(0)
-                            gs.pop(0)
-                            gates[q2].pop(index)
+                            if isinstance(gates[q2][0], HAD):
+                                had_layer.append(gates[q2][0])
+                                gates[q2].pop(0)
+                                claimed_qubits.add(q2)
+                            index = gates[q2].index(CZ(q2,q))
+                            for i in range(index):
+                                if isinstance(gates[q2][i], HAD): # Can't consume CZ gate now, HAD in the way
+                                    #print("nopenope")
+                                    had_layer.append(gs[0])
+                                    gs.pop(0)
+                                    break
+                            else:
+                                #print("yesyes")
+                                l.append(CNOT(q2,q)) #H-CZ-H = CNOT
+                                claimed_qubits.add(q2)
+                                gs.pop(0)
+                                gs.pop(0)
+                                gs.pop(0)
+                                gates[q2].pop(index)
                     else:
                         had_layer.append(gs[0])
                         gs.pop(0)
             
             if had_layer: partition.append(had_layer)
-
-            while True: # We keep adding gates to this phase polynomial block, until we can't anymore.
+            #print("after", gates)
+            while True: # We keep adding gates to this phase polynomial block, until we can't any more.
                 conns = []
                 for q in range(circuit.qubits):
                     phases = []
@@ -122,6 +136,7 @@ def circuit_phase_polynomial_blocks(circuit, optimize=False):
                             q2 = g.control if g.target==q else g.target
                             if q2 in hadamard_blocked: continue
                             if (q2,q) not in conns: continue
+                            #print("cnot", q,q2)
                             l.append(CNOT(q2,q))
                             gates[q2].remove(CZ(q2,q))
                             conns.remove((q2,q))
@@ -130,14 +145,16 @@ def circuit_phase_polynomial_blocks(circuit, optimize=False):
                         elif isinstance(g, HAD): break
                     for i in reversed(remove):
                         gates[q].pop(i+1)
-                    if len(gates[q]) >= 2 and isinstance(gates[q][1], HAD): #double hadamard gate
+                for q in range(circuit.qubits):
+                    if len(gates[q]) >= 2 and isinstance(gates[q][0], HAD) and isinstance(gates[q][1], HAD): #double hadamard gate
                         gates[q].pop(0)
                         gates[q].pop(0)
+                        moved_gates = True
                 if not moved_gates: break
             
             if l: 
                 if optimize:
-                    l = optimize_block(l, circuit.qubits)
+                    l = optimize_block(l, circuit.qubits, quiet=quiet)
                 partition.append(l)
             
         c2 = Circuit(circuit.qubits)
@@ -201,15 +218,21 @@ def optimize_block(block, qubit_count, quiet=True):
     
     # We try to make our cnots more efficient
     cnots = parity_network(q, [par for par,phase in parities])
+    #print("parity network cnots", cnots)
     m = Mat2.id(q)
     for cnot in cnots:
-        m.row_add(cnot.control, cnot.target)
-
+        m.row_add(cnot.target, cnot.control)
+        
     data = []
-    for p in expression_polys:
-        l = [int((v,) in p.terms) for v in variables]
+    for v in variables:
+        l = [int((v,) in p.terms) for p in expression_polys]
         data.append(l)
-    target_matrix = Mat2(data) * m.inverse()
+    # for p in expression_polys:
+    #     l = [int((v,) in p.terms) for v in variables]
+    #     data.append(l)
+    target_matrix = m.inverse() * Mat2(data)
+    #print("target matrix")
+    #print(target_matrix)
     # gates = target_matrix.to_cnots(optimize=True)
     # for gate in reversed(gates):
     #     cnots.append(CNOT(gate.target,gate.control))
