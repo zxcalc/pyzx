@@ -1,0 +1,2738 @@
+Inputs: 0:Qbit, 1:Qbit, 2:Qbit, 3:Qbit, 4:Qbit, 5:Qbit, 6:Qbit, 7:Qbit, 8:Qbit, 9:Qbit, 10:Qbit, 11:Qbit, 12:Qbit, 13:Qbit, 14:Qbit, 15:Qbit, 16:Qbit, 17:Qbit, 18:Qbit, 19:Qbit, 20:Qbit, 21:Qbit, 22:Qbit, 23:Qbit, 24:Qbit, 25:Qbit, 26:Qbit, 27:Qbit
+QGate["S"](0) with nocontrol
+QGate["T"](0) with nocontrol
+QGate["T"]*(1) with nocontrol
+QGate["S"]*(2) with nocontrol
+QGate["T"]*(2) with nocontrol
+QGate["S"](3) with nocontrol
+QGate["T"](3) with nocontrol
+QGate["T"](4) with nocontrol
+QGate["T"]*(5) with nocontrol
+QGate["S"]*(6) with nocontrol
+QGate["T"]*(6) with nocontrol
+QGate["S"](7) with nocontrol
+QGate["T"](7) with nocontrol
+QGate["T"](8) with nocontrol
+QGate["S"](10) with nocontrol
+QGate["T"](10) with nocontrol
+QGate["T"]*(11) with nocontrol
+QGate["S"]*(12) with nocontrol
+QGate["T"]*(12) with nocontrol
+QGate["S"](13) with nocontrol
+QGate["T"](13) with nocontrol
+QGate["T"](14) with nocontrol
+QGate["T"]*(15) with nocontrol
+QGate["S"]*(16) with nocontrol
+QGate["T"]*(16) with nocontrol
+QGate["S"](17) with nocontrol
+QGate["T"](17) with nocontrol
+QGate["T"](18) with nocontrol
+QGate["not"](19) with controls=[+9] with nocontrol
+QGate["H"](19) with nocontrol
+QGate["S"](19) with nocontrol
+QGate["not"](19) with controls=[+18] with nocontrol
+QGate["T"]*(19) with nocontrol
+QGate["not"](19) with controls=[+8] with nocontrol
+QGate["not"](19) with controls=[+18] with nocontrol
+QGate["T"]*(19) with nocontrol
+QGate["not"](19) with controls=[+8] with nocontrol
+QGate["not"](18) with controls=[+8] with nocontrol
+QGate["H"](20) with nocontrol
+QGate["not"](20) with controls=[+17] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+7] with nocontrol
+QGate["T"](20) with nocontrol
+QGate["not"](20) with controls=[+17] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+7] with nocontrol
+QGate["T"](20) with nocontrol
+QGate["H"](20) with nocontrol
+QGate["T"](20) with nocontrol
+QGate["not"](19) with controls=[+18] with nocontrol
+QGate["not"](19) with controls=[+20] with nocontrol
+QGate["T"](19) with nocontrol
+QGate["not"](19) with controls=[+18] with nocontrol
+QGate["T"]*(19) with nocontrol
+QGate["not"](19) with controls=[+20] with nocontrol
+QGate["not"](18) with controls=[+20] with nocontrol
+QGate["T"]*(18) with nocontrol
+QGate["not"](18) with controls=[+20] with nocontrol
+QGate["H"](20) with nocontrol
+QGate["S"](20) with nocontrol
+QGate["not"](20) with controls=[+17] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+7] with nocontrol
+QGate["not"](20) with controls=[+17] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+7] with nocontrol
+QGate["H"](18) with nocontrol
+QGate["not"](18) with controls=[+17] with nocontrol
+QGate["T"]*(18) with nocontrol
+QGate["not"](18) with controls=[+7] with nocontrol
+QGate["T"](18) with nocontrol
+QGate["not"](18) with controls=[+17] with nocontrol
+QGate["T"]*(18) with nocontrol
+QGate["not"](18) with controls=[+7] with nocontrol
+QGate["T"](18) with nocontrol
+QGate["H"](18) with nocontrol
+QGate["not"](17) with controls=[+7] with nocontrol
+QGate["H"](21) with nocontrol
+QGate["not"](21) with controls=[+16] with nocontrol
+QGate["T"]*(21) with nocontrol
+QGate["not"](21) with controls=[+6] with nocontrol
+QGate["T"](21) with nocontrol
+QGate["not"](21) with controls=[+16] with nocontrol
+QGate["T"]*(21) with nocontrol
+QGate["not"](21) with controls=[+6] with nocontrol
+QGate["T"](21) with nocontrol
+QGate["H"](21) with nocontrol
+QGate["S"](21) with nocontrol
+QGate["not"](20) with controls=[+17] with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["T"](20) with nocontrol
+QGate["not"](20) with controls=[+17] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["not"](17) with controls=[+21] with nocontrol
+QGate["S"]*(17) with nocontrol
+QGate["not"](17) with controls=[+21] with nocontrol
+QGate["H"](20) with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](19) with controls=[+18] with nocontrol
+QGate["T"](19) with nocontrol
+QGate["not"](19) with controls=[+20] with nocontrol
+QGate["T"]*(19) with nocontrol
+QGate["not"](19) with controls=[+18] with nocontrol
+QGate["T"](19) with nocontrol
+QGate["not"](19) with controls=[+20] with nocontrol
+QGate["not"](18) with controls=[+20] with nocontrol
+QGate["T"](18) with nocontrol
+QGate["not"](18) with controls=[+20] with nocontrol
+QGate["T"]*(18) with nocontrol
+QGate["H"](20) with nocontrol
+QGate["not"](20) with controls=[+17] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["T"](20) with nocontrol
+QGate["not"](20) with controls=[+17] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["H"](21) with nocontrol
+QGate["S"](21) with nocontrol
+QGate["not"](21) with controls=[+16] with nocontrol
+QGate["T"]*(21) with nocontrol
+QGate["not"](21) with controls=[+6] with nocontrol
+QGate["not"](21) with controls=[+16] with nocontrol
+QGate["T"]*(21) with nocontrol
+QGate["not"](21) with controls=[+6] with nocontrol
+QGate["not"](20) with controls=[+16] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+6] with nocontrol
+QGate["T"](20) with nocontrol
+QGate["not"](20) with controls=[+16] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+6] with nocontrol
+QGate["S"](20) with nocontrol
+QGate["H"](20) with nocontrol
+QGate["T"](20) with nocontrol
+QGate["H"](18) with nocontrol
+QGate["not"](18) with controls=[+17] with nocontrol
+QGate["T"]*(18) with nocontrol
+QGate["not"](18) with controls=[+20] with nocontrol
+QGate["T"](18) with nocontrol
+QGate["not"](18) with controls=[+17] with nocontrol
+QGate["T"]*(18) with nocontrol
+QGate["not"](18) with controls=[+20] with nocontrol
+QGate["T"](18) with nocontrol
+QGate["not"](17) with controls=[+20] with nocontrol
+QGate["T"]*(17) with nocontrol
+QGate["not"](17) with controls=[+20] with nocontrol
+QGate["H"](18) with nocontrol
+QGate["H"](20) with nocontrol
+QGate["not"](20) with controls=[+16] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+6] with nocontrol
+QGate["T"](20) with nocontrol
+QGate["not"](20) with controls=[+16] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+6] with nocontrol
+QGate["H"](17) with nocontrol
+QGate["not"](17) with controls=[+16] with nocontrol
+QGate["T"]*(17) with nocontrol
+QGate["not"](17) with controls=[+6] with nocontrol
+QGate["T"](17) with nocontrol
+QGate["not"](17) with controls=[+16] with nocontrol
+QGate["T"]*(17) with nocontrol
+QGate["not"](17) with controls=[+6] with nocontrol
+QGate["T"](17) with nocontrol
+QGate["H"](17) with nocontrol
+QGate["not"](16) with controls=[+6] with nocontrol
+QGate["H"](22) with nocontrol
+QGate["not"](22) with controls=[+15] with nocontrol
+QGate["T"]*(22) with nocontrol
+QGate["not"](22) with controls=[+5] with nocontrol
+QGate["T"](22) with nocontrol
+QGate["not"](22) with controls=[+15] with nocontrol
+QGate["T"]*(22) with nocontrol
+QGate["not"](22) with controls=[+5] with nocontrol
+QGate["T"](22) with nocontrol
+QGate["H"](22) with nocontrol
+QGate["S"](22) with nocontrol
+QGate["not"](21) with controls=[+16] with nocontrol
+QGate["not"](21) with controls=[+22] with nocontrol
+QGate["T"](21) with nocontrol
+QGate["not"](21) with controls=[+16] with nocontrol
+QGate["T"]*(21) with nocontrol
+QGate["not"](21) with controls=[+22] with nocontrol
+QGate["not"](16) with controls=[+22] with nocontrol
+QGate["S"]*(16) with nocontrol
+QGate["not"](16) with controls=[+22] with nocontrol
+QGate["H"](21) with nocontrol
+QGate["not"](20) with controls=[+17] with nocontrol
+QGate["T"](20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+17] with nocontrol
+QGate["T"](20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["H"](20) with nocontrol
+QGate["T"](20) with nocontrol
+QGate["not"](19) with controls=[+18] with nocontrol
+QGate["T"]*(19) with nocontrol
+QGate["not"](19) with controls=[+20] with nocontrol
+QGate["T"](19) with nocontrol
+QGate["not"](19) with controls=[+18] with nocontrol
+QGate["T"]*(19) with nocontrol
+QGate["not"](19) with controls=[+20] with nocontrol
+QGate["not"](18) with controls=[+20] with nocontrol
+QGate["T"]*(18) with nocontrol
+QGate["not"](18) with controls=[+20] with nocontrol
+QGate["T"](18) with nocontrol
+QGate["H"](20) with nocontrol
+QGate["not"](20) with controls=[+17] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["T"](20) with nocontrol
+QGate["not"](20) with controls=[+17] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["H"](21) with nocontrol
+QGate["not"](21) with controls=[+16] with nocontrol
+QGate["T"]*(21) with nocontrol
+QGate["not"](21) with controls=[+22] with nocontrol
+QGate["T"](21) with nocontrol
+QGate["not"](21) with controls=[+16] with nocontrol
+QGate["T"]*(21) with nocontrol
+QGate["not"](21) with controls=[+22] with nocontrol
+QGate["H"](22) with nocontrol
+QGate["S"](22) with nocontrol
+QGate["not"](22) with controls=[+15] with nocontrol
+QGate["T"]*(22) with nocontrol
+QGate["not"](22) with controls=[+5] with nocontrol
+QGate["not"](22) with controls=[+15] with nocontrol
+QGate["T"]*(22) with nocontrol
+QGate["not"](22) with controls=[+5] with nocontrol
+QGate["not"](21) with controls=[+15] with nocontrol
+QGate["T"]*(21) with nocontrol
+QGate["not"](21) with controls=[+5] with nocontrol
+QGate["T"](21) with nocontrol
+QGate["not"](21) with controls=[+15] with nocontrol
+QGate["T"]*(21) with nocontrol
+QGate["not"](21) with controls=[+5] with nocontrol
+QGate["S"](21) with nocontrol
+QGate["H"](21) with nocontrol
+QGate["S"](21) with nocontrol
+QGate["not"](20) with controls=[+16] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["T"](20) with nocontrol
+QGate["not"](20) with controls=[+16] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["S"](20) with nocontrol
+QGate["not"](16) with controls=[+21] with nocontrol
+QGate["S"]*(16) with nocontrol
+QGate["not"](16) with controls=[+21] with nocontrol
+QGate["H"](20) with nocontrol
+QGate["T"](20) with nocontrol
+QGate["H"](18) with nocontrol
+QGate["not"](18) with controls=[+17] with nocontrol
+QGate["T"]*(18) with nocontrol
+QGate["not"](18) with controls=[+20] with nocontrol
+QGate["T"](18) with nocontrol
+QGate["not"](18) with controls=[+17] with nocontrol
+QGate["T"]*(18) with nocontrol
+QGate["not"](18) with controls=[+20] with nocontrol
+QGate["T"](18) with nocontrol
+QGate["not"](17) with controls=[+20] with nocontrol
+QGate["T"]*(17) with nocontrol
+QGate["not"](17) with controls=[+20] with nocontrol
+QGate["T"](17) with nocontrol
+QGate["H"](18) with nocontrol
+QGate["H"](20) with nocontrol
+QGate["not"](20) with controls=[+16] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["T"](20) with nocontrol
+QGate["not"](20) with controls=[+16] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["H"](21) with nocontrol
+QGate["not"](21) with controls=[+15] with nocontrol
+QGate["T"]*(21) with nocontrol
+QGate["not"](21) with controls=[+5] with nocontrol
+QGate["T"](21) with nocontrol
+QGate["not"](21) with controls=[+15] with nocontrol
+QGate["T"]*(21) with nocontrol
+QGate["not"](21) with controls=[+5] with nocontrol
+QGate["not"](20) with controls=[+15] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+5] with nocontrol
+QGate["T"](20) with nocontrol
+QGate["not"](20) with controls=[+15] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+5] with nocontrol
+QGate["S"](20) with nocontrol
+QGate["H"](20) with nocontrol
+QGate["T"](20) with nocontrol
+QGate["H"](17) with nocontrol
+QGate["not"](17) with controls=[+16] with nocontrol
+QGate["T"]*(17) with nocontrol
+QGate["not"](17) with controls=[+20] with nocontrol
+QGate["T"](17) with nocontrol
+QGate["not"](17) with controls=[+16] with nocontrol
+QGate["T"]*(17) with nocontrol
+QGate["not"](17) with controls=[+20] with nocontrol
+QGate["T"](17) with nocontrol
+QGate["not"](16) with controls=[+20] with nocontrol
+QGate["T"]*(16) with nocontrol
+QGate["not"](16) with controls=[+20] with nocontrol
+QGate["H"](17) with nocontrol
+QGate["H"](20) with nocontrol
+QGate["not"](20) with controls=[+15] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+5] with nocontrol
+QGate["T"](20) with nocontrol
+QGate["not"](20) with controls=[+15] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+5] with nocontrol
+QGate["H"](16) with nocontrol
+QGate["not"](16) with controls=[+15] with nocontrol
+QGate["T"]*(16) with nocontrol
+QGate["not"](16) with controls=[+5] with nocontrol
+QGate["T"](16) with nocontrol
+QGate["not"](16) with controls=[+15] with nocontrol
+QGate["T"]*(16) with nocontrol
+QGate["not"](16) with controls=[+5] with nocontrol
+QGate["T"](16) with nocontrol
+QGate["H"](16) with nocontrol
+QGate["not"](15) with controls=[+5] with nocontrol
+QGate["H"](23) with nocontrol
+QGate["not"](23) with controls=[+14] with nocontrol
+QGate["T"]*(23) with nocontrol
+QGate["not"](23) with controls=[+4] with nocontrol
+QGate["T"](23) with nocontrol
+QGate["not"](23) with controls=[+14] with nocontrol
+QGate["T"]*(23) with nocontrol
+QGate["not"](23) with controls=[+4] with nocontrol
+QGate["T"](23) with nocontrol
+QGate["H"](23) with nocontrol
+QGate["S"](23) with nocontrol
+QGate["not"](22) with controls=[+15] with nocontrol
+QGate["not"](22) with controls=[+23] with nocontrol
+QGate["T"](22) with nocontrol
+QGate["not"](22) with controls=[+15] with nocontrol
+QGate["T"]*(22) with nocontrol
+QGate["not"](22) with controls=[+23] with nocontrol
+QGate["not"](15) with controls=[+23] with nocontrol
+QGate["S"]*(15) with nocontrol
+QGate["not"](15) with controls=[+23] with nocontrol
+QGate["H"](22) with nocontrol
+QGate["not"](21) with controls=[+16] with nocontrol
+QGate["T"](21) with nocontrol
+QGate["not"](21) with controls=[+22] with nocontrol
+QGate["T"]*(21) with nocontrol
+QGate["not"](21) with controls=[+16] with nocontrol
+QGate["T"](21) with nocontrol
+QGate["not"](21) with controls=[+22] with nocontrol
+QGate["H"](21) with nocontrol
+QGate["not"](20) with controls=[+17] with nocontrol
+QGate["T"](20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+17] with nocontrol
+QGate["T"](20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["H"](20) with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](19) with controls=[+18] with nocontrol
+QGate["T"](19) with nocontrol
+QGate["not"](19) with controls=[+20] with nocontrol
+QGate["T"]*(19) with nocontrol
+QGate["not"](19) with controls=[+18] with nocontrol
+QGate["T"](19) with nocontrol
+QGate["not"](19) with controls=[+20] with nocontrol
+QGate["not"](18) with controls=[+20] with nocontrol
+QGate["T"](18) with nocontrol
+QGate["not"](18) with controls=[+20] with nocontrol
+QGate["T"]*(18) with nocontrol
+QGate["H"](20) with nocontrol
+QGate["not"](20) with controls=[+17] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["T"](20) with nocontrol
+QGate["not"](20) with controls=[+17] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["H"](21) with nocontrol
+QGate["not"](21) with controls=[+16] with nocontrol
+QGate["T"]*(21) with nocontrol
+QGate["not"](21) with controls=[+22] with nocontrol
+QGate["T"](21) with nocontrol
+QGate["not"](21) with controls=[+16] with nocontrol
+QGate["T"]*(21) with nocontrol
+QGate["not"](21) with controls=[+22] with nocontrol
+QGate["H"](22) with nocontrol
+QGate["not"](22) with controls=[+15] with nocontrol
+QGate["T"]*(22) with nocontrol
+QGate["not"](22) with controls=[+23] with nocontrol
+QGate["T"](22) with nocontrol
+QGate["not"](22) with controls=[+15] with nocontrol
+QGate["T"]*(22) with nocontrol
+QGate["not"](22) with controls=[+23] with nocontrol
+QGate["H"](23) with nocontrol
+QGate["S"](23) with nocontrol
+QGate["not"](23) with controls=[+14] with nocontrol
+QGate["T"]*(23) with nocontrol
+QGate["not"](23) with controls=[+4] with nocontrol
+QGate["not"](23) with controls=[+14] with nocontrol
+QGate["T"]*(23) with nocontrol
+QGate["not"](23) with controls=[+4] with nocontrol
+QGate["not"](22) with controls=[+14] with nocontrol
+QGate["T"]*(22) with nocontrol
+QGate["not"](22) with controls=[+4] with nocontrol
+QGate["T"](22) with nocontrol
+QGate["not"](22) with controls=[+14] with nocontrol
+QGate["T"]*(22) with nocontrol
+QGate["not"](22) with controls=[+4] with nocontrol
+QGate["S"](22) with nocontrol
+QGate["H"](22) with nocontrol
+QGate["S"](22) with nocontrol
+QGate["not"](21) with controls=[+15] with nocontrol
+QGate["T"]*(21) with nocontrol
+QGate["not"](21) with controls=[+22] with nocontrol
+QGate["T"](21) with nocontrol
+QGate["not"](21) with controls=[+15] with nocontrol
+QGate["T"]*(21) with nocontrol
+QGate["not"](21) with controls=[+22] with nocontrol
+QGate["S"](21) with nocontrol
+QGate["not"](15) with controls=[+22] with nocontrol
+QGate["S"]*(15) with nocontrol
+QGate["not"](15) with controls=[+22] with nocontrol
+QGate["H"](21) with nocontrol
+QGate["not"](20) with controls=[+16] with nocontrol
+QGate["T"](20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+16] with nocontrol
+QGate["T"](20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["H"](20) with nocontrol
+QGate["T"](20) with nocontrol
+QGate["H"](18) with nocontrol
+QGate["not"](18) with controls=[+17] with nocontrol
+QGate["T"]*(18) with nocontrol
+QGate["not"](18) with controls=[+20] with nocontrol
+QGate["T"](18) with nocontrol
+QGate["not"](18) with controls=[+17] with nocontrol
+QGate["T"]*(18) with nocontrol
+QGate["not"](18) with controls=[+20] with nocontrol
+QGate["T"](18) with nocontrol
+QGate["not"](17) with controls=[+20] with nocontrol
+QGate["T"]*(17) with nocontrol
+QGate["not"](17) with controls=[+20] with nocontrol
+QGate["T"](17) with nocontrol
+QGate["H"](18) with nocontrol
+QGate["H"](20) with nocontrol
+QGate["not"](20) with controls=[+16] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["T"](20) with nocontrol
+QGate["not"](20) with controls=[+16] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["H"](21) with nocontrol
+QGate["not"](21) with controls=[+15] with nocontrol
+QGate["T"]*(21) with nocontrol
+QGate["not"](21) with controls=[+22] with nocontrol
+QGate["T"](21) with nocontrol
+QGate["not"](21) with controls=[+15] with nocontrol
+QGate["T"]*(21) with nocontrol
+QGate["not"](21) with controls=[+22] with nocontrol
+QGate["H"](22) with nocontrol
+QGate["not"](22) with controls=[+14] with nocontrol
+QGate["T"]*(22) with nocontrol
+QGate["not"](22) with controls=[+4] with nocontrol
+QGate["T"](22) with nocontrol
+QGate["not"](22) with controls=[+14] with nocontrol
+QGate["T"]*(22) with nocontrol
+QGate["not"](22) with controls=[+4] with nocontrol
+QGate["not"](21) with controls=[+14] with nocontrol
+QGate["T"]*(21) with nocontrol
+QGate["not"](21) with controls=[+4] with nocontrol
+QGate["T"](21) with nocontrol
+QGate["not"](21) with controls=[+14] with nocontrol
+QGate["T"]*(21) with nocontrol
+QGate["not"](21) with controls=[+4] with nocontrol
+QGate["S"](21) with nocontrol
+QGate["H"](21) with nocontrol
+QGate["S"](21) with nocontrol
+QGate["not"](20) with controls=[+15] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["T"](20) with nocontrol
+QGate["not"](20) with controls=[+15] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["S"](20) with nocontrol
+QGate["not"](15) with controls=[+21] with nocontrol
+QGate["S"]*(15) with nocontrol
+QGate["not"](15) with controls=[+21] with nocontrol
+QGate["H"](20) with nocontrol
+QGate["T"](20) with nocontrol
+QGate["H"](17) with nocontrol
+QGate["not"](17) with controls=[+16] with nocontrol
+QGate["T"]*(17) with nocontrol
+QGate["not"](17) with controls=[+20] with nocontrol
+QGate["T"](17) with nocontrol
+QGate["not"](17) with controls=[+16] with nocontrol
+QGate["T"]*(17) with nocontrol
+QGate["not"](17) with controls=[+20] with nocontrol
+QGate["T"](17) with nocontrol
+QGate["not"](16) with controls=[+20] with nocontrol
+QGate["T"]*(16) with nocontrol
+QGate["not"](16) with controls=[+20] with nocontrol
+QGate["T"](16) with nocontrol
+QGate["H"](17) with nocontrol
+QGate["H"](20) with nocontrol
+QGate["not"](20) with controls=[+15] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["T"](20) with nocontrol
+QGate["not"](20) with controls=[+15] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["H"](21) with nocontrol
+QGate["not"](21) with controls=[+14] with nocontrol
+QGate["T"]*(21) with nocontrol
+QGate["not"](21) with controls=[+4] with nocontrol
+QGate["T"](21) with nocontrol
+QGate["not"](21) with controls=[+14] with nocontrol
+QGate["T"]*(21) with nocontrol
+QGate["not"](21) with controls=[+4] with nocontrol
+QGate["not"](20) with controls=[+14] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+4] with nocontrol
+QGate["T"](20) with nocontrol
+QGate["not"](20) with controls=[+14] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+4] with nocontrol
+QGate["S"](20) with nocontrol
+QGate["H"](20) with nocontrol
+QGate["T"](20) with nocontrol
+QGate["H"](16) with nocontrol
+QGate["not"](16) with controls=[+15] with nocontrol
+QGate["T"]*(16) with nocontrol
+QGate["not"](16) with controls=[+20] with nocontrol
+QGate["T"](16) with nocontrol
+QGate["not"](16) with controls=[+15] with nocontrol
+QGate["T"]*(16) with nocontrol
+QGate["not"](16) with controls=[+20] with nocontrol
+QGate["T"](16) with nocontrol
+QGate["not"](15) with controls=[+20] with nocontrol
+QGate["T"]*(15) with nocontrol
+QGate["not"](15) with controls=[+20] with nocontrol
+QGate["H"](16) with nocontrol
+QGate["H"](20) with nocontrol
+QGate["not"](20) with controls=[+14] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+4] with nocontrol
+QGate["T"](20) with nocontrol
+QGate["not"](20) with controls=[+14] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+4] with nocontrol
+QGate["H"](15) with nocontrol
+QGate["not"](15) with controls=[+14] with nocontrol
+QGate["T"]*(15) with nocontrol
+QGate["not"](15) with controls=[+4] with nocontrol
+QGate["T"](15) with nocontrol
+QGate["not"](15) with controls=[+14] with nocontrol
+QGate["T"]*(15) with nocontrol
+QGate["not"](15) with controls=[+4] with nocontrol
+QGate["T"](15) with nocontrol
+QGate["H"](15) with nocontrol
+QGate["not"](14) with controls=[+4] with nocontrol
+QGate["H"](24) with nocontrol
+QGate["not"](24) with controls=[+13] with nocontrol
+QGate["T"]*(24) with nocontrol
+QGate["not"](24) with controls=[+3] with nocontrol
+QGate["T"](24) with nocontrol
+QGate["not"](24) with controls=[+13] with nocontrol
+QGate["T"]*(24) with nocontrol
+QGate["not"](24) with controls=[+3] with nocontrol
+QGate["T"](24) with nocontrol
+QGate["H"](24) with nocontrol
+QGate["S"](24) with nocontrol
+QGate["not"](23) with controls=[+14] with nocontrol
+QGate["not"](23) with controls=[+24] with nocontrol
+QGate["T"](23) with nocontrol
+QGate["not"](23) with controls=[+14] with nocontrol
+QGate["T"]*(23) with nocontrol
+QGate["not"](23) with controls=[+24] with nocontrol
+QGate["not"](14) with controls=[+24] with nocontrol
+QGate["S"]*(14) with nocontrol
+QGate["not"](14) with controls=[+24] with nocontrol
+QGate["H"](23) with nocontrol
+QGate["not"](22) with controls=[+15] with nocontrol
+QGate["T"](22) with nocontrol
+QGate["not"](22) with controls=[+23] with nocontrol
+QGate["T"]*(22) with nocontrol
+QGate["not"](22) with controls=[+15] with nocontrol
+QGate["T"](22) with nocontrol
+QGate["not"](22) with controls=[+23] with nocontrol
+QGate["H"](22) with nocontrol
+QGate["not"](21) with controls=[+16] with nocontrol
+QGate["T"](21) with nocontrol
+QGate["not"](21) with controls=[+22] with nocontrol
+QGate["T"]*(21) with nocontrol
+QGate["not"](21) with controls=[+16] with nocontrol
+QGate["T"](21) with nocontrol
+QGate["not"](21) with controls=[+22] with nocontrol
+QGate["H"](21) with nocontrol
+QGate["not"](20) with controls=[+17] with nocontrol
+QGate["T"](20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+17] with nocontrol
+QGate["T"](20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["H"](20) with nocontrol
+QGate["T"](20) with nocontrol
+QGate["not"](19) with controls=[+18] with nocontrol
+QGate["T"]*(19) with nocontrol
+QGate["not"](19) with controls=[+20] with nocontrol
+QGate["T"](19) with nocontrol
+QGate["not"](19) with controls=[+18] with nocontrol
+QGate["T"]*(19) with nocontrol
+QGate["not"](19) with controls=[+20] with nocontrol
+QGate["not"](18) with controls=[+20] with nocontrol
+QGate["T"]*(18) with nocontrol
+QGate["not"](18) with controls=[+20] with nocontrol
+QGate["T"](18) with nocontrol
+QGate["H"](20) with nocontrol
+QGate["not"](20) with controls=[+17] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["T"](20) with nocontrol
+QGate["not"](20) with controls=[+17] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["H"](21) with nocontrol
+QGate["not"](21) with controls=[+16] with nocontrol
+QGate["T"]*(21) with nocontrol
+QGate["not"](21) with controls=[+22] with nocontrol
+QGate["T"](21) with nocontrol
+QGate["not"](21) with controls=[+16] with nocontrol
+QGate["T"]*(21) with nocontrol
+QGate["not"](21) with controls=[+22] with nocontrol
+QGate["H"](22) with nocontrol
+QGate["not"](22) with controls=[+15] with nocontrol
+QGate["T"]*(22) with nocontrol
+QGate["not"](22) with controls=[+23] with nocontrol
+QGate["T"](22) with nocontrol
+QGate["not"](22) with controls=[+15] with nocontrol
+QGate["T"]*(22) with nocontrol
+QGate["not"](22) with controls=[+23] with nocontrol
+QGate["H"](23) with nocontrol
+QGate["not"](23) with controls=[+14] with nocontrol
+QGate["T"]*(23) with nocontrol
+QGate["not"](23) with controls=[+24] with nocontrol
+QGate["T"](23) with nocontrol
+QGate["not"](23) with controls=[+14] with nocontrol
+QGate["T"]*(23) with nocontrol
+QGate["not"](23) with controls=[+24] with nocontrol
+QGate["H"](24) with nocontrol
+QGate["S"](24) with nocontrol
+QGate["not"](24) with controls=[+13] with nocontrol
+QGate["T"]*(24) with nocontrol
+QGate["not"](24) with controls=[+3] with nocontrol
+QGate["not"](24) with controls=[+13] with nocontrol
+QGate["T"]*(24) with nocontrol
+QGate["not"](24) with controls=[+3] with nocontrol
+QGate["not"](23) with controls=[+13] with nocontrol
+QGate["T"]*(23) with nocontrol
+QGate["not"](23) with controls=[+3] with nocontrol
+QGate["T"](23) with nocontrol
+QGate["not"](23) with controls=[+13] with nocontrol
+QGate["T"]*(23) with nocontrol
+QGate["not"](23) with controls=[+3] with nocontrol
+QGate["S"](23) with nocontrol
+QGate["H"](23) with nocontrol
+QGate["S"](23) with nocontrol
+QGate["not"](22) with controls=[+14] with nocontrol
+QGate["T"]*(22) with nocontrol
+QGate["not"](22) with controls=[+23] with nocontrol
+QGate["T"](22) with nocontrol
+QGate["not"](22) with controls=[+14] with nocontrol
+QGate["T"]*(22) with nocontrol
+QGate["not"](22) with controls=[+23] with nocontrol
+QGate["S"](22) with nocontrol
+QGate["not"](14) with controls=[+23] with nocontrol
+QGate["S"]*(14) with nocontrol
+QGate["not"](14) with controls=[+23] with nocontrol
+QGate["H"](22) with nocontrol
+QGate["not"](21) with controls=[+15] with nocontrol
+QGate["T"](21) with nocontrol
+QGate["not"](21) with controls=[+22] with nocontrol
+QGate["T"]*(21) with nocontrol
+QGate["not"](21) with controls=[+15] with nocontrol
+QGate["T"](21) with nocontrol
+QGate["not"](21) with controls=[+22] with nocontrol
+QGate["H"](21) with nocontrol
+QGate["not"](20) with controls=[+16] with nocontrol
+QGate["T"](20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+16] with nocontrol
+QGate["T"](20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["H"](20) with nocontrol
+QGate["T"](20) with nocontrol
+QGate["H"](18) with nocontrol
+QGate["not"](18) with controls=[+17] with nocontrol
+QGate["T"]*(18) with nocontrol
+QGate["not"](18) with controls=[+20] with nocontrol
+QGate["T"](18) with nocontrol
+QGate["not"](18) with controls=[+17] with nocontrol
+QGate["T"]*(18) with nocontrol
+QGate["not"](18) with controls=[+20] with nocontrol
+QGate["T"](18) with nocontrol
+QGate["not"](17) with controls=[+20] with nocontrol
+QGate["T"]*(17) with nocontrol
+QGate["not"](17) with controls=[+20] with nocontrol
+QGate["T"](17) with nocontrol
+QGate["H"](18) with nocontrol
+QGate["H"](20) with nocontrol
+QGate["not"](20) with controls=[+16] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["T"](20) with nocontrol
+QGate["not"](20) with controls=[+16] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["H"](21) with nocontrol
+QGate["not"](21) with controls=[+15] with nocontrol
+QGate["T"]*(21) with nocontrol
+QGate["not"](21) with controls=[+22] with nocontrol
+QGate["T"](21) with nocontrol
+QGate["not"](21) with controls=[+15] with nocontrol
+QGate["T"]*(21) with nocontrol
+QGate["not"](21) with controls=[+22] with nocontrol
+QGate["H"](22) with nocontrol
+QGate["not"](22) with controls=[+14] with nocontrol
+QGate["T"]*(22) with nocontrol
+QGate["not"](22) with controls=[+23] with nocontrol
+QGate["T"](22) with nocontrol
+QGate["not"](22) with controls=[+14] with nocontrol
+QGate["T"]*(22) with nocontrol
+QGate["not"](22) with controls=[+23] with nocontrol
+QGate["H"](23) with nocontrol
+QGate["not"](23) with controls=[+13] with nocontrol
+QGate["T"]*(23) with nocontrol
+QGate["not"](23) with controls=[+3] with nocontrol
+QGate["T"](23) with nocontrol
+QGate["not"](23) with controls=[+13] with nocontrol
+QGate["T"]*(23) with nocontrol
+QGate["not"](23) with controls=[+3] with nocontrol
+QGate["not"](22) with controls=[+13] with nocontrol
+QGate["T"]*(22) with nocontrol
+QGate["not"](22) with controls=[+3] with nocontrol
+QGate["T"](22) with nocontrol
+QGate["not"](22) with controls=[+13] with nocontrol
+QGate["T"]*(22) with nocontrol
+QGate["not"](22) with controls=[+3] with nocontrol
+QGate["S"](22) with nocontrol
+QGate["H"](22) with nocontrol
+QGate["S"](22) with nocontrol
+QGate["not"](21) with controls=[+14] with nocontrol
+QGate["T"]*(21) with nocontrol
+QGate["not"](21) with controls=[+22] with nocontrol
+QGate["T"](21) with nocontrol
+QGate["not"](21) with controls=[+14] with nocontrol
+QGate["T"]*(21) with nocontrol
+QGate["not"](21) with controls=[+22] with nocontrol
+QGate["S"](21) with nocontrol
+QGate["not"](14) with controls=[+22] with nocontrol
+QGate["S"]*(14) with nocontrol
+QGate["not"](14) with controls=[+22] with nocontrol
+QGate["H"](21) with nocontrol
+QGate["not"](20) with controls=[+15] with nocontrol
+QGate["T"](20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+15] with nocontrol
+QGate["T"](20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["H"](20) with nocontrol
+QGate["T"](20) with nocontrol
+QGate["H"](17) with nocontrol
+QGate["not"](17) with controls=[+16] with nocontrol
+QGate["T"]*(17) with nocontrol
+QGate["not"](17) with controls=[+20] with nocontrol
+QGate["T"](17) with nocontrol
+QGate["not"](17) with controls=[+16] with nocontrol
+QGate["T"]*(17) with nocontrol
+QGate["not"](17) with controls=[+20] with nocontrol
+QGate["T"](17) with nocontrol
+QGate["not"](16) with controls=[+20] with nocontrol
+QGate["T"]*(16) with nocontrol
+QGate["not"](16) with controls=[+20] with nocontrol
+QGate["T"](16) with nocontrol
+QGate["H"](17) with nocontrol
+QGate["H"](20) with nocontrol
+QGate["not"](20) with controls=[+15] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["T"](20) with nocontrol
+QGate["not"](20) with controls=[+15] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["H"](21) with nocontrol
+QGate["not"](21) with controls=[+14] with nocontrol
+QGate["T"]*(21) with nocontrol
+QGate["not"](21) with controls=[+22] with nocontrol
+QGate["T"](21) with nocontrol
+QGate["not"](21) with controls=[+14] with nocontrol
+QGate["T"]*(21) with nocontrol
+QGate["not"](21) with controls=[+22] with nocontrol
+QGate["H"](22) with nocontrol
+QGate["not"](22) with controls=[+13] with nocontrol
+QGate["T"]*(22) with nocontrol
+QGate["not"](22) with controls=[+3] with nocontrol
+QGate["T"](22) with nocontrol
+QGate["not"](22) with controls=[+13] with nocontrol
+QGate["T"]*(22) with nocontrol
+QGate["not"](22) with controls=[+3] with nocontrol
+QGate["not"](21) with controls=[+13] with nocontrol
+QGate["T"]*(21) with nocontrol
+QGate["not"](21) with controls=[+3] with nocontrol
+QGate["T"](21) with nocontrol
+QGate["not"](21) with controls=[+13] with nocontrol
+QGate["T"]*(21) with nocontrol
+QGate["not"](21) with controls=[+3] with nocontrol
+QGate["S"](21) with nocontrol
+QGate["H"](21) with nocontrol
+QGate["S"](21) with nocontrol
+QGate["not"](20) with controls=[+14] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["T"](20) with nocontrol
+QGate["not"](20) with controls=[+14] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["S"](20) with nocontrol
+QGate["not"](14) with controls=[+21] with nocontrol
+QGate["S"]*(14) with nocontrol
+QGate["not"](14) with controls=[+21] with nocontrol
+QGate["H"](20) with nocontrol
+QGate["T"](20) with nocontrol
+QGate["H"](16) with nocontrol
+QGate["not"](16) with controls=[+15] with nocontrol
+QGate["T"]*(16) with nocontrol
+QGate["not"](16) with controls=[+20] with nocontrol
+QGate["T"](16) with nocontrol
+QGate["not"](16) with controls=[+15] with nocontrol
+QGate["T"]*(16) with nocontrol
+QGate["not"](16) with controls=[+20] with nocontrol
+QGate["T"](16) with nocontrol
+QGate["not"](15) with controls=[+20] with nocontrol
+QGate["T"]*(15) with nocontrol
+QGate["not"](15) with controls=[+20] with nocontrol
+QGate["T"](15) with nocontrol
+QGate["H"](16) with nocontrol
+QGate["H"](20) with nocontrol
+QGate["not"](20) with controls=[+14] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["T"](20) with nocontrol
+QGate["not"](20) with controls=[+14] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["H"](21) with nocontrol
+QGate["not"](21) with controls=[+13] with nocontrol
+QGate["T"]*(21) with nocontrol
+QGate["not"](21) with controls=[+3] with nocontrol
+QGate["T"](21) with nocontrol
+QGate["not"](21) with controls=[+13] with nocontrol
+QGate["T"]*(21) with nocontrol
+QGate["not"](21) with controls=[+3] with nocontrol
+QGate["not"](20) with controls=[+13] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+3] with nocontrol
+QGate["T"](20) with nocontrol
+QGate["not"](20) with controls=[+13] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+3] with nocontrol
+QGate["S"](20) with nocontrol
+QGate["H"](20) with nocontrol
+QGate["T"](20) with nocontrol
+QGate["H"](15) with nocontrol
+QGate["not"](15) with controls=[+14] with nocontrol
+QGate["T"]*(15) with nocontrol
+QGate["not"](15) with controls=[+20] with nocontrol
+QGate["T"](15) with nocontrol
+QGate["not"](15) with controls=[+14] with nocontrol
+QGate["T"]*(15) with nocontrol
+QGate["not"](15) with controls=[+20] with nocontrol
+QGate["T"](15) with nocontrol
+QGate["not"](14) with controls=[+20] with nocontrol
+QGate["T"]*(14) with nocontrol
+QGate["not"](14) with controls=[+20] with nocontrol
+QGate["H"](15) with nocontrol
+QGate["H"](20) with nocontrol
+QGate["not"](20) with controls=[+13] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+3] with nocontrol
+QGate["T"](20) with nocontrol
+QGate["not"](20) with controls=[+13] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+3] with nocontrol
+QGate["H"](14) with nocontrol
+QGate["not"](14) with controls=[+13] with nocontrol
+QGate["T"]*(14) with nocontrol
+QGate["not"](14) with controls=[+3] with nocontrol
+QGate["T"](14) with nocontrol
+QGate["not"](14) with controls=[+13] with nocontrol
+QGate["T"]*(14) with nocontrol
+QGate["not"](14) with controls=[+3] with nocontrol
+QGate["T"](14) with nocontrol
+QGate["H"](14) with nocontrol
+QGate["not"](13) with controls=[+3] with nocontrol
+QGate["H"](25) with nocontrol
+QGate["not"](25) with controls=[+12] with nocontrol
+QGate["T"]*(25) with nocontrol
+QGate["not"](25) with controls=[+2] with nocontrol
+QGate["T"](25) with nocontrol
+QGate["not"](25) with controls=[+12] with nocontrol
+QGate["T"]*(25) with nocontrol
+QGate["not"](25) with controls=[+2] with nocontrol
+QGate["T"](25) with nocontrol
+QGate["H"](25) with nocontrol
+QGate["S"](25) with nocontrol
+QGate["not"](24) with controls=[+13] with nocontrol
+QGate["not"](24) with controls=[+25] with nocontrol
+QGate["T"](24) with nocontrol
+QGate["not"](24) with controls=[+13] with nocontrol
+QGate["T"]*(24) with nocontrol
+QGate["not"](24) with controls=[+25] with nocontrol
+QGate["not"](13) with controls=[+25] with nocontrol
+QGate["S"]*(13) with nocontrol
+QGate["not"](13) with controls=[+25] with nocontrol
+QGate["H"](24) with nocontrol
+QGate["not"](23) with controls=[+14] with nocontrol
+QGate["T"](23) with nocontrol
+QGate["not"](23) with controls=[+24] with nocontrol
+QGate["T"]*(23) with nocontrol
+QGate["not"](23) with controls=[+14] with nocontrol
+QGate["T"](23) with nocontrol
+QGate["not"](23) with controls=[+24] with nocontrol
+QGate["H"](23) with nocontrol
+QGate["not"](22) with controls=[+15] with nocontrol
+QGate["T"](22) with nocontrol
+QGate["not"](22) with controls=[+23] with nocontrol
+QGate["T"]*(22) with nocontrol
+QGate["not"](22) with controls=[+15] with nocontrol
+QGate["T"](22) with nocontrol
+QGate["not"](22) with controls=[+23] with nocontrol
+QGate["H"](22) with nocontrol
+QGate["not"](21) with controls=[+16] with nocontrol
+QGate["T"](21) with nocontrol
+QGate["not"](21) with controls=[+22] with nocontrol
+QGate["T"]*(21) with nocontrol
+QGate["not"](21) with controls=[+16] with nocontrol
+QGate["T"](21) with nocontrol
+QGate["not"](21) with controls=[+22] with nocontrol
+QGate["H"](21) with nocontrol
+QGate["not"](20) with controls=[+17] with nocontrol
+QGate["T"](20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+17] with nocontrol
+QGate["T"](20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["H"](20) with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](19) with controls=[+18] with nocontrol
+QGate["T"](19) with nocontrol
+QGate["not"](19) with controls=[+20] with nocontrol
+QGate["T"]*(19) with nocontrol
+QGate["not"](19) with controls=[+18] with nocontrol
+QGate["T"](19) with nocontrol
+QGate["not"](19) with controls=[+20] with nocontrol
+QGate["not"](18) with controls=[+20] with nocontrol
+QGate["T"](18) with nocontrol
+QGate["not"](18) with controls=[+20] with nocontrol
+QGate["T"]*(18) with nocontrol
+QGate["H"](20) with nocontrol
+QGate["not"](20) with controls=[+17] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["T"](20) with nocontrol
+QGate["not"](20) with controls=[+17] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["H"](21) with nocontrol
+QGate["not"](21) with controls=[+16] with nocontrol
+QGate["T"]*(21) with nocontrol
+QGate["not"](21) with controls=[+22] with nocontrol
+QGate["T"](21) with nocontrol
+QGate["not"](21) with controls=[+16] with nocontrol
+QGate["T"]*(21) with nocontrol
+QGate["not"](21) with controls=[+22] with nocontrol
+QGate["H"](22) with nocontrol
+QGate["not"](22) with controls=[+15] with nocontrol
+QGate["T"]*(22) with nocontrol
+QGate["not"](22) with controls=[+23] with nocontrol
+QGate["T"](22) with nocontrol
+QGate["not"](22) with controls=[+15] with nocontrol
+QGate["T"]*(22) with nocontrol
+QGate["not"](22) with controls=[+23] with nocontrol
+QGate["H"](23) with nocontrol
+QGate["not"](23) with controls=[+14] with nocontrol
+QGate["T"]*(23) with nocontrol
+QGate["not"](23) with controls=[+24] with nocontrol
+QGate["T"](23) with nocontrol
+QGate["not"](23) with controls=[+14] with nocontrol
+QGate["T"]*(23) with nocontrol
+QGate["not"](23) with controls=[+24] with nocontrol
+QGate["H"](24) with nocontrol
+QGate["not"](24) with controls=[+13] with nocontrol
+QGate["T"]*(24) with nocontrol
+QGate["not"](24) with controls=[+25] with nocontrol
+QGate["T"](24) with nocontrol
+QGate["not"](24) with controls=[+13] with nocontrol
+QGate["T"]*(24) with nocontrol
+QGate["not"](24) with controls=[+25] with nocontrol
+QGate["H"](25) with nocontrol
+QGate["S"](25) with nocontrol
+QGate["not"](25) with controls=[+12] with nocontrol
+QGate["T"]*(25) with nocontrol
+QGate["not"](25) with controls=[+2] with nocontrol
+QGate["not"](25) with controls=[+12] with nocontrol
+QGate["T"]*(25) with nocontrol
+QGate["not"](25) with controls=[+2] with nocontrol
+QGate["not"](24) with controls=[+12] with nocontrol
+QGate["T"]*(24) with nocontrol
+QGate["not"](24) with controls=[+2] with nocontrol
+QGate["T"](24) with nocontrol
+QGate["not"](24) with controls=[+12] with nocontrol
+QGate["T"]*(24) with nocontrol
+QGate["not"](24) with controls=[+2] with nocontrol
+QGate["S"](24) with nocontrol
+QGate["H"](24) with nocontrol
+QGate["S"](24) with nocontrol
+QGate["not"](23) with controls=[+13] with nocontrol
+QGate["T"]*(23) with nocontrol
+QGate["not"](23) with controls=[+24] with nocontrol
+QGate["T"](23) with nocontrol
+QGate["not"](23) with controls=[+13] with nocontrol
+QGate["T"]*(23) with nocontrol
+QGate["not"](23) with controls=[+24] with nocontrol
+QGate["S"](23) with nocontrol
+QGate["not"](13) with controls=[+24] with nocontrol
+QGate["S"]*(13) with nocontrol
+QGate["not"](13) with controls=[+24] with nocontrol
+QGate["H"](23) with nocontrol
+QGate["not"](22) with controls=[+14] with nocontrol
+QGate["T"](22) with nocontrol
+QGate["not"](22) with controls=[+23] with nocontrol
+QGate["T"]*(22) with nocontrol
+QGate["not"](22) with controls=[+14] with nocontrol
+QGate["T"](22) with nocontrol
+QGate["not"](22) with controls=[+23] with nocontrol
+QGate["H"](22) with nocontrol
+QGate["not"](21) with controls=[+15] with nocontrol
+QGate["T"](21) with nocontrol
+QGate["not"](21) with controls=[+22] with nocontrol
+QGate["T"]*(21) with nocontrol
+QGate["not"](21) with controls=[+15] with nocontrol
+QGate["T"](21) with nocontrol
+QGate["not"](21) with controls=[+22] with nocontrol
+QGate["H"](21) with nocontrol
+QGate["not"](20) with controls=[+16] with nocontrol
+QGate["T"](20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+16] with nocontrol
+QGate["T"](20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["H"](20) with nocontrol
+QGate["T"](20) with nocontrol
+QGate["H"](18) with nocontrol
+QGate["not"](18) with controls=[+17] with nocontrol
+QGate["T"]*(18) with nocontrol
+QGate["not"](18) with controls=[+20] with nocontrol
+QGate["T"](18) with nocontrol
+QGate["not"](18) with controls=[+17] with nocontrol
+QGate["T"]*(18) with nocontrol
+QGate["not"](18) with controls=[+20] with nocontrol
+QGate["T"](18) with nocontrol
+QGate["not"](17) with controls=[+20] with nocontrol
+QGate["T"]*(17) with nocontrol
+QGate["not"](17) with controls=[+20] with nocontrol
+QGate["T"](17) with nocontrol
+QGate["H"](18) with nocontrol
+QGate["H"](20) with nocontrol
+QGate["not"](20) with controls=[+16] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["T"](20) with nocontrol
+QGate["not"](20) with controls=[+16] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["H"](21) with nocontrol
+QGate["not"](21) with controls=[+15] with nocontrol
+QGate["T"]*(21) with nocontrol
+QGate["not"](21) with controls=[+22] with nocontrol
+QGate["T"](21) with nocontrol
+QGate["not"](21) with controls=[+15] with nocontrol
+QGate["T"]*(21) with nocontrol
+QGate["not"](21) with controls=[+22] with nocontrol
+QGate["H"](22) with nocontrol
+QGate["not"](22) with controls=[+14] with nocontrol
+QGate["T"]*(22) with nocontrol
+QGate["not"](22) with controls=[+23] with nocontrol
+QGate["T"](22) with nocontrol
+QGate["not"](22) with controls=[+14] with nocontrol
+QGate["T"]*(22) with nocontrol
+QGate["not"](22) with controls=[+23] with nocontrol
+QGate["H"](23) with nocontrol
+QGate["not"](23) with controls=[+13] with nocontrol
+QGate["T"]*(23) with nocontrol
+QGate["not"](23) with controls=[+24] with nocontrol
+QGate["T"](23) with nocontrol
+QGate["not"](23) with controls=[+13] with nocontrol
+QGate["T"]*(23) with nocontrol
+QGate["not"](23) with controls=[+24] with nocontrol
+QGate["H"](24) with nocontrol
+QGate["not"](24) with controls=[+12] with nocontrol
+QGate["T"]*(24) with nocontrol
+QGate["not"](24) with controls=[+2] with nocontrol
+QGate["T"](24) with nocontrol
+QGate["not"](24) with controls=[+12] with nocontrol
+QGate["T"]*(24) with nocontrol
+QGate["not"](24) with controls=[+2] with nocontrol
+QGate["not"](23) with controls=[+12] with nocontrol
+QGate["T"]*(23) with nocontrol
+QGate["not"](23) with controls=[+2] with nocontrol
+QGate["T"](23) with nocontrol
+QGate["not"](23) with controls=[+12] with nocontrol
+QGate["T"]*(23) with nocontrol
+QGate["not"](23) with controls=[+2] with nocontrol
+QGate["S"](23) with nocontrol
+QGate["H"](23) with nocontrol
+QGate["S"](23) with nocontrol
+QGate["not"](22) with controls=[+13] with nocontrol
+QGate["T"]*(22) with nocontrol
+QGate["not"](22) with controls=[+23] with nocontrol
+QGate["T"](22) with nocontrol
+QGate["not"](22) with controls=[+13] with nocontrol
+QGate["T"]*(22) with nocontrol
+QGate["not"](22) with controls=[+23] with nocontrol
+QGate["S"](22) with nocontrol
+QGate["not"](13) with controls=[+23] with nocontrol
+QGate["S"]*(13) with nocontrol
+QGate["not"](13) with controls=[+23] with nocontrol
+QGate["H"](22) with nocontrol
+QGate["not"](21) with controls=[+14] with nocontrol
+QGate["T"](21) with nocontrol
+QGate["not"](21) with controls=[+22] with nocontrol
+QGate["T"]*(21) with nocontrol
+QGate["not"](21) with controls=[+14] with nocontrol
+QGate["T"](21) with nocontrol
+QGate["not"](21) with controls=[+22] with nocontrol
+QGate["H"](21) with nocontrol
+QGate["not"](20) with controls=[+15] with nocontrol
+QGate["T"](20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+15] with nocontrol
+QGate["T"](20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["H"](20) with nocontrol
+QGate["T"](20) with nocontrol
+QGate["H"](17) with nocontrol
+QGate["not"](17) with controls=[+16] with nocontrol
+QGate["T"]*(17) with nocontrol
+QGate["not"](17) with controls=[+20] with nocontrol
+QGate["T"](17) with nocontrol
+QGate["not"](17) with controls=[+16] with nocontrol
+QGate["T"]*(17) with nocontrol
+QGate["not"](17) with controls=[+20] with nocontrol
+QGate["T"](17) with nocontrol
+QGate["not"](16) with controls=[+20] with nocontrol
+QGate["T"]*(16) with nocontrol
+QGate["not"](16) with controls=[+20] with nocontrol
+QGate["T"](16) with nocontrol
+QGate["H"](17) with nocontrol
+QGate["H"](20) with nocontrol
+QGate["not"](20) with controls=[+15] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["T"](20) with nocontrol
+QGate["not"](20) with controls=[+15] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["H"](21) with nocontrol
+QGate["not"](21) with controls=[+14] with nocontrol
+QGate["T"]*(21) with nocontrol
+QGate["not"](21) with controls=[+22] with nocontrol
+QGate["T"](21) with nocontrol
+QGate["not"](21) with controls=[+14] with nocontrol
+QGate["T"]*(21) with nocontrol
+QGate["not"](21) with controls=[+22] with nocontrol
+QGate["H"](22) with nocontrol
+QGate["not"](22) with controls=[+13] with nocontrol
+QGate["T"]*(22) with nocontrol
+QGate["not"](22) with controls=[+23] with nocontrol
+QGate["T"](22) with nocontrol
+QGate["not"](22) with controls=[+13] with nocontrol
+QGate["T"]*(22) with nocontrol
+QGate["not"](22) with controls=[+23] with nocontrol
+QGate["H"](23) with nocontrol
+QGate["not"](23) with controls=[+12] with nocontrol
+QGate["T"]*(23) with nocontrol
+QGate["not"](23) with controls=[+2] with nocontrol
+QGate["T"](23) with nocontrol
+QGate["not"](23) with controls=[+12] with nocontrol
+QGate["T"]*(23) with nocontrol
+QGate["not"](23) with controls=[+2] with nocontrol
+QGate["not"](22) with controls=[+12] with nocontrol
+QGate["T"]*(22) with nocontrol
+QGate["not"](22) with controls=[+2] with nocontrol
+QGate["T"](22) with nocontrol
+QGate["not"](22) with controls=[+12] with nocontrol
+QGate["T"]*(22) with nocontrol
+QGate["not"](22) with controls=[+2] with nocontrol
+QGate["S"](22) with nocontrol
+QGate["H"](22) with nocontrol
+QGate["S"](22) with nocontrol
+QGate["not"](21) with controls=[+13] with nocontrol
+QGate["T"]*(21) with nocontrol
+QGate["not"](21) with controls=[+22] with nocontrol
+QGate["T"](21) with nocontrol
+QGate["not"](21) with controls=[+13] with nocontrol
+QGate["T"]*(21) with nocontrol
+QGate["not"](21) with controls=[+22] with nocontrol
+QGate["S"](21) with nocontrol
+QGate["not"](13) with controls=[+22] with nocontrol
+QGate["S"]*(13) with nocontrol
+QGate["not"](13) with controls=[+22] with nocontrol
+QGate["H"](21) with nocontrol
+QGate["not"](20) with controls=[+14] with nocontrol
+QGate["T"](20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+14] with nocontrol
+QGate["T"](20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["H"](20) with nocontrol
+QGate["T"](20) with nocontrol
+QGate["H"](16) with nocontrol
+QGate["not"](16) with controls=[+15] with nocontrol
+QGate["T"]*(16) with nocontrol
+QGate["not"](16) with controls=[+20] with nocontrol
+QGate["T"](16) with nocontrol
+QGate["not"](16) with controls=[+15] with nocontrol
+QGate["T"]*(16) with nocontrol
+QGate["not"](16) with controls=[+20] with nocontrol
+QGate["T"](16) with nocontrol
+QGate["not"](15) with controls=[+20] with nocontrol
+QGate["T"]*(15) with nocontrol
+QGate["not"](15) with controls=[+20] with nocontrol
+QGate["T"](15) with nocontrol
+QGate["H"](16) with nocontrol
+QGate["H"](20) with nocontrol
+QGate["not"](20) with controls=[+14] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["T"](20) with nocontrol
+QGate["not"](20) with controls=[+14] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["H"](21) with nocontrol
+QGate["not"](21) with controls=[+13] with nocontrol
+QGate["T"]*(21) with nocontrol
+QGate["not"](21) with controls=[+22] with nocontrol
+QGate["T"](21) with nocontrol
+QGate["not"](21) with controls=[+13] with nocontrol
+QGate["T"]*(21) with nocontrol
+QGate["not"](21) with controls=[+22] with nocontrol
+QGate["H"](22) with nocontrol
+QGate["not"](22) with controls=[+12] with nocontrol
+QGate["T"]*(22) with nocontrol
+QGate["not"](22) with controls=[+2] with nocontrol
+QGate["T"](22) with nocontrol
+QGate["not"](22) with controls=[+12] with nocontrol
+QGate["T"]*(22) with nocontrol
+QGate["not"](22) with controls=[+2] with nocontrol
+QGate["not"](21) with controls=[+12] with nocontrol
+QGate["T"]*(21) with nocontrol
+QGate["not"](21) with controls=[+2] with nocontrol
+QGate["T"](21) with nocontrol
+QGate["not"](21) with controls=[+12] with nocontrol
+QGate["T"]*(21) with nocontrol
+QGate["not"](21) with controls=[+2] with nocontrol
+QGate["S"](21) with nocontrol
+QGate["H"](21) with nocontrol
+QGate["S"](21) with nocontrol
+QGate["not"](20) with controls=[+13] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["T"](20) with nocontrol
+QGate["not"](20) with controls=[+13] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["S"](20) with nocontrol
+QGate["not"](13) with controls=[+21] with nocontrol
+QGate["S"]*(13) with nocontrol
+QGate["not"](13) with controls=[+21] with nocontrol
+QGate["H"](20) with nocontrol
+QGate["T"](20) with nocontrol
+QGate["H"](15) with nocontrol
+QGate["not"](15) with controls=[+14] with nocontrol
+QGate["T"]*(15) with nocontrol
+QGate["not"](15) with controls=[+20] with nocontrol
+QGate["T"](15) with nocontrol
+QGate["not"](15) with controls=[+14] with nocontrol
+QGate["T"]*(15) with nocontrol
+QGate["not"](15) with controls=[+20] with nocontrol
+QGate["T"](15) with nocontrol
+QGate["not"](14) with controls=[+20] with nocontrol
+QGate["T"]*(14) with nocontrol
+QGate["not"](14) with controls=[+20] with nocontrol
+QGate["T"](14) with nocontrol
+QGate["H"](15) with nocontrol
+QGate["H"](20) with nocontrol
+QGate["not"](20) with controls=[+13] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["T"](20) with nocontrol
+QGate["not"](20) with controls=[+13] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["H"](21) with nocontrol
+QGate["not"](21) with controls=[+12] with nocontrol
+QGate["T"]*(21) with nocontrol
+QGate["not"](21) with controls=[+2] with nocontrol
+QGate["T"](21) with nocontrol
+QGate["not"](21) with controls=[+12] with nocontrol
+QGate["T"]*(21) with nocontrol
+QGate["not"](21) with controls=[+2] with nocontrol
+QGate["not"](20) with controls=[+12] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+2] with nocontrol
+QGate["T"](20) with nocontrol
+QGate["not"](20) with controls=[+12] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+2] with nocontrol
+QGate["S"](20) with nocontrol
+QGate["H"](20) with nocontrol
+QGate["T"](20) with nocontrol
+QGate["H"](14) with nocontrol
+QGate["not"](14) with controls=[+13] with nocontrol
+QGate["T"]*(14) with nocontrol
+QGate["not"](14) with controls=[+20] with nocontrol
+QGate["T"](14) with nocontrol
+QGate["not"](14) with controls=[+13] with nocontrol
+QGate["T"]*(14) with nocontrol
+QGate["not"](14) with controls=[+20] with nocontrol
+QGate["T"](14) with nocontrol
+QGate["not"](13) with controls=[+20] with nocontrol
+QGate["T"]*(13) with nocontrol
+QGate["not"](13) with controls=[+20] with nocontrol
+QGate["H"](14) with nocontrol
+QGate["H"](20) with nocontrol
+QGate["not"](20) with controls=[+12] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+2] with nocontrol
+QGate["T"](20) with nocontrol
+QGate["not"](20) with controls=[+12] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+2] with nocontrol
+QGate["H"](13) with nocontrol
+QGate["not"](13) with controls=[+12] with nocontrol
+QGate["T"]*(13) with nocontrol
+QGate["not"](13) with controls=[+2] with nocontrol
+QGate["T"](13) with nocontrol
+QGate["not"](13) with controls=[+12] with nocontrol
+QGate["T"]*(13) with nocontrol
+QGate["not"](13) with controls=[+2] with nocontrol
+QGate["T"](13) with nocontrol
+QGate["H"](13) with nocontrol
+QGate["not"](12) with controls=[+2] with nocontrol
+QGate["H"](26) with nocontrol
+QGate["not"](26) with controls=[+11] with nocontrol
+QGate["T"]*(26) with nocontrol
+QGate["not"](26) with controls=[+1] with nocontrol
+QGate["T"](26) with nocontrol
+QGate["not"](26) with controls=[+11] with nocontrol
+QGate["T"]*(26) with nocontrol
+QGate["not"](26) with controls=[+1] with nocontrol
+QGate["T"](26) with nocontrol
+QGate["H"](26) with nocontrol
+QGate["S"](26) with nocontrol
+QGate["not"](25) with controls=[+12] with nocontrol
+QGate["not"](25) with controls=[+26] with nocontrol
+QGate["T"](25) with nocontrol
+QGate["not"](25) with controls=[+12] with nocontrol
+QGate["T"]*(25) with nocontrol
+QGate["not"](25) with controls=[+26] with nocontrol
+QGate["not"](12) with controls=[+26] with nocontrol
+QGate["S"]*(12) with nocontrol
+QGate["not"](12) with controls=[+26] with nocontrol
+QGate["H"](25) with nocontrol
+QGate["not"](24) with controls=[+13] with nocontrol
+QGate["T"](24) with nocontrol
+QGate["not"](24) with controls=[+25] with nocontrol
+QGate["T"]*(24) with nocontrol
+QGate["not"](24) with controls=[+13] with nocontrol
+QGate["T"](24) with nocontrol
+QGate["not"](24) with controls=[+25] with nocontrol
+QGate["H"](24) with nocontrol
+QGate["not"](23) with controls=[+14] with nocontrol
+QGate["T"](23) with nocontrol
+QGate["not"](23) with controls=[+24] with nocontrol
+QGate["T"]*(23) with nocontrol
+QGate["not"](23) with controls=[+14] with nocontrol
+QGate["T"](23) with nocontrol
+QGate["not"](23) with controls=[+24] with nocontrol
+QGate["H"](23) with nocontrol
+QGate["not"](22) with controls=[+15] with nocontrol
+QGate["T"](22) with nocontrol
+QGate["not"](22) with controls=[+23] with nocontrol
+QGate["T"]*(22) with nocontrol
+QGate["not"](22) with controls=[+15] with nocontrol
+QGate["T"](22) with nocontrol
+QGate["not"](22) with controls=[+23] with nocontrol
+QGate["H"](22) with nocontrol
+QGate["not"](21) with controls=[+16] with nocontrol
+QGate["T"](21) with nocontrol
+QGate["not"](21) with controls=[+22] with nocontrol
+QGate["T"]*(21) with nocontrol
+QGate["not"](21) with controls=[+16] with nocontrol
+QGate["T"](21) with nocontrol
+QGate["not"](21) with controls=[+22] with nocontrol
+QGate["H"](21) with nocontrol
+QGate["not"](20) with controls=[+17] with nocontrol
+QGate["T"](20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+17] with nocontrol
+QGate["T"](20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["H"](20) with nocontrol
+QGate["T"](20) with nocontrol
+QGate["not"](19) with controls=[+18] with nocontrol
+QGate["T"]*(19) with nocontrol
+QGate["not"](19) with controls=[+20] with nocontrol
+QGate["T"](19) with nocontrol
+QGate["not"](19) with controls=[+18] with nocontrol
+QGate["T"]*(19) with nocontrol
+QGate["not"](19) with controls=[+20] with nocontrol
+QGate["not"](18) with controls=[+20] with nocontrol
+QGate["T"]*(18) with nocontrol
+QGate["not"](18) with controls=[+20] with nocontrol
+QGate["T"](18) with nocontrol
+QGate["H"](20) with nocontrol
+QGate["not"](20) with controls=[+17] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["T"](20) with nocontrol
+QGate["not"](20) with controls=[+17] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["H"](21) with nocontrol
+QGate["not"](21) with controls=[+16] with nocontrol
+QGate["T"]*(21) with nocontrol
+QGate["not"](21) with controls=[+22] with nocontrol
+QGate["T"](21) with nocontrol
+QGate["not"](21) with controls=[+16] with nocontrol
+QGate["T"]*(21) with nocontrol
+QGate["not"](21) with controls=[+22] with nocontrol
+QGate["H"](22) with nocontrol
+QGate["not"](22) with controls=[+15] with nocontrol
+QGate["T"]*(22) with nocontrol
+QGate["not"](22) with controls=[+23] with nocontrol
+QGate["T"](22) with nocontrol
+QGate["not"](22) with controls=[+15] with nocontrol
+QGate["T"]*(22) with nocontrol
+QGate["not"](22) with controls=[+23] with nocontrol
+QGate["H"](23) with nocontrol
+QGate["not"](23) with controls=[+14] with nocontrol
+QGate["T"]*(23) with nocontrol
+QGate["not"](23) with controls=[+24] with nocontrol
+QGate["T"](23) with nocontrol
+QGate["not"](23) with controls=[+14] with nocontrol
+QGate["T"]*(23) with nocontrol
+QGate["not"](23) with controls=[+24] with nocontrol
+QGate["H"](24) with nocontrol
+QGate["not"](24) with controls=[+13] with nocontrol
+QGate["T"]*(24) with nocontrol
+QGate["not"](24) with controls=[+25] with nocontrol
+QGate["T"](24) with nocontrol
+QGate["not"](24) with controls=[+13] with nocontrol
+QGate["T"]*(24) with nocontrol
+QGate["not"](24) with controls=[+25] with nocontrol
+QGate["H"](25) with nocontrol
+QGate["not"](25) with controls=[+12] with nocontrol
+QGate["T"]*(25) with nocontrol
+QGate["not"](25) with controls=[+26] with nocontrol
+QGate["T"](25) with nocontrol
+QGate["not"](25) with controls=[+12] with nocontrol
+QGate["T"]*(25) with nocontrol
+QGate["not"](25) with controls=[+26] with nocontrol
+QGate["H"](26) with nocontrol
+QGate["S"](26) with nocontrol
+QGate["not"](26) with controls=[+11] with nocontrol
+QGate["T"]*(26) with nocontrol
+QGate["not"](26) with controls=[+1] with nocontrol
+QGate["not"](26) with controls=[+11] with nocontrol
+QGate["T"]*(26) with nocontrol
+QGate["not"](26) with controls=[+1] with nocontrol
+QGate["not"](25) with controls=[+11] with nocontrol
+QGate["T"]*(25) with nocontrol
+QGate["not"](25) with controls=[+1] with nocontrol
+QGate["T"](25) with nocontrol
+QGate["not"](25) with controls=[+11] with nocontrol
+QGate["T"]*(25) with nocontrol
+QGate["not"](25) with controls=[+1] with nocontrol
+QGate["S"](25) with nocontrol
+QGate["H"](25) with nocontrol
+QGate["S"](25) with nocontrol
+QGate["not"](24) with controls=[+12] with nocontrol
+QGate["T"]*(24) with nocontrol
+QGate["not"](24) with controls=[+25] with nocontrol
+QGate["T"](24) with nocontrol
+QGate["not"](24) with controls=[+12] with nocontrol
+QGate["T"]*(24) with nocontrol
+QGate["not"](24) with controls=[+25] with nocontrol
+QGate["S"](24) with nocontrol
+QGate["not"](12) with controls=[+25] with nocontrol
+QGate["S"]*(12) with nocontrol
+QGate["not"](12) with controls=[+25] with nocontrol
+QGate["H"](24) with nocontrol
+QGate["not"](23) with controls=[+13] with nocontrol
+QGate["T"](23) with nocontrol
+QGate["not"](23) with controls=[+24] with nocontrol
+QGate["T"]*(23) with nocontrol
+QGate["not"](23) with controls=[+13] with nocontrol
+QGate["T"](23) with nocontrol
+QGate["not"](23) with controls=[+24] with nocontrol
+QGate["H"](23) with nocontrol
+QGate["not"](22) with controls=[+14] with nocontrol
+QGate["T"](22) with nocontrol
+QGate["not"](22) with controls=[+23] with nocontrol
+QGate["T"]*(22) with nocontrol
+QGate["not"](22) with controls=[+14] with nocontrol
+QGate["T"](22) with nocontrol
+QGate["not"](22) with controls=[+23] with nocontrol
+QGate["H"](22) with nocontrol
+QGate["not"](21) with controls=[+15] with nocontrol
+QGate["T"](21) with nocontrol
+QGate["not"](21) with controls=[+22] with nocontrol
+QGate["T"]*(21) with nocontrol
+QGate["not"](21) with controls=[+15] with nocontrol
+QGate["T"](21) with nocontrol
+QGate["not"](21) with controls=[+22] with nocontrol
+QGate["H"](21) with nocontrol
+QGate["not"](20) with controls=[+16] with nocontrol
+QGate["T"](20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+16] with nocontrol
+QGate["T"](20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["H"](20) with nocontrol
+QGate["T"](20) with nocontrol
+QGate["H"](18) with nocontrol
+QGate["not"](18) with controls=[+17] with nocontrol
+QGate["T"]*(18) with nocontrol
+QGate["not"](18) with controls=[+20] with nocontrol
+QGate["T"](18) with nocontrol
+QGate["not"](18) with controls=[+17] with nocontrol
+QGate["T"]*(18) with nocontrol
+QGate["not"](18) with controls=[+20] with nocontrol
+QGate["T"](18) with nocontrol
+QGate["not"](17) with controls=[+20] with nocontrol
+QGate["T"]*(17) with nocontrol
+QGate["not"](17) with controls=[+20] with nocontrol
+QGate["T"](17) with nocontrol
+QGate["H"](18) with nocontrol
+QGate["H"](20) with nocontrol
+QGate["not"](20) with controls=[+16] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["T"](20) with nocontrol
+QGate["not"](20) with controls=[+16] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["H"](21) with nocontrol
+QGate["not"](21) with controls=[+15] with nocontrol
+QGate["T"]*(21) with nocontrol
+QGate["not"](21) with controls=[+22] with nocontrol
+QGate["T"](21) with nocontrol
+QGate["not"](21) with controls=[+15] with nocontrol
+QGate["T"]*(21) with nocontrol
+QGate["not"](21) with controls=[+22] with nocontrol
+QGate["H"](22) with nocontrol
+QGate["not"](22) with controls=[+14] with nocontrol
+QGate["T"]*(22) with nocontrol
+QGate["not"](22) with controls=[+23] with nocontrol
+QGate["T"](22) with nocontrol
+QGate["not"](22) with controls=[+14] with nocontrol
+QGate["T"]*(22) with nocontrol
+QGate["not"](22) with controls=[+23] with nocontrol
+QGate["H"](23) with nocontrol
+QGate["not"](23) with controls=[+13] with nocontrol
+QGate["T"]*(23) with nocontrol
+QGate["not"](23) with controls=[+24] with nocontrol
+QGate["T"](23) with nocontrol
+QGate["not"](23) with controls=[+13] with nocontrol
+QGate["T"]*(23) with nocontrol
+QGate["not"](23) with controls=[+24] with nocontrol
+QGate["H"](24) with nocontrol
+QGate["not"](24) with controls=[+12] with nocontrol
+QGate["T"]*(24) with nocontrol
+QGate["not"](24) with controls=[+25] with nocontrol
+QGate["T"](24) with nocontrol
+QGate["not"](24) with controls=[+12] with nocontrol
+QGate["T"]*(24) with nocontrol
+QGate["not"](24) with controls=[+25] with nocontrol
+QGate["H"](25) with nocontrol
+QGate["not"](25) with controls=[+11] with nocontrol
+QGate["T"]*(25) with nocontrol
+QGate["not"](25) with controls=[+1] with nocontrol
+QGate["T"](25) with nocontrol
+QGate["not"](25) with controls=[+11] with nocontrol
+QGate["T"]*(25) with nocontrol
+QGate["not"](25) with controls=[+1] with nocontrol
+QGate["not"](24) with controls=[+11] with nocontrol
+QGate["T"]*(24) with nocontrol
+QGate["not"](24) with controls=[+1] with nocontrol
+QGate["T"](24) with nocontrol
+QGate["not"](24) with controls=[+11] with nocontrol
+QGate["T"]*(24) with nocontrol
+QGate["not"](24) with controls=[+1] with nocontrol
+QGate["S"](24) with nocontrol
+QGate["H"](24) with nocontrol
+QGate["S"](24) with nocontrol
+QGate["not"](23) with controls=[+12] with nocontrol
+QGate["T"]*(23) with nocontrol
+QGate["not"](23) with controls=[+24] with nocontrol
+QGate["T"](23) with nocontrol
+QGate["not"](23) with controls=[+12] with nocontrol
+QGate["T"]*(23) with nocontrol
+QGate["not"](23) with controls=[+24] with nocontrol
+QGate["S"](23) with nocontrol
+QGate["not"](12) with controls=[+24] with nocontrol
+QGate["S"]*(12) with nocontrol
+QGate["not"](12) with controls=[+24] with nocontrol
+QGate["H"](23) with nocontrol
+QGate["not"](22) with controls=[+13] with nocontrol
+QGate["T"](22) with nocontrol
+QGate["not"](22) with controls=[+23] with nocontrol
+QGate["T"]*(22) with nocontrol
+QGate["not"](22) with controls=[+13] with nocontrol
+QGate["T"](22) with nocontrol
+QGate["not"](22) with controls=[+23] with nocontrol
+QGate["H"](22) with nocontrol
+QGate["not"](21) with controls=[+14] with nocontrol
+QGate["T"](21) with nocontrol
+QGate["not"](21) with controls=[+22] with nocontrol
+QGate["T"]*(21) with nocontrol
+QGate["not"](21) with controls=[+14] with nocontrol
+QGate["T"](21) with nocontrol
+QGate["not"](21) with controls=[+22] with nocontrol
+QGate["H"](21) with nocontrol
+QGate["not"](20) with controls=[+15] with nocontrol
+QGate["T"](20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+15] with nocontrol
+QGate["T"](20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["H"](20) with nocontrol
+QGate["T"](20) with nocontrol
+QGate["H"](17) with nocontrol
+QGate["not"](17) with controls=[+16] with nocontrol
+QGate["T"]*(17) with nocontrol
+QGate["not"](17) with controls=[+20] with nocontrol
+QGate["T"](17) with nocontrol
+QGate["not"](17) with controls=[+16] with nocontrol
+QGate["T"]*(17) with nocontrol
+QGate["not"](17) with controls=[+20] with nocontrol
+QGate["T"](17) with nocontrol
+QGate["not"](16) with controls=[+20] with nocontrol
+QGate["T"]*(16) with nocontrol
+QGate["not"](16) with controls=[+20] with nocontrol
+QGate["T"](16) with nocontrol
+QGate["H"](17) with nocontrol
+QGate["H"](20) with nocontrol
+QGate["not"](20) with controls=[+15] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["T"](20) with nocontrol
+QGate["not"](20) with controls=[+15] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["H"](21) with nocontrol
+QGate["not"](21) with controls=[+14] with nocontrol
+QGate["T"]*(21) with nocontrol
+QGate["not"](21) with controls=[+22] with nocontrol
+QGate["T"](21) with nocontrol
+QGate["not"](21) with controls=[+14] with nocontrol
+QGate["T"]*(21) with nocontrol
+QGate["not"](21) with controls=[+22] with nocontrol
+QGate["H"](22) with nocontrol
+QGate["not"](22) with controls=[+13] with nocontrol
+QGate["T"]*(22) with nocontrol
+QGate["not"](22) with controls=[+23] with nocontrol
+QGate["T"](22) with nocontrol
+QGate["not"](22) with controls=[+13] with nocontrol
+QGate["T"]*(22) with nocontrol
+QGate["not"](22) with controls=[+23] with nocontrol
+QGate["H"](23) with nocontrol
+QGate["not"](23) with controls=[+12] with nocontrol
+QGate["T"]*(23) with nocontrol
+QGate["not"](23) with controls=[+24] with nocontrol
+QGate["T"](23) with nocontrol
+QGate["not"](23) with controls=[+12] with nocontrol
+QGate["T"]*(23) with nocontrol
+QGate["not"](23) with controls=[+24] with nocontrol
+QGate["H"](24) with nocontrol
+QGate["not"](24) with controls=[+11] with nocontrol
+QGate["T"]*(24) with nocontrol
+QGate["not"](24) with controls=[+1] with nocontrol
+QGate["T"](24) with nocontrol
+QGate["not"](24) with controls=[+11] with nocontrol
+QGate["T"]*(24) with nocontrol
+QGate["not"](24) with controls=[+1] with nocontrol
+QGate["not"](23) with controls=[+11] with nocontrol
+QGate["T"]*(23) with nocontrol
+QGate["not"](23) with controls=[+1] with nocontrol
+QGate["T"](23) with nocontrol
+QGate["not"](23) with controls=[+11] with nocontrol
+QGate["T"]*(23) with nocontrol
+QGate["not"](23) with controls=[+1] with nocontrol
+QGate["S"](23) with nocontrol
+QGate["H"](23) with nocontrol
+QGate["S"](23) with nocontrol
+QGate["not"](22) with controls=[+12] with nocontrol
+QGate["T"]*(22) with nocontrol
+QGate["not"](22) with controls=[+23] with nocontrol
+QGate["T"](22) with nocontrol
+QGate["not"](22) with controls=[+12] with nocontrol
+QGate["T"]*(22) with nocontrol
+QGate["not"](22) with controls=[+23] with nocontrol
+QGate["S"](22) with nocontrol
+QGate["not"](12) with controls=[+23] with nocontrol
+QGate["S"]*(12) with nocontrol
+QGate["not"](12) with controls=[+23] with nocontrol
+QGate["H"](22) with nocontrol
+QGate["not"](21) with controls=[+13] with nocontrol
+QGate["T"](21) with nocontrol
+QGate["not"](21) with controls=[+22] with nocontrol
+QGate["T"]*(21) with nocontrol
+QGate["not"](21) with controls=[+13] with nocontrol
+QGate["T"](21) with nocontrol
+QGate["not"](21) with controls=[+22] with nocontrol
+QGate["H"](21) with nocontrol
+QGate["not"](20) with controls=[+14] with nocontrol
+QGate["T"](20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+14] with nocontrol
+QGate["T"](20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["H"](20) with nocontrol
+QGate["T"](20) with nocontrol
+QGate["H"](16) with nocontrol
+QGate["not"](16) with controls=[+15] with nocontrol
+QGate["T"]*(16) with nocontrol
+QGate["not"](16) with controls=[+20] with nocontrol
+QGate["T"](16) with nocontrol
+QGate["not"](16) with controls=[+15] with nocontrol
+QGate["T"]*(16) with nocontrol
+QGate["not"](16) with controls=[+20] with nocontrol
+QGate["T"](16) with nocontrol
+QGate["not"](15) with controls=[+20] with nocontrol
+QGate["T"]*(15) with nocontrol
+QGate["not"](15) with controls=[+20] with nocontrol
+QGate["T"](15) with nocontrol
+QGate["H"](16) with nocontrol
+QGate["H"](20) with nocontrol
+QGate["not"](20) with controls=[+14] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["T"](20) with nocontrol
+QGate["not"](20) with controls=[+14] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["H"](21) with nocontrol
+QGate["not"](21) with controls=[+13] with nocontrol
+QGate["T"]*(21) with nocontrol
+QGate["not"](21) with controls=[+22] with nocontrol
+QGate["T"](21) with nocontrol
+QGate["not"](21) with controls=[+13] with nocontrol
+QGate["T"]*(21) with nocontrol
+QGate["not"](21) with controls=[+22] with nocontrol
+QGate["H"](22) with nocontrol
+QGate["not"](22) with controls=[+12] with nocontrol
+QGate["T"]*(22) with nocontrol
+QGate["not"](22) with controls=[+23] with nocontrol
+QGate["T"](22) with nocontrol
+QGate["not"](22) with controls=[+12] with nocontrol
+QGate["T"]*(22) with nocontrol
+QGate["not"](22) with controls=[+23] with nocontrol
+QGate["H"](23) with nocontrol
+QGate["not"](23) with controls=[+11] with nocontrol
+QGate["T"]*(23) with nocontrol
+QGate["not"](23) with controls=[+1] with nocontrol
+QGate["T"](23) with nocontrol
+QGate["not"](23) with controls=[+11] with nocontrol
+QGate["T"]*(23) with nocontrol
+QGate["not"](23) with controls=[+1] with nocontrol
+QGate["not"](22) with controls=[+11] with nocontrol
+QGate["T"]*(22) with nocontrol
+QGate["not"](22) with controls=[+1] with nocontrol
+QGate["T"](22) with nocontrol
+QGate["not"](22) with controls=[+11] with nocontrol
+QGate["T"]*(22) with nocontrol
+QGate["not"](22) with controls=[+1] with nocontrol
+QGate["S"](22) with nocontrol
+QGate["H"](22) with nocontrol
+QGate["S"](22) with nocontrol
+QGate["not"](21) with controls=[+12] with nocontrol
+QGate["T"]*(21) with nocontrol
+QGate["not"](21) with controls=[+22] with nocontrol
+QGate["T"](21) with nocontrol
+QGate["not"](21) with controls=[+12] with nocontrol
+QGate["T"]*(21) with nocontrol
+QGate["not"](21) with controls=[+22] with nocontrol
+QGate["S"](21) with nocontrol
+QGate["not"](12) with controls=[+22] with nocontrol
+QGate["S"]*(12) with nocontrol
+QGate["not"](12) with controls=[+22] with nocontrol
+QGate["H"](21) with nocontrol
+QGate["not"](20) with controls=[+13] with nocontrol
+QGate["T"](20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+13] with nocontrol
+QGate["T"](20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["H"](20) with nocontrol
+QGate["T"](20) with nocontrol
+QGate["H"](15) with nocontrol
+QGate["not"](15) with controls=[+14] with nocontrol
+QGate["T"]*(15) with nocontrol
+QGate["not"](15) with controls=[+20] with nocontrol
+QGate["T"](15) with nocontrol
+QGate["not"](15) with controls=[+14] with nocontrol
+QGate["T"]*(15) with nocontrol
+QGate["not"](15) with controls=[+20] with nocontrol
+QGate["T"](15) with nocontrol
+QGate["not"](14) with controls=[+20] with nocontrol
+QGate["T"]*(14) with nocontrol
+QGate["not"](14) with controls=[+20] with nocontrol
+QGate["T"](14) with nocontrol
+QGate["H"](15) with nocontrol
+QGate["H"](20) with nocontrol
+QGate["not"](20) with controls=[+13] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["T"](20) with nocontrol
+QGate["not"](20) with controls=[+13] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["H"](21) with nocontrol
+QGate["not"](21) with controls=[+12] with nocontrol
+QGate["T"]*(21) with nocontrol
+QGate["not"](21) with controls=[+22] with nocontrol
+QGate["T"](21) with nocontrol
+QGate["not"](21) with controls=[+12] with nocontrol
+QGate["T"]*(21) with nocontrol
+QGate["not"](21) with controls=[+22] with nocontrol
+QGate["H"](22) with nocontrol
+QGate["not"](22) with controls=[+11] with nocontrol
+QGate["T"]*(22) with nocontrol
+QGate["not"](22) with controls=[+1] with nocontrol
+QGate["T"](22) with nocontrol
+QGate["not"](22) with controls=[+11] with nocontrol
+QGate["T"]*(22) with nocontrol
+QGate["not"](22) with controls=[+1] with nocontrol
+QGate["not"](21) with controls=[+11] with nocontrol
+QGate["T"]*(21) with nocontrol
+QGate["not"](21) with controls=[+1] with nocontrol
+QGate["T"](21) with nocontrol
+QGate["not"](21) with controls=[+11] with nocontrol
+QGate["T"]*(21) with nocontrol
+QGate["not"](21) with controls=[+1] with nocontrol
+QGate["S"](21) with nocontrol
+QGate["H"](21) with nocontrol
+QGate["S"](21) with nocontrol
+QGate["not"](20) with controls=[+12] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["T"](20) with nocontrol
+QGate["not"](20) with controls=[+12] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["S"](20) with nocontrol
+QGate["not"](12) with controls=[+21] with nocontrol
+QGate["S"]*(12) with nocontrol
+QGate["not"](12) with controls=[+21] with nocontrol
+QGate["H"](20) with nocontrol
+QGate["T"](20) with nocontrol
+QGate["H"](14) with nocontrol
+QGate["not"](14) with controls=[+13] with nocontrol
+QGate["T"]*(14) with nocontrol
+QGate["not"](14) with controls=[+20] with nocontrol
+QGate["T"](14) with nocontrol
+QGate["not"](14) with controls=[+13] with nocontrol
+QGate["T"]*(14) with nocontrol
+QGate["not"](14) with controls=[+20] with nocontrol
+QGate["T"](14) with nocontrol
+QGate["not"](13) with controls=[+20] with nocontrol
+QGate["T"]*(13) with nocontrol
+QGate["not"](13) with controls=[+20] with nocontrol
+QGate["T"](13) with nocontrol
+QGate["H"](14) with nocontrol
+QGate["H"](20) with nocontrol
+QGate["not"](20) with controls=[+12] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["T"](20) with nocontrol
+QGate["not"](20) with controls=[+12] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["H"](21) with nocontrol
+QGate["not"](21) with controls=[+11] with nocontrol
+QGate["T"]*(21) with nocontrol
+QGate["not"](21) with controls=[+1] with nocontrol
+QGate["T"](21) with nocontrol
+QGate["not"](21) with controls=[+11] with nocontrol
+QGate["T"]*(21) with nocontrol
+QGate["not"](21) with controls=[+1] with nocontrol
+QGate["not"](20) with controls=[+11] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+1] with nocontrol
+QGate["T"](20) with nocontrol
+QGate["not"](20) with controls=[+11] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+1] with nocontrol
+QGate["S"](20) with nocontrol
+QGate["H"](20) with nocontrol
+QGate["T"](20) with nocontrol
+QGate["H"](13) with nocontrol
+QGate["not"](13) with controls=[+12] with nocontrol
+QGate["T"]*(13) with nocontrol
+QGate["not"](13) with controls=[+20] with nocontrol
+QGate["T"](13) with nocontrol
+QGate["not"](13) with controls=[+12] with nocontrol
+QGate["T"]*(13) with nocontrol
+QGate["not"](13) with controls=[+20] with nocontrol
+QGate["T"](13) with nocontrol
+QGate["not"](12) with controls=[+20] with nocontrol
+QGate["T"]*(12) with nocontrol
+QGate["not"](12) with controls=[+20] with nocontrol
+QGate["H"](13) with nocontrol
+QGate["H"](20) with nocontrol
+QGate["not"](20) with controls=[+11] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+1] with nocontrol
+QGate["T"](20) with nocontrol
+QGate["not"](20) with controls=[+11] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+1] with nocontrol
+QGate["H"](12) with nocontrol
+QGate["not"](12) with controls=[+11] with nocontrol
+QGate["T"]*(12) with nocontrol
+QGate["not"](12) with controls=[+1] with nocontrol
+QGate["T"](12) with nocontrol
+QGate["not"](12) with controls=[+11] with nocontrol
+QGate["T"]*(12) with nocontrol
+QGate["not"](12) with controls=[+1] with nocontrol
+QGate["T"](12) with nocontrol
+QGate["H"](12) with nocontrol
+QGate["not"](11) with controls=[+1] with nocontrol
+QGate["H"](27) with nocontrol
+QGate["not"](27) with controls=[+10] with nocontrol
+QGate["T"]*(27) with nocontrol
+QGate["not"](27) with controls=[+0] with nocontrol
+QGate["T"](27) with nocontrol
+QGate["not"](27) with controls=[+10] with nocontrol
+QGate["T"]*(27) with nocontrol
+QGate["not"](27) with controls=[+0] with nocontrol
+QGate["T"](27) with nocontrol
+QGate["H"](27) with nocontrol
+QGate["S"](27) with nocontrol
+QGate["not"](26) with controls=[+11] with nocontrol
+QGate["not"](26) with controls=[+27] with nocontrol
+QGate["T"](26) with nocontrol
+QGate["not"](26) with controls=[+11] with nocontrol
+QGate["T"]*(26) with nocontrol
+QGate["not"](26) with controls=[+27] with nocontrol
+QGate["not"](11) with controls=[+27] with nocontrol
+QGate["S"]*(11) with nocontrol
+QGate["not"](11) with controls=[+27] with nocontrol
+QGate["H"](26) with nocontrol
+QGate["not"](25) with controls=[+12] with nocontrol
+QGate["T"](25) with nocontrol
+QGate["not"](25) with controls=[+26] with nocontrol
+QGate["T"]*(25) with nocontrol
+QGate["not"](25) with controls=[+12] with nocontrol
+QGate["T"](25) with nocontrol
+QGate["not"](25) with controls=[+26] with nocontrol
+QGate["H"](25) with nocontrol
+QGate["not"](24) with controls=[+13] with nocontrol
+QGate["T"](24) with nocontrol
+QGate["not"](24) with controls=[+25] with nocontrol
+QGate["T"]*(24) with nocontrol
+QGate["not"](24) with controls=[+13] with nocontrol
+QGate["T"](24) with nocontrol
+QGate["not"](24) with controls=[+25] with nocontrol
+QGate["H"](24) with nocontrol
+QGate["not"](23) with controls=[+14] with nocontrol
+QGate["T"](23) with nocontrol
+QGate["not"](23) with controls=[+24] with nocontrol
+QGate["T"]*(23) with nocontrol
+QGate["not"](23) with controls=[+14] with nocontrol
+QGate["T"](23) with nocontrol
+QGate["not"](23) with controls=[+24] with nocontrol
+QGate["H"](23) with nocontrol
+QGate["not"](22) with controls=[+15] with nocontrol
+QGate["T"](22) with nocontrol
+QGate["not"](22) with controls=[+23] with nocontrol
+QGate["T"]*(22) with nocontrol
+QGate["not"](22) with controls=[+15] with nocontrol
+QGate["T"](22) with nocontrol
+QGate["not"](22) with controls=[+23] with nocontrol
+QGate["H"](22) with nocontrol
+QGate["not"](21) with controls=[+16] with nocontrol
+QGate["T"](21) with nocontrol
+QGate["not"](21) with controls=[+22] with nocontrol
+QGate["T"]*(21) with nocontrol
+QGate["not"](21) with controls=[+16] with nocontrol
+QGate["T"](21) with nocontrol
+QGate["not"](21) with controls=[+22] with nocontrol
+QGate["H"](21) with nocontrol
+QGate["not"](20) with controls=[+17] with nocontrol
+QGate["T"](20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+17] with nocontrol
+QGate["T"](20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["H"](20) with nocontrol
+QGate["T"](20) with nocontrol
+QGate["not"](19) with controls=[+18] with nocontrol
+QGate["T"]*(19) with nocontrol
+QGate["not"](19) with controls=[+20] with nocontrol
+QGate["T"](19) with nocontrol
+QGate["not"](19) with controls=[+18] with nocontrol
+QGate["T"]*(19) with nocontrol
+QGate["not"](19) with controls=[+20] with nocontrol
+QGate["T"](19) with nocontrol
+QGate["not"](18) with controls=[+20] with nocontrol
+QGate["T"]*(18) with nocontrol
+QGate["not"](18) with controls=[+20] with nocontrol
+QGate["T"](18) with nocontrol
+QGate["H"](19) with nocontrol
+QGate["H"](20) with nocontrol
+QGate["not"](20) with controls=[+17] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["T"](20) with nocontrol
+QGate["not"](20) with controls=[+17] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["H"](21) with nocontrol
+QGate["not"](21) with controls=[+16] with nocontrol
+QGate["T"]*(21) with nocontrol
+QGate["not"](21) with controls=[+22] with nocontrol
+QGate["T"](21) with nocontrol
+QGate["not"](21) with controls=[+16] with nocontrol
+QGate["T"]*(21) with nocontrol
+QGate["not"](21) with controls=[+22] with nocontrol
+QGate["H"](22) with nocontrol
+QGate["not"](22) with controls=[+15] with nocontrol
+QGate["T"]*(22) with nocontrol
+QGate["not"](22) with controls=[+23] with nocontrol
+QGate["T"](22) with nocontrol
+QGate["not"](22) with controls=[+15] with nocontrol
+QGate["T"]*(22) with nocontrol
+QGate["not"](22) with controls=[+23] with nocontrol
+QGate["H"](23) with nocontrol
+QGate["not"](23) with controls=[+14] with nocontrol
+QGate["T"]*(23) with nocontrol
+QGate["not"](23) with controls=[+24] with nocontrol
+QGate["T"](23) with nocontrol
+QGate["not"](23) with controls=[+14] with nocontrol
+QGate["T"]*(23) with nocontrol
+QGate["not"](23) with controls=[+24] with nocontrol
+QGate["H"](24) with nocontrol
+QGate["not"](24) with controls=[+13] with nocontrol
+QGate["T"]*(24) with nocontrol
+QGate["not"](24) with controls=[+25] with nocontrol
+QGate["T"](24) with nocontrol
+QGate["not"](24) with controls=[+13] with nocontrol
+QGate["T"]*(24) with nocontrol
+QGate["not"](24) with controls=[+25] with nocontrol
+QGate["H"](25) with nocontrol
+QGate["not"](25) with controls=[+12] with nocontrol
+QGate["T"]*(25) with nocontrol
+QGate["not"](25) with controls=[+26] with nocontrol
+QGate["T"](25) with nocontrol
+QGate["not"](25) with controls=[+12] with nocontrol
+QGate["T"]*(25) with nocontrol
+QGate["not"](25) with controls=[+26] with nocontrol
+QGate["H"](26) with nocontrol
+QGate["not"](26) with controls=[+11] with nocontrol
+QGate["T"]*(26) with nocontrol
+QGate["not"](26) with controls=[+27] with nocontrol
+QGate["T"](26) with nocontrol
+QGate["not"](26) with controls=[+11] with nocontrol
+QGate["T"]*(26) with nocontrol
+QGate["not"](26) with controls=[+27] with nocontrol
+QGate["H"](27) with nocontrol
+QGate["not"](27) with controls=[+10] with nocontrol
+QGate["T"]*(27) with nocontrol
+QGate["not"](27) with controls=[+0] with nocontrol
+QGate["T"](27) with nocontrol
+QGate["not"](27) with controls=[+10] with nocontrol
+QGate["T"]*(27) with nocontrol
+QGate["not"](27) with controls=[+0] with nocontrol
+QGate["T"](27) with nocontrol
+QGate["H"](27) with nocontrol
+QGate["not"](26) with controls=[+10] with nocontrol
+QGate["T"](26) with nocontrol
+QGate["not"](26) with controls=[+0] with nocontrol
+QGate["T"]*(26) with nocontrol
+QGate["not"](26) with controls=[+10] with nocontrol
+QGate["T"](26) with nocontrol
+QGate["not"](26) with controls=[+0] with nocontrol
+QGate["H"](26) with nocontrol
+QGate["S"](26) with nocontrol
+QGate["not"](25) with controls=[+11] with nocontrol
+QGate["T"]*(25) with nocontrol
+QGate["not"](25) with controls=[+26] with nocontrol
+QGate["T"](25) with nocontrol
+QGate["not"](25) with controls=[+11] with nocontrol
+QGate["T"]*(25) with nocontrol
+QGate["not"](25) with controls=[+26] with nocontrol
+QGate["S"](25) with nocontrol
+QGate["not"](11) with controls=[+26] with nocontrol
+QGate["S"]*(11) with nocontrol
+QGate["not"](11) with controls=[+26] with nocontrol
+QGate["H"](25) with nocontrol
+QGate["not"](24) with controls=[+12] with nocontrol
+QGate["T"](24) with nocontrol
+QGate["not"](24) with controls=[+25] with nocontrol
+QGate["T"]*(24) with nocontrol
+QGate["not"](24) with controls=[+12] with nocontrol
+QGate["T"](24) with nocontrol
+QGate["not"](24) with controls=[+25] with nocontrol
+QGate["H"](24) with nocontrol
+QGate["not"](23) with controls=[+13] with nocontrol
+QGate["T"](23) with nocontrol
+QGate["not"](23) with controls=[+24] with nocontrol
+QGate["T"]*(23) with nocontrol
+QGate["not"](23) with controls=[+13] with nocontrol
+QGate["T"](23) with nocontrol
+QGate["not"](23) with controls=[+24] with nocontrol
+QGate["H"](23) with nocontrol
+QGate["not"](22) with controls=[+14] with nocontrol
+QGate["T"](22) with nocontrol
+QGate["not"](22) with controls=[+23] with nocontrol
+QGate["T"]*(22) with nocontrol
+QGate["not"](22) with controls=[+14] with nocontrol
+QGate["T"](22) with nocontrol
+QGate["not"](22) with controls=[+23] with nocontrol
+QGate["H"](22) with nocontrol
+QGate["not"](21) with controls=[+15] with nocontrol
+QGate["T"](21) with nocontrol
+QGate["not"](21) with controls=[+22] with nocontrol
+QGate["T"]*(21) with nocontrol
+QGate["not"](21) with controls=[+15] with nocontrol
+QGate["T"](21) with nocontrol
+QGate["not"](21) with controls=[+22] with nocontrol
+QGate["H"](21) with nocontrol
+QGate["not"](20) with controls=[+16] with nocontrol
+QGate["T"](20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+16] with nocontrol
+QGate["T"](20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["H"](20) with nocontrol
+QGate["T"](20) with nocontrol
+QGate["H"](18) with nocontrol
+QGate["not"](18) with controls=[+17] with nocontrol
+QGate["T"]*(18) with nocontrol
+QGate["not"](18) with controls=[+20] with nocontrol
+QGate["T"](18) with nocontrol
+QGate["not"](18) with controls=[+17] with nocontrol
+QGate["T"]*(18) with nocontrol
+QGate["not"](18) with controls=[+20] with nocontrol
+QGate["T"](18) with nocontrol
+QGate["not"](17) with controls=[+20] with nocontrol
+QGate["T"]*(17) with nocontrol
+QGate["not"](17) with controls=[+20] with nocontrol
+QGate["T"](17) with nocontrol
+QGate["H"](18) with nocontrol
+QGate["H"](20) with nocontrol
+QGate["not"](20) with controls=[+16] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["T"](20) with nocontrol
+QGate["not"](20) with controls=[+16] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["H"](21) with nocontrol
+QGate["not"](21) with controls=[+15] with nocontrol
+QGate["T"]*(21) with nocontrol
+QGate["not"](21) with controls=[+22] with nocontrol
+QGate["T"](21) with nocontrol
+QGate["not"](21) with controls=[+15] with nocontrol
+QGate["T"]*(21) with nocontrol
+QGate["not"](21) with controls=[+22] with nocontrol
+QGate["H"](22) with nocontrol
+QGate["not"](22) with controls=[+14] with nocontrol
+QGate["T"]*(22) with nocontrol
+QGate["not"](22) with controls=[+23] with nocontrol
+QGate["T"](22) with nocontrol
+QGate["not"](22) with controls=[+14] with nocontrol
+QGate["T"]*(22) with nocontrol
+QGate["not"](22) with controls=[+23] with nocontrol
+QGate["H"](23) with nocontrol
+QGate["not"](23) with controls=[+13] with nocontrol
+QGate["T"]*(23) with nocontrol
+QGate["not"](23) with controls=[+24] with nocontrol
+QGate["T"](23) with nocontrol
+QGate["not"](23) with controls=[+13] with nocontrol
+QGate["T"]*(23) with nocontrol
+QGate["not"](23) with controls=[+24] with nocontrol
+QGate["H"](24) with nocontrol
+QGate["not"](24) with controls=[+12] with nocontrol
+QGate["T"]*(24) with nocontrol
+QGate["not"](24) with controls=[+25] with nocontrol
+QGate["T"](24) with nocontrol
+QGate["not"](24) with controls=[+12] with nocontrol
+QGate["T"]*(24) with nocontrol
+QGate["not"](24) with controls=[+25] with nocontrol
+QGate["H"](25) with nocontrol
+QGate["not"](25) with controls=[+11] with nocontrol
+QGate["T"]*(25) with nocontrol
+QGate["not"](25) with controls=[+26] with nocontrol
+QGate["T"](25) with nocontrol
+QGate["not"](25) with controls=[+11] with nocontrol
+QGate["T"]*(25) with nocontrol
+QGate["not"](25) with controls=[+26] with nocontrol
+QGate["H"](26) with nocontrol
+QGate["not"](26) with controls=[+10] with nocontrol
+QGate["T"]*(26) with nocontrol
+QGate["not"](26) with controls=[+0] with nocontrol
+QGate["T"](26) with nocontrol
+QGate["not"](26) with controls=[+10] with nocontrol
+QGate["T"]*(26) with nocontrol
+QGate["not"](26) with controls=[+0] with nocontrol
+QGate["T"](26) with nocontrol
+QGate["H"](26) with nocontrol
+QGate["not"](25) with controls=[+10] with nocontrol
+QGate["T"](25) with nocontrol
+QGate["not"](25) with controls=[+0] with nocontrol
+QGate["T"]*(25) with nocontrol
+QGate["not"](25) with controls=[+10] with nocontrol
+QGate["T"](25) with nocontrol
+QGate["not"](25) with controls=[+0] with nocontrol
+QGate["H"](25) with nocontrol
+QGate["S"](25) with nocontrol
+QGate["not"](24) with controls=[+11] with nocontrol
+QGate["T"]*(24) with nocontrol
+QGate["not"](24) with controls=[+25] with nocontrol
+QGate["T"](24) with nocontrol
+QGate["not"](24) with controls=[+11] with nocontrol
+QGate["T"]*(24) with nocontrol
+QGate["not"](24) with controls=[+25] with nocontrol
+QGate["S"](24) with nocontrol
+QGate["not"](11) with controls=[+25] with nocontrol
+QGate["S"]*(11) with nocontrol
+QGate["not"](11) with controls=[+25] with nocontrol
+QGate["H"](24) with nocontrol
+QGate["not"](23) with controls=[+12] with nocontrol
+QGate["T"](23) with nocontrol
+QGate["not"](23) with controls=[+24] with nocontrol
+QGate["T"]*(23) with nocontrol
+QGate["not"](23) with controls=[+12] with nocontrol
+QGate["T"](23) with nocontrol
+QGate["not"](23) with controls=[+24] with nocontrol
+QGate["H"](23) with nocontrol
+QGate["not"](22) with controls=[+13] with nocontrol
+QGate["T"](22) with nocontrol
+QGate["not"](22) with controls=[+23] with nocontrol
+QGate["T"]*(22) with nocontrol
+QGate["not"](22) with controls=[+13] with nocontrol
+QGate["T"](22) with nocontrol
+QGate["not"](22) with controls=[+23] with nocontrol
+QGate["H"](22) with nocontrol
+QGate["not"](21) with controls=[+14] with nocontrol
+QGate["T"](21) with nocontrol
+QGate["not"](21) with controls=[+22] with nocontrol
+QGate["T"]*(21) with nocontrol
+QGate["not"](21) with controls=[+14] with nocontrol
+QGate["T"](21) with nocontrol
+QGate["not"](21) with controls=[+22] with nocontrol
+QGate["H"](21) with nocontrol
+QGate["not"](20) with controls=[+15] with nocontrol
+QGate["T"](20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+15] with nocontrol
+QGate["T"](20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["H"](20) with nocontrol
+QGate["T"](20) with nocontrol
+QGate["H"](17) with nocontrol
+QGate["not"](17) with controls=[+16] with nocontrol
+QGate["T"]*(17) with nocontrol
+QGate["not"](17) with controls=[+20] with nocontrol
+QGate["T"](17) with nocontrol
+QGate["not"](17) with controls=[+16] with nocontrol
+QGate["T"]*(17) with nocontrol
+QGate["not"](17) with controls=[+20] with nocontrol
+QGate["T"](17) with nocontrol
+QGate["not"](16) with controls=[+20] with nocontrol
+QGate["T"]*(16) with nocontrol
+QGate["not"](16) with controls=[+20] with nocontrol
+QGate["T"](16) with nocontrol
+QGate["H"](17) with nocontrol
+QGate["H"](20) with nocontrol
+QGate["not"](20) with controls=[+15] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["T"](20) with nocontrol
+QGate["not"](20) with controls=[+15] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["H"](21) with nocontrol
+QGate["not"](21) with controls=[+14] with nocontrol
+QGate["T"]*(21) with nocontrol
+QGate["not"](21) with controls=[+22] with nocontrol
+QGate["T"](21) with nocontrol
+QGate["not"](21) with controls=[+14] with nocontrol
+QGate["T"]*(21) with nocontrol
+QGate["not"](21) with controls=[+22] with nocontrol
+QGate["H"](22) with nocontrol
+QGate["not"](22) with controls=[+13] with nocontrol
+QGate["T"]*(22) with nocontrol
+QGate["not"](22) with controls=[+23] with nocontrol
+QGate["T"](22) with nocontrol
+QGate["not"](22) with controls=[+13] with nocontrol
+QGate["T"]*(22) with nocontrol
+QGate["not"](22) with controls=[+23] with nocontrol
+QGate["H"](23) with nocontrol
+QGate["not"](23) with controls=[+12] with nocontrol
+QGate["T"]*(23) with nocontrol
+QGate["not"](23) with controls=[+24] with nocontrol
+QGate["T"](23) with nocontrol
+QGate["not"](23) with controls=[+12] with nocontrol
+QGate["T"]*(23) with nocontrol
+QGate["not"](23) with controls=[+24] with nocontrol
+QGate["H"](24) with nocontrol
+QGate["not"](24) with controls=[+11] with nocontrol
+QGate["T"]*(24) with nocontrol
+QGate["not"](24) with controls=[+25] with nocontrol
+QGate["T"](24) with nocontrol
+QGate["not"](24) with controls=[+11] with nocontrol
+QGate["T"]*(24) with nocontrol
+QGate["not"](24) with controls=[+25] with nocontrol
+QGate["H"](25) with nocontrol
+QGate["not"](25) with controls=[+10] with nocontrol
+QGate["T"]*(25) with nocontrol
+QGate["not"](25) with controls=[+0] with nocontrol
+QGate["T"](25) with nocontrol
+QGate["not"](25) with controls=[+10] with nocontrol
+QGate["T"]*(25) with nocontrol
+QGate["not"](25) with controls=[+0] with nocontrol
+QGate["T"](25) with nocontrol
+QGate["H"](25) with nocontrol
+QGate["not"](24) with controls=[+10] with nocontrol
+QGate["T"](24) with nocontrol
+QGate["not"](24) with controls=[+0] with nocontrol
+QGate["T"]*(24) with nocontrol
+QGate["not"](24) with controls=[+10] with nocontrol
+QGate["T"](24) with nocontrol
+QGate["not"](24) with controls=[+0] with nocontrol
+QGate["H"](24) with nocontrol
+QGate["S"](24) with nocontrol
+QGate["not"](23) with controls=[+11] with nocontrol
+QGate["T"]*(23) with nocontrol
+QGate["not"](23) with controls=[+24] with nocontrol
+QGate["T"](23) with nocontrol
+QGate["not"](23) with controls=[+11] with nocontrol
+QGate["T"]*(23) with nocontrol
+QGate["not"](23) with controls=[+24] with nocontrol
+QGate["S"](23) with nocontrol
+QGate["not"](11) with controls=[+24] with nocontrol
+QGate["S"]*(11) with nocontrol
+QGate["not"](11) with controls=[+24] with nocontrol
+QGate["H"](23) with nocontrol
+QGate["not"](22) with controls=[+12] with nocontrol
+QGate["T"](22) with nocontrol
+QGate["not"](22) with controls=[+23] with nocontrol
+QGate["T"]*(22) with nocontrol
+QGate["not"](22) with controls=[+12] with nocontrol
+QGate["T"](22) with nocontrol
+QGate["not"](22) with controls=[+23] with nocontrol
+QGate["H"](22) with nocontrol
+QGate["not"](21) with controls=[+13] with nocontrol
+QGate["T"](21) with nocontrol
+QGate["not"](21) with controls=[+22] with nocontrol
+QGate["T"]*(21) with nocontrol
+QGate["not"](21) with controls=[+13] with nocontrol
+QGate["T"](21) with nocontrol
+QGate["not"](21) with controls=[+22] with nocontrol
+QGate["H"](21) with nocontrol
+QGate["not"](20) with controls=[+14] with nocontrol
+QGate["T"](20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+14] with nocontrol
+QGate["T"](20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["H"](20) with nocontrol
+QGate["T"](20) with nocontrol
+QGate["H"](16) with nocontrol
+QGate["not"](16) with controls=[+15] with nocontrol
+QGate["T"]*(16) with nocontrol
+QGate["not"](16) with controls=[+20] with nocontrol
+QGate["T"](16) with nocontrol
+QGate["not"](16) with controls=[+15] with nocontrol
+QGate["T"]*(16) with nocontrol
+QGate["not"](16) with controls=[+20] with nocontrol
+QGate["T"](16) with nocontrol
+QGate["not"](15) with controls=[+20] with nocontrol
+QGate["T"]*(15) with nocontrol
+QGate["not"](15) with controls=[+20] with nocontrol
+QGate["T"](15) with nocontrol
+QGate["H"](16) with nocontrol
+QGate["H"](20) with nocontrol
+QGate["not"](20) with controls=[+14] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["T"](20) with nocontrol
+QGate["not"](20) with controls=[+14] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["H"](21) with nocontrol
+QGate["not"](21) with controls=[+13] with nocontrol
+QGate["T"]*(21) with nocontrol
+QGate["not"](21) with controls=[+22] with nocontrol
+QGate["T"](21) with nocontrol
+QGate["not"](21) with controls=[+13] with nocontrol
+QGate["T"]*(21) with nocontrol
+QGate["not"](21) with controls=[+22] with nocontrol
+QGate["H"](22) with nocontrol
+QGate["not"](22) with controls=[+12] with nocontrol
+QGate["T"]*(22) with nocontrol
+QGate["not"](22) with controls=[+23] with nocontrol
+QGate["T"](22) with nocontrol
+QGate["not"](22) with controls=[+12] with nocontrol
+QGate["T"]*(22) with nocontrol
+QGate["not"](22) with controls=[+23] with nocontrol
+QGate["H"](23) with nocontrol
+QGate["not"](23) with controls=[+11] with nocontrol
+QGate["T"]*(23) with nocontrol
+QGate["not"](23) with controls=[+24] with nocontrol
+QGate["T"](23) with nocontrol
+QGate["not"](23) with controls=[+11] with nocontrol
+QGate["T"]*(23) with nocontrol
+QGate["not"](23) with controls=[+24] with nocontrol
+QGate["H"](24) with nocontrol
+QGate["not"](24) with controls=[+10] with nocontrol
+QGate["T"]*(24) with nocontrol
+QGate["not"](24) with controls=[+0] with nocontrol
+QGate["T"](24) with nocontrol
+QGate["not"](24) with controls=[+10] with nocontrol
+QGate["T"]*(24) with nocontrol
+QGate["not"](24) with controls=[+0] with nocontrol
+QGate["T"](24) with nocontrol
+QGate["H"](24) with nocontrol
+QGate["not"](23) with controls=[+10] with nocontrol
+QGate["T"](23) with nocontrol
+QGate["not"](23) with controls=[+0] with nocontrol
+QGate["T"]*(23) with nocontrol
+QGate["not"](23) with controls=[+10] with nocontrol
+QGate["T"](23) with nocontrol
+QGate["not"](23) with controls=[+0] with nocontrol
+QGate["H"](23) with nocontrol
+QGate["S"](23) with nocontrol
+QGate["not"](22) with controls=[+11] with nocontrol
+QGate["T"]*(22) with nocontrol
+QGate["not"](22) with controls=[+23] with nocontrol
+QGate["T"](22) with nocontrol
+QGate["not"](22) with controls=[+11] with nocontrol
+QGate["T"]*(22) with nocontrol
+QGate["not"](22) with controls=[+23] with nocontrol
+QGate["S"](22) with nocontrol
+QGate["not"](11) with controls=[+23] with nocontrol
+QGate["S"]*(11) with nocontrol
+QGate["not"](11) with controls=[+23] with nocontrol
+QGate["H"](22) with nocontrol
+QGate["not"](21) with controls=[+12] with nocontrol
+QGate["T"](21) with nocontrol
+QGate["not"](21) with controls=[+22] with nocontrol
+QGate["T"]*(21) with nocontrol
+QGate["not"](21) with controls=[+12] with nocontrol
+QGate["T"](21) with nocontrol
+QGate["not"](21) with controls=[+22] with nocontrol
+QGate["H"](21) with nocontrol
+QGate["not"](20) with controls=[+13] with nocontrol
+QGate["T"](20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+13] with nocontrol
+QGate["T"](20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["H"](20) with nocontrol
+QGate["T"](20) with nocontrol
+QGate["H"](15) with nocontrol
+QGate["not"](15) with controls=[+14] with nocontrol
+QGate["T"]*(15) with nocontrol
+QGate["not"](15) with controls=[+20] with nocontrol
+QGate["T"](15) with nocontrol
+QGate["not"](15) with controls=[+14] with nocontrol
+QGate["T"]*(15) with nocontrol
+QGate["not"](15) with controls=[+20] with nocontrol
+QGate["T"](15) with nocontrol
+QGate["not"](14) with controls=[+20] with nocontrol
+QGate["T"]*(14) with nocontrol
+QGate["not"](14) with controls=[+20] with nocontrol
+QGate["T"](14) with nocontrol
+QGate["H"](15) with nocontrol
+QGate["H"](20) with nocontrol
+QGate["not"](20) with controls=[+13] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["T"](20) with nocontrol
+QGate["not"](20) with controls=[+13] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["H"](21) with nocontrol
+QGate["not"](21) with controls=[+12] with nocontrol
+QGate["T"]*(21) with nocontrol
+QGate["not"](21) with controls=[+22] with nocontrol
+QGate["T"](21) with nocontrol
+QGate["not"](21) with controls=[+12] with nocontrol
+QGate["T"]*(21) with nocontrol
+QGate["not"](21) with controls=[+22] with nocontrol
+QGate["H"](22) with nocontrol
+QGate["not"](22) with controls=[+11] with nocontrol
+QGate["T"]*(22) with nocontrol
+QGate["not"](22) with controls=[+23] with nocontrol
+QGate["T"](22) with nocontrol
+QGate["not"](22) with controls=[+11] with nocontrol
+QGate["T"]*(22) with nocontrol
+QGate["not"](22) with controls=[+23] with nocontrol
+QGate["H"](23) with nocontrol
+QGate["not"](23) with controls=[+10] with nocontrol
+QGate["T"]*(23) with nocontrol
+QGate["not"](23) with controls=[+0] with nocontrol
+QGate["T"](23) with nocontrol
+QGate["not"](23) with controls=[+10] with nocontrol
+QGate["T"]*(23) with nocontrol
+QGate["not"](23) with controls=[+0] with nocontrol
+QGate["T"](23) with nocontrol
+QGate["H"](23) with nocontrol
+QGate["not"](22) with controls=[+10] with nocontrol
+QGate["T"](22) with nocontrol
+QGate["not"](22) with controls=[+0] with nocontrol
+QGate["T"]*(22) with nocontrol
+QGate["not"](22) with controls=[+10] with nocontrol
+QGate["T"](22) with nocontrol
+QGate["not"](22) with controls=[+0] with nocontrol
+QGate["H"](22) with nocontrol
+QGate["S"](22) with nocontrol
+QGate["not"](21) with controls=[+11] with nocontrol
+QGate["T"]*(21) with nocontrol
+QGate["not"](21) with controls=[+22] with nocontrol
+QGate["T"](21) with nocontrol
+QGate["not"](21) with controls=[+11] with nocontrol
+QGate["T"]*(21) with nocontrol
+QGate["not"](21) with controls=[+22] with nocontrol
+QGate["S"](21) with nocontrol
+QGate["not"](11) with controls=[+22] with nocontrol
+QGate["S"]*(11) with nocontrol
+QGate["not"](11) with controls=[+22] with nocontrol
+QGate["H"](21) with nocontrol
+QGate["not"](20) with controls=[+12] with nocontrol
+QGate["T"](20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+12] with nocontrol
+QGate["T"](20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["H"](20) with nocontrol
+QGate["T"](20) with nocontrol
+QGate["H"](14) with nocontrol
+QGate["not"](14) with controls=[+13] with nocontrol
+QGate["T"]*(14) with nocontrol
+QGate["not"](14) with controls=[+20] with nocontrol
+QGate["T"](14) with nocontrol
+QGate["not"](14) with controls=[+13] with nocontrol
+QGate["T"]*(14) with nocontrol
+QGate["not"](14) with controls=[+20] with nocontrol
+QGate["T"](14) with nocontrol
+QGate["not"](13) with controls=[+20] with nocontrol
+QGate["T"]*(13) with nocontrol
+QGate["not"](13) with controls=[+20] with nocontrol
+QGate["T"](13) with nocontrol
+QGate["H"](14) with nocontrol
+QGate["H"](20) with nocontrol
+QGate["not"](20) with controls=[+12] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["T"](20) with nocontrol
+QGate["not"](20) with controls=[+12] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["H"](21) with nocontrol
+QGate["not"](21) with controls=[+11] with nocontrol
+QGate["T"]*(21) with nocontrol
+QGate["not"](21) with controls=[+22] with nocontrol
+QGate["T"](21) with nocontrol
+QGate["not"](21) with controls=[+11] with nocontrol
+QGate["T"]*(21) with nocontrol
+QGate["not"](21) with controls=[+22] with nocontrol
+QGate["H"](22) with nocontrol
+QGate["not"](22) with controls=[+10] with nocontrol
+QGate["T"]*(22) with nocontrol
+QGate["not"](22) with controls=[+0] with nocontrol
+QGate["T"](22) with nocontrol
+QGate["not"](22) with controls=[+10] with nocontrol
+QGate["T"]*(22) with nocontrol
+QGate["not"](22) with controls=[+0] with nocontrol
+QGate["T"](22) with nocontrol
+QGate["H"](22) with nocontrol
+QGate["not"](21) with controls=[+10] with nocontrol
+QGate["T"](21) with nocontrol
+QGate["not"](21) with controls=[+0] with nocontrol
+QGate["T"]*(21) with nocontrol
+QGate["not"](21) with controls=[+10] with nocontrol
+QGate["T"](21) with nocontrol
+QGate["not"](21) with controls=[+0] with nocontrol
+QGate["H"](21) with nocontrol
+QGate["S"](21) with nocontrol
+QGate["not"](20) with controls=[+11] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["T"](20) with nocontrol
+QGate["not"](20) with controls=[+11] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["S"](20) with nocontrol
+QGate["not"](11) with controls=[+21] with nocontrol
+QGate["S"]*(11) with nocontrol
+QGate["not"](11) with controls=[+21] with nocontrol
+QGate["H"](20) with nocontrol
+QGate["T"](20) with nocontrol
+QGate["H"](13) with nocontrol
+QGate["not"](13) with controls=[+12] with nocontrol
+QGate["T"]*(13) with nocontrol
+QGate["not"](13) with controls=[+20] with nocontrol
+QGate["T"](13) with nocontrol
+QGate["not"](13) with controls=[+12] with nocontrol
+QGate["T"]*(13) with nocontrol
+QGate["not"](13) with controls=[+20] with nocontrol
+QGate["T"](13) with nocontrol
+QGate["not"](12) with controls=[+20] with nocontrol
+QGate["T"]*(12) with nocontrol
+QGate["not"](12) with controls=[+20] with nocontrol
+QGate["T"](12) with nocontrol
+QGate["H"](13) with nocontrol
+QGate["H"](20) with nocontrol
+QGate["not"](20) with controls=[+11] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["T"](20) with nocontrol
+QGate["not"](20) with controls=[+11] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["H"](21) with nocontrol
+QGate["not"](21) with controls=[+10] with nocontrol
+QGate["T"]*(21) with nocontrol
+QGate["not"](21) with controls=[+0] with nocontrol
+QGate["T"](21) with nocontrol
+QGate["not"](21) with controls=[+10] with nocontrol
+QGate["T"]*(21) with nocontrol
+QGate["not"](21) with controls=[+0] with nocontrol
+QGate["T"](21) with nocontrol
+QGate["H"](21) with nocontrol
+QGate["not"](20) with controls=[+10] with nocontrol
+QGate["T"](20) with nocontrol
+QGate["not"](20) with controls=[+0] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+10] with nocontrol
+QGate["T"](20) with nocontrol
+QGate["not"](20) with controls=[+0] with nocontrol
+QGate["H"](20) with nocontrol
+QGate["T"](20) with nocontrol
+QGate["H"](12) with nocontrol
+QGate["not"](12) with controls=[+11] with nocontrol
+QGate["T"]*(12) with nocontrol
+QGate["not"](12) with controls=[+20] with nocontrol
+QGate["T"](12) with nocontrol
+QGate["not"](12) with controls=[+11] with nocontrol
+QGate["T"]*(12) with nocontrol
+QGate["not"](12) with controls=[+20] with nocontrol
+QGate["T"](12) with nocontrol
+QGate["not"](11) with controls=[+20] with nocontrol
+QGate["T"]*(11) with nocontrol
+QGate["not"](11) with controls=[+20] with nocontrol
+QGate["H"](12) with nocontrol
+QGate["H"](20) with nocontrol
+QGate["not"](20) with controls=[+10] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+0] with nocontrol
+QGate["T"](20) with nocontrol
+QGate["not"](20) with controls=[+10] with nocontrol
+QGate["T"]*(20) with nocontrol
+QGate["not"](20) with controls=[+0] with nocontrol
+QGate["T"](20) with nocontrol
+QGate["H"](20) with nocontrol
+QGate["H"](11) with nocontrol
+QGate["not"](11) with controls=[+10] with nocontrol
+QGate["T"]*(11) with nocontrol
+QGate["not"](11) with controls=[+0] with nocontrol
+QGate["T"](11) with nocontrol
+QGate["not"](11) with controls=[+10] with nocontrol
+QGate["T"]*(11) with nocontrol
+QGate["not"](11) with controls=[+0] with nocontrol
+QGate["T"](11) with nocontrol
+QGate["H"](11) with nocontrol
+QGate["not"](10) with controls=[+0] with nocontrol
+QGate["S"]*(10) with nocontrol
+QGate["T"]*(10) with nocontrol
+Outputs: 0:Qbit, 1:Qbit, 2:Qbit, 3:Qbit, 4:Qbit, 5:Qbit, 6:Qbit, 7:Qbit, 8:Qbit, 9:Qbit, 10:Qbit, 11:Qbit, 12:Qbit, 13:Qbit, 14:Qbit, 15:Qbit, 16:Qbit, 17:Qbit, 18:Qbit, 19:Qbit, 20:Qbit, 21:Qbit, 22:Qbit, 23:Qbit, 24:Qbit, 25:Qbit, 26:Qbit, 27:Qbit

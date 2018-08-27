@@ -1,0 +1,759 @@
+Inputs: 0:Qbit, 1:Qbit, 2:Qbit, 3:Qbit, 4:Qbit, 5:Qbit, 6:Qbit, 7:Qbit, 8:Qbit, 9:Qbit, 10:Qbit, 11:Qbit, 12:Qbit, 13:Qbit, 14:Qbit, 15:Qbit, 16:Qbit, 17:Qbit, 18:Qbit, 19:Qbit, 20:Qbit, 21:Qbit, 22:Qbit, 23:Qbit, 24:Qbit, 25:Qbit, 26:Qbit, 27:Qbit, 28:Qbit, 29:Qbit, 30:Qbit, 31:Qbit, 32:Qbit, 33:Qbit, 34:Qbit, 35:Qbit, 36:Qbit, 37:Qbit, 38:Qbit, 39:Qbit, 40:Qbit, 41:Qbit, 42:Qbit, 43:Qbit, 44:Qbit, 45:Qbit, 46:Qbit, 47:Qbit, 48:Qbit, 49:Qbit
+Subroutine(x100000010000)["S1", shape "([Q,Q,Q,Q,Q,Q,Q,Q,Q,Q,Q,Q,Q,Q,Q,Q,Q,Q,Q,Q,Q,Q,Q,Q,Q,Q,Q,Q,Q,Q,Q,Q,Q,Q,Q,Q,Q,Q,Q,Q,Q,Q,Q,Q,Q,Q,Q,Q,Q,Q],())"] (0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49) -> (0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49)
+Outputs: 0:Qbit, 1:Qbit, 2:Qbit, 3:Qbit, 4:Qbit, 5:Qbit, 6:Qbit, 7:Qbit, 8:Qbit, 9:Qbit, 10:Qbit, 11:Qbit, 12:Qbit, 13:Qbit, 14:Qbit, 15:Qbit, 16:Qbit, 17:Qbit, 18:Qbit, 19:Qbit, 20:Qbit, 21:Qbit, 22:Qbit, 23:Qbit, 24:Qbit, 25:Qbit, 26:Qbit, 27:Qbit, 28:Qbit, 29:Qbit, 30:Qbit, 31:Qbit, 32:Qbit, 33:Qbit, 34:Qbit, 35:Qbit, 36:Qbit, 37:Qbit, 38:Qbit, 39:Qbit, 40:Qbit, 41:Qbit, 42:Qbit, 43:Qbit, 44:Qbit, 45:Qbit, 46:Qbit, 47:Qbit, 48:Qbit, 49:Qbit
+
+Subroutine: "S1"
+Shape: "([Q,Q,Q,Q,Q,Q,Q,Q,Q,Q,Q,Q,Q,Q,Q,Q,Q,Q,Q,Q,Q,Q,Q,Q,Q,Q,Q,Q,Q,Q,Q,Q,Q,Q,Q,Q,Q,Q,Q,Q,Q,Q,Q,Q,Q,Q,Q,Q,Q,Q],())"
+Controllable: yes
+Inputs: 0:Qbit, 1:Qbit, 2:Qbit, 3:Qbit, 4:Qbit, 5:Qbit, 6:Qbit, 7:Qbit, 8:Qbit, 9:Qbit, 10:Qbit, 11:Qbit, 12:Qbit, 13:Qbit, 14:Qbit, 15:Qbit, 16:Qbit, 17:Qbit, 18:Qbit, 19:Qbit, 20:Qbit, 21:Qbit, 22:Qbit, 23:Qbit, 24:Qbit, 25:Qbit, 26:Qbit, 27:Qbit, 28:Qbit, 29:Qbit, 30:Qbit, 31:Qbit, 32:Qbit, 33:Qbit, 34:Qbit, 35:Qbit, 36:Qbit, 37:Qbit, 38:Qbit, 39:Qbit, 40:Qbit, 41:Qbit, 42:Qbit, 43:Qbit, 44:Qbit, 45:Qbit, 46:Qbit, 47:Qbit, 48:Qbit, 49:Qbit
+QGate["H"](0) with nocontrol
+QGate["H"](1) with nocontrol
+QGate["not"](0) with controls=[+1] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](0)
+QGate["not"](0) with controls=[+1] with nocontrol
+QGate["H"](2) with nocontrol
+QGate["not"](1) with controls=[+2] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](1)
+QGate["not"](1) with controls=[+2] with nocontrol
+QGate["S"](1) with nocontrol
+QGate["H"](3) with nocontrol
+QGate["not"](2) with controls=[+3] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](2)
+QGate["not"](2) with controls=[+3] with nocontrol
+QGate["S"](2) with nocontrol
+QGate["H"](4) with nocontrol
+QGate["not"](3) with controls=[+4] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](3)
+QGate["not"](3) with controls=[+4] with nocontrol
+QGate["S"](3) with nocontrol
+QGate["H"](5) with nocontrol
+QGate["not"](4) with controls=[+5] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](4)
+QGate["not"](4) with controls=[+5] with nocontrol
+QGate["S"](4) with nocontrol
+QGate["H"](6) with nocontrol
+QGate["not"](5) with controls=[+6] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](5)
+QGate["not"](5) with controls=[+6] with nocontrol
+QGate["S"](5) with nocontrol
+QGate["H"](7) with nocontrol
+QGate["not"](6) with controls=[+7] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](6)
+QGate["not"](6) with controls=[+7] with nocontrol
+QGate["S"](6) with nocontrol
+QGate["H"](8) with nocontrol
+QGate["not"](7) with controls=[+8] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](7)
+QGate["not"](7) with controls=[+8] with nocontrol
+QGate["S"](7) with nocontrol
+QGate["H"](9) with nocontrol
+QGate["not"](8) with controls=[+9] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](8)
+QGate["not"](8) with controls=[+9] with nocontrol
+QGate["S"](8) with nocontrol
+QGate["H"](10) with nocontrol
+QGate["not"](9) with controls=[+10] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](9)
+QGate["not"](9) with controls=[+10] with nocontrol
+QGate["S"](9) with nocontrol
+QGate["H"](11) with nocontrol
+QGate["not"](10) with controls=[+11] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](10)
+QGate["not"](10) with controls=[+11] with nocontrol
+QGate["S"](10) with nocontrol
+QGate["H"](12) with nocontrol
+QGate["not"](11) with controls=[+12] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](11)
+QGate["not"](11) with controls=[+12] with nocontrol
+QGate["S"](11) with nocontrol
+QGate["H"](13) with nocontrol
+QGate["not"](12) with controls=[+13] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](12)
+QGate["not"](12) with controls=[+13] with nocontrol
+QGate["S"](12) with nocontrol
+QGate["H"](14) with nocontrol
+QGate["not"](13) with controls=[+14] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](13)
+QGate["not"](13) with controls=[+14] with nocontrol
+QGate["S"](13) with nocontrol
+QGate["H"](15) with nocontrol
+QGate["not"](14) with controls=[+15] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](14)
+QGate["not"](14) with controls=[+15] with nocontrol
+QGate["S"](14) with nocontrol
+QGate["H"](16) with nocontrol
+QGate["not"](15) with controls=[+16] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](15)
+QGate["not"](15) with controls=[+16] with nocontrol
+QGate["S"](15) with nocontrol
+QGate["H"](17) with nocontrol
+QGate["not"](16) with controls=[+17] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](16)
+QGate["not"](16) with controls=[+17] with nocontrol
+QGate["S"](16) with nocontrol
+QGate["H"](18) with nocontrol
+QGate["not"](17) with controls=[+18] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](17)
+QGate["not"](17) with controls=[+18] with nocontrol
+QGate["S"](17) with nocontrol
+QGate["H"](19) with nocontrol
+QGate["not"](18) with controls=[+19] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](18)
+QGate["not"](18) with controls=[+19] with nocontrol
+QGate["S"](18) with nocontrol
+QGate["H"](20) with nocontrol
+QGate["not"](19) with controls=[+20] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](19)
+QGate["not"](19) with controls=[+20] with nocontrol
+QGate["S"](19) with nocontrol
+QGate["H"](21) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](20)
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["S"](20) with nocontrol
+QGate["H"](22) with nocontrol
+QGate["not"](21) with controls=[+22] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](21)
+QGate["not"](21) with controls=[+22] with nocontrol
+QGate["S"](21) with nocontrol
+QGate["H"](23) with nocontrol
+QGate["not"](22) with controls=[+23] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](22)
+QGate["not"](22) with controls=[+23] with nocontrol
+QGate["S"](22) with nocontrol
+QGate["H"](24) with nocontrol
+QGate["not"](23) with controls=[+24] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](23)
+QGate["not"](23) with controls=[+24] with nocontrol
+QGate["S"](23) with nocontrol
+QGate["H"](25) with nocontrol
+QGate["not"](24) with controls=[+25] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](24)
+QGate["not"](24) with controls=[+25] with nocontrol
+QGate["S"](24) with nocontrol
+QGate["H"](26) with nocontrol
+QGate["not"](25) with controls=[+26] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](25)
+QGate["not"](25) with controls=[+26] with nocontrol
+QGate["S"](25) with nocontrol
+QGate["H"](27) with nocontrol
+QGate["not"](26) with controls=[+27] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](26)
+QGate["not"](26) with controls=[+27] with nocontrol
+QGate["S"](26) with nocontrol
+QGate["H"](28) with nocontrol
+QGate["not"](27) with controls=[+28] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](27)
+QGate["not"](27) with controls=[+28] with nocontrol
+QGate["S"](27) with nocontrol
+QGate["H"](29) with nocontrol
+QGate["not"](28) with controls=[+29] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](28)
+QGate["not"](28) with controls=[+29] with nocontrol
+QGate["S"](28) with nocontrol
+QGate["H"](30) with nocontrol
+QGate["not"](29) with controls=[+30] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](29)
+QGate["not"](29) with controls=[+30] with nocontrol
+QGate["S"](29) with nocontrol
+QGate["H"](31) with nocontrol
+QGate["not"](30) with controls=[+31] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](30)
+QGate["not"](30) with controls=[+31] with nocontrol
+QGate["S"](30) with nocontrol
+QGate["H"](32) with nocontrol
+QGate["not"](31) with controls=[+32] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](31)
+QGate["not"](31) with controls=[+32] with nocontrol
+QGate["S"](31) with nocontrol
+QGate["H"](33) with nocontrol
+QGate["not"](32) with controls=[+33] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](32)
+QGate["not"](32) with controls=[+33] with nocontrol
+QGate["S"](32) with nocontrol
+QGate["H"](34) with nocontrol
+QGate["not"](33) with controls=[+34] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](33)
+QGate["not"](33) with controls=[+34] with nocontrol
+QGate["S"](33) with nocontrol
+QGate["H"](35) with nocontrol
+QGate["not"](34) with controls=[+35] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](34)
+QGate["not"](34) with controls=[+35] with nocontrol
+QGate["S"](34) with nocontrol
+QGate["H"](36) with nocontrol
+QGate["not"](35) with controls=[+36] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](35)
+QGate["not"](35) with controls=[+36] with nocontrol
+QGate["S"](35) with nocontrol
+QGate["H"](37) with nocontrol
+QGate["not"](36) with controls=[+37] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](36)
+QGate["not"](36) with controls=[+37] with nocontrol
+QGate["S"](36) with nocontrol
+QGate["H"](38) with nocontrol
+QGate["not"](37) with controls=[+38] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](37)
+QGate["not"](37) with controls=[+38] with nocontrol
+QGate["S"](37) with nocontrol
+QGate["H"](39) with nocontrol
+QGate["not"](38) with controls=[+39] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](38)
+QGate["not"](38) with controls=[+39] with nocontrol
+QGate["S"](38) with nocontrol
+QGate["H"](40) with nocontrol
+QGate["not"](39) with controls=[+40] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](39)
+QGate["not"](39) with controls=[+40] with nocontrol
+QGate["S"](39) with nocontrol
+QGate["H"](41) with nocontrol
+QGate["not"](40) with controls=[+41] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](40)
+QGate["not"](40) with controls=[+41] with nocontrol
+QGate["S"](40) with nocontrol
+QGate["H"](42) with nocontrol
+QGate["not"](41) with controls=[+42] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](41)
+QGate["not"](41) with controls=[+42] with nocontrol
+QGate["S"](41) with nocontrol
+QGate["H"](43) with nocontrol
+QGate["not"](42) with controls=[+43] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](42)
+QGate["not"](42) with controls=[+43] with nocontrol
+QGate["S"](42) with nocontrol
+QGate["H"](44) with nocontrol
+QGate["not"](43) with controls=[+44] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](43)
+QGate["not"](43) with controls=[+44] with nocontrol
+QGate["S"](43) with nocontrol
+QGate["H"](45) with nocontrol
+QGate["not"](44) with controls=[+45] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](44)
+QGate["not"](44) with controls=[+45] with nocontrol
+QGate["S"](44) with nocontrol
+QGate["H"](46) with nocontrol
+QGate["not"](45) with controls=[+46] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](45)
+QGate["not"](45) with controls=[+46] with nocontrol
+QGate["S"](45) with nocontrol
+QGate["H"](47) with nocontrol
+QGate["not"](46) with controls=[+47] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](46)
+QGate["not"](46) with controls=[+47] with nocontrol
+QGate["S"](46) with nocontrol
+QGate["H"](48) with nocontrol
+QGate["not"](47) with controls=[+48] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](47)
+QGate["not"](47) with controls=[+48] with nocontrol
+QGate["S"](47) with nocontrol
+QGate["H"](49) with nocontrol
+QGate["not"](48) with controls=[+49] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](48)
+QGate["not"](48) with controls=[+49] with nocontrol
+QGate["S"](48) with nocontrol
+QGate["not"](0) with controls=[+49] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](0)
+QGate["not"](0) with controls=[+49] with nocontrol
+QGate["S"](49) with nocontrol
+QGate["S"](0) with nocontrol
+QGate["H"](0) with nocontrol
+QGate["S"](0) with nocontrol
+QGate["H"](1) with nocontrol
+QGate["S"](1) with nocontrol
+QGate["not"](0) with controls=[+1] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](0)
+QGate["not"](0) with controls=[+1] with nocontrol
+QGate["H"](2) with nocontrol
+QGate["S"](2) with nocontrol
+QGate["not"](1) with controls=[+2] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](1)
+QGate["not"](1) with controls=[+2] with nocontrol
+QGate["H"](1) with nocontrol
+QGate["H"](3) with nocontrol
+QGate["S"](3) with nocontrol
+QGate["not"](2) with controls=[+3] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](2)
+QGate["not"](2) with controls=[+3] with nocontrol
+QGate["H"](2) with nocontrol
+QGate["H"](4) with nocontrol
+QGate["S"](4) with nocontrol
+QGate["not"](3) with controls=[+4] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](3)
+QGate["not"](3) with controls=[+4] with nocontrol
+QGate["H"](3) with nocontrol
+QGate["H"](5) with nocontrol
+QGate["S"](5) with nocontrol
+QGate["not"](4) with controls=[+5] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](4)
+QGate["not"](4) with controls=[+5] with nocontrol
+QGate["H"](4) with nocontrol
+QGate["H"](6) with nocontrol
+QGate["S"](6) with nocontrol
+QGate["not"](5) with controls=[+6] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](5)
+QGate["not"](5) with controls=[+6] with nocontrol
+QGate["H"](5) with nocontrol
+QGate["H"](7) with nocontrol
+QGate["S"](7) with nocontrol
+QGate["not"](6) with controls=[+7] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](6)
+QGate["not"](6) with controls=[+7] with nocontrol
+QGate["H"](6) with nocontrol
+QGate["H"](8) with nocontrol
+QGate["S"](8) with nocontrol
+QGate["not"](7) with controls=[+8] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](7)
+QGate["not"](7) with controls=[+8] with nocontrol
+QGate["H"](7) with nocontrol
+QGate["H"](9) with nocontrol
+QGate["S"](9) with nocontrol
+QGate["not"](8) with controls=[+9] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](8)
+QGate["not"](8) with controls=[+9] with nocontrol
+QGate["H"](8) with nocontrol
+QGate["H"](10) with nocontrol
+QGate["S"](10) with nocontrol
+QGate["not"](9) with controls=[+10] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](9)
+QGate["not"](9) with controls=[+10] with nocontrol
+QGate["H"](9) with nocontrol
+QGate["H"](11) with nocontrol
+QGate["S"](11) with nocontrol
+QGate["not"](10) with controls=[+11] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](10)
+QGate["not"](10) with controls=[+11] with nocontrol
+QGate["H"](10) with nocontrol
+QGate["H"](12) with nocontrol
+QGate["S"](12) with nocontrol
+QGate["not"](11) with controls=[+12] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](11)
+QGate["not"](11) with controls=[+12] with nocontrol
+QGate["H"](11) with nocontrol
+QGate["H"](13) with nocontrol
+QGate["S"](13) with nocontrol
+QGate["not"](12) with controls=[+13] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](12)
+QGate["not"](12) with controls=[+13] with nocontrol
+QGate["H"](12) with nocontrol
+QGate["H"](14) with nocontrol
+QGate["S"](14) with nocontrol
+QGate["not"](13) with controls=[+14] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](13)
+QGate["not"](13) with controls=[+14] with nocontrol
+QGate["H"](13) with nocontrol
+QGate["H"](15) with nocontrol
+QGate["S"](15) with nocontrol
+QGate["not"](14) with controls=[+15] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](14)
+QGate["not"](14) with controls=[+15] with nocontrol
+QGate["H"](14) with nocontrol
+QGate["H"](16) with nocontrol
+QGate["S"](16) with nocontrol
+QGate["not"](15) with controls=[+16] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](15)
+QGate["not"](15) with controls=[+16] with nocontrol
+QGate["H"](15) with nocontrol
+QGate["H"](17) with nocontrol
+QGate["S"](17) with nocontrol
+QGate["not"](16) with controls=[+17] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](16)
+QGate["not"](16) with controls=[+17] with nocontrol
+QGate["H"](16) with nocontrol
+QGate["H"](18) with nocontrol
+QGate["S"](18) with nocontrol
+QGate["not"](17) with controls=[+18] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](17)
+QGate["not"](17) with controls=[+18] with nocontrol
+QGate["H"](17) with nocontrol
+QGate["H"](19) with nocontrol
+QGate["S"](19) with nocontrol
+QGate["not"](18) with controls=[+19] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](18)
+QGate["not"](18) with controls=[+19] with nocontrol
+QGate["H"](18) with nocontrol
+QGate["H"](20) with nocontrol
+QGate["S"](20) with nocontrol
+QGate["not"](19) with controls=[+20] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](19)
+QGate["not"](19) with controls=[+20] with nocontrol
+QGate["H"](19) with nocontrol
+QGate["H"](21) with nocontrol
+QGate["S"](21) with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](20)
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["H"](20) with nocontrol
+QGate["H"](22) with nocontrol
+QGate["S"](22) with nocontrol
+QGate["not"](21) with controls=[+22] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](21)
+QGate["not"](21) with controls=[+22] with nocontrol
+QGate["H"](21) with nocontrol
+QGate["H"](23) with nocontrol
+QGate["S"](23) with nocontrol
+QGate["not"](22) with controls=[+23] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](22)
+QGate["not"](22) with controls=[+23] with nocontrol
+QGate["H"](22) with nocontrol
+QGate["H"](24) with nocontrol
+QGate["S"](24) with nocontrol
+QGate["not"](23) with controls=[+24] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](23)
+QGate["not"](23) with controls=[+24] with nocontrol
+QGate["H"](23) with nocontrol
+QGate["H"](25) with nocontrol
+QGate["S"](25) with nocontrol
+QGate["not"](24) with controls=[+25] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](24)
+QGate["not"](24) with controls=[+25] with nocontrol
+QGate["H"](24) with nocontrol
+QGate["H"](26) with nocontrol
+QGate["S"](26) with nocontrol
+QGate["not"](25) with controls=[+26] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](25)
+QGate["not"](25) with controls=[+26] with nocontrol
+QGate["H"](25) with nocontrol
+QGate["H"](27) with nocontrol
+QGate["S"](27) with nocontrol
+QGate["not"](26) with controls=[+27] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](26)
+QGate["not"](26) with controls=[+27] with nocontrol
+QGate["H"](26) with nocontrol
+QGate["H"](28) with nocontrol
+QGate["S"](28) with nocontrol
+QGate["not"](27) with controls=[+28] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](27)
+QGate["not"](27) with controls=[+28] with nocontrol
+QGate["H"](27) with nocontrol
+QGate["H"](29) with nocontrol
+QGate["S"](29) with nocontrol
+QGate["not"](28) with controls=[+29] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](28)
+QGate["not"](28) with controls=[+29] with nocontrol
+QGate["H"](28) with nocontrol
+QGate["H"](30) with nocontrol
+QGate["S"](30) with nocontrol
+QGate["not"](29) with controls=[+30] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](29)
+QGate["not"](29) with controls=[+30] with nocontrol
+QGate["H"](29) with nocontrol
+QGate["H"](31) with nocontrol
+QGate["S"](31) with nocontrol
+QGate["not"](30) with controls=[+31] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](30)
+QGate["not"](30) with controls=[+31] with nocontrol
+QGate["H"](30) with nocontrol
+QGate["H"](32) with nocontrol
+QGate["S"](32) with nocontrol
+QGate["not"](31) with controls=[+32] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](31)
+QGate["not"](31) with controls=[+32] with nocontrol
+QGate["H"](31) with nocontrol
+QGate["H"](33) with nocontrol
+QGate["S"](33) with nocontrol
+QGate["not"](32) with controls=[+33] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](32)
+QGate["not"](32) with controls=[+33] with nocontrol
+QGate["H"](32) with nocontrol
+QGate["H"](34) with nocontrol
+QGate["S"](34) with nocontrol
+QGate["not"](33) with controls=[+34] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](33)
+QGate["not"](33) with controls=[+34] with nocontrol
+QGate["H"](33) with nocontrol
+QGate["H"](35) with nocontrol
+QGate["S"](35) with nocontrol
+QGate["not"](34) with controls=[+35] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](34)
+QGate["not"](34) with controls=[+35] with nocontrol
+QGate["H"](34) with nocontrol
+QGate["H"](36) with nocontrol
+QGate["S"](36) with nocontrol
+QGate["not"](35) with controls=[+36] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](35)
+QGate["not"](35) with controls=[+36] with nocontrol
+QGate["H"](35) with nocontrol
+QGate["H"](37) with nocontrol
+QGate["S"](37) with nocontrol
+QGate["not"](36) with controls=[+37] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](36)
+QGate["not"](36) with controls=[+37] with nocontrol
+QGate["H"](36) with nocontrol
+QGate["H"](38) with nocontrol
+QGate["S"](38) with nocontrol
+QGate["not"](37) with controls=[+38] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](37)
+QGate["not"](37) with controls=[+38] with nocontrol
+QGate["H"](37) with nocontrol
+QGate["H"](39) with nocontrol
+QGate["S"](39) with nocontrol
+QGate["not"](38) with controls=[+39] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](38)
+QGate["not"](38) with controls=[+39] with nocontrol
+QGate["H"](38) with nocontrol
+QGate["H"](40) with nocontrol
+QGate["S"](40) with nocontrol
+QGate["not"](39) with controls=[+40] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](39)
+QGate["not"](39) with controls=[+40] with nocontrol
+QGate["H"](39) with nocontrol
+QGate["H"](41) with nocontrol
+QGate["S"](41) with nocontrol
+QGate["not"](40) with controls=[+41] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](40)
+QGate["not"](40) with controls=[+41] with nocontrol
+QGate["H"](40) with nocontrol
+QGate["H"](42) with nocontrol
+QGate["S"](42) with nocontrol
+QGate["not"](41) with controls=[+42] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](41)
+QGate["not"](41) with controls=[+42] with nocontrol
+QGate["H"](41) with nocontrol
+QGate["H"](43) with nocontrol
+QGate["S"](43) with nocontrol
+QGate["not"](42) with controls=[+43] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](42)
+QGate["not"](42) with controls=[+43] with nocontrol
+QGate["H"](42) with nocontrol
+QGate["H"](44) with nocontrol
+QGate["S"](44) with nocontrol
+QGate["not"](43) with controls=[+44] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](43)
+QGate["not"](43) with controls=[+44] with nocontrol
+QGate["H"](43) with nocontrol
+QGate["H"](45) with nocontrol
+QGate["S"](45) with nocontrol
+QGate["not"](44) with controls=[+45] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](44)
+QGate["not"](44) with controls=[+45] with nocontrol
+QGate["H"](44) with nocontrol
+QGate["H"](46) with nocontrol
+QGate["S"](46) with nocontrol
+QGate["not"](45) with controls=[+46] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](45)
+QGate["not"](45) with controls=[+46] with nocontrol
+QGate["H"](45) with nocontrol
+QGate["H"](47) with nocontrol
+QGate["S"](47) with nocontrol
+QGate["not"](46) with controls=[+47] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](46)
+QGate["not"](46) with controls=[+47] with nocontrol
+QGate["H"](46) with nocontrol
+QGate["H"](48) with nocontrol
+QGate["S"](48) with nocontrol
+QGate["not"](47) with controls=[+48] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](47)
+QGate["not"](47) with controls=[+48] with nocontrol
+QGate["H"](47) with nocontrol
+QGate["H"](49) with nocontrol
+QGate["S"](49) with nocontrol
+QGate["not"](48) with controls=[+49] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](48)
+QGate["not"](48) with controls=[+49] with nocontrol
+QGate["H"](48) with nocontrol
+QGate["not"](0) with controls=[+49] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](0)
+QGate["not"](0) with controls=[+49] with nocontrol
+QGate["H"](49) with nocontrol
+QGate["H"](0) with nocontrol
+QGate["not"](0) with controls=[+1] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](0)
+QGate["not"](0) with controls=[+1] with nocontrol
+QGate["not"](1) with controls=[+2] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](1)
+QGate["not"](1) with controls=[+2] with nocontrol
+QGate["not"](2) with controls=[+3] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](2)
+QGate["not"](2) with controls=[+3] with nocontrol
+QGate["not"](3) with controls=[+4] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](3)
+QGate["not"](3) with controls=[+4] with nocontrol
+QGate["not"](4) with controls=[+5] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](4)
+QGate["not"](4) with controls=[+5] with nocontrol
+QGate["not"](5) with controls=[+6] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](5)
+QGate["not"](5) with controls=[+6] with nocontrol
+QGate["not"](6) with controls=[+7] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](6)
+QGate["not"](6) with controls=[+7] with nocontrol
+QGate["not"](7) with controls=[+8] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](7)
+QGate["not"](7) with controls=[+8] with nocontrol
+QGate["not"](8) with controls=[+9] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](8)
+QGate["not"](8) with controls=[+9] with nocontrol
+QGate["not"](9) with controls=[+10] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](9)
+QGate["not"](9) with controls=[+10] with nocontrol
+QGate["not"](10) with controls=[+11] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](10)
+QGate["not"](10) with controls=[+11] with nocontrol
+QGate["not"](11) with controls=[+12] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](11)
+QGate["not"](11) with controls=[+12] with nocontrol
+QGate["not"](12) with controls=[+13] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](12)
+QGate["not"](12) with controls=[+13] with nocontrol
+QGate["not"](13) with controls=[+14] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](13)
+QGate["not"](13) with controls=[+14] with nocontrol
+QGate["not"](14) with controls=[+15] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](14)
+QGate["not"](14) with controls=[+15] with nocontrol
+QGate["not"](15) with controls=[+16] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](15)
+QGate["not"](15) with controls=[+16] with nocontrol
+QGate["not"](16) with controls=[+17] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](16)
+QGate["not"](16) with controls=[+17] with nocontrol
+QGate["not"](17) with controls=[+18] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](17)
+QGate["not"](17) with controls=[+18] with nocontrol
+QGate["not"](18) with controls=[+19] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](18)
+QGate["not"](18) with controls=[+19] with nocontrol
+QGate["not"](19) with controls=[+20] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](19)
+QGate["not"](19) with controls=[+20] with nocontrol
+QGate["not"](20) with controls=[+21] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](20)
+QGate["not"](20) with controls=[+21] with nocontrol
+QGate["not"](21) with controls=[+22] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](21)
+QGate["not"](21) with controls=[+22] with nocontrol
+QGate["not"](22) with controls=[+23] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](22)
+QGate["not"](22) with controls=[+23] with nocontrol
+QGate["not"](23) with controls=[+24] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](23)
+QGate["not"](23) with controls=[+24] with nocontrol
+QGate["not"](24) with controls=[+25] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](24)
+QGate["not"](24) with controls=[+25] with nocontrol
+QGate["not"](25) with controls=[+26] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](25)
+QGate["not"](25) with controls=[+26] with nocontrol
+QGate["not"](26) with controls=[+27] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](26)
+QGate["not"](26) with controls=[+27] with nocontrol
+QGate["not"](27) with controls=[+28] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](27)
+QGate["not"](27) with controls=[+28] with nocontrol
+QGate["not"](28) with controls=[+29] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](28)
+QGate["not"](28) with controls=[+29] with nocontrol
+QGate["not"](29) with controls=[+30] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](29)
+QGate["not"](29) with controls=[+30] with nocontrol
+QGate["not"](30) with controls=[+31] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](30)
+QGate["not"](30) with controls=[+31] with nocontrol
+QGate["not"](31) with controls=[+32] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](31)
+QGate["not"](31) with controls=[+32] with nocontrol
+QGate["not"](32) with controls=[+33] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](32)
+QGate["not"](32) with controls=[+33] with nocontrol
+QGate["not"](33) with controls=[+34] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](33)
+QGate["not"](33) with controls=[+34] with nocontrol
+QGate["not"](34) with controls=[+35] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](34)
+QGate["not"](34) with controls=[+35] with nocontrol
+QGate["not"](35) with controls=[+36] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](35)
+QGate["not"](35) with controls=[+36] with nocontrol
+QGate["not"](36) with controls=[+37] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](36)
+QGate["not"](36) with controls=[+37] with nocontrol
+QGate["not"](37) with controls=[+38] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](37)
+QGate["not"](37) with controls=[+38] with nocontrol
+QGate["not"](38) with controls=[+39] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](38)
+QGate["not"](38) with controls=[+39] with nocontrol
+QGate["not"](39) with controls=[+40] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](39)
+QGate["not"](39) with controls=[+40] with nocontrol
+QGate["not"](40) with controls=[+41] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](40)
+QGate["not"](40) with controls=[+41] with nocontrol
+QGate["not"](41) with controls=[+42] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](41)
+QGate["not"](41) with controls=[+42] with nocontrol
+QGate["not"](42) with controls=[+43] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](42)
+QGate["not"](42) with controls=[+43] with nocontrol
+QGate["not"](43) with controls=[+44] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](43)
+QGate["not"](43) with controls=[+44] with nocontrol
+QGate["not"](44) with controls=[+45] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](44)
+QGate["not"](44) with controls=[+45] with nocontrol
+QGate["not"](45) with controls=[+46] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](45)
+QGate["not"](45) with controls=[+46] with nocontrol
+QGate["not"](46) with controls=[+47] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](46)
+QGate["not"](46) with controls=[+47] with nocontrol
+QGate["not"](47) with controls=[+48] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](47)
+QGate["not"](47) with controls=[+48] with nocontrol
+QGate["not"](48) with controls=[+49] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](48)
+QGate["not"](48) with controls=[+49] with nocontrol
+QGate["not"](0) with controls=[+49] with nocontrol
+QRot["exp(-i%Z)",4.999999500000050e-10](0)
+QGate["not"](0) with controls=[+49] with nocontrol
+QRot["exp(-i%Z)",7.8539816343634350e-1](0)
+QRot["exp(-i%Z)",7.8539816384740324e-1](1)
+QRot["exp(-i%Z)",7.8539816370674087e-1](2)
+QRot["exp(-i%Z)",7.8539816350186942e-1](3)
+QRot["exp(-i%Z)",7.8539816385790295e-1](4)
+QRot["exp(-i%Z)",7.8539816342466051e-1](5)
+QRot["exp(-i%Z)",7.8539816384611927e-1](6)
+QRot["exp(-i%Z)",7.8539816365365944e-1](7)
+QRot["exp(-i%Z)",7.8539816351915348e-1](8)
+QRot["exp(-i%Z)",7.8539816360735837e-1](9)
+QRot["exp(-i%Z)",7.8539816375507177e-1](10)
+QRot["exp(-i%Z)",7.8539816362641601e-1](11)
+QRot["exp(-i%Z)",7.8539816389684258e-1](12)
+QRot["exp(-i%Z)",7.8539816385559602e-1](13)
+QRot["exp(-i%Z)",7.8539816371993620e-1](14)
+QRot["exp(-i%Z)",7.8539816371353566e-1](15)
+QRot["exp(-i%Z)",7.8539816361397152e-1](16)
+QRot["exp(-i%Z)",7.8539816382023242e-1](17)
+QRot["exp(-i%Z)",7.8539816367228898e-1](18)
+QRot["exp(-i%Z)",7.8539816352590963e-1](19)
+QRot["exp(-i%Z)",7.8539816384999606e-1](20)
+QRot["exp(-i%Z)",7.8539816356118419e-1](21)
+QRot["exp(-i%Z)",7.8539816364111548e-1](22)
+QRot["exp(-i%Z)",7.8539816352921454e-1](23)
+QRot["exp(-i%Z)",7.8539816349610669e-1](24)
+QRot["exp(-i%Z)",7.8539816362931902e-1](25)
+QRot["exp(-i%Z)",7.8539816373913018e-1](26)
+QRot["exp(-i%Z)",7.8539816365817872e-1](27)
+QRot["exp(-i%Z)",7.8539816367750848e-1](28)
+QRot["exp(-i%Z)",7.8539816376040750e-1](29)
+QRot["exp(-i%Z)",7.8539816385646999e-1](30)
+QRot["exp(-i%Z)",7.8539816358061887e-1](31)
+QRot["exp(-i%Z)",7.8539816382823047e-1](32)
+QRot["exp(-i%Z)",7.8539816345644264e-1](33)
+QRot["exp(-i%Z)",7.8539816359476755e-1](34)
+QRot["exp(-i%Z)",7.8539816388481209e-1](35)
+QRot["exp(-i%Z)",7.8539816356318293e-1](36)
+QRot["exp(-i%Z)",7.8539816355152070e-1](37)
+QRot["exp(-i%Z)",7.8539816386230421e-1](38)
+QRot["exp(-i%Z)",7.8539816345607660e-1](39)
+QRot["exp(-i%Z)",7.8539816361315640e-1](40)
+QRot["exp(-i%Z)",7.8539816375014759e-1](41)
+QRot["exp(-i%Z)",7.8539816361447967e-1](42)
+QRot["exp(-i%Z)",7.8539816355797998e-1](43)
+QRot["exp(-i%Z)",7.8539816358160919e-1](44)
+QRot["exp(-i%Z)",7.8539816385172267e-1](45)
+QRot["exp(-i%Z)",7.8539816368786397e-1](46)
+QRot["exp(-i%Z)",7.8539816365623183e-1](47)
+QRot["exp(-i%Z)",7.8539816379532668e-1](48)
+QRot["exp(-i%Z)",7.8539816384259076e-1](49)
+Outputs: 0:Qbit, 1:Qbit, 2:Qbit, 3:Qbit, 4:Qbit, 5:Qbit, 6:Qbit, 7:Qbit, 8:Qbit, 9:Qbit, 10:Qbit, 11:Qbit, 12:Qbit, 13:Qbit, 14:Qbit, 15:Qbit, 16:Qbit, 17:Qbit, 18:Qbit, 19:Qbit, 20:Qbit, 21:Qbit, 22:Qbit, 23:Qbit, 24:Qbit, 25:Qbit, 26:Qbit, 27:Qbit, 28:Qbit, 29:Qbit, 30:Qbit, 31:Qbit, 32:Qbit, 33:Qbit, 34:Qbit, 35:Qbit, 36:Qbit, 37:Qbit, 38:Qbit, 39:Qbit, 40:Qbit, 41:Qbit, 42:Qbit, 43:Qbit, 44:Qbit, 45:Qbit, 46:Qbit, 47:Qbit, 48:Qbit, 49:Qbit
