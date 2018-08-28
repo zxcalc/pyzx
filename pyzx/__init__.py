@@ -24,3 +24,4 @@ from .io import *
 from .extract import *
 from .tensor import *
 from .circuit import Circuit
+from . import quantomatic

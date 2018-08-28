@@ -26,7 +26,7 @@ except ImportError:
     pass
 
 __all__ = ['bialg_simp','spider_simp', 'id_simp', 'phase_free_simp', 'pivot_simp', 
-        'lcomp_simp', 'clifford_simp', 't_count', 'to_gh', 'to_rg']
+        'lcomp_simp', 'clifford_simp', 't_count', 'to_gh', 'to_rg', 'gadgetize', 'full_reduce']
 
 from .rules import *
 
@@ -336,6 +336,7 @@ def clifford_threaded(g):
 
 
 def gadgetize(g):
+    """Defuses every T-like node, so that they act like phase gadgets."""
     phases = g.phases()
     #qs = g.qubits()
     rs = g.rows()
@@ -351,6 +352,7 @@ def gadgetize(g):
     return edges
 
 def full_reduce(g, quiet=True):
+    """First applies :func:`clifford_simp`, then :func:`gadgetize` and finally :func:`clifford_simp` again."""
     zx.simplify.clifford_simp(g,quiet=quiet)
     if not quiet: print("Gadgetizing...")
     es = gadgetize(g)

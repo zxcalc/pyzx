@@ -309,6 +309,8 @@ class Circuit(object):
             self.add_gate(g)
 
     def stats(self):
+        """Returns statistics on the amount of gates in the circuit, separated into different classes 
+        (such as amount of T-gates, two-qubit gates, Hadamard gates)."""
         total = 0
         tgates = 0
         twoqubit = 0

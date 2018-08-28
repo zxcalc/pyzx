@@ -184,8 +184,8 @@ def spider(g, matches):
     return (etab, rem_verts, [], True)
 
 def unspider(g, m, qubit=-1, row=-1):
-    '''Undoes a single spider fusion, given a match ``m``. A match is a list with 3
-    elements given by:
+    """Undoes a single spider fusion, given a match ``m``. A match is a list with 3
+    elements given by::
 
       m[0] : a vertex to unspider
       m[1] : the neighbours of the new node, which should be a subset of the
@@ -194,7 +194,7 @@ def unspider(g, m, qubit=-1, row=-1):
 
     Returns the index of the new node. Optional parameters ``qubit`` and ``row`` can be used
     to position the new node. If they are omitted, they are set as the same as the old node.
-    '''
+    """
     v = g.add_vertex(ty=g.type(m[0]))
     g.set_qubit(v, qubit if qubit != -1 else g.qubit(m[0]))
     g.set_row(v, row if row != -1 else g.row(m[0]))
