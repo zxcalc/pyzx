@@ -1,3 +1,5 @@
+.. _representations:
+
 Representations of quantum circuits and ZX-Graphs
 =================================================
 

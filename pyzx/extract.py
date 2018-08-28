@@ -15,7 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-__all__ = ['circuit_extract', 'clifford_extract', 'greedy_cut_extract']
+__all__ = ['circuit_extract', 'clifford_extract', 'greedy_cut_extract', 'streaming_extract']
 
 from fractions import Fraction
 
@@ -502,6 +502,8 @@ def streaming_extract(g, quiet=True, stopcount=-1):
 
 
 def handle_phase_gadget(g, leftrow, quiet=True):
+    """Tries to find a cut of the graph at the given leftrow so that a single phase-gadget can be extracted.
+    Returns a list of extracted gates and modifies the graph g in place. Used by :func:`streaming_extract`"""
     q = g.qubit_count()
     qs = g.qubits() # We are assuming this thing automatically updates
     rs = g.rows()
@@ -652,6 +654,8 @@ def handle_phase_gadget(g, leftrow, quiet=True):
 
 
 def permutation_as_swaps(perm):
+    """Returns a series of swaps the realises the given permutation. 
+    Permutation should be a dictionary with both keys and values taking values in 0,1,...,n."""
     swaps = []
     l = [perm[i] for i in range(len(perm))]
     pinv = {v:k for k,v in perm.items()}

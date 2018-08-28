@@ -1,7 +1,8 @@
+.. _graph:
+
 ZX-Graphs
 =============
 
-.. _graph:
 
 PyZX represents quantum circuits as ZX-graphs. These graphs have 3 different types of vertices: boundaries, Z nodes, and X nodes. Boundary vertices represent an input or an output to the circuit and carry no further information. Z and X nodes are what a circuit consists of. These can carry additional information in the form of a `phase`. This is a real number modulo ``2*pi``.
 
