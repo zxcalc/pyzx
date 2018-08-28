@@ -191,8 +191,8 @@ def optimize_block(block, qubit_count, quiet=True):
             expression_polys[tgt].add_polynomial(expression_polys[ctrl])
 
 #     print(phase_poly)
-#     for p in expression_polys:
-#         print(p)
+    #for p in expression_polys:
+    #    print(p)
     
     # Then we extract the parities for the CZs and phases
     simple_phases = []
@@ -221,22 +221,23 @@ def optimize_block(block, qubit_count, quiet=True):
     #print("parity network cnots", cnots)
     m = Mat2.id(q)
     for cnot in cnots:
-        m.row_add(cnot.target, cnot.control)
-        
+        m.row_add(cnot.control, cnot.target)
+    #print(m)
     data = []
-    for v in variables:
-        l = [int((v,) in p.terms) for p in expression_polys]
-        data.append(l)
-    # for p in expression_polys:
-    #     l = [int((v,) in p.terms) for v in variables]
+    # for v in variables:
+    #     l = [int((v,) in p.terms) for p in expression_polys]
     #     data.append(l)
-    target_matrix = m.inverse() * Mat2(data)
+    for p in expression_polys:
+        l = [int((v,) in p.terms) for v in variables]
+        data.append(l)
+    #print(Mat2(data))
+    target_matrix = Mat2(data) * m.inverse()
     #print("target matrix")
     #print(target_matrix)
-    # gates = target_matrix.to_cnots(optimize=True)
-    # for gate in reversed(gates):
-    #     cnots.append(CNOT(gate.target,gate.control))
-    cnots = cnots + target_matrix.to_cnots(optimize=True)
+    gates = target_matrix.to_cnots(optimize=True)
+    for gate in reversed(gates):
+        cnots.append(CNOT(gate.target,gate.control))
+    #cnots = cnots + target_matrix.to_cnots(optimize=True)
     old_cnots = [g for g in block if isinstance(g,CNOT)]
 
     if len(cnots) >= len(old_cnots):
@@ -282,7 +283,7 @@ def optimize_block(block, qubit_count, quiet=True):
             print(czs)
         new_czs.append(choice)
         czs.symmetric_difference_update(cz_sites[choice])
-    if not quiet: print("Old cz count: ", old_cz_count, ". New cz count: ", len(new_czs))
+    if not quiet and old_cz_count != 0: print("Old cz count: ", old_cz_count, ". New cz count: ", len(new_czs))
     
     # We construct the new sequence of gates
     # First the gates that appear before the CNOTs
