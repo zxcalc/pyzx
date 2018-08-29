@@ -344,12 +344,15 @@ def gadgetize(g):
     phases = g.phases()
     #qs = g.qubits()
     rs = g.rows()
+    qs = g.qubits()
     edges = []
     verts = []
     for v in list(g.vertices()):
         if phases[v] != 0 and phases[v].denominator > 2:
-            v1 = g.add_vertex(1,-1,rs[v]+0.5,0)
-            v2 = g.add_vertex(1,-2,rs[v]+0.5,phases[v])
+            # v1 = g.add_vertex(1,-1,rs[v]+0.5,0)
+            # v2 = g.add_vertex(1,-2,rs[v]+0.5,phases[v])
+            v1 = g.add_vertex(1,-2*qs[v]-1,rs[v]+0.5,0)
+            v2 = g.add_vertex(1,-2*qs[v]-2,rs[v]+0.5,phases[v])
             g.set_phase(v, 0)
             edges.append((v,v1))
             edges.append((v1,v2))
