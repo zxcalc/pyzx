@@ -96,12 +96,15 @@ def clifford_simp(g, quiet=False):
     until it can't anymore.'''
     spider_simp(g, quiet=quiet)
     to_gh(g)
+    i = 0
     while True:
         i1 = id_simp(g, quiet=quiet)
         i2 = spider_simp(g, quiet=quiet)
         i3 = pivot_simp(g, quiet=quiet)
         i4 = lcomp_simp(g, quiet=quiet)
         if i1+i2+i3+i4==0: break
+        i += 1
+    return i
     # pivot_simp(g, quiet=quiet)
     # lcomp_simp(g, quiet=quiet)
     # pivot_simp(g, quiet=quiet)
@@ -387,9 +390,11 @@ def full_reduce(g, quiet=True):
                 g.set_phase(n, 0)
                 g.set_phase(v, -1*phases[v])
                 phases[n] = 0
-    clifford_simp(g,quiet=quiet)
-    n = gadget_simp(g, quiet=quiet)
-    clifford_simp(g,quiet=quiet)
+    if not quiet: print("Back to clifford_simp")
+    while True:
+        clifford_simp(g,quiet=quiet)
+        i = gadget_simp(g, quiet=quiet)
+        if i == 0: break
 
 def tcount(g):
     count = 0
