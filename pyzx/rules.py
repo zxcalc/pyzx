@@ -70,17 +70,20 @@ def match_bialg(g):
 
 
 #TODO: make it be hadamard edge aware
-def match_bialg_parallel(g, num=-1, edgelist=-1):
+def match_bialg_parallel(g, matchf=None, num=-1):
     """Finds noninteracting matchings of the bialgebra rule.
     
     :param g: An instance of a ZX-graph.
+    :param matchf: An optional filtering function for candidate edge, should
+       return True if a edge should considered as a match. Passing None will
+       consider all edges.
     :param num: Maximal amount of matchings to find. If -1 (the default)
        tries to find as many as possible.
     :param edgelist: List of edges to consider. If -1 (the default), looks 
        at all edges.
     :rtype: List of 4-tuples ``(v1, v2, neighbours_of_v1,neighbours_of_v2)``
     """
-    if edgelist!=-1: candidates = set(edgelist)
+    if matchf != None: candidates = set([e for e in g.edges() if matchf(e)])
     else: candidates = g.edge_set()
     types = g.types()
     
@@ -129,17 +132,18 @@ def match_spider(g):
             return [[v0,v1]]
     return []
 
-def match_spider_parallel(g, num=-1, edgelist=-1):
+def match_spider_parallel(g, matchf=None, num=-1):
     """Finds noninteracting matchings of the spider fusion rule.
     
     :param g: An instance of a ZX-graph.
+    :param matchf: An optional filtering function for candidate edge, should
+       return True if a edge should considered as a match. Passing None will
+       consider all edges.
     :param num: Maximal amount of matchings to find. If -1 (the default)
        tries to find as many as possible.
-    :param edgelist: List of edges to consider. If -1 (the default), looks 
-       at all edges.
     :rtype: List of 2-tuples ``(v1, v2)``
     """
-    if edgelist!=-1: candidates = set(edgelist)
+    if matchf != None: candidates = set([e for e in g.edges() if matchf(e)])
     else: candidates = g.edge_set()
     types = g.types()
     
@@ -219,7 +223,7 @@ def match_pivot(g):
     return match_pivot_parallel(g, num=1, check_edge_types=True)
 
 
-def match_pivot_parallel(g, edgelist=-1, num=-1, check_edge_types=False):
+def match_pivot_parallel(g, matchf=None, num=-1, check_edge_types=False):
     """Finds noninteracting matchings of the pivot rule.
     
     :param g: An instance of a ZX-graph.
@@ -227,11 +231,14 @@ def match_pivot_parallel(g, edgelist=-1, num=-1, check_edge_types=False):
        tries to find as many as possible.
     :param check_edge_types: Whether the method has to check if all the edges involved
        are of the correct type (Hadamard edges).
+    :param matchf: An optional filtering function for candidate edge, should
+       return True if a edge should considered as a match. Passing None will
+       consider all edges.
     :param edgelist: List of edges to consider. If -1 (the default), looks 
        at all edges.
     :rtype: List of 7-tuples. See :func:`pivot` for the details.
     """
-    if edgelist!=-1: candidates = set(edgelist)
+    if matchf != None: candidates = set([e for e in g.edges() if matchf(e)])
     else: candidates = g.edge_set()
     types = g.types()
     phases = g.phases()
@@ -363,7 +370,7 @@ def match_lcomp(g):
     """Same as :func:`match_lcomp_parallel`, but with ``num=1``"""
     return match_lcomp_parallel(g, num=1, check_edge_types=True)
 
-def match_lcomp_parallel(g, vertexlist=-1, num=-1, check_edge_types=False):
+def match_lcomp_parallel(g, vertexf=None, num=-1, check_edge_types=False):
     """Finds noninteracting matchings of the local complementation rule.
     
     :param g: An instance of a ZX-graph.
@@ -371,11 +378,12 @@ def match_lcomp_parallel(g, vertexlist=-1, num=-1, check_edge_types=False):
        tries to find as many as possible.
     :param check_edge_types: Whether the method has to check if all the edges involved
        are of the correct type (Hadamard edges).
-    :param vertexlist: List of vertices to consider. If -1 (the default), looks 
-       at all vertices.
+    :param vertexf: An optional filtering function for candidate vertices, should
+       return True if a vertex should considered as a match. Passing None will
+       consider all vertices.
     :rtype: List of 2-tuples ``(vertex, neighbours)``.
     """
-    if vertexlist!=-1: candidates = set(vertexlist)
+    if vertexf != None: candidates = set([v for v in g.vertices() if vertexf(v)])
     else: candidates = g.vertex_set()
     types = g.types()
     phases = g.phases()
