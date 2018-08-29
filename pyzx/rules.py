@@ -477,3 +477,34 @@ def remove_ids(g, matches):
         etab[e][m[3]-1] += 1
     return (etab, rem, [], False)
     
+
+def match_phase_gadgets(g):
+    phases = g.phases()
+
+    parities = dict()
+    gadgets = dict()
+    for v in g.vertices():
+        if phases[v] != 0 and phases[v].denominator > 2 and len(list(g.neighbours(v)))==1:
+            n = list(g.neighbours(v))[0]
+            gadgets[n] = v
+            par = frozenset(set(g.neighbours(n)).difference({v}))
+            if par in parities: parities[par].append(n)
+            else: parities[par] = [n]
+
+    m = []
+    for par, gad in parities.items():
+        if len(gad) == 1: continue
+        totphase = sum(phases[gadgets[n]] for n in gad)%2
+        n = gad.pop()
+        v = gadgets[n]
+        m.append((v,totphase, gad, [gadgets[n] for n in gad]))
+
+    return m
+
+def merge_phase_gadgets(g, matches):
+    rem = []
+    for v, phase, gadgets, targets in matches:
+        g.set_phase(v, phase)
+        rem.extend(gadgets)
+        rem.extend(targets)
+    return ({}, rem, [], False)

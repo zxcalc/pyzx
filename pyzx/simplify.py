@@ -25,7 +25,7 @@ try:
 except ImportError:
     pass
 
-__all__ = ['bialg_simp','spider_simp', 'id_simp', 'phase_free_simp', 'pivot_simp', 
+__all__ = ['bialg_simp','spider_simp', 'id_simp', 'phase_free_simp', 'pivot_simp', 'gadget_simp',
         'lcomp_simp', 'clifford_simp', 't_count', 'to_gh', 'to_rg', 'gadgetize', 'full_reduce']
 
 from .rules import *
@@ -80,6 +80,9 @@ def spider_simp(g, quiet=False):
 
 def id_simp(g, quiet=False):
     return simp(g, 'id_simp', match_ids_parallel, remove_ids, quiet=quiet)
+
+def gadget_simp(g, quiet=False):
+    return simp(g, 'gadget_simp', match_phase_gadgets, merge_phase_gadgets, quiet=quiet)
 
 def phase_free_simp(g, quiet=False):
     '''Performs the following set of simplifications on the graph:
@@ -384,6 +387,8 @@ def full_reduce(g, quiet=True):
                 g.set_phase(n, 0)
                 g.set_phase(v, -1*phases[v])
                 phases[n] = 0
+    clifford_simp(g,quiet=quiet)
+    n = gadget_simp(g, quiet=quiet)
     clifford_simp(g,quiet=quiet)
 
 def tcount(g):
