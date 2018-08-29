@@ -93,17 +93,22 @@ def clifford_simp(g, quiet=False):
     until it can't anymore.'''
     spider_simp(g, quiet=quiet)
     to_gh(g)
-    spider_simp(g, quiet=quiet)
-    pivot_simp(g, quiet=quiet)
-    lcomp_simp(g, quiet=quiet)
-    pivot_simp(g, quiet=quiet)
-    #to_rg(g)
     while True:
-        i = id_simp(g, quiet=quiet)
-        if i> 0: 
-            j = spider_simp(g, quiet=quiet)
-            if j == 0: break
-        break
+        i1 = id_simp(g, quiet=quiet)
+        i2 = spider_simp(g, quiet=quiet)
+        i3 = pivot_simp(g, quiet=quiet)
+        i4 = lcomp_simp(g, quiet=quiet)
+        if i1+i2+i3+i4==0: break
+    # pivot_simp(g, quiet=quiet)
+    # lcomp_simp(g, quiet=quiet)
+    # pivot_simp(g, quiet=quiet)
+    # #to_rg(g)
+    # while True:
+    #     i = id_simp(g, quiet=quiet)
+    #     if i> 0: 
+    #         j = spider_simp(g, quiet=quiet)
+    #         if j == 0: break
+    #     break
 
 def to_gh(g,quiet=True):
     """Turns every red node into a green node by changing regular edges into hadamard edges"""
@@ -349,10 +354,10 @@ def gadgetize(g):
     verts = []
     for v in list(g.vertices()):
         if phases[v] != 0 and phases[v].denominator > 2:
-            # v1 = g.add_vertex(1,-1,rs[v]+0.5,0)
-            # v2 = g.add_vertex(1,-2,rs[v]+0.5,phases[v])
-            v1 = g.add_vertex(1,-2*qs[v]-1,rs[v]+0.5,0)
-            v2 = g.add_vertex(1,-2*qs[v]-2,rs[v]+0.5,phases[v])
+            v1 = g.add_vertex(1,-1,rs[v]+0.5,0)
+            v2 = g.add_vertex(1,-2,rs[v]+0.5,phases[v])
+            # v1 = g.add_vertex(1,-2*qs[v]-1,rs[v]+0.5,0)
+            # v2 = g.add_vertex(1,-2*qs[v]-2,rs[v]+0.5,phases[v])
             g.set_phase(v, 0)
             edges.append((v,v1))
             edges.append((v1,v2))
