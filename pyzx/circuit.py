@@ -15,6 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+import os
 from fractions import Fraction
 import copy
 import math
@@ -33,9 +34,10 @@ class Circuit(object):
     The methods in this class that convert a specification of a circuit into an instance of this class,
     generally do not check whether the specification is well-defined. If a bad input is given, 
     the behaviour is undefined."""
-    def __init__(self, qubit_amount):
+    def __init__(self, qubit_amount, name=''):
         self.qubits = qubit_amount
         self.gates = []
+        self.name = name
 
     def __str__(self):
         return "Circuit({!s} qubits, {!s} gates)".format(self.qubits,len(self.gates))
@@ -128,7 +130,7 @@ class Circuit(object):
             if t.strip() != "Qbit":
                 raise TypeError("Unsupported type " + t)
 
-        c = Circuit(len(inputs))
+        c = Circuit(len(inputs), name=os.path.basename(fname))
         for gate in gates:
             if gate.startswith("Comment"): continue
             if gate.startswith("QInit0"):
@@ -212,12 +214,14 @@ class Circuit(object):
         s = f.read()
         f.close()
         p = QASMParser()
-        return p.parse(s)
+        c = p.parse(s)
+        c.name = os.path.basename(fname)
+        return c
 
     def to_basic_gates(self):
         """Returns a new circuit with every gate expanded in terms of X/Z phases, Hadamards
         and the 2-qubit gates CNOT, CZ, CX."""
-        c = Circuit(self.qubits)
+        c = Circuit(self.qubits, name=self.name)
         for g in self.gates:
             c.gates.extend(g.to_basic_gates())
         return c
@@ -330,11 +334,11 @@ class Circuit(object):
                 clifford += 1
             else:
                 other += 1
-        s = """Circuit on {} qubits with {} gates.
+        s = """Circuit {} on {} qubits with {} gates.
         {} T-like gates
         {} Cliffords among which 
-        {} 2-qubit gates and {} Hadamard gates.""".format(self.qubits, total, tgates, 
-            clifford, twoqubit, hadamard)
+        {} 2-qubit gates and {} Hadamard gates.""".format(self.name, self.qubits, total, 
+                tgates, clifford, twoqubit, hadamard)
         if other > 0:
             s += "\nThere are {} gates of a different type".format(other)
         return s

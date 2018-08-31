@@ -67,6 +67,21 @@ def do_tests(qubits, depth, iterations, test_clifford_graph=True):
             c2, blocks = circuit_phase_polynomial_blocks(c, optimize=True)
             steps[-1] = "phase_polynomial_optimized"
             compare(t, c2)
+
+            steps = []
+            g = circ.copy()
+            full_reduce(g, quiet=True)
+            steps.append("full_reduce")
+            if test_clifford_graph: compare(t, g)
+
+            c = streaming_extract(g).to_basic_gates()
+            steps.append("streaming_extract")
+            compare(t, c)
+
+            c2, blocks = circuit_phase_polynomial_blocks(c, optimize=True)
+            steps[-1] = "phase_polynomial_optimized"
+            compare(t, c2)
+
     except AssertionError:
         print("Unequality for circuit with seed {:d}, qubits {:d} and depth {:d}".format(seed, qubits, depth))
         print("It went wrong at step {} with total sequence {}".format(steps[-1],str(steps)))
@@ -74,7 +89,7 @@ def do_tests(qubits, depth, iterations, test_clifford_graph=True):
         print("\nTests finished successfully")
 
 
-do_tests(3, 20, 250)
+do_tests(3, 20, 500)
 do_tests(3, 80, 250, False)
 do_tests(5, 120, 500, False)
 do_tests(6, 400, 250, False)

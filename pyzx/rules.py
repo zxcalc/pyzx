@@ -42,6 +42,7 @@ These rewrite rules are used in the simplification procedures of :mod:`simplify`
 """
 
 from fractions import Fraction
+import itertools
 
 
 def apply_rule(g, rewrite, m, check_isolated_vertices=True):
@@ -493,18 +494,124 @@ def match_phase_gadgets(g):
 
     m = []
     for par, gad in parities.items():
-        if len(gad) == 1: continue
-        totphase = sum(phases[gadgets[n]] for n in gad)%2
-        n = gad.pop()
-        v = gadgets[n]
-        m.append((v,totphase, gad, [gadgets[n] for n in gad]))
+        if len(gad) == 1: 
+            n = gad[0]
+            v = gadgets[n]
+            if phases[n] != 0:
+                m.append((v,n,-phases[v],[],[]))
+        else:
+            totphase = sum((1 if phases[n]==0 else -1)*phases[gadgets[n]] for n in gad)%2
+            n = gad.pop()
+            v = gadgets[n]
+            m.append((v,n,totphase, gad, [gadgets[n] for n in gad]))
 
     return m
 
 def merge_phase_gadgets(g, matches):
     rem = []
-    for v, phase, gadgets, targets in matches:
+    for v, n, phase, othergadgets, othertargets in matches:
         g.set_phase(v, phase)
-        rem.extend(gadgets)
-        rem.extend(targets)
+        g.set_phase(n, 0)
+        rem.extend(othergadgets)
+        rem.extend(othertargets)
     return ({}, rem, [], False)
+
+def match_gadgets_phasepoly(g):
+    targets = {}
+    gadgets = {}
+    for v in g.vertices():
+        if v not in g.inputs and v not in g.outputs and len(list(g.neighbours(v)))==1:
+            n = list(g.neighbours(v))[0]
+            tgts = frozenset(set(g.neighbours(n)).difference({v}))
+            if len(tgts)>4: continue
+            gadgets[tgts] = (n,v)
+            for t in tgts:
+                if t in targets: targets[t].add(tgts)
+                else: targets[t] = {tgts}
+        if g.phase(v) != 0 and g.phase(v).denominator > 2:
+            if v in targets: targets[v].add(frozenset([v]))
+            else: targets[v] = {frozenset([v])}
+    targets = {t:s for t,s in targets.items() if len(s)>1}
+
+    matches = {}
+
+    for v1,t1 in targets.items():
+        s = t1.difference(frozenset([v1]))
+        if len(s) == 1:
+            c = s.pop()
+            if any(len(targets[v2])==2 for v2 in c): continue
+        s = t1.difference(frozenset([v1]))
+        for c in [d for d in s if not any(d.issuperset(e) for e in s if e!=d)]:
+            if not all(v2 in targets for v2 in c): continue
+            if any(v2<v1 for v2 in c): continue
+            a = set()
+            for t in c: a.update([i for s in targets[t] for i in s if i in targets])
+            for group in itertools.combinations(a.difference(c),4-len(c)):
+                group = list(group)+list(c)
+                a = set()
+                for t in group: a.update([s for s in targets[t] if s.issubset(group)])
+                if len(a)>7:
+                    matches[frozenset(group)] = a
+
+    m = []
+    taken = set()
+    for group, gad in sorted(matches.items(), key=lambda a: len(a[1]), reverse=True):
+        if taken.intersection(group): continue
+        m.append((list(group), {s:(gadgets[s] if len(s)>1 else list(s)[0]) for s in gad}))
+        taken.update(group)
+
+    return m
+
+
+def apply_gadget_phasepoly(g, matches):
+    rs = g.rows()
+    phases = g.phases()
+    for group, gadgets in matches:
+        for i in range(4):
+            v1 = group[i]
+            g.add_to_phase(v1, Fraction(5,4))
+            
+            for j in range(i+1,4):
+                v2 = group[j]
+                f = frozenset({v1,v2})
+                if f in gadgets:
+                    n,v = gadgets[f]
+                    phase = phases[v]
+                    if phases[n]:
+                        phase = -phase
+                        g.set_phase(n,0)
+                else:
+                    n = g.add_vertex(1,-1, rs[v2]+0.5)
+                    v = g.add_vertex(1,-2, rs[v2]+0.5)
+                    phase = 0
+                    g.add_edges([(n,v),(v1,n),(v2,n)],2)
+                g.set_phase(v, phase + Fraction(3,4))
+
+                for k in range(j+1,4):
+                    v3 = group[k]
+                    f = frozenset({v1,v2,v3})
+                    if f in gadgets:
+                        n,v = gadgets[f]
+                        phase = phases[v]
+                        if phases[n]:
+                            phase = -phase
+                            g.set_phase(n,0)
+                    else:
+                        n = g.add_vertex(1,-1, rs[v3]+0.5)
+                        v = g.add_vertex(1,-2, rs[v3]+0.5)
+                        phase = 0
+                        g.add_edges([(n,v),(v1,n),(v2,n),(v3,n)],2)
+                    g.set_phase(v, phase + Fraction(1,4))
+        f = frozenset(group)
+        if f in gadgets:
+            n,v = gadgets[f]
+            phase = phases[v]
+            if phases[n]:
+                phase = -phase
+                g.set_phase(n,0)
+        else:
+            n = g.add_vertex(1,-1, rs[group[0]]+0.5)
+            v = g.add_vertex(1,-2, rs[group[0]]+0.5)
+            phase = 0
+            g.add_edges([(n,v)]+[(n,w) for w in group],2)
+        g.set_phase(v, phase + Fraction(7,4))
