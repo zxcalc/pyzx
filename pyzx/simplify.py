@@ -26,7 +26,7 @@ except ImportError:
     pass
 
 __all__ = ['bialg_simp','spider_simp', 'id_simp', 'phase_free_simp', 'pivot_simp', 'gadget_simp',
-        'lcomp_simp', 'clifford_simp', 't_count', 'to_gh', 'to_rg', 'gadgetize', 'full_reduce']
+        'lcomp_simp', 'clifford_simp', 'tcount', 'to_gh', 'to_rg', 'gadgetize', 'full_reduce']
 
 from .rules import *
 
@@ -198,15 +198,6 @@ def clifford_iter(g):
     for d in id_iter(g): yield d
     for d in spider_iter(g): yield d
 
-
-
-def t_count(g):
-    """Returns the amount of T-gates in ``g``."""
-    count = 0
-    for a in g.phases().values():
-        if a.denominator == 4:
-            count += 1
-    return count
 
 def _worker(arg):
     match, rewrite, g, kwargname, kwarg = arg
