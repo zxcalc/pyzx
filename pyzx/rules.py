@@ -479,6 +479,7 @@ def remove_ids(g, matches):
     return (etab, rem, [], False)
     
 
+
 def match_phase_gadgets(g):
     phases = g.phases()
 
@@ -516,11 +517,14 @@ def merge_phase_gadgets(g, matches):
         rem.extend(othertargets)
     return ({}, rem, [], False)
 
+
+
 def match_gadgets_phasepoly(g):
     targets = {}
     gadgets = {}
     for v in g.vertices():
         if v not in g.inputs and v not in g.outputs and len(list(g.neighbours(v)))==1:
+            if g.phase(v) != 0 and g.phase(v).denominator != 4: continue
             n = list(g.neighbours(v))[0]
             tgts = frozenset(set(g.neighbours(n)).difference({v}))
             if len(tgts)>4: continue
@@ -528,7 +532,7 @@ def match_gadgets_phasepoly(g):
             for t in tgts:
                 if t in targets: targets[t].add(tgts)
                 else: targets[t] = {tgts}
-        if g.phase(v) != 0 and g.phase(v).denominator > 2:
+        if g.phase(v) != 0 and g.phase(v).denominator == 4:
             if v in targets: targets[v].add(frozenset([v]))
             else: targets[v] = {frozenset([v])}
     targets = {t:s for t,s in targets.items() if len(s)>1}

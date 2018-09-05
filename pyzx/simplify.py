@@ -26,7 +26,7 @@ except ImportError:
     pass
 
 __all__ = ['bialg_simp','spider_simp', 'id_simp', 'phase_free_simp', 'pivot_simp', 'gadget_simp',
-        'lcomp_simp', 'clifford_simp', 'tcount', 'to_gh', 'to_rg', 'gadgetize', 'full_reduce']
+        'lcomp_simp', 'clifford_simp', 'tcount', 'to_gh', 'to_rg', 'gadgetize', 'full_reduce', 'pivot_double_boundary']
 
 from .rules import *
 
@@ -90,7 +90,7 @@ def phase_free_simp(g, quiet=False):
     spider_simp(g, quiet=quiet)
     bialg_simp(g, quiet=quiet)
 
-def clifford_simp(g, quiet=False):
+def interior_clifford_simp(g, quiet=False):
     '''Performs the following set of simplifications on the graph:
     spider -> pivot -> lcomp -> pivot. It then applies identity and spider fusion
     until it can't anymore.'''
@@ -105,16 +105,62 @@ def clifford_simp(g, quiet=False):
         if i1+i2+i3+i4==0: break
         i += 1
     return i
-    # pivot_simp(g, quiet=quiet)
-    # lcomp_simp(g, quiet=quiet)
-    # pivot_simp(g, quiet=quiet)
-    # #to_rg(g)
-    # while True:
-    #     i = id_simp(g, quiet=quiet)
-    #     if i> 0: 
-    #         j = spider_simp(g, quiet=quiet)
-    #         if j == 0: break
-    #     break
+
+def clifford_simp(g, quiet=False):
+    while True:
+        interior_clifford_simp(g, quiet=quiet)
+        i = pivot_double_boundary(g, quiet=quiet)
+        if i == 0:
+            break
+
+def pivot_double_boundary(g, quiet=False):
+    phases = g.phases()
+    ty = g.types()
+    qs = g.qubits()
+    rs = g.rows()
+    pivotable_edges = []
+    skiplist = []
+    for v in list(g.vertices()):
+        if v in skiplist: continue
+        if ty[v] != 1 or phases[v] not in (0,1): continue
+        good_vert = True
+        for w in g.neighbours(v):
+            if ty[w] != 1: 
+                good_vert = False
+                break
+            if len(list(g.neighbours(w))) == 1: # v is a phase gadget
+                good_vert = False
+                break
+        if not good_vert: continue
+        #if any(ty[w]!=1 for w in g.neighbours(v)): continue
+
+        # v is now an interior edge with a 0/1 phase
+        for e in g.incident_edges(v):
+            s,t = g.edge_st(e)
+            v2 = s if s!=v else t
+            if phases[v2] not in (0,1): continue
+            if sum(1 for w in g.neighbours(v2) if ty[w]==0) > 1:
+                i = next(w for w in g.neighbours(v2) if w in g.inputs)
+                o = next(w for w in g.neighbours(v2) if w in g.outputs)
+                w1 = g.add_vertex(1,qs[i], rs[i]+1)
+                w2 = g.add_vertex(1,qs[o], rs[o]-1)
+                e1 = g.edge(v2,i)
+                e2 = g.edge(v2,o)
+                et1 = g.edge_type(e1)
+                et2 = g.edge_type(e2)
+                g.remove_edges([e1,e2])
+                g.add_edges([(v2,w1),(v2,w2)],2)
+                g.add_edge((i,w1),3-et1)
+                g.add_edge((o,w2),3-et2)
+            skiplist.append(v2)
+            pivotable_edges.append(e)
+    if not quiet and pivotable_edges: 
+        print("Boundary Pivot: Unfused {:d} nodes for {:d} possible pivots".format(
+                                len(skiplist),len(pivotable_edges)))
+    i = pivot_simp(g, matchf=lambda e: e in pivotable_edges, quiet=quiet)
+    return i
+
+
 
 def to_gh(g,quiet=True):
     """Turns every red node into a green node by changing regular edges into hadamard edges"""
@@ -149,6 +195,94 @@ def to_rg(g, select=None):
                 g.set_type(v, 1)
                 for e in g.incident_edges(v):
                     g.set_edge_type(e, 1 if g.edge_type(e) == 2 else 2)
+
+
+
+def gadgetize(g):
+    """Un-fuses every T-like node, so that they act like phase gadgets. It returns
+    a list of vertices which act as the 'hub' part of the phase gadget."""
+    phases = g.phases()
+    #qs = g.qubits()
+    rs = g.rows()
+    qs = g.qubits()
+    edges = []
+    allgadgets = []
+    newgadgets = []
+    for v in list(g.vertices()):
+        if phases[v] != 0 and phases[v].denominator > 1:
+            if len(list(g.neighbours(v))) == 1: # It is already a gadget
+                allgadgets.append(v)
+                continue
+            v1 = g.add_vertex(1,-1,rs[v]+0.5,0)
+            v2 = g.add_vertex(1,-2,rs[v]+0.5,phases[v])
+            # v1 = g.add_vertex(1,-2*qs[v]-1,rs[v]+0.5,0)
+            # v2 = g.add_vertex(1,-2*qs[v]-2,rs[v]+0.5,phases[v])
+            g.set_phase(v, 0)
+            edges.append((v,v1))
+            edges.append((v1,v2))
+            newgadgets.append(v1)
+            allgadgets.append(v1)
+    g.add_edges(edges, 2)
+    return set(newgadgets), set(allgadgets)
+
+def full_reduce(g, quiet=True):
+    """First applies :func:`clifford_simp`, then :func:`gadgetize` and finally :func:`clifford_simp` again."""
+    i = 0
+    gadgetcount = 10**10
+    vertexcount = 10**10
+    while True:
+        clifford_simp(g,quiet=quiet)
+        #if tcount(g) == 24: break
+        newgadgets, allgadgets = gadgetize(g)
+        if i == 0 and not newgadgets: break
+        if len(newgadgets) >= gadgetcount:
+            n = g.num_vertices()
+            if n >= vertexcount:
+                clifford_simp(g,quiet=quiet)
+                break
+            vertexcount = n
+        else:
+            vertexcount = g.num_vertices()
+        if not quiet: 
+            print("Vertex count: ", vertexcount)
+            print("T-count: ", tcount(g))
+
+        gadgetcount = len(newgadgets)
+        if not quiet and gadgetcount: print("Gadgetized {:d} nodes".format(gadgetcount))
+        # don't pivot an edge adjacent to a gadget vertex
+        def matchf(e):
+            s, t = g.edge_st(e)
+            if s in newgadgets or t in newgadgets:
+                return False
+            if s in allgadgets and t in allgadgets:
+                return False
+            return True
+        #matchf = lambda e: g.edge_s(e) not in newgadgets and g.edge_t(e) not in newgadgets
+        #matchf = lambda e: not (g.edge_s(e) in gadgets or g.edge_t(e) in gadgets)
+        pivot_simp(g,matchf=matchf,quiet=quiet)
+        lcomp_simp(g,quiet=quiet)
+        pivot_simp(g,matchf=matchf,quiet=quiet)
+        phases = g.phases()
+        for v in g.vertices():
+            if phases[v] != 0 and phases[v].denominator > 2 and len(list(g.neighbours(v)))==1:
+                n = list(g.neighbours(v))[0]
+                if phases[n] == 1:
+                    g.set_phase(n, 0)
+                    g.set_phase(v, -1*phases[v])
+                    phases[n] = 0
+        if not quiet and gadgetcount: print("Back to clifford_simp")
+        clifford_simp(g,quiet=quiet)
+        i = gadget_simp(g, quiet=quiet)
+
+
+def tcount(g):
+    count = 0
+    phases = g.phases()
+    for v in g.vertices():
+        if phases[v]!=0 and phases[v].denominator > 2:
+            count += 1
+    return count
+
 
 
 
@@ -197,6 +331,8 @@ def clifford_iter(g):
     #yield g, "to_rg"
     for d in id_iter(g): yield d
     for d in spider_iter(g): yield d
+
+
 
 
 def _worker(arg):
@@ -336,64 +472,5 @@ def clifford_threaded(g):
     pivot_threaded(g)
     to_rg(g)
     id_threaded(g)
-
-
-
-
-def gadgetize(g):
-    """Un-fuses every T-like node, so that they act like phase gadgets. It returns
-    a list of vertices which act as the 'hub' part of the phase gadget."""
-    phases = g.phases()
-    #qs = g.qubits()
-    rs = g.rows()
-    qs = g.qubits()
-    edges = []
-    verts = []
-    for v in list(g.vertices()):
-        if phases[v] != 0 and phases[v].denominator > 2:
-            v1 = g.add_vertex(1,-1,rs[v]+0.5,0)
-            v2 = g.add_vertex(1,-2,rs[v]+0.5,phases[v])
-            # v1 = g.add_vertex(1,-2*qs[v]-1,rs[v]+0.5,0)
-            # v2 = g.add_vertex(1,-2*qs[v]-2,rs[v]+0.5,phases[v])
-            g.set_phase(v, 0)
-            edges.append((v,v1))
-            edges.append((v1,v2))
-            verts.append(v1)
-    g.add_edges(edges, 2)
-    return verts
-
-def full_reduce(g, quiet=True):
-    """First applies :func:`clifford_simp`, then :func:`gadgetize` and finally :func:`clifford_simp` again."""
-    clifford_simp(g,quiet=quiet)
-    if not quiet: print("Gadgetizing...")
-    gadgets = set(gadgetize(g))
-
-    # don't pivot an edge adjacent to a gadget vertex
-    matchf = lambda e: not (g.edge_s(e) in gadgets or g.edge_t(e) in gadgets)
-    pivot_simp(g,matchf=matchf,quiet=quiet)
-    lcomp_simp(g,quiet=quiet)
-    pivot_simp(g,matchf=matchf,quiet=quiet)
-    phases = g.phases()
-    for v in g.vertices():
-        if phases[v] != 0 and phases[v].denominator > 2 and len(list(g.neighbours(v)))==1:
-            n = list(g.neighbours(v))[0]
-            if phases[n] == 1:
-                g.set_phase(n, 0)
-                g.set_phase(v, -1*phases[v])
-                phases[n] = 0
-    if not quiet: print("Back to clifford_simp")
-    while True:
-        clifford_simp(g,quiet=quiet)
-        i = gadget_simp(g, quiet=quiet)
-        if i == 0: break
-
-def tcount(g):
-    count = 0
-    phases = g.phases()
-    for v in g.vertices():
-        if phases[v]!=0 and phases[v].denominator > 2:
-            count += 1
-    return count
-
 
 
