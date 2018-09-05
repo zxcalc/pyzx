@@ -80,10 +80,13 @@ def json_to_graph(js):
         #g.set_vdata(v, 'y', c[1])
         v += 1
     for name,attr in j.get('wire_vertices',{}).items():
-        c = attr['annotation']['coord']
+        ann = attr['annotation']
+        c = ann['coord']
         g.add_vertex(0,-c[1],c[0])
         g.set_vdata(v,'name',name)
         names[name] = v
+        if "input" in ann and ann["input"]: g.inputs.append(v)
+        if "output" in ann and ann["output"]: g.outputs.append(v)
         #g.set_vdata(v, 'x', c[0])
         #g.set_vdata(v, 'y', c[1])
         v += 1
@@ -144,7 +147,8 @@ def graph_to_json(g):
         
         names[v] = name
         if t == 0:
-            wire_vs[name] = {"annotation":{"boundary":True,"coord":coord}}
+            wire_vs[name] = {"annotation":{"boundary":True,"coord":coord,
+                                           "input":(v in g.inputs), "output":(v in g.outputs)}}
         else:
             node_vs[name] = {"annotation": {"coord":coord},"data":{}}
             if t==2: node_vs[name]["data"]["type"] = "X"

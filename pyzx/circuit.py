@@ -139,12 +139,145 @@ class Circuit(object):
         c.name = os.path.basename(fname)
         return c
 
+    @staticmethod
+    def from_qc_file(fname):
+        """Produces a :class:`Circuit` based on a .qc description of a circuit.
+        If a Tofolli gate with more than 2 controls is encountered, ancilla qubits are added.
+        Currently up to 5 controls are supported."""
+        f = open(fname, 'r')
+        data = f.read()
+        f.close()
+        preamble = data[:data.find("BEGIN")].strip().splitlines()
+        labels = {}
+        for l in preamble:
+            if l.startswith('#'): continue
+            if l.startswith('.'):
+                for v in l[2:].replace(',',' ').strip().split():
+                    s = v.strip()
+                    if s not in labels: labels[s] = len(labels)
+            else:
+                raise TypeError("Unknown Expression: " + l)
+
+        ancillas = {}
+        gates = []
+        qcount = len(labels)
+
+        for l in data[data.find("BEGIN")+6:data.find("END")].splitlines():
+            if l.startswith('#'): continue
+            gname, targets = l.split(' ',1)
+            gname = gname.strip().lower()
+            targets = [labels[v.strip()] for v in targets.replace(',',' ').strip().split(' ') if v.strip()]
+            if len(targets) == 1:
+                t = targets[0]
+                if gname in ('tof', 't1', 'not', 'x'): gates.append(NOT(t))
+                elif gname == 'z': gates.append(Z(t))
+                elif gname in ('s', 'p'): gates.append(S(t))
+                elif gname in ('s*', 'p*'): gates.append(S(t,adjoint=True))
+                elif gname == 't': gates.append(T(t))
+                elif gname == 't*': gates.append(T(t,adjoint=True))
+                elif gname == 'h': gates.append(HAD(t))
+                else:
+                    raise TypeError("Unknown gate with single target: " + l)
+            elif len(targets) == 2:
+                c,t = targets
+                if gname in ('cnot', 'tof', 't2'):
+                    gates.append(CNOT(c,t))
+                elif gname in ('cz', 'z'):
+                    gates.append(CZ(c,t))
+                else:
+                    raise TypeError("Unknown gate with control: " + l)
+            elif len(targets) == 3:
+                c1,c2,t = targets
+                if gname in ('t3', 'tof'):
+                    gates.append(Tofolli(c1,c2,t))
+                elif gname in ('ccz', 'z'):
+                    gates.append(CCZ(c1,c2,t))
+                else:
+                    raise TypeError("Unknown gate with control: " + l)
+            else:
+                if gname not in ('t4', 't5', 't6', 'tof'):
+                    raise TypeError("Unknown gate with multiple controls: " + l)
+                *ctrls, t = targets
+                if len(ctrls) > 5: raise TypeError("No more than 5 ctrls supported")
+                while len(ancillas) < len(ctrls) - 2:
+                    ancillas[len(ancillas)] = qcount
+                    qcount += 1
+                gates.append(Tofolli(ctrls[0],ctrls[1],ancillas[0]))
+                if len(ctrls) == 3:
+                    gates.append(Tofolli(ctrls[2],ancillas[0],t))
+                else:
+                    gates.append(Tofolli(ctrls[2],ctrls[3],ancillas[1]))
+                    if len(ctrls) == 4:
+                        gates.append(Tofolli(ancillas[0],ancillas[1],t))
+                    else:
+                        gates.append(Tofolli(ancillas[0],ancillas[1],ancillas[2]))
+                        gates.append(Tofolli(ctrls[4],ancillas[2],t))
+                        gates.append(Tofolli(ancillas[0],ancillas[1],ancillas[2]))
+                    gates.append(Tofolli(ctrls[2],ctrls[3],ancillas[1]))
+                gates.append(Tofolli(ctrls[0],ctrls[1],ancillas[0]))
+
+        c = zx.Circuit(qcount)
+        c.gates = gates
+
+    @staticmethod
+    def load(fname):
+        """Tries to detect the circuit description language from the filename and its contents,
+        and then tries to load the file into a circuit."""
+        ext = os.path.splitext(fname)[-1]
+        if ext in ('.qc', '.tfc'):
+            return Circuit.from_qc_file(fname)
+        if ext.find('qasm') != -1:
+            return Circuit.from_qasm_file(fname)
+        if ext == '.qgraph':
+            raise TypeError(".qgraph files are not Circuits. Please load them as graphs using json_to_graph")
+        if ext.find('quip') != -1:
+            return Circuit.from_quipper_file(fname)
+        f = open(fname, 'r')
+        data = f.read(128)
+        f.close()
+        if data.startswith('Inputs:'):
+            return Circuit.from_quipper_file(fname)
+        if data.find('.v') != -1 or data.find('.i') != -1 or data.find('.o') != -1:
+            return Circuit.from_qc_file(fname)
+        if data.find('QASM') != -1:
+            return Circuit.from_qasm_file(fname)
+
+        raise TypeError("Couldn't determine filetype")
+
     def to_basic_gates(self):
         """Returns a new circuit with every gate expanded in terms of X/Z phases, Hadamards
         and the 2-qubit gates CNOT, CZ, CX."""
         c = Circuit(self.qubits, name=self.name)
         for g in self.gates:
             c.gates.extend(g.to_basic_gates())
+        return c
+
+    def split_phase_gates(self):
+        c = Circuit(self.qubits, name=self.name)
+        for g in self.gates:
+            if isinstance(g, (ZPhase, XPhase)):
+                if not g.phase: continue
+                if g.phase == 1:
+                    if isinstance(g, ZPhase): c.add_gate("Z", g.target)
+                    else: c.add_gate("NOT", g.target)
+                    continue
+                if isinstance(g, XPhase):
+                    c.add_gate("HAD", g.target)
+                if g.phase.denominator == 2:
+                    if g.phase.numerator % 4 == 1:
+                        c.add_gate("S", g.target)
+                    else: c.add_gate("S", g.target, adjoint=True)
+                elif g.phase.denominator == 4:   
+                    n = g.phase.numerator % 8
+                    if n == 3 or n == 5:
+                        c.add_gate("Z", g.target)
+                        n = (n-4)%8
+                    if n == 1: c.add_gate("T", g.target)
+                    if n == 7: c.add_gate("T", g.target, adjoint=True)
+                if isinstance(g, XPhase):
+                    c.add_gate("HAD", g.target) 
+            else:
+                c.add_gate(g)
         return c
 
     def to_graph(self, compress_rows=True, backend=None):
@@ -189,6 +322,16 @@ class Circuit(object):
         for g in self.gates:
             s += g.to_qasm() + "\n"
         return s
+
+    def to_qc(self):
+        """Produces a .qc description of the circuit."""
+        s = ".v " + " ".join("q{:d}".format(i) for i in range(self.qubits))
+        s += "\n\nBEGIN\n"
+        for g in self.gates:
+            s += g.to_qc() + "\n"
+        s += "END\n"
+        return s
+
 
     def to_tensor(self):
         """Returns a tensor describing the circuit."""
@@ -534,6 +677,8 @@ class Gate(object):
 
     def to_quipper(self):
         n = self.name if not hasattr(self, "quippername") else self.quippername
+        if n == 'undefined':
+            raise TypeError("Gate {} doesn't have a Quipper description".format(str(self)))
         s = 'QGate["{}"]{}({!s})'.format(n,("*" if (hasattr(self,"adjoint") and self.adjoint) else ""),self.target)
         if hasattr(self, "control"):
             s += ' with controls=[+{!s}]'.format(self.control)
@@ -541,16 +686,33 @@ class Gate(object):
         return s
 
     def to_qasm(self):
-        args = []
-        for a in ["ctrl1","ctrl2", "control", "target"]:
-            if hasattr(self, a): args.append("q[{!s}]".format(getattr(self,a)))
         n = self.qasm_name
+        if n == 'undefined':
+            raise TypeError("Gate {} doesn't have a QASM description".format(str(self)))
         if hasattr(self, "adjoint") and self.adjoint:
             n = self.qasm_name_adjoint
+
+        args = []
+        for a in ["ctrl1","ctrl2", "control", "target"]:
+            if hasattr(self, a): args.append("q[{:d}]".format(getattr(self,a)))
         param = ""
         if hasattr(self, "printphase") and self.printphase:
             param = "({})".format(phase_to_s(self.phase))
         return "{}{} {};".format(n, param, ", ".join(args))
+
+    def to_qc(self):
+        n = self.qc_name
+        if hasattr(self, "adjoint") and self.adjoint:
+            n += "*"
+        if n == 'undefined':
+            raise TypeError("Gate {} doesn't have a .qc description".format(str(self)))
+        args = []
+        for a in ["ctrl1","ctrl2", "control", "target"]:
+            if hasattr(self, a): args.append("q{:d}".format(getattr(self,a)))
+        
+        # if hasattr(self, "printphase") and self.printphase:
+        #     args.insert(0, phase_to_s(self.phase))
+        return "{} {}".format(n, " ".join(args))
 
     def graph_add_node(self, g, qs, t, q, r, phase=0):
         v = g.add_vertex(t,q,r,phase)
@@ -562,6 +724,7 @@ class ZPhase(Gate):
     name = 'ZPhase'
     printphase = True
     qasm_name = 'rz'
+    qc_name = 'undefined'
     def __init__(self, target, phase):
         self.target = target
         self.phase = phase
@@ -580,6 +743,7 @@ class ZPhase(Gate):
 class Z(ZPhase):
     name = 'Z'
     qasm_name = 'z'
+    qc_name = 'Z'
     printphase = False
     def __init__(self, target):
         super().__init__(target, Fraction(1,1))
@@ -588,6 +752,7 @@ class S(ZPhase):
     name = 'S'
     qasm_name = 's'
     qasm_name_adjoint = 'sdg'
+    qc_name = 'S'
     printphase = False
     def __init__(self, target, adjoint=False):
         super().__init__(target, Fraction(1,2)*(-1 if adjoint else 1))
@@ -597,6 +762,7 @@ class T(ZPhase):
     name = 'T'
     qasm_name = 't'
     qasm_name_adjoint = 'tdg'
+    qc_name = 'T'
     printphase = False
     def __init__(self, target, adjoint=False):
         super().__init__(target, Fraction(1,4)*(-1 if adjoint else 1))
@@ -606,6 +772,7 @@ class XPhase(Gate):
     name = 'XPhase'
     printphase = True
     qasm_name = 'rx'
+    qc_name = 'undefined'
     def __init__(self, target, phase=0):
         self.target = target
         self.phase = phase
@@ -624,6 +791,7 @@ class NOT(XPhase):
     name = 'NOT'
     quippername = 'not'
     qasm_name = 'x'
+    qc_name = 'X'
     printphase = False
     def __init__(self, target):
         super().__init__(target, phase = Fraction(1,1))
@@ -633,6 +801,7 @@ class CNOT(Gate):
     name = 'CNOT'
     quippername = 'not'
     qasm_name = 'cx'
+    qc_name = 'Tof'
     def __init__(self, control, target):
         self.target = target
         self.control = control
@@ -648,6 +817,7 @@ class CZ(Gate):
     name = 'CZ'
     quippername = 'Z'
     qasm_name = 'cz'
+    qc_name = 'Z'
     def __init__(self, control, target):
         self.target = target
         self.control = control
@@ -672,6 +842,7 @@ class ParityPhase(Gate):
     name = 'ParityPhase'
     quippername = 'undefined'
     qasm_name = 'undefined'
+    qc_name = 'undefined'
     printphase = True
     def __init__(self, phase, *targets):
         self.targets = targets
