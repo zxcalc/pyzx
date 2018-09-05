@@ -200,9 +200,10 @@ class BaseGraph(object):
         max_r = self.depth() - 1
         if max_r <= 2: return
         claimed = []
-        for i in self.inputs:
+        for q,i in enumerate(sorted(self.inputs, key=self.qubit)):
             self.set_row(i,0)
-            q = self.qubit(i)
+            self.set_qubit(i,q)
+            #q = self.qubit(i)
             n = list(self.neighbours(i))[0]
             if self.type(n) in (1,2):
                 claimed.append(n)
@@ -216,9 +217,10 @@ class BaseGraph(object):
                 self.add_edge((i,v),3-t)
                 self.add_edge((v,n), 2)
                 claimed.append(v)
-        for o in self.outputs:
-            q = self.qubit(o)
+        for q, o in enumerate(sorted(self.outputs,key=self.qubit)):
+            #q = self.qubit(o)
             self.set_row(o,max_r+1)
+            self.set_qubit(o,q)
             n = list(self.neighbours(o))[0]
             if n not in claimed:
                 self.set_row(n,max_r)

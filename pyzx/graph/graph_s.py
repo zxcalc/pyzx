@@ -45,7 +45,10 @@ class GraphS(BaseGraph):
 		if self._rindex: self._maxr = max(self._rindex.values())
 		else: self._maxr = -1
 		return self._maxr
-	def qubit_count(self): return self._maxq + 1
+	def qubit_count(self): 
+		if self._qindex: self._maxq = max(self._qindex.values())
+		else: self._maxq = -1
+		return self._maxq + 1
 
 	def add_vertices(self, amount):
 		for i in range(self._vindex, self._vindex + amount):
