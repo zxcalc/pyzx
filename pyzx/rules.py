@@ -380,7 +380,7 @@ def match_lcomp_parallel(g, vertexf=None, num=-1, check_edge_types=False):
     :param check_edge_types: Whether the method has to check if all the edges involved
        are of the correct type (Hadamard edges).
     :param vertexf: An optional filtering function for candidate vertices, should
-       return True if a vertex should considered as a match. Passing None will
+       return True if a vertex should be considered as a match. Passing None will
        consider all vertices.
     :rtype: List of 2-tuples ``(vertex, neighbours)``.
     """
@@ -434,17 +434,18 @@ def match_ids(g):
     """Finds a single identity node. See :func:`match_ids_parallel`."""
     return match_ids_parallel(g, num=1)
 
-def match_ids_parallel(g, num=-1, vertexlist=-1):
+def match_ids_parallel(g, vertexf=None, num=-1):
     """Finds noninteracting identity nodes.
     
     :param g: An instance of a ZX-graph.
     :param num: Maximal amount of matchings to find. If -1 (the default)
        tries to find as many as possible.
-    :param vertexlist: List of vertices to consider. If -1 (the default), looks 
-       at all vertices.
+    :param vertexf: An optional filtering function for candidate vertices, should
+       return True if a vertex should be considered as a match. Passing None will
+       consider all vertices.
     :rtype: List of 4-tuples ``(identity_vertex, neighbour1, neighbour2, edge_type)``.
     """
-    if vertexlist!=-1: candidates = set(vertexlist)
+    if vertexf != None: candidates = set([v for v in g.vertices() if vertexf(v)])
     else: candidates = g.vertex_set()
     types = g.types()
     phases = g.phases()

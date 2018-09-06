@@ -75,11 +75,11 @@ def lcomp_simp(g, matchf=None, quiet=False):
 def bialg_simp(g, quiet=False):
     return simp(g, 'bialg_simp', match_bialg_parallel, bialg, quiet=quiet)
 
-def spider_simp(g, quiet=False):
-    return simp(g, 'spider_simp', match_spider_parallel, spider, quiet=quiet)
+def spider_simp(g, matchf=None, quiet=False):
+    return simp(g, 'spider_simp', match_spider_parallel, spider, matchf=matchf, quiet=quiet)
 
-def id_simp(g, quiet=False):
-    return simp(g, 'id_simp', match_ids_parallel, remove_ids, quiet=quiet)
+def id_simp(g, matchf=None, quiet=False):
+    return simp(g, 'id_simp', match_ids_parallel, remove_ids, matchf=matchf, quiet=quiet)
 
 def gadget_simp(g, quiet=False):
     return simp(g, 'gadget_simp', match_phase_gadgets, merge_phase_gadgets, quiet=quiet)

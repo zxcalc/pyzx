@@ -19,9 +19,10 @@ __all__ = ['circuit_extract', 'clifford_extract', 'greedy_cut_extract', 'streami
 
 from fractions import Fraction
 
-from .linalg import Mat2, greedy_reduction
+from .linalg import Mat2, greedy_reduction, column_optimal_swap
 from .graph import Graph
 from .simplify import id_simp
+from .rules import match_spider_parallel, spider
 from .circuit import Circuit, ParityPhase, CNOT, HAD, ZPhase, CZ
 
 
@@ -45,7 +46,6 @@ def cut_edges(g, left, right, available=None):
             if (g.connected(v1,v2)):
                 g.remove_edge(g.edge(v1,v2))
     
-    vi = g.vindex()
     cut_rank = y.rows()
 
     #g.add_vertices(2*cut_rank)
@@ -85,13 +85,13 @@ def cut_edges(g, left, right, available=None):
 def unspider_by_row(g, v):
     r = g.row(v)
     w = g.add_vertex(1,g.qubit(v),r-1)
-    ns = list(g.neighbours(v))
-    for n in ns:
+    for n in list(g.neighbours(v)):
         if g.row(n) < r:
             e = g.edge(n,v)
             g.add_edge((n,w), edgetype=g.edge_type(e))
             g.remove_edge(e)
     g.add_edge((w, v))
+    return w
 
 
 def greedy_cut_extract(g, quiet=True):
@@ -344,15 +344,20 @@ def streaming_extract(g, quiet=True, stopcount=-1):
     c = Circuit(g.qubit_count())
     leftrow = 1
 
-    # First we check whether there are MS-gate like constructions, since we have to deal with them separately
+    nodestotal = g.num_vertices()
+    nodesparsed = 0
+    nodesmarker = 10
+
+    # special_nodes contains the ParityPhase like nodes
     special_nodes = {}
     for v in g.vertices():
         if len(list(g.neighbours(v))) == 1 and v not in g.inputs and v not in g.outputs:
             n = list(g.neighbours(v))[0]
             special_nodes[n] = v
         if rs[v] > 1:
-            g.set_row(v, rs[v]+10)
+            g.set_row(v, rs[v]+20)
     
+    tried_id_simp = False
     while True:
         left = [v for v in g.vertices() if rs[v] == leftrow]
         boundary_verts = []
@@ -379,6 +384,9 @@ def streaming_extract(g, quiet=True, stopcount=-1):
                 if t == 1: c.add_gate("ZPhase", q, phase=phase)
                 else: c.add_gate("XPhase", q, phase=phase)
                 g.set_phase(v, 0)
+        for v in left:
+            q = qs[v]
+            t = ty[v]
             neigh = [w for w in g.neighbours(v) if rs[w]==leftrow and w<v]
             for n in neigh:
                 t2 = ty[n]
@@ -421,15 +429,41 @@ def streaming_extract(g, quiet=True, stopcount=-1):
                     phase = phases[special_nodes[n]]
                     c.add_gate("ParityPhase", phase*(-1 if nphase else 1), *[qs[t] for t in targets])
                     g.remove_vertices([special_nodes[n],n])
+                    nodesparsed += 2
                     right.remove(n)
+                    del special_nodes[n]
             if stopcount != -1 and len(c.gates) > stopcount: return c
             right = list(right)
             m = bi_adj(g,right,left)
             #print(m)
             sequence = greedy_reduction(m) # Find the optimal set of CNOTs we can apply to get a frontier we can work with
             if not isinstance(sequence, list): # Couldn't find any reduction, hopefully we can fix this
+                if not tried_id_simp:
+                    tried_id_simp = True
+                    i = id_simp(g, matchf=lambda v: rs[v]>leftrow, quiet=True)
+                    if i: 
+                        if not quiet: print("id_simp found some matches")
+                        m = match_spider_parallel(g, matchf=lambda e: rs[g.edge_s(e)]>=leftrow and rs[g.edge_t(e)]>=leftrow)
+                        m = [(v1,v2) if v1 in left else (v2,v1) for v1,v2 in m]
+                        if not quiet and m: print("spider fusion found some matches")
+                        etab, rem_verts, not_needed1, not_needed2 = spider(g, m)
+                        g.add_edge_table(etab)
+                        g.remove_vertices(rem_verts)
+                        # g.normalise()
+                        # leftrow = 1
+                        # for v in g.vertices():
+                        #     if rs[v] > 1 and rs[v]<20:
+                        #         g.set_row(v, rs[v]+20)
+                        continue
+                right = set(right)
+                gates, success = try_greedy_cut(g, left, right, right.difference(special_nodes), quiet=quiet)
+                if success:
+                    c.gates.extend(gates)
+                    continue
                 gates, leftrow = handle_phase_gadget(g, leftrow, quiet=quiet)
                 c.gates.extend(gates)
+                nodesparsed += 2
+                tried_id_simp = False
                 continue
             for control, target in sequence:
                 c.add_gate("CNOT", qs[left[target]], qs[left[control]])
@@ -474,6 +508,13 @@ def streaming_extract(g, quiet=True, stopcount=-1):
         for i,v in enumerate(good_neighs): 
             g.set_row(v,leftrow+1) # Bring the new nodes of the frontier to the correct position
             g.set_qubit(v,qs[good_verts[i]])
+
+        tried_id_simp = False
+
+        nodesparsed += len(good_neighs)
+        if not quiet and nodesparsed > nodesmarker:
+            print("{:d}/{:d}".format(nodesparsed, nodestotal))
+            nodesmarker += 10
         leftrow += 1
         if stopcount != -1 and len(c.gates) > stopcount: return c
             
@@ -498,6 +539,75 @@ def streaming_extract(g, quiet=True, stopcount=-1):
         for t1, t2 in permutation_as_swaps(swap_map):
             c.add_gate("SWAP", t1, t2)
     return c
+
+
+def try_greedy_cut(g, left, right, candidates, quiet=True):
+    q = len(left)
+    left = list(left)
+    # Take care nothing is connected directly to an output
+    for w in right.copy():
+        if w in g.outputs:
+            w2 = g.add_vertex(1, g.qubit(w), g.row(w)-1)
+            n = list(g.neighbours(w))[0] # Outputs should have unique neighbours
+            e = g.edge(n,w)
+            et = g.edge_type(e)
+            g.remove_edge(e)
+            g.add_edge((n,w2),2)
+            g.add_edge((w2,w),3-et)
+            right.remove(w)
+            right.add(w2)
+            if w in candidates:
+                candidates.remove(w)
+                candidates.add(w2)
+
+    good_nodes = []
+    for w in candidates:
+        if cut_rank(g, right.difference({w}), left) == q-1:
+            good_nodes = [w]
+            right = right.difference({w})
+            candidates.remove(w)
+            break
+    else:
+        if not quiet: print("Greedy cut failed")
+        return [], False
+    
+    while True:
+        for w in candidates:
+            if cut_rank(g, right.difference({w}), left) == q-len(good_nodes)-1:
+                good_nodes.append(w)
+                right = right.difference({w})
+                candidates.remove(w)
+                break
+        else:
+            break
+
+    new_right = cut_edges(g, left, list(right))
+    leftrow = g.row(left[0])
+    for w in good_nodes: 
+        g.set_row(w, leftrow+2)
+        new_right.append(unspider_by_row(g, w))
+
+    left.sort(key=g.qubit)
+    qs = [g.qubit(v) for v in left]
+    m = bi_adj(g, new_right, left)
+    target = column_optimal_swap(m)
+    for i, j in target.items():
+        g.set_qubit(new_right[i],qs[j])
+    new_right.sort(key=g.qubit)
+    m = bi_adj(g, new_right, left)
+    gates = m.to_cnots(optimize=True)
+    for cnot in gates:
+        cnot.target = qs[cnot.target]
+        cnot.control = qs[cnot.control]
+    for i in range(q):
+        for j in range(q):
+            if g.connected(left[i],new_right[j]):
+                if i != j:
+                    g.remove_edge(g.edge(left[i],new_right[j]))
+            elif i == j:
+                g.add_edge((left[i],new_right[j]), 2)
+    if not quiet: print("Greedy extract with {:d} nodes and {:d} CNOTs".format(len(good_nodes),len(gates)))
+    return gates, True
 
 
 
@@ -590,7 +700,7 @@ def handle_phase_gadget(g, leftrow, quiet=True):
     
     m = bi_adj(g, right, left)
     if m.rank() != q:
-        raise Exception("Rank doesn't match, say whaat")
+        raise Exception("Rank in phase gadget reduction too low.")
     operations = Circuit(q)
     operations.row_add = lambda r1,r2: operations.gates.append((r1,r2))
     m.gauss(full_reduce=True,x=operations)

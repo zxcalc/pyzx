@@ -216,8 +216,9 @@ class Circuit(object):
                     gates.append(Tofolli(ctrls[2],ctrls[3],ancillas[1]))
                 gates.append(Tofolli(ctrls[0],ctrls[1],ancillas[0]))
 
-        c = zx.Circuit(qcount)
+        c = Circuit(qcount)
         c.gates = gates
+        return c
 
     @staticmethod
     def load(fname):

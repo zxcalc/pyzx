@@ -257,6 +257,7 @@ def find_minimal_sums(m):
     if any(sum(r)==1 for r in d): return []
     combs = {(i,):d[i] for i in range(r)}
     combs2 = {}
+    iterations = 0
     while True:
         combs2 = {}
         for index,l in combs.items():
@@ -265,6 +266,9 @@ def find_minimal_sums(m):
                 if sum(row) == 1:
                     return (*index,k)
                 combs2[(*index,k)] = row
+                iterations += 1
+            if iterations > 100000:
+                return None
         if not combs2:
             return None
             #raise ValueError("Irreducible input has been given")
@@ -299,3 +303,90 @@ def greedy_reduction(m):
         weights[target] = weights[target] - reduction
         indices.remove(control)
     return result
+
+
+
+def column_optimal_swap(m):
+    qubits = min([m.rows(), m.cols()])
+    connections = {i: set() for i in range(qubits)}
+    connectionsr= {j: set() for j in range(qubits)}
+
+    for i in range(qubits):
+            for j in range(qubits):
+                if m.data[i][j]: 
+                    connections[i].add(j)
+                    connectionsr[j].add(i)
+
+    target = _find_targets(connections, connectionsr)
+    target = {v:k for k,v in target.items()}
+    left = list(set(range(qubits)).difference(target.keys()))
+    right = list(set(range(qubits)).difference(target.values()))
+    for i in range(len(left)):
+        target[left[i]] = right[i]
+    return target
+
+
+def _find_targets(conn, connr, target={}):
+    target = target.copy()
+    qubits = len(conn)
+    claimedr = set(target.values())
+    claimed = set(target.keys())
+    
+    while True:
+        min_index = -1
+        min_options = set(range(1000))
+        for i in range(qubits):
+            if i in claimed: continue
+            s = conn[i] - claimedr
+            for i2 in s.copy(): # Go trough the possible options
+                for j1 in (connr[i2] - claimed): 
+                    if j1 != i and j1 in target and i in connr[target[j1]]: # i connected to j2
+                        #This is not allowed
+                        #print("not allowed1:", i, i2)
+                        s.remove(i2)
+                        break
+            if len(s) == 0: return None # No possible options, start backtracking
+            if len(s) == 1:
+                j = s.pop()
+                #print("forced1", i,j)
+                target[i] = j
+                claimed.add(i)
+                claimedr.add(j)
+                break
+            should_break = False
+            for i2 in s:
+                t = connr[i2] - claimed
+                for i1 in t.copy():
+                    for j1 in connr[i2]:
+                        if j1 != i1 and j1 in target and i1 in connr[target[j1]]: 
+                            #print("not allowed2:", i1, j1)
+                            t.remove(i1)
+                            break
+                if len(t) == 0: return None
+                if len(t) == 1: # we must connect them together
+                    i1 = t.pop()
+                    #print("forced2", i1,i2)
+                    target[i1] = i2
+                    claimed.add(i1)
+                    claimedr.add(i2)
+                    should_break = True
+                    break
+            if should_break: break
+            if len(s) < len(min_options):
+                min_index = i
+                min_options = s
+        else: # No forced decisions
+            if not (conn.keys() - claimed): # we are done
+                return target
+            if min_index == -1: raise ValueError("This shouldn't happen ever")
+            # Start depth-first search
+            tgt = target.copy()
+            #print("backtracking on", min_index)
+            for i2 in min_options:
+                #print("trying option", i2)
+                tgt[min_index] = i2
+                r = _find_targets(conn, connr, tgt)
+                if r: return r
+            #print("Unsuccessful")
+            return target
+            
