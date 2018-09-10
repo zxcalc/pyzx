@@ -267,7 +267,7 @@ def find_minimal_sums(m):
                     return (*index,k)
                 combs2[(*index,k)] = row
                 iterations += 1
-            if iterations > 100000:
+            if iterations > 30000:
                 return None
         if not combs2:
             return None

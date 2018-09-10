@@ -21,7 +21,7 @@ from fractions import Fraction
 
 from .linalg import Mat2, greedy_reduction, column_optimal_swap
 from .graph import Graph
-from .simplify import id_simp
+from .simplify import id_simp, tcount
 from .rules import match_spider_parallel, spider
 from .circuit import Circuit, ParityPhase, CNOT, HAD, ZPhase, CZ
 
@@ -344,7 +344,7 @@ def streaming_extract(g, quiet=True, stopcount=-1):
     c = Circuit(g.qubit_count())
     leftrow = 1
 
-    nodestotal = g.num_vertices()
+    nodestotal = tcount(g)
     nodesparsed = 0
     nodesmarker = 10
 
@@ -381,6 +381,7 @@ def streaming_extract(g, quiet=True, stopcount=-1):
                 g.set_edge_type(g.edge(n,v),1)
             if t == 0: continue # it is an output
             if phase != 0:
+                if phase.denominator > 2: nodesparsed += 1
                 if t == 1: c.add_gate("ZPhase", q, phase=phase)
                 else: c.add_gate("XPhase", q, phase=phase)
                 g.set_phase(v, 0)
@@ -429,7 +430,7 @@ def streaming_extract(g, quiet=True, stopcount=-1):
                     phase = phases[special_nodes[n]]
                     c.add_gate("ParityPhase", phase*(-1 if nphase else 1), *[qs[t] for t in targets])
                     g.remove_vertices([special_nodes[n],n])
-                    nodesparsed += 2
+                    nodesparsed += 1
                     right.remove(n)
                     del special_nodes[n]
             if stopcount != -1 and len(c.gates) > stopcount: return c
@@ -462,7 +463,7 @@ def streaming_extract(g, quiet=True, stopcount=-1):
                     continue
                 gates, leftrow = handle_phase_gadget(g, leftrow, quiet=quiet)
                 c.gates.extend(gates)
-                nodesparsed += 2
+                nodesparsed += 1
                 tried_id_simp = False
                 continue
             for control, target in sequence:
@@ -511,7 +512,6 @@ def streaming_extract(g, quiet=True, stopcount=-1):
 
         tried_id_simp = False
 
-        nodesparsed += len(good_neighs)
         if not quiet and nodesparsed > nodesmarker:
             print("{:d}/{:d}".format(nodesparsed, nodestotal))
             nodesmarker += 10
@@ -568,7 +568,7 @@ def try_greedy_cut(g, left, right, candidates, quiet=True):
             candidates.remove(w)
             break
     else:
-        if not quiet: print("Greedy cut failed")
+        #if not quiet: print("Greedy cut failed")
         return [], False
     
     while True:
@@ -759,7 +759,7 @@ def handle_phase_gadget(g, leftrow, quiet=True):
             g.set_row(v, leftrow+1)
 
     g.remove_vertices([special_nodes[gadget],gadget])
-    if not quiet: print("end")
+    #if not quiet: print("end")
     return gates, leftrow+1
 
 

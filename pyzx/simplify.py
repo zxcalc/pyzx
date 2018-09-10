@@ -138,8 +138,19 @@ def pivot_double_boundary(g, quiet=False):
         for e in g.incident_edges(v):
             s,t = g.edge_st(e)
             v2 = s if s!=v else t
-            if phases[v2] not in (0,1): continue
-            if sum(1 for w in g.neighbours(v2) if ty[w]==0) > 1:
+            borders = sum(1 for w in g.neighbours(v2) if ty[w]==0)
+            #if phases[v2] not in (0,1): continue
+            if phases[v2] in (Fraction(1,2), Fraction(3,2)):
+                if borders != 1: continue
+                # v2 is a node on the border with a pi/2 phase
+                w = g.add_vertex(1,-1, rs[v2], phase=-phases[v2])
+                g.add_edge((v2,w),2)
+                g.set_phase(v2, 0)
+                skiplist.append(v2)
+                pivotable_edges.append(e)
+                continue
+            elif phases[v2] not in (0,1): continue 
+            if borders > 1:
                 i = next(w for w in g.neighbours(v2) if w in g.inputs)
                 o = next(w for w in g.neighbours(v2) if w in g.outputs)
                 w1 = g.add_vertex(1,qs[i], rs[i]+1)
