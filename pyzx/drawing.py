@@ -25,6 +25,8 @@ except:
 from fractions import Fraction
 import math
 
+from .graph.base import BaseGraph
+
 def phase_to_s(a):
     if not a: return ''
     if not isinstance(a, Fraction):
@@ -117,6 +119,8 @@ def circuit_layout(g,keys = ('r','q')):
     return {v:(g.row(v),-g.qubit(v)) for v in g.vertices()}
 
 def draw(g, layout=None, labels=False, figsize=(8,2), h_edge_draw='blue', rows=None):
+    if not isinstance(g, BaseGraph):
+        g = g.to_graph()
     fig1 = plt.figure(figsize=figsize)
     ax = fig1.add_axes([0, 0, 1, 1], frameon=False)
     ax.xaxis.set_visible(False)

@@ -45,6 +45,17 @@ class Circuit(object):
     def __repr__(self):
         return str(self)
 
+    def copy(self):
+        c = Circuit(self.qubits, self.name)
+        c.gates = self.gates.copy()
+        return c
+
+    def adjoint(self):
+        c = Circuit(self.qubits, self.name + 'Adjoint')
+        for g in reversed(self.gates):
+            c.gates.append(g.adjoint())
+        return c
+
     @staticmethod
     def from_graph(g, split_phases=True):
         """Produces a :class:`Circuit` containing the gates of the given ZX-graph.
@@ -370,7 +381,7 @@ class Circuit(object):
         """
         if not mask:
             if self.qubits != circ.qubits: raise TypeError("Amount of qubits do not match")
-            self.gates.extend(other.gates)
+            self.gates.extend(circ.gates)
             return
         elif len(mask) != circ.qubits: raise TypeError("Mask size does not match qubits")
         for gate in circ.gates:
@@ -378,7 +389,7 @@ class Circuit(object):
             self.add_gate(g)
 
     def tcount(self):
-        return sum(1 for g in self.gates if isinstance(g, (ZPhase, XPhase)) and g.phase.denominator >= 4)
+        return sum(1 for g in self.gates if isinstance(g, (ZPhase, XPhase, ParityPhase)) and g.phase.denominator >= 4)
     
     def stats(self):
         """Returns statistics on the amount of gates in the circuit, separated into different classes 
@@ -664,6 +675,14 @@ class Gate(object):
 
     def copy(self):
         return copy.copy(self)
+
+    def adjoint(self):
+        g = self.copy()
+        if hasattr(g, "phase"):
+            g.phase = -g.phase
+        if hasattr(g, "adjoint"):
+            g.adjoint = not g.adjoint
+        return g
 
     def reposition(self, mask):
         g = self.copy()

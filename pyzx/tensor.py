@@ -131,6 +131,10 @@ def compare_tensors(t1,t2):
         t2 = tensorfy(g2)
         compare_tensors(t1,t2) # True if g1 and g2 represent the same circuit
     """
+    if not isinstance(t1, np.ndarray):
+        t1 = t1.to_tensor()
+    if not isinstance(t2, np.ndarray):
+        t2 = t2.to_tensor()
     epsilon = 10**-14
     if np.allclose(t1,t2): return True
     for i,a in enumerate(t1.flat):

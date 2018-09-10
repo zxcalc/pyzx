@@ -91,9 +91,8 @@ def phase_free_simp(g, quiet=False):
     bialg_simp(g, quiet=quiet)
 
 def interior_clifford_simp(g, quiet=False):
-    '''Performs the following set of simplifications on the graph:
-    spider -> pivot -> lcomp -> pivot. It then applies identity and spider fusion
-    until it can't anymore.'''
+    """Keeps doing the simplifications id_simp, spider_simp, pivot_simp and lcomp_simp
+    until none of them can be applied anymore."""
     spider_simp(g, quiet=quiet)
     to_gh(g)
     i = 0
@@ -107,6 +106,8 @@ def interior_clifford_simp(g, quiet=False):
     return i
 
 def clifford_simp(g, quiet=False):
+    """Keeps doing rounds of :func:`interior_clifford_simp` and
+    :func:`pivot_double_boundary` until they can't be applied anymore."""
     while True:
         interior_clifford_simp(g, quiet=quiet)
         i = pivot_double_boundary(g, quiet=quiet)
@@ -114,6 +115,9 @@ def clifford_simp(g, quiet=False):
             break
 
 def pivot_double_boundary(g, quiet=False):
+    """Finds Pauli-phase interior non-phase gadget nodes that are connected
+    to the boundary. It changes the boundary nodes so that a pivot can be done
+    to remove the interior Pauli node."""
     phases = g.phases()
     ty = g.types()
     qs = g.qubits()
@@ -210,8 +214,11 @@ def to_rg(g, select=None):
 
 
 def gadgetize(g):
-    """Un-fuses every T-like node, so that they act like phase gadgets. It returns
-    a list of vertices which act as the 'hub' part of the phase gadget."""
+    """Un-fuses every node with a non-Pauli phase, so that they act like phase gadgets. 
+    It returns a 2-tuple where the first value is the set of newly made gadgets,
+    and the second is the set of all gadgets in the graph.
+    The vertices returned are the 'hub' part of the phase gadget
+     (the part which can only contain a Pauli-phase)."""
     phases = g.phases()
     #qs = g.qubits()
     rs = g.rows()
@@ -237,7 +244,10 @@ def gadgetize(g):
     return set(newgadgets), set(allgadgets)
 
 def full_reduce(g, quiet=True):
-    """First applies :func:`clifford_simp`, then :func:`gadgetize` and finally :func:`clifford_simp` again."""
+    """This function does a round of :func:`clifford_simp`, :func:`gadgetize` 
+    and then a modified round of `clifford_simp`. It then applies 
+    :func:`gadget_simp`. It keeps doing rounds of these simplifications
+    until no more progress is made."""
     i = 0
     gadgetcount = 10**10
     vertexcount = 10**10
@@ -287,15 +297,13 @@ def full_reduce(g, quiet=True):
 
 
 def tcount(g):
+    """Returns the amount of nodes in g that have a non-Clifford phase."""
     count = 0
     phases = g.phases()
     for v in g.vertices():
         if phases[v]!=0 and phases[v].denominator > 2:
             count += 1
     return count
-
-
-
 
 
 def simp_iter(g, name, match, rewrite):
