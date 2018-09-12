@@ -15,7 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from .circuit import Circuit, HAD, ZPhase, CNOT, CZ
+from .circuit import Circuit, HAD, ZPhase, CNOT, CZ, S
 from .linalg import Mat2
 
 # TODO: Something going wrong in semantics here
@@ -37,16 +37,45 @@ def circuit_phase_polynomial_blocks(circuit, optimize=False, quiet=True):
                     gates[g.target].pop()
                 else: gates[g.target].append(g)
             elif isinstance(g, CZ):
-                gates[g.control].append(g)
-                gates[g.target].append(g)
+                if gates[g.control]: g1 = gates[g.control][-1]
+                else: g1 = None
+                if gates[g.target]: g2 = gates[g.target][-1]
+                else: g2 = None
+                if g1 and g2 and isinstance(g1, CZ) and isinstance(g2, CZ) and g.target in (g1.control, g1.target) and g.control in (g2.control, g2.target):
+                    gates[g.control].pop()
+                    gates[g.target].pop()
+                else:
+                    gates[g.control].append(g)
+                    gates[g.target].append(g)
             elif isinstance(g, CNOT): # We need to convert this CNOT to a CZ by adding hadamards at the control
-                if gates[g.target] and isinstance(gates[g.target][-1], HAD):
+                cz = CZ(g.control, g.target)
+                if gates[g.control]: g1 = gates[g.control][-1]
+                else: g1 = None
+                if gates[g.target]: g2 = gates[g.target][-1]
+                else: g2 = None
+                if g1 and g2 and isinstance(g1, CZ) and isinstance(g2, CZ) and g.target in (g1.control, g1.target) and g.control in (g2.control, g2.target):
+                    gates[g.control].pop()
+                    gates[g.target].pop()
+                    gates[g.control].append(S(g.control))
+                    gates[g.control].append(cz)
+                    #gates[g.control].extend([S(g.control),cz])
+                    gates[g.target].append(S(g.target))
+                    gates[g.target].append(HAD(g.target))
+                    gates[g.target].append(cz)
+                    gates[g.target].append(HAD(g.target))
+                    gates[g.target].append(S(g.target,adjoint=True))
+                    #gates[g.target].extend([S(g.target),HAD(g.target),cz,HAD(g.target),S(g.target,adjoint=True)])
+                    continue
+                if g2 and isinstance(g2, HAD):
                     gates[g.target].pop()
                 else:
                     gates[g.target].append(HAD(g.target))
-                cz = CZ(g.control, g.target)
-                gates[g.control].append(cz)
-                gates[g.target].append(cz)
+                if g1 and g2 and isinstance(g1, CZ) and isinstance(g2, CZ) and g.target in (g1.control, g1.target) and g.control in (g2.control, g2.target):
+                    gates[g.control].pop()
+                    gates[g.target].pop()
+                else:
+                    gates[g.control].append(cz)
+                    gates[g.target].append(cz)
                 gates[g.target].append(HAD(g.target))
             else:
                 raise TypeError("Unsupported gate {!s}. Make sure you are in GH+CNOT form.".format(g))
@@ -163,7 +192,6 @@ def circuit_phase_polynomial_blocks(circuit, optimize=False, quiet=True):
 
 
 
-# todo: Something going wrong in semantics here
 def optimize_block(block, qubit_count, quiet=True):
     q = qubit_count
     #First we construct the phase polynomial

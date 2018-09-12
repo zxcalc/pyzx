@@ -49,24 +49,40 @@
 # end
 #
 
+from .extract import bi_adj
+
+
 def gflow(g):
-	inputs = set()
-	outputs = set()
 	l = dict()
 	g = dict()
-	for v in g.vertices():
+	for v in g.outputs:
 		l[v] = 0
-		intputs.add(v) if g.vdata(v, 'i')
-		outputs.add(v) if g.vdata(v, 'o')
 
-	k = 0
+	inputs = set(g.inputs)
+	processed = set(g.outputs)
+	vertices = set(g.vertices())
+	k = 1
 	while True:
 		correct = set()
+		unprocessed = list(vertices.difference(processed))
+		processed_prime = list(unprocessed.difference(inputs))
+		zerovec = [0]*len(processed_prime)
+		for u in unprocessed:
+			vu = zerovec.copy()
+			vu[processed_prime.index(u)] = 1
+			m = bi_adj(processed_prime, unprocessed)
+			x = m.solve(vu)
+			if x:
+				correct.add(u)
+				g[u] = x
+				l[u] = k
 
-		if len(correct) == 0:
-			break
+		if not correct:
+			if not unprocessed:
+				return l, g, k
+			return None
 		else:
-			outputs |= correct
+			processed.update(correct)
 			k += 1
 
 

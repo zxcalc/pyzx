@@ -15,12 +15,13 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-__all__ = ['cnots','zigzag', 'zigzag2','cliffords', 'cliffordT', 'identity']
+__all__ = ['cnots','cliffords', 'cliffordT', 'identity']
 
 import random
 from fractions import Fraction
 
 from .graph.graph import Graph
+from .circuit import Circuit
 
 
 def identity(qubits, depth=1,backend=None):
@@ -326,36 +327,64 @@ def cliffords(qubits, depth, no_hadamard=False,t_gates=False,backend=None):
     return g
 
 
-#TODO: Add rank information
-def zigzag(sz, backend=None):
-    """Returns a 2 qubit phaseless circuit that resembles 
-    a long sequence of zigzags"""
-    g = Graph(backend)
-    g.add_vertices(2*sz+4)
-    for i in range(1,sz+1):
-        g.set_type(2*i, (i%2)+1)
-        g.set_type(2*i+1, (i%2)+1)
-    g.add_edges([(0,2),(1,3)])
-    g.add_edges([(2*i,2*i+2) for i in range(1,sz)])
-    g.add_edges([(2*i,2*i+3) for i in range(1,sz)])
-    g.add_edges([(2*i+1,2*i+2) for i in range(1,sz)])
-    g.add_edges([(2*i+1,2*i+3) for i in range(1,sz)])
-    g.add_edges([(2*sz,2*sz+2),(2*sz+1,2*sz+3)])
-    return g
 
-#TODO: Add rank information
-def zigzag2(sz, backend=None):
-    """Returns a 2 qubit phaseless circuit that resembles 
-    a long sequence of zigzags"""
-    g = Graph(backend)
-    g.add_vertices(2*sz+4)
-    for i in range(1,sz+1):
-        g.set_type(2*i, ((i//2)%2)+1)
-        g.set_type(2*i+1, ((i//2)%2)+1)
-    g.add_edges([(0,2),(1,3)])
-    g.add_edges([(2*i,2*i+2) for i in range(1,sz)])
-    g.add_edges([(2*i+1,2*i+3) for i in range(1,sz)])
-    g.add_edges([(4*i+1+2,4*i+2+2) for i in range(0,sz//2)])
-    g.add_edges([(4*i+2,4*i+3+2) for i in range(0,sz//2)])
-    g.add_edges([(2*sz,2*sz+2),(2*sz+1,2*sz+3)])
-    return g
+def circuit_identity_phasepoly():
+    """Returns a 4-qubit circuit that is equal to the identity, provable by phase polynomial reductions."""
+    c = Circuit(4)
+    c.add_gate("ParityPhase",Fraction(1,4),0,1,2,3)
+    for i in range(4):
+        c.add_gate("ZPhase",i, Fraction(3,4))
+        for j in range(i+1,4):
+            c.add_gate("ParityPhase", Fraction(5,4),i,j)
+            for k in range(j+1,4):
+                c.add_gate("ParityPhase", Fraction(7,4),i,j,k)
+
+    return c.to_graph()
+
+
+def circuit_identity_commuting_controls(alpha,beta):
+    """Returns the circuit UVU*V* where U=NCZ(2beta) and V=CX(2alpha).
+    Since these operations commute this circuit is equal to the identity.
+    See page 13 of https://arxiv.org/pdf/1705.11151.pdf for more details."""
+    cb = Circuit(2) 
+    cb.add_gate("NOT",0)
+    cb.add_gate("ZPhase",0,beta)
+    cb.add_gate("ZPhase",1,beta)
+    cb.add_gate("ParityPhase", -beta, 0, 1)
+    cb.add_gate("NOT",0)
+
+    ca = Circuit(2)
+    ca.add_gate("ZPhase", 1, Fraction(3,2))
+    ca.add_gate("XPhase", 1, Fraction(3,2))
+    ca.add_gate("ZPhase",0,alpha)
+    ca.add_gate("ZPhase",1,alpha)
+    ca.add_gate("ParityPhase", -alpha, 0, 1)
+    ca.add_gate("XPhase", 1, Fraction(1,2))
+    ca.add_gate("ZPhase", 1, Fraction(1,2))
+
+    c = cb.copy()
+    c.add_circuit(ca)
+    c.add_circuit(cb.adjoint())
+    c.add_circuit(ca.adjoint())
+    
+    return c.to_graph()
+
+
+def circuit_identity_two_qubit1():
+    """This returns the first nontrivial circuit identity from Selinger & Bian.
+    See https://www.mathstat.dal.ca/~xbian/talks/slide_cliffordt2.pdf"""
+    c = Circuit(2)
+    c.add_gate("NOT",0)
+    c.add_gate("T",1,adjoint=True)
+    c.add_gate("S",1,adjoint=True)
+    c.add_gate("HAD",1)
+    c.add_gate("T",1,adjoint=True)
+    c.add_gate("CNOT",0,1)
+    c.add_gate("NOT",0)
+    c.add_gate("T",1)
+    c.add_gate("HAD",1)
+    c.add_gate("S",1)
+    c.add_gate("T",1)
+    c.add_gate("CNOT",0,1)
+    c.add_circuit(c)
+    return c.to_graph()

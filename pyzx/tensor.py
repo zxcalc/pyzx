@@ -24,8 +24,6 @@ except:
     np = None
 from math import pi, sqrt
 
-from . import generate
-
 def Z_to_tensor(arity, phase):
     m = np.zeros([2]*arity, dtype = complex)
     m[(0,)*arity] = 1
@@ -72,7 +70,7 @@ def tensorfy(g):
     had = 1/sqrt(2)*np.mat([[1,1],[1,-1]])
     id2 = np.identity(2)
     tensor = np.identity(2)
-    qubits = g.qubit_count()
+    qubits = len(g.inputs)
     for i in range(qubits-1): tensor = np.tensordot(tensor,id2,axes=0)
     inputs = sorted(g.inputs,key=g.qubit)
     indices = {}
@@ -193,6 +191,7 @@ def adjoint(t):
 
 def is_unitary(g):
     """Returns whether the given ZX-graph is equal to a unitary (up to a number)."""
+    from .generate import identity # Imported here to prevent circularity
     adj = g.adjoint()
     adj.compose(g)
-    return compare_tensors(adj.to_tensor(), generate.identity(g.qubit_count(),2).to_tensor())
+    return compare_tensors(adj.to_tensor(), identity(g.qubit_count(),2).to_tensor())

@@ -53,7 +53,7 @@ class Circuit(object):
     def adjoint(self):
         c = Circuit(self.qubits, self.name + 'Adjoint')
         for g in reversed(self.gates):
-            c.gates.append(g.adjoint())
+            c.gates.append(g.to_adjoint())
         return c
 
     @staticmethod
@@ -676,7 +676,7 @@ class Gate(object):
     def copy(self):
         return copy.copy(self)
 
-    def adjoint(self):
+    def to_adjoint(self):
         g = self.copy()
         if hasattr(g, "phase"):
             g.phase = -g.phase

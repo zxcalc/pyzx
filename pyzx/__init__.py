@@ -19,9 +19,9 @@ from .graph.graph import Graph
 from .drawing import *
 from .rules import *
 from .simplify import *
-from .generate import *
 from .io import *
 from .extract import *
 from .tensor import *
 from .circuit import Circuit
 from . import quantomatic
+from . import generate

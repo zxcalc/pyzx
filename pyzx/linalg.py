@@ -52,12 +52,21 @@ class Mat2(object):
         return len(self.data[0]) if (len(self.data) != 0) else 0
     def row_add(self, r0, r1):
         """Add r0 to r1"""
-        for i in range(self.cols()):
-            self.data[r1][i] = (self.data[r0][i] + self.data[r1][i]) % 2
+        row1 = self.data[r0]
+        row2 = self.data[r1]
+        for i, v in enumerate(row1):
+            if v:
+                row2[i] = 0 if row2[i] else 1
+        # for i in range(len(row1)): row1[i] = (row)
+        # for i in range(self.cols()):
+        #     self.data[r1][i] = (self.data[r0][i] + self.data[r1][i]) % 2
     def col_add(self, c0, c1):
         """Add r0 to r1"""
         for i in range(self.rows()):
-            self.data[i][c1] = (self.data[i][c0] + self.data[i][c1]) % 2
+            d = self.data[i]
+            if d[c0]:
+                d[c1] = 0 if d[c1] else 1
+            #self.data[i][c1] = (self.data[i][c0] + self.data[i][c1]) % 2
     def row_swap(self, r0, r1):
         """Swap the rows r0 and r1"""
         r = self.data[r0]
@@ -218,6 +227,10 @@ class Mat2(object):
             if x.data[i][0] != 0:
                 return None
             i -= 1
+        if x.rows() > m.cols():
+            x.data = x.data[0][:m.cols()]
+        else:
+            x.data[0] = x.data[0] + [0]*(m.cols()-x.rows())
         return x
 
     def to_cnots(self, optimize=False):
@@ -262,12 +275,14 @@ def find_minimal_sums(m):
         combs2 = {}
         for index,l in combs.items():
             for k in range(max(index)+1,r):
-                row = xor_rows(combs[index],d[k])
+                #Unrolled xor_rows(combs[index],d[k])
+                row = [0 if v1==v2 else 1 for v1,v2 in zip(combs[index],d[k])]
+                #row = xor_rows(combs[index],d[k])
                 if sum(row) == 1:
                     return (*index,k)
                 combs2[(*index,k)] = row
                 iterations += 1
-            if iterations > 30000:
+            if iterations > 100000:
                 return None
         if not combs2:
             return None

@@ -436,9 +436,9 @@ def streaming_extract(g, quiet=True, stopcount=-1):
             if stopcount != -1 and len(c.gates) > stopcount: return c
             right = list(right)
             m = bi_adj(g,right,left)
-            #print(m)
-            sequence = greedy_reduction(m) # Find the optimal set of CNOTs we can apply to get a frontier we can work with
-            if not isinstance(sequence, list): # Couldn't find any reduction, hopefully we can fix this
+            m2 = m.copy()
+            m2.gauss(full_reduce=True)
+            if not any(sum(l)==1 for l in m2.data):
                 if not tried_id_simp:
                     tried_id_simp = True
                     i = id_simp(g, matchf=lambda v: rs[v]>leftrow, quiet=True)
@@ -450,22 +450,22 @@ def streaming_extract(g, quiet=True, stopcount=-1):
                         etab, rem_verts, not_needed1, not_needed2 = spider(g, m)
                         g.add_edge_table(etab)
                         g.remove_vertices(rem_verts)
-                        # g.normalise()
-                        # leftrow = 1
-                        # for v in g.vertices():
-                        #     if rs[v] > 1 and rs[v]<20:
-                        #         g.set_row(v, rs[v]+20)
                         continue
-                right = set(right)
-                gates, success = try_greedy_cut(g, left, right, right.difference(special_nodes), quiet=quiet)
-                if success:
-                    c.gates.extend(gates)
-                    continue
                 gates, leftrow = handle_phase_gadget(g, leftrow, quiet=quiet)
                 c.gates.extend(gates)
                 nodesparsed += 1
                 tried_id_simp = False
                 continue
+            sequence = greedy_reduction(m) # Find the optimal set of CNOTs we can apply to get a frontier we can work with
+            if not isinstance(sequence, list): # Couldn't find any reduction, hopefully we can fix this
+                right = set(right)
+                gates, success = try_greedy_cut(g, left, right, right.difference(special_nodes), quiet=quiet)
+                if success:
+                    c.gates.extend(gates)
+                    continue
+                raise Exception("We should never get here")
+                
+            if not quiet: print("Greedy reduction with {:d} CNOTs".format(len(sequence)))
             for control, target in sequence:
                 c.add_gate("CNOT", qs[left[target]], qs[left[control]])
                 # If a control is connected to an output, we need to add a new node.
@@ -514,6 +514,7 @@ def streaming_extract(g, quiet=True, stopcount=-1):
 
         if not quiet and nodesparsed > nodesmarker:
             print("{:d}/{:d}".format(nodesparsed, nodestotal))
+            nodesmarker = int(round(nodesparsed-5,-1))
             nodesmarker += 10
         leftrow += 1
         if stopcount != -1 and len(c.gates) > stopcount: return c
@@ -560,28 +561,50 @@ def try_greedy_cut(g, left, right, candidates, quiet=True):
                 candidates.remove(w)
                 candidates.add(w2)
 
+    right = list(right)
+    # We want to figure out which vertices in candidates are 'pivotable'
+    # That is, that removing them will decrease the cut rank of the remainder
+    m = bi_adj(g, right, left)
+    #print(m,'.')
+    m.gauss(full_reduce=True) # Gaussian elimination doesn't change this property
+    #print(m)
     good_nodes = []
-    for w in candidates:
-        if cut_rank(g, right.difference({w}), left) == q-1:
-            good_nodes = [w]
-            right = right.difference({w})
-            candidates.remove(w)
-            break
-    else:
-        #if not quiet: print("Greedy cut failed")
-        return [], False
-    
-    while True:
-        for w in candidates:
-            if cut_rank(g, right.difference({w}), left) == q-len(good_nodes)-1:
+    for r in m.data:
+        if sum(r) == 1: # Exactly one nonzero value, so removing the column with the nonzero value
+            i = next(i for i in range(len(r)) if r[i])# decreases the rank of the matrix
+            w = right[i]
+            if w in candidates:
                 good_nodes.append(w)
-                right = right.difference({w})
-                candidates.remove(w)
-                break
-        else:
-            break
+    if not good_nodes:
+        return [], False
+    #print(right, good_nodes)
+    #raise Exception("Bla")
+    right = [w for w in right if w not in good_nodes]
 
-    new_right = cut_edges(g, left, list(right))
+    # good_nodes = []
+    # for w in candidates:
+    #     if cut_rank(g, right.difference({w}), left) == q-1:
+    #         good_nodes = [w]
+    #         right = right.difference({w})
+    #         candidates.remove(w)
+    #         break
+    # else:
+    #     #if not quiet: print("Greedy cut failed")
+    #     return [], False
+    
+    # while True:
+    #     for w in candidates:
+    #         if cut_rank(g, right.difference({w}), left) == q-len(good_nodes)-1:
+    #             good_nodes.append(w)
+    #             right = right.difference({w})
+    #             candidates.remove(w)
+    #             break
+    #     else:
+    #         break
+    # print(good_nodes)
+    
+
+    new_right = cut_edges(g, left, right)
     leftrow = g.row(left[0])
     for w in good_nodes: 
         g.set_row(w, leftrow+2)
@@ -611,6 +634,31 @@ def try_greedy_cut(g, left, right, candidates, quiet=True):
 
 
 
+def reduce_bottom_rows(m, qubits):
+    """Using just row_add's from the first qubit rows in m, tries to find a row that can be 
+    completely zero'd out. Returns the rownumber of this row when successful."""
+    cols = m.cols()
+    leading_one = {}
+    adds = []
+    for r in range(qubits):
+        while True:
+            i = next(i for i in range(cols) if m.data[r][i])
+            if i in leading_one:
+                m.row_add(leading_one[i],r)
+                adds.append((leading_one[i],r))
+            else:
+                leading_one[i] = r
+                break
+    for r in range(qubits, m.rows()):
+        while True:
+            if not any(m.data[r]): 
+                return r
+            i = next(i for i in range(cols) if m.data[r][i])
+            if i not in leading_one: break
+            m.row_add(leading_one[i], r)
+            adds.append((leading_one[i],r))
+    raise Exception("Did not find any completely reducable row")
+
 def handle_phase_gadget(g, leftrow, quiet=True):
     """Tries to find a cut of the graph at the given leftrow so that a single phase-gadget can be extracted.
     Returns a list of extracted gates and modifies the graph g in place. Used by :func:`streaming_extract`"""
@@ -629,18 +677,37 @@ def handle_phase_gadget(g, leftrow, quiet=True):
     for v in left: neigh.update(w for w in g.neighbours(v) if rs[w]>leftrow)
     gadgets = neigh.intersection(special_nodes) # These are the phase gadgets that are attached to the left row
     if len(gadgets) == 0: raise ValueError("No phase gadget connected to this row")
-    all_verts = neigh.union(left)
+    all_verts = neigh.union(left).union(special_nodes.values())
+    right = list(neigh)
+    options = []
     for gadget in gadgets:
-        n = neigh.difference({gadget})
-        leftplusgadget = left + [gadget]
-        n = n.union([w for w in g.neighbours(gadget) if w not in left])
-        n = n.difference({special_nodes[gadget]})
-        right = list(n)
-        cr = cut_rank(g, right, leftplusgadget)
-        if cr == q: # A good choice should allow us to cut the edges
-            break
-    else:
-        raise ValueError("No good cut for phase gadget found")
+        if all(w in all_verts for w in g.neighbours(gadget)):
+            options.append(gadget)
+    #print(options)
+    for o in options:
+        right.remove(o)
+        right.append(o)
+    #print(right)
+    m = bi_adj(g, right, left+options)
+    r = reduce_bottom_rows(m, q)
+    gadget = options[r-len(left)]
+    right.remove(gadget)
+    #print(m)
+    # raise Exception("bla")
+    # for gadget in gadgets:
+    #     n = neigh.difference({gadget})
+    #     leftplusgadget = left + [gadget]
+    #     n = n.union([w for w in g.neighbours(gadget) if w not in left])
+    #     n = n.difference({special_nodes[gadget]})
+    #     right = list(n)
+    #     m = bi_adj(g, right, leftplusgadget)
+    #     cr = m.rank()
+    #     if cr == q: # A good choice should allow us to cut the edges
+    #         print(m)
+            
+    #         break
+    # else:
+    #     raise ValueError("No good cut for phase gadget found")
         # for gadget in gadgets:
         #     n = set(g.neighbours(gadget))
         #     n.remove(special_nodes[gadget])
