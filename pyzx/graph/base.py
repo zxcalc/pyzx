@@ -20,7 +20,7 @@ import abc
 from pyzx.tensor import tensorfy
 
 class DocstringMeta(abc.ABCMeta):
-    """Metaclass that allows docstring 'inheritance'"""
+    """Metaclass that allows docstring 'inheritance'."""
 
     def __new__(mcls, classname, bases, cls_dict):
         cls = abc.ABCMeta.__new__(mcls, classname, bases, cls_dict)
@@ -195,8 +195,35 @@ class BaseGraph(object):
         This is -1 when no qubit indices have been set."""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
+    def auto_detect_inputs(self):
+        if self.inputs or self.outputs: return self.inputs, self.outputs
+        minrow = 100000
+        maxrow = -100000
+        nodes = {}
+        ty = self.types()
+        for v in self.vertices():
+            if ty[v] == 0:
+                r = self.row(v)
+                nodes[v] = r
+                if r < minrow:
+                    minrow = r
+                if r > maxrow:
+                    maxrow = r
+
+        for v,r in nodes.items():
+            if r == minrow:
+                self.inputs.append(v)
+            if r == maxrow:
+                self.outputs.append(v)
+        self.inputs.sort(key=self.qubit)
+        self.outputs.sort(key=self.qubit)
+        return self.inputs, self.outputs
+
+
     def normalise(self):
         """Puts every node connecting to an input/output at the correct qubit index and row."""
+        if not self.inputs:
+            self.auto_detect_inputs()
         max_r = self.depth() - 1
         if max_r <= 2: return
         claimed = []
