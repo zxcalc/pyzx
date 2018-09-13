@@ -388,3 +388,24 @@ def circuit_identity_two_qubit1():
     c.add_gate("CNOT",0,1)
     c.add_circuit(c)
     return c.to_graph()
+
+def circuit_identity_two_qubit2():
+    """This returns the second nontrivial circuit identity from Selinger & Bian.
+    See https://www.mathstat.dal.ca/~xbian/talks/slide_cliffordt2.pdf"""
+    c = Circuit(2)
+    c.add_gate("CNOT",0,1)
+    c.add_gate("NOT",0)
+    c.add_gate("T",1)
+    c.add_gate("HAD",1)
+    c.add_gate("T",1)
+    c.add_gate("HAD",1)
+    c.add_gate("T",1,adjoint=True)
+    c.add_gate("CNOT",0,1)
+    c.add_gate("NOT",0)
+    c.add_gate("T",1)
+    c.add_gate("HAD",1)
+    c.add_gate("T",1,adjoint=True)
+    c.add_gate("HAD",1)
+    c.add_gate("T",1,adjoint=True)
+    c.add_circuit(c)
+    return c.to_graph()

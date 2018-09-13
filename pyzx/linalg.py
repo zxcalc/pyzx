@@ -228,9 +228,9 @@ class Mat2(object):
                 return None
             i -= 1
         if x.rows() > m.cols():
-            x.data = x.data[0][:m.cols()]
+            x.data[0] = x.data[0][:m.cols()]
         else:
-            x.data[0] = x.data[0] + [0]*(m.cols()-x.rows())
+            x.data[0] = x.data[0] + [[0]]*(m.cols()-x.rows())
         return x
 
     def to_cnots(self, optimize=False):

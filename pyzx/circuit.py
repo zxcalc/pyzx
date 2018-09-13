@@ -127,7 +127,7 @@ class Circuit(object):
         """Produces a :class:`Circuit` based on a Quipper ASCII description of a circuit."""
         f = open(fname, 'r')
         text = f.read()
-        lines = text.splitlines()
+        lines = text.strip().splitlines()
         f.close()
         if text.find('Subroutine') == -1:
             c = parse_quipper_block(lines)
@@ -175,7 +175,11 @@ class Circuit(object):
 
         for l in data[data.find("BEGIN")+6:data.find("END")].splitlines():
             if l.startswith('#'): continue
-            gname, targets = l.split(' ',1)
+            l = l.strip()
+            if not l: continue
+            try: gname, targets = l.split(' ',1)
+            except ValueError:
+                raise ValueError("Couldn't parse line {} in file {}".format(l, fname))
             gname = gname.strip().lower()
             targets = [labels[v.strip()] for v in targets.replace(',',' ').strip().split(' ') if v.strip()]
             if len(targets) == 1:
