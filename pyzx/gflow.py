@@ -51,38 +51,38 @@
 
 from .extract import bi_adj
 
-
 def gflow(g):
-	l = dict()
-	g = dict()
-	for v in g.outputs:
-		l[v] = 0
+    l = dict()
+    gflow = dict()
+    for v in g.outputs:
+        l[v] = 0
 
-	inputs = set(g.inputs)
-	processed = set(g.outputs)
-	vertices = set(g.vertices())
-	k = 1
-	while True:
-		correct = set()
-		unprocessed = list(vertices.difference(processed))
-		processed_prime = list(unprocessed.difference(inputs))
-		zerovec = [0]*len(processed_prime)
-		for u in unprocessed:
-			vu = zerovec.copy()
-			vu[processed_prime.index(u)] = 1
-			m = bi_adj(processed_prime, unprocessed)
-			x = m.solve(vu)
-			if x:
-				correct.add(u)
-				g[u] = x
-				l[u] = k
+    inputs = set(g.inputs)
+    processed = set(g.outputs)
+    vertices = set(g.vertices())
+    k = 1
+    while True:
+        correct = set()
+        #unprocessed = list()
+        processed_prime = [v for v in processed.difference(inputs) if any(w not in processed for w in g.neighbours(v))]
+        candidates = [v for v in vertices.difference(processed) if any(w in processed_prime for w in g.neighbours(v))]
+        
+        zerovec = Mat2([[0] for i in range(len(candidates))])
+        #print(unprocessed, processed_prime, zerovec)
+        m = bi_adj(g, processed_prime, candidates)
+        for u in candidates:
+            vu = zerovec.copy()
+            vu.data[candidates.index(u)] = [1]
+            x = m.solve(vu)
+            if x:
+                correct.add(u)
+                gflow[u] = {processed_prime[i] for i in range(x.rows()) if x.data[i][0]}
+                l[u] = k
 
-		if not correct:
-			if not unprocessed:
-				return l, g, k
-			return None
-		else:
-			processed.update(correct)
-			k += 1
-
-
+        if not correct:
+            if not candidates:
+                return l, gflow, k
+            return None
+        else:
+            processed.update(correct)
+            k += 1
