@@ -50,6 +50,7 @@
 #
 
 from .extract import bi_adj
+from .linalg import Mat2
 
 def gflow(g):
     l = dict()
