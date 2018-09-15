@@ -310,6 +310,9 @@ class Circuit(object):
             rs[i] += 1
 
         for gate in self.gates:
+            if compress_rows and not isinstance(gate, (ZPhase, XPhase, HAD)):
+                r = max(rs)
+                rs = [r]*self.qubits
             gate.to_graph(g,qs,rs)
             if compress_rows and not isinstance(gate, (ZPhase, XPhase, HAD)):
                 r = max(rs)

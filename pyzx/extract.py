@@ -763,9 +763,17 @@ def handle_phase_gadget(g, leftrow, quiet=True):
     phase = g.phase(special_nodes[gadget])
     phase = -1*phase if g.phase(gadget) != 0 else phase
     left.sort(key=g.qubit)
-    right.sort(key=g.qubit)
-    
+    qv = [qs[v] for v in left]
     m = bi_adj(g, right, left)
+    target = column_optimal_swap(m)
+    for i, j in target.items():
+        g.set_qubit(right[i],qv[j])
+    right.sort(key=g.qubit)
+    m = bi_adj(g, right, left)
+
+    #right.sort(key=g.qubit)
+    
+    #m = bi_adj(g, right, left)
     if m.rank() != q:
         raise Exception("Rank in phase gadget reduction too low.")
     operations = Circuit(q)
