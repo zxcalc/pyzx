@@ -18,8 +18,6 @@
 from .circuit import Circuit, HAD, ZPhase, CNOT, CZ, S, NOT, Z
 from .linalg import Mat2
 
-# TODO: Something going wrong in semantics here
-
 def circuit_phase_polynomial_blocks(circuit, optimize=False, quiet=True):
         """Tries to moves gates around such that as many ZPhase, CZ and CNOT gates 
         are together, so that the resulting circuit can be seen as a sequence of 

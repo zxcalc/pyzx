@@ -233,18 +233,23 @@ class Mat2(object):
             x.data[0] = x.data[0] + [[0]]*(m.cols()-x.rows())
         return x
 
-    def nullspace(self):
+    def nullspace(self, should_copy=True):
         """Returns a list of non-zero vectors that span the nullspace
         of the matrix. If the matrix has trivial kernel it returns the empty list."""
-        m = self.copy()
+        if should_copy:
+            m = self.copy()
+        else:
+            m = self
         m.gauss(full_reduce=True)
         cols = self.cols()
         nonpivots = list(range(cols))
         pivots = []
         for i, r in enumerate(m.data):
-            p = next(j for j in range(i,cols) if r[j])
-            nonpivots.remove(p)
-            pivots.append(p)
+            for j in range(cols):
+                if r[j]:
+                    nonpivots.remove(j)
+                    pivots.append(j)
+                    break
         vectors = []
         for n in nonpivots:
             v = [0]*cols
