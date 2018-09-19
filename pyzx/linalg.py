@@ -233,6 +233,27 @@ class Mat2(object):
             x.data[0] = x.data[0] + [[0]]*(m.cols()-x.rows())
         return x
 
+    def nullspace(self):
+        """Returns a list of non-zero vectors that span the nullspace
+        of the matrix. If the matrix has trivial kernel it returns the empty list."""
+        m = self.copy()
+        m.gauss(full_reduce=True)
+        cols = self.cols()
+        nonpivots = list(range(cols))
+        pivots = []
+        for i, r in enumerate(m.data):
+            p = next(j for j in range(i,cols) if r[j])
+            nonpivots.remove(p)
+            pivots.append(p)
+        vectors = []
+        for n in nonpivots:
+            v = [0]*cols
+            v[n] = 1
+            for r, p in zip(m.data, pivots):
+                if r[n]: v[p] = 1
+            vectors.append(v)
+        return vectors
+
     def to_cnots(self, optimize=False):
         """Returns a list of CNOTs that implements the matrix as a reversible circuit of qubits."""
         if not optimize:

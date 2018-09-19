@@ -15,7 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from .circuit import Circuit, HAD, ZPhase, CNOT, CZ, S
+from .circuit import Circuit, HAD, ZPhase, CNOT, CZ, S, NOT, Z
 from .linalg import Mat2
 
 # TODO: Something going wrong in semantics here
@@ -32,6 +32,13 @@ def circuit_phase_polynomial_blocks(circuit, optimize=False, quiet=True):
         for g in circuit.gates:
             if isinstance(g,ZPhase):
                 gates[g.target].append(ZPhase(g.target,g.phase))
+            elif isinstance(g, NOT):
+                if gates[g.target] and isinstance(gates[g.target][-1], HAD):
+                    gates[g.target].pop()
+                else:
+                    gates[g.target].append(HAD(g.target))
+                gates[g.target].append(Z(g.target))
+                gates[g.target].append(HAD(g.target))
             elif isinstance(g, HAD):
                 if gates[g.target] and isinstance(gates[g.target][-1], HAD):
                     gates[g.target].pop()

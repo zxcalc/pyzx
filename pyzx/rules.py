@@ -537,7 +537,6 @@ def match_gadgets_phasepoly(g):
             if v in targets: targets[v].add(frozenset([v]))
             else: targets[v] = {frozenset([v])}
     targets = {t:s for t,s in targets.items() if len(s)>1}
-
     matches = {}
 
     for v1,t1 in targets.items():
@@ -545,7 +544,7 @@ def match_gadgets_phasepoly(g):
         if len(s) == 1:
             c = s.pop()
             if any(len(targets[v2])==2 for v2 in c): continue
-        s = t1.difference(frozenset([v1]))
+        s = t1.difference({frozenset({v1})})
         for c in [d for d in s if not any(d.issuperset(e) for e in s if e!=d)]:
             if not all(v2 in targets for v2 in c): continue
             if any(v2<v1 for v2 in c): continue
