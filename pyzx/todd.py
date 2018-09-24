@@ -20,6 +20,162 @@
 from Luke E Heyfron and Earl T Campbell 2019 Quantum Sci. Technol. 4 015004
 available at http://iopscience.iop.org/article/10.1088/2058-9565/aad604/meta"""
 
+from fractions import Fraction
+
+from .circuit import T, S, Z, ZPhase, CZ, CNOT, ParityPhase
+from .linalg import Mat2
+from .phasepoly import parity_network
+
+
+
+
+class ParityPolynomial:
+    def __init__(self,qubits, poly=None):
+        self.qubits = qubits
+        if poly:
+            self.terms = poly.terms.copy()
+        else: self.terms = {}
+    
+    def copy(self):
+        return type(self)(self.qubits, self)
+    
+    def __str__(self):
+        l = []
+        for t in sorted(self.terms.keys()):
+            val = self.terms[t]
+            l.append("{!s}{}".format(val if val!=1 else "", "@".join("x{:d}".format(v) for v in sorted(list(t)))))
+        return " + ".join(l)
+    
+    def __repr__(self):
+        return str(self)
+    
+    def add_term(self, term, value):
+        term = tuple(sorted(term))
+        if term in self.terms:
+            self.terms[term] = (self.terms[term] + value) % 8
+        else: self.terms[term] = value % 8
+        if not self.terms[term]:
+            del self.terms[term]
+    
+    def add_polynomial(self, poly):
+        for term, val in poly.terms.items():
+            self.add_term(term, val)
+    
+    def __add__(self, other):
+        p = self.copy()
+        p.add_polynomial(other)
+        return p
+    
+    def to_par_matrix(self):
+        cols = []
+        for par, val in self.terms.items():
+            col = [1 if i in par else 0 for i in range(self.qubits)]
+            for i in range(val): cols.append(col)
+        return Mat2(cols).transpose()
+
+class ParitySingle:
+    def __init__(self,startval):
+        self.par = {startval}
+    
+    def __str__(self):
+        return "@".join("x{:d}".format(i) for i in sorted(self.par))
+    
+    def __repr__(self):
+        return str(self)
+    
+    def add_par(self, other):
+        self.par.symmetric_difference_update(other.par)
+
+
+class MultiLinearPoly:
+    def __init__(self):
+        self.l = {}
+        self.q = {}
+        self.c = set()
+    
+    def add_parity(self, par, subtract=False):
+        p = []
+        mult = -1 if subtract else 1
+        for i,v in enumerate(par):
+            if v: p.append(i)
+        for a in range(len(p)):
+            v1 = p[a]
+            if v1 not in self.l: self.l[v1] = mult
+            else: self.l[v1] = (self.l[v1] + mult) % 8
+            
+            for b in range(a+1, len(p)):
+                v2 = p[b]
+                if (v1,v2) not in self.q: self.q[(v1,v2)] = 1 if subtract else 3
+                else: self.q[(v1,v2)] = (self.q[(v1,v2)] - mult) % 4
+                    
+                for c in range(b+1, len(p)):
+                    v3 = p[c]
+                    if (v1,v2,v3) not in self.c: self.c.add((v1,v2,v3))
+                    else: self.c.remove((v1,v2,v3))
+    
+    def add_par_matrix(self, a, subtract=False):
+        for col in a.transpose().data:
+            self.add_parity(col,subtract=subtract)
+    
+    def to_clifford(self):
+        gates = []
+        for t, v in self.l.items():
+            if v == 2:
+                gates.append(S(t,adjoint=False))
+            elif v == 4:
+                gates.append(Z(t))
+            elif v == 6:
+                gates.append(S(t,adjoint=True))
+            elif v != 0:
+                raise ValueError("PhasePoly is not Clifford")
+        for (t1,t2), v in self.q.items():
+            if v == 2:
+                gates.append(CZ(t1,t2))
+            elif v != 0:
+                raise ValueError("PhasePoly is not Clifford")
+        if self.c:
+            raise ValueError("PhasePoly is not Clifford")
+        return gates
+
+
+def par_matrix_to_gates(a):
+    gates = []
+    phase = Fraction(1,4)
+    for col in a.transpose().data:
+        targets = [i for i,v in enumerate(col) if v]
+        if len(targets) == 1:
+            gates.append(T(targets[0]))
+        else:
+            gates.append(ParityPhase(phase, *targets))
+    return gates
+
+def phase_gates_to_poly(gates, qubits):
+    phase_poly = ParityPolynomial(qubits)
+    expression_polys = []
+    for i in range(qubits):
+        expression_polys.append(ParitySingle(i))
+    
+    for g in gates:
+        if isinstance(g, ZPhase):
+            par = expression_polys[g.target].par
+            phase_poly.add_term(par, int(g.phase*4))
+        elif isinstance(g, CZ):
+            tgt, ctrl = g.target, g.control
+            par1 = expression_polys[tgt].par
+            par2 = expression_polys[ctrl].par
+            phase_poly.add_term(par1, 2)
+            phase_poly.add_term(par2, 2)
+            phase_poly.add_term(par1.symmetric_difference(par2), 6)
+        elif isinstance(g, CNOT):
+            tgt, ctrl = g.target, g.control
+            expression_polys[tgt].add_par(expression_polys[ctrl])
+        else:
+            raise TypeError("Unknown gate type {}".format(str(g)))
+    
+    return phase_poly, expression_polys
+
+
+
 
 def xi(m, z):
     rows = m.rows()
@@ -83,20 +239,8 @@ def find_todd_match(m):
 
     return -1,-1,None,None
 
-def full_todd(m):
-    startcols = m.cols()
-    a,b,z,y = find_todd_match(m)
-    if not z: return m, 0
-    m = m.transpose()
-    #odd_y = sum(y) % 2
-    for i,c in enumerate(m.data):
-        if not y[i]: continue
-        for j in range(len(c)):
-            if z[j]: c[j] = 0 if c[j] else 1
-    if sum(y) % 2 == 1:
-        m.data.append(z)
-    m.data.pop(b)
-    m.data.pop(a)
+
+def remove_trivial_cols(m):
     while True:
         newcols = m.rows()
         for a in range(newcols):
@@ -113,13 +257,82 @@ def full_todd(m):
             if should_break: break
         else: # Didn't break out of for-loop so didn't find any match
             break
+    return newcols
+
+def do_todd_single(m):
+    startcols = m.cols()
+    a,b,z,y = find_todd_match(m)
+    if not z: return m, 0
+    m = m.transpose()
+    #odd_y = sum(y) % 2
+    for i,c in enumerate(m.data):
+        if not y[i]: continue
+        for j in range(len(c)):
+            if z[j]: c[j] = 0 if c[j] else 1
+    if sum(y) % 2 == 1:
+        m.data.append(z)
+    m.data.pop(b)
+    m.data.pop(a)
+    
+    newcols = remove_trivial_cols(m)
                 
     return m.transpose(), startcols - newcols
 
 def todd_iter(m, quiet=True):
+    m = m.transpose()
+    remove_trivial_cols(m)
+    m = m.transpose()
     while True:
-        m, reduced = full_todd(m)
+        m, reduced = do_todd_single(m)
         if not reduced:
             return m
         if not quiet: print(reduced, end='.')
 
+
+def todd_simp(gates, qubits):
+    phase_poly, parity_polys = phase_gates_to_poly(gates, qubits)
+    print(phase_poly)
+    print(parity_polys)
+    m = phase_poly.to_par_matrix()
+    m2 = todd_iter(m)
+
+    newgates = []
+    parities = []
+    for col in m2.transpose().data:
+        if sum(col) == 1:
+            newgates.append(T(next(i for i in range(qubits) if col[i])))
+        else:
+            parities.append(col)
+
+    p = MultiLinearPoly()
+    p.add_par_matrix(m,False)
+    p.add_par_matrix(m2,True)
+    newgates.extend(p.to_clifford())
+
+    cnots = parity_network(qubits, parities)
+    m = Mat2.id(qubits)
+    for cnot in cnots:
+        m.row_add(cnot.control, cnot.target)
+    data = []
+    for p in parity_polys:
+        l = [int(i in p.par) for i in range(qubits)]
+        data.append(l)
+    target_matrix = Mat2(data) * m.inverse()
+    gates = target_matrix.to_cnots(optimize=True)
+    for gate in reversed(gates):
+        cnots.append(CNOT(gate.target,gate.control))
+
+    m = Mat2.id(qubits)
+    for i, cnot in enumerate(cnots):
+        newgates.append(cnot)
+        m.row_add(cnot.control, cnot.target)
+        for par in parities:
+            if par in m.data: # The parity checks out, so put a phase here
+                newgates.append(T(m.data.index(par)))
+                parities.remove(par)
+                break
+
+    if parities:
+        raise ValueError("Still phases left on the stack")
+
+    return newgates
