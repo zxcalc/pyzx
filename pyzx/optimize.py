@@ -17,6 +17,7 @@
 
 from .circuit import Circuit, ZPhase, CNOT, CZ, ParityPhase, NOT, HAD, SWAP, S, Z
 from .extract import permutation_as_swaps
+from .todd import todd_simp
 
 def toggle_element(l, e):
     if e in l: l.remove(e)
@@ -301,6 +302,8 @@ class Optimizer:
                         zp.index = h.index-0.5
                         self.gcount += 1
                         g2.phase = zp.phase
+                        if g2.name == 'S' and g2.phase.numerator > 1:
+                            g2.adjoint = True
                         self.gates[t].insert(-2,zp)
                         return
             toggle_element(self.hadamards, t)
@@ -316,6 +319,8 @@ class Optimizer:
             if g.phase == 1:
                 toggle_element(self.zs, t)
                 return
+            if g.name == 'S' and g.phase.numerator > 1:
+                g.adjoint = True
             if t in self.hadamards:
                 self.add_hadamard(t)
             if self.availty[t] == 1 and any(isinstance(g2, ZPhase) for g2 in self.available[t]):
@@ -377,3 +382,195 @@ class Optimizer:
         
         else:
             raise TypeError("Unknown gate {}".format(str(g)))
+
+
+
+
+def greedy_consume_gates(gates, qubits):
+    block = []
+    while True:
+        had_blocked = dict()
+        to_be_appended = []
+        available = []
+        gatetype = {i: 0 for i in range(qubits)}
+        for q, gs in gates.items():
+            if not gs: continue
+            g = gs[0]
+            if g.name == 'HAD': 
+                had_blocked[q] = g
+                continue
+            if isinstance(g, ZPhase) or g.name == 'CZ':
+                gatetype[q] = 1
+            else: # gate is a CNOT
+                if g.control == q:
+                    gatetype[q] = 1
+                else:
+                    gatetype[q] = 2
+            for g in gs:
+                if g.name == 'HAD':
+                    had_blocked[q] = g
+                    break
+                if isinstance(g, ZPhase) or g.name == 'CZ':
+                    if gatetype[q] == 1:
+                        if g.name == 'CZ':
+                            if g.index in available:
+                                to_be_appended.append(g)
+                            else: available.append(g.index)
+                        else:
+                            to_be_appended.append(g)
+                    else:
+                        break
+                else: #gate is CNOT
+                    if (gatetype[q] == 1 and g.target == q) or (gatetype[q] == 2 and g.control == q):
+                        break
+                    else:
+                        if g.index in available:
+                            to_be_appended.append(g)
+                        else: available.append(g.index)
+        for g in to_be_appended:
+            block.append(g)
+            gates[g.target].remove(g)
+            if g.name in ('CZ', 'CNOT'):
+                gates[g.control].remove(g)  
+        if to_be_appended:
+            continue
+        #print("hadamard check")
+        #print(block)
+        #print([(q, g.index) for q,g in had_blocked.items()])
+        candidates = []
+        for q, had in had_blocked.items():
+            i = gates[q].index(had)
+            gs = gates[q][i+1:]
+            if not gs: continue
+            g = gs[0]
+            left_ty = gatetype[q]
+            if g.name == 'CZ' or isinstance(g, ZPhase) or (g.control == q):
+                if gatetype[q] == 0: left_ty = 2
+                right_ty = 1
+            else: 
+                if gatetype[q] == 0: left_ty = 1
+                right_ty = 2
+            if left_ty == right_ty: continue
+            for g in gs:
+                if g.name == 'HAD': break
+                if isinstance(g, ZPhase):
+                    if right_ty == 1: continue
+                    else: break
+                if g.name == 'CZ' or g.control == q:
+                    if right_ty == 2: break
+                else:
+                    if right_ty == 1: break
+                if g.index not in available:
+                    if g.name == 'CNOT':
+                        available.append(g.index)
+                else:
+                    if g not in candidates:
+                        candidates.append(g)
+        added_any = False
+        for g in candidates:
+            if g.name == 'CZ':
+                if g.target in had_blocked and g.index > had_blocked[g.target].index:
+                    q = g.target
+                else:
+                    q = g.control
+                q2 = g.target if g.control == q else g.control
+                if q2 in had_blocked and g.index > had_blocked[q2].index:
+                    print(g, g.index)
+                    raise Exception("CZ behind two hadamard gates. This is not supposed to happen")
+                cnot = CNOT(q2, q)
+                cnot.index = g.index
+                gates[q].remove(g)
+                gates[q2].remove(g)
+                block.append(cnot)
+                added_any = True
+            elif g.name == 'CNOT':
+                if (g.target in had_blocked and g.index > had_blocked[g.target].index
+                     and g.control in had_blocked and g.index > had_blocked[g.control].index):
+                    cnot = CNOT(g.target, g.control)
+                    cnot.index = g.index
+                    gates[g.target].remove(g)
+                    gates[g.control].remove(g)
+                    block.append(cnot)
+                    added_any = True
+                elif g.target in had_blocked and g.index > had_blocked[g.target].index:
+                    cz = CZ(g.control, g.target)
+                    cz.index = g.index
+                    gates[g.target].remove(g)
+                    gates[g.control].remove(g)
+                    block.append(cz)
+                    added_any = True
+                else: continue
+        if added_any: continue
+        else: break
+
+    hadamards = []
+    for gs in gates.values():
+        if gs and gs[0].name == 'HAD':
+            hadamards.append(gs.pop(0))
+    return block, hadamards
+
+
+def phase_block_optimize(circuit):
+    qubits = circuit.qubits
+
+    gates = {i:list() for i in range(qubits)}
+
+    for i, g in enumerate(circuit.gates):
+        g = g.copy()
+        g.index = i        
+        if g.name in ('CNOT', 'CZ'):
+            gates[g.control].append(g)
+            gates[g.target].append(g)
+        elif g.name != 'HAD' and not isinstance(g, ZPhase):
+            print("WARNING: ignoring gate {}".format(str(g)))
+            #raise TypeError("Unknown gate {}".format(str(g)))
+        else:
+            gates[g.target].append(g)
+
+    consumed = []
+
+    block = []
+    hadamards = []
+    while any(gates.values()):
+        print("iteration")
+        revgates = {i:list() for i in range(qubits)}
+        i = 0
+        for g in hadamards:
+            g.index = i
+            i += 1
+            revgates[g.target].append(g)
+        for g in reversed(block):
+            g.index = i
+            i += 1
+            revgates[g.target].append(g)
+            if g.name in ('CNOT', 'CZ'):
+                revgates[g.control].append(g)
+
+        revblock, had2 = greedy_consume_gates(revgates, qubits)
+        if len(hadamards) != len(had2):
+            raise Exception("Hadamards did not extract correctly")
+
+        notparsed = []
+        indices = set()
+        for gs in revgates.values():
+            for g in gs:
+                if g.index not in indices:
+                    indices.add(g.index)
+                    notparsed.append(g)
+        notparsed.sort(key=lambda g: g.index, reverse=True)
+
+        consumed.extend(notparsed)
+        consumed.extend(had2)
+
+        newblock, hadamards = greedy_consume_gates(gates, qubits)
+        block = list(reversed(revblock))
+        block.extend(newblock)
+        block = todd_simp(block, qubits)
+
+
+    consumed.extend(block)
+    consumed.extend(hadamards)
+    for g in consumed: g.index = 0
+    c = Circuit(qubits)
+    c.gates = consumed
+    return c

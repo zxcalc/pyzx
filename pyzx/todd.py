@@ -291,8 +291,8 @@ def todd_iter(m, quiet=True):
 
 def todd_simp(gates, qubits):
     phase_poly, parity_polys = phase_gates_to_poly(gates, qubits)
-    print(phase_poly)
-    print(parity_polys)
+    #print(phase_poly)
+    #print(parity_polys)
     m = phase_poly.to_par_matrix()
     m2 = todd_iter(m)
 
