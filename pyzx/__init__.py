@@ -16,12 +16,17 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from .graph.graph import Graph
+from .linalg import Mat2
 from .drawing import *
-from .rules import *
 from .simplify import *
 from .io import *
-from .extract import *
 from .tensor import *
 from .circuit import Circuit
 from . import quantomatic
 from . import generate
+from . import todd
+from . import linalg
+from . import extract
+from . import rules
+from . import optimize
+from . import simplify

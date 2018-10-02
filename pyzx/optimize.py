@@ -15,9 +15,15 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from .circuit import Circuit, ZPhase, CNOT, CZ, ParityPhase, NOT, HAD, SWAP, S, Z
+from .circuit import Circuit, ZPhase, XPhase, CNOT, CZ, ParityPhase, NOT, HAD, SWAP, S, Z
 from .extract import permutation_as_swaps
 from .todd import todd_simp
+
+def basic_optimization(circuit, quiet=True):
+    if not isinstance(circuit, Circuit):
+        raise TypeError("Input must be a Circuit")
+    o = Optimizer(circuit)
+    return o.parse_circuit(quiet=quiet)
 
 def toggle_element(l, e):
     if e in l: l.remove(e)
@@ -50,28 +56,39 @@ class Optimizer:
         self.qubits = circuit.qubits
         self.minimize_czs = False
     
-    def parse_circuit(self, max_iterations=1000):
+    def parse_circuit(self, separate_correction=False, max_iterations=1000, quiet=True):
         self.minimize_czs = False
-        self.circuit = self.parse_forward()
+        self.circuit, correction = self.parse_forward()
         count = stats(self.circuit)
+        for g in correction: self.circuit.gates.extend(g.to_basic_gates())
         i = 0
         while True:
             self.circuit.gates = list(reversed(self.circuit.gates))
-            self.circuit = self.parse_forward()
+            self.circuit, correction = self.parse_forward()
+            for g in correction: self.circuit.gates.extend(g.to_basic_gates())
             self.circuit.gates = list(reversed(self.circuit.gates))
-            self.circuit = self.parse_forward()
+            self.circuit, correction = self.parse_forward()
             i += 1
             s = stats(self.circuit)
             if self.minimize_czs and (all(s1<=s2 for s1,s2 in zip(count,s)) or i>=max_iterations): break
+            for g in correction: self.circuit.gates.extend(g.to_basic_gates())
+            if not quiet:
+                print(i, end='.')
             count = s
             self.minimize_czs = True
         for g in self.circuit.gates: g.index = 0
-        return self.circuit
+        if not separate_correction:
+            for g in correction: self.circuit.gates.extend(g.to_basic_gates())
+            return self.circuit
+        else:
+            return self.circuit, correction
     
     def parse_forward(self):
         self.gates = {i:list() for i in range(self.qubits)}
         self.available = {i:list() for i in range(self.qubits)}
         self.availty = {i: 1 for i in range(self.qubits)}
+        self.parsed = []
+        self.parsed_indices = set()
         self.hadamards = []
         self.nots = []
         self.zs = []
@@ -79,10 +96,6 @@ class Optimizer:
         self.gcount = 0
         for g in self.circuit.gates:
             self.parse_gate(g)
-            #if any(gs!=list(sorted(gs,key=lambda g: g.index)) for gs in self.gates.values()):
-            #    print("Errawrrr")
-            #    for gs in self.gates.values():
-            #        print([g.index for g in gs])
         for t in self.hadamards.copy():
             self.add_hadamard(t)
         for t in self.zs:
@@ -90,32 +103,74 @@ class Optimizer:
             z.index = self.gcount
             self.gcount += 1
             self.gates[t].append(z)
-        for t in self.nots:
-            n = NOT(t)
-            n.index = self.gcount
-            self.gcount += 1
-            self.gates[t].append(n)
+        # for t in self.nots:
+        #     n = NOT(t)
+        #     #correction.append(n)
+        #     n.index = self.gcount
+        #     self.gcount += 1
+        #     self.gates[t].append(n)
         
         c = Circuit(self.qubits)
-        #indices = []
-        for gs in self.gates.values():
-            for g in gs:
-                if g not in c.gates:
-                    c.gates.append(g)
-#                 if g.index not in indices:
-#                     indices.append(g.index)
-#                     c.gates.append(g)
-        c.gates.sort(key = lambda g: g.index)
+        c.gates = self.topological_sort_gates()
+        
+        correction = []
+        for t in self.nots:
+            n = NOT(t)
+            correction.append(n)
+            # n.index = self.gcount
+            # self.gcount += 1
+            # self.gates[t].append(n)
         swaps = permutation_as_swaps(self.permutation)
         for a,b in swaps:
-            c.gates.extend(SWAP(a,b).to_basic_gates())
-        return c
+            correction.append(SWAP(a,b))
+            #c.gates.extend(SWAP(a,b).to_basic_gates())
+        return c, correction
+
+    def topological_sort_gates(self):
+        output = []
+        while any(self.gates.values()):
+            available_indices = set()
+            for q, gs in self.gates.items():
+                while gs:
+                    g = gs[0]
+                    if g.name not in ('CZ', 'CNOT'):
+                        output.append(gs.pop(0))
+                    elif g.index in available_indices:
+                        available_indices.remove(g.index)
+                        q2 = g.target if q == g.control else g.control
+                        self.gates[q2].remove(g)
+                        output.append(gs.pop(0))
+                    else:
+                        ty = 1 if (g.name == 'CZ' or g.control == q) else 2
+                        available_indices.add(g.index)
+                        remove = []
+                        for i, g2 in enumerate(gs[1:]):
+                            if (ty == 1 and isinstance(g2, ZPhase)) or (ty == 2 and isinstance(g2, XPhase)):
+                                output.append(g2)
+                                remove.append(i)
+                            elif g2.name not in ('CZ', 'CNOT'): break
+                            elif (ty == 1 and (g2.name == 'CZ' or g2.control == q)) or (ty == 2 and g2.name == 'CNOT' and g2.target == q):
+                                if g2.index in available_indices:
+                                    available_indices.remove(g2.index)
+                                    q2 = g2.target if q == g2.control else g2.control
+                                    self.gates[q2].remove(g2)
+                                    output.append(g2)
+                                    remove.append(i)
+                                else:
+                                    available_indices.add(g2.index)
+                            else:
+                                break
+                        for i in reversed(remove):
+                            gs.pop(i+1)
+                        break
+        return output
+
     
     def add_hadamard(self, t):
         h = HAD(t)
         h.index = self.gcount
-        self.gates[t].append(h)
         self.gcount += 1
+        self.gates[t].append(h)
         self.hadamards.remove(t)
         self.available[t] = list()
         self.availty[t] = 1
@@ -149,11 +204,7 @@ class Optimizer:
                         if found_match: break
                 if found_match: break
         if found_match: #CNOT-CZ = (S* x id)CNOT (S x S)
-            #print("Match!")
-            #print(cz, g)
             t,c = g.target, g.control
-            #print(self.available[t], self.available[c])
-            #print(self.gates[t], self.gates[c])
             if self.availty[t] == 2:
                 self.availty[t] == 1
                 self.available[t] = []
@@ -161,17 +212,17 @@ class Optimizer:
             self.gates[c].remove(g)
             self.available[c].remove(g)
             s1 = S(t, adjoint=True)
+            s1.index = self.gcount
+            self.gcount += 1
             if self.available[t]:
-                s1.index = self.available[t][0].index-0.3
-                g.index = self.available[t][0].index-0.2
+                #s1.index = self.available[t][0].index-0.3
+                #g.index = self.available[t][0].index-0.2
                 self.gates[t].insert(-len(self.available[t]),s1)
                 self.gates[t].insert(-len(self.available[t]),g)
             else: 
-                s1.index = self.gcount
-                self.gcount += 1
                 self.gates[t].append(s1)
-                g.index = self.gcount
-                self.gcount += 1
+                #g.index = self.gcount
+                #self.gcount += 1
                 self.gates[t].append(g)
             s2 = S(t)
             s2.index = self.gcount
@@ -185,9 +236,6 @@ class Optimizer:
             self.available[c].append(s3)
             self.gates[c].append(g)
             self.gates[c].append(s3)
-            #print(self.available[t], self.available[c])
-            #print(self.gates[t], self.gates[c])
-            #print([g.index for g in self.gates[t]], [g.index for g in self.gates[c]])
             return
         if self.availty[t1] == 2:
             self.available[t1] = list()
@@ -228,7 +276,6 @@ class Optimizer:
                         found_match = True
                         break
                 if found_match: # We're adding a swap gate
-                    #print("swap gate boom")
                     if g in self.available[t]:
                         self.gates[c].remove(g)
                         self.gates[t].remove(g)
@@ -299,7 +346,7 @@ class Optimizer:
                     if g2.phase.denominator == 2:
                         h = self.gates[t][-2]
                         zp = ZPhase(t, (-g2.phase)%2)
-                        zp.index = h.index-0.5
+                        zp.index = self.gcount
                         self.gcount += 1
                         g2.phase = zp.phase
                         if g2.name == 'S' and g2.phase.numerator > 1:
@@ -434,9 +481,6 @@ def greedy_consume_gates(gates, qubits):
                 gates[g.control].remove(g)  
         if to_be_appended:
             continue
-        #print("hadamard check")
-        #print(block)
-        #print([(q, g.index) for q,g in had_blocked.items()])
         candidates = []
         for q, had in had_blocked.items():
             i = gates[q].index(had)
@@ -510,8 +554,24 @@ def greedy_consume_gates(gates, qubits):
     return block, hadamards
 
 
-def phase_block_optimize(circuit):
+def phase_block_optimize(circuit, quiet=True):
     qubits = circuit.qubits
+    o = Optimizer(circuit)
+    circuit, correction = o.parse_circuit(separate_correction=True, quiet=quiet)
+    permutation = {i:i for i in range(qubits)}
+    nots = []
+    for g in correction:
+        if g.name == 'SWAP':
+            a = permutation[g.control]
+            b = permutation[g.target]
+            permutation[g.control] = b
+            permutation[g.target] = a
+        elif g.name == 'NOT':
+            nots.append(g)
+        else:
+            raise TypeError("Illegal correction {}".format(str(g)))
+
+    permutation = {v:k for k,v in permutation.items()}
 
     gates = {i:list() for i in range(qubits)}
 
@@ -532,7 +592,7 @@ def phase_block_optimize(circuit):
     block = []
     hadamards = []
     while any(gates.values()):
-        print("iteration")
+        if not quiet: print("new block")
         revgates = {i:list() for i in range(qubits)}
         i = 0
         for g in hadamards:
@@ -565,11 +625,29 @@ def phase_block_optimize(circuit):
         newblock, hadamards = greedy_consume_gates(gates, qubits)
         block = list(reversed(revblock))
         block.extend(newblock)
-        block = todd_simp(block, qubits)
+        block, permute = todd_simp(block, qubits, quiet=quiet)
+        inverse = {v:k for k,v in permute.items()}
+        gates = {inverse[t]:gs for t,gs in gates.items()}
+        indices = set()
+        for gs in gates.values():
+            for g in gs:
+                if g.name in ('CNOT', 'CZ'):
+                    if g.index in indices:
+                        continue
+                    indices.add(g.index)
+                    g.control = inverse[g.control]
+                g.target = inverse[g.target]
+        for g in nots:
+            g.target = inverse[g.target]
+        permutation = {i: permutation[permute[i]] for i in range(qubits)}
+
 
 
     consumed.extend(block)
     consumed.extend(hadamards)
+    consumed.extend(nots)
+    for a,b in permutation_as_swaps(permutation):
+        consumed.append(SWAP(a,b))
     for g in consumed: g.index = 0
     c = Circuit(qubits)
     c.gates = consumed

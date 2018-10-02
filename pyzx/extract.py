@@ -15,6 +15,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+from __future__ import print_function
+
 __all__ = ['circuit_extract', 'clifford_extract', 'greedy_cut_extract', 'streaming_extract']
 
 from fractions import Fraction

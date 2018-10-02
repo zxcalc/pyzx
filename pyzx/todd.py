@@ -20,13 +20,21 @@
 from Luke E Heyfron and Earl T Campbell 2019 Quantum Sci. Technol. 4 015004
 available at http://iopscience.iop.org/article/10.1088/2058-9565/aad604/meta"""
 
+from __future__ import print_function
+
 from fractions import Fraction
+import subprocess
+import tempfile
+import time
+
+import numpy as np
 
 from .circuit import T, S, Z, ZPhase, CZ, CNOT, ParityPhase
-from .linalg import Mat2
+from .linalg import Mat2, column_optimal_swap
+from .extract import permutation_as_swaps
 from .phasepoly import parity_network
 
-
+TOPT_LOCATION = None
 
 
 class ParityPolynomial:
@@ -176,45 +184,46 @@ def phase_gates_to_poly(gates, qubits):
 
 
 
-
 def xi(m, z):
+    arr = np.asarray(m.data)
     rows = m.rows()
     data = []
     for alpha in range(rows):
-        ra = m.data[alpha]
+        ra = arr[alpha]
         for beta in range(alpha+1, rows):
-            rb = m.data[beta]
-            rab = [i*j for i,j in zip(ra,rb)]
+            rb = arr[beta]
+            rab = ra*rb
             for gamma in range(beta+1, rows):
-                rg = m.data[gamma]
-                rag = [i*j for i,j in zip(ra,rg)]
-                rbg = [i*j for i,j in zip(rb,rg)]
-                
+                rg = arr[gamma]
                 if z[alpha]:
+                    rbg = rb*rg
                     if not z[beta]:
                         if not z[gamma]:
-                            data.append(rbg)
+                            data.append(rbg.tolist())
                             continue
-                        data.append([0 if v1==v2 else 1 for v1,v2 in zip(rbg,rab)])
+                        data.append(((rbg+rab)%2).tolist())
                         continue
                     elif not z[gamma]:
-                        data.append([0 if v1==v2 else 1 for v1,v2 in zip(rbg,rag)])
+                        rag = ra*rg
+                        data.append(((rbg+rag)%2).tolist())
                         continue
                     else: #z[alpha], z[beta] and z[gamma] are all true
-                        r = [0 if v1==v2 else 1 for v1,v2 in zip(rab,rag)]
-                        data.append([0 if v1==v2 else 1 for v1,v2 in zip(r,rbg)])
+                        rag = ra*rg
+                        data.append(((rab+rag+rbg)%2).tolist())
                         continue
                 elif z[beta]:
+                    rag = ra*rg
                     if z[gamma]:
-                        data.append([0 if v1==v2 else 1 for v1,v2 in zip(rab,rag)])
+                        data.append(((rab+rag)%2).tolist())
                         continue
-                    data.append(rag)
+                    data.append(rag.tolist())
                     continue
                 elif z[gamma]:
-                    data.append(rab.copy())
+                    data.append(rab.tolist())
                     continue
     for r in m.data: data.append(r.copy())            
     return Mat2(data)
+
 
 def find_todd_match(m):
     rows = m.rows()
@@ -282,19 +291,57 @@ def todd_iter(m, quiet=True):
     m = m.transpose()
     remove_trivial_cols(m)
     m = m.transpose()
+    if not m.cols() or not m.rows():
+        return m
+    if TOPT_LOCATION:
+        return call_topt(m, quiet=quiet)
     while True:
         m, reduced = do_todd_single(m)
         if not reduced:
             return m
         if not quiet: print(reduced, end='.')
 
+def call_topt(m, quiet=True):
+    if not quiet:
+        print("TOpt: ", end="")
+    t_start = m.cols()
+    s = "\n".join(" ".join(str(i) for i in r) for r in m.data)
+    with tempfile.NamedTemporaryFile(suffix='.gsm') as f:
+        f.write(s.encode('ascii'))
+        f.flush()
+        time.sleep(0.01)
+        out = subprocess.check_output([TOPT_LOCATION, "gsm",f.name]).decode()
+    rows = out[out.find("Output gate"):out.find("Successful")].strip().splitlines()[2:]
+    i = out.find("Total time")
+    t = out[i+10: out.find("s",i)]
+    if not quiet:
+        print(t)
+    data = []
+    try:
+        for row in rows:
+            data.append([int(i) for i in row])
+    except ValueError:
+        print(out)
+        print(rows)
+        raise
+    m2 = Mat2(data)
+    t_end = m2.cols()
+    if t_end < t_start:
+        print("Found reduction: ", t_start - t_end)
+        # print("Start:")
+        # print(m)
+        # print("End:")
+        # print(m2)
+        #print(out)
+    return m2
 
-def todd_simp(gates, qubits):
+
+def todd_simp(gates, qubits, quiet=True):
     phase_poly, parity_polys = phase_gates_to_poly(gates, qubits)
     #print(phase_poly)
     #print(parity_polys)
     m = phase_poly.to_par_matrix()
-    m2 = todd_iter(m)
+    m2 = todd_iter(m,quiet=quiet)
 
     newgates = []
     parities = []
@@ -318,6 +365,11 @@ def todd_simp(gates, qubits):
         l = [int(i in p.par) for i in range(qubits)]
         data.append(l)
     target_matrix = Mat2(data) * m.inverse()
+    #perm = column_optimal_swap(target_matrix.transpose())
+    perm = {i:i for i in range(qubits)}
+    swaps = permutation_as_swaps(perm)
+    for a,b in swaps:
+        target_matrix.row_swap(a,b)
     gates = target_matrix.to_cnots(optimize=True)
     for gate in reversed(gates):
         cnots.append(CNOT(gate.target,gate.control))
@@ -335,4 +387,4 @@ def todd_simp(gates, qubits):
     if parities:
         raise ValueError("Still phases left on the stack")
 
-    return newgates
+    return newgates, {v:k for k,v in perm.items()}

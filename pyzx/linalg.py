@@ -16,6 +16,10 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import math
+try:
+    from .linalg_c import do_gauss as gauss_fast
+except ImportError:
+   gauss_fast = None
 
 class Mat2(object):
     """A matrix over Z2, with methods for multiplication, primitive row and column
@@ -43,7 +47,7 @@ class Mat2(object):
     def __repr__(self):
         return str(self)
     def copy(self):
-        return Mat2([row.copy() for row in self.data])
+        return Mat2([list(row) for row in self.data])
     def transpose(self):
         return Mat2([[self.data[i][j] for i in range(self.rows())] for j in range(self.cols())])
     def rows(self):
@@ -108,16 +112,17 @@ class Mat2(object):
         row_add(), and y any object that implements col_add().
         """
 
-
+        rows = self.rows()
+        cols = self.cols()
         pcols = []
         pivot_row = 0
-        for sec in range(math.ceil(self.cols() / blocksize)):
+        for sec in range(math.ceil(cols / blocksize)):
             i0 = sec * blocksize
-            i1 = min(self.cols(), (sec+1) * blocksize)
+            i1 = min(cols, (sec+1) * blocksize)
 
             # search for duplicate chunks of 'blocksize' bits and eliminate them
             chunks = dict()
-            for r in range(pivot_row, self.rows()):
+            for r in range(pivot_row, rows):
                 t = tuple(self.data[r][i0:i1])
                 if not any(t): continue
                 if t in chunks:
@@ -130,22 +135,21 @@ class Mat2(object):
 
             p = i0
             while p < i1:
-                try:
-                    r0 = next(i for i in range(pivot_row, self.rows()) if self.data[i][p] != 0)
-                    if r0 != pivot_row:
-                        self.row_add(r0, pivot_row)
-                        if x != None: x.row_add(r0, pivot_row)
-                        if y != None: y.col_add(pivot_row, r0)
+                for r0 in range(pivot_row, rows):
+                    if self.data[r0][p] != 0:
+                        if r0 != pivot_row:
+                            self.row_add(r0, pivot_row)
+                            if x != None: x.row_add(r0, pivot_row)
+                            if y != None: y.col_add(pivot_row, r0)
 
-                    for r1 in range(pivot_row+1, self.rows()):
-                        if pivot_row != r1 and self.data[r1][p] != 0:
-                            self.row_add(pivot_row, r1)
-                            if x != None: x.row_add(pivot_row, r1)
-                            if y != None: y.col_add(r1, pivot_row)
-                    if full_reduce: pcols.append(p)
-                    pivot_row += 1
-                except StopIteration:
-                    pass
+                        for r1 in range(pivot_row+1, rows):
+                            if pivot_row != r1 and self.data[r1][p] != 0:
+                                self.row_add(pivot_row, r1)
+                                if x != None: x.row_add(pivot_row, r1)
+                                if y != None: y.col_add(r1, pivot_row)
+                        if full_reduce: pcols.append(p)
+                        pivot_row += 1
+                        break
                 p += 1
         
         rank = pivot_row
@@ -153,9 +157,9 @@ class Mat2(object):
         if full_reduce:
             pivot_row -= 1
 
-            for sec in range(math.ceil(self.cols() / blocksize) - 1, -1, -1):
+            for sec in range(math.ceil(cols / blocksize) - 1, -1, -1):
                 i0 = sec * blocksize
-                i1 = min(self.cols(), (sec+1) * blocksize)
+                i1 = min(cols, (sec+1) * blocksize)
 
                 # search for duplicate chunks of 'blocksize' bits and eliminate them
                 chunks = dict()
@@ -236,11 +240,15 @@ class Mat2(object):
     def nullspace(self, should_copy=True):
         """Returns a list of non-zero vectors that span the nullspace
         of the matrix. If the matrix has trivial kernel it returns the empty list."""
-        if should_copy:
+        if gauss_fast:
+            data = gauss_fast(self.data,1)
+            m = Mat2(data)
+        elif should_copy:
             m = self.copy()
+            m.gauss(full_reduce=True)
         else:
             m = self
-        m.gauss(full_reduce=True)
+            m.gauss(full_reduce=True)
         cols = self.cols()
         nonpivots = list(range(cols))
         pivots = []
