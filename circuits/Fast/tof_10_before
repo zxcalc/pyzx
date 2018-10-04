@@ -1,0 +1,53 @@
+Inputs: 0:Qbit, 1:Qbit, 2:Qbit, 3:Qbit, 4:Qbit, 5:Qbit, 6:Qbit, 7:Qbit, 8:Qbit, 9:Qbit, 10:Qbit, 11:Qbit, 12:Qbit, 13:Qbit, 14:Qbit, 15:Qbit, 16:Qbit, 17:Qbit, 18:Qbit
+QGate["H"](10) with nocontrol
+QGate["Z"](10) with controls=[+0,+1] with nocontrol
+QGate["H"](10) with nocontrol
+QGate["H"](11) with nocontrol
+QGate["Z"](11) with controls=[+2,+10] with nocontrol
+QGate["H"](11) with nocontrol
+QGate["H"](12) with nocontrol
+QGate["Z"](12) with controls=[+3,+11] with nocontrol
+QGate["H"](12) with nocontrol
+QGate["H"](13) with nocontrol
+QGate["Z"](13) with controls=[+4,+12] with nocontrol
+QGate["H"](13) with nocontrol
+QGate["H"](14) with nocontrol
+QGate["Z"](14) with controls=[+5,+13] with nocontrol
+QGate["H"](14) with nocontrol
+QGate["H"](15) with nocontrol
+QGate["Z"](15) with controls=[+6,+14] with nocontrol
+QGate["H"](15) with nocontrol
+QGate["H"](16) with nocontrol
+QGate["Z"](16) with controls=[+7,+15] with nocontrol
+QGate["H"](16) with nocontrol
+QGate["H"](17) with nocontrol
+QGate["Z"](17) with controls=[+8,+16] with nocontrol
+QGate["H"](17) with nocontrol
+QGate["H"](18) with nocontrol
+QGate["Z"](18) with controls=[+9,+17] with nocontrol
+QGate["H"](18) with nocontrol
+QGate["H"](17) with nocontrol
+QGate["Z"](17) with controls=[+8,+16] with nocontrol
+QGate["H"](17) with nocontrol
+QGate["H"](16) with nocontrol
+QGate["Z"](16) with controls=[+7,+15] with nocontrol
+QGate["H"](16) with nocontrol
+QGate["H"](15) with nocontrol
+QGate["Z"](15) with controls=[+6,+14] with nocontrol
+QGate["H"](15) with nocontrol
+QGate["H"](14) with nocontrol
+QGate["Z"](14) with controls=[+5,+13] with nocontrol
+QGate["H"](14) with nocontrol
+QGate["H"](13) with nocontrol
+QGate["Z"](13) with controls=[+4,+12] with nocontrol
+QGate["H"](13) with nocontrol
+QGate["H"](12) with nocontrol
+QGate["Z"](12) with controls=[+3,+11] with nocontrol
+QGate["H"](12) with nocontrol
+QGate["H"](11) with nocontrol
+QGate["Z"](11) with controls=[+2,+10] with nocontrol
+QGate["H"](11) with nocontrol
+QGate["H"](10) with nocontrol
+QGate["Z"](10) with controls=[+0,+1] with nocontrol
+QGate["H"](10) with nocontrol
+Outputs: 0:Qbit, 1:Qbit, 2:Qbit, 3:Qbit, 4:Qbit, 5:Qbit, 6:Qbit, 7:Qbit, 8:Qbit, 9:Qbit, 10:Qbit, 11:Qbit, 12:Qbit, 13:Qbit, 14:Qbit, 15:Qbit, 16:Qbit, 17:Qbit, 18:Qbit
