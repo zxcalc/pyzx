@@ -85,10 +85,10 @@ def do_tests(qubits, depth, iterations, test_clifford_graph=True):
     except AssertionError:
         print("Unequality for circuit with seed {:d}, qubits {:d} and depth {:d}".format(seed, qubits, depth))
         print("It went wrong at step {} with total sequence {}".format(steps[-1],str(steps)))
-    except (ValueError, TypeError) as e:
+    except Exception as e:
         print("An exception occured for circuit with seed {:d}, qubits {:d} and depth {:d}".format(seed, qubits, depth))
         print("It went wrong at step {} with total sequence {}".format(steps[-1],str(steps)))
-        print(e)
+        raise e
     else:
         print("\nTests finished successfully")
 

@@ -333,15 +333,15 @@ def connectivity_from_biadj(g, m, left, right, edgetype=2):
             elif not m.data[i][j] and g.connected(right[i],left[j]):
                 g.remove_edge((right[i],left[j]))
 
-def streaming_extract(g, quiet=True, stopcount=-1):
+def streaming_extract(g, allow_ancillae=False, quiet=True, stopcount=-1):
     """Given a graph put into semi-normal form by :func:`simplify.full_reduce`, 
     it extracts its equivalent set of gates into an instance of :class:`circuit.Circuit`.
     This method uses a different algorithm than :func:`circuit_extract`, and seems
     to be faster and produce smaller circuits."""
     g.normalise()
-    qs = g.qubits() # We are assuming that these are objects that update
-    rs = g.rows()   # to reflect changes to the graph, so that when
-    ty = g.types()  # g.set_row/g.set_qubit is called, these things update directly to reflect that
+    qs = g.qubits() # We are assuming that these are objects that update...
+    rs = g.rows()   # ...to reflect changes to the graph, so that when...
+    ty = g.types()  # ... g.set_row/g.set_qubit is called, these things update directly to reflect that
     phases = g.phases()
     c = Circuit(g.qubit_count())
     leftrow = 1
@@ -366,6 +366,7 @@ def streaming_extract(g, quiet=True, stopcount=-1):
         right = set()
         good_verts = []
         good_neighs = []
+        postselects = []
         for v in left:
             # First we add the gates to the circuit that can be processed now,
             # and we simplify the graph to represent this.
@@ -409,7 +410,10 @@ def streaming_extract(g, quiet=True, stopcount=-1):
             # Done processing gates, now we look to see if we can shift the frontier
             d = [w for w in g.neighbours(v) if rs[w]>leftrow]
             right.update(d)
-            if len(d) == 0: raise TypeError("Not circuit like")
+            if len(d) == 0: 
+                if not allow_ancillae: raise TypeError("Not circuit like")
+                else:
+                    postselects.append(v)
             if len(d) == 1: # Only connected to one node in its future
                 if ty[d[0]] != 0: # which is not an output
                     good_verts.append(v) # So we can make progress
@@ -417,15 +421,17 @@ def streaming_extract(g, quiet=True, stopcount=-1):
                 else:  # This node is done processing, since it is directly (and only) connected to an output
                     boundary_verts.append(v)
                     right.remove(d[0])
+        for v in postselects:
+            c.add_gate("PostSelect", qs[v])
+            left.remove(v)
         if not good_verts:  # There are no 'easy' nodes we can use to progress
             if all(ty[v] == 0 for v in right): break # Actually we are done, since only outputs are left
             for v in boundary_verts: left.remove(v) # We don't care about the nodes only connected to outputs
-            
+            have_removed_gadgets = False
             for n in right.intersection(special_nodes): # Neighbours that are phase gadgets
                 targets = set(g.neighbours(n))
                 targets.remove(special_nodes[n])
                 if targets.issubset(left): # Only connectivity on the lefthandside, so we can extract it
-                    #print("Found special node!")
                     nphase = phases[n]
                     if nphase not in (0,1):
                         raise Exception("Can't parse ParityPhase with non-Pauli Phase")
@@ -435,6 +441,8 @@ def streaming_extract(g, quiet=True, stopcount=-1):
                     nodesparsed += 1
                     right.remove(n)
                     del special_nodes[n]
+                    have_removed_gadgets = True
+            if have_removed_gadgets: continue
             if stopcount != -1 and len(c.gates) > stopcount: return c
             right = list(right)
             m = bi_adj(g,right,left)
@@ -453,10 +461,14 @@ def streaming_extract(g, quiet=True, stopcount=-1):
                         g.add_edge_table(etab)
                         g.remove_vertices(rem_verts)
                         continue
-                gates, leftrow = handle_phase_gadget(g, leftrow, quiet=quiet)
+                gates, lr = handle_phase_gadget(g, left, set(right), special_nodes, quiet=quiet)
                 c.gates.extend(gates)
                 nodesparsed += 1
                 tried_id_simp = False
+                if lr > leftrow:
+                    for v in boundary_verts:
+                        g.set_row(v, lr)
+                    leftrow = lr
                 continue
             sequence = greedy_reduction(m) # Find the optimal set of CNOTs we can apply to get a frontier we can work with
             if not isinstance(sequence, list): # Couldn't find any reduction, hopefully we can fix this
@@ -490,9 +502,6 @@ def streaming_extract(g, quiet=True, stopcount=-1):
                     if m.data[target][k]: g.remove_edge((left[target],right[k]))
                     else: g.add_edge((left[target],right[k]), 2)
                 m.row_add(control, target)
-            # d = [w for w in g.neighbours(left[target]) if rs[w]>leftrow] # The target should now only have a single future node
-            # if len(d) != 1:
-            #     raise TypeError("Gaussian reduction did something wrong")
             for v in left:
                 d = [w for w in g.neighbours(v) if rs[w]>leftrow]
                 if len(d) == 1 and ty[d[0]] != 0:
@@ -567,44 +576,17 @@ def try_greedy_cut(g, left, right, candidates, quiet=True):
     # We want to figure out which vertices in candidates are 'pivotable'
     # That is, that removing them will decrease the cut rank of the remainder
     m = bi_adj(g, right, left)
-    #print(m,'.')
     m.gauss(full_reduce=True) # Gaussian elimination doesn't change this property
-    #print(m)
     good_nodes = []
     for r in m.data:
-        if sum(r) == 1: # Exactly one nonzero value, so removing the column with the nonzero value
-            i = next(i for i in range(len(r)) if r[i])# decreases the rank of the matrix
+        if sum(r) == 1: # Exactly one nonzero value, so removing the column with the nonzero value...
+            i = next(i for i in range(len(r)) if r[i]) # ...decreases the rank of the matrix
             w = right[i]
             if w in candidates:
                 good_nodes.append(w)
     if not good_nodes:
         return [], False
-    #print(right, good_nodes)
-    #raise Exception("Bla")
     right = [w for w in right if w not in good_nodes]
-
-    # good_nodes = []
-    # for w in candidates:
-    #     if cut_rank(g, right.difference({w}), left) == q-1:
-    #         good_nodes = [w]
-    #         right = right.difference({w})
-    #         candidates.remove(w)
-    #         break
-    # else:
-    #     #if not quiet: print("Greedy cut failed")
-    #     return [], False
-    
-    # while True:
-    #     for w in candidates:
-    #         if cut_rank(g, right.difference({w}), left) == q-len(good_nodes)-1:
-    #             good_nodes.append(w)
-    #             right = right.difference({w})
-    #             candidates.remove(w)
-    #             break
-    #     else:
-    #         break
-    # print(good_nodes)
-    
 
     new_right = cut_edges(g, left, right)
     leftrow = g.row(left[0])
@@ -661,22 +643,13 @@ def reduce_bottom_rows(m, qubits):
             adds.append((leading_one[i],r))
     raise Exception("Did not find any completely reducable row")
 
-def handle_phase_gadget(g, leftrow, quiet=True):
+def handle_phase_gadget(g, left, neigh, special_nodes, quiet=True):
     """Tries to find a cut of the graph at the given leftrow so that a single phase-gadget can be extracted.
     Returns a list of extracted gates and modifies the graph g in place. Used by :func:`streaming_extract`"""
-    q = g.qubit_count()
+    q = len(left)
     qs = g.qubits() # We are assuming this thing automatically updates
     rs = g.rows()
-    special_nodes = {}
-    left = []
-    for v in g.vertices():
-        if len(list(g.neighbours(v))) == 1 and v not in g.inputs and v not in g.outputs:
-            n = list(g.neighbours(v))[0]
-            special_nodes[n] = v
-        if rs[v] == leftrow: left.append(v)
-    
-    neigh = set()
-    for v in left: neigh.update(w for w in g.neighbours(v) if rs[w]>leftrow)
+    leftrow = rs[left[0]]
     gadgets = neigh.intersection(special_nodes) # These are the phase gadgets that are attached to the left row
     if len(gadgets) == 0: raise ValueError("No phase gadget connected to this row")
     all_verts = neigh.union(left).union(special_nodes.values())
@@ -686,57 +659,14 @@ def handle_phase_gadget(g, leftrow, quiet=True):
         if all(w in all_verts for w in g.neighbours(gadget)):
             options.append(gadget)
     #print(options)
-    for o in options:
+    for o in options: # We move the candidates gadgets to the end of the list
         right.remove(o)
         right.append(o)
     #print(right)
     m = bi_adj(g, right, left+options)
     r = reduce_bottom_rows(m, q)
-    gadget = options[r-len(left)]
+    gadget = options[r-len(left)] # This is a gadget that works
     right.remove(gadget)
-    #print(m)
-    # raise Exception("bla")
-    # for gadget in gadgets:
-    #     n = neigh.difference({gadget})
-    #     leftplusgadget = left + [gadget]
-    #     n = n.union([w for w in g.neighbours(gadget) if w not in left])
-    #     n = n.difference({special_nodes[gadget]})
-    #     right = list(n)
-    #     m = bi_adj(g, right, leftplusgadget)
-    #     cr = m.rank()
-    #     if cr == q: # A good choice should allow us to cut the edges
-    #         print(m)
-            
-    #         break
-    # else:
-    #     raise ValueError("No good cut for phase gadget found")
-        # for gadget in gadgets:
-        #     n = set(g.neighbours(gadget))
-        #     n.remove(special_nodes[gadget])
-        #     gadget_right = n.difference(left)
-        #     if len(gadget_right) < len(left) and all_verts.issuperset(n):
-        #         # the gadget only has connections to left and neigh
-        #         # and there aren't too many connections
-        #         other_right = neigh.difference(gadget_right)
-        #         other_right.remove(gadget)
-        #         annoying_left = [v for v in left if any(g.connected(v,w) for w in other_right)]
-        #         if len(gadget_right) + len(annoying_left) == len(left):
-        #             if not quiet: print("We have found a special match", gadget, annoying_left)
-        #             right = list(gadget_right)
-        #             for v in annoying_left:
-        #                 v1 = g.add_vertex(1,qs[v], leftrow+2)
-        #                 v2 = g.add_vertex(1,qs[v], leftrow+3)
-        #                 g.add_edges([(v,v1),(v1,v2)],2)
-        #                 for w in other_right:
-        #                     if not g.connected(v,w): continue
-        #                     e = g.edge(v,w)
-        #                     et = g.edge_type(e)
-        #                     g.remove_edge(e)
-        #                     g.add_edge((v2,w),et)
-        #                 right.append(v1)
-        #             break
-        # else:
-        #     raise ValueError("No good cut for phase gadget found")
 
     g.set_row(gadget,leftrow+1)
     g.set_row(special_nodes[gadget],leftrow+1)
@@ -771,22 +701,21 @@ def handle_phase_gadget(g, leftrow, quiet=True):
     for i, j in target.items():
         g.set_qubit(right[i],qv[j])
     right.sort(key=g.qubit)
-    m = bi_adj(g, right, left)
 
-    #right.sort(key=g.qubit)
-    
-    #m = bi_adj(g, right, left)
+    m = bi_adj(g, right, left)
     if m.rank() != q:
         raise Exception("Rank in phase gadget reduction too low.")
     operations = Circuit(q)
     operations.row_add = lambda r1,r2: operations.gates.append((r1,r2))
     m.gauss(full_reduce=True,x=operations)
-    gates = [CNOT(r2,r1) for r1,r2 in operations.gates]
+    gates = [CNOT(qv[r2],qv[r1]) for r1,r2 in operations.gates]
     m = bi_adj(g, right+[gadget], left)
     for r1,r2 in operations.gates:
         m.row_add(r1,r2)
     connectivity_from_biadj(g, m, right+[gadget], left)
-    #return gates, leftrow
+
+    # Now the connections from the left to the right are like the identity
+    # with some wires coming to the gadget from the left and from the right
     gadget_left = [v for v in left if g.connected(gadget, v)]
     gadget_right = [w for w in right if g.connected(gadget, w)]
     targets = [qs[v] for v in gadget_left]
@@ -803,10 +732,6 @@ def handle_phase_gadget(g, leftrow, quiet=True):
             gadget_left.append(v)
         else:
             g.set_row(w, leftrow+1)
-    for w in right:
-        if w in gadget_right: continue
-        v = next(v for v in left if g.connected(w,v))
-        g.set_qubit(w, qs[v])
 
     if not gadget_right: #Only connected on leftside so we are done
         if not quiet: print("Simple phase gadget")
@@ -814,7 +739,6 @@ def handle_phase_gadget(g, leftrow, quiet=True):
         g.remove_vertices([special_nodes[gadget],gadget])
         gates.append(gate)
         return gates, leftrow
-
     
     if not quiet: print("Complicated phase gadget") # targets on left and right, so need to do more
     if len(gadget_right) % 2 != 0 or len(gadget_left) == 1:
@@ -836,7 +760,6 @@ def handle_phase_gadget(g, leftrow, quiet=True):
             g.set_row(v, leftrow+1)
 
     g.remove_vertices([special_nodes[gadget],gadget])
-    #if not quiet: print("end")
     return gates, leftrow+1
 
 
