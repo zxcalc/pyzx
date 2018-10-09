@@ -194,4 +194,4 @@ def is_unitary(g):
     from .generate import identity # Imported here to prevent circularity
     adj = g.adjoint()
     adj.compose(g)
-    return compare_tensors(adj.to_tensor(), identity(g.qubit_count(),2).to_tensor())
+    return compare_tensors(adj.to_tensor(), identity(len(g.inputs),2).to_tensor())

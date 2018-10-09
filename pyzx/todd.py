@@ -26,6 +26,7 @@ from fractions import Fraction
 import subprocess
 import tempfile
 import time
+import random
 
 import numpy as np
 
@@ -311,6 +312,7 @@ def todd_iter(m, quiet=True):
     If TOPT_LOCATION is given it uses the TOpt implementation of TODD. """
     m = m.transpose()
     remove_trivial_cols(m)
+    random.shuffle(m.data) # Randomly shuffle the columns
     m = m.transpose()
     if not m.cols() or not m.rows():
         return m
