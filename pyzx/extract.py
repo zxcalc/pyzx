@@ -134,7 +134,6 @@ def streaming_extract(g, allow_ancillae=False, quiet=True, stopcount=-1):
     tried_id_simp = False
     while True:
         left = [v for v in g.vertices() if rs[v] == leftrow]
-        print(left)
         boundary_verts = []
         right = set()
         good_verts = []

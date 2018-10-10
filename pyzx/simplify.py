@@ -298,6 +298,8 @@ def full_reduce(g, quiet=True):
 
 def tcount(g):
     """Returns the amount of nodes in g that have a non-Clifford phase."""
+    if not hasattr(g, "vertices"): # It is probably a circuit
+        return g.tcount()
     count = 0
     phases = g.phases()
     for v in g.vertices():

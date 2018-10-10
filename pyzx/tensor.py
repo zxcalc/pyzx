@@ -74,9 +74,8 @@ def tensorfy(g):
     for i in range(qubits-1): tensor = np.tensordot(tensor,id2,axes=0)
     inputs = sorted(g.inputs,key=g.qubit)
     indices = {}
-    for i in inputs:
-        #indices[i] = [qubits + g.qubit(i)]
-        indices[i] = [1 + 2*g.qubit(i)]
+    for i, v in enumerate(inputs):
+        indices[v] = [1 + 2*i]
     
     for i,r in enumerate(sorted(verts_row.keys())):
         if r == 0: continue #inputs already taken care of

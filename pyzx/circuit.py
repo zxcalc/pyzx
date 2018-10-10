@@ -421,22 +421,23 @@ class Circuit(object):
             self.add_gate(g)
 
     def tcount(self):
-        return sum(1 for g in self.gates if isinstance(g, (ZPhase, XPhase, ParityPhase)) and g.phase.denominator >= 4)
+        return sum(g.tcount() for g in self.gates)
+        #return sum(1 for g in self.gates if isinstance(g, (ZPhase, XPhase, ParityPhase)) and g.phase.denominator >= 4)
     
     def stats(self):
         """Returns statistics on the amount of gates in the circuit, separated into different classes 
         (such as amount of T-gates, two-qubit gates, Hadamard gates)."""
         total = 0
-        tgates = 0
+        tcount = 0
         twoqubit = 0
         hadamard = 0
         clifford = 0
         other = 0
         for g in self.gates:
             total += 1
+            tcount += g.tcount()
             if isinstance(g, (ZPhase, XPhase)):
-                if g.phase.denominator >= 4: tgates += 1
-                else: clifford += 1
+                if g.phase.denominator <= 2: clifford += 1
             elif isinstance(g, HAD):
                 hadamard += 1
                 clifford += 1
@@ -446,10 +447,10 @@ class Circuit(object):
             else:
                 other += 1
         s = """Circuit {} on {} qubits with {} gates.
-        {} T-like gates
+        {} is the T-count
         {} Cliffords among which 
         {} 2-qubit gates and {} Hadamard gates.""".format(self.name, self.qubits, total, 
-                tgates, clifford, twoqubit, hadamard)
+                tcount, clifford, twoqubit, hadamard)
         if other > 0:
             s += "\nThere are {} gates of a different type".format(other)
         return s
@@ -726,6 +727,9 @@ class Gate(object):
             g.adjoint = not g.adjoint
         return g
 
+    def tcount(self):
+        return 0
+
     def reposition(self, mask):
         g = self.copy()
         if hasattr(g, "target"):
@@ -801,6 +805,9 @@ class ZPhase(Gate):
             return super().to_quipper()
         return 'QRot["exp(-i%Z)",{!s}]({!s})'.format(math.pi*self.phase/2,self.target)
 
+    def tcount(self):
+        return 1 if self.phase.denominator > 2 else 0
+
 
 class Z(ZPhase):
     name = 'Z'
@@ -848,6 +855,9 @@ class XPhase(Gate):
             return super().to_quipper()
         return 'QRot["exp(-i%X)",{!s}]({!s})'.format(math.pi*self.phase/2,self.target)
 
+    def tcount(self):
+        return 1 if self.phase.denominator > 2 else 0
+
 
 class NOT(XPhase):
     name = 'NOT'
@@ -862,6 +872,7 @@ class HAD(Gate):
     name = 'HAD'
     quippername = 'H'
     qasm_name = 'h'
+    qc_name = 'H'
     def __init__(self, target):
         self.target = target
 
@@ -945,6 +956,9 @@ class ParityPhase(Gate):
         for gate in self.to_basic_gates():
             gate.to_graph(g, labels, qs, rs)
 
+    def tcount(self):
+        return 1 if self.phase.denominator > 2 else 0
+
 
 class CX(CZ):
     name = 'CX'
@@ -976,6 +990,7 @@ class Tofolli(Gate):
     name = 'Tof'
     quippername = 'not'
     qasm_name = 'ccx'
+    qc_name = 'Tof'
     def __init__(self, ctrl1, ctrl2, target):
         self.target = target
         self.ctrl1 = ctrl1
@@ -989,6 +1004,9 @@ class Tofolli(Gate):
             ((self.ctrl1 == other.ctrl1 and self.ctrl2 == other.ctrl2) or
              (self.ctrl1 == other.ctrl2 and self.ctrl2 == other.ctrl1))): return True
         return False
+
+    def tcount(self):
+        return 7
 
     def reposition(self, mask):
         g = self.copy()
@@ -1016,6 +1034,7 @@ class CCZ(Tofolli):
     name = 'CCZ'
     quippername = 'Z'
     qasm_name = 'ccz'
+    qc_name = 'Z'
 
 gate_types = {
     "XPhase": XPhase,

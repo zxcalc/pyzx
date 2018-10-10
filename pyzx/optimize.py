@@ -19,6 +19,8 @@ from .circuit import Circuit, ZPhase, XPhase, CNOT, CZ, ParityPhase, NOT, HAD, S
 from .extract import permutation_as_swaps
 from .todd import todd_simp
 
+__all__ = ['basic_optimization', 'phase_block_optimize']
+
 def basic_optimization(circuit, quiet=True):
     if not isinstance(circuit, Circuit):
         raise TypeError("Input must be a Circuit")

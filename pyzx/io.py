@@ -60,7 +60,10 @@ def json_to_graph(js):
             hadamards[name] = []
             continue
         c = attr['annotation']['coord']
-        g.add_vertex(qubit=-c[1], row=c[0])
+        q, r = -c[1], c[0]
+        if q == int(q): q = int(q)
+        if r == int(r): r = int(r)
+        g.add_vertex(qubit=q, row=r)
         g.set_vdata(v,'name',name)
         names[name] = v
         if 'data' in attr:
@@ -82,7 +85,10 @@ def json_to_graph(js):
     for name,attr in j.get('wire_vertices',{}).items():
         ann = attr['annotation']
         c = ann['coord']
-        g.add_vertex(0,-c[1],c[0])
+        q, r = -c[1], c[0]
+        if q == int(q): q = int(q)
+        if r == int(r): r = int(r)
+        g.add_vertex(0,q,r)
         g.set_vdata(v,'name',name)
         names[name] = v
         if "input" in ann and ann["input"]: g.inputs.append(v)

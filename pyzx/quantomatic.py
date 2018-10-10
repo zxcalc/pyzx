@@ -103,6 +103,10 @@ if not quanto:
     quantomatic_location = None
 
     def edit_graph(g):
+        """Opens Quantomatic with the graph ``g`` loaded. When you are done editing the graph, 
+        you save it in Quantomatic and close the executable. The resulting graph is returned by this function.
+        Note that this function blocks until the Quantomatic executable is closed. For this function to work
+        you must first set ``zx.quantomatic.quantomatic_location`` to point towards the Quantomatic .jar file."""
         if not quantomatic_location or not os.path.exists(quantomatic_location):
             print("Please point towards the Quantomatic jar file with quantomatic.quantomatic_location")
             return
