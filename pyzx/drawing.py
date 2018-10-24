@@ -195,3 +195,56 @@ def draw(g, layout=None, labels=False, figsize=(8,2), h_edge_draw='blue', rows=N
     plt.close()
     return fig1
     #plt.show()
+
+
+TIKZ_BASE = """
+\\begin{{tikzpicture}}
+    \\begin{{pgfonlayer}}{{nodelayer}}
+{vertices}
+    \\end{{pgfonlayer}}
+    \\begin{{pgfonlayer}}{{edgelayer}}
+{edges}
+    \\end{{pgfonlayer}}
+\\end{{tikzpicture}}
+"""
+
+def to_tikz(g):
+    verts = []
+    maxindex = -1
+    for v in g.vertices():
+        phase = g.phase(v)
+        ty = g.type(v)
+        if ty == 0:
+            style = "none"
+        else:
+            style = 'Z' if ty==1 else 'X'
+            if phase != 0: style += " phase"
+            style += " dot"
+        if phase == 0: phase = ""
+        else:
+            ns = '' if phase.numerator == 1 else str(phase.numerator)
+            dn = '' if phase.denominator == 1 else str(phase.denominator)
+            if dn: phase = r"$\frac{%s\pi}{%s}$" % (ns, dn)
+            else: phase = r"$%s\pi$" % ns
+        x = g.row(v)
+        y = - g.qubit(v)
+        s = "        \\node [style={}] ({:d}) at ({:.2f}, {:.2f}) {{{:s}}};".format(style,v,x,y,phase)
+        verts.append(s)
+        maxindex = max([v,maxindex])
+    edges = []
+    for e in g.edges():
+        v,w = g.edge_st(e)
+        ty = g.edge_type(e)
+        s = "        \\draw "
+        if ty == 2: 
+            if g.type(v) != 0 and g.type(w) != 0:
+                s += "[style=hadamard edge] "
+            else:
+                x = (g.row(v) + g.row(w))/2.0
+                y = -(g.qubit(v)+g.qubit(w))/2.0
+                t = "        \\node [style=hadamard] ({:d}) at ({:.2f}, {:.2f}) {{}};".format(maxindex+1, x,y)
+                verts.append(t)
+                maxindex += 1
+        s += "({:d}) to ({:d});".format(v,w)
+        edges.append(s)
+    return TIKZ_BASE.format(vertices="\n".join(verts), edges="\n".join(edges))

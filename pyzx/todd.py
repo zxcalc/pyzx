@@ -480,7 +480,7 @@ def todd_on_graph(g):
         else:
             newgadgets.append(frozenset([targets[i] for i,a in enumerate(col) if a]))
     
-    p = zx.todd.MultiLinearPoly()
+    p = MultiLinearPoly()
     p.add_par_matrix(parmatrix,False)
     p.add_par_matrix(m2,True)
     correction = p.to_clifford()
