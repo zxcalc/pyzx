@@ -17,7 +17,7 @@
 
 from __future__ import print_function
 
-__all__ = ['circuit_extract', 'clifford_extract', 'greedy_cut_extract', 'streaming_extract']
+__all__ = ['clifford_extract', 'streaming_extract']
 
 from fractions import Fraction
 import itertools
