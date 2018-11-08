@@ -641,12 +641,12 @@ class QASMParser(object):
             if "[" in a:
                 regname, val = a.split("[",1)
                 val = int(val[:-1])
-                if not regname in registers: raise TypeError("Unvalid register {}".format(regname))
+                if not regname in registers: raise TypeError("Invalid register {}".format(regname))
                 qubit_values.append([registers[regname][0]+val])
             else:
                 if is_range:
                     if registers[a][1] != dim:
-                        raise TypeError("Error in parsing {}: Register sizes do not mach".format(c))
+                        raise TypeError("Error in parsing {}: Register sizes do not match".format(c))
                 else:
                     dim = registers[a][1]
                 is_range = True
@@ -668,6 +668,24 @@ class QASMParser(object):
             if name in ("x", "z", "s", "t", "h", "sdg", "tdg"):
                 if name in ("sdg", "tdg"): g = qasm_gate_table[name](argset[0],adjoint=True)
                 else: g = qasm_gate_table[name](argset[0])
+                gates.append(g)
+                continue
+            if name.startswith("rx") or name.startswith("rz"):
+                i = name.find('(')
+                j = name.find(')')
+                if i == -1 or j == -1: raise TypeError("Invalid specification {}".format(name))
+                val = name[i+1:j]
+                try:
+                    phase = float(val)/math.pi
+                except ValueError:
+                    if not val.find('pi'): raise TypeError("Invalid specification {}".format(name))
+                    val.replace('pi', '')
+                    val.replace('*','')
+                    try: phase = float(val)
+                    except: raise TypeError("Invalid specification {}".format(name))
+                phase = Fraction(phase).limit_denominator(10000)
+                if name.startswith('rx'): g = XPhase(argset[0],phase=phase)
+                else: g = ZPhase(argset[0],phase=phase)
                 gates.append(g)
                 continue
             if name in ("cx","CX","cz"):
@@ -763,7 +781,7 @@ class Gate(object):
             if hasattr(self, a): args.append("q[{:d}]".format(getattr(self,a)))
         param = ""
         if hasattr(self, "printphase") and self.printphase:
-            param = "({})".format(phase_to_s(self.phase))
+            param = "({}*pi)".format(float(self.phase))
         return "{}{} {};".format(n, param, ", ".join(args))
 
     def to_qc(self):
