@@ -30,7 +30,7 @@ except ImportError:
 
 from pyzx.generate import cliffordT, cliffords
 from pyzx.simplify import clifford_simp
-from pyzx.extract import circuit_extract
+from pyzx.extract import streaming_extract
 from pyzx.circuit import Circuit
 
 SEED = 1337
@@ -69,21 +69,21 @@ class TestCircuit(unittest.TestCase):
         t2 = tensorfy(g2)
         self.assertTrue(compare_tensors(t,t2))
 
-    def test_circuit_extract_produces_circuit(self):
-        random.seed(SEED)
-        g = cliffordT(6, 60, 0.15)
-        clifford_simp(g, quiet=True)
-        circuit_extract(g)
-        # This should not result in an exception
-        Circuit.from_graph(g)
+    # def test_circuit_extract_produces_circuit(self):
+    #     random.seed(SEED)
+    #     g = cliffordT(6, 60, 0.15)
+    #     clifford_simp(g, quiet=True)
+    #     circuit_extract(g)
+    #     # This should not result in an exception
+    #     Circuit.from_graph(g)
 
     def test_circuit_extract_preserves_semantics(self):
         random.seed(SEED)
         g = cliffordT(5, 70, 0.15)
         t = g.to_tensor()
         clifford_simp(g, quiet=True)
-        circuit_extract(g)
-        t2 = Circuit.from_graph(g).to_tensor()
+        c = streaming_extract(g)
+        t2 = c.to_tensor()
         self.assertTrue(compare_tensors(t,t2))
 
 if __name__ == '__main__':

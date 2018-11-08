@@ -30,7 +30,7 @@ except ImportError:
 
 from pyzx.generate import cliffordT, cliffords
 from pyzx.simplify import clifford_simp
-from pyzx.extract import clifford_extract, greedy_cut_extract, circuit_extract, streaming_extract
+from pyzx.extract import streaming_extract
 
 SEED = 1337
 
@@ -38,46 +38,46 @@ SEED = 1337
 @unittest.skipUnless(np, "numpy needs to be installed for this to run")
 class TestExtract(unittest.TestCase):
 
-    def test_clifford_extract(self):
-        random.seed(SEED)
-        tests = 0
-        tries = 0
-        while True:
-            tries += 1
-            circ = cliffords(5,70)
-            clifford_simp(circ,quiet=True)
-            circ.normalise()
-            if circ.depth()>3: continue # It is not in normal form, so skip this one
-            tests += 1
-            with self.subTest(test=tests,tries=tries):
-                t = tensorfy(circ)
-                clifford_extract(circ,1,2)
-                t2 = tensorfy(circ)
-                self.assertTrue(compare_tensors(t,t2))
-            if tests>5: break
+    # def test_clifford_extract(self):
+    #     random.seed(SEED)
+    #     tests = 0
+    #     tries = 0
+    #     while True:
+    #         tries += 1
+    #         circ = cliffords(5,70)
+    #         clifford_simp(circ,quiet=True)
+    #         circ.normalise()
+    #         if circ.depth()>3: continue # It is not in normal form, so skip this one
+    #         tests += 1
+    #         with self.subTest(test=tests,tries=tries):
+    #             t = tensorfy(circ)
+    #             clifford_extract(circ,1,2)
+    #             t2 = tensorfy(circ)
+    #             self.assertTrue(compare_tensors(t,t2))
+    #         if tests>5: break
 
-    def test_greedy_cut_extract(self):
-        random.seed(SEED)
-        for i in range(5):
-            circ = cliffordT(4,50,0.1)
-            clifford_simp(circ,quiet=True)
-            circ.normalise()
-            with self.subTest(i=i):
-                t = tensorfy(circ)
-                greedy_cut_extract(circ)
-                t2 = tensorfy(circ)
-                self.assertTrue(compare_tensors(t,t2))
+    # def test_greedy_cut_extract(self):
+    #     random.seed(SEED)
+    #     for i in range(5):
+    #         circ = cliffordT(4,50,0.1)
+    #         clifford_simp(circ,quiet=True)
+    #         circ.normalise()
+    #         with self.subTest(i=i):
+    #             t = tensorfy(circ)
+    #             greedy_cut_extract(circ)
+    #             t2 = tensorfy(circ)
+    #             self.assertTrue(compare_tensors(t,t2))
 
-    def test_circuit_extract(self):
-        random.seed(SEED)
-        for i in range(5):
-            circ = cliffordT(4,50,0.1)
-            clifford_simp(circ,quiet=True)
-            with self.subTest(i=i):
-                t = tensorfy(circ)
-                circuit_extract(circ)
-                t2 = tensorfy(circ)
-                self.assertTrue(compare_tensors(t,t2))
+    # def test_circuit_extract(self):
+    #     random.seed(SEED)
+    #     for i in range(5):
+    #         circ = cliffordT(4,50,0.1)
+    #         clifford_simp(circ,quiet=True)
+    #         with self.subTest(i=i):
+    #             t = tensorfy(circ)
+    #             circuit_extract(circ)
+    #             t2 = tensorfy(circ)
+    #             self.assertTrue(compare_tensors(t,t2))
 
     def test_streaming_extract(self):
         random.seed(SEED)
