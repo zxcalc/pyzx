@@ -208,9 +208,9 @@ TIKZ_BASE = """
 \\end{{tikzpicture}}
 """
 
-def to_tikz(g):
+def to_tikz(g, xoffset=0, yoffset=0, idoffset=0, full_output=True):
     verts = []
-    maxindex = -1
+    maxindex = idoffset
     for v in g.vertices():
         phase = g.phase(v)
         ty = g.type(v)
@@ -226,11 +226,11 @@ def to_tikz(g):
             dn = '' if phase.denominator == 1 else str(phase.denominator)
             if dn: phase = r"$\frac{%s\pi}{%s}$" % (ns, dn)
             else: phase = r"$%s\pi$" % ns
-        x = g.row(v)
-        y = - g.qubit(v)
-        s = "        \\node [style={}] ({:d}) at ({:.2f}, {:.2f}) {{{:s}}};".format(style,v,x,y,phase)
+        x = g.row(v) + xoffset
+        y = - g.qubit(v) - yoffset
+        s = "        \\node [style={}] ({:d}) at ({:.2f}, {:.2f}) {{{:s}}};".format(style,v+idoffset,x,y,phase)
         verts.append(s)
-        maxindex = max([v,maxindex])
+        maxindex = max([v+idoffset,maxindex])
     edges = []
     for e in g.edges():
         v,w = g.edge_st(e)
@@ -240,11 +240,32 @@ def to_tikz(g):
             if g.type(v) != 0 and g.type(w) != 0:
                 s += "[style=hadamard edge] "
             else:
-                x = (g.row(v) + g.row(w))/2.0
-                y = -(g.qubit(v)+g.qubit(w))/2.0
+                x = (g.row(v) + g.row(w))/2.0 +xoffset
+                y = -(g.qubit(v)+g.qubit(w))/2.0 -yoffset
                 t = "        \\node [style=hadamard] ({:d}) at ({:.2f}, {:.2f}) {{}};".format(maxindex+1, x,y)
                 verts.append(t)
                 maxindex += 1
-        s += "({:d}) to ({:d});".format(v,w)
+        s += "({:d}) to ({:d});".format(v+idoffset,w+idoffset)
         edges.append(s)
-    return TIKZ_BASE.format(vertices="\n".join(verts), edges="\n".join(edges))
+    if full_output: return TIKZ_BASE.format(vertices="\n".join(verts), edges="\n".join(edges))
+    else: return (verts, edges)
+
+def to_tikz_sequence(graphs, maxwidth=10):
+    xoffset = -maxwidth
+    yoffset = -10
+    idoffset = 0
+    total_verts, total_edges = [],[]
+    for g in graphs:
+        max_index = max(g.vertices()) + 2*len(g.inputs) + 1
+        verts, edges = to_tikz(g,xoffset,yoffset,idoffset,False)
+        total_verts.extend(verts)
+        total_edges.extend(edges)
+        if xoffset + g.depth() + 2> maxwidth:
+            xoffset = -maxwidth
+            yoffset += g.qubit_count() + 2
+        else:
+            xoffset += g.depth() + 2
+        idoffset += max_index
+
+    return TIKZ_BASE.format(vertices="\n".join(total_verts), edges="\n".join(total_edges))
+

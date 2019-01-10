@@ -683,7 +683,7 @@ class QASMParser(object):
                     val.replace('*','')
                     try: phase = float(val)
                     except: raise TypeError("Invalid specification {}".format(name))
-                phase = Fraction(phase).limit_denominator(10000)
+                phase = Fraction(phase).limit_denominator(100000000)
                 if name.startswith('rx'): g = XPhase(argset[0],phase=phase)
                 else: g = ZPhase(argset[0],phase=phase)
                 gates.append(g)
