@@ -26,7 +26,7 @@ except ImportError:
     pass
 
 __all__ = ['bialg_simp','spider_simp', 'id_simp', 'phase_free_simp', 'pivot_simp', 'gadget_simp',
-        'lcomp_simp', 'clifford_simp', 'tcount', 'to_gh', 'to_rg', 'gadgetize', 'full_reduce', 'pivot_double_boundary']
+        'lcomp_simp', 'clifford_simp', 'tcount', 'to_gh', 'to_rg', 'full_reduce', 'pivot_double_boundary']
 
 from .rules import *
 
@@ -68,6 +68,9 @@ def simp(g, name, match, rewrite, matchf=None, quiet=False):
 
 def pivot_simp(g, matchf=None, quiet=False):
     return simp(g, 'pivot_simp', match_pivot_parallel, pivot, matchf=matchf, quiet=quiet)
+
+def pivot_gadget_simp(g, matchf=None, quiet=False):
+    return simp(g, 'pivot_gadget_simp', match_pivot_gadget, pivot, matchf=matchf, quiet=quiet)
 
 def lcomp_simp(g, matchf=None, quiet=False):
     return simp(g, 'lcomp_simp', match_lcomp_parallel, lcomp, matchf=matchf, quiet=quiet)
@@ -212,88 +215,97 @@ def to_rg(g, select=None):
                     g.set_edge_type(e, 1 if g.edge_type(e) == 2 else 2)
 
 
-
-def gadgetize(g):
-    """Un-fuses every node with a non-Pauli phase, so that they act like phase gadgets. 
-    It returns a 2-tuple where the first value is the set of newly made gadgets,
-    and the second is the set of all gadgets in the graph.
-    The vertices returned are the 'hub' part of the phase gadget
-     (the part which can only contain a Pauli-phase)."""
-    phases = g.phases()
-    #qs = g.qubits()
-    rs = g.rows()
-    qs = g.qubits()
-    edges = []
-    allgadgets = []
-    newgadgets = []
-    for v in list(g.vertices()):
-        if phases[v] != 0 and phases[v].denominator > 1:
-            if len(list(g.neighbours(v))) == 1: # It is already a gadget
-                allgadgets.append(v)
-                continue
-            v1 = g.add_vertex(1,-1,rs[v]+0.5,0)
-            v2 = g.add_vertex(1,-2,rs[v]+0.5,phases[v])
-            # v1 = g.add_vertex(1,-2*qs[v]-1,rs[v]+0.5,0)
-            # v2 = g.add_vertex(1,-2*qs[v]-2,rs[v]+0.5,phases[v])
-            g.set_phase(v, 0)
-            edges.append((v,v1))
-            edges.append((v1,v2))
-            newgadgets.append(v1)
-            allgadgets.append(v1)
-    g.add_edges(edges, 2)
-    return set(newgadgets), set(allgadgets)
-
 def full_reduce(g, quiet=True):
-    """This function does a round of :func:`clifford_simp`, :func:`gadgetize` 
-    and then a modified round of `clifford_simp`. It then applies 
-    :func:`gadget_simp`. It keeps doing rounds of these simplifications
-    until no more progress is made."""
-    i = 0
-    gadgetcount = 10**10
-    vertexcount = 10**10
+    interior_clifford_simp(g, quiet=quiet)
     while True:
-        clifford_simp(g,quiet=quiet)
-        #if tcount(g) == 24: break
-        newgadgets, allgadgets = gadgetize(g)
-        if i == 0 and not newgadgets: break
-        if len(newgadgets) >= gadgetcount:
-            n = g.num_vertices()
-            if n >= vertexcount:
-                clifford_simp(g,quiet=quiet)
-                break
-            vertexcount = n
-        else:
-            vertexcount = g.num_vertices()
-        if not quiet: 
-            print("Vertex count: ", vertexcount)
-            print("T-count: ", tcount(g))
-
-        gadgetcount = len(newgadgets)
-        if not quiet and gadgetcount: print("Gadgetized {:d} nodes".format(gadgetcount))
-        # don't pivot an edge adjacent to a gadget vertex
-        def matchf(e):
-            s, t = g.edge_st(e)
-            if s in newgadgets or t in newgadgets:
-                return False
-            if s in allgadgets and t in allgadgets:
-                return False
-            return True
-        #matchf = lambda e: g.edge_s(e) not in newgadgets and g.edge_t(e) not in newgadgets
-        #matchf = lambda e: not (g.edge_s(e) in gadgets or g.edge_t(e) in gadgets)
-        pivot_simp(g,matchf=matchf,quiet=quiet)
-        lcomp_simp(g,quiet=quiet)
-        pivot_simp(g,matchf=matchf,quiet=quiet)
-        phases = g.phases()
-        for v in g.vertices():
-            if phases[v] != 0 and phases[v].denominator > 2 and len(list(g.neighbours(v)))==1:
-                n = list(g.neighbours(v))[0]
-                if phases[n] == 1:
-                    g.set_phase(n, 0)
-                    g.set_phase(v, -1*phases[v])
-                    phases[n] = 0
-        if not quiet and gadgetcount: print("Back to clifford_simp")
+        pivot_gadget_simp(g,quiet=quiet)
         clifford_simp(g,quiet=quiet)
         i = gadget_simp(g, quiet=quiet)
+        interior_clifford_simp(g,quiet=quiet)
+        if not i:
+            break
+
+# def gadgetize(g):
+#     """Un-fuses every node with a non-Pauli phase, so that they act like phase gadgets. 
+#     It returns a 2-tuple where the first value is the set of newly made gadgets,
+#     and the second is the set of all gadgets in the graph.
+#     The vertices returned are the 'hub' part of the phase gadget
+#      (the part which can only contain a Pauli-phase)."""
+#     phases = g.phases()
+#     #qs = g.qubits()
+#     rs = g.rows()
+#     qs = g.qubits()
+#     edges = []
+#     allgadgets = []
+#     newgadgets = []
+#     for v in list(g.vertices()):
+#         if phases[v] != 0 and phases[v].denominator > 1:
+#             if len(list(g.neighbours(v))) == 1: # It is already a gadget
+#                 allgadgets.append(v)
+#                 continue
+#             v1 = g.add_vertex(1,-1,rs[v]+0.5,0)
+#             v2 = g.add_vertex(1,-2,rs[v]+0.5,phases[v])
+#             # v1 = g.add_vertex(1,-2*qs[v]-1,rs[v]+0.5,0)
+#             # v2 = g.add_vertex(1,-2*qs[v]-2,rs[v]+0.5,phases[v])
+#             g.set_phase(v, 0)
+#             edges.append((v,v1))
+#             edges.append((v1,v2))
+#             newgadgets.append(v1)
+#             allgadgets.append(v1)
+#     g.add_edges(edges, 2)
+#     return set(newgadgets), set(allgadgets)
+
+# def full_reduce(g, quiet=True):
+#     """This function does a round of :func:`clifford_simp`, :func:`gadgetize` 
+#     and then a modified round of `clifford_simp`. It then applies 
+#     :func:`gadget_simp`. It keeps doing rounds of these simplifications
+#     until no more progress is made."""
+#     i = 0
+#     gadgetcount = 10**10
+#     vertexcount = 10**10
+#     while True:
+#         clifford_simp(g,quiet=quiet)
+#         #if tcount(g) == 24: break
+#         newgadgets, allgadgets = gadgetize(g)
+#         if i == 0 and not newgadgets: break
+#         if len(newgadgets) >= gadgetcount:
+#             n = g.num_vertices()
+#             if n >= vertexcount:
+#                 clifford_simp(g,quiet=quiet)
+#                 break
+#             vertexcount = n
+#         else:
+#             vertexcount = g.num_vertices()
+#         if not quiet: 
+#             print("Vertex count: ", vertexcount)
+#             print("T-count: ", tcount(g))
+
+#         gadgetcount = len(newgadgets)
+#         if not quiet and gadgetcount: print("Gadgetized {:d} nodes".format(gadgetcount))
+#         # don't pivot an edge adjacent to a gadget vertex
+#         def matchf(e):
+#             s, t = g.edge_st(e)
+#             if s in newgadgets or t in newgadgets:
+#                 return False
+#             if s in allgadgets and t in allgadgets:
+#                 return False
+#             return True
+#         #matchf = lambda e: g.edge_s(e) not in newgadgets and g.edge_t(e) not in newgadgets
+#         #matchf = lambda e: not (g.edge_s(e) in gadgets or g.edge_t(e) in gadgets)
+#         pivot_simp(g,matchf=matchf,quiet=quiet)
+#         lcomp_simp(g,quiet=quiet)
+#         pivot_simp(g,matchf=matchf,quiet=quiet)
+#         phases = g.phases()
+#         for v in g.vertices():
+#             if phases[v] != 0 and phases[v].denominator > 2 and len(list(g.neighbours(v)))==1:
+#                 n = list(g.neighbours(v))[0]
+#                 if phases[n] == 1:
+#                     g.set_phase(n, 0)
+#                     g.set_phase(v, -1*phases[v])
+#                     phases[n] = 0
+#         if not quiet and gadgetcount: print("Back to clifford_simp")
+#         clifford_simp(g,quiet=quiet)
+#         i = gadget_simp(g, quiet=quiet)
 
 
 def tcount(g):

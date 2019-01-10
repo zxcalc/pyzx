@@ -235,9 +235,7 @@ def match_pivot_parallel(g, matchf=None, num=-1, check_edge_types=False):
     :param matchf: An optional filtering function for candidate edge, should
        return True if a edge should considered as a match. Passing None will
        consider all edges.
-    :param edgelist: List of edges to consider. If -1 (the default), looks 
-       at all edges.
-    :rtype: List of 7-tuples. See :func:`pivot` for the details.
+    :rtype: List of 4-tuples. See :func:`pivot` for the details.
     """
     if matchf != None: candidates = set([e for e in g.edges() if matchf(e)])
     else: candidates = g.edge_set()
@@ -251,13 +249,11 @@ def match_pivot_parallel(g, matchf=None, num=-1, check_edge_types=False):
         if not check_edge_types and g.edge_type(e) != 2: continue
         v0, v1 = g.edge_st(e)
 
-        v0t = types[v0]
-        v1t = types[v1]
-        if not (v0t == 1 and v1t == 1): continue
+        if not (types[v0] == 1 and types[v1] == 1): continue
 
         v0a = phases[v0]
         v1a = phases[v1]
-        if not ((v0a == 0 or v0a == 1) and (v1a == 0 or v1a == 1)): continue
+        if not ((v0a in (0,1)) and (v1a in (0,1))): continue
 
         invalid_edge = False
 
@@ -305,6 +301,75 @@ def match_pivot_parallel(g, matchf=None, num=-1, check_edge_types=False):
         m.append([v0,v1,b0,b1])
     return m
 
+def match_pivot_gadget(g, matchf=None, num=-1):
+    """Like :func:`match_pivot_parallel`, but except for pairings of
+    Pauli vertices, it looks for a pair of an interior Pauli vertex and an
+    interior non-Clifford vertex in order to gadgetize the non-Clifford vertex."""
+    if matchf != None: candidates = set([e for e in g.edges() if matchf(e)])
+    else: candidates = g.edge_set()
+    types = g.types()
+    phases = g.phases()
+    rs = g.rows()
+    
+    edge_list = []
+    
+    
+    i = 0
+    m = []
+    
+    while (num == -1 or i < num) and len(candidates) > 0:
+        e = candidates.pop()
+        v0, v1 = g.edge_st(e)
+
+        if not (types[v0] == 1 and types[v1] == 1): continue
+
+        v0a = phases[v0]
+        v1a = phases[v1]
+        
+        if v0a not in (0,1):
+            if v1a in (0,1):
+                t = v0
+                v0 = v1
+                v1 = t
+                t = v0a
+                v0a = v1a
+                v1a = t
+            else: continue
+        elif v1a in (0,1): continue
+        # Now v0 has a Pauli phase and v1 has a non-Pauli phase
+        
+        v0n = list(g.neighbours(v0))
+        v1n = list(g.neighbours(v1))
+        if len(v0n) == 1 or len(v1n) == 1: continue # one of them is a phase gadget
+        bad_match = False
+        discard_edges = []
+        for l in (v0n, v1n):
+            for n in l:
+                if types[n] != 1: 
+                    bad_match = True
+                    break
+                ne = list(g.incident_edges(n))
+                if len(ne) == 1: # v0 or v1 is a phase gadget
+                    bad_match = True
+                    break
+                discard_edges.extend(ne)
+            if bad_match: break
+        if bad_match: continue
+                
+        if any(types[w]!=1 for w in v0n): continue
+        if any(types[w]!=1 for w in v1n): continue
+        # Both v0 and v1 are interior
+        
+        v = g.add_vertex(1,-2,rs[v0],v1a)
+        g.set_phase(v1, 0)
+        g.set_qubit(v0,-1)
+        edge_list.append((v,v1) if v<v1 else (v1,v))
+        
+        m.append([v0,v1,[],[v]])
+        i += 1
+        for c in discard_edges: candidates.discard(c)
+    g.add_edges(edge_list,1)
+    return m
 
 def pivot(g, matches):
     """Perform a pivoting rewrite, given a list of matches as returned by
@@ -343,7 +408,7 @@ def pivot(g, matches):
             for v in n[2]: g.add_to_phase(v, a)
 
 
-            if len(m[i+2]) == 0:
+            if not m[i+2]:
                 # if there is no boundary, the other vertex is destroyed
                 rem_verts.append(m[1-i])
             else:
@@ -365,7 +430,6 @@ def pivot(g, matches):
             etab[e] = (0,nhe+1)
 
     return (etab, rem_verts, rem_edges, True)
-
 
 def match_lcomp(g):
     """Same as :func:`match_lcomp_parallel`, but with ``num=1``"""
