@@ -59,6 +59,8 @@ class Optimizer:
         self.minimize_czs = False
     
     def parse_circuit(self, separate_correction=False, max_iterations=1000, quiet=True):
+        """Repeatedly does forward and backward passes trough the circuit, until no more improvements are found."""
+
         self.minimize_czs = False
         self.circuit, correction = self.parse_forward()
         count = stats(self.circuit)
@@ -86,6 +88,7 @@ class Optimizer:
             return self.circuit, correction
     
     def parse_forward(self):
+        """Does a single forward pass trough self.circuit.gates."""
         self.gates = {i:list() for i in range(self.qubits)}
         self.available = {i:list() for i in range(self.qubits)}
         self.availty = {i: 1 for i in range(self.qubits)}
@@ -129,6 +132,9 @@ class Optimizer:
         return c, correction
 
     def topological_sort_gates(self):
+        """self.gates is a a {qubit:[list of gates]} dictionary. This function consumes this dictionary and outputs a
+        single list of gates, with the gates in the correct order.
+        Note that 2-qubit gates are present in two entries in the dictionary and are identified with an ``index`` parameter."""
         output = []
         while any(self.gates.values()):
             available_indices = set()
@@ -169,6 +175,7 @@ class Optimizer:
 
     
     def add_hadamard(self, t):
+        """Called by ``parse_gate`` to add a Hadamard gate to the output."""
         h = HAD(t)
         h.index = self.gcount
         self.gcount += 1
@@ -178,12 +185,15 @@ class Optimizer:
         self.availty[t] = 1
     
     def add_gate(self, t, g):
+        """Helper function for ``add_cz`` and ``add_cnot`` to add a single qubit gate to the output."""
         g.index = self.gcount
         self.gcount += 1
         self.gates[t].append(g)
         self.available[t].append(g)
     
     def add_cz(self, cz):
+        """Called by ``parse_gate`` to add a CZ gate to the output.
+        Does some non-trivial logic to see whether the CZ-gate can be cancelled against a CNOT or CZ gate."""
         t1, t2 = cz.control, cz.target
         #We first try to find a matching CNOT gate
         found_match = False
@@ -192,16 +202,19 @@ class Optimizer:
                 for g in self.available[c]:
                     if g.name == 'CNOT' and g.control == c and g.target == t:
                         if self.availty[t] == 2:
-                            if g in self.available[t]:
+                            if g in self.available[t]: # The gate is also available on the target qubit
                                 found_match = True
                                 break
                             else:
                                 continue
-                        for h in list(reversed(self.gates[t][:-len(self.available[t])])):
-                            if h == g:
-                                found_match = True
+                        # There are Z-like gates blocking the CNOT from usage
+                        # But if the CNOT can be passed all the way up to these Z-like gates
+                        # Then we can commute the CZ gate next to the CNOT and hence use it.
+                        for h in list(reversed(self.gates[t][:-len(self.available[t])])): # We start looking at the gates behind the Z-like gates
+                            if h.name != 'CNOT' or h.target != t: # If any of those gates is not a CNOT of the right type, then we stop our search
                                 break
-                            if h.name != 'CNOT' or h.target != t:
+                            if h == g: # But if all the previous gates are fine, than we can use this CNOT.
+                                found_match = True
                                 break
                         if found_match: break
                 if found_match: break
@@ -216,21 +229,17 @@ class Optimizer:
             s1 = S(t, adjoint=True)
             s1.index = self.gcount
             self.gcount += 1
-            if self.available[t]:
-                #s1.index = self.available[t][0].index-0.3
-                #g.index = self.available[t][0].index-0.2
-                self.gates[t].insert(-len(self.available[t]),s1)
-                self.gates[t].insert(-len(self.available[t]),g)
+            if self.available[t]: # There are gates of non-commuting type on this qubit
+                self.gates[t].insert(-len(self.available[t]),s1) # And hence we must insert these gates at
+                self.gates[t].insert(-len(self.available[t]),g)  # the correct location
             else: 
                 self.gates[t].append(s1)
-                #g.index = self.gcount
-                #self.gcount += 1
                 self.gates[t].append(g)
             s2 = S(t)
             s2.index = self.gcount
             self.gcount += 1
-            self.gates[t].append(s2)
-            self.available[t].append(s2)
+            self.gates[t].append(s2) # In contrast, these gates appear after the CNOT, necessarily on Z-like phases
+            self.available[t].append(s2) # and hence can be added at the end of the list
             s3 = S(c)
             s3.index = self.gcount
             self.gcount += 1
@@ -239,28 +248,29 @@ class Optimizer:
             self.gates[c].append(g)
             self.gates[c].append(s3)
             return
+
         if self.availty[t1] == 2:
             self.available[t1] = list()
             self.availty[t1] = 1
         if self.availty[t2] == 2:
             self.available[t2] = list()
             self.availty[t2] = 1
+
         found_match = False
-        for g in reversed(self.available[t1]):
-            if g.name == 'CZ' and g.control == t1 and g.target == t2:
-                found_match = True
+        for g in reversed(self.available[t1]): # We try to find a CZ with the same control and target
+            if g.name == 'CZ' and g.control == t1 and g.target == t2: # Here it is important that we have normalised all CZs
+                found_match = True                                    # to have cz.control<cz.target
                 break
         if found_match:
-            if g not in self.available[t2]:
+            if g not in self.available[t2]: # We still need to check if the CZ is actually available on the other qubit
                 found_match = False
             else:
                 self.available[t1].remove(g)
                 self.gates[t1].remove(g)
                 self.available[t2].remove(g)
                 self.gates[t2].remove(g)
-                #self.detect_available(t1)
-                #self.detect_available(t2)
-        if not found_match:
+
+        if not found_match: # No cancellation found, so we just add the gate
             cz.index = self.gcount
             self.gcount += 1
             self.gates[t1].append(cz)
@@ -269,6 +279,8 @@ class Optimizer:
             self.available[t2].append(cz)
     
     def add_cnot(self, cnot):
+        """Called by ``parse_gate`` to parse a CNOT gate.
+        Does some non-trivial logic to see whether the CNOT gate can be cancelled against another CNOT gate on the same qubits."""
         c, t = cnot.control, cnot.target
         if self.availty[c] == 2:
             if self.availty[t] == 1: # Try to find anti-match
@@ -277,7 +289,7 @@ class Optimizer:
                     if g.name == 'CNOT' and g.control == t and g.target == c:
                         found_match = True
                         break
-                if found_match: # We're adding a swap gate
+                if found_match: # We do the CNOT(t,c)CNOT(c,t) = CNOT(c,t)SWAP(c,t) commutation
                     if g in self.available[t]:
                         self.gates[c].remove(g)
                         self.gates[t].remove(g)
@@ -308,7 +320,7 @@ class Optimizer:
             if g.name == 'CNOT' and g.control == c and g.target == t:
                 found_match = True
                 break
-        if found_match:
+        if found_match: # We do CNOT(c,t)CNOT(c,t) = id
             if g not in self.available[t]:
                 found_match = False
             else:
@@ -316,8 +328,6 @@ class Optimizer:
                 self.gates[c].remove(g)
                 self.available[t].remove(g)
                 self.gates[t].remove(g)
-                self.detect_available(c)
-                self.detect_available(t)
                 
         if not found_match:
             cnot.index = self.gcount
@@ -327,22 +337,27 @@ class Optimizer:
             self.available[c].append(cnot)
             self.available[t].append(cnot)
     
-    def detect_available(self, t):
-        pass
-    
     def parse_gate(self, g):
+        """The main function of the optimization. It records whether a gate needs to be placed at the specified location
+        'right now', or whether we can postpone the placement until hopefully it is cancelled against some future gate.
+        Only supports ZPhase, HAD, CNOT and CZ gates. """
         g = g.copy()
+        # If we have some SWAPs recorded we need to change the target/control of the gate accordingly
         g.target = next(i for i in self.permutation if self.permutation[i] == g.target)
         t = g.target
         if g.name in ('CZ', 'CNOT'):
             g.control = next(i for i in self.permutation if self.permutation[i] == g.control)
+
         if g.name == 'HAD':
+            # If we have recorded a NOT or Z gate at the target location, we push it trough the Hadamard and change the type
             if t in self.nots and t not in self.zs:
                 self.nots.remove(t)
                 self.zs.append(t)
             elif t in self.zs and t not in self.nots:
                 self.zs.remove(t)
                 self.nots.append(t)
+            # See whether we have a HAD-S-HAD situation
+            # And turn it into a S*-HAD-S* situation
             if len(self.gates[t])>1 and self.gates[t][-2].name == 'HAD' and isinstance(self.gates[t][-1], ZPhase):
                     g2 = self.gates[t][-1]
                     if g2.phase.denominator == 2:
@@ -359,21 +374,21 @@ class Optimizer:
         elif g.name == 'NOT':
             toggle_element(self.nots, t)
         elif isinstance(g, ZPhase):
-            if t in self.zs:
+            if t in self.zs: #Consume a Z gate into the phase gate
                 g.phase = (g.phase+1)%2
                 self.zs.remove(t)
             if g.phase == 0: return
-            if t in self.nots:
+            if t in self.nots: # Push the phase gate trough a NOT
                 g.phase = (-g.phase)%2
-            if g.phase == 1:
+            if g.phase == 1: # If the resulting phase is a pi, then we record it as a Z gate
                 toggle_element(self.zs, t)
                 return
-            if g.name == 'S' and g.phase.numerator > 1:
-                g.adjoint = True
-            if t in self.hadamards:
+            if g.name == 'S':                           # We might have changed the phase, and therefore
+                g.adjoint = g.phase.numerator != 1      # Need to adjust whether the adjoint is true
+            if t in self.hadamards: # We can't push a phase gate trough a HAD, so we actually place the HAD down
                 self.add_hadamard(t)
-            if self.availty[t] == 1 and any(isinstance(g2, ZPhase) for g2 in self.available[t]):
-                i = next(i for i,g2 in enumerate(self.available[t]) if isinstance(g2, ZPhase))
+            if self.availty[t] == 1 and any(isinstance(g2, ZPhase) for g2 in self.available[t]): # There is an available phase gate
+                i = next(i for i,g2 in enumerate(self.available[t]) if isinstance(g2, ZPhase))   # That we can fuse with the new one
                 g2 = self.available[t].pop(i)
                 self.gates[t].remove(g2)
                 phase = (g.phase+g2.phase)%2
@@ -384,25 +399,28 @@ class Optimizer:
                     p = ZPhase(t, phase)
                     self.add_gate(t,p)
             else:
-                if self.availty[t] == 2:
-                    self.availty[t] = 1
+                if self.availty[t] == 2: # If previous gate was of X-type
+                    self.availty[t] = 1  # We reset the available gates on this qubit
                     self.available[t] = list()
                 self.add_gate(t, g)
         elif g.name == 'CZ':
             t1, t2 = g.control, g.target
-            if t1 > t2:
+            if t1 > t2: # Normalise so that always g.target<g.control (since CZs are symmetric anyway)
                 g.target = t1
                 g.control = t2
-            if t1 in self.nots:
+            # Push NOT gates trough the CZ
+            if t1 in self.nots: 
                 toggle_element(self.zs, t2)
             if t2 in self.nots:
                 toggle_element(self.zs, t1)
+            # If there are HADs on both targets, we cannot commute the CZ trough and we place the HADs
             if t1 in self.hadamards and t2 in self.hadamards:
                 self.add_hadamard(t1)
                 self.add_hadamard(t2)
             if t1 not in self.hadamards and t2 not in self.hadamards:
                 self.add_cz(g)
             # Exactly one of t1 and t2 has a hadamard
+            # So the CZ commutes trough and becomes a CNOT
             elif t1 in self.hadamards:
                 cnot = CNOT(t2, t1)
                 self.add_cnot(cnot)
@@ -412,16 +430,19 @@ class Optimizer:
             
         elif g.name == 'CNOT':
             c, t = g.control, g.target
+            # Commute NOTs and Zs trough the CNOT
             if c in self.nots:
                 toggle_element(self.nots, t)
             if t in self.zs:
                 toggle_element(self.zs, c)
+            # If HADs are on both qubits, we commute the CNOT trough by switching target and control
             if c in self.hadamards and t in self.hadamards:
                 g.control = t
                 g.target = c
                 self.add_cnot(g)
             elif c not in self.hadamards and t not in self.hadamards:
                 self.add_cnot(g)
+            # If there is a HAD on the target, the CNOT commutes trough to become a CZ
             elif t in self.hadamards:
                 cz = CZ(c if c<t else t, c if c>t else t)
                 self.add_cz(cz)
@@ -436,16 +457,22 @@ class Optimizer:
 
 
 def greedy_consume_gates(gates, qubits):
-    block = []
+    """Tries to consume as many gates as possible into a phase-polynomial block, by pushing gates past hadamards to the beginning
+    as long as that is possible.
+
+    ``gates`` should be a {qubits:[list of gates]} dictionary, while ``qubits`` is the amount of qubits in the circuit.
+    Returns a tuple (list of gates, list of hadamards)."""
+    
+    block = [] # The output
     while True:
-        had_blocked = dict()
-        to_be_appended = []
-        available = []
-        gatetype = {i: 0 for i in range(qubits)}
+        had_blocked = dict() # a {qubit: HADgate} dictionary specifying when a HAD blocks further consuming of gates.
+        to_be_appended = [] # List of gates that we will add to ``block``.
+        available = []      # List of indices of 2-qubit gates to record whether they are available to be added on the other target.
+        gatetype = {i: 0 for i in range(qubits)} # 0 = Z-type, 1 = X-type, the two sorts of commutation types.
         for q, gs in gates.items():
             if not gs: continue
             g = gs[0]
-            if g.name == 'HAD': 
+            if g.name == 'HAD': # If the first gate on this qubit is a HAD, we stop
                 had_blocked[q] = g
                 continue
             if isinstance(g, ZPhase) or g.name == 'CZ':
@@ -456,24 +483,24 @@ def greedy_consume_gates(gates, qubits):
                 else:
                     gatetype[q] = 2
             for g in gs:
-                if g.name == 'HAD':
+                if g.name == 'HAD': # Stop once we encounter a HAD
                     had_blocked[q] = g
                     break
-                if isinstance(g, ZPhase) or g.name == 'CZ':
-                    if gatetype[q] == 1:
+                if isinstance(g, ZPhase) or g.name == 'CZ': # Z-type gates
+                    if gatetype[q] == 1: # Z-type is available
                         if g.name == 'CZ':
-                            if g.index in available:
+                            if g.index in available: # Check whether the target on the other qubit is available
                                 to_be_appended.append(g)
-                            else: available.append(g.index)
+                            else: available.append(g.index) # Otherwise we postpone until we have checked that later on
                         else:
                             to_be_appended.append(g)
                     else:
-                        break
+                        break # We have encountered a gate of the wrong type, so we stop delving deeper
                 else: #gate is CNOT
-                    if (gatetype[q] == 1 and g.target == q) or (gatetype[q] == 2 and g.control == q):
+                    if (gatetype[q] == 1 and g.target == q) or (gatetype[q] == 2 and g.control == q): # wrong type
                         break
                     else:
-                        if g.index in available:
+                        if g.index in available: # Same 2-qubit gate logic as with CZ
                             to_be_appended.append(g)
                         else: available.append(g.index)
         for g in to_be_appended:
@@ -481,48 +508,57 @@ def greedy_consume_gates(gates, qubits):
             gates[g.target].remove(g)
             if g.name in ('CZ', 'CNOT'):
                 gates[g.control].remove(g)  
-        if to_be_appended:
+        if to_be_appended: # We added at least one gate, so we go to the top of the loop to try again.
             continue
+        # We couldn't add any easy gates, so now we go looking for gates stuck behind a HAD.
+        added_any = False
         candidates = []
         for q, had in had_blocked.items():
             i = gates[q].index(had)
-            gs = gates[q][i+1:]
+            gs = gates[q][i+1:] # The gates appearing after the HAD
             if not gs: continue
             g = gs[0]
-            left_ty = gatetype[q]
+            if g.name == 'HAD': # Double Hadamard
+                gates[q].remove(had)
+                gates[q].remove(g)
+                added_any = True
+                break
+            left_ty = gatetype[q] # The type of the gates to the left of the HAD. Note that this type must necessarily
+                                  #  be the same for all gates, since otherwise it wouldn't be blocked by a HAD.
             if g.name == 'CZ' or isinstance(g, ZPhase) or (g.control == q):
-                if gatetype[q] == 0: left_ty = 2
+                if gatetype[q] == 0: left_ty = 2 # If no gate is on the left of the HAD we set the type correspondingly.
                 right_ty = 1
             else: 
                 if gatetype[q] == 0: left_ty = 1
                 right_ty = 2
-            if left_ty == right_ty: continue
+            if left_ty == right_ty: continue # If the types are different, we can't commute things past the HAD into the phase-block.
             for g in gs:
-                if g.name == 'HAD': break
+                if g.name == 'HAD': break # If we encounter another HAD, we stop.
                 if isinstance(g, ZPhase):
-                    if right_ty == 1: continue
-                    else: break
-                if g.name == 'CZ' or g.control == q:
+                    if right_ty == 1: continue # We can't commute a ZPhase past a HAD, but we can keep looking further
+                    else: break # ZPhase is not of type X, so we must stop looking now.
+                if g.name == 'CZ' or g.control == q: # CZ or CNOT with a control on this qubit
                     if right_ty == 2: break
-                else:
+                else:  # CNOT with target on this qubit
                     if right_ty == 1: break
                 if g.index not in available:
-                    if g.name == 'CNOT':
-                        available.append(g.index)
+                    if g.name == 'CNOT':  # We only need to check CNOTs, since CZs must already be in available 
+                        available.append(g.index)  # (because otherwise they would be behind 2 HADs)
                 else:
                     if g not in candidates:
                         candidates.append(g)
-        added_any = False
+        if added_any: continue # Found double Hadamard
+
         for g in candidates:
             if g.name == 'CZ':
-                if g.target in had_blocked and g.index > had_blocked[g.target].index:
+                if g.target in had_blocked and g.index > had_blocked[g.target].index: # CZ appears after the HAD.
                     q = g.target
                 else:
                     q = g.control
                 q2 = g.target if g.control == q else g.control
                 if q2 in had_blocked and g.index > had_blocked[q2].index:
                     print(g, g.index)
-                    raise Exception("CZ behind two hadamard gates. This is not supposed to happen")
+                    raise Exception("CZ behind two Hadamard gates. This is not supposed to happen")
                 cnot = CNOT(q2, q)
                 cnot.index = g.index
                 gates[q].remove(g)
@@ -556,10 +592,14 @@ def greedy_consume_gates(gates, qubits):
     return block, hadamards
 
 
-def phase_block_optimize(circuit, quiet=True):
+def phase_block_optimize(circuit, pre_optimize=True, quiet=True):
     qubits = circuit.qubits
     o = Optimizer(circuit)
-    circuit, correction = o.parse_circuit(separate_correction=True, quiet=quiet)
+    if pre_optimize:
+        circuit, correction = o.parse_circuit(separate_correction=True, quiet=quiet)
+    else:
+        circuit = circuit.copy()
+        correction = []
     permutation = {i:i for i in range(qubits)}
     nots = []
     for g in correction:
@@ -583,9 +623,12 @@ def phase_block_optimize(circuit, quiet=True):
         if g.name in ('CNOT', 'CZ'):
             gates[g.control].append(g)
             gates[g.target].append(g)
-        elif g.name != 'HAD' and not isinstance(g, ZPhase):
-            print("WARNING: ignoring gate {}".format(str(g)))
-            #raise TypeError("Unknown gate {}".format(str(g)))
+        elif g.name != 'HAD':
+            if not isinstance(g, ZPhase):
+                raise TypeError("Unknown gate {}. Maybe simplify the gates with circuit.to_basic_gates()?".format(str(g)))
+            elif g.phase.denominator not in (1,2,4):
+                raise TypeError("This method only works on Clifford+T circuits. This circuit contains a {}".format(str(g)))
+            gates[g.target].append(g)
         else:
             gates[g.target].append(g)
 
@@ -642,8 +685,6 @@ def phase_block_optimize(circuit, quiet=True):
         for g in nots:
             g.target = inverse[g.target]
         permutation = {i: permutation[permute[i]] for i in range(qubits)}
-
-
 
     consumed.extend(block)
     consumed.extend(hadamards)
