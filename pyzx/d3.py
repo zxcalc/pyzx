@@ -236,6 +236,7 @@ def draw(g, scale=None):
 
     if scale == None:
         scale = 800 / (g.depth() + 2)
+        if scale > 50: scale = 50
 
     node_size = 0.2 * scale
     if node_size < 2: node_size = 2
