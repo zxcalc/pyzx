@@ -17,11 +17,15 @@
 
 import json
 from fractions import Fraction
-from IPython.display import display, Javascript, HTML
-
-# Provides functions for displaying pyzx graphs in jupyter notebooks using d3
 
 __all__ = ['init', 'draw']
+
+try:
+    from IPython.display import display, Javascript, HTML
+except:
+    pass
+
+# Provides functions for displaying pyzx graphs in jupyter notebooks using d3
 
 _d3_display_seq = 0
 
@@ -36,7 +40,7 @@ def phase_to_s(a):
     # unicode 0x03c0 = pi
     return ns + '\u03c0' + ds
 
-def init():
+def init(d3_path="../js"):
     display(HTML("""
     <style>
     .node { stroke: #fff; stroke-width: 1.5px; }
@@ -49,7 +53,7 @@ def init():
     <script type="text/javascript">
     var showGraph;
     var test = false;
-    require.config({ baseUrl: "../js", paths: {d3: "d3.v4.min"} });
+    require.config({ baseUrl: \"""" + d3_path + """\", paths: {d3: "d3.v4.min"} });
     require(['d3'], function(d3) {
 
     test = true;
@@ -58,12 +62,11 @@ def init():
 
         var svg = d3.select(tag)
             .attr("tabindex", 1)
-            .attr("max-width", "none")
-            .attr("max-height", "none")
             .on("keydown.brush", keydowned)
             .on("keyup.brush", keyupped)
             .each(function() { this.focus(); })
           .append("svg")
+            .attr("style", "max-width: none; max-height: none")
             .attr("width", width)
             .attr("height", height);
 
@@ -234,7 +237,7 @@ def draw(g, scale=None):
         scale = 800 / (g.depth() + 2)
 
     node_size = 0.2 * scale
-    if node_size < 4: node_size = 4
+    if node_size < 2: node_size = 2
 
     w = (g.depth() + 2) * scale
     h = (g.qubit_count() + 3) * scale

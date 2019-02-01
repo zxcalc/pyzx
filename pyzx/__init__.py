@@ -30,3 +30,4 @@ from . import extract
 from . import rules
 from . import optimize
 from . import simplify
+from . import d3
