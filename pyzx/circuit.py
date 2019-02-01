@@ -397,6 +397,17 @@ class Circuit(object):
             gate = gate_class(*args, **kwargs)
         self.gates.append(gate)
 
+    def add_gates(self, gates, qubit):
+        """Adds a series of single qubit gates on the same qubit.
+        ``gates`` should be a space-separated string of gatenames.
+
+        Example::
+
+            circuit.add_gates("S T H T H", 1)
+        """
+        for g in gates.split(" "):
+            self.add_gate(g, qubit)
+
     def add_circuit(self, circ, mask=None):
         """Adds the gate of another circuit to this one. If ``mask`` is not given,
         then they must have the same amount of qubits and they are mapped one-to-one.

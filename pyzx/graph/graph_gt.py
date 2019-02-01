@@ -7,6 +7,7 @@ class GraphGT(BaseGraph):
 	backend = 'graph_tool'
 	def __init__(self):
 		raise Warning("Graph_tool is currently not fully supported.")
+		BaseGraph.__init__(self)
 		self.graph = gt.Graph(directed=False)
 		self.graph.set_fast_edge_removal()
 		self.graph.vp.type = self.graph.new_vertex_property('int')

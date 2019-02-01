@@ -25,8 +25,9 @@ try:
 except ImportError:
     pass
 
-__all__ = ['bialg_simp','spider_simp', 'id_simp', 'phase_free_simp', 'pivot_simp', 'gadget_simp',
-        'lcomp_simp', 'clifford_simp', 'tcount', 'to_gh', 'to_rg', 'full_reduce', 'pivot_double_boundary']
+__all__ = ['bialg_simp','spider_simp', 'id_simp', 'phase_free_simp', 'pivot_simp', 
+        'pivot_gadget_simp', 'pivot_boundary_simp', 'gadget_simp',
+        'lcomp_simp', 'clifford_simp', 'tcount', 'to_gh', 'to_rg', 'full_reduce', 'teleport_reduce']
 
 from .rules import *
 
@@ -72,6 +73,9 @@ def pivot_simp(g, matchf=None, quiet=False):
 def pivot_gadget_simp(g, matchf=None, quiet=False):
     return simp(g, 'pivot_gadget_simp', match_pivot_gadget, pivot, matchf=matchf, quiet=quiet)
 
+def pivot_boundary_simp(g, matchf=None, quiet=False):
+    return simp(g, 'pivot_boundary_simp', match_pivot_boundary, pivot, matchf=matchf, quiet=quiet)
+
 def lcomp_simp(g, matchf=None, quiet=False):
     return simp(g, 'lcomp_simp', match_lcomp_parallel, lcomp, matchf=matchf, quiet=quiet)
 
@@ -94,8 +98,8 @@ def phase_free_simp(g, quiet=False):
     bialg_simp(g, quiet=quiet)
 
 def interior_clifford_simp(g, quiet=False):
-    """Keeps doing the simplifications id_simp, spider_simp, pivot_simp and lcomp_simp
-    until none of them can be applied anymore."""
+    """Keeps doing the simplifications ``id_simp``, ``spider_simp``, 
+    ``pivot_simp`` and ``lcomp_simp`` until none of them can be applied anymore."""
     spider_simp(g, quiet=quiet)
     to_gh(g)
     i = 0
@@ -110,73 +114,72 @@ def interior_clifford_simp(g, quiet=False):
 
 def clifford_simp(g, quiet=False):
     """Keeps doing rounds of :func:`interior_clifford_simp` and
-    :func:`pivot_double_boundary` until they can't be applied anymore."""
+    :func:`pivot_boundary_simp` until they can't be applied anymore."""
     while True:
         interior_clifford_simp(g, quiet=quiet)
-        i = pivot_double_boundary(g, quiet=quiet)
+        i = pivot_boundary_simp(g, quiet=quiet)
         if i == 0:
             break
 
-def pivot_double_boundary(g, quiet=False):
-    """Finds Pauli-phase interior non-phase gadget nodes that are connected
-    to the boundary. It changes the boundary nodes so that a pivot can be done
-    to remove the interior Pauli node."""
-    phases = g.phases()
-    ty = g.types()
-    qs = g.qubits()
-    rs = g.rows()
-    pivotable_edges = []
-    skiplist = []
-    for v in list(g.vertices()):
-        if v in skiplist: continue
-        if ty[v] != 1 or phases[v] not in (0,1): continue
-        good_vert = True
-        for w in g.neighbours(v):
-            if ty[w] != 1: 
-                good_vert = False
-                break
-            if len(list(g.neighbours(w))) == 1: # v is a phase gadget
-                good_vert = False
-                break
-        if not good_vert: continue
-        #if any(ty[w]!=1 for w in g.neighbours(v)): continue
+# def pivot_double_boundary(g, quiet=False):
+#     """Finds Pauli-phase interior non-phase gadget nodes that are connected
+#     to the boundary. It changes the boundary nodes so that a pivot can be done
+#     to remove the interior Pauli node."""
+#     phases = g.phases()
+#     ty = g.types()
+#     qs = g.qubits()
+#     rs = g.rows()
+#     pivotable_edges = []
+#     skiplist = []
+#     for v in list(g.vertices()):
+#         if v in skiplist: continue
+#         if ty[v] != 1 or phases[v] not in (0,1): continue
+#         good_vert = True
+#         for w in g.neighbours(v):
+#             if ty[w] != 1: 
+#                 good_vert = False
+#                 break
+#             if len(list(g.neighbours(w))) == 1: # v is a phase gadget
+#                 good_vert = False
+#                 break
+#         if not good_vert: continue
 
-        # v is now an interior edge with a 0/1 phase
-        for e in g.incident_edges(v):
-            s,t = g.edge_st(e)
-            v2 = s if s!=v else t
-            borders = sum(1 for w in g.neighbours(v2) if ty[w]==0)
-            #if phases[v2] not in (0,1): continue
-            if phases[v2] in (Fraction(1,2), Fraction(3,2)):
-                if borders != 1: continue
-                # v2 is a node on the border with a pi/2 phase
-                w = g.add_vertex(1,-1, rs[v2], phase=-phases[v2])
-                g.add_edge((v2,w),2)
-                g.set_phase(v2, 0)
-                skiplist.append(v2)
-                pivotable_edges.append(e)
-                continue
-            elif phases[v2] not in (0,1): continue 
-            if borders > 1:
-                i = next(w for w in g.neighbours(v2) if w in g.inputs)
-                o = next(w for w in g.neighbours(v2) if w in g.outputs)
-                w1 = g.add_vertex(1,qs[i], rs[i]+1)
-                w2 = g.add_vertex(1,qs[o], rs[o]-1)
-                e1 = g.edge(v2,i)
-                e2 = g.edge(v2,o)
-                et1 = g.edge_type(e1)
-                et2 = g.edge_type(e2)
-                g.remove_edges([e1,e2])
-                g.add_edges([(v2,w1),(v2,w2)],2)
-                g.add_edge((i,w1),3-et1)
-                g.add_edge((o,w2),3-et2)
-            skiplist.append(v2)
-            pivotable_edges.append(e)
-    if not quiet and pivotable_edges: 
-        print("Boundary Pivot: Unfused {:d} nodes for {:d} possible pivots".format(
-                                len(skiplist),len(pivotable_edges)))
-    i = pivot_simp(g, matchf=lambda e: e in pivotable_edges, quiet=quiet)
-    return i
+#         # v is now an interior edge with a 0/1 phase
+#         for e in g.incident_edges(v):
+#             s,t = g.edge_st(e)
+#             v2 = s if s!=v else t
+#             borders = sum(1 for w in g.neighbours(v2) if ty[w]==0)
+#             #if phases[v2] not in (0,1): continue
+#             if phases[v2] in (Fraction(1,2), Fraction(3,2)):
+#                 if borders != 1: continue
+#                 # v2 is a node on the border with a pi/2 phase
+#                 w = g.add_vertex(1,-1, rs[v2], phase=-phases[v2])
+#                 g.add_edge((v2,w),2)
+#                 g.set_phase(v2, 0)
+#                 skiplist.append(v2)
+#                 pivotable_edges.append(e)
+#                 continue
+#             elif phases[v2] not in (0,1): continue 
+#             if borders > 1:
+#                 i = next(w for w in g.neighbours(v2) if w in g.inputs)
+#                 o = next(w for w in g.neighbours(v2) if w in g.outputs)
+#                 w1 = g.add_vertex(1,qs[i], rs[i]+1)
+#                 w2 = g.add_vertex(1,qs[o], rs[o]-1)
+#                 e1 = g.edge(v2,i)
+#                 e2 = g.edge(v2,o)
+#                 et1 = g.edge_type(e1)
+#                 et2 = g.edge_type(e2)
+#                 g.remove_edges([e1,e2])
+#                 g.add_edges([(v2,w1),(v2,w2)],2)
+#                 g.add_edge((i,w1),3-et1)
+#                 g.add_edge((o,w2),3-et2)
+#             skiplist.append(v2)
+#             pivotable_edges.append(e)
+#     if not quiet and pivotable_edges: 
+#         print("Boundary Pivot: Unfused {:d} nodes for {:d} possible pivots".format(
+#                                 len(skiplist),len(pivotable_edges)))
+#     i = pivot_simp(g, matchf=lambda e: e in pivotable_edges, quiet=quiet)
+#     return i
 
 
 
@@ -224,6 +227,31 @@ def full_reduce(g, quiet=True):
         interior_clifford_simp(g,quiet=quiet)
         if not i:
             break
+
+def teleport_reduce(g, quiet=True):
+    s = Simplifier(g)
+    s.full_reduce(quiet)
+    return s.mastergraph
+
+
+class Simplifier(object):
+    def __init__(self, g):
+        g.track_phases = True
+        self.mastergraph = g.copy()
+        self.simplifygraph = g.copy()
+        self.simplifygraph.set_phase_master(self)
+
+    def fuse_phases(self,i1, i2):
+        try:
+            v1 = self.mastergraph.vertex_from_phase_index(i1)
+            v2 = self.mastergraph.vertex_from_phase_index(i2)
+        except ValueError: pass
+        p = self.mastergraph.phase(v2)
+        self.mastergraph.add_to_phase(v1,p)
+        self.mastergraph.set_phase(v2,0)
+    
+    def full_reduce(self, quiet=True):
+        full_reduce(self.simplifygraph,quiet=quiet)
 
 # def gadgetize(g):
 #     """Un-fuses every node with a non-Pauli phase, so that they act like phase gadgets. 

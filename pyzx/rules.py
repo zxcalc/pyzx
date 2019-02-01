@@ -174,17 +174,20 @@ def spider(g, matches):
 
     for m in matches:
         v0 = m[0]
-        g.set_phase(v0, g.phase(v0) + g.phase(m[1]))
+        v1 = m[1]
+        g.set_phase(v0, g.phase(v0) + g.phase(v1))
+        if g.track_phases:
+            g.fuse_phases(v0,v1)
 
         # always delete the second vertex in the match
-        rem_verts.append(m[1])
+        rem_verts.append(v1)
 
         # edges from the second vertex are transferred to the first
-        for v1 in g.neighbours(m[1]):
-            if v0 == v1: continue
-            e = (v0,v1)
+        for w in g.neighbours(v1):
+            if v0 == w: continue
+            e = (v0,w)
             if e not in etab: etab[e] = [0,0]
-            etab[e][g.edge_type((m[1],v1))-1] += 1
+            etab[e][g.edge_type((v1,w))-1] += 1
     
     return (etab, rem_verts, [], True)
 
@@ -286,7 +289,7 @@ def match_pivot_parallel(g, matchf=None, num=-1, check_edge_types=False):
                 break
 
         if invalid_edge: continue
-        if not (len(v0b) + len(v1b) <= 1): continue
+        if len(v0b) + len(v1b) > 1: continue
 
         i += 1
         for v in v0n:
@@ -312,11 +315,8 @@ def match_pivot_gadget(g, matchf=None, num=-1):
     rs = g.rows()
     
     edge_list = []
-    
-    
     i = 0
     m = []
-    
     while (num == -1 or i < num) and len(candidates) > 0:
         e = candidates.pop()
         v0, v1 = g.edge_st(e)
@@ -363,12 +363,72 @@ def match_pivot_gadget(g, matchf=None, num=-1):
         v = g.add_vertex(1,-2,rs[v0],v1a)
         g.set_phase(v1, 0)
         g.set_qubit(v0,-1)
+        g.update_phase_index(v1,v)
         edge_list.append((v,v1) if v<v1 else (v1,v))
         
         m.append([v0,v1,[],[v]])
         i += 1
         for c in discard_edges: candidates.discard(c)
     g.add_edges(edge_list,1)
+    return m
+
+
+def match_pivot_boundary(g, matchf=None, num=-1):
+    """Like :func:`match_pivot_parallel`, but except for pairings of
+    Pauli vertices, it looks for a pair of an interior Pauli vertex and a
+    boundary non-Pauli vertex in order to gadgetize the non-Pauli vertex."""
+    if matchf != None: candidates = set([v for v in g.vertices() if matchf(v)])
+    else: candidates = g.vertex_set()
+    types = g.types()
+    phases = g.phases()
+    rs = g.rows()
+    
+    edge_list = []
+    i = 0
+    m = []
+    while (num == -1 or i < num) and len(candidates) > 0:
+        v = candidates.pop()
+        if types[v] != 1 or phases[v] not in (0,1): continue
+
+        good_vert = True
+        w = None
+        bound = None
+        for n in g.neighbours(v):
+            if types[n] == 0: # v is on the boundary
+                good_vert = False
+                break
+            if len(g.neighbours(n)) == 1: # v is a phase gadget
+                good_vert = False
+                break
+            if n not in candidates: 
+                good_vert = False
+                break
+            boundaries = [b for b in g.neighbours(n) if types[b]==0]
+            if len(boundaries) != 1: # n is not on the boundary
+                continue        #, or it is connected to both an input and an output
+            if phases[n] and phases[n].denominator == 2:
+                w = n
+                bound = boundaries[0]
+            if not w:
+                w = n
+                bound = boundaries[0]
+        if not good_vert or not w: continue
+        
+        if bound in g.inputs: mod = 0.5
+        else: mod = -0.5
+        v1 = g.add_vertex(1,-2,rs[w]+mod,phases[w])
+        v2 = g.add_vertex(1,-1,rs[w]+mod,0)
+        g.set_phase(w, 0)
+        g.update_phase_index(w,v1)
+        edge_list.append((w,v2) if w<v2 else (v2,w))
+        edge_list.append((v1,v2) if v1<v2 else (v2,v1))
+        
+        m.append([v,w,[],[bound]])
+        i += 1
+        for n in g.neighbours(v): candidates.discard(n)
+        for n in g.neighbours(w): candidates.discard(n)
+
+    g.add_edges(edge_list,2)
     return m
 
 def pivot(g, matches):
@@ -580,6 +640,8 @@ def merge_phase_gadgets(g, matches):
         g.set_phase(n, 0)
         rem.extend(othergadgets)
         rem.extend(othertargets)
+        for w in othertargets:
+            g.fuse_phases(v,w)
     return ({}, rem, [], False)
 
 

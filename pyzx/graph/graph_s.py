@@ -25,6 +25,7 @@ class GraphS(BaseGraph):
 	#The documentation of what these methods do 
 	#can be found in base.BaseGraph
 	def __init__(self):
+		BaseGraph.__init__(self)
 		self.graph = dict()
 		self._vindex = 0
 		self.nedges = 0
@@ -79,6 +80,8 @@ class GraphS(BaseGraph):
 			try: del self._qindex[v]
 			except: pass
 			try: del self._rindex[v]
+			except: pass
+			try: del self.phase_index[v]
 			except: pass
 			self._vdata.pop(v,None)
 

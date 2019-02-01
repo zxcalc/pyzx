@@ -28,6 +28,7 @@ class GraphIG(BaseGraph):
 	as its backend"""
 	backend = 'igraph'
 	def __init__(self):
+		BaseGraph.__init__(self)
 		self.graph = ig.Graph(directed=False)
 		self.graph.vs['_a'] = None
 		self.graph.vs['_t'] = None

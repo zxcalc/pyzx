@@ -57,6 +57,12 @@ class BaseGraph(object):
     __metaclass__ = DocstringMeta
     backend = 'None'
 
+    def __init__(self):
+        self.track_phases = False
+        self.phase_index = dict()
+        self.phase_master = None
+        self.max_phase_index = -1
+
     def __str__(self):
         return "Graph({} vertices, {} edges)".format(
                 str(self.num_vertices()),str(self.num_edges()))
@@ -77,6 +83,7 @@ class BaseGraph(object):
         if (backend == None):
             backend = type(self).backend
         g = Graph(backend = backend)
+        g.track_phases = self.track_phases
         mult = 1
         if adjoint: mult = -1
 
@@ -275,7 +282,11 @@ class BaseGraph(object):
         if ty: self.set_type(v, ty)
         if qubit!=-1: self.set_qubit(v, qubit)
         if row!=-1: self.set_row(v, row)
-        if phase: self.set_phase(v, phase)
+        if phase: 
+            self.set_phase(v, phase)
+        if self.track_phases:
+            self.max_phase_index += 1
+            self.phase_index[v] = self.max_phase_index
         return v
 
     def add_edges(self, edges, edgetype=1):
@@ -334,6 +345,25 @@ class BaseGraph(object):
         self.remove_edges(remove)
         self.add_edges(add[0],1)
         self.add_edges(add[1],2)
+
+    def set_phase_master(self, m):
+        self.phase_master = m
+
+    def update_phase_index(self, old, new):
+        if not self.track_phases: return
+        i = self.phase_index[old]
+        self.phase_index[old] = self.phase_index[new]
+        self.phase_index[new] = i
+
+    def fuse_phases(self, p1, p2):
+        if p1 not in self.phase_index or p2 not in self.phase_index: return
+        if self.phase_master: 
+            self.phase_master.fuse_phases(self.phase_index[p1],self.phase_index[p2])
+        self.phase_index[p2] = self.phase_index[p1]
+
+    def vertex_from_phase_index(self, i):
+        return list(self.phase_index.keys())[list(self.phase_index.values()).index(i)]
+
 
     def remove_vertices(self, vertices):
         """Removes the list of vertices from the graph."""
