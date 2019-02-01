@@ -52,11 +52,10 @@ def init(d3_path="../js"):
 
     <script type="text/javascript">
     var showGraph;
-    var test = false;
+    var d3_initialised = false;
     require.config({ baseUrl: \"""" + d3_path + """\", paths: {d3: "d3.v4.min"} });
     require(['d3'], function(d3) {
 
-    test = true;
     showGraph = function(tag, json, width, height, node_size) {
         var shiftKey;
 
@@ -226,10 +225,12 @@ def init(d3_path="../js"):
     });
 
     </script>
+    <p>d3 output initialised.</p>
     """))
 
 def draw(g, scale=None):
     global _d3_display_seq
+
     _d3_display_seq += 1
     seq = _d3_display_seq
 
@@ -256,11 +257,11 @@ def draw(g, scale=None):
     <div class="d3graph" id="graph-output-""" + str(seq) + """"></div>
     <script type="text/javascript">
     require(['d3'], function(d3) {
-    showGraph('#graph-output-""" + str(seq) + """',
-    JSON.parse('""" + graphj + """'),
-    """ + str(w) + """,
-    """ + str(h) + """,
-    """ + str(node_size) + """);
+        showGraph('#graph-output-""" + str(seq) + """',
+        JSON.parse('""" + graphj + """'),
+        """ + str(w) + """,
+        """ + str(h) + """,
+        """ + str(node_size) + """);
     });
     </script>
     """))
