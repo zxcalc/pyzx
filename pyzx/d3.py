@@ -225,7 +225,6 @@ def init(d3_path="../js"):
     });
 
     </script>
-    <p>d3 output initialised.</p>
     """))
 
 def draw(g, scale=None):
