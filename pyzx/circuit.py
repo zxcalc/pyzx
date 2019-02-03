@@ -23,7 +23,7 @@ import math
 from .graph import Graph
 from .drawing import phase_to_s
 
-__all__ = ['Circuit']
+__all__ = ['Circuit', 'determine_file_type']
 
 class Circuit(object):
     """Class for representing quantum circuits.
@@ -236,28 +236,18 @@ class Circuit(object):
         return c
 
     @staticmethod
-    def load(fname):
+    def load(circuitfile):
         """Tries to detect the circuit description language from the filename and its contents,
         and then tries to load the file into a circuit."""
-        ext = os.path.splitext(fname)[-1]
-        if ext in ('.qc', '.tfc'):
-            return Circuit.from_qc_file(fname)
-        if ext.find('qasm') != -1:
-            return Circuit.from_qasm_file(fname)
-        if ext == '.qgraph':
+        ext = determine_file_type(circuitfile)
+        if ext == 'qc':
+            return Circuit.from_qc_file(circuitfile)
+        if ext == 'qasm':
+            return Circuit.from_qasm_file(circuitfile)
+        if ext == 'qgraph':
             raise TypeError(".qgraph files are not Circuits. Please load them as graphs using json_to_graph")
-        if ext.find('quip') != -1:
-            return Circuit.from_quipper_file(fname)
-        f = open(fname, 'r')
-        data = f.read(128)
-        f.close()
-        if data.startswith('Inputs:'):
-            return Circuit.from_quipper_file(fname)
-        if data.find('.v') != -1 or data.find('.i') != -1 or data.find('.o') != -1:
-            return Circuit.from_qc_file(fname)
-        if data.find('QASM') != -1:
-            return Circuit.from_qasm_file(fname)
-
+        if ext == 'quipper':
+            return Circuit.from_quipper_file(circuitfile)
         raise TypeError("Couldn't determine filetype")
 
     def to_basic_gates(self):
@@ -371,7 +361,8 @@ class Circuit(object):
         """Produces a .qc description of the circuit."""
         s = ".v " + " ".join("q{:d}".format(i) for i in range(self.qubits))
         s += "\n\nBEGIN\n"
-        for g in self.gates:
+        c = self.split_phase_gates()
+        for g in c.gates:
             s += g.to_qc() + "\n"
         s += "END\n"
         return s
@@ -465,6 +456,30 @@ class Circuit(object):
         if other > 0:
             s += "\nThere are {} gates of a different type".format(other)
         return s
+
+def determine_file_type(circuitfile):
+        """Tries to figure out in which format the file is given (quipper, qasm or qc)"""
+        fname = circuitfile
+        ext = os.path.splitext(fname)[-1]
+        if ext in ('.qc', '.tfc'):
+            return "qc"
+        if ext.find('qasm') != -1:
+            return "qasm"
+        if ext == '.qgraph':
+            return "qgraph"
+        if ext.find('quip') != -1:
+            return "quipper"
+        f = open(fname, 'r')
+        data = f.read(128)
+        f.close()
+        if data.startswith('Inputs:'):
+            return "quipper"
+        if data.find('.v') != -1 or data.find('.i') != -1 or data.find('.o') != -1:
+            return "qc"
+        if data.find('QASM') != -1:
+            return "qasm"
+
+        raise TypeError("Couldn't determine circuit format.")
 
 def parse_quipper_block(lines):
     start = lines[0]
