@@ -1,0 +1,4 @@
+These Jupyter notebooks are not intended for easy consumption,
+but rather as a way to develop and test features.
+
+For actually readable notebooks, please see the demos folder.
