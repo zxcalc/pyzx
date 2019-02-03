@@ -21,6 +21,11 @@ from .todd import todd_simp
 
 __all__ = ['basic_optimization', 'phase_block_optimize']
 
+def full_optimize(circuit, quiet=True):
+    c = basic_optimization(circuit.to_basic_gates())
+    c = phase_block_optimize(c, quiet=quiet)
+    return basic_optimization(c.to_basic_gates())
+
 def basic_optimization(circuit, quiet=True):
     if not isinstance(circuit, Circuit):
         raise TypeError("Input must be a Circuit")
