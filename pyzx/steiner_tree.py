@@ -318,7 +318,7 @@ class PyQuilCircuit():
             return ep.program
         except KeyError:
             print('Oops, retrying to compile.')
-            self.compile()
+            return self.compile()
 
 def build_random_parity_map(qubits, depth, circuit):
     """
@@ -471,7 +471,7 @@ def pyquil_main():
     n_compile = 10
     n_maps = 10
     pause = input("Pause every map? [y|N]") == 'y'
-    for depth in [3, 10, 20, 30, 40, 50][2:4]:
+    for depth in [3, 10, 20, 30, 40, 50][3:4]:
         pyquil_gates = []
         gates = []
         gates2 = []
