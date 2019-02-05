@@ -113,15 +113,20 @@ class Architecture():
             print("steiner points:", steiner_pnts)
         # First go through the tree to find and remove zeros
         vs = {root}
+        n_edges = len(edges)
+        yielded_edges = set()
         debug_count = 0
         yield_count = 0
-        while len(vs) > 0:
+        while len(yielded_edges) < n_edges:
             es = [e for e in edges for v in vs if e[0] == v]
             old_vs = [v for v in vs]
             yielded = False
             for edge in es:
                 yield edge
                 vs.add(edge[1])
+                if edge in yielded_edges:
+                    print("DOUBLE yielding! - should not be possible!")
+                yielded_edges.add(edge)
                 yielded = True
                 yield_count += 1
             [vs.remove(v) for v in old_vs]
@@ -137,7 +142,6 @@ class Architecture():
         yield None
         # Walk the tree bottom up to remove all ones.
         yield_count = 0
-        n_edges = len(edges)
         while len(edges) > 0:
             # find leaf nodes:
             debug and print(vertices, steiner_pnts, edges)
