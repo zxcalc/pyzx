@@ -105,7 +105,7 @@ class Architecture():
             vertices.append(best_option[0])
             edges.extend(best_option[3])
             nodes.remove(best_option[0])
-        edges = set(edges)
+        edges = set(edges) # remove duplicates
         steiner_pnts = list(set([i for edge in edges for i in edge if i not in vertices]))
         if debug:
             print("edges:", edges)
@@ -113,6 +113,8 @@ class Architecture():
             print("steiner points:", steiner_pnts)
         # First go through the tree to find and remove zeros
         vs = {root}
+        debug_count = 0
+        yield_count = 0
         while len(vs) > 0:
             es = [e for e in edges for v in vs if e[0] == v]
             old_vs = [v for v in vs]
@@ -121,17 +123,22 @@ class Architecture():
                 yield edge
                 vs.add(edge[1])
                 yielded = True
+                yield_count += 1
             [vs.remove(v) for v in old_vs]
             if not yielded:
                 debug and print("leaf!")
-                if len(old_vs) == 0:
+                debug_count += 1
+                if debug_count > len(vertices):
                     print("infinite loop!")
                     break
+            if yield_count > len(edges):
+                print("Yielded more edges than existing... This should not be possible!")
+                break
         yield None
         # Walk the tree bottom up to remove all ones.
+        yield_count = 0
+        n_edges = len(edges)
         while len(edges) > 0:
-
-
             # find leaf nodes:
             debug and print(vertices, steiner_pnts, edges)
             vs_to_consider = [vertex for vertex in vertices if vertex not in [e0 for e0, e1 in edges]] + \
@@ -143,9 +150,13 @@ class Architecture():
                     yield edge
                     edges.remove(edge)
                     yielded = True
+                    yield_count += 1
                     #yield map(lambda i: self.qubit_map[i], edge)
             if not yielded:
                 print("Infinite loop!")
+                break
+            if yield_count > n_edges:
+                print("Yielded more edges than existing again... This should not be possible!!")
                 break
         yield None
 
@@ -177,7 +188,7 @@ def steiner_gauss(matrix, architecture, full_reduce=False, x=None, y=None):
                 if matrix.data[s0, col] == 0:  # s1 is a new steiner point or root = 0
                     zeros.append(next_check)
                 next_check = next(steiner_tree)
-            while zeros != []:
+            while len(zeros) > 0:
                 s0, s1 = zeros.pop(-1)
                 if matrix.data[s0, col] == 0:
                     row_add(s1, s0)
@@ -298,6 +309,8 @@ class PyQuilCircuit():
         self.program = Program()
         self.mapping = [0,1,2,5,4,3,6,7,8]
         self.n_cnots = 0
+        self.retries = 0
+        self.max_retries = 5
 
     def row_add(self, q0, q1):
         """
@@ -315,10 +328,15 @@ class PyQuilCircuit():
         """
         try:
             ep = self.qc.compile(self.program)
+            self.retries = 0
             return ep.program
-        except KeyError:
+        except KeyError as e:
             print('Oops, retrying to compile.')
-            return self.compile()
+            if self.retries < self.max_retries:
+                self.retries += 1
+                return self.compile()
+            else:
+                raise e
 
 def build_random_parity_map(qubits, depth, circuit):
     """
@@ -468,10 +486,10 @@ def create_fully_connected_architecture(size, **kwargs):
 
 def pyquil_main():
     arch = create_9x9_square_architecture()
-    n_compile = 10
-    n_maps = 10
+    n_compile = 1
+    n_maps = 300
     pause = input("Pause every map? [y|N]") == 'y'
-    for depth in [3, 10, 20, 30, 40, 50][3:4]:
+    for depth in [3, 10, 20, 30, 40, 50][2:4]:
         pyquil_gates = []
         gates = []
         gates2 = []
