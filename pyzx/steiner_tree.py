@@ -4,6 +4,7 @@ from pyzx.graph.graph import  Graph
 from pyzx.linalg import Mat2, column_optimal_swap
 from pyzx.generate import cnots as generate_cnots
 from pyzx.circuit import Circuit as PyzxCircuit
+from pyzx.machine_learning import GeneticAlgorithm
 #from pyzx.graph.base import BaseGraph # TODO fix the right graph import - one of many - right backend etc
 import numpy as np
 
@@ -93,6 +94,7 @@ class Architecture():
         # https://en.wikipedia.org/wiki/Prim%27s_algorithm
 
         # returns an iterator that walks the steiner tree, yielding (adj_node, leaf) pairs. If the walk is finished, it yields None
+        state = [start, [n for n in nodes]]
         root = start
         # TODO deal with qubit mapping
         vertices = [root]
@@ -112,11 +114,13 @@ class Architecture():
             print("nodes:", vertices)
             print("steiner points:", steiner_pnts)
         # First go through the tree to find and remove zeros
+        state += [[e for e in edges], [v for v in vertices], [s for s in steiner_pnts]]
         vs = {root}
         n_edges = len(edges)
         yielded_edges = set()
         debug_count = 0
         yield_count = 0
+        warning = 0
         while len(yielded_edges) < n_edges:
             es = [e for e in edges for v in vs if e[0] == v]
             old_vs = [v for v in vs]
@@ -134,10 +138,14 @@ class Architecture():
                 debug and print("leaf!")
                 debug_count += 1
                 if debug_count > len(vertices):
-                    print("infinite loop!")
-                    break
+                    print("infinite loop!", warning)
+                    warning += 1
             if yield_count > len(edges):
-                print("Yielded more edges than existing... This should not be possible!")
+                print("Yielded more edges than existing... This should not be possible!", warning)
+                warning += 1
+            if warning > 5:
+                print(state, yielded_edges)
+                #input("note it down")
                 break
         yield None
         # Walk the tree bottom up to remove all ones.
@@ -157,10 +165,14 @@ class Architecture():
                     yield_count += 1
                     #yield map(lambda i: self.qubit_map[i], edge)
             if not yielded:
-                print("Infinite loop!")
-                break
+                print("Infinite loop!", warning)
+                warning += 1
             if yield_count > n_edges:
-                print("Yielded more edges than existing again... This should not be possible!!")
+                print("Yielded more edges than existing again... This should not be possible!!", warning)
+                warning += 1
+            if warning > 10:
+                print(state, edges, yield_count)
+                #input("Note it down!")
                 break
         yield None
 
@@ -234,9 +246,9 @@ def steiner_gauss(matrix, architecture, full_reduce=False, x=None, y=None):
         pivot -= 1
         for c in reversed(p_cols):
             debug and print(pivot, matrix.data[:,c])
-            nodes = {r for r in range(0, pivot+1) if r==pivot or matrix.data[r][c] == 1}
+            nodes = [r for r in range(0, pivot+1) if r==pivot or matrix.data[r][c] == 1]
             if len(nodes) > 1:
-                steiner_reduce(c, pivot, list(nodes), False)
+                steiner_reduce(c, pivot, nodes, False)
             pivot -= 1
     return rank
 
@@ -487,11 +499,18 @@ def create_fully_connected_architecture(size, **kwargs):
         m[i][i] = 0
     return Architecture(adjacency_matrix=m, **kwargs)
 
+def get_steiner_fitness(matrix, architecture):
+    def fitness_func(permutation):
+        circuit = PyQuilCircuit(architecture)
+        mat = Mat2(np.copy(matrix[permutation][:, permutation]))
+        steiner_gauss(mat, architecture=architecture, x=circuit, full_reduce=True)
+        return circuit.n_cnots
+    return fitness_func
 
 def pyquil_main():
     arch = create_9x9_square_architecture()
-    n_compile = 1
-    n_maps = 300
+    n_compile = 10
+    n_maps = 10
     pause = input("Pause every map? [y|N]") == 'y'
     for depth in [3, 10, 20, 30, 40, 50][2:4]:
         pyquil_gates = []
@@ -499,6 +518,7 @@ def pyquil_main():
         gates2 = []
         ord_gates = []
         stolen_gates = []
+        genetic_gates = []
 
         pyquil_gates_circuit = []
         gates_circuit = []
@@ -553,28 +573,43 @@ def pyquil_main():
             steiner_gauss(matrix3, architecture=arch, x=circuit3, full_reduce=True)
             ord_gates.append(len([x for x in circuit3.program.instructions if x.name == 'CNOT']))
 
+            print('\nGenetic ordered steiner')
+            circuit4 = PyQuilCircuit(arch)
+            population = 50
+            crossover_prob = 0.8
+            mutate_prob = 0.2
+            n_iter = 100
+            optimizer = GeneticAlgorithm(population, crossover_prob, mutate_prob, get_steiner_fitness(test_mat, arch))
+            best_permutation = optimizer.find_optimimum(9, n_iter)
+            print(best_permutation)
+            gen_mat = test_mat[best_permutation][:, best_permutation]
+            colored_print(gen_mat)
+            matrix4 = Mat2(np.copy(gen_mat))
+            steiner_gauss(matrix4, architecture=arch, x=circuit4, full_reduce=True)
+            genetic_gates.append(circuit4.n_cnots)
+
             print('\nStolen ordered steiner')
             circuit3 = PyQuilCircuit(arch)
             expected_order = [int(x) for x in best_program.split("REWIRING")[1][4:21].split(" ")]
             new_order = [int(x) for x in best_program.split("REWIRING")[2][4:21].split(" ")]
             reordered_mat = test_mat[expected_order][:, new_order]
-            print(expected_order, new_order)
-            colored_print(reordered_mat)
+            #print(expected_order, new_order)
+            #colored_print(reordered_mat)
             expected_order = [expected_order.index(i) for i in range(len(expected_order))]
             new_order = [new_order.index(i) for i in range(len(new_order))]
             reordered_mat = test_mat[expected_order][:, new_order]
-            print(expected_order, new_order)
-            colored_print(reordered_mat)
+            #print(expected_order, new_order)
+            #colored_print(reordered_mat)
 
             expected_order, new_order = quick_reorder(reordered_mat, arch)
             reordered_mat = reordered_mat[expected_order][:, new_order]
-            print(expected_order, new_order)
-            colored_print(reordered_mat)
+            #print(expected_order, new_order)
+            #colored_print(reordered_mat)
             matrix3 = Mat2(np.copy(reordered_mat))
             steiner_gauss(matrix3, architecture=arch, x=circuit3, full_reduce=True)
             stolen_gates.append(len([x for x in circuit3.program.instructions if x.name == 'CNOT']))
             if pause:
-                print(ord_gates[-1], pyquil_gates[-n_compile:], gates2_circuit[-1], gates[-n_compile:], stolen_gates[-1])
+                print(ord_gates[-1], pyquil_gates[-n_compile:], gates2_circuit[-1], gates[-n_compile:], genetic_gates[-1])
                 input('press enter')
 
         print('\n\nResults for depth:', depth)
@@ -590,6 +625,8 @@ def pyquil_main():
         print('\tCompiled:', describe(gates2))
         print('Ordered steiner')
         print('\tcount:', describe(ord_gates))
+        print('Genetic Ordered steiner')
+        print('\tcount:', describe(genetic_gates))
         print('Stolen order with steiner')
         print('\tcount:', describe(stolen_gates))
         input('press enter')
