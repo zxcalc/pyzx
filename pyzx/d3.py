@@ -21,13 +21,14 @@ from fractions import Fraction
 __all__ = ['init', 'draw']
 
 try:
-    from IPython.display import display, Javascript, HTML
-except:
+    from IPython.display import display, HTML
+except ImportError:
     pass
 
 # Provides functions for displaying pyzx graphs in jupyter notebooks using d3
 
 _d3_display_seq = 0
+javascript_location = '../js'
 
 # TODO: avoid duplicate (copied from drawing.py)
 def phase_to_s(a):
@@ -40,7 +41,7 @@ def phase_to_s(a):
     # unicode 0x03c0 = pi
     return ns + '\u03c0' + ds
 
-def draw(g, scale=None, js_path='../js'):
+def draw(g, scale=None):
     global _d3_display_seq
 
     _d3_display_seq += 1
@@ -49,6 +50,7 @@ def draw(g, scale=None, js_path='../js'):
     if scale == None:
         scale = 800 / (g.depth() + 2)
         if scale > 50: scale = 50
+        if scale < 20: scale = 20
 
     node_size = 0.2 * scale
     if node_size < 2: node_size = 2
@@ -67,17 +69,14 @@ def draw(g, scale=None, js_path='../js'):
               't': g.edge_type(e) } for e in g.edges()]
     graphj = json.dumps({'nodes': nodes, 'links': links})
     display(HTML("""
-    <div style="overflow:auto" id="graph-output-""" + str(seq) + """"></div>
+    <div style="overflow:auto" id="graph-output-{0}"></div>
     <script type="text/javascript">
-    require.config({ baseUrl: \"""" + js_path + """\",
-                     paths: {d3: "d3.v4.min"} });
-    require(['pyzx'], function(pyzx) {
-        pyzx.showGraph('#graph-output-""" + str(seq) + """',
-        JSON.parse('""" + graphj + """'),
-        """ + str(w) + """,
-        """ + str(h) + """,
-        """ + str(node_size) + """);
-    });
+    require.config({{ baseUrl: "{1}",
+                     paths: {{d3: "d3.v4.min"}} }});
+    require(['pyzx'], function(pyzx) {{
+        pyzx.showGraph('#graph-output-{0}',
+        JSON.parse('{2}'), {3}, {4}, {5});
+    }});
     </script>
-    """))
+    """.format(seq, javascript_location, graphj, w, h, node_size)))
 

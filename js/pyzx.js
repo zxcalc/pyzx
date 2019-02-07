@@ -89,7 +89,7 @@ define(['d3'], function(d3) {
             .attr("fill", "#00d");
 
         function nodeStyle(selected) {
-            return selected ? "stroke-width: 2px; stroke: #a0f" : "stroke-width: 1.5px";
+            return selected ? "stroke-width: 2px; stroke: #00f" : "stroke-width: 1.5px";
         }
 
         function brushstarted() {
