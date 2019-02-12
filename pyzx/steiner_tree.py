@@ -7,6 +7,7 @@ from pyzx.circuit import Circuit as PyzxCircuit
 from pyzx.machine_learning import GeneticAlgorithm
 #from pyzx.graph.base import BaseGraph # TODO fix the right graph import - one of many - right backend etc
 import numpy as np
+import time
 
 from pyquil import Program, get_qc
 from pyquil.gates import *
@@ -334,6 +335,12 @@ class PyQuilCircuit():
         self.n_cnots += 1
         self.matrix.row_add(q0, q1)
 
+    def col_add(self, q0, q1):
+        # TODO prepend the CNOT!
+        self.program += CNOT(self.mapping[q0], self.mapping[q1])
+        self.n_cnots += 1
+        self.matrix.col_add(q0, q1)
+
     def compile(self):
         """
         Compiles the circuit/program for created quantum computer
@@ -498,10 +505,13 @@ def create_fully_connected_architecture(size, **kwargs):
         m[i][i] = 0
     return Architecture(adjacency_matrix=m, **kwargs)
 
-def get_steiner_fitness(matrix, architecture):
+def get_steiner_fitness(matrix, architecture, row=True, col=True):
     def fitness_func(permutation):
+        e = np.arange(len(permutation))
+        row_perm = permutation if row else e
+        col_perm = permutation if col else e
         circuit = PyQuilCircuit(architecture)
-        mat = Mat2(np.copy(matrix[permutation][:, permutation]))
+        mat = Mat2(np.copy(matrix[row_perm][:, col_perm]))
         steiner_gauss(mat, architecture=architecture, x=circuit, full_reduce=True)
         return circuit.n_cnots
     return fitness_func
@@ -630,10 +640,64 @@ def pyquil_main():
         print('\tcount:', describe(stolen_gates))
         input('press enter')
 
+def genetic_speed_main():
+    arch = create_9x9_square_architecture()
+    n_compile=10
+    n_maps = 1
+    depths = [3, 5, 10, 20, 30]
+    populations = [5, 10, 15, 30, 50][:3]
+    iter_steps = 10
+    n_steps = 4
+    crossover_prob = 0.8
+    mutate_prob = 0.2
+    results = []
+    pause = input("Pause every map? [y|N]") == 'y'
+    for depth in depths:
+        for _ in range(n_maps):
+            pyquil_circuit = PyQuilCircuit(arch)
+            test_mat = build_random_parity_map(9, depth, pyquil_circuit)
+            perm = np.random.permutation(9)
+            test_mat = test_mat[:, perm]
+            compiler = [len(pyquil_circuit.compile().split('CZ')) -1 for _ in range(n_compile)]
+            print(describe(compiler))
+            circuit = PyQuilCircuit(arch)
+            matrix = Mat2(np.copy(test_mat))
+            steiner_gauss(matrix, architecture=arch, y=circuit, full_reduce=True)
+            result = {
+                "n_gates": circuit.n_cnots,
+                "depth": depth
+            }
+            print(result)
+            for population in populations:
+                for iter in [(n+1)*iter_steps for n in range(n_steps)]:
+                    start_time = time.time()
+                    optimizer = GeneticAlgorithm(population, crossover_prob, mutate_prob, get_steiner_fitness(test_mat, arch))
+                    best_permutation = optimizer.find_optimimum(9, iter, continued=True)
+                    end_time = time.time()
+                    print(best_permutation)
+                    gen_mat = test_mat[best_permutation][:, best_permutation]
+                    colored_print(gen_mat)
+
+                    circuit = PyQuilCircuit(arch)
+                    matrix = Mat2(np.copy(gen_mat))
+                    steiner_gauss(matrix, architecture=arch, y=circuit, full_reduce=True)
+                    result = {
+                        "population": population,
+                        "iterations": iter,
+                        "n_gates": circuit.n_cnots,
+                        "depth": depth
+                    }
+                    results.append(result)
+                    print(result)
+                    print("Execution took: ", end_time-start_time)
+                    pause and input('press enter')
+
 if __name__ == '__main__':
-    mode = "quil"
+    mode = "genetic_speed"
     if mode == "quil":
         pyquil_main()
     elif mode == "test":
         steiner_tree_main()
+    elif mode == "genetic_speed":
+        genetic_speed_main()
 

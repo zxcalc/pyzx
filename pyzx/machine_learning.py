@@ -11,6 +11,7 @@ class GeneticAlgorithm():
         self._sort = lambda l: l.sort(key=lambda x:x[1], reverse=maximize)
         self.maximize = maximize
         self.n_qubits = 0
+        self.population = None
 
     def _select(self):
         fitness_scores = [f for c,f in self.population]
@@ -30,16 +31,17 @@ class GeneticAlgorithm():
         self._sort(self.population)
         self.negative_population = self.population[-self.negative_population_size:]
 
-    def find_optimimum(self, n_qubits, n_generations, initial_order=None, n_child=None):
+    def find_optimimum(self, n_qubits, n_generations, initial_order=None, n_child=None, continued=False):
         self.n_qubits = n_qubits
         partial_solution = False
-        if initial_order is None:
-            self._create_population(n_qubits)
-        elif n_qubits < len(initial_order):
-            self._create_population(initial_order[:n_qubits])
-            partial_solution = True
-        else:
-            self._create_population(initial_order)
+        if not continued or self.population is None:
+            if initial_order is None:
+                self._create_population(n_qubits)
+            elif n_qubits < len(initial_order):
+                self._create_population(initial_order[:n_qubits])
+                partial_solution = True
+            else:
+                self._create_population(initial_order)
 
         if n_child is None:
             n_child = self.population_size
