@@ -195,7 +195,7 @@ def steiner_gauss(matrix, architecture, full_reduce=False, x=None, y=None):
         matrix.row_add(c0, c1)
         debug and print("Reducing", c0, c1)
         if x != None: x.row_add(c0, c1)
-        if y != None: y.row_add(c1, c0)
+        if y != None: y.col_add(c1, c0)
     def steiner_reduce(col, root, nodes, upper):
         steiner_tree = architecture.steiner_tree(root, nodes, upper)
         # Remove all zeros
@@ -322,6 +322,7 @@ class PyQuilCircuit():
         self.n_cnots = 0
         self.retries = 0
         self.max_retries = 5
+        self.matrix = Mat2(np.identity(9))
 
     def row_add(self, q0, q1):
         """
@@ -331,6 +332,7 @@ class PyQuilCircuit():
         """
         self.program += CNOT(self.mapping[q0], self.mapping[q1])
         self.n_cnots += 1
+        self.matrix.row_add(q0, q1)
 
     def compile(self):
         """
