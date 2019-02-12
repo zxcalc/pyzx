@@ -101,14 +101,18 @@ class Architecture():
         edges = []
         debug and print(root, upper, nodes)
         distances = self.distances["upper"][root] if upper else self.distances["full"][root]
+        steiner_pnts = []
         while nodes != []:
-            options = [(node, v, *distances[(v, node)]) for node in nodes for v in vertices if (v, node) in distances.keys()]
+            options = [(node, v, *distances[(v, node)]) for node in nodes for v in (vertices + steiner_pnts) if (v, node) in distances.keys()]
             best_option = min(options, key=lambda x: x[2])
+            debug and print("Adding to tree: vertex ",best_option[0], "Edges ", best_option[3])
             vertices.append(best_option[0])
             edges.extend(best_option[3])
+            steiner = [v for edge in best_option[3] for v in edge if v not in vertices]
+            debug and print(steiner)
+            steiner_pnts.extend(steiner)
             nodes.remove(best_option[0])
         edges = set(edges) # remove duplicates
-        steiner_pnts = list(set([i for edge in edges for i in edge if i not in vertices]))
         if debug:
             print("edges:", edges)
             print("nodes:", vertices)
@@ -264,7 +268,6 @@ def steiner_tree_main():
     Small test script to test the steiner_gauss
     :return: 
     """
-    debug = False
     arch = create_9x9_square_architecture()
     # Test the architecture creation
     print("Distances")
@@ -275,7 +278,7 @@ def steiner_tree_main():
                 print(k, ":", v[0], v[1])
     # Test the steiner tree creation
     print("Steiner tree")
-    gen = arch.steiner_tree(1, [2,6])
+    gen = arch.steiner_tree(2, [2,5,7], upper=True)
     print("top -> bottom")
     next_node = next(gen)
     while next_node is not None:
@@ -292,15 +295,7 @@ def steiner_tree_main():
 
     # Create a random matrix
     print("-- matrix generation")
-    test_mat = None
-    inv = None
-    while test_mat is None:
-        try:
-            test_mat = np.random.randint(low=0, high=2, size=m.shape)
-            inv = np.linalg.inv(test_mat)
-        except:
-            print("No inverse - try again")
-            test_mat = None
+    test_mat = build_random_parity_map(9, 10)
 
     # Reduce it with the different methods
     for mode in ["GAUSS", "STEINER"]:
@@ -354,7 +349,7 @@ class PyQuilCircuit():
             else:
                 raise e
 
-def build_random_parity_map(qubits, depth, circuit):
+def build_random_parity_map(qubits, depth, circuit=None):
     """
     Builds a random parity map.
     
@@ -363,6 +358,8 @@ def build_random_parity_map(qubits, depth, circuit):
     :param circuit: A (list of) circuit object(s) that implements a row_add() method to add the generated CNOT gates
     :return: a 2D numpy array that represents the parity map.
     """
+    if circuit is None:
+        circuit = []
     if not isinstance(circuit, list):
         circuit = [circuit]
     g = generate_cnots(qubits=qubits, depth=depth)
@@ -632,4 +629,9 @@ def pyquil_main():
         input('press enter')
 
 if __name__ == '__main__':
-    pyquil_main()
+    mode = "quil"
+    if mode == "quil":
+        pyquil_main()
+    elif mode == "test":
+        steiner_tree_main()
+
