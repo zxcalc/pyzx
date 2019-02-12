@@ -280,6 +280,8 @@ class Circuit(object):
                         n = (n-4)%8
                     if n == 1: c.add_gate("T", g.target)
                     if n == 7: c.add_gate("T", g.target, adjoint=True)
+                else:
+                    c.add_gate("ZPhase", g.target, g.phase)
                 if isinstance(g, XPhase):
                     c.add_gate("HAD", g.target) 
             else:
@@ -325,11 +327,11 @@ class Circuit(object):
                 del rs[l]
                 del labels[l]
             else:
-                if compress_rows and not isinstance(gate, (ZPhase, XPhase, HAD)):
+                if not compress_rows: #or not isinstance(gate, (ZPhase, XPhase, HAD)):
                     r = max(rs.values())
                     for i in rs: rs[i] = r
                 gate.to_graph(g,labels, qs,rs)
-                if compress_rows and not isinstance(gate, (ZPhase, XPhase, HAD)):
+                if not compress_rows: # or not isinstance(gate, (ZPhase, XPhase, HAD)):
                     r = max(rs.values())
                     for i in rs: rs[i] = r
 
@@ -423,9 +425,15 @@ class Circuit(object):
             self.add_gate(g)
 
     def tcount(self):
+        """Returns the amount of T-gates necessary to implement this circuit."""
         return sum(g.tcount() for g in self.gates)
         #return sum(1 for g in self.gates if isinstance(g, (ZPhase, XPhase, ParityPhase)) and g.phase.denominator >= 4)
     
+    def twoqubitcount(self):
+        """Returns the amount of 2-qubit gates necessary to implement this circuit."""
+        c = self.to_basic_gates()
+        return sum(1 for g in c.gates if g.name in ('CNOT','CZ'))
+
     def stats(self):
         """Returns statistics on the amount of gates in the circuit, separated into different classes 
         (such as amount of T-gates, two-qubit gates, Hadamard gates)."""

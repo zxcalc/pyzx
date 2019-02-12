@@ -70,6 +70,18 @@ class BaseGraph(object):
     def __repr__(self):
         return str(self)
 
+    def stats(self):
+        s = str(self) + "\n"
+        degrees = {}
+        for v in self.vertices():
+            d = self.vertex_degree(v)
+            if d in degrees: degrees[d] += 1
+            else: degrees[d] = 1
+        s += "degree distribution: \n"
+        for d, n in sorted(degrees.items(),key=lambda x: x[0]):
+            s += "{:d}: {:d}\n".format(d,n)
+        return s
+
     def copy(self, adjoint=False, backend=None):
         """Create a copy of the graph. If ``adjoint`` is set, 
         the adjoint of the graph will be returned (inputs and outputs flipped, phases reversed).
