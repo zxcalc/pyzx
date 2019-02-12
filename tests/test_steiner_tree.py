@@ -7,7 +7,7 @@ if __name__ == '__main__':
 import numpy as np
 
 from pyzx.linalg import Mat2
-from pyzx.steiner_tree import Architecture, build_random_parity_map, PyQuilCircuit, gauss, get_steiner_fitness
+from pyzx.steiner_tree import Architecture, build_random_parity_map, PyQuilCircuit, gauss, get_steiner_fitness, CNOT_tracker
 from pyzx.machine_learning import GeneticAlgorithm
 
 SEED = 42
@@ -149,20 +149,6 @@ class TestSteiner(unittest.TestCase):
                 optimizer = GeneticAlgorithm(population, crossover_prob, mutate_prob, get_steiner_fitness(self.matrix[i], self.arch))
                 best_permutation = optimizer.find_optimimum(9, n_iter)
                 self.do_permutated_gaus(self.matrix[i], best_permutation, best_permutation)
-
-class CNOT_tracker():
-
-    def __init__(self):
-        self.cnots = []
-        self.matrix = Mat2(np.identity(9))
-
-    def row_add(self, q0, q1):
-        self.cnots.append((q0, q1))
-        self.matrix.row_add(q0, q1)
-
-    def col_add(self, q0, q1):
-        self.cnots.insert(0, (q0, q1))
-        self.matrix.col_add(q0, q1)
 
 if __name__ == '__main__':
     unittest.main()

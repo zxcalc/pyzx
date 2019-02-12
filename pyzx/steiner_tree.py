@@ -308,6 +308,20 @@ def steiner_tree_main():
             print(matrix.data)
 
 
+class CNOT_tracker():
+
+    def __init__(self, n_qubits):
+        self.cnots = []
+        self.matrix = Mat2(np.identity(n_qubits))
+
+    def row_add(self, q0, q1):
+        self.cnots.append((q0, q1))
+        self.matrix.row_add(q0, q1)
+
+    def col_add(self, q0, q1):
+        self.cnots.insert(0, (q0, q1))
+        self.matrix.col_add(q0, q1)
+
 class PyQuilCircuit():
 
     def __init__(self, architecture):
@@ -516,6 +530,40 @@ def get_steiner_fitness(matrix, architecture, row=True, col=True):
         return circuit.n_cnots
     return fitness_func
 
+def permutated_gauss(matrix, population_size=30, crossover_prob=0.8, mutate_prob=0.2, n_iterations=50, row=True, col=True, full_reduce=True):
+    """
+    Finds an optimal permutation of the matrix to reduce the number of CNOT gates.
+    
+    :param matrix: 2D Numpy array to do gaussian elimination over
+    :param population_size: For the genetic algorithm
+    :param crossover_prob: For the genetic algorithm
+    :param mutate_prob: For the genetic algorithm
+    :param n_iterations: For the genetic algorithm
+    :param row: If the rows should be permutated
+    :param col: If the columns should be permutated
+    :param full_reduce: Whether to do full gaussian reduction
+    :return: Best permutation found, list of CNOTS corresponding to the elimination.
+    """
+    n_qubits=matrix.data.shape[0]
+    def fitness_func(permutation):
+        e = np.arange(len(permutation))
+        row_perm = permutation if row else e
+        col_perm = permutation if col else e
+        circuit = CNOT_tracker(n_qubits)
+        mat = Mat2(np.copy(matrix[row_perm][:, col_perm]))
+        mat.gauss(y=circuit, full_reduce=full_reduce)
+        return len(circuit.cnots)
+    optimizer = GeneticAlgorithm(population_size, crossover_prob, mutate_prob, fitness_func)
+    best_permutation = optimizer.find_optimimum(9, n_iterations, continued=True)
+
+    e = np.arange(len(best_permutation))
+    row_perm = best_permutation if row else e
+    col_perm = best_permutation if col else e
+    circuit = CNOT_tracker(n_qubits)
+    mat = Mat2(np.copy(matrix[row_perm][:, col_perm]))
+    mat.gauss(y=circuit, full_reduce=full_reduce)
+    return best_permutation, circuit.cnots
+
 def pyquil_main():
     arch = create_9x9_square_architecture()
     n_compile = 10
@@ -665,11 +713,18 @@ def genetic_speed_main():
             steiner_gauss(matrix, architecture=arch, y=circuit, full_reduce=True)
             result = {
                 "n_gates": circuit.n_cnots,
-                "depth": depth
-            }
+                "depth": depth}
             print(result)
+            circuit2 = CNOT_tracker(9)
+            matrix2 = Mat2(np.copy(test_mat))
+            matrix2.gauss(full_reduce=True, y=circuit2)
+            print("Unconstraint Gauss:", len(circuit2.cnots))
             for population in populations:
                 for iter in [(n+1)*iter_steps for n in range(n_steps)]:
+                    p, cnots = permutated_gauss(test_mat, population, crossover_prob, mutate_prob, iter, row=False, col=True, full_reduce=True)
+                    print(len(cnots))
+                    break
+
                     start_time = time.time()
                     optimizer = GeneticAlgorithm(population, crossover_prob, mutate_prob, get_steiner_fitness(test_mat, arch))
                     best_permutation = optimizer.find_optimimum(9, iter, continued=True)
