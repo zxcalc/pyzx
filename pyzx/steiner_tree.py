@@ -17,6 +17,15 @@ from scipy.stats import describe
 
 debug = False
 
+# ELIMINATION MODES:
+GAUSS_MODE = 0
+STEINER_MODE = 1
+GENETIC_STEINER_MODE = 3
+GENETIC_GAUSS_MODE = 4
+# COMPILE MODES
+QUIL_COMPILER = 2
+NO_COMPILER = 5
+
 class Architecture():
 
     def __init__(self, graph=None, adjacency_matrix=None, backend=None):
@@ -257,56 +266,20 @@ def steiner_gauss(matrix, architecture, full_reduce=False, x=None, y=None):
             pivot -= 1
     return rank
 
-def gauss(mode, matrix, architecture, **kwargs):
-    if mode == "GAUSS":
+def gauss(mode, matrix, architecture=None, **kwargs):
+    if mode == GAUSS_MODE:
         return matrix.gauss(**kwargs)
-    elif mode == "STEINER":
+    elif mode == STEINER_MODE:
+        if architecture is None:
+            print("\033[91m Warning: Architecture is not given, assuming fully connected architecture of size matrix.shape[0]. \033[0m ")
+            architecture = create_fully_connected_architecture(matrix.data.shape[0])
         return steiner_gauss(matrix, architecture, **kwargs)
-
-
-def steiner_tree_main():
-    """
-    Small test script to test the steiner_gauss
-    :return: 
-    """
-    arch = create_9x9_square_architecture()
-    # Test the architecture creation
-    print("Distances")
-    for mode in ["upper", "full"]:
-        for i, dist_dict in enumerate(arch.distances[mode]):
-            print(mode, i)
-            for k,v in dist_dict.items():
-                print(k, ":", v[0], v[1])
-    # Test the steiner tree creation
-    print("Steiner tree")
-    gen = arch.steiner_tree(2, [2,5,7], upper=True)
-    print("top -> bottom")
-    next_node = next(gen)
-    while next_node is not None:
-        print(next_node)
-        v1, v2 = next_node
-        next_node = next(gen)
-    # second run
-    print("bottom -> top")
-    next_node = next(gen)
-    while next_node is not None:
-        print(next_node)
-        v1, v2 = next_node
-        next_node = next(gen)
-
-    # Create a random matrix
-    print("-- matrix generation")
-    test_mat = build_random_parity_map(9, 10)
-
-    # Reduce it with the different methods
-    for mode in ["GAUSS", "STEINER"]:
-        print("-- matrix decomposition", mode)
-        for full_reduce in [False, True]:
-            matrix = Mat2(np.copy(test_mat))
-            rank = gauss(mode, matrix, architecture=arch, full_reduce=full_reduce)
-            print(rank)
-            print(matrix.data)
-
+    elif mode == GENETIC_STEINER_MODE:
+        perm, cnots, rank = permutated_gauss(matrix, STEINER_MODE, architecture=architecture, **kwargs)
+        return rank
+    elif mode == GENETIC_GAUSS_MODE:
+        perm, cnots, rank = permutated_gauss(matrix, GAUSS_MODE, architecture=architecture, **kwargs)
+        return rank
 
 class CNOT_tracker():
 
@@ -354,6 +327,9 @@ class PyQuilCircuit():
         self.program += CNOT(self.mapping[q0], self.mapping[q1])
         self.n_cnots += 1
         self.matrix.col_add(q0, q1)
+
+    def compiled_cnot_count(self):
+        return len(self.compile().split('CZ')) -1
 
     def compile(self):
         """
@@ -519,18 +495,19 @@ def create_fully_connected_architecture(size, **kwargs):
         m[i][i] = 0
     return Architecture(adjacency_matrix=m, **kwargs)
 
-def get_steiner_fitness(matrix, architecture, row=True, col=True):
+def get_fitness_func(mode, matrix, architecture, row=True, col=True, full_reduce=True):
+    n_qubits=matrix.data.shape[0]
     def fitness_func(permutation):
         e = np.arange(len(permutation))
         row_perm = permutation if row else e
         col_perm = permutation if col else e
-        circuit = PyQuilCircuit(architecture)
+        circuit = CNOT_tracker(n_qubits)
         mat = Mat2(np.copy(matrix[row_perm][:, col_perm]))
-        steiner_gauss(mat, architecture=architecture, x=circuit, full_reduce=True)
-        return circuit.n_cnots
+        gauss(mode, mat, architecture=architecture, x=circuit, full_reduce=full_reduce)
+        return len(circuit.cnots)
     return fitness_func
 
-def permutated_gauss(matrix, population_size=30, crossover_prob=0.8, mutate_prob=0.2, n_iterations=50, row=True, col=True, full_reduce=True):
+def permutated_gauss(matrix, mode=None, architecture=None, population_size=30, crossover_prob=0.8, mutate_prob=0.2, n_iterations=50, row=True, col=True, full_reduce=True, fitness_func=None):
     """
     Finds an optimal permutation of the matrix to reduce the number of CNOT gates.
     
@@ -544,25 +521,37 @@ def permutated_gauss(matrix, population_size=30, crossover_prob=0.8, mutate_prob
     :param full_reduce: Whether to do full gaussian reduction
     :return: Best permutation found, list of CNOTS corresponding to the elimination.
     """
-    n_qubits=matrix.data.shape[0]
-    def fitness_func(permutation):
-        e = np.arange(len(permutation))
-        row_perm = permutation if row else e
-        col_perm = permutation if col else e
-        circuit = CNOT_tracker(n_qubits)
-        mat = Mat2(np.copy(matrix[row_perm][:, col_perm]))
-        mat.gauss(y=circuit, full_reduce=full_reduce)
-        return len(circuit.cnots)
+    if fitness_func is None:
+        fitness_func =  get_fitness_func(mode, matrix, architecture, row=row, col=col, full_reduce=full_reduce)
     optimizer = GeneticAlgorithm(population_size, crossover_prob, mutate_prob, fitness_func)
     best_permutation = optimizer.find_optimimum(9, n_iterations, continued=True)
 
+    n_qubits=matrix.data.shape[0]
     e = np.arange(len(best_permutation))
     row_perm = best_permutation if row else e
     col_perm = best_permutation if col else e
     circuit = CNOT_tracker(n_qubits)
     mat = Mat2(np.copy(matrix[row_perm][:, col_perm]))
-    mat.gauss(y=circuit, full_reduce=full_reduce)
-    return best_permutation, circuit.cnots
+    rank = gauss(mode, mat, architecture, y=circuit, full_reduce=full_reduce)
+    return best_permutation, circuit.cnots, rank
+
+def count_cnots_matrix(mode, matrix, compile_mode=None,  architecture=None, **kwargs):
+    if compile_mode == QUIL_COMPILER:
+        circuit = PyQuilCircuit(architecture)
+    else:
+        circuit = CNOT_tracker(matrix.shape[0])
+    gauss(mode, matrix, architecture=architecture, y=circuit, **kwargs)
+    return count_cnots_circuit(compile_mode, circuit)
+
+def count_cnots_circuit(mode, circuit, n_compile=1):
+    if mode == QUIL_COMPILER:
+        if isinstance(circuit, PyQuilCircuit):
+            return sum([circuit.compiled_cnot_count() for i in range(n_compile)])/n_compile
+    elif mode == NO_COMPILER:
+        if isinstance(circuit, PyQuilCircuit):
+            return circuit.n_cnots
+        else:
+            return len(circuit.cnots)
 
 def pyquil_main():
     arch = create_9x9_square_architecture()
@@ -721,7 +710,7 @@ def genetic_speed_main():
             print("Unconstraint Gauss:", len(circuit2.cnots))
             for population in populations:
                 for iter in [(n+1)*iter_steps for n in range(n_steps)]:
-                    p, cnots = permutated_gauss(test_mat, population, crossover_prob, mutate_prob, iter, row=False, col=True, full_reduce=True)
+                    p, cnots = permutated_gauss(test_mat, GAUSS_MODE, None, population, crossover_prob, mutate_prob, iter, row=False, col=True, full_reduce=True)
                     print(len(cnots))
                     break
 
@@ -746,13 +735,12 @@ def genetic_speed_main():
                     print(result)
                     print("Execution took: ", end_time-start_time)
                     pause and input('press enter')
+             
 
 if __name__ == '__main__':
     mode = "genetic_speed"
     if mode == "quil":
         pyquil_main()
-    elif mode == "test":
-        steiner_tree_main()
     elif mode == "genetic_speed":
         genetic_speed_main()
 
