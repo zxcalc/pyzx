@@ -761,10 +761,14 @@ def compare_cnot_count_main(filename, architecture_name, n_compile, n_maps, dept
     if os.path.exists(filename):
         previous_df = pd.read_csv(filename)
         write_mode = 'a'
+        write_header = False
+        index_shift = previous_df.index.max() + 1
         start = previous_df["map"].max()
         print("Resuming at map", start)
     else:
         write_mode = 'w'
+        write_header = True
+        index_shift = 0
         start = -1
     results = []
     i = 0
@@ -813,7 +817,8 @@ def compare_cnot_count_main(filename, architecture_name, n_compile, n_maps, dept
     finally:
         if results != []:
             df = pd.DataFrame(results)
-            df.to_csv(filename, mode=write_mode)
+            df.index += index_shift
+            df.to_csv(filename, mode=write_mode, header=write_header)
 
 if __name__ == '__main__':
     mode = "cnot_count"
