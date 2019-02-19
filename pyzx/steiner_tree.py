@@ -30,11 +30,13 @@ GENETIC_GAUSS_MODE = 4
 QUIL_COMPILER = 2
 NO_COMPILER = 5
 
-SQUARE_9Q = "9x9-square"
+SQUARE_9Q = "9q-square"
 IBM_QX2 = "ibm_qx2"
 IBM_QX3 = "ibm_qx3"
 IBM_QX4 = "ibm_qx4"
 IBM_QX5 = "ibm_qx5"
+RIGETTI_16Q_ASPEN = "rigetti_16q_aspen"
+RIGETTI_8Q_AGAVE = "rigetti_8q_agave"
 
 class Architecture():
 
@@ -589,6 +591,41 @@ def create_ibm_qx5_architecture(**kwargs):
     ])
     return Architecture(adjacency_matrix=m, **kwargs)
 
+def create_rigetti_16q_aspen_architecture(**kwargs):
+    m = np.array([
+        #0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15
+        [0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0], #0
+        [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], #1
+        [0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], #2
+        [0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], #3
+        [0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], #4
+        [0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0], #5
+        [0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0], #6
+        [1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0], #7
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1], #8
+        [0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0], #9
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0], #10
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0], #11
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0], #12
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0], #13
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1], #14
+        [0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0]  #15
+    ])
+    return Architecture(adjacency_matrix=m, **kwargs)
+
+def create_rigetti_8q_agave_architecture(**kwargs):
+    m = np.array([
+        [0, 1, 0, 0, 0, 0, 0, 1],
+        [1, 0, 1, 0, 0, 0, 0, 0],
+        [0, 1, 0, 1, 0, 0, 0, 0],
+        [0, 0, 1, 0, 1, 0, 0, 0],
+        [0, 0, 0, 1, 0, 1, 0, 0],
+        [0, 0, 0, 0, 1, 0, 1, 0],
+        [0, 0, 0, 0, 0, 1, 0, 1],
+        [1, 0, 0, 0, 0, 0, 1, 0]
+    ])
+    return Architecture(adjacency_matrix=m, **kwargs)
+
 def create_fully_connected_architecture(size, **kwargs):
     m = np.ones(shape=size)
     for i in range(min(*size)):
@@ -608,8 +645,12 @@ def create_architecture(name, **kwargs):
         return create_ibm_qx4_architecture(**kwargs)
     elif name == IBM_QX5:
         return create_ibm_qx5_architecture(**kwargs)
+    elif name == RIGETTI_16Q_ASPEN:
+        return create_rigetti_16q_aspen_architecture(**kwargs)
+    elif name == RIGETTI_8Q_AGAVE:
+        return create_rigetti_8q_agave_architecture(**kwargs)
     else:
-        raise KeyError("name" + str(name) + "not recognized as architecture name. Please use one of", SQUARE_9Q, IBM_QX2, IBM_QX3, IBM_QX4, IBM_QX5)
+        raise KeyError("name" + str(name) + "not recognized as architecture name. Please use one of", SQUARE_9Q, IBM_QX2, IBM_QX3, IBM_QX4, IBM_QX5, RIGETTI_16Q_ASPEN, RIGETTI_8Q_AGAVE)
 
 def get_fitness_func(mode, matrix, architecture, row=True, col=True, full_reduce=True):
     n_qubits=matrix.shape[0]
@@ -921,7 +962,7 @@ def compare_cnot_count_main(filename, architecture_name, n_compile, n_maps, dept
             df.to_csv(filename, mode=write_mode, header=write_header)
 
 if __name__ == '__main__':
-    mode = "genetic_speed"
+    mode = "cnot_count"
     if mode == "quil":
         pyquil_main()
     elif mode == "genetic_speed":
