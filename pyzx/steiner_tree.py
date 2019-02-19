@@ -8,12 +8,14 @@ from pyzx.machine_learning import GeneticAlgorithm
 #from pyzx.graph.base import BaseGraph # TODO fix the right graph import - one of many - right backend etc
 import numpy as np
 import time
+import json, os
 
 from pyquil import Program, get_qc
 from pyquil.gates import *
 from pyquil.quil import Pragma
 
 from scipy.stats import describe
+import pandas as pd
 
 debug = False
 
@@ -311,6 +313,8 @@ class PyQuilCircuit():
         self.retries = 0
         self.max_retries = 5
         self.matrix = Mat2(np.identity(9))
+        self.cnots = []
+        self.waited = False
 
     def row_add(self, q0, q1):
         """
@@ -321,12 +325,14 @@ class PyQuilCircuit():
         self.program += CNOT(self.mapping[q0], self.mapping[q1])
         self.n_cnots += 1
         self.matrix.row_add(q0, q1)
+        self.cnots.append((q0, q1))
 
     def col_add(self, q0, q1):
         # TODO prepend the CNOT!
         self.program += CNOT(self.mapping[q0], self.mapping[q1])
         self.n_cnots += 1
         self.matrix.col_add(q0, q1)
+        self.cnots.insert(0, (q0, q1))
 
     def compiled_cnot_count(self):
         return len(self.compile().split('CZ')) -1
@@ -339,11 +345,18 @@ class PyQuilCircuit():
         try:
             ep = self.qc.compile(self.program)
             self.retries = 0
+            self.waited = False
             return ep.program
         except KeyError as e:
-            print('Oops, retrying to compile.')
+            print('Oops, retrying to compile.', self.retries)
             if self.retries < self.max_retries:
                 self.retries += 1
+                return self.compile()
+            elif not self.waited:
+                print('Trying again in 10 seconds')
+                time.sleep(10)
+                self.waited = True
+                self.retries = 0
                 return self.compile()
             else:
                 raise e
@@ -495,8 +508,14 @@ def create_fully_connected_architecture(size, **kwargs):
         m[i][i] = 0
     return Architecture(adjacency_matrix=m, **kwargs)
 
+def create_architecture(name, **kwargs):
+    if name == "9x9-square":
+        return create_9x9_square_architecture()
+    else:
+        raise KeyError("name" + str(name) + "not recognized as architecture name. Please use 9x9x-square.")
+
 def get_fitness_func(mode, matrix, architecture, row=True, col=True, full_reduce=True):
-    n_qubits=matrix.data.shape[0]
+    n_qubits=matrix.shape[0]
     def fitness_func(permutation):
         e = np.arange(len(permutation))
         row_perm = permutation if row else e
@@ -507,11 +526,12 @@ def get_fitness_func(mode, matrix, architecture, row=True, col=True, full_reduce
         return len(circuit.cnots)
     return fitness_func
 
-def permutated_gauss(matrix, mode=None, architecture=None, population_size=30, crossover_prob=0.8, mutate_prob=0.2, n_iterations=50, row=True, col=True, full_reduce=True, fitness_func=None):
+def permutated_gauss(matrix, mode=None, architecture=None, population_size=30, crossover_prob=0.8, mutate_prob=0.2, n_iterations=50,
+                     row=True, col=True, full_reduce=True, fitness_func=None, x=None, y=None):
     """
     Finds an optimal permutation of the matrix to reduce the number of CNOT gates.
     
-    :param matrix: 2D Numpy array to do gaussian elimination over
+    :param matrix: Mat2 matrix to do gaussian elimination over
     :param population_size: For the genetic algorithm
     :param crossover_prob: For the genetic algorithm
     :param mutate_prob: For the genetic algorithm
@@ -522,7 +542,7 @@ def permutated_gauss(matrix, mode=None, architecture=None, population_size=30, c
     :return: Best permutation found, list of CNOTS corresponding to the elimination.
     """
     if fitness_func is None:
-        fitness_func =  get_fitness_func(mode, matrix, architecture, row=row, col=col, full_reduce=full_reduce)
+        fitness_func =  get_fitness_func(mode, matrix.data, architecture, row=row, col=col, full_reduce=full_reduce)
     optimizer = GeneticAlgorithm(population_size, crossover_prob, mutate_prob, fitness_func)
     best_permutation = optimizer.find_optimimum(9, n_iterations, continued=True)
 
@@ -530,18 +550,22 @@ def permutated_gauss(matrix, mode=None, architecture=None, population_size=30, c
     e = np.arange(len(best_permutation))
     row_perm = best_permutation if row else e
     col_perm = best_permutation if col else e
-    circuit = CNOT_tracker(n_qubits)
-    mat = Mat2(np.copy(matrix[row_perm][:, col_perm]))
-    rank = gauss(mode, mat, architecture, y=circuit, full_reduce=full_reduce)
+    if y is None:
+        circuit = CNOT_tracker(n_qubits)
+    else:
+        circuit = y
+    mat = Mat2(np.copy(matrix.data[row_perm][:, col_perm]))
+    rank = gauss(mode, mat, architecture, x=x, y=circuit, full_reduce=full_reduce)
     return best_permutation, circuit.cnots, rank
 
-def count_cnots_matrix(mode, matrix, compile_mode=None,  architecture=None, **kwargs):
+def count_cnots_array(mode, matrix, compile_mode=None, architecture=None, n_compile=1, **kwargs):
     if compile_mode == QUIL_COMPILER:
         circuit = PyQuilCircuit(architecture)
     else:
         circuit = CNOT_tracker(matrix.shape[0])
-    gauss(mode, matrix, architecture=architecture, y=circuit, **kwargs)
-    return count_cnots_circuit(compile_mode, circuit)
+    mat = Mat2(np.copy(matrix))
+    gauss(mode, mat, architecture=architecture, y=circuit, **kwargs)
+    return count_cnots_circuit(compile_mode, circuit, n_compile)
 
 def count_cnots_circuit(mode, circuit, n_compile=1):
     if mode == QUIL_COMPILER:
@@ -710,12 +734,8 @@ def genetic_speed_main():
             print("Unconstraint Gauss:", len(circuit2.cnots))
             for population in populations:
                 for iter in [(n+1)*iter_steps for n in range(n_steps)]:
-                    p, cnots = permutated_gauss(test_mat, GAUSS_MODE, None, population, crossover_prob, mutate_prob, iter, row=False, col=True, full_reduce=True)
-                    print(len(cnots))
-                    break
-
                     start_time = time.time()
-                    optimizer = GeneticAlgorithm(population, crossover_prob, mutate_prob, get_steiner_fitness(test_mat, arch))
+                    optimizer = GeneticAlgorithm(population, crossover_prob, mutate_prob, get_fitness_func(STEINER_MODE, test_mat, arch))
                     best_permutation = optimizer.find_optimimum(9, iter, continued=True)
                     end_time = time.time()
                     print(best_permutation)
@@ -735,12 +755,75 @@ def genetic_speed_main():
                     print(result)
                     print("Execution took: ", end_time-start_time)
                     pause and input('press enter')
-             
+
+def compare_cnot_count_main(filename, architecture_name, n_compile, n_maps, depths, populations, n_iter, crossover_prob, mutate_prob):
+    arch = create_architecture(architecture_name)
+    if os.path.exists(filename):
+        previous_df = pd.read_csv(filename)
+        write_mode = 'a'
+        start = previous_df["map"].max()
+        print("Resuming at map", start)
+    else:
+        write_mode = 'w'
+        start = -1
+    results = []
+    i = 0
+    try:
+        for depth in depths:
+            for map in range(n_maps):
+                if i > start:
+                    results_this_iteration = []
+                    print("Calculating for depth", depth, "at iteration", map)
+                    pyquil_circuit = PyQuilCircuit(arch)
+                    random_map = build_random_parity_map(9, depth, [pyquil_circuit])
+                    pyquil_cnots = count_cnots_circuit(QUIL_COMPILER, pyquil_circuit, n_compile)
+                    gauss_cnots = count_cnots_array(GAUSS_MODE, random_map, QUIL_COMPILER, arch, full_reduce=True, n_compile=n_compile)
+                    gauss_cnots_uncompiled = count_cnots_array(GAUSS_MODE, random_map, NO_COMPILER, arch, full_reduce=True)
+                    steiner_cnots = count_cnots_array(STEINER_MODE, random_map, NO_COMPILER, arch, full_reduce=True)
+                    results_this_iteration += [{"mode": m,"n_gates": n, "depth": depth, "population": 0, "iterations": 0, "map": i}
+                                for m, n in zip(["quil", "gauss", "gauss_uncompiled", "steiner"],
+                                                [pyquil_cnots, gauss_cnots, gauss_cnots_uncompiled, steiner_cnots])]
+                    for population in populations:
+                        for iter in n_iter:
+                            print("Genetic algorithm with population", population, "and n_iterations", iter)
+                            genetic_cnots = count_cnots_array(GENETIC_STEINER_MODE, random_map, NO_COMPILER, arch, full_reduce=True,
+                                                              population_size=population, crossover_prob=crossover_prob, mutate_prob=mutate_prob, n_iterations=iter)
+                            result = {
+                                "mode": "genetic_steiner",
+                                "population": population,
+                                "iterations": iter,
+                                "n_gates": genetic_cnots,
+                                "depth": depth, "map": i
+                            }
+                            results_this_iteration.append(result)
+                            genetic_cnots = count_cnots_array(GENETIC_GAUSS_MODE, random_map, QUIL_COMPILER, arch, full_reduce=True, n_compile=n_compile,
+                                                              population_size=population, crossover_prob=crossover_prob, mutate_prob=mutate_prob, n_iterations=iter)
+                            result = {
+                                "mode": "genetic_gauss",
+                                "population": population,
+                                "iterations": iter,
+                                "n_gates": genetic_cnots,
+                                "depth": depth, "map": i
+                            }
+                            results_this_iteration.append(result)
+                    results += results_this_iteration
+                i += 1
+    except:
+        print("An error occurred")
+    finally:
+        if results != []:
+            df = pd.DataFrame(results)
+            df.to_csv(filename, mode=write_mode)
 
 if __name__ == '__main__':
-    mode = "genetic_speed"
+    mode = "cnot_count"
     if mode == "quil":
         pyquil_main()
     elif mode == "genetic_speed":
         genetic_speed_main()
+    elif mode == "cnot_count":
+        settings = {}
+        with open("9x9-settings.json") as f:
+            settings = json.load(f)
+        compare_cnot_count_main(**settings)
 
