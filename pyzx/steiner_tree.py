@@ -13,6 +13,8 @@ import json, os
 from pyquil import Program, get_qc
 from pyquil.gates import *
 from pyquil.quil import Pragma
+from pyquil.device import NxDevice
+from pyquil.api import LocalQVMCompiler
 
 from scipy.stats import describe
 import pandas as pd
@@ -27,6 +29,12 @@ GENETIC_GAUSS_MODE = 4
 # COMPILE MODES
 QUIL_COMPILER = 2
 NO_COMPILER = 5
+
+SQUARE_9Q = "9x9-square"
+IBM_QX2 = "ibm_qx2"
+IBM_QX3 = "ibm_qx3"
+IBM_QX4 = "ibm_qx4"
+IBM_QX5 = "ibm_qx5"
 
 class Architecture():
 
@@ -53,10 +61,19 @@ class Architecture():
             self.vertices = [v for v in self.graph.vertices()]
         self.pre_calc_distances()
         self.qubit_map = [i for i,v in enumerate(self.vertices)]
+        self.n_qubits = len(self.vertices)
 
     def pre_calc_distances(self):
         self.distances = {"upper": [self.FloydWarshall(until, upper=True) for until, v in enumerate(self.vertices)],
                           "full": [self.FloydWarshall(until, upper=False) for until, v in enumerate(self.vertices)]}
+
+    def to_quil_device(self):
+        # Only required here
+        import networkx as nx
+        edges = [edge for edge in self.graph.edges() if edge[0] in self.vertices]
+        topology = nx.from_edgelist(edges)
+        device = NxDevice(topology)
+        return device
 
     def FloydWarshall(self, exclude_excl, upper=True):
         """
@@ -307,12 +324,15 @@ class PyQuilCircuit():
         :param architecture: The Architecture object to adhere to
         """
         self.qc = get_qc('9q-square-qvm')
+        device = architecture.to_quil_device()
+        compiler = LocalQVMCompiler(endpoint=self.qc.compiler.endpoint, device=device)
+        self.qc.device = device
+        self.qc.compiler = compiler
         self.program = Program()
-        self.mapping = [0,1,2,5,4,3,6,7,8]
         self.n_cnots = 0
         self.retries = 0
         self.max_retries = 5
-        self.matrix = Mat2(np.identity(9))
+        self.matrix = Mat2(np.identity(architecture.n_qubits))
         self.cnots = []
         self.waited = False
 
@@ -322,14 +342,14 @@ class PyQuilCircuit():
         :param q0: 
         :param q1: 
         """
-        self.program += CNOT(self.mapping[q0], self.mapping[q1])
+        self.program += CNOT(q0, q1)
         self.n_cnots += 1
         self.matrix.row_add(q0, q1)
         self.cnots.append((q0, q1))
 
     def col_add(self, q0, q1):
         # TODO prepend the CNOT!
-        self.program += CNOT(self.mapping[q0], self.mapping[q1])
+        self.program += CNOT(q0, q1)
         self.n_cnots += 1
         self.matrix.col_add(q0, q1)
         self.cnots.insert(0, (q0, q1))
@@ -401,25 +421,28 @@ def colored_print(np_array):
     Prints a 9x9 numpy array with colors representing their distance in a 9x9 square architecture
     :param np_array:  the array
     """
-    CRED = '\033[91m '
-    CEND = '\033[0m '
-    CGREEN = '\33[32m '
-    CYELLOW = '\33[33m '
-    CBLUE = '\33[34m '
-    CWHITE = '\33[37m '
-    CVIOLET = '\33[35m '
-    color = [CBLUE, CGREEN, CVIOLET, CYELLOW, CRED]
-    layout = [[0,1,2,3,2,1,2,3,4],
-              [1,0,1,2,1,2,3,2,3],
-              [2,1,0,1,2,3,4,3,2],
-              [3,2,1,0,1,2,3,2,1],
-              [2,1,2,1,0,1,2,1,2],
-              [1,2,3,2,1,0,1,2,3],
-              [2,3,4,3,2,1,0,1,2],
-              [3,2,3,2,1,2,1,0,1],
-              [4,3,2,1,2,3,2,1,0]]
-    for i, l in enumerate(layout):
-        print('[', ', '.join([(color[c] + '1' if v ==1 else CWHITE + '0') for c, v in zip(l, np_array[i])]), CEND, ']')
+    if np_array.shape == (9,9):
+        CRED = '\033[91m '
+        CEND = '\033[0m '
+        CGREEN = '\33[32m '
+        CYELLOW = '\33[33m '
+        CBLUE = '\33[34m '
+        CWHITE = '\33[37m '
+        CVIOLET = '\33[35m '
+        color = [CBLUE, CGREEN, CVIOLET, CYELLOW, CRED]
+        layout = [[0,1,2,3,2,1,2,3,4],
+                  [1,0,1,2,1,2,3,2,3],
+                  [2,1,0,1,2,3,4,3,2],
+                  [3,2,1,0,1,2,3,2,1],
+                  [2,1,2,1,0,1,2,1,2],
+                  [1,2,3,2,1,0,1,2,3],
+                  [2,3,4,3,2,1,0,1,2],
+                  [3,2,3,2,1,2,1,0,1],
+                  [4,3,2,1,2,3,2,1,0]]
+        for i, l in enumerate(layout):
+            print('[', ', '.join([(color[c] + '1' if v ==1 else CWHITE + '0') for c, v in zip(l, np_array[i])]), CEND, ']')
+    else:
+        print(np_array)
 
 def quick_reorder(matrix, architecture):
     """
@@ -488,7 +511,7 @@ def quick_reorder(matrix, architecture):
     verbose and input('press enter')
     return expected_order, new_order
 
-def create_9x9_square_architecture(**kwargs):
+def create_9q_square_architecture(**kwargs):
     m = np.array([
         [0, 1, 0, 0, 0, 1, 0, 0, 0],
         [1, 0, 1, 0, 1, 0, 0, 0, 0],
@@ -502,6 +525,70 @@ def create_9x9_square_architecture(**kwargs):
     ])
     return Architecture(adjacency_matrix=m, **kwargs)
 
+def create_ibm_qx2_architecture(**kwargs):
+    m = np.array([
+        [0, 1, 1, 0, 0],
+        [1, 0, 1, 0, 0],
+        [1, 1, 0, 1, 1],
+        [0, 0, 1, 0, 1],
+        [0, 0, 1, 1, 0]
+    ])
+    return Architecture(adjacency_matrix=m, **kwargs)
+
+def create_ibm_qx4_architecture(**kwargs):
+    m = np.array([
+        [0, 1, 1, 0, 0],
+        [1, 0, 1, 0, 0],
+        [1, 1, 0, 1, 1],
+        [0, 0, 1, 0, 1],
+        [0, 0, 1, 1, 0]
+    ])
+    return Architecture(adjacency_matrix=m, **kwargs)
+
+def create_ibm_qx3_architecture(**kwargs):
+    m = np.array([
+        #0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15
+        [0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], #0
+        [1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], #1
+        [0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], #2
+        [0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], #3
+        [0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], #4
+        [1, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0], #5
+        [0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1], #6
+        [0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1, 0], #7
+        [0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0], #8
+        [0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0], #9
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0], #10
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0], #11
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0], #12
+        [0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0], #13
+        [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 1], #14
+        [0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0]  #15
+    ])
+    return Architecture(adjacency_matrix=m, **kwargs)
+
+def create_ibm_qx5_architecture(**kwargs):
+    m = np.array([
+        #0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15
+        [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1], #0
+        [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0], #1
+        [0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0], #2
+        [0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0], #3
+        [0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0], #4
+        [0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0], #5
+        [0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0], #6
+        [0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0], #7
+        [0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0], #8
+        [0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0], #9
+        [0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0], #10
+        [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0], #11
+        [0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0], #12
+        [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0], #13
+        [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1], #14
+        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0]  #15
+    ])
+    return Architecture(adjacency_matrix=m, **kwargs)
+
 def create_fully_connected_architecture(size, **kwargs):
     m = np.ones(shape=size)
     for i in range(min(*size)):
@@ -509,10 +596,20 @@ def create_fully_connected_architecture(size, **kwargs):
     return Architecture(adjacency_matrix=m, **kwargs)
 
 def create_architecture(name, **kwargs):
-    if name == "9x9-square":
-        return create_9x9_square_architecture()
+    # Source IBM architectures: http://iic.jku.at/files/eda/2018_tcad_mapping_quantum_circuit_to_ibm_qx.pdf​
+    # IBM architectures are currently ignoring CNOT direction.
+    if name == SQUARE_9Q:
+        return create_9q_square_architecture(**kwargs)
+    elif name == IBM_QX2:
+        return create_ibm_qx2_architecture(**kwargs)
+    elif name == IBM_QX3:
+        return create_ibm_qx3_architecture(**kwargs)
+    elif name == IBM_QX4:
+        return create_ibm_qx4_architecture(**kwargs)
+    elif name == IBM_QX5:
+        return create_ibm_qx5_architecture(**kwargs)
     else:
-        raise KeyError("name" + str(name) + "not recognized as architecture name. Please use 9x9x-square.")
+        raise KeyError("name" + str(name) + "not recognized as architecture name. Please use one of", SQUARE_9Q, IBM_QX2, IBM_QX3, IBM_QX4, IBM_QX5)
 
 def get_fitness_func(mode, matrix, architecture, row=True, col=True, full_reduce=True):
     n_qubits=matrix.shape[0]
@@ -544,7 +641,7 @@ def permutated_gauss(matrix, mode=None, architecture=None, population_size=30, c
     if fitness_func is None:
         fitness_func =  get_fitness_func(mode, matrix.data, architecture, row=row, col=col, full_reduce=full_reduce)
     optimizer = GeneticAlgorithm(population_size, crossover_prob, mutate_prob, fitness_func)
-    best_permutation = optimizer.find_optimimum(9, n_iterations, continued=True)
+    best_permutation = optimizer.find_optimimum(architecture.n_qubits, n_iterations, continued=True)
 
     n_qubits=matrix.data.shape[0]
     e = np.arange(len(best_permutation))
@@ -578,7 +675,8 @@ def count_cnots_circuit(mode, circuit, n_compile=1):
             return len(circuit.cnots)
 
 def pyquil_main():
-    arch = create_9x9_square_architecture()
+    arch = create_9q_square_architecture()
+    n_qubits = arch.n_qubits
     n_compile = 10
     n_maps = 10
     pause = input("Pause every map? [y|N]") == 'y'
@@ -595,7 +693,7 @@ def pyquil_main():
         gates2_circuit = []
         for i in range(n_maps):
             pyquil_circuit = PyQuilCircuit(arch)
-            test_mat = build_random_parity_map(9, depth, pyquil_circuit)
+            test_mat = build_random_parity_map(n_qubits, depth, pyquil_circuit)
             print('')
             colored_print(test_mat)
             expected_order, new_order = quick_reorder(test_mat, arch)
@@ -650,7 +748,7 @@ def pyquil_main():
             mutate_prob = 0.2
             n_iter = 100
             optimizer = GeneticAlgorithm(population, crossover_prob, mutate_prob, get_steiner_fitness(test_mat, arch))
-            best_permutation = optimizer.find_optimimum(9, n_iter)
+            best_permutation = optimizer.find_optimimum(n_qubits, n_iter)
             print(best_permutation)
             gen_mat = test_mat[best_permutation][:, best_permutation]
             colored_print(gen_mat)
@@ -702,7 +800,8 @@ def pyquil_main():
         input('press enter')
 
 def genetic_speed_main():
-    arch = create_9x9_square_architecture()
+    arch = create_architecture(IBM_QX2)
+    n_qubits = arch.n_qubits
     n_compile=10
     n_maps = 1
     depths = [3, 5, 10, 20, 30]
@@ -716,8 +815,8 @@ def genetic_speed_main():
     for depth in depths:
         for _ in range(n_maps):
             pyquil_circuit = PyQuilCircuit(arch)
-            test_mat = build_random_parity_map(9, depth, pyquil_circuit)
-            perm = np.random.permutation(9)
+            test_mat = build_random_parity_map(n_qubits, depth, pyquil_circuit)
+            perm = np.random.permutation(n_qubits)
             test_mat = test_mat[:, perm]
             compiler = [len(pyquil_circuit.compile().split('CZ')) -1 for _ in range(n_compile)]
             print(describe(compiler))
@@ -728,7 +827,7 @@ def genetic_speed_main():
                 "n_gates": circuit.n_cnots,
                 "depth": depth}
             print(result)
-            circuit2 = CNOT_tracker(9)
+            circuit2 = CNOT_tracker(n_qubits)
             matrix2 = Mat2(np.copy(test_mat))
             matrix2.gauss(full_reduce=True, y=circuit2)
             print("Unconstraint Gauss:", len(circuit2.cnots))
@@ -736,7 +835,7 @@ def genetic_speed_main():
                 for iter in [(n+1)*iter_steps for n in range(n_steps)]:
                     start_time = time.time()
                     optimizer = GeneticAlgorithm(population, crossover_prob, mutate_prob, get_fitness_func(STEINER_MODE, test_mat, arch))
-                    best_permutation = optimizer.find_optimimum(9, iter, continued=True)
+                    best_permutation = optimizer.find_optimimum(n_qubits, iter, continued=True)
                     end_time = time.time()
                     print(best_permutation)
                     gen_mat = test_mat[best_permutation][:, best_permutation]
@@ -758,6 +857,7 @@ def genetic_speed_main():
 
 def compare_cnot_count_main(filename, architecture_name, n_compile, n_maps, depths, populations, n_iter, crossover_prob, mutate_prob):
     arch = create_architecture(architecture_name)
+    n_qubits = arch.n_qubits
     if os.path.exists(filename):
         previous_df = pd.read_csv(filename)
         write_mode = 'a'
@@ -779,7 +879,7 @@ def compare_cnot_count_main(filename, architecture_name, n_compile, n_maps, dept
                     results_this_iteration = []
                     print("Calculating for depth", depth, "at iteration", map)
                     pyquil_circuit = PyQuilCircuit(arch)
-                    random_map = build_random_parity_map(9, depth, [pyquil_circuit])
+                    random_map = build_random_parity_map(n_qubits, depth, [pyquil_circuit])
                     pyquil_cnots = count_cnots_circuit(QUIL_COMPILER, pyquil_circuit, n_compile)
                     gauss_cnots = count_cnots_array(GAUSS_MODE, random_map, QUIL_COMPILER, arch, full_reduce=True, n_compile=n_compile)
                     gauss_cnots_uncompiled = count_cnots_array(GAUSS_MODE, random_map, NO_COMPILER, arch, full_reduce=True)
@@ -821,7 +921,7 @@ def compare_cnot_count_main(filename, architecture_name, n_compile, n_maps, dept
             df.to_csv(filename, mode=write_mode, header=write_header)
 
 if __name__ == '__main__':
-    mode = "cnot_count"
+    mode = "genetic_speed"
     if mode == "quil":
         pyquil_main()
     elif mode == "genetic_speed":
