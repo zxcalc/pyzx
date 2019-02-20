@@ -22,15 +22,16 @@ import pandas as pd
 debug = False
 
 # ELIMINATION MODES:
-GAUSS_MODE = 0
-STEINER_MODE = 1
-GENETIC_STEINER_MODE = 3
-GENETIC_GAUSS_MODE = 4
+GAUSS_MODE = "gauss"
+STEINER_MODE = "steiner"
+GENETIC_STEINER_MODE = "genetic_steiner"
+GENETIC_GAUSS_MODE = "genetic_gauss"
 # COMPILE MODES
-QUIL_COMPILER = 2
-NO_COMPILER = 5
+QUIL_COMPILER = "quilc"
+NO_COMPILER = "not_compiled"
 
 SQUARE_9Q = "9q-square"
+LINE_5Q = "5q-line"
 IBM_QX2 = "ibm_qx2"
 IBM_QX3 = "ibm_qx3"
 IBM_QX4 = "ibm_qx4"
@@ -307,6 +308,9 @@ class CNOT_tracker():
     def __init__(self, n_qubits):
         self.cnots = []
         self.matrix = Mat2(np.identity(n_qubits))
+        self.row_perm = np.arange(n_qubits)
+        self.col_perm = np.arange(n_qubits)
+        self.n_qubits = n_qubits
 
     def row_add(self, q0, q1):
         self.cnots.append((q0, q1))
@@ -315,6 +319,12 @@ class CNOT_tracker():
     def col_add(self, q0, q1):
         self.cnots.insert(0, (q0, q1))
         self.matrix.col_add(q0, q1)
+
+    def to_qasm(self):
+        qasm = circuit_from_cnots(self.matrix.rows(), self.cnots).to_qasm()
+        initial_perm = "// Initial wiring: " + str(self.row_perm.tolist())
+        end_perm = "// Resulting wiring: " + str(self.col_perm.tolist())
+        return '\n'.join([initial_perm, end_perm, qasm])
 
 class PyQuilCircuit():
 
@@ -330,6 +340,7 @@ class PyQuilCircuit():
         compiler = LocalQVMCompiler(endpoint=self.qc.compiler.endpoint, device=device)
         self.qc.device = device
         self.qc.compiler = compiler
+        self.n_qubits = architecture.n_qubits
         self.program = Program()
         self.n_cnots = 0
         self.retries = 0
@@ -337,6 +348,9 @@ class PyQuilCircuit():
         self.matrix = Mat2(np.identity(architecture.n_qubits))
         self.cnots = []
         self.waited = False
+        self.compiled_program = None
+        self.row_perm = np.arange(self.n_qubits)
+        self.col_perm = np.arange(self.n_qubits)
 
     def row_add(self, q0, q1):
         """
@@ -359,6 +373,22 @@ class PyQuilCircuit():
     def compiled_cnot_count(self):
         return len(self.compile().split('CZ')) -1
 
+    def to_qasm(self):
+        if self.compiled_program is None:
+            qasm = circuit_from_cnots(self.n_qubits, self.cnots).to_qasm()
+            row_perm_str = str(self.row_perm.tolist())
+            col_perm_str = str(self.col_perm.tolist())
+        else:
+            wirings = self.compiled_program.split('REWIRING')
+            row_perm_str = "[" + wirings[1].split(')')[0].split('(')[1] + "]"
+            col_perm_str = "[" + wirings[2].split(')')[0].split('(')[1] + "]"
+            gates = [s.split()[:2] for s in self.compiled_program.split('CZ')[1:]]
+            gates = [(int(d) for d in reversed(g)) for g in gates]
+            qasm = circuit_from_cnots(self.n_qubits, gates).to_qasm()
+        initial_perm = "// Initial wiring: " + row_perm_str
+        end_perm = "// Resulting wiring: " + col_perm_str
+        return '\n'.join([initial_perm, end_perm, qasm])
+
     def compile(self):
         """
         Compiles the circuit/program for created quantum computer
@@ -368,7 +398,8 @@ class PyQuilCircuit():
             ep = self.qc.compile(self.program)
             self.retries = 0
             self.waited = False
-            return ep.program
+            self.compiled_program = ep.program
+            return self.compiled_program
         except KeyError as e:
             print('Oops, retrying to compile.', self.retries)
             if self.retries < self.max_retries:
@@ -382,6 +413,11 @@ class PyQuilCircuit():
                 return self.compile()
             else:
                 raise e
+
+def circuit_from_cnots(qubit_count, cnot_list):
+    c = PyzxCircuit(qubit_count)
+    [c.add_gate("CNOT", *cnot) for cnot in cnot_list]
+    return c
 
 def build_random_parity_map(qubits, depth, circuit=None):
     """
@@ -400,7 +436,7 @@ def build_random_parity_map(qubits, depth, circuit=None):
     c = PyzxCircuit.from_graph(g)
     matrix = Mat2(np.identity(qubits))
     for gate in c.gates:
-        matrix.row_add(gate.control, gate.target)
+        matrix.row_add(gate.target, gate.control)
         for c in circuit:
             c.row_add(gate.control, gate.target)
     return matrix.data
@@ -527,6 +563,16 @@ def create_9q_square_architecture(**kwargs):
     ])
     return Architecture(adjacency_matrix=m, **kwargs)
 
+def create_5q_line_architecture(**kwargs):
+    m = np.array([
+        [0, 1, 1, 0, 0],
+        [1, 0, 1, 0, 0],
+        [1, 1, 0, 1, 0],
+        [0, 0, 1, 0, 1],
+        [0, 0, 0, 1, 0]
+    ])
+    return Architecture(adjacency_matrix=m, **kwargs)
+
 def create_ibm_qx2_architecture(**kwargs):
     m = np.array([
         [0, 1, 1, 0, 0],
@@ -633,10 +679,13 @@ def create_fully_connected_architecture(size, **kwargs):
     return Architecture(adjacency_matrix=m, **kwargs)
 
 def create_architecture(name, **kwargs):
+    # Source Rigetti architectures: https://www.rigetti.com/qpu # TODO create the architectures from names in pyquil.list_quantum_computers() <- needs mapping
     # Source IBM architectures: http://iic.jku.at/files/eda/2018_tcad_mapping_quantum_circuit_to_ibm_qx.pdf​
     # IBM architectures are currently ignoring CNOT direction.
     if name == SQUARE_9Q:
         return create_9q_square_architecture(**kwargs)
+    elif name == LINE_5Q:
+        return create_5q_line_architecture(**kwargs)
     elif name == IBM_QX2:
         return create_ibm_qx2_architecture(**kwargs)
     elif name == IBM_QX3:
@@ -650,7 +699,7 @@ def create_architecture(name, **kwargs):
     elif name == RIGETTI_8Q_AGAVE:
         return create_rigetti_8q_agave_architecture(**kwargs)
     else:
-        raise KeyError("name" + str(name) + "not recognized as architecture name. Please use one of", SQUARE_9Q, IBM_QX2, IBM_QX3, IBM_QX4, IBM_QX5, RIGETTI_16Q_ASPEN, RIGETTI_8Q_AGAVE)
+        raise KeyError("name" + str(name) + "not recognized as architecture name. Please use one of", SQUARE_9Q, LINE_5Q, IBM_QX2, IBM_QX3, IBM_QX4, IBM_QX5, RIGETTI_16Q_ASPEN, RIGETTI_8Q_AGAVE)
 
 def get_fitness_func(mode, matrix, architecture, row=True, col=True, full_reduce=True):
     n_qubits=matrix.shape[0]
@@ -693,27 +742,34 @@ def permutated_gauss(matrix, mode=None, architecture=None, population_size=30, c
     else:
         circuit = y
     mat = Mat2(np.copy(matrix.data[row_perm][:, col_perm]))
+    circuit.row_perm = row_perm
+    circuit.col_perm = col_perm
     rank = gauss(mode, mat, architecture, x=x, y=circuit, full_reduce=full_reduce)
     return best_permutation, circuit.cnots, rank
 
-def count_cnots_array(mode, matrix, compile_mode=None, architecture=None, n_compile=1, **kwargs):
+def count_cnots_array(mode, matrix, compile_mode=None, architecture=None, n_compile=1, store_circuit_as=None, **kwargs):
     if compile_mode == QUIL_COMPILER:
         circuit = PyQuilCircuit(architecture)
     else:
         circuit = CNOT_tracker(matrix.shape[0])
     mat = Mat2(np.copy(matrix))
     gauss(mode, mat, architecture=architecture, y=circuit, **kwargs)
-    return count_cnots_circuit(compile_mode, circuit, n_compile)
+    return count_cnots_circuit(compile_mode, circuit, n_compile, store_circuit_as)
 
-def count_cnots_circuit(mode, circuit, n_compile=1):
+def count_cnots_circuit(mode, circuit, n_compile=1, store_circuit_as=None):
+    count = -1
     if mode == QUIL_COMPILER:
         if isinstance(circuit, PyQuilCircuit):
-            return sum([circuit.compiled_cnot_count() for i in range(n_compile)])/n_compile
+            count = sum([circuit.compiled_cnot_count() for i in range(n_compile)])/n_compile
     elif mode == NO_COMPILER:
         if isinstance(circuit, PyQuilCircuit):
-            return circuit.n_cnots
+            count = circuit.n_cnots
         else:
-            return len(circuit.cnots)
+            count = len(circuit.cnots)
+    if store_circuit_as is not None:
+        with open(store_circuit_as, 'w') as f:
+            f.write(circuit.to_qasm())
+    return count
 
 def pyquil_main():
     arch = create_9q_square_architecture()
@@ -896,8 +952,11 @@ def genetic_speed_main():
                     print("Execution took: ", end_time-start_time)
                     pause and input('press enter')
 
-def compare_cnot_count_main(filename, architecture_name, n_compile, n_maps, depths, populations, n_iter, crossover_prob, mutate_prob):
+def compare_cnot_count_main(filename, architecture_name, n_compile, n_maps, depths, populations, n_iter, crossover_prob, mutate_prob, folder="../circuits/steiner/"):
     arch = create_architecture(architecture_name)
+    folder = os.path.join(folder, architecture_name)
+    if not os.path.exists(folder):
+        os.makedirs(folder)
     n_qubits = arch.n_qubits
     if os.path.exists(filename):
         previous_df = pd.read_csv(filename)
@@ -915,16 +974,21 @@ def compare_cnot_count_main(filename, architecture_name, n_compile, n_maps, dept
     i = 0
     try:
         for depth in depths:
+            depth_folder = os.path.join(folder, str(depth))
+            if not os.path.exists(depth_folder):
+                os.makedirs(depth_folder)
             for map in range(n_maps):
                 if i > start:
                     results_this_iteration = []
+                    base_filename = str(map) + ".qasm"
                     print("Calculating for depth", depth, "at iteration", map)
                     pyquil_circuit = PyQuilCircuit(arch)
                     random_map = build_random_parity_map(n_qubits, depth, [pyquil_circuit])
-                    pyquil_cnots = count_cnots_circuit(QUIL_COMPILER, pyquil_circuit, n_compile)
-                    gauss_cnots = count_cnots_array(GAUSS_MODE, random_map, QUIL_COMPILER, arch, full_reduce=True, n_compile=n_compile)
-                    gauss_cnots_uncompiled = count_cnots_array(GAUSS_MODE, random_map, NO_COMPILER, arch, full_reduce=True)
-                    steiner_cnots = count_cnots_array(STEINER_MODE, random_map, NO_COMPILER, arch, full_reduce=True)
+                    count_cnots_circuit(NO_COMPILER, pyquil_circuit, store_circuit_as=os.path.join(depth_folder, "Original" + base_filename))
+                    pyquil_cnots = count_cnots_circuit(QUIL_COMPILER, pyquil_circuit, n_compile, store_circuit_as=os.path.join(depth_folder, "Original_compiled" + base_filename))
+                    gauss_cnots = count_cnots_array(GAUSS_MODE, random_map, QUIL_COMPILER, arch, full_reduce=True, n_compile=n_compile, store_circuit_as=os.path.join(depth_folder, "Gauss_compiled" + base_filename))
+                    gauss_cnots_uncompiled = count_cnots_array(GAUSS_MODE, random_map, NO_COMPILER, arch, full_reduce=True, store_circuit_as=os.path.join(depth_folder, "Gauss_uncompiled" + base_filename))
+                    steiner_cnots = count_cnots_array(STEINER_MODE, random_map, NO_COMPILER, arch, full_reduce=True, store_circuit_as=os.path.join(depth_folder, "Steiner" + base_filename))
                     results_this_iteration += [{"mode": m,"n_gates": n, "depth": depth, "population": 0, "iterations": 0, "map": i}
                                 for m, n in zip(["quil", "gauss", "gauss_uncompiled", "steiner"],
                                                 [pyquil_cnots, gauss_cnots, gauss_cnots_uncompiled, steiner_cnots])]
@@ -932,7 +996,8 @@ def compare_cnot_count_main(filename, architecture_name, n_compile, n_maps, dept
                         for iter in n_iter:
                             print("Genetic algorithm with population", population, "and n_iterations", iter)
                             genetic_cnots = count_cnots_array(GENETIC_STEINER_MODE, random_map, NO_COMPILER, arch, full_reduce=True,
-                                                              population_size=population, crossover_prob=crossover_prob, mutate_prob=mutate_prob, n_iterations=iter)
+                                                              population_size=population, crossover_prob=crossover_prob, mutate_prob=mutate_prob, n_iterations=iter,
+                                                              store_circuit_as = os.path.join(depth_folder, "Genetic_steiner_pop" + str(population) + "iter" + str(iter) +"_" + base_filename))
                             result = {
                                 "mode": "genetic_steiner",
                                 "population": population,
@@ -942,7 +1007,8 @@ def compare_cnot_count_main(filename, architecture_name, n_compile, n_maps, dept
                             }
                             results_this_iteration.append(result)
                             genetic_cnots = count_cnots_array(GENETIC_GAUSS_MODE, random_map, QUIL_COMPILER, arch, full_reduce=True, n_compile=n_compile,
-                                                              population_size=population, crossover_prob=crossover_prob, mutate_prob=mutate_prob, n_iterations=iter)
+                                                              population_size=population, crossover_prob=crossover_prob, mutate_prob=mutate_prob, n_iterations=iter,
+                                                              store_circuit_as = os.path.join(depth_folder, "Genetic_gauss_pop" + str(population) + "iter" + str(iter) +"_" + base_filename))
                             result = {
                                 "mode": "genetic_gauss",
                                 "population": population,
@@ -953,8 +1019,9 @@ def compare_cnot_count_main(filename, architecture_name, n_compile, n_maps, dept
                             results_this_iteration.append(result)
                     results += results_this_iteration
                 i += 1
-    except:
-        print("An error occurred")
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
     finally:
         if results != []:
             df = pd.DataFrame(results)
