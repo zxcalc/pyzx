@@ -31,3 +31,4 @@ from . import rules
 from . import optimize
 from . import simplify
 from . import d3
+from . import tikz

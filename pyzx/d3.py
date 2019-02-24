@@ -44,6 +44,9 @@ def phase_to_s(a):
 def draw(g, scale=None):
     global _d3_display_seq
 
+    if not hasattr(g, 'vertices'):
+        g = g.to_graph()
+
     _d3_display_seq += 1
     seq = _d3_display_seq
 
