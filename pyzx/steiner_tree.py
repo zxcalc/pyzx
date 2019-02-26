@@ -971,6 +971,7 @@ def compare_cnot_count_main(filename, architecture_name, n_compile, n_maps, dept
         index_shift = 0
         start = -1
     results = []
+    finished = True
     i = 0
     try:
         for depth in depths:
@@ -1022,11 +1023,13 @@ def compare_cnot_count_main(filename, architecture_name, n_compile, n_maps, dept
     except Exception as e:
         import traceback
         traceback.print_exc()
+        finished = False
     finally:
         if results != []:
             df = pd.DataFrame(results)
             df.index += index_shift
             df.to_csv(filename, mode=write_mode, header=write_header)
+        return finished
 
 if __name__ == '__main__':
     mode = "cnot_count"
@@ -1038,5 +1041,5 @@ if __name__ == '__main__':
         settings = {}
         with open("9x9-settings.json") as f:
             settings = json.load(f)
-        compare_cnot_count_main(**settings)
+        while not compare_cnot_count_main(**settings) : pass
 
