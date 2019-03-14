@@ -247,7 +247,10 @@ class Circuit(object):
         if ext == 'qgraph':
             raise TypeError(".qgraph files are not Circuits. Please load them as graphs using json_to_graph")
         if ext == 'quipper':
-            return Circuit.from_quipper_file(circuitfile)
+            try:
+                return Circuit.from_quipper_file(circuitfile)
+            except:
+                return quipper_center_block(circuitfile)
         raise TypeError("Couldn't determine filetype")
 
     def to_basic_gates(self):
@@ -524,7 +527,7 @@ def parse_quipper_block(lines):
                 f = float(f)
             except ValueError:
                 raise TypeError("Unsupported expression: " + gate)
-            phase = Fraction(f/math.pi).limit_denominator()
+            phase = Fraction(f/math.pi)
             target = gate[gate.rfind('(')+1:gate.rfind(')')]
             try: 
                 target = int(target)
@@ -578,6 +581,22 @@ def parse_quipper_block(lines):
             raise TypeError("Unsupported controlled gate: " + gname)
     return c
 
+def quipper_center_block(fname):
+    """Function to load the PF files of the NRSCM paper."""
+    f = open(fname, 'r')
+    text = f.read()
+    f.close()
+    i = text.find('Subroutine: "C"')
+    if i == -1: 
+        i = text.find('Subroutine: "S1"')
+        if i == -1: raise Exception("Not a valid format")
+        text = text[i:].strip()
+    else:
+        j = text.find('Subroutine: "R"',i)
+        if j == -1: raise Exception("Not a valid format")
+        text = text[i:j].strip()
+    lines = text.splitlines()[3:]
+    return parse_quipper_block(lines)
 
 class QASMParser(object):
     """Class for parsing QASM source files into circuit descriptions."""
