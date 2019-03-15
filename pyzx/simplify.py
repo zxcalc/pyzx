@@ -121,6 +121,91 @@ def clifford_simp(g, quiet=False):
         if i == 0:
             break
 
+
+def full_reduce(g, quiet=True):
+    interior_clifford_simp(g, quiet=quiet)
+    pivot_gadget_simp(g,quiet=quiet)
+    while True:
+        clifford_simp(g,quiet=quiet)
+        i = gadget_simp(g, quiet=quiet)
+        interior_clifford_simp(g,quiet=quiet)
+        j = pivot_gadget_simp(g,quiet=quiet)
+        if i+j == 0:
+            break
+
+def teleport_reduce(g, quiet=True):
+    s = Simplifier(g)
+    s.full_reduce(quiet)
+    return s.mastergraph
+
+
+class Simplifier(object):
+    def __init__(self, g):
+        g.track_phases = True
+        self.mastergraph = g.copy()
+        self.simplifygraph = g.copy()
+        self.simplifygraph.set_phase_master(self)
+
+    def fuse_phases(self,i1, i2):
+        try:
+            v1 = self.mastergraph.vertex_from_phase_index(i1)
+            v2 = self.mastergraph.vertex_from_phase_index(i2)
+        except ValueError: pass
+        p = self.mastergraph.phase(v2)
+        self.mastergraph.add_to_phase(v1,p)
+        self.mastergraph.set_phase(v2,0)
+    
+    def full_reduce(self, quiet=True):
+        full_reduce(self.simplifygraph,quiet=quiet)
+
+
+
+def to_gh(g,quiet=True):
+    """Turns every red node into a green node by changing regular edges into hadamard edges"""
+    ty = g.types()
+    for v in g.vertices():
+        if ty[v] == 2:
+            g.set_type(v, 1)
+            for e in g.incident_edges(v):
+                et = g.edge_type(e)
+                if et == 2: g.set_edge_type(e,1)
+                elif et == 1: g.set_edge_type(e,2)
+
+def to_rg(g, select=None):
+    """Turn green nodes into red nodes by colour-changing vertices which satisfy the predicate ``select``.
+    By default, the predicate is set to greedily reducing the number of Hadamard-edges.
+    :param g: A ZX-graph.
+    :param select: A function taking in vertices and returning ``True`` or ``False``."""
+    if not select:
+        select = lambda v: (
+            len([e for e in g.incident_edges(v) if g.edge_type(e) == 1]) <
+            len([e for e in g.incident_edges(v) if g.edge_type(e) == 2])
+            )
+
+    ty = g.types()
+    for v in g.vertices():
+        if select(v):
+            if ty[v] == 1:
+                g.set_type(v, 2)
+                for e in g.incident_edges(v):
+                    g.set_edge_type(e, 1 if g.edge_type(e) == 2 else 2)
+            elif ty[v] == 2:
+                g.set_type(v, 1)
+                for e in g.incident_edges(v):
+                    g.set_edge_type(e, 1 if g.edge_type(e) == 2 else 2)
+
+def tcount(g):
+    """Returns the amount of nodes in g that have a non-Clifford phase."""
+    if not hasattr(g, "vertices"): # It is probably a circuit
+        return g.tcount()
+    count = 0
+    phases = g.phases()
+    for v in g.vertices():
+        if phases[v]!=0 and phases[v].denominator > 2:
+            count += 1
+    return count
+
+
 # def pivot_double_boundary(g, quiet=False):
 #     """Finds Pauli-phase interior non-phase gadget nodes that are connected
 #     to the boundary. It changes the boundary nodes so that a pivot can be done
@@ -180,78 +265,6 @@ def clifford_simp(g, quiet=False):
 #                                 len(skiplist),len(pivotable_edges)))
 #     i = pivot_simp(g, matchf=lambda e: e in pivotable_edges, quiet=quiet)
 #     return i
-
-
-
-def to_gh(g,quiet=True):
-    """Turns every red node into a green node by changing regular edges into hadamard edges"""
-    ty = g.types()
-    for v in g.vertices():
-        if ty[v] == 2:
-            g.set_type(v, 1)
-            for e in g.incident_edges(v):
-                et = g.edge_type(e)
-                if et == 2: g.set_edge_type(e,1)
-                elif et == 1: g.set_edge_type(e,2)
-
-def to_rg(g, select=None):
-    """Turn green nodes into red nodes by colour-changing vertices which satisfy the predicate ``select``.
-    By default, the predicate is set to greedily reducing the number of Hadamard-edges.
-    :param g: A ZX-graph.
-    :param select: A function taking in vertices and returning ``True`` or ``False``."""
-    if not select:
-        select = lambda v: (
-            len([e for e in g.incident_edges(v) if g.edge_type(e) == 1]) <
-            len([e for e in g.incident_edges(v) if g.edge_type(e) == 2])
-            )
-
-    ty = g.types()
-    for v in g.vertices():
-        if select(v):
-            if ty[v] == 1:
-                g.set_type(v, 2)
-                for e in g.incident_edges(v):
-                    g.set_edge_type(e, 1 if g.edge_type(e) == 2 else 2)
-            elif ty[v] == 2:
-                g.set_type(v, 1)
-                for e in g.incident_edges(v):
-                    g.set_edge_type(e, 1 if g.edge_type(e) == 2 else 2)
-
-
-def full_reduce(g, quiet=True):
-    interior_clifford_simp(g, quiet=quiet)
-    while True:
-        pivot_gadget_simp(g,quiet=quiet)
-        clifford_simp(g,quiet=quiet)
-        i = gadget_simp(g, quiet=quiet)
-        interior_clifford_simp(g,quiet=quiet)
-        if not i:
-            break
-
-def teleport_reduce(g, quiet=True):
-    s = Simplifier(g)
-    s.full_reduce(quiet)
-    return s.mastergraph
-
-
-class Simplifier(object):
-    def __init__(self, g):
-        g.track_phases = True
-        self.mastergraph = g.copy()
-        self.simplifygraph = g.copy()
-        self.simplifygraph.set_phase_master(self)
-
-    def fuse_phases(self,i1, i2):
-        try:
-            v1 = self.mastergraph.vertex_from_phase_index(i1)
-            v2 = self.mastergraph.vertex_from_phase_index(i2)
-        except ValueError: pass
-        p = self.mastergraph.phase(v2)
-        self.mastergraph.add_to_phase(v1,p)
-        self.mastergraph.set_phase(v2,0)
-    
-    def full_reduce(self, quiet=True):
-        full_reduce(self.simplifygraph,quiet=quiet)
 
 # def gadgetize(g):
 #     """Un-fuses every node with a non-Pauli phase, so that they act like phase gadgets. 
@@ -334,18 +347,6 @@ class Simplifier(object):
 #         if not quiet and gadgetcount: print("Back to clifford_simp")
 #         clifford_simp(g,quiet=quiet)
 #         i = gadget_simp(g, quiet=quiet)
-
-
-def tcount(g):
-    """Returns the amount of nodes in g that have a non-Clifford phase."""
-    if not hasattr(g, "vertices"): # It is probably a circuit
-        return g.tcount()
-    count = 0
-    phases = g.phases()
-    for v in g.vertices():
-        if phases[v]!=0 and phases[v].denominator > 2:
-            count += 1
-    return count
 
 
 def simp_iter(g, name, match, rewrite):

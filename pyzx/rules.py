@@ -263,9 +263,6 @@ def match_pivot_parallel(g, matchf=None, num=-1, check_edge_types=False):
         v0n = list(g.neighbours(v0))
         v0b = []
         for n in v0n:
-            #if g.phase(n).denominator > 2:
-            #    invalid_edge = True
-            #    break
             et = g.edge_type(g.edge(v0,n))
             if types[n] == 1 and et == 2: pass
             elif types[n] == 0: v0b.append(n)
@@ -278,9 +275,6 @@ def match_pivot_parallel(g, matchf=None, num=-1, check_edge_types=False):
         v1n = list(g.neighbours(v1))
         v1b = []
         for n in v1n:
-            #if g.phase(n).denominator > 2:
-            #    invalid_edge = True
-            #    break
             et = g.edge_type(g.edge(v1,n))
             if types[n] == 1 and et == 2: pass
             elif types[n] == 0: v1b.append(n)
@@ -296,9 +290,6 @@ def match_pivot_parallel(g, matchf=None, num=-1, check_edge_types=False):
             for c in g.incident_edges(v): candidates.discard(c)
         for v in v1n:
             for c in g.incident_edges(v): candidates.discard(c)
-        #n0 = list(v0n - v1n)
-        #n01 = list(v0n & v1n)
-        #n1 = list(v1n - v0n)
         b0 = list(v0b)
         b1 = list(v1b)
         m.append([v0,v1,b0,b1])
@@ -384,6 +375,7 @@ def match_pivot_boundary(g, matchf=None, num=-1):
     rs = g.rows()
     
     edge_list = []
+    consumed_vertices = set()
     i = 0
     m = []
     while (num == -1 or i < num) and len(candidates) > 0:
@@ -400,7 +392,7 @@ def match_pivot_boundary(g, matchf=None, num=-1):
             if len(g.neighbours(n)) == 1: # v is a phase gadget
                 good_vert = False
                 break
-            if n not in candidates: 
+            if n in consumed_vertices:
                 good_vert = False
                 break
             boundaries = [b for b in g.neighbours(n) if types[b]==0]
@@ -422,6 +414,8 @@ def match_pivot_boundary(g, matchf=None, num=-1):
         g.update_phase_index(w,v1)
         edge_list.append((w,v2) if w<v2 else (v2,w))
         edge_list.append((v1,v2) if v1<v2 else (v2,v1))
+        for n in g.neighbours(v): consumed_vertices.add(n)
+        for n in g.neighbours(w): consumed_vertices.add(n)
         
         m.append([v,w,[],[bound]])
         i += 1
