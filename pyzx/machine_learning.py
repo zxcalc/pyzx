@@ -1,3 +1,4 @@
+
 import numpy as np
 
 class GeneticAlgorithm():
@@ -96,6 +97,7 @@ class GeneticAlgorithm():
         parent[gen1] = parent[gen2]
         parent[gen2] = _
         return parent
+
 
 if __name__ == '__main__':
     def fitness_func(chromosome):

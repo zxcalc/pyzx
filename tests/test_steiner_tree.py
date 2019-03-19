@@ -7,8 +7,11 @@ if __name__ == '__main__':
 import numpy as np
 
 from pyzx.linalg import Mat2
-from pyzx.steiner_tree import Architecture, build_random_parity_map, PyQuilCircuit, gauss, get_steiner_fitness, CNOT_tracker
+from pyzx.steiner_tree import gauss, STEINER_MODE, GENETIC_STEINER_MODE, GAUSS_MODE, GENETIC_GAUSS_MODE
+from pyzx.architecture import create_9q_square_architecture
+from pyzx.parity_maps import CNOT_tracker, build_random_parity_map
 from pyzx.machine_learning import GeneticAlgorithm
+from pyzx.fitness import get_gate_count_fitness_func
 
 SEED = 42
 
@@ -16,26 +19,17 @@ class TestSteiner(unittest.TestCase):
 
     def setUp(self):
         self.n_tests = 5
-        m = np.array([
-            [0, 1, 0, 0, 0, 1, 0, 0, 0],
-            [1, 0, 1, 0, 1, 0, 0, 0, 0],
-            [0, 1, 0, 1, 0, 0, 0, 0, 0],
-            [0, 0, 1, 0, 1, 0, 0, 0, 1],
-            [0, 1, 0, 1, 0, 1, 0, 1, 0],
-            [1, 0, 0, 0, 1, 0, 1, 0, 0],
-            [0, 0, 0, 0, 0, 1, 0, 1, 0],
-            [0, 0, 0, 0, 0, 0, 1, 0, 1],
-            [0, 0, 0, 1, 0, 0, 0, 1, 0]
-        ])
-        self.arch = Architecture(adjacency_matrix=m)
+        self.arch = create_9q_square_architecture()
         depth = 20
-        self.circuit = [PyQuilCircuit(self.arch) for _ in range(self.n_tests)]
+        self.circuit = [CNOT_tracker(self.arch.n_qubits) for _ in range(self.n_tests)]
         np.random.seed(SEED)
         self.matrix = [build_random_parity_map(9, depth, self.circuit[i]) for i in range(self.n_tests)]
 
     def assertGates(self, circuit):
-        for gate in circuit.cnots:
-            self.assertTrue(gate in self.arch.graph.edges() or tuple(reversed(gate)) in self.arch.graph.edges())
+        for gate in circuit.gates:
+            if hasattr(gate, "name") and gate.name == "CNOT":
+                edge = (gate.control, gate.target)
+                self.assertTrue(edge in self.arch.graph.edges() or tuple(reversed(edge)) in self.arch.graph.edges())
 
     def assertMat2Equal(self, m1, m2, triangle=False):
         if triangle:
@@ -79,16 +73,16 @@ class TestSteiner(unittest.TestCase):
     def test_all_cnots_valid(self):
         for i in range(self.n_tests):
             with self.subTest(i=i):
-                circuit = CNOT_tracker()
+                circuit = CNOT_tracker(self.arch.n_qubits)
                 matrix = Mat2(np.copy(self.matrix[i]))
-                _ = gauss("STEINER", matrix, architecture=self.arch, full_reduce=True, y=circuit)
+                _ = gauss(STEINER_MODE, matrix, architecture=self.arch, full_reduce=True, y=circuit)
                 self.assertGates(circuit)
 
     def do_gauss(self, mode, array, full_reduce=True, with_assert=True):
-        circuit = CNOT_tracker()
+        circuit = CNOT_tracker(self.arch.n_qubits)
         matrix = Mat2(np.copy(array))
         rank = gauss(mode, matrix, architecture=self.arch, full_reduce=full_reduce, y=circuit)
-        with_assert and mode == "STEINER" and self.assertGates(circuit)
+        with_assert and mode == STEINER_MODE and self.assertGates(circuit)
         with_assert and full_reduce and self.assertCircuitEquivalentNdArr(circuit, array)
         return circuit, matrix, rank
 
@@ -99,7 +93,7 @@ class TestSteiner(unittest.TestCase):
                     matrices = []
                     ranks = []
                     circuits = []
-                    for mode in ["GAUSS", "STEINER"]:
+                    for mode in [GAUSS_MODE, STEINER_MODE]:
                         circuit, matrix, rank = self.do_gauss(mode, self.matrix[i], full_reduce=full_reduce, with_assert=True)
                         circuits.append(circuit)
                         ranks.append(rank)
@@ -120,7 +114,7 @@ class TestSteiner(unittest.TestCase):
     def reverse_permutation(self, perm):
         return [perm.tolist().index(i) for i in range(len(perm))]
 
-    def do_permutated_gaus(self, array, perm1, perm2, mode="STEINER", full_reduce=True, with_assert=True):
+    def do_permutated_gaus(self, array, perm1, perm2, mode=STEINER_MODE, full_reduce=True, with_assert=True):
         with_assert and self.assertIsPerm(perm1)
         with_assert and self.assertIsPerm(perm2)
         reordered_array = array[perm1][:, perm2]
@@ -146,7 +140,7 @@ class TestSteiner(unittest.TestCase):
                 crossover_prob = 0.8
                 mutate_prob = 0.2
                 n_iter = 100
-                optimizer = GeneticAlgorithm(population, crossover_prob, mutate_prob, get_steiner_fitness(self.matrix[i], self.arch))
+                optimizer = GeneticAlgorithm(population, crossover_prob, mutate_prob, get_gate_count_fitness_func(STEINER_MODE, Mat2(self.matrix[i]), self.arch))
                 best_permutation = optimizer.find_optimimum(9, n_iter)
                 self.do_permutated_gaus(self.matrix[i], best_permutation, best_permutation)
 
