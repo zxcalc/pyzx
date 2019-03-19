@@ -15,6 +15,10 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+"""Supplies methods to convert ZX-graphs to tikz files.
+These tikz files are designed to be easily readable by the program `Tikzit <https://tikzit.github.io>`_.
+"""
+
 
 import tempfile
 import os
@@ -35,6 +39,9 @@ TIKZ_BASE = """
 """
 
 def to_tikz(g, xoffset=0, yoffset=0, idoffset=0, full_output=True):
+    """Converts a ZX-graph ``g`` to a string representing a tikz diagram.
+    The optional arguments are used by :func:`to_tikz_sequence`.
+    """
     verts = []
     maxindex = idoffset
     for v in g.vertices():
@@ -77,6 +84,8 @@ def to_tikz(g, xoffset=0, yoffset=0, idoffset=0, full_output=True):
     else: return (verts, edges)
 
 def to_tikz_sequence(graphs, maxwidth=10):
+    """Given a list of ZX-graphs, outputs a single tikz diagram with the graphs presented in a grid.
+    ``maxwidth`` is the maximum width of the diagram, before a graph is put on a new row in the tikz diagram."""
     xoffset = -maxwidth
     yoffset = -10
     idoffset = 0
@@ -98,6 +107,11 @@ def to_tikz_sequence(graphs, maxwidth=10):
 
 
 def tikzit(g):
+    """Opens Tikzit with the graph ``g`` opened as a tikz diagram. 
+    For this to work, ``zx.tikz.tikzit_location`` must be pointed towards the Tikzit executable.
+    Even though this function is intended to be used with Tikzit, ``zx.tikz.tikzit_location``
+    can point towards any executable that takes a tikz file as an input, such as a text processor."""
+
     if not tikzit_location or not os.path.exists(tikzit_location):
         print("Please point towards the Tikzit executable with tikz.tikzit_location")
         return

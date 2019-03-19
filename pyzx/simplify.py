@@ -15,7 +15,10 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-"""Contains simplification procedures based in the rewrite rules in rules_.
+"""Contains simplification procedures based on the rewrite rules in rules_.
+The main procedures of interest are :func:``clifford_simp` for simple reductions, 
+:func:``full_reduce`` for the full rewriting power of PyZX, and :func:`teleport_reduce` to 
+use the power of :func:``full_reduce`` while not changing the structure of the graph.
 """
 
 from __future__ import print_function
@@ -123,6 +126,8 @@ def clifford_simp(g, quiet=False):
 
 
 def full_reduce(g, quiet=True):
+    """The main simplification routine of PyZX. It uses a combination of :func:`clifford_simp` and
+    the gadgetization strategies :func:`pivot_gadget_simp` and :func:`gadget_simp`."""
     interior_clifford_simp(g, quiet=quiet)
     pivot_gadget_simp(g,quiet=quiet)
     while True:
@@ -134,12 +139,16 @@ def full_reduce(g, quiet=True):
             break
 
 def teleport_reduce(g, quiet=True):
+    """This simplification procedure runs :func:`full_reduce` in a way 
+    that does not change the graph structure of the resulting diagram.
+    The only thing that is different in the output graph are the location and value of the phases.""" 
     s = Simplifier(g)
     s.full_reduce(quiet)
     return s.mastergraph
 
 
 class Simplifier(object):
+    """Class used for :func:`teleport_reduce`."""
     def __init__(self, g):
         g.track_phases = True
         self.mastergraph = g.copy()
@@ -348,6 +357,7 @@ def tcount(g):
 #         clifford_simp(g,quiet=quiet)
 #         i = gadget_simp(g, quiet=quiet)
 
+#The functions below haven't been updated in a while. Use at your own risk.
 
 def simp_iter(g, name, match, rewrite):
     """Version of :func:`simp` that instead of performing all rewrites at once, returns an iterator."""

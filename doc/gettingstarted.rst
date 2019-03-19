@@ -40,15 +40,15 @@ The circuit is represented internally as a graph::
 
 This simplified ZX-graph no longer looks like a circuit. PyZX supplies some methods for turning a ZX-graph back into a circuit::
 	
-	>>> zx.extract.clifford_extract(g,1,2)
-	>>> zx.draw(g)
+	>>> c = zx.extract.streaming_extract(g.copy())
+	>>> zx.draw(c)
 
 .. figure::  _static/clifford_extracted.png
    :align:   center
 
 To verify that the simplified circuit is still equal to the original we can convert them to numpy tensors and compare equality directly::
 	
-	>>> t1 = circuit.to_tensor()
+	>>> t1 = c.to_tensor()
 	>>> t2 = g.to_tensor()
 	>>> zx.compare_tensors(t1,t2)
 		True
@@ -80,5 +80,44 @@ And we can represent this circuit in one of several circuit description language
 	QGate["X"](3) with controls=[+2] with nocontrol
 	QGate["H"](3) with nocontrol
 	Outputs: 0Qbit, 1Qbit, 2Qbit, 3Qbit
+
+Optimising random circuits is of course not very useful, so let us do some optimisation on a predefined circuit::
+
+	>>> c = zx.Circuit.load('circuits/Fast/mod5_4_before')  # Circuit.load auto-detects the file format
+	>>> print(c.gates)  #  This circuit is built out of CCZ gates.
+	[NOT(4), HAD(4), CCZ(c1=0,c2=3,t=4), CCZ(c1=2,c2=3,t=4), HAD(4), CNOT(3,4), HAD(4), CCZ(c1=1,c2=2,t=4), HAD(4), CNOT(2,4), HAD(4), CCZ(c1=0,c2=1,t=4), HAD(4), CNOT(1,4), CNOT(0,4)]
+	>>> c = c.to_basic_gates()  #  Convert it to the Clifford+T gate set.
+	>>> print(c.gates)
+	[NOT(4), HAD(4), CNOT(3,4), T*(4), CNOT(0,4), T(4), CNOT(3,4), T*(4), CNOT(0,4), T(3), T(4), HAD(4), CNOT(0,3), T(0), T*(3), CNOT(0,3), HAD(4), CNOT(3,4), T*(4), CNOT(2,4), T(4), CNOT(3,4), T*(4), CNOT(2,4), T(3), T(4), HAD(4), CNOT(2,3), T(2), T*(3), CNOT(2,3), HAD(4), HAD(4), CNOT(3,4), HAD(4), CNOT(2,4), T*(4), CNOT(1,4), T(4), CNOT(2,4), T*(4), CNOT(1,4), T(2), T(4), HAD(4), CNOT(1,2), T(1), T*(2), CNOT(1,2), HAD(4), HAD(4), CNOT(2,4), HAD(4), CNOT(1,4), T*(4), CNOT(0,4), T(4), CNOT(1,4), T*(4), CNOT(0,4), T(1), T(4), HAD(4), CNOT(0,1), T(0), T*(1), CNOT(0,1), HAD(4), HAD(4), CNOT(1,4), CNOT(0,4)]
+	>>> print(c.stats())
+	Circuit mod5_4_before on 5 qubits with 71 gates.
+		28 is the T-count
+		43 Cliffords among which
+		28 2-qubit gates and 14 Hadamard gates.
+	>>> g = c.to_graph()
+	>>> print(g)
+	Graph(109 vertices, 132 edges)
+	>>> zx.simplify.full_reduce(g)  # Simplify the ZX-graph
+	>>> print(g)
+	Graph(31 vertices, 38 edges)
+	>>> c2 = zx.extract.streaming_extract(g).to_basic_gates()  # Turn graph back into circuit
+	>>> print(c2.stats())
+	Circuit  on 5 qubits with 42 gates.
+		8 is the T-count
+		34 Cliffords among which
+		24 2-qubit gates and 10 Hadamard gates.
+	>>> c3 = zx.optimize.full_optimize(c2)  #  Do some further optimization on the circuit
+	>>> print(c3.stats())
+	Circuit  on 5 qubits with 27 gates.
+		8 is the T-count
+		19 Cliffords among which
+		14 2-qubit gates and 2 Hadamard gates.
+
+The circuit file-formats supported by ``Circuit.load`` are curently *qasm*, *qc* or *quipper*. 
+PyZX can also be run from the command-line for some easy circuit-to-circuit manipulation. In order to optimise a circuit you can run the command::
+	
+	python -m pyzx opt input_circuit.qasm
+
+For more information regarding the command-line tools, run ``python -m pyzx --help``.
 
 This concludes this tutorial. For more information about the simplification procedures see :ref:`simplify`. Information regarding the circuit extraction can be found in :ref:`extract`. The different representations of the graphs and circuits is detailed in :ref:`representations`. The low level graph api is explained in :ref:`graph`.

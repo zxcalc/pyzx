@@ -23,7 +23,7 @@ The current rewrites are based on:
 - Spider fusion.
 - The bialgebra equation.
 - Local Complementation.
-- Pivoting.
+- A few variations on Pivoting.
 - Removing of identities.
 
 Each of these rewrite rules consists of three methods:
@@ -38,7 +38,8 @@ Each of these rewrite rules consists of three methods:
   :meth:`~graph.base.BaseGraph.remove_isolated_vertices`
   should be called.
 
-These rewrite rules are used in the simplification procedures of :mod:`simplify`.
+These rewrite rules are used in the simplification procedures of :mod:`simplify`. 
+In particular, they are used in combination with :func:`simplify.simp` to create rewrite strategies.
 """
 
 from fractions import Fraction
@@ -134,7 +135,7 @@ def match_spider(g):
     return []
 
 def match_spider_parallel(g, matchf=None, num=-1):
-    """Finds noninteracting matchings of the spider fusion rule.
+    """Finds non-interacting matchings of the spider fusion rule.
     
     :param g: An instance of a ZX-graph.
     :param matchf: An optional filtering function for candidate edge, should
@@ -221,14 +222,13 @@ def unspider(g, m, qubit=-1, row=-1):
     return v
 
 
-# TODO: optimise for single-match case
 def match_pivot(g):
     """Does the same as :func:`match_pivot_parallel` but with ``num=1``."""
     return match_pivot_parallel(g, num=1, check_edge_types=True)
 
 
 def match_pivot_parallel(g, matchf=None, num=-1, check_edge_types=False):
-    """Finds noninteracting matchings of the pivot rule.
+    """Finds non-interacting matchings of the pivot rule.
     
     :param g: An instance of a ZX-graph.
     :param num: Maximal amount of matchings to find. If -1 (the default)
@@ -553,7 +553,7 @@ def match_ids(g):
     return match_ids_parallel(g, num=1)
 
 def match_ids_parallel(g, vertexf=None, num=-1):
-    """Finds noninteracting identity nodes.
+    """Finds non-interacting identity vertices.
     
     :param g: An instance of a ZX-graph.
     :param num: Maximal amount of matchings to find. If -1 (the default)
@@ -600,10 +600,16 @@ def remove_ids(g, matches):
 
 
 def match_phase_gadgets(g):
+    """Determines which phase gadgets act on the same vertices, so that they can be fused together.
+    
+    :param g: An instance of a ZX-graph.
+    :rtype: List of 5-tuples ``(axel,leaf, total combined phase, other axels with same targets, other leafs)``.
+    """
     phases = g.phases()
 
     parities = dict()
     gadgets = dict()
+    # First we find all the phase-gadgets, and the list of vertices they act on
     for v in g.vertices():
         if phases[v] != 0 and phases[v].denominator > 2 and len(list(g.neighbours(v)))==1:
             n = list(g.neighbours(v))[0]
@@ -617,7 +623,7 @@ def match_phase_gadgets(g):
         if len(gad) == 1: 
             n = gad[0]
             v = gadgets[n]
-            if phases[n] != 0:
+            if phases[n] != 0: # If the phase of the axel vertex is pi, we change the phase of the gadget
                 m.append((v,n,-phases[v],[],[]))
         else:
             totphase = sum((1 if phases[n]==0 else -1)*phases[gadgets[n]] for n in gad)%2
@@ -628,6 +634,7 @@ def match_phase_gadgets(g):
     return m
 
 def merge_phase_gadgets(g, matches):
+    """Given the output of :func:``match_phase_gadgets``, removes phase gadgets that act on the same set of targets."""
     rem = []
     for v, n, phase, othergadgets, othertargets in matches:
         g.set_phase(v, phase)
@@ -640,7 +647,10 @@ def merge_phase_gadgets(g, matches):
 
 
 
+
 def match_gadgets_phasepoly(g):
+    """Finds groups of phase-gadgets that act on the same set of 4 vertices in order to apply a rewrite based on
+    rule R_13 of the paper *A Finite Presentation of CNOT-Dihedral Operators*.""" 
     targets = {}
     gadgets = {}
     for v in g.vertices():
@@ -688,6 +698,8 @@ def match_gadgets_phasepoly(g):
 
 
 def apply_gadget_phasepoly(g, matches):
+    """Uses the output of :func:`match_gadgets_phasepoly` to apply a rewrite based 
+    on rule R_13 of the paper *A Finite Presentation of CNOT-Dihedral Operators*.""" 
     rs = g.rows()
     phases = g.phases()
     for group, gadgets in matches:
