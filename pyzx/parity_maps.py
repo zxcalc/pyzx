@@ -20,8 +20,13 @@ class CNOT_tracker(Circuit):
         self.matrix.row_add(q0, q1)
 
     def col_add(self, q0, q1):
-        self.prepend_gate("CNOT", q0, q1)
+        self.prepend_gate("CNOT", q1, q0)
         self.matrix.col_add(q0, q1)
+
+    def gather_metrics(self):
+        metrics = {}
+        metrics["n_cnots"] = self.count_cnots()
+        return metrics
 
     def prepend_gate(self, gate, *args, **kwargs):
         """Adds a gate to the circuit. ``gate`` can either be 

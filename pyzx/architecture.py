@@ -5,6 +5,7 @@ import numpy as np
 
 SQUARE_9Q = "9q-square"
 LINE_5Q = "5q-line"
+FULLY_CONNNECTED = "fully_connected"
 IBM_QX2 = "ibm_qx2"
 IBM_QX3 = "ibm_qx3"
 IBM_QX4 = "ibm_qx4"
@@ -12,30 +13,32 @@ IBM_QX5 = "ibm_qx5"
 RIGETTI_16Q_ASPEN = "rigetti_16q_aspen"
 RIGETTI_8Q_AGAVE = "rigetti_8q_agave"
 
-architectures = [SQUARE_9Q, LINE_5Q, IBM_QX4, IBM_QX2, IBM_QX3, IBM_QX5, RIGETTI_8Q_AGAVE, RIGETTI_16Q_ASPEN]
+architectures = [SQUARE_9Q, LINE_5Q, FULLY_CONNNECTED, IBM_QX4, IBM_QX2, IBM_QX3, IBM_QX5, RIGETTI_8Q_AGAVE, RIGETTI_16Q_ASPEN]
+dynamic_size_architectures = [FULLY_CONNNECTED]
 
 debug = False
 
 class Architecture():
-    def __init__(self, graph=None, adjacency_matrix=None, backend=None):
+    def __init__(self, name, coupling_graph=None, coupling_matrix=None, backend=None):
         """
         Class that represents the architecture of the qubits to be taken into account when routing.
 
-        :param graph: a PyZX Graph representing the architecture, optional 
-        :param adjacency_matrix: a 2D numpy array representing the adjacency of the qubits, from which the Graph is created, optional
+        :param coupling_graph: a PyZX Graph representing the architecture, optional 
+        :param coupling_matrix: a 2D numpy array representing the adjacency of the qubits, from which the Graph is created, optional
         :param backend: The PyZX Graph backend to be used when creating it from the adjacency matrix, optional
         """
-        if graph is None:
+        self.name = name
+        if coupling_graph is None:
             self.graph = Graph(backend=backend)
         else:
-            self.graph = graph
+            self.graph = coupling_graph
 
-        if adjacency_matrix is not None:
+        if coupling_matrix is not None:
             # build the architecture graph
-            n = adjacency_matrix.shape[0]
+            n = coupling_matrix.shape[0]
             self.vertices = self.graph.add_vertices(n)
             edges = [(self.vertices[row], self.vertices[col]) for row in range(n) for col in range(n) if
-                     adjacency_matrix[row, col] == 1]
+                     coupling_matrix[row, col] == 1]
             self.graph.add_edges(edges)
         else:
             self.vertices = [v for v in self.graph.vertices()]
@@ -193,6 +196,9 @@ class Architecture():
                 break
         yield None
 
+def dynamic_size_architecture_name(base_name, n_qubits):
+    return base_name + "_" + str(n_qubits) + "q"
+
 def create_9q_square_architecture(**kwargs):
     m = np.array([
         [0, 1, 0, 0, 0, 1, 0, 0, 0],
@@ -205,7 +211,7 @@ def create_9q_square_architecture(**kwargs):
         [0, 0, 0, 0, 0, 0, 1, 0, 1],
         [0, 0, 0, 1, 0, 0, 0, 1, 0]
     ])
-    return Architecture(adjacency_matrix=m, **kwargs)
+    return Architecture(name=SQUARE_9Q, coupling_matrix=m, **kwargs)
 
 def create_5q_line_architecture(**kwargs):
     m = np.array([
@@ -215,7 +221,7 @@ def create_5q_line_architecture(**kwargs):
         [0, 0, 1, 0, 1],
         [0, 0, 0, 1, 0]
     ])
-    return Architecture(adjacency_matrix=m, **kwargs)
+    return Architecture(name=LINE_5Q, coupling_matrix=m, **kwargs)
 
 def create_ibm_qx2_architecture(**kwargs):
     m = np.array([
@@ -225,7 +231,7 @@ def create_ibm_qx2_architecture(**kwargs):
         [0, 0, 1, 0, 1],
         [0, 0, 1, 1, 0]
     ])
-    return Architecture(adjacency_matrix=m, **kwargs)
+    return Architecture(IBM_QX2, coupling_matrix=m, **kwargs)
 
 def create_ibm_qx4_architecture(**kwargs):
     m = np.array([
@@ -235,7 +241,7 @@ def create_ibm_qx4_architecture(**kwargs):
         [0, 0, 1, 0, 1],
         [0, 0, 1, 1, 0]
     ])
-    return Architecture(adjacency_matrix=m, **kwargs)
+    return Architecture(IBM_QX4, coupling_matrix=m, **kwargs)
 
 def create_ibm_qx3_architecture(**kwargs):
     m = np.array([
@@ -257,7 +263,7 @@ def create_ibm_qx3_architecture(**kwargs):
         [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 1], #14
         [0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0]  #15
     ])
-    return Architecture(adjacency_matrix=m, **kwargs)
+    return Architecture(IBM_QX3, coupling_matrix=m, **kwargs)
 
 def create_ibm_qx5_architecture(**kwargs):
     m = np.array([
@@ -279,7 +285,7 @@ def create_ibm_qx5_architecture(**kwargs):
         [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1], #14
         [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0]  #15
     ])
-    return Architecture(adjacency_matrix=m, **kwargs)
+    return Architecture(IBM_QX5, coupling_matrix=m, **kwargs)
 
 def create_rigetti_16q_aspen_architecture(**kwargs):
     m = np.array([
@@ -301,7 +307,7 @@ def create_rigetti_16q_aspen_architecture(**kwargs):
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1], #14
         [0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0]  #15
     ])
-    return Architecture(adjacency_matrix=m, **kwargs)
+    return Architecture(RIGETTI_16Q_ASPEN, coupling_matrix=m, **kwargs)
 
 def create_rigetti_8q_agave_architecture(**kwargs):
     m = np.array([
@@ -314,22 +320,30 @@ def create_rigetti_8q_agave_architecture(**kwargs):
         [0, 0, 0, 0, 0, 1, 0, 1],
         [1, 0, 0, 0, 0, 0, 1, 0]
     ])
-    return Architecture(adjacency_matrix=m, **kwargs)
+    return Architecture(RIGETTI_8Q_AGAVE, coupling_matrix=m, **kwargs)
 
-def create_fully_connected_architecture(size, **kwargs):
-    m = np.ones(shape=size)
-    for i in range(min(*size)):
+def create_fully_connected_architecture(size=None, **kwargs):
+    if size is None:
+        print("Warning: size is not given for the fully connected architecuture, using 9 as default.")
+        size = 9
+    m = np.ones(shape=(size, size))
+    for i in range(size):
         m[i][i] = 0
-    return Architecture(adjacency_matrix=m, **kwargs)
+    name = dynamic_size_architecture_name(FULLY_CONNNECTED, size)
+    return Architecture(name, coupling_matrix=m, **kwargs)
 
 def create_architecture(name, **kwargs):
     # Source Rigetti architectures: https://www.rigetti.com/qpu # TODO create the architectures from names in pyquil.list_quantum_computers() <- needs mapping
     # Source IBM architectures: http://iic.jku.at/files/eda/2018_tcad_mapping_quantum_circuit_to_ibm_qx.pdf​
     # IBM architectures are currently ignoring CNOT direction.
+    if isinstance(name, Architecture):
+        return name
     if name == SQUARE_9Q:
         return create_9q_square_architecture(**kwargs)
     elif name == LINE_5Q:
         return create_5q_line_architecture(**kwargs)
+    elif name == FULLY_CONNNECTED:
+        return create_fully_connected_architecture(**kwargs)
     elif name == IBM_QX2:
         return create_ibm_qx2_architecture(**kwargs)
     elif name == IBM_QX3:

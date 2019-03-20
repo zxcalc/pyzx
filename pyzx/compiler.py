@@ -1,11 +1,16 @@
-import sys
-sys.path.append('../')
+import sys, os
+if __name__ == '__main__':
+    sys.path.append('..')
+import numpy as np
+from pandas import DataFrame
+import time
+
 from pyzx.linalg import Mat2
-from pyzx.architecture import create_fully_connected_architecture
+from pyzx.architecture import create_fully_connected_architecture, create_architecture
 from pyzx.parity_maps import CNOT_tracker
 from pyzx.machine_learning import GeneticAlgorithm
 from pyzx.fitness import get_gate_count_fitness_func as get_fitness_func
-import numpy as np
+
 debug = False
 
 # ELIMINATION MODES:
@@ -13,9 +18,17 @@ GAUSS_MODE = "gauss"
 STEINER_MODE = "steiner"
 GENETIC_STEINER_MODE = "genetic_steiner"
 GENETIC_GAUSS_MODE = "genetic_gauss"
+
+elim_modes = [STEINER_MODE, GAUSS_MODE, GENETIC_STEINER_MODE, GENETIC_GAUSS_MODE]
+genetic_elim_modes = [GENETIC_STEINER_MODE, GENETIC_GAUSS_MODE]
+no_genetic_elim_modes = [STEINER_MODE, GAUSS_MODE]
+
 # COMPILE MODES
 QUIL_COMPILER = "quilc"
 NO_COMPILER = "not_compiled"
+
+compiler_modes = [QUIL_COMPILER, NO_COMPILER]
+
 
 
 def gauss(mode, matrix, architecture=None, **kwargs):
@@ -176,32 +189,127 @@ def count_cnots_circuit(mode, circuit, n_compile=1, store_circuit_as=None):
             f.write(circuit.to_qasm())
     return count
 
+
+def make_into_list(possible_list):
+    if type(possible_list) != type([]):
+        return [possible_list]
+    return possible_list
+
+def create_dest_filename(original_file, population=None, iteration=None, crossover_prob=None, mutation_prob=None):
+    pop_ext = "" if population is None else "pop" + str(population)
+    iter_ext = "" if iteration is None else "iter" + str(iteration)
+    crosover_ext = "" if crossover_prob is None else "crossover" + str(crossover_prob)
+    mutation_ext = "" if mutation_prob is None else "mutate" + str(mutation_prob)
+    filename = os.path.basename(original_file)
+    base_file, extension = os.path.splitext(filename)
+    new_filename = '_'.join([part for part in [base_file, pop_ext, iter_ext, crosover_ext, mutation_ext] if part != ""]) + extension
+    return new_filename
+
+def make_metrics(circuit, id, architecture_name, mode, population=None, iteration=None, crossover_prob=None, mutation_prob=None, passed_time=None):
+    result = circuit.gather_metrics()
+    result["id"] = id
+    result["mode"] = mode
+    result["architecture"] = architecture_name
+    result["population"] = population
+    result["iteration"] = iteration
+    result["crossover"] = crossover_prob
+    result["mutation"] = mutation_prob
+    result["time"] = passed_time
+
+
+def batch_compile(folder, modes, architectures, n_qubits=None, populations=30, iterations=15, crossover_probs=0.8, mutation_probs=0.5, dest_folder=None, metrics_file=None):
+    modes = make_into_list(modes)
+    architectures = make_into_list(architectures)
+    populations = make_into_list(populations)
+    iterations = make_into_list(iterations)
+    crossover_probs = make_into_list(crossover_probs)
+    mutation_probs = make_into_list(mutation_probs)
+
+    if not os.path.exists(folder):
+        raise IOError("Folder does not exist: " +folder)
+    if dest_folder is None:
+        dest_folder = folder
+    else:
+        os.makedirs(dest_folder, exist_ok=True)
+
+    arch_iter = []
+    circuits = {}
+    metrics = []
+    for architecture in architectures:
+        if architecture in dynamic_size_architectures:
+            if n_qubits is None:
+                raise KeyError("Number of qubits not specified for architecture" + architecture)
+            else:
+                n_qubits = make_into_list(n_qubits)
+                arch_iter.extend([create_architecture(architecture, size=q) for q in n_qubits])
+        else:
+            arch_iter.append(create_architecture(architecture))
+    for architecture in arch_iter:
+        circuits[architecture.name] = {}
+        for mode in modes:
+            new_dest_folder = os.path.join(dest_folder, architecture.name, mode)
+            os.makedirs(new_dest_folder, exist_ok=True)
+            if mode in genetic_elim_modes:
+                pop_iter = populations
+                iter_iter = iterations
+                crossover_iter = crossover_probs
+                mutation_iter = mutation_probs
+                circuits[mode] = {}
+            else:
+                pop_iter = [None]
+                iter_iter = [None]
+                crossover_iter = [None]
+                mutation_iter = [None]
+
+            for population in pop_iter:
+                for iteration in iter_iter:
+                    for crossover_prob in crossover_iter:
+                        for mutation_prob in mutation_iter:
+                            files = [f for f in os.listdir(folder) if os.path.isfile(os.path.join(folder, f))]
+                            for file in files:
+                                if os.path.splitext(file)[1].lower() == ".qasm":
+                                    origin_file = os.path.join(folder, file)
+                                    dest_filename = create_dest_filename(origin_file, population, iteration, crossover_prob, mutation_prob)
+                                    dest_file = os.path.join(dest_folder, architecture.name, mode, dest_filename)
+                                    start_time = time.time()
+                                    circuit = compile(origin_file, architecture, mode=mode, dest_file=dest_file,
+                                            population=population, iterations=iteration,
+                                            crossover_prob=crossover_prob, mutation_prob=mutation_prob)
+                                    end_time = time.time()
+                                    if metrics_file is not None:
+                                        metrics.append(make_metrics(circuit, file, architecture.name, mode, population, iteration, crossover_prob, mutation_prob, end_time-start_time))
+                                    if mode in genetic_elim_modes:
+                                        circuits[mode][(population, iteration, crossover_prob, mutation_prob)] = circuit
+                                    else:
+                                        circuits[mode] = circuit
+    if metrics_file is not None:
+        df = DataFrame(metrics)
+        df.to_csv(df)
+    return circuits
+
 def compile(file, architecture, mode=GENETIC_STEINER_MODE, dest_file=None, population=30, iterations=15, crossover_prob=0.8, mutation_prob=0.2):
     if type(architecture) == type(""):
         architecture = create_architecture(architecture)
     circuit = CNOT_tracker.from_qasm_file(file)
     matrix = circuit.matrix
     compiled_circuit = CNOT_tracker(circuit.n_qubits)
-    if mode in [GAUSS_MODE, STEINER_MODE]:
+    if mode in no_genetic_elim_modes:
         rank = gauss(mode, matrix, architecture, full_reduce=True, y=compiled_circuit)
-    elif mode in [GENETIC_GAUSS_MODE, GENETIC_STEINER_MODE]:
+    elif mode in genetic_elim_modes:
         rank = gauss(mode, matrix, architecture, full_reduce=True, y=compiled_circuit,
                      population_size=population, crossover_prob=crossover_prob, mutate_prob=mutation_prob,
                      n_iterations=iterations)
 
-    print("Compiled circuit has", compiled_circuit.count_cnots(), "CNOT gates.", "\n\n")
-    compiled_qasm = compiled_circuit.to_qasm()
-    if dest_file is None:
-        print(compiled_qasm)
-    else:
+    if dest_file is not None:
+        compiled_qasm = compiled_circuit.to_qasm()
         with open(dest_file, "w") as f:
             f.write(compiled_qasm)
+    return compiled_circuit
 
 
 if __name__ == '__main__':
     import argparse
-    from pyzx.architecture import architectures, SQUARE_9Q, create_architecture
-    from pyzx.parity_maps import CNOT_tracker
+    from pyzx.architecture import architectures, SQUARE_9Q, dynamic_size_architectures
 
     def restricted_float(x):
         x = float(x)
@@ -209,19 +317,40 @@ if __name__ == '__main__':
             raise argparse.ArgumentTypeError("%r not in range [0.0, 1.0]." % (x,))
         return x
 
-    parser = argparse.ArgumentParser(description="Compiles a given qasm file to a given architecture.")
-    parser.add_argument("QASM_file", help="The QASM file to be routed.")
-    parser.add_argument("-m", "--mode", dest="mode", default=STEINER_MODE, help="The mode specifying how to route.", choices=[STEINER_MODE, GAUSS_MODE, GENETIC_STEINER_MODE, GENETIC_GAUSS_MODE])
-    parser.add_argument("-a", "--architecture", dest="architecture", default=SQUARE_9Q, choices=architectures, help="Which architecture it should run compile to.")
+    parser = argparse.ArgumentParser(description="Compiles given qasm files or those in the given folder to a given architecture.")
+    parser.add_argument("QASM_source", help="The QASM file or folder with QASM files to be routed.")
+    parser.add_argument("-m", "--mode", nargs='+', dest="mode", default=STEINER_MODE, help="The mode specifying how to route.", choices=elim_modes)
+    parser.add_argument("-a", "--architecture", nargs='+', dest="architecture", default=SQUARE_9Q, choices=architectures, help="Which architecture it should run compile to.")
+    parser.add_argument("-q", "--qubits", nargs='+', default=None, type=int, help="The number of qubits for the fully connected architecture.")
     #parser.add_argument("-f", "--full_reduce", dest="full_reduce", default=1, type=int, choices=[0,1], help="Full reduce")
-    parser.add_argument("--population", default=30, type=int, help="The population size for the genetic algorithm.")
-    parser.add_argument("--iterations", default=15, type=int, help="The number of iterations for the genetic algorithm.")
-    parser.add_argument("--crossover_prob", default=0.8, type=restricted_float, help="The crossover probability for the genetic algorithm. Must be between 0.0 and 1.0.")
-    parser.add_argument("--mutation_prob", default=0.2, type=restricted_float, help="The mutation probability for the genetic algorithm. Must be between 0.0 and 1.0.")
+    parser.add_argument("--population", nargs='+', default=30, type=int, help="The population size for the genetic algorithm.")
+    parser.add_argument("--iterations", nargs='+', default=15, type=int, help="The number of iterations for the genetic algorithm.")
+    parser.add_argument("--crossover_prob", nargs='+', default=0.8, type=restricted_float, help="The crossover probability for the genetic algorithm. Must be between 0.0 and 1.0.")
+    parser.add_argument("--mutation_prob", nargs='+', default=0.2, type=restricted_float, help="The mutation probability for the genetic algorithm. Must be between 0.0 and 1.0.")
     #parser.add_argument("--perm", default="both", choices=["row", "col", "both"], help="Whether to find a single optimal permutation that permutes the rows, columns or both with the genetic algorithm.")
-    parser.add_argument("--destination", default=None, help="Destination file where the compiled circuit should be stored. Prints the compiled QASM if not specified.")
+    parser.add_argument("--destination", help="Destination file or folder where the compiled circuit should be stored. If the source is a folder, it uses that as default, otherwise it prints.")
+    parser.add_argument("--metrics_csv", default=None, help="The location to store compiling metrics as csv, if not given, the metrics are not calculated. Only used when the source is a folder")
 
     args = parser.parse_args()
-    compile(args.QASM_file, args.architecture, mode=args.mode, dest_file=args.destination,
-            population=args.population, iterations=args.iterations,
-            crossover_prob=args.crossover_prob, mutation_prob=args.mutation_prob)
+
+    if os.path.isfile(args.QASM_source):
+        architecture = args.architecture
+        if args.architecture in dynamic_size_architectures:
+            if args.qubits is None:
+                raise argparse.ArgumentTypeError(
+                    "The " + args.architecture + " architecture needs a number of qubits, specified with the -q flag.")
+            else:
+                architecture = create_architecture(args.architecture, size=args.qubits)
+
+        circuit = compile(args.QASM_source, architecture, mode=args.mode, dest_file=args.destination,
+                          population=args.population, iterations=args.iterations,
+                          crossover_prob=args.crossover_prob, mutation_prob=args.mutation_prob)
+
+        if args.destination is None:
+            print(circuit.to_qasm(), "\n\n")
+        print("Compiled circuit has", circuit.count_cnots(), "CNOT gates.")
+
+    else:
+        batch_compile(args.QASM_source, args.mode, args.architecture, n_qubits=args.qubits, populations=args.population,
+                  iterations=args.iterations,
+                  crossover_probs=args.crossover_prob, mutation_probs=args.mutation_prob, dest_folder=args.destination, metrics_file=args.metrics_csv)
