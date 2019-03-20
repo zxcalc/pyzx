@@ -176,6 +176,28 @@ def count_cnots_circuit(mode, circuit, n_compile=1, store_circuit_as=None):
             f.write(circuit.to_qasm())
     return count
 
+def compile(file, architecture, mode=GENETIC_STEINER_MODE, dest_file=None, population=30, iterations=15, crossover_prob=0.8, mutation_prob=0.2):
+    if type(architecture) == type(""):
+        architecture = create_architecture(architecture)
+    circuit = CNOT_tracker.from_qasm_file(file)
+    matrix = circuit.matrix
+    compiled_circuit = CNOT_tracker(circuit.n_qubits)
+    if mode in [GAUSS_MODE, STEINER_MODE]:
+        rank = gauss(mode, matrix, architecture, full_reduce=True, y=compiled_circuit)
+    elif mode in [GENETIC_GAUSS_MODE, GENETIC_STEINER_MODE]:
+        rank = gauss(mode, matrix, architecture, full_reduce=True, y=compiled_circuit,
+                     population_size=population, crossover_prob=crossover_prob, mutate_prob=mutation_prob,
+                     n_iterations=iterations)
+
+    print("Compiled circuit has", compiled_circuit.count_cnots(), "CNOT gates.", "\n\n")
+    compiled_qasm = compiled_circuit.to_qasm()
+    if dest_file is None:
+        print(compiled_qasm)
+    else:
+        with open(dest_file, "w") as f:
+            f.write(compiled_qasm)
+
+
 if __name__ == '__main__':
     import argparse
     from pyzx.architecture import architectures, SQUARE_9Q, create_architecture
@@ -200,22 +222,6 @@ if __name__ == '__main__':
     parser.add_argument("--destination", default=None, help="Destination file where the compiled circuit should be stored. Prints the compiled QASM if not specified.")
 
     args = parser.parse_args()
-    #print(args)
-    circuit = CNOT_tracker.from_qasm_file(args.QASM_file)
-    matrix = circuit.matrix
-    architecture = create_architecture(args.architecture)
-    compiled_circuit = CNOT_tracker(circuit.n_qubits)
-    if args.mode in [GAUSS_MODE, STEINER_MODE]:
-        rank = gauss(args.mode, matrix, architecture, full_reduce=True, y=compiled_circuit)
-    elif args.mode in [GENETIC_GAUSS_MODE, GENETIC_STEINER_MODE]:
-        rank = gauss(args.mode, matrix, architecture, full_reduce=True, y=compiled_circuit,
-                     population_size=args.population, crossover_prob=args.crossover_prob, mutate_prob=args.mutation_prob,
-                     n_iterations=args.iterations)
-
-    print("Compiled circuit has", compiled_circuit.count_cnots(), "CNOT gates.", "\n\n")
-    compiled_qasm = compiled_circuit.to_qasm()
-    if args.destination is None:
-        print(compiled_qasm)
-    else:
-        with open(args.destination, "w") as f:
-            f.write(compiled_qasm)
+    compile(args.QASM_file, args.architecture, mode=args.mode, dest_file=args.destination,
+            population=args.population, iterations=args.iterations,
+            crossover_prob=args.crossover_prob, mutation_prob=args.mutation_prob)
