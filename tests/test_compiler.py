@@ -7,7 +7,7 @@ if __name__ == '__main__':
 import numpy as np
 
 from pyzx.linalg import Mat2
-from pyzx.steiner_tree import gauss, STEINER_MODE, GENETIC_STEINER_MODE, GAUSS_MODE, GENETIC_GAUSS_MODE
+from pyzx.compiler import gauss, STEINER_MODE, GENETIC_STEINER_MODE, GAUSS_MODE, GENETIC_GAUSS_MODE
 from pyzx.architecture import create_9q_square_architecture
 from pyzx.parity_maps import CNOT_tracker, build_random_parity_map
 from pyzx.machine_learning import GeneticAlgorithm
