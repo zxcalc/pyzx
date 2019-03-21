@@ -318,7 +318,7 @@ if __name__ == '__main__':
         return x
 
     parser = argparse.ArgumentParser(description="Compiles given qasm files or those in the given folder to a given architecture.")
-    parser.add_argument("QASM_source", help="The QASM file or folder with QASM files to be routed.")
+    parser.add_argument("QASM_source", nargs='+', help="The QASM file or folder with QASM files to be routed.")
     parser.add_argument("-m", "--mode", nargs='+', dest="mode", default=STEINER_MODE, help="The mode specifying how to route.", choices=elim_modes)
     parser.add_argument("-a", "--architecture", nargs='+', dest="architecture", default=SQUARE_9Q, choices=architectures, help="Which architecture it should run compile to.")
     parser.add_argument("-q", "--qubits", nargs='+', default=None, type=int, help="The number of qubits for the fully connected architecture.")
@@ -333,24 +333,27 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    if os.path.isfile(args.QASM_source):
-        architecture = args.architecture
-        if args.architecture in dynamic_size_architectures:
-            if args.qubits is None:
-                raise argparse.ArgumentTypeError(
-                    "The " + args.architecture + " architecture needs a number of qubits, specified with the -q flag.")
-            else:
-                architecture = create_architecture(args.architecture, n_qubits=args.qubits)
+    sources = make_into_list(args.QASM_source)
 
-        circuit = compile(args.QASM_source, architecture, mode=args.mode, dest_file=args.destination,
-                          population=args.population, iterations=args.iterations,
-                          crossover_prob=args.crossover_prob, mutation_prob=args.mutation_prob)
+    for source in sources:
+        if os.path.isfile(source):
+            architecture = args.architecture
+            if args.architecture in dynamic_size_architectures:
+                if args.qubits is None:
+                    raise argparse.ArgumentTypeError(
+                        "The " + args.architecture + " architecture needs a number of qubits, specified with the -q flag.")
+                else:
+                    architecture = create_architecture(args.architecture, n_qubits=args.qubits)
 
-        if args.destination is None:
-            print(circuit.to_qasm(), "\n\n")
-        print("Compiled circuit has", circuit.count_cnots(), "CNOT gates.")
+            circuit = compile(source, architecture, mode=args.mode, dest_file=args.destination,
+                              population=args.population, iterations=args.iterations,
+                              crossover_prob=args.crossover_prob, mutation_prob=args.mutation_prob)
 
-    else:
-        batch_compile(args.QASM_source, args.mode, args.architecture, n_qubits=args.qubits, populations=args.population,
-                  iterations=args.iterations,
-                  crossover_probs=args.crossover_prob, mutation_probs=args.mutation_prob, dest_folder=args.destination, metrics_file=args.metrics_csv)
+            if args.destination is None:
+                print(circuit.to_qasm(), "\n\n")
+            print("Compiled circuit has", circuit.count_cnots(), "CNOT gates.")
+
+        else:
+            batch_compile(source, args.mode, args.architecture, n_qubits=args.qubits, populations=args.population,
+                      iterations=args.iterations,
+                      crossover_probs=args.crossover_prob, mutation_probs=args.mutation_prob, dest_folder=args.destination, metrics_file=args.metrics_csv)
