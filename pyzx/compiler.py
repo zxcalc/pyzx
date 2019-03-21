@@ -241,7 +241,7 @@ def batch_compile(folder, modes, architectures, n_qubits=None, populations=30, i
                 raise KeyError("Number of qubits not specified for architecture" + architecture)
             else:
                 n_qubits = make_into_list(n_qubits)
-                arch_iter.extend([create_architecture(architecture, size=q) for q in n_qubits])
+                arch_iter.extend([create_architecture(architecture, n_qubits=q) for q in n_qubits])
         else:
             arch_iter.append(create_architecture(architecture))
     for architecture in arch_iter:
@@ -340,7 +340,7 @@ if __name__ == '__main__':
                 raise argparse.ArgumentTypeError(
                     "The " + args.architecture + " architecture needs a number of qubits, specified with the -q flag.")
             else:
-                architecture = create_architecture(args.architecture, size=args.qubits)
+                architecture = create_architecture(args.architecture, n_qubits=args.qubits)
 
         circuit = compile(args.QASM_source, architecture, mode=args.mode, dest_file=args.destination,
                           population=args.population, iterations=args.iterations,

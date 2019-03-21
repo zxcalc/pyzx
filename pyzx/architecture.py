@@ -1,11 +1,15 @@
+import sys
+if __name__ == '__main__':
+    sys.path.append('..')
 from pyzx.graph.graph import  Graph
 #from pyzx.graph.base import BaseGraph # TODO fix the right graph import - one of many - right backend etc
 
 import numpy as np
 
-SQUARE_9Q = "9q-square"
-LINE_5Q = "5q-line"
+SQUARE = "square"
+LINE = "line"
 FULLY_CONNNECTED = "fully_connected"
+CIRCLE = "circle"
 IBM_QX2 = "ibm_qx2"
 IBM_QX3 = "ibm_qx3"
 IBM_QX4 = "ibm_qx4"
@@ -13,8 +17,8 @@ IBM_QX5 = "ibm_qx5"
 RIGETTI_16Q_ASPEN = "rigetti_16q_aspen"
 RIGETTI_8Q_AGAVE = "rigetti_8q_agave"
 
-architectures = [SQUARE_9Q, LINE_5Q, FULLY_CONNNECTED, IBM_QX4, IBM_QX2, IBM_QX3, IBM_QX5, RIGETTI_8Q_AGAVE, RIGETTI_16Q_ASPEN]
-dynamic_size_architectures = [FULLY_CONNNECTED]
+architectures = [SQUARE, CIRCLE, FULLY_CONNNECTED, LINE, IBM_QX4, IBM_QX2, IBM_QX3, IBM_QX5, RIGETTI_8Q_AGAVE, RIGETTI_16Q_ASPEN]
+dynamic_size_architectures = [FULLY_CONNNECTED, LINE, CIRCLE, SQUARE]
 
 debug = False
 
@@ -58,6 +62,18 @@ class Architecture():
         topology = nx.from_edgelist(edges)
         device = NxDevice(topology)
         return device
+
+    def visualize(self, filename=None):
+        import networkx as nx
+        import matplotlib.pyplot as plt
+        plt.switch_backend('agg')
+        g = nx.Graph()
+        g.add_nodes_from(self.vertices)
+        g.add_edges_from(self.graph.edges())
+        nx.draw(g, with_labels=True, font_weight='bold')
+        if filename is None:
+            filename = self.name + ".png"
+        plt.savefig(filename)
 
     def FloydWarshall(self, exclude_excl, upper=True):
         """
@@ -197,8 +213,53 @@ class Architecture():
         yield None
 
 def dynamic_size_architecture_name(base_name, n_qubits):
-    return base_name + "_" + str(n_qubits) + "q"
+    return str(n_qubits) + "q-" + base_name
 
+def connect_vertices_in_line(vertices):
+    return [(vertices[i], vertices[i+1]) for i in range(len(vertices)-1)]
+
+def create_line_architecture(n_qubits, backend=None, **kwargs):
+    graph = Graph(backend=backend)
+    vertices = graph.add_vertices(n_qubits)
+    edges = connect_vertices_in_line(vertices)
+    graph.add_edges(edges)
+    name = dynamic_size_architecture_name(LINE, n_qubits)
+    return Architecture(name=name, coupling_graph=graph, backend=backend, **kwargs)
+
+def create_circle_architecture(n_qubits, backend=None, **kwargs):
+    graph = Graph(backend=backend)
+    vertices = graph.add_vertices(n_qubits)
+    edges = connect_vertices_in_line(vertices)
+    edges.append((vertices[-1], vertices[0]))
+    graph.add_edges(edges)
+    name = dynamic_size_architecture_name(CIRCLE, n_qubits)
+    return Architecture(name=name, coupling_graph=graph, backend=backend, **kwargs)
+
+def create_square_architecture(n_qubits, backend=None, **kwargs):
+    # No floating point errors
+    sqrt_qubits = 0
+    for n in range(n_qubits):
+        if n_qubits == n**2:
+            sqrt_qubits = n
+        if n**2 > n_qubits:
+            break
+    if sqrt_qubits == 0:
+        raise KeyError("Sqaure architecture requires a square number of qubits, but got " + str(n_qubits))
+    graph = Graph(backend=backend)
+    vertices = graph.add_vertices(n_qubits)
+    edges = connect_vertices_in_line(vertices)
+    row_start = 0
+    for i in range(sqrt_qubits-1):
+        row1 = vertices[row_start:row_start+sqrt_qubits]
+        row2 = vertices[row_start+sqrt_qubits:row_start+2*sqrt_qubits]
+        new_edges = [(v1, v2) for v1, v2 in zip(row1[:-1], reversed(row2[1:]))]
+        edges.extend(new_edges)
+        row_start += sqrt_qubits
+    graph.add_edges(edges)
+    name = dynamic_size_architecture_name(SQUARE, n_qubits)
+    return Architecture(name=name, coupling_graph=graph, backend=backend, **kwargs)
+
+"""
 def create_9q_square_architecture(**kwargs):
     m = np.array([
         [0, 1, 0, 0, 0, 1, 0, 0, 0],
@@ -222,7 +283,7 @@ def create_5q_line_architecture(**kwargs):
         [0, 0, 0, 1, 0]
     ])
     return Architecture(name=LINE_5Q, coupling_matrix=m, **kwargs)
-
+"""
 def create_ibm_qx2_architecture(**kwargs):
     m = np.array([
         [0, 1, 1, 0, 0],
@@ -322,14 +383,14 @@ def create_rigetti_8q_agave_architecture(**kwargs):
     ])
     return Architecture(RIGETTI_8Q_AGAVE, coupling_matrix=m, **kwargs)
 
-def create_fully_connected_architecture(size=None, **kwargs):
-    if size is None:
+def create_fully_connected_architecture(n_qubits=None, **kwargs):
+    if n_qubits is None:
         print("Warning: size is not given for the fully connected architecuture, using 9 as default.")
-        size = 9
-    m = np.ones(shape=(size, size))
-    for i in range(size):
+        n_qubits = 9
+    m = np.ones(shape=(n_qubits, n_qubits))
+    for i in range(n_qubits):
         m[i][i] = 0
-    name = dynamic_size_architecture_name(FULLY_CONNNECTED, size)
+    name = dynamic_size_architecture_name(FULLY_CONNNECTED, n_qubits)
     return Architecture(name, coupling_matrix=m, **kwargs)
 
 def create_architecture(name, **kwargs):
@@ -338,12 +399,14 @@ def create_architecture(name, **kwargs):
     # IBM architectures are currently ignoring CNOT direction.
     if isinstance(name, Architecture):
         return name
-    if name == SQUARE_9Q:
-        return create_9q_square_architecture(**kwargs)
-    elif name == LINE_5Q:
-        return create_5q_line_architecture(**kwargs)
+    if name == SQUARE:
+        return create_square_architecture(**kwargs)
+    elif name == LINE:
+        return create_line_architecture(**kwargs)
     elif name == FULLY_CONNNECTED:
         return create_fully_connected_architecture(**kwargs)
+    elif name == CIRCLE:
+        return create_circle_architecture(**kwargs)
     elif name == IBM_QX2:
         return create_ibm_qx2_architecture(**kwargs)
     elif name == IBM_QX3:
@@ -357,7 +420,7 @@ def create_architecture(name, **kwargs):
     elif name == RIGETTI_8Q_AGAVE:
         return create_rigetti_8q_agave_architecture(**kwargs)
     else:
-        raise KeyError("name" + str(name) + "not recognized as architecture name. Please use one of", SQUARE_9Q, LINE_5Q, IBM_QX2, IBM_QX3, IBM_QX4, IBM_QX5, RIGETTI_16Q_ASPEN, RIGETTI_8Q_AGAVE)
+        raise KeyError("name" + str(name) + "not recognized as architecture name. Please use one of", *architectures)
 
 def colored_print_9X9(np_array):
     """
@@ -386,3 +449,9 @@ def colored_print_9X9(np_array):
             print('[', ', '.join([(color[c] + '1' if v ==1 else CWHITE + '0') for c, v in zip(l, np_array[i])]), CEND, ']')
     else:
         print(np_array)
+
+if __name__ == '__main__':
+    n_qubits = 25
+    for name in dynamic_size_architectures:
+        arch = create_architecture(name, n_qubits=n_qubits)
+        arch.visualize()
