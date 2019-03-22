@@ -321,6 +321,7 @@ def todd_iter(m, quiet=True):
     while True:
         m, reduced = do_todd_single(m)
         if not reduced:
+            if not quiet: print()
             return m
         if not quiet: print(reduced, end='.')
 
@@ -334,10 +335,13 @@ def call_topt(m, quiet=True):
         f.write(s.encode('ascii'))
         f.flush()
         time.sleep(0.01)
+        if TOPT_LOCATION[0].find('wsl') != -1:
+            fname = "/mnt/c"+f.name.replace("\\", "/")[2:]
+        else: fname = f.name
         if USE_REED_MULLER:
-            out = subprocess.check_output([TOPT_LOCATION, "gsm",f.name, "-a", "rm"])
+            out = subprocess.check_output([*TOPT_LOCATION, "gsm",fname, "-a", "rm"])
         else:
-            out = subprocess.check_output([TOPT_LOCATION, "gsm",f.name])
+            out = subprocess.check_output([*TOPT_LOCATION, "gsm",fname])
         out = out.decode()
         #print(out)
     rows = out[out.find("Output gate"):out.find("Successful")].strip().splitlines()[2:]

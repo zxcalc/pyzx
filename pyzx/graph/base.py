@@ -61,6 +61,7 @@ class BaseGraph(object):
         self.track_phases = False
         self.phase_index = dict()
         self.phase_master = None
+        self.phase_mult = dict()
         self.max_phase_index = -1
 
     def __str__(self):
@@ -299,6 +300,7 @@ class BaseGraph(object):
         if self.track_phases:
             self.max_phase_index += 1
             self.phase_index[v] = self.max_phase_index
+            self.phase_mult[v] = 1
         return v
 
     def add_edges(self, edges, edgetype=1):
@@ -368,10 +370,18 @@ class BaseGraph(object):
         self.phase_index[new] = i
 
     def fuse_phases(self, p1, p2):
-        if p1 not in self.phase_index or p2 not in self.phase_index: return
+        if p1 not in self.phase_index or p2 not in self.phase_index: 
+            return
         if self.phase_master: 
             self.phase_master.fuse_phases(self.phase_index[p1],self.phase_index[p2])
         self.phase_index[p2] = self.phase_index[p1]
+
+    def phase_negate(self, v):
+        if v not in self.phase_index: return
+        index = self.phase_index[v]
+        #print("Negating phase", v, index)
+        mult = self.phase_mult[index]
+        self.phase_mult[index] = -1*mult 
 
     def vertex_from_phase_index(self, i):
         return list(self.phase_index.keys())[list(self.phase_index.values()).index(i)]

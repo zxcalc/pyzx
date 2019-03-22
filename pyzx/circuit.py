@@ -47,7 +47,7 @@ class Circuit(object):
 
     def copy(self):
         c = Circuit(self.qubits, self.name)
-        c.gates = self.gates.copy()
+        c.gates = [g.copy() for g in self.gates]
         return c
 
     def adjoint(self):
@@ -376,6 +376,24 @@ class Circuit(object):
     def to_tensor(self):
         """Returns a numpy tensor describing the circuit."""
         return self.to_graph().to_tensor()
+
+    def verify_equality(self, other):
+        """Composes the other circuit with the adjoint of this circuit, and tries to reduce
+        it to the identity using :func:`simplify.full_reduce``. If successful returns True,
+        if not returns None. 
+
+        Note that while a successful reduction to the identity is strong evidence that the two
+        circuits are equal, if this function is not able to reduce the graph to the identity
+        this does not prove anything. """
+        from .simplify import full_reduce
+        c = self.adjoint()
+        c.add_circuit(other)
+        g = self.to_graph(c)
+        full_reduce(g)
+        if g.num_vertices() == self.qubits*2:
+            return True
+        else:
+            return False
                     
 
     def add_gate(self, gate, *args, **kwargs):

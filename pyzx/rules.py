@@ -442,6 +442,7 @@ def pivot(g, matches):
         #  n[0] <- non-boundary neighbours of m[0] only
         #  n[1] <- non-boundary neighbours of m[1] only
         #  n[2] <- non-boundary neighbours of m[0] and m[1]
+        g.update_phase_index(m[0],m[1])
         n = [set(g.neighbours(m[0])), set(g.neighbours(m[1]))]
         for i in range(2):
             n[i].remove(m[1-i])
@@ -476,7 +477,6 @@ def pivot(g, matches):
                 elif g.edge_type(e) == 2: ne += 1
                 etab[new_e] = (ne,nhe)
                 rem_edges.append(e)
-                
 
 
         for e in es:
@@ -624,13 +624,16 @@ def match_phase_gadgets(g):
             n = gad[0]
             v = gadgets[n]
             if phases[n] != 0: # If the phase of the axel vertex is pi, we change the phase of the gadget
+                g.phase_negate(v)
                 m.append((v,n,-phases[v],[],[]))
         else:
             totphase = sum((1 if phases[n]==0 else -1)*phases[gadgets[n]] for n in gad)%2
+            for n in gad:
+                if phases[n] != 0:
+                    g.phase_negate(gadgets[n])
             n = gad.pop()
             v = gadgets[n]
             m.append((v,n,totphase, gad, [gadgets[n] for n in gad]))
-
     return m
 
 def merge_phase_gadgets(g, matches):
