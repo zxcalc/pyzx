@@ -132,7 +132,18 @@ def full_reduce(g, quiet=True):
     pivot_gadget_simp(g,quiet=quiet)
     while True:
         clifford_simp(g,quiet=quiet)
-        i = gadget_simp(g, quiet=quiet)
+
+        # AK: single gadget at a time
+        m = match_phase_gadgets(g, num=1)
+        i = len(m)
+        if i != 0:
+            print("got a gadget, nodes %s" % g.num_vertices())
+            etab, rem_verts, rem_edges, check_isolated_vertices = merge_phase_gadgets(g, m)
+            g.remove_edges(rem_edges)
+            g.remove_vertices(rem_verts)
+            g.remove_isolated_vertices()
+            print("after merge, nodes %s" % g.num_vertices())
+        #i = gadget_simp(g, quiet=quiet)
         interior_clifford_simp(g,quiet=quiet)
         j = pivot_gadget_simp(g,quiet=quiet)
         if i+j == 0:
@@ -142,12 +153,16 @@ def teleport_reduce(g, quiet=True):
     """This simplification procedure runs :func:`full_reduce` in a way 
     that does not change the graph structure of the resulting diagram.
     The only thing that is different in the output graph are the location and value of the phases.""" 
+    
+    master = g.copy()
     to_gh(g,quiet=quiet)
     while True:
         spider_simp(g,quiet=quiet)
         i = id_simp(g,quiet=quiet)
         if not i: break
+    
     s = Simplifier(g)
+    s.mastergraph = master
     s.full_reduce(quiet)
     return s.mastergraph
 
@@ -194,8 +209,9 @@ class Simplifier(object):
         else: phase = p1 - p2
         self.mastergraph.set_phase(v1,phase)
         self.mastergraph.set_phase(v2,0)
-        self.simplifygraph.phase_mult[i1] = 1
-        self.simplifygraph.phase_mult[i2] = 1
+        # AK: commented out
+        #self.simplifygraph.phase_mult[i1] = 1
+        #self.simplifygraph.phase_mult[i2] = 1
     
     def full_reduce(self, quiet=True):
         full_reduce(self.simplifygraph,quiet=quiet)

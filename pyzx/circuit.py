@@ -939,6 +939,10 @@ class XPhase(Gate):
         self.graph_add_node(g,labels, qs,2,self.target,rs[self.target],self.phase)
         rs[self.target] += 1
 
+    # AK: added this
+    def to_basic_gates(self):
+        return [HAD(self.target), ZPhase(self.target, self.target), HAD(self.target)]
+
     def to_quipper(self):
         if not self.printphase:
             return super().to_quipper()

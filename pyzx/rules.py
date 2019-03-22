@@ -599,7 +599,7 @@ def remove_ids(g, matches):
     
 
 
-def match_phase_gadgets(g):
+def match_phase_gadgets(g, num=-1, only_nonc=False):
     """Determines which phase gadgets act on the same vertices, so that they can be fused together.
     
     :param g: An instance of a ZX-graph.
@@ -634,6 +634,7 @@ def match_phase_gadgets(g):
             n = gad.pop()
             v = gadgets[n]
             m.append((v,n,totphase, gad, [gadgets[n] for n in gad]))
+            if num != -1 and len(m) == num: break
     return m
 
 def merge_phase_gadgets(g, matches):
