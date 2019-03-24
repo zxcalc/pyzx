@@ -166,16 +166,17 @@ class Simplifier(object):
             v1 = self.mastergraph.vertex_from_phase_index(i1)
             v2 = self.mastergraph.vertex_from_phase_index(i2)
         except ValueError: return
-        self.mastergraph.phase_index[v2] = i1
+        #self.mastergraph.phase_index[v2] = i1
         p1 = self.mastergraph.phase(v1)
         p2 = self.mastergraph.phase(v2)
         m1 = self.simplifygraph.phase_mult[i1]
         m2 = self.simplifygraph.phase_mult[i2]
         if (p2 == 0 or p2.denominator <= 2): # Deleted vertex contains Clifford phase
             if v2 in self.phantom_phases:
-                v2,i2 = self.phantom_phases[v2]
-                p2 = self.mastergraph.phase(v2)
+                v3,i3 = self.phantom_phases[v2]
                 m2 = m2*self.simplifygraph.phase_mult[i2]
+                v2,i2 = v3,i3
+                p2 = self.mastergraph.phase(v2)
             else: return
         if (p1 == 0 or p1.denominator <= 2): # Need to save non-Clifford location
             if v1 in self.phantom_phases: # Already fused with non-Clifford before
@@ -187,6 +188,7 @@ class Simplifier(object):
                 m1 = m1*self.simplifygraph.phase_mult[i1]
             else:
                 self.phantom_phases[v1] = (v2,i2)
+                self.simplifygraph.phase_mult[i1] = 1
                 return
         if p1.denominator <= 2 or p2.denominator <= 2: raise Exception("Clifford phases here??")
         # Both have non-Clifford phase
