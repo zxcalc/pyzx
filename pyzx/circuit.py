@@ -210,10 +210,10 @@ class Circuit(object):
                 else:
                     raise TypeError("Unknown gate with control: " + l)
             else:
-                if gname not in ('t4', 't5', 't6', 'tof'):
+                if gname not in ('t4', 't5', 't6', 't7', 'tof'):
                     raise TypeError("Unknown gate with multiple controls: " + l)
                 *ctrls, t = targets
-                if len(ctrls) > 5: raise TypeError("No more than 5 ctrls supported")
+                if len(ctrls) > 6: raise TypeError("No more than 5 ctrls supported")
                 while len(ancillas) < len(ctrls) - 2:
                     ancillas[len(ancillas)] = qcount
                     qcount += 1
@@ -224,10 +224,16 @@ class Circuit(object):
                     gates.append(Tofolli(ctrls[2],ctrls[3],ancillas[1]))
                     if len(ctrls) == 4:
                         gates.append(Tofolli(ancillas[0],ancillas[1],t))
-                    else:
+                    elif len(ctrls) == 5:
                         gates.append(Tofolli(ancillas[0],ancillas[1],ancillas[2]))
                         gates.append(Tofolli(ctrls[4],ancillas[2],t))
                         gates.append(Tofolli(ancillas[0],ancillas[1],ancillas[2]))
+                    else: # len(ctrls) == 6
+                        gates.append(Tofolli(ctrls[4],ctrls[5],ancillas[2]))
+                        gates.append(Tofolli(ancillas[0],ancillas[1],ancillas[3]))
+                        gates.append(Tofolli(ancillas[2],ancillas[3],t))
+                        gates.append(Tofolli(ancillas[0],ancillas[1],ancillas[3]))
+                        gates.append(Tofolli(ctrls[4],ctrls[5],ancillas[2]))
                     gates.append(Tofolli(ctrls[2],ctrls[3],ancillas[1]))
                 gates.append(Tofolli(ctrls[0],ctrls[1],ancillas[0]))
 
@@ -388,7 +394,7 @@ class Circuit(object):
         from .simplify import full_reduce
         c = self.adjoint()
         c.add_circuit(other)
-        g = self.to_graph(c)
+        g = c.to_graph()
         full_reduce(g)
         if g.num_vertices() == self.qubits*2:
             return True
