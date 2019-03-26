@@ -8,7 +8,7 @@ import numpy as np
 
 from pyzx.linalg import Mat2
 from pyzx.compiler import gauss, STEINER_MODE, GENETIC_STEINER_MODE, GAUSS_MODE, GENETIC_GAUSS_MODE
-from pyzx.architecture import create_9q_square_architecture
+from pyzx.architecture import create_square_architecture
 from pyzx.parity_maps import CNOT_tracker, build_random_parity_map
 from pyzx.machine_learning import GeneticAlgorithm
 from pyzx.fitness import get_gate_count_fitness_func
@@ -18,12 +18,13 @@ SEED = 42
 class TestSteiner(unittest.TestCase):
 
     def setUp(self):
+        self.n_qubits = 9
         self.n_tests = 5
-        self.arch = create_9q_square_architecture()
+        self.arch = create_square_architecture(n_qubits=self.n_qubits)
         depth = 20
         self.circuit = [CNOT_tracker(self.arch.n_qubits) for _ in range(self.n_tests)]
         np.random.seed(SEED)
-        self.matrix = [build_random_parity_map(9, depth, self.circuit[i]) for i in range(self.n_tests)]
+        self.matrix = [build_random_parity_map(self.n_qubits, depth, self.circuit[i]) for i in range(self.n_tests)]
 
     def assertGates(self, circuit):
         for gate in circuit.gates:
@@ -33,7 +34,7 @@ class TestSteiner(unittest.TestCase):
 
     def assertMat2Equal(self, m1, m2, triangle=False):
         if triangle:
-            self.assertListEqual(*[[m.data[i, j] for i in range(9) for j in range(9) if i >= j] for m in [m1, m2]])
+            self.assertListEqual(*[[m.data[i, j] for i in range(self.n_qubits) for j in range(self.n_qubits) if i >= j] for m in [m1, m2]])
         else:
             self.assertNdArrEqual(m1.data, m2.data)
 
@@ -56,7 +57,7 @@ class TestSteiner(unittest.TestCase):
         # Get the stored distances
         full = self.arch.distances["full"]
         # check shortest path between two bits in the architecture
-        for root in range(9):
+        for root in range(self.n_qubits):
             for v1 in range(root+1):
                 for v2 in range(v1, root+1):
                     distance, path = full[root][(v2, v1)]
@@ -64,9 +65,9 @@ class TestSteiner(unittest.TestCase):
 
     def test_upper_shortest_path(self):
         upper = self.arch.distances["upper"]
-        for root in range(9):
-            for v1 in range(root, 9):
-                for v2 in range(root, 9):
+        for root in range(self.n_qubits):
+            for v1 in range(root, self.n_qubits):
+                for v2 in range(root, self.n_qubits):
                     distance, path = upper[root][(v1, v2)]
                     self.assertEqual(distance, len(path))
 
@@ -128,8 +129,8 @@ class TestSteiner(unittest.TestCase):
     def test_permutated_gauss(self):
         for i in range(self.n_tests):
             with self.subTest(i=i):
-                perm = np.random.permutation(9)
-                perm2 = np.random.permutation(9)
+                perm = np.random.permutation(self.n_qubits)
+                perm2 = np.random.permutation(self.n_qubits)
                 self.do_permutated_gaus(self.matrix[i], perm, perm)
                 self.do_permutated_gaus(self.matrix[i], perm, perm2)
 
@@ -141,7 +142,7 @@ class TestSteiner(unittest.TestCase):
                 mutate_prob = 0.2
                 n_iter = 100
                 optimizer = GeneticAlgorithm(population, crossover_prob, mutate_prob, get_gate_count_fitness_func(STEINER_MODE, Mat2(self.matrix[i]), self.arch))
-                best_permutation = optimizer.find_optimimum(9, n_iter)
+                best_permutation = optimizer.find_optimimum(self.n_qubits, n_iter)
                 self.do_permutated_gaus(self.matrix[i], best_permutation, best_permutation)
 
 if __name__ == '__main__':
