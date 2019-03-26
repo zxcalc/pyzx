@@ -301,7 +301,7 @@ def batch_map_cnot_circuits(source, modes, architectures, n_qubits=None, populat
                                             metrics.append(make_metrics(circuit, origin_file, architecture.name, mode, dest_file, population, iteration, crossover_prob, mutation_prob, end_time-start_time, i))
                                         if mode in genetic_elim_modes:
                                             circuits[architecture.name][mode][(population, iteration, crossover_prob, mutation_prob)] = circuit
-                                        if mode == QUIL_COMPILER:
+                                        elif mode == QUIL_COMPILER:
                                             circuits[architecture.name][mode].append(circuit)
                                         else:
                                             circuits[architecture.name][mode] = circuit
