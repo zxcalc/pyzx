@@ -15,7 +15,7 @@ def get_gate_count_fitness_func(mode, matrix, architecture, row=True, col=True, 
     :param full_reduce: Whether to fully reduce the matrix, thus rebuild the full circuit.
     :return: A fitness function that calculates the number of gates needed for a given permutation.
     """
-    from pyzx.compiler import gauss #Circular dependency
+    from pyzx.cnot_mapper import gauss #Circular dependency
     matrix = matrix.data
     n_qubits = matrix.shape[0]
 
