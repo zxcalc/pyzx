@@ -346,7 +346,7 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description="Compiles given qasm files or those in the given folder to a given architecture.")
     parser.add_argument("QASM_source", nargs='+', help="The QASM file or folder with QASM files to be routed.")
-    parser.add_argument("-m", "--mode", nargs='+', dest="mode", default=STEINER_MODE, help="The mode specifying how to route.", choices=elim_modes+[QUIL_COMPILER])
+    parser.add_argument("-m", "--mode", nargs='+', dest="mode", default=STEINER_MODE, help="The mode specifying how to route. choose 'all' for using all modes.", choices=elim_modes+[QUIL_COMPILER, "all"])
     parser.add_argument("-a", "--architecture", nargs='+', dest="architecture", default=SQUARE, choices=architectures, help="Which architecture it should run compile to.")
     parser.add_argument("-q", "--qubits", nargs='+', default=None, type=int, help="The number of qubits for the fully connected architecture.")
     #parser.add_argument("-f", "--full_reduce", dest="full_reduce", default=1, type=int, choices=[0,1], help="Full reduce")
@@ -358,15 +358,26 @@ if __name__ == '__main__':
     parser.add_argument("--destination", help="Destination file or folder where the compiled circuit should be stored. Otherwise the source folder is used.")
     parser.add_argument("--metrics_csv", default=None, help="The location to store compiling metrics as csv, if not given, the metrics are not calculated. Only used when the source is a folder")
     parser.add_argument("--n_compile", default=1, type=int, help="How often to run the Quilc compiler, since it is not deterministic.")
+    parser.add_argument("--subfolder", default=None, type=str, nargs="+", help="Possible subfolders from the main QASM source to compile from. Less typing when source folders are in the same folder. Can also be used for subfiles.")
 
     args = parser.parse_args()
 
     sources = make_into_list(args.QASM_source)
+    if args.subfolder is not None:
+        sources = [os.path.join(source, subfolder) for source in sources for subfolder in args.subfolder if os.path.isdir(source)]
+        # Remove non existing paths
+
+    sources = [source for source in sources if os.path.exists(source) or print("Warning, skipping non-existing source:", source)]
+
+    if "all" in args.mode:
+        mode = elim_modes + [QUIL_COMPILER]
+    else:
+        mode = args.mode
 
     all_circuits = []
     for source in sources:
 
-        circuits = batch_map_cnot_circuits(source, args.mode, args.architecture, n_qubits=args.qubits, populations=args.population,
+        circuits = batch_map_cnot_circuits(source, mode, args.architecture, n_qubits=args.qubits, populations=args.population,
                                            iterations=args.iterations,
                                            crossover_probs=args.crossover_prob, mutation_probs=args.mutation_prob,
                                            dest_folder=args.destination, metrics_file=args.metrics_csv, n_compile=args.n_compile)
