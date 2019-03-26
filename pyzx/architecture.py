@@ -14,10 +14,11 @@ IBM_QX2 = "ibm_qx2"
 IBM_QX3 = "ibm_qx3"
 IBM_QX4 = "ibm_qx4"
 IBM_QX5 = "ibm_qx5"
+IBM_Q20_TOKYO = "ibm_q20_tokyo"
 RIGETTI_16Q_ASPEN = "rigetti_16q_aspen"
 RIGETTI_8Q_AGAVE = "rigetti_8q_agave"
 
-architectures = [SQUARE, CIRCLE, FULLY_CONNNECTED, LINE, IBM_QX4, IBM_QX2, IBM_QX3, IBM_QX5, RIGETTI_8Q_AGAVE, RIGETTI_16Q_ASPEN]
+architectures = [SQUARE, CIRCLE, FULLY_CONNNECTED, LINE, IBM_QX4, IBM_QX2, IBM_QX3, IBM_QX5, IBM_Q20_TOKYO, RIGETTI_8Q_AGAVE, RIGETTI_16Q_ASPEN]
 dynamic_size_architectures = [FULLY_CONNNECTED, LINE, CIRCLE, SQUARE]
 
 debug = False
@@ -218,6 +219,16 @@ def dynamic_size_architecture_name(base_name, n_qubits):
 def connect_vertices_in_line(vertices):
     return [(vertices[i], vertices[i+1]) for i in range(len(vertices)-1)]
 
+def connect_vertices_as_grid(width, height, vertices):
+    if len(vertices) != width * height:
+        raise KeyError("To make a grid, you need vertices exactly equal to width*height, but got %d=%d*%d." % (len(vertices), width, height))
+    edges = connect_vertices_in_line(vertices)
+    horizontal_lines = [vertices[i*width: (i+1)*width] for i in range(height)]
+    for line1, line2 in zip(horizontal_lines, horizontal_lines[1:]):
+        new_edges = [(v1, v2) for v1, v2 in zip(line1[:-1], reversed(line2[1:]))]
+        edges.extend(new_edges)
+    return edges
+
 def create_line_architecture(n_qubits, backend=None, **kwargs):
     graph = Graph(backend=backend)
     vertices = graph.add_vertices(n_qubits)
@@ -247,14 +258,7 @@ def create_square_architecture(n_qubits, backend=None, **kwargs):
         raise KeyError("Sqaure architecture requires a square number of qubits, but got " + str(n_qubits))
     graph = Graph(backend=backend)
     vertices = graph.add_vertices(n_qubits)
-    edges = connect_vertices_in_line(vertices)
-    row_start = 0
-    for i in range(sqrt_qubits-1):
-        row1 = vertices[row_start:row_start+sqrt_qubits]
-        row2 = vertices[row_start+sqrt_qubits:row_start+2*sqrt_qubits]
-        new_edges = [(v1, v2) for v1, v2 in zip(row1[:-1], reversed(row2[1:]))]
-        edges.extend(new_edges)
-        row_start += sqrt_qubits
+    edges = connect_vertices_as_grid(sqrt_qubits, sqrt_qubits, vertices)
     graph.add_edges(edges)
     name = dynamic_size_architecture_name(SQUARE, n_qubits)
     return Architecture(name=name, coupling_graph=graph, backend=backend, **kwargs)
@@ -348,6 +352,22 @@ def create_ibm_qx5_architecture(**kwargs):
     ])
     return Architecture(IBM_QX5, coupling_matrix=m, **kwargs)
 
+def create_ibm_q20_tokyo_architecture(backend=None, **kwargs):
+    graph = Graph(backend=backend)
+    vertices = graph.add_vertices(20)
+    edges = connect_vertices_as_grid(5, 4, vertices)
+    cross_edges = [
+        (1, 7), (2, 8),
+        (3, 5), (4, 6),
+        (6, 12), (7, 13),
+        (8, 10), (9, 11),
+        (11, 17), (12, 18),
+        (13, 15), (14, 16)
+    ]
+    edges.extend([(vertices[v1], vertices[v2]) for v1, v2 in cross_edges])
+    graph.add_edges(edges)
+    return Architecture(name=IBM_Q20_TOKYO, coupling_graph=graph, backend=backend, **kwargs)
+
 def create_rigetti_16q_aspen_architecture(**kwargs):
     m = np.array([
         #0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15
@@ -415,6 +435,8 @@ def create_architecture(name, **kwargs):
         return create_ibm_qx4_architecture(**kwargs)
     elif name == IBM_QX5:
         return create_ibm_qx5_architecture(**kwargs)
+    elif name == IBM_Q20_TOKYO:
+        return create_ibm_q20_tokyo_architecture(**kwargs)
     elif name == RIGETTI_16Q_ASPEN:
         return create_rigetti_16q_aspen_architecture(**kwargs)
     elif name == RIGETTI_8Q_AGAVE:
@@ -455,3 +477,6 @@ if __name__ == '__main__':
     for name in dynamic_size_architectures:
         arch = create_architecture(name, n_qubits=n_qubits)
         arch.visualize()
+
+    arch = create_architecture(IBM_Q20_TOKYO)
+    arch.visualize()
