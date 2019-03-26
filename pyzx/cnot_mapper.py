@@ -206,17 +206,22 @@ def create_dest_filename(original_file, population=None, iteration=None, crossov
     new_filename = '_'.join([part for part in [base_file, pop_ext, iter_ext, crosover_ext, mutation_ext, index_ext] if part != ""]) + extension
     return new_filename
 
-def make_metrics(circuit, id, architecture_name, mode, population=None, iteration=None, crossover_prob=None, mutation_prob=None, passed_time=None, index=None):
+def get_metric_header():
+    metrics = CNOT_tracker.get_metric_names()
+    return ["id", "architecture", "mode", "index", "population", "n_iterations", "crossover", "mutation"] + metrics + ["time", "destination_file"]
+
+def make_metrics(circuit, id, architecture_name, mode, dest_file=None, population=None, iteration=None, crossover_prob=None, mutation_prob=None, passed_time=None, index=None):
     result = circuit.gather_metrics()
     result["id"] = id
     result["mode"] = mode
     result["architecture"] = architecture_name
     result["population"] = population
-    result["iteration"] = iteration
+    result["n_iterations"] = iteration
     result["crossover"] = crossover_prob
     result["mutation"] = mutation_prob
     result["time"] = passed_time
     result["index"] = index
+    result["destination_file"] = dest_file
     return result
 
 
@@ -293,7 +298,7 @@ def batch_map_cnot_circuits(source, modes, architectures, n_qubits=None, populat
                                                                    crossover_prob=crossover_prob, mutation_prob=mutation_prob)
                                         end_time = time.time()
                                         if metrics_file is not None:
-                                            metrics.append(make_metrics(circuit, origin_file, architecture.name, mode, population, iteration, crossover_prob, mutation_prob, end_time-start_time, i))
+                                            metrics.append(make_metrics(circuit, origin_file, architecture.name, mode, dest_file, population, iteration, crossover_prob, mutation_prob, end_time-start_time, i))
                                         if mode in genetic_elim_modes:
                                             circuits[architecture.name][mode][(population, iteration, crossover_prob, mutation_prob)] = circuit
                                         if mode == QUIL_COMPILER:
@@ -302,7 +307,7 @@ def batch_map_cnot_circuits(source, modes, architectures, n_qubits=None, populat
                                             circuits[architecture.name][mode] = circuit
     if metrics_file is not None:
         df = DataFrame(metrics)
-        df.to_csv(metrics_file)
+        df.to_csv(metrics_file, columns=get_metric_header())
     return circuits
 
 def map_cnot_circuit(file, architecture, mode=GENETIC_STEINER_MODE, dest_file=None, population=30, iterations=15, crossover_prob=0.8, mutation_prob=0.2):

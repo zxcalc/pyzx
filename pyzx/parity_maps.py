@@ -26,6 +26,10 @@ class CNOT_tracker(Circuit):
         self.prepend_gate("CNOT", q1, q0)
         self.matrix.col_add(q0, q1)
 
+    @staticmethod
+    def get_metric_names():
+        return ["n_cnots"]
+
     def gather_metrics(self):
         metrics = {}
         metrics["n_cnots"] = self.count_cnots()
