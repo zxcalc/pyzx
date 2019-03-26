@@ -195,17 +195,18 @@ def make_into_list(possible_list):
         return [possible_list]
     return possible_list
 
-def create_dest_filename(original_file, population=None, iteration=None, crossover_prob=None, mutation_prob=None):
+def create_dest_filename(original_file, population=None, iteration=None, crossover_prob=None, mutation_prob=None, index=None):
     pop_ext = "" if population is None else "pop" + str(population)
     iter_ext = "" if iteration is None else "iter" + str(iteration)
     crosover_ext = "" if crossover_prob is None else "crossover" + str(crossover_prob)
     mutation_ext = "" if mutation_prob is None else "mutate" + str(mutation_prob)
+    index_ext = "" if index is None else "(" + str(index) + ")"
     filename = os.path.basename(original_file)
     base_file, extension = os.path.splitext(filename)
-    new_filename = '_'.join([part for part in [base_file, pop_ext, iter_ext, crosover_ext, mutation_ext] if part != ""]) + extension
+    new_filename = '_'.join([part for part in [base_file, pop_ext, iter_ext, crosover_ext, mutation_ext, index_ext] if part != ""]) + extension
     return new_filename
 
-def make_metrics(circuit, id, architecture_name, mode, population=None, iteration=None, crossover_prob=None, mutation_prob=None, passed_time=None):
+def make_metrics(circuit, id, architecture_name, mode, population=None, iteration=None, crossover_prob=None, mutation_prob=None, passed_time=None, index=None):
     result = circuit.gather_metrics()
     result["id"] = id
     result["mode"] = mode
@@ -215,9 +216,12 @@ def make_metrics(circuit, id, architecture_name, mode, population=None, iteratio
     result["crossover"] = crossover_prob
     result["mutation"] = mutation_prob
     result["time"] = passed_time
+    result["index"] = index
+    return result
 
 
-def batch_map_cnot_circuits(source, modes, architectures, n_qubits=None, populations=30, iterations=15, crossover_probs=0.8, mutation_probs=0.5, dest_folder=None, metrics_file=None):
+def batch_map_cnot_circuits(source, modes, architectures, n_qubits=None, populations=30, iterations=15, crossover_probs=0.8,
+                            mutation_probs=0.5, dest_folder=None, metrics_file=None, n_compile=1):
     modes = make_into_list(modes)
     architectures = make_into_list(architectures)
     populations = make_into_list(populations)
@@ -253,6 +257,10 @@ def batch_map_cnot_circuits(source, modes, architectures, n_qubits=None, populat
     for architecture in arch_iter:
         circuits[architecture.name] = {}
         for mode in modes:
+            if mode == QUIL_COMPILER:
+                n_compile_list = range(n_compile)
+            else:
+                n_compile_list = [None]
             new_dest_folder = os.path.join(dest_folder, architecture.name, mode)
             os.makedirs(new_dest_folder, exist_ok=True)
             if mode in genetic_elim_modes:
@@ -262,6 +270,8 @@ def batch_map_cnot_circuits(source, modes, architectures, n_qubits=None, populat
                 mutation_iter = mutation_probs
                 circuits[architecture.name][mode] = {}
             else:
+                if mode == QUIL_COMPILER:
+                    circuits[architecture.name][mode] = []
                 pop_iter = [None]
                 iter_iter = [None]
                 crossover_iter = [None]
@@ -274,22 +284,25 @@ def batch_map_cnot_circuits(source, modes, architectures, n_qubits=None, populat
                             for file in files:
                                 if os.path.splitext(file)[1].lower() == ".qasm":
                                     origin_file = os.path.join(source, file)
-                                    dest_filename = create_dest_filename(origin_file, population, iteration, crossover_prob, mutation_prob)
-                                    dest_file = os.path.join(dest_folder, architecture.name, mode, dest_filename)
-                                    start_time = time.time()
-                                    circuit = map_cnot_circuit(origin_file, architecture, mode=mode, dest_file=dest_file,
-                                                               population=population, iterations=iteration,
-                                                               crossover_prob=crossover_prob, mutation_prob=mutation_prob)
-                                    end_time = time.time()
-                                    if metrics_file is not None:
-                                        metrics.append(make_metrics(circuit, file, architecture.name, mode, population, iteration, crossover_prob, mutation_prob, end_time-start_time))
-                                    if mode in genetic_elim_modes:
-                                        circuits[architecture.name][mode][(population, iteration, crossover_prob, mutation_prob)] = circuit
-                                    else:
-                                        circuits[architecture.name][mode] = circuit
+                                    for i in n_compile_list:
+                                        dest_filename = create_dest_filename(origin_file, population, iteration, crossover_prob, mutation_prob, i)
+                                        dest_file = os.path.join(dest_folder, architecture.name, mode, dest_filename)
+                                        start_time = time.time()
+                                        circuit = map_cnot_circuit(origin_file, architecture, mode=mode, dest_file=dest_file,
+                                                                   population=population, iterations=iteration,
+                                                                   crossover_prob=crossover_prob, mutation_prob=mutation_prob)
+                                        end_time = time.time()
+                                        if metrics_file is not None:
+                                            metrics.append(make_metrics(circuit, origin_file, architecture.name, mode, population, iteration, crossover_prob, mutation_prob, end_time-start_time, i))
+                                        if mode in genetic_elim_modes:
+                                            circuits[architecture.name][mode][(population, iteration, crossover_prob, mutation_prob)] = circuit
+                                        if mode == QUIL_COMPILER:
+                                            circuits[architecture.name][mode].append(circuit)
+                                        else:
+                                            circuits[architecture.name][mode] = circuit
     if metrics_file is not None:
         df = DataFrame(metrics)
-        df.to_csv(df)
+        df.to_csv(metrics_file)
     return circuits
 
 def map_cnot_circuit(file, architecture, mode=GENETIC_STEINER_MODE, dest_file=None, population=30, iterations=15, crossover_prob=0.8, mutation_prob=0.2):
@@ -339,6 +352,7 @@ if __name__ == '__main__':
     #parser.add_argument("--perm", default="both", choices=["row", "col", "both"], help="Whether to find a single optimal permutation that permutes the rows, columns or both with the genetic algorithm.")
     parser.add_argument("--destination", help="Destination file or folder where the compiled circuit should be stored. Otherwise the source folder is used.")
     parser.add_argument("--metrics_csv", default=None, help="The location to store compiling metrics as csv, if not given, the metrics are not calculated. Only used when the source is a folder")
+    parser.add_argument("--n_compile", default=1, type=int, help="How often to run the Quilc compiler, since it is not deterministic.")
 
     args = parser.parse_args()
 
@@ -350,5 +364,5 @@ if __name__ == '__main__':
         circuits = batch_map_cnot_circuits(source, args.mode, args.architecture, n_qubits=args.qubits, populations=args.population,
                                            iterations=args.iterations,
                                            crossover_probs=args.crossover_prob, mutation_probs=args.mutation_prob,
-                                           dest_folder=args.destination, metrics_file=args.metrics_csv)
+                                           dest_folder=args.destination, metrics_file=args.metrics_csv, n_compile=args.n_compile)
         all_circuits.extend(circuits)

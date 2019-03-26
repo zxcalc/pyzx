@@ -54,7 +54,7 @@ class PyQuilCircuit(CNOT_tracker):
     def compiled_cnot_count(self):
         if self.compiled_program is None:
             self.compile()
-        return len(self.compiled_program.split('CZ')) - 1
+        return len([g for g in self.compiled_program if isinstance(g, Gate) and g.name == "CZ"])
 
     def to_qasm(self):
         if self.compiled_program is None:
