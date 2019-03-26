@@ -307,7 +307,10 @@ def batch_map_cnot_circuits(source, modes, architectures, n_qubits=None, populat
                                             circuits[architecture.name][mode] = circuit
     if metrics_file is not None:
         df = DataFrame(metrics)
-        df.to_csv(metrics_file, columns=get_metric_header())
+        if os.path.exists(metrics_file): # append to the file - do not overwrite!
+            df.to_csv(metrics_file, columns=get_metric_header(), header=False, index=False, mode='a')
+        else:
+            df.to_csv(metrics_file, columns=get_metric_header(), index=False)
     return circuits
 
 def map_cnot_circuit(file, architecture, mode=GENETIC_STEINER_MODE, dest_file=None, population=30, iterations=15, crossover_prob=0.8, mutation_prob=0.2):
@@ -361,6 +364,21 @@ if __name__ == '__main__':
     parser.add_argument("--subfolder", default=None, type=str, nargs="+", help="Possible subfolders from the main QASM source to compile from. Less typing when source folders are in the same folder. Can also be used for subfiles.")
 
     args = parser.parse_args()
+    if args.metrics_csv is not None and os.path.exists(args.metrics_csv):
+        delete_csv = None
+        text = input("The given metrics file [%s] already exists. Do you want to overwrite it? (Otherwise it is appended) [y|n]" % args.metrics_csv)
+        if text.lower() in ['y', "yes"]:
+            delete_csv = True
+        elif text.lower() in ['n', 'no']:
+            delete_csv = False
+        while delete_csv is None:
+            text = input("Please answer yes or no.")
+            if text.lower() in ['y', "yes"]:
+                delete_csv = True
+            elif text.lower() in ['n', 'no']:
+                delete_csv = False
+        if delete_csv:
+            os.remove(args.metrics_csv)
 
     sources = make_into_list(args.QASM_source)
     if args.subfolder is not None:
