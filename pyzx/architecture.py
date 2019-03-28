@@ -108,6 +108,9 @@ class Architecture():
                                     distances[(v1, v2)][0]:
                                 distances[(v0, v2)] = (distances[(v0, v1)][0] + distances[(v1, v2)][0],
                                                        distances[(v0, v1)][1] + distances[(v1, v2)][1])
+                                if upper:
+                                    distances[(v2, v0)] = (distances[(v0, v1)][0] + distances[(v1, v2)][0],
+                                                       distances[(v2, v1)][1] + distances[(v1, v0)][1])
         return distances
 
     def steiner_tree(self, start, nodes, upper=True):
@@ -368,27 +371,14 @@ def create_ibm_q20_tokyo_architecture(backend=None, **kwargs):
     graph.add_edges(edges)
     return Architecture(name=IBM_Q20_TOKYO, coupling_graph=graph, backend=backend, **kwargs)
 
-def create_rigetti_16q_aspen_architecture(**kwargs):
-    m = np.array([
-        #0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15
-        [0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0], #0
-        [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], #1
-        [0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], #2
-        [0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], #3
-        [0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], #4
-        [0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0], #5
-        [0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0], #6
-        [1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0], #7
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1], #8
-        [0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0], #9
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0], #10
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0], #11
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0], #12
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0], #13
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1], #14
-        [0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0]  #15
-    ])
-    return Architecture(RIGETTI_16Q_ASPEN, coupling_matrix=m, **kwargs)
+def create_rigetti_16q_aspen_architecture(backend=None, **kwargs):
+    graph = Graph(backend=backend)
+    vertices = graph.add_vertices(16)
+    edges = connect_vertices_in_line(vertices)
+    extra_edges = [(0, 7), (8, 15), (15, 0)]
+    edges += [(vertices[v1], vertices[v2]) for v1, v2 in extra_edges]
+    graph.add_edges(edges)
+    return Architecture(RIGETTI_16Q_ASPEN, coupling_graph=graph, backend=backend, **kwargs)
 
 def create_rigetti_8q_agave_architecture(**kwargs):
     m = np.array([
