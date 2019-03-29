@@ -31,3 +31,5 @@ from . import rules
 from . import optimize
 from . import simplify
 from . import d3
+from . import cnot_mapper
+from . import architecture
