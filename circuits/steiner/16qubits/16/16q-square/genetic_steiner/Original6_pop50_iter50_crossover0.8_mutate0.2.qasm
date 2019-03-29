@@ -1,0 +1,31 @@
+// Initial wiring: [14, 13, 9, 12, 11, 8, 5, 2, 10, 3, 6, 0, 1, 7, 15, 4]
+// Resulting wiring: [14, 13, 9, 12, 11, 8, 5, 2, 10, 3, 6, 0, 1, 7, 15, 4]
+OPENQASM 2.0;
+include "qelib1.inc";
+qreg q[16];
+cx q[1], q[0];
+cx q[6], q[1];
+cx q[7], q[6];
+cx q[9], q[8];
+cx q[10], q[5];
+cx q[12], q[11];
+cx q[14], q[13];
+cx q[13], q[10];
+cx q[10], q[5];
+cx q[5], q[4];
+cx q[13], q[10];
+cx q[11], q[12];
+cx q[9], q[10];
+cx q[4], q[5];
+cx q[5], q[6];
+cx q[6], q[7];
+cx q[5], q[10];
+cx q[7], q[6];
+cx q[3], q[4];
+cx q[4], q[5];
+cx q[5], q[4];
+cx q[2], q[5];
+cx q[1], q[6];
+cx q[6], q[7];
+cx q[6], q[1];
+cx q[7], q[6];

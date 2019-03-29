@@ -1,0 +1,3 @@
+architecture,mode,population,n_iterations,crossover,mutation,3_mean_n_cnots,3_median_n_cnots,5_mean_n_cnots,5_median_n_cnots,10_mean_n_cnots,10_median_n_cnots,20_mean_n_cnots,20_median_n_cnots,30_mean_n_cnots,30_median_n_cnots
+9q-square,genetic_gauss,30.0,15.0,0.8,0.2,3.0,3.0,4.9,5.0,8.85,9.0,15.55,15.5,22.35,23.0
+9q-square,genetic_steiner,30.0,15.0,0.8,0.2,3.0,3.0,5.2,5.0,11.6,12.0,25.85,26.0,35.55,36.0
