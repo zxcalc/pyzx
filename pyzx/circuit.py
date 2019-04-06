@@ -755,7 +755,7 @@ class QASMParser(object):
                 try:
                     phase = float(val)/math.pi
                 except ValueError:
-                    if not val.find('pi'): raise TypeError("Invalid specification {}".format(name))
+                    if val.find('pi') == -1: raise TypeError("Invalid specification {}".format(name))
                     val = val.replace('pi', '')
                     val = val.replace('*','')
                     try: phase = float(val)
