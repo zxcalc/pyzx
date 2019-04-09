@@ -142,11 +142,6 @@ def teleport_reduce(g, quiet=True):
     """This simplification procedure runs :func:`full_reduce` in a way 
     that does not change the graph structure of the resulting diagram.
     The only thing that is different in the output graph are the location and value of the phases.""" 
-    to_gh(g,quiet=quiet)
-    while True:
-        spider_simp(g,quiet=quiet)
-        i = id_simp(g,quiet=quiet)
-        if not i: break
     s = Simplifier(g)
     s.full_reduce(quiet)
     return s.mastergraph
@@ -174,7 +169,7 @@ class Simplifier(object):
         if (p2 == 0 or p2.denominator <= 2): # Deleted vertex contains Clifford phase
             if v2 in self.phantom_phases:
                 v3,i3 = self.phantom_phases[v2]
-                m2 = m2*self.simplifygraph.phase_mult[i2]
+                m2 = m2*self.simplifygraph.phase_mult[i3]
                 v2,i2 = v3,i3
                 p2 = self.mastergraph.phase(v2)
             else: return
@@ -182,13 +177,13 @@ class Simplifier(object):
             if v1 in self.phantom_phases: # Already fused with non-Clifford before
                 v3,i3 = self.phantom_phases[v1]
                 self.mastergraph.phase_index[v3] = i1
-                del self.phantom_phases[v1]
+                p1 = self.mastergraph.phase(v3)
+                if (p1+p2).denominator <= 2:
+                    del self.phantom_phases[v1]
                 v1,i1 = v3,i3
-                p1 = self.mastergraph.phase(v1)
                 m1 = m1*self.simplifygraph.phase_mult[i1]
             else:
                 self.phantom_phases[v1] = (v2,i2)
-                self.simplifygraph.phase_mult[i1] = 1
                 return
         if p1.denominator <= 2 or p2.denominator <= 2: raise Exception("Clifford phases here??")
         # Both have non-Clifford phase
