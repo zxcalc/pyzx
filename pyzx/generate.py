@@ -38,6 +38,28 @@ def identity(qubits, depth=1,backend=None):
     return g
 
 
+def CNOT_HAD_PHASE_circuit(qubits, gates, p_had, p_t, clifford=False):
+    """Returns a Circuit consisting of CNOT, HAD and phase gates. 
+    The default phase gate is the T gate, but if ``clifford=True``, then
+    this is replaced by the S gate."""
+    p_cnot = 1-p_had-p_t
+    c = Circuit(qubits)
+    for _ in range(gates):
+        r = random.random()
+        if r > 1-p_had:
+            c.add_gate("HAD",random.randrange(qubits))
+        elif r > 1-p_had-p_t:
+            if not clifford: c.add_gate("T",random.randrange(qubits))
+            else: c.add_gate("S",random.randrange(qubits))
+        else:
+            tgt = random.randrange(qubits)
+            while True:
+                ctrl = random.randrange(qubits)
+                if ctrl!=tgt: break
+            c.add_gate("CNOT",tgt,ctrl)
+    return c
+
+
 def cnots(qubits, depth, backend=None):
     """Generates a circuit consisting of randomly placed CNOT gates.
 
