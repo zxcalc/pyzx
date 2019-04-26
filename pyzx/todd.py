@@ -27,8 +27,10 @@ import subprocess
 import tempfile
 import time
 import random
-
-import numpy as np
+try:
+    import numpy as np
+except:
+    np = None
 
 from .circuit import T, S, Z, ZPhase, CZ, CNOT, ParityPhase
 from .linalg import Mat2, column_optimal_swap

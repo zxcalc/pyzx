@@ -22,13 +22,19 @@ __all__ = ['init', 'draw']
 
 try:
     from IPython.display import display, HTML
+    in_notebook = True
 except ImportError:
-    pass
+    in_notebook = False
+    try:
+        from browser import document, html
+        in_webpage = True
+    except ImportError:
+        in_webpage = False
 
 # Provides functions for displaying pyzx graphs in jupyter notebooks using d3
 
 _d3_display_seq = 0
-javascript_location = '../js'
+javascript_location = '/js'
 
 # TODO: avoid duplicate (copied from drawing.py)
 def phase_to_s(a):
@@ -43,6 +49,9 @@ def phase_to_s(a):
 
 def draw(g, scale=None):
     global _d3_display_seq
+
+    if not in_notebook and not in_webpage: 
+        raise Exception("This method only works when loaded in a webpage or Jupyter notebook")
 
     if not hasattr(g, 'vertices'):
         g = g.to_graph()
@@ -71,15 +80,26 @@ def draw(g, scale=None):
               'target': str(g.edge_t(e)),
               't': g.edge_type(e) } for e in g.edges()]
     graphj = json.dumps({'nodes': nodes, 'links': links})
-    display(HTML("""
-    <div style="overflow:auto" id="graph-output-{0}"></div>
-    <script type="text/javascript">
-    require.config({{ baseUrl: "{1}",
-                     paths: {{d3: "d3.v4.min"}} }});
-    require(['pyzx'], function(pyzx) {{
-        pyzx.showGraph('#graph-output-{0}',
-        JSON.parse('{2}'), {3}, {4}, {5});
-    }});
-    </script>
-    """.format(seq, javascript_location, graphj, w, h, node_size)))
-
+    text = """
+        <div style="overflow:auto" id="graph-output-{0}"></div>
+        <script type="text/javascript">
+        require.config({{ baseUrl: "{1}",
+                         paths: {{d3: "d3.v4.min"}} }});
+        require(['pyzx'], function(pyzx) {{
+            pyzx.showGraph('#graph-output-{0}',
+            JSON.parse('{2}'), {3}, {4}, {5});
+        }});
+        </script>
+        """.format(seq, javascript_location, graphj, w, h, node_size)
+    if in_notebook:
+        display(HTML(text))
+    elif in_webpage:
+        d = html.DIV(style={"overflow": "auto"}, id="graph-output-{}".format(seq))
+        source = """
+        require(['pyzx'], function(pyzx) {{
+            pyzx.showGraph('#graph-output-{0}',
+            JSON.parse('{2}'), {3}, {4}, {5});
+        }});
+        """.format(seq, javascript_location, graphj, w, h, node_size)
+        s = html.SCRIPT(source, type="text/javascript")
+        return d,s

@@ -134,7 +134,7 @@ def draw(g, layout=None, labels=False, figsize=(8,2), h_edge_draw='blue', rows=N
 
     if rows:
         minrow,maxrow = rows
-        vertices = [v for v in g.vertices() if minrow<=g.row(v)<=maxrow]
+        vertices = [v for v in g.vertices() if (minrow<=g.row(v) and g.row(v) <=maxrow)]
         edges = [e for e in g.edges() if g.edge_s(e) in vertices and g.edge_t(e) in vertices]
     else:
         vertices = g.vertices()
