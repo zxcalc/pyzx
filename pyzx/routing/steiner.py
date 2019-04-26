@@ -4,7 +4,7 @@ debug = False
 
 def steiner_gauss(matrix, architecture, full_reduce=False, x=None, y=None):
     """
-    Performs Gaussian elimination that is constraint bij the given architecture
+    Performs Gaussian elimination that is constraint by the given architecture
     
     :param matrix: PyZX Mat2 matrix to be reduced
     :param architecture: The Architecture object to conform to
