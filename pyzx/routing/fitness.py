@@ -1,5 +1,5 @@
-from pyzx.parity_maps import CNOT_tracker
-from pyzx.linalg import Mat2
+from .parity_maps import CNOT_tracker
+from ..linalg import Mat2
 
 import numpy as np
 
@@ -15,7 +15,7 @@ def get_gate_count_fitness_func(mode, matrix, architecture, row=True, col=True, 
     :param full_reduce: Whether to fully reduce the matrix, thus rebuild the full circuit.
     :return: A fitness function that calculates the number of gates needed for a given permutation.
     """
-    from pyzx.cnot_mapper import gauss #Circular dependency
+    from .cnot_mapper import gauss #Circular dependency
     matrix = matrix.data
     n_qubits = matrix.shape[0]
 

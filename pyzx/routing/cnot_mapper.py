@@ -1,15 +1,23 @@
 import sys, os
 if __name__ == '__main__':
-    sys.path.append('..')
+    sys.path.append('.')
 import numpy as np
-from pandas import DataFrame
+
+try:
+    from pandas import DataFrame
+except:
+    DataFrame = None
+    if __name__ == '__main__':
+        print("Warning: could not import pandas. No performance data will be exported.")
+
 import time
 
 from pyzx.linalg import Mat2
-from pyzx.architecture import create_fully_connected_architecture, create_architecture
-from pyzx.parity_maps import CNOT_tracker
-from pyzx.machine_learning import GeneticAlgorithm
-from pyzx.fitness import get_gate_count_fitness_func as get_fitness_func
+from pyzx.routing.architecture import create_fully_connected_architecture, create_architecture
+from pyzx.routing.parity_maps import CNOT_tracker
+from pyzx.routing.machine_learning import GeneticAlgorithm
+from pyzx.routing.fitness import get_gate_count_fitness_func as get_fitness_func
+from pyzx.routing.steiner import steiner_gauss
 
 debug = False
 
@@ -56,81 +64,6 @@ def gauss(mode, matrix, architecture=None, **kwargs):
         perm, cnots, rank = permutated_gauss(matrix, GAUSS_MODE, architecture=architecture, **kwargs)
         return rank
 
-def steiner_gauss(matrix, architecture, full_reduce=False, x=None, y=None):
-    """
-    Performs Gaussian elimination that is constraint bij the given architecture
-    
-    :param matrix: PyZX Mat2 matrix to be reduced
-    :param architecture: The Architecture object to conform to
-    :param full_reduce: Whether to fully reduce or only create an upper triangular form
-    :param x: 
-    :param y: 
-    :return: Rank of the given matrix
-    """
-    def row_add(c0, c1):
-        matrix.row_add(c0, c1)
-        debug and print("Reducing", c0, c1)
-        if x != None: x.row_add(c0, c1)
-        if y != None: y.col_add(c1, c0)
-    def steiner_reduce(col, root, nodes, upper):
-        steiner_tree = architecture.steiner_tree(root, nodes, upper)
-        # Remove all zeros
-        next_check = next(steiner_tree)
-        debug and print("Step 1: remove zeros")
-        if upper:
-            zeros = []
-            while next_check is not None:
-                s0, s1 = next_check
-                if matrix.data[s0, col] == 0:  # s1 is a new steiner point or root = 0
-                    zeros.append(next_check)
-                next_check = next(steiner_tree)
-            while len(zeros) > 0:
-                s0, s1 = zeros.pop(-1)
-                if matrix.data[s0, col] == 0:
-                    row_add(s1, s0)
-                    debug and print(matrix.data[s0, col], matrix.data[s1, col])
-        else:
-            debug and print("deal with zero root")
-            if next_check is not None and matrix.data[next_check[0], col] == 0:  # root is zero
-                print("WARNING : Root is 0 => reducing non-pivot column", matrix.data)
-            debug and print("Step 1: remove zeros", matrix.data[:, c])
-            while next_check is not None:
-                s0, s1 = next_check
-                if matrix.data[s1, col] == 0:  # s1 is a new steiner point
-                    row_add(s0, s1)
-                next_check = next(steiner_tree)
-        # Reduce stuff
-        debug and print("Step 2: remove ones")
-        next_add = next(steiner_tree)
-        while next_add is not None:
-            s0, s1 = next_add
-            row_add(s0, s1)
-            next_add = next(steiner_tree)
-            debug and print(next_add)
-        debug and print("Step 3: profit")
-
-    rows = matrix.rows()
-    cols = matrix.cols()
-    p_cols = []
-    pivot = 0
-    for c in range(cols):
-        nodes = [r for r in range(pivot, rows) if pivot==r or matrix.data[r][c] == 1]
-        steiner_reduce(c, pivot, nodes, True)
-        if matrix.data[pivot][c] == 1:
-            p_cols.append(c)
-            pivot += 1
-    debug and print("Upper triangle form", matrix.data)
-    rank = pivot
-    debug and print(p_cols)
-    if full_reduce:
-        pivot -= 1
-        for c in reversed(p_cols):
-            debug and print(pivot, matrix.data[:,c])
-            nodes = [r for r in range(0, pivot+1) if r==pivot or matrix.data[r][c] == 1]
-            if len(nodes) > 1:
-                steiner_reduce(c, pivot, nodes, False)
-            pivot -= 1
-    return rank
 
 def permutated_gauss(matrix, mode=None, architecture=None, population_size=30, crossover_prob=0.8, mutate_prob=0.2, n_iterations=50,
                      row=True, col=True, full_reduce=True, fitness_func=None, x=None, y=None):
@@ -312,7 +245,7 @@ def batch_map_cnot_circuits(source, modes, architectures, n_qubits=None, populat
                                             else:
                                                 raise e
 
-    if len(metrics) > 0:
+    if len(metrics) > 0 and DataFrame != None:
         df = DataFrame(metrics)
         if os.path.exists(metrics_file): # append to the file - do not overwrite!
             df.to_csv(metrics_file, columns=get_metric_header(), header=False, index=False, mode='a')
@@ -346,7 +279,7 @@ def map_cnot_circuit(file, architecture, mode=GENETIC_STEINER_MODE, dest_file=No
 
 if __name__ == '__main__':
     import argparse
-    from pyzx.architecture import architectures, SQUARE, dynamic_size_architectures
+    from pyzx.routing.architecture import architectures, SQUARE, dynamic_size_architectures
 
     def restricted_float(x):
         x = float(x)

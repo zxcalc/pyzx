@@ -1,7 +1,7 @@
 import sys
 if __name__ == '__main__':
     sys.path.append('..')
-from pyzx.graph.graph import  Graph
+from ..graph.graph import  Graph
 #from pyzx.graph.base import BaseGraph # TODO fix the right graph import - one of many - right backend etc
 
 import numpy as np
@@ -52,8 +52,8 @@ class Architecture():
         self.n_qubits = len(self.vertices)
 
     def pre_calc_distances(self):
-        self.distances = {"upper": [self.FloydWarshall(until, upper=True) for until, v in enumerate(self.vertices)],
-                          "full": [self.FloydWarshall(until, upper=False) for until, v in enumerate(self.vertices)]}
+        self.distances = {"upper": [self.floyd_warshall(until, upper=True) for until, v in enumerate(self.vertices)],
+                          "full": [self.floyd_warshall(until, upper=False) for until, v in enumerate(self.vertices)]}
 
     def to_quil_device(self):
         # Only required here
@@ -76,7 +76,7 @@ class Architecture():
             filename = self.name + ".png"
         plt.savefig(filename)
 
-    def FloydWarshall(self, exclude_excl, upper=True):
+    def floyd_warshall(self, exclude_excl, upper=True):
         """
         Implementation of the Floyd-Warshall algorithm to calculate the all-pair distances in a given graph
 
