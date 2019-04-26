@@ -17,10 +17,7 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import sys, os
-if __name__ == '__main__':
-    sys.path.append('.')
-import numpy as np
-
+import time
 try:
     from pandas import DataFrame
 except:
@@ -28,14 +25,21 @@ except:
     if __name__ == '__main__':
         print("Warning: could not import pandas. No performance data will be exported.")
 
-import time
+import numpy as np
 
-from pyzx.linalg import Mat2
-from pyzx.routing.architecture import create_fully_connected_architecture, create_architecture
-from pyzx.routing.parity_maps import CNOT_tracker
-from pyzx.routing.machine_learning import GeneticAlgorithm
+if __name__ == '__main__':
+    print("Please call this as python -m pyzx mapper ...")
+    return
+    #sys.path.append('..')
+
+from ..linalg import Mat2
+from ..routing.architecture import create_fully_connected_architecture, create_architecture
+from ..routing.parity_maps import CNOT_tracker
+from ..routing.machine_learning import GeneticAlgorithm
 # from pyzx.routing.fitness import get_gate_count_fitness_func as get_fitness_func
-from pyzx.routing.steiner import steiner_gauss
+from ..routing.steiner import steiner_gauss
+
+description = "Compiles given qasm files or those in the given folder to a given architecture."
 
 debug = False
 
@@ -321,9 +325,9 @@ def map_cnot_circuit(file, architecture, mode=GENETIC_STEINER_MODE, dest_file=No
     return compiled_circuit
 
 
-if __name__ == '__main__':
+def main(args):
     import argparse
-    from pyzx.routing.architecture import architectures, SQUARE, dynamic_size_architectures
+    from ..routing.architecture import architectures, SQUARE, dynamic_size_architectures
 
     def restricted_float(x):
         x = float(x)
@@ -331,7 +335,7 @@ if __name__ == '__main__':
             raise argparse.ArgumentTypeError("%r not in range [0.0, 1.0]." % (x,))
         return x
 
-    parser = argparse.ArgumentParser(description="Compiles given qasm files or those in the given folder to a given architecture.")
+    parser = argparse.ArgumentParser(prog="pyzx mapper", description=description)
     parser.add_argument("QASM_source", nargs='+', help="The QASM file or folder with QASM files to be routed.")
     parser.add_argument("-m", "--mode", nargs='+', dest="mode", default=STEINER_MODE, help="The mode specifying how to route. choose 'all' for using all modes.", choices=elim_modes+[QUIL_COMPILER, "all"])
     parser.add_argument("-a", "--architecture", nargs='+', dest="architecture", default=SQUARE, choices=architectures, help="Which architecture it should run compile to.")
@@ -347,7 +351,7 @@ if __name__ == '__main__':
     parser.add_argument("--n_compile", default=1, type=int, help="How often to run the Quilc compiler, since it is not deterministic.")
     parser.add_argument("--subfolder", default=None, type=str, nargs="+", help="Possible subfolders from the main QASM source to compile from. Less typing when source folders are in the same folder. Can also be used for subfiles.")
 
-    args = parser.parse_args()
+    args = parser.parse_args(args)
     if args.metrics_csv is not None and os.path.exists(args.metrics_csv):
         delete_csv = None
         text = input("The given metrics file [%s] already exists. Do you want to overwrite it? (Otherwise it is appended) [y|n]" % args.metrics_csv)
