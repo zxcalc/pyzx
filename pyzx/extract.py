@@ -812,8 +812,8 @@ def simple_extract(g, quiet=True):
     #maxq = max(qs.values()) + 1
     
     gadgets = {}
-    nodes = []
-    for v in g.vertices():
+    nodes = [] # Non phase-gadgets
+    for v in g.vertices(): # Find which vertices are gadgets
         if rs[v] > 1: g.set_row(v, rs[v]+20)
         if v in g.inputs or v in g.outputs: continue
         if len(list(g.neighbours(v))) == 1: #phase gadget
@@ -852,7 +852,7 @@ def simple_extract(g, quiet=True):
         
         boundary_verts = []
         neighbours = set()
-        for v in left:
+        for v in left: # Parse CZ gates between frontier
             q = qs[v]
             neigh = [w for w in g.neighbours(v) if rs[w]==leftrow and w<v]
             for n in neigh:
@@ -864,7 +864,7 @@ def simple_extract(g, quiet=True):
             d = [w for w in g.neighbours(v) if rs[w]>leftrow]
             neighbours.update(d)
         
-        for w in neighbours:
+        for w in neighbours: # Phase gadget stuff
             if w in gadgets:
                 tgts = set(g.neighbours(w))
                 tgts.remove(gadgets[w])
@@ -879,7 +879,7 @@ def simple_extract(g, quiet=True):
                     g.remove_vertex(gadgets[w])
                     g.remove_vertex(w)
         neighbours = set()
-        for v in left.copy():
+        for v in left.copy(): # Deal with frontier connected to outputs
             d = [w for w in g.neighbours(v) if rs[w]>leftrow]
             if any(w in g.outputs for w in d):
                 if len(d) == 1:
@@ -905,7 +905,7 @@ def simple_extract(g, quiet=True):
             neighbours.update(d)
                 
         if not left: break # We are done
-        right = [w for w in neighbours if w in nodes]
+        right = [w for w in neighbours if w in nodes] # Only get non-phase-gadget neighbours
         m = bi_adj(g,right,left)
         #print(m)
 #         target = column_optimal_swap(m)
