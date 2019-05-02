@@ -15,7 +15,10 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-"""Contains simplification procedures based in the rewrite rules in rules_.
+"""Contains simplification procedures based on the rewrite rules in rules_.
+The main procedures of interest are :func:``clifford_simp` for simple reductions, 
+:func:``full_reduce`` for the full rewriting power of PyZX, and :func:`teleport_reduce` to 
+use the power of :func:``full_reduce`` while not changing the structure of the graph.
 """
 
 from __future__ import print_function
@@ -121,6 +124,127 @@ def clifford_simp(g, quiet=False):
         if i == 0:
             break
 
+
+def full_reduce(g, quiet=True):
+    """The main simplification routine of PyZX. It uses a combination of :func:`clifford_simp` and
+    the gadgetization strategies :func:`pivot_gadget_simp` and :func:`gadget_simp`."""
+    interior_clifford_simp(g, quiet=quiet)
+    pivot_gadget_simp(g,quiet=quiet)
+    while True:
+        clifford_simp(g,quiet=quiet)
+        i = gadget_simp(g, quiet=quiet)
+        interior_clifford_simp(g,quiet=quiet)
+        j = pivot_gadget_simp(g,quiet=quiet)
+        if i+j == 0:
+            break
+
+def teleport_reduce(g, quiet=True):
+    """This simplification procedure runs :func:`full_reduce` in a way 
+    that does not change the graph structure of the resulting diagram.
+    The only thing that is different in the output graph are the location and value of the phases.""" 
+    s = Simplifier(g)
+    s.full_reduce(quiet)
+    return s.mastergraph
+
+
+class Simplifier(object):
+    """Class used for :func:`teleport_reduce`."""
+    def __init__(self, g):
+        g.track_phases = True
+        self.mastergraph = g.copy()
+        self.simplifygraph = g.copy()
+        self.simplifygraph.set_phase_master(self)
+        self.phantom_phases = dict()
+
+    def fuse_phases(self,i1, i2):
+        try:
+            v1 = self.mastergraph.vertex_from_phase_index(i1)
+            v2 = self.mastergraph.vertex_from_phase_index(i2)
+        except ValueError: return
+        #self.mastergraph.phase_index[v2] = i1
+        p1 = self.mastergraph.phase(v1)
+        p2 = self.mastergraph.phase(v2)
+        m1 = self.simplifygraph.phase_mult[i1]
+        m2 = self.simplifygraph.phase_mult[i2]
+        if (p2 == 0 or p2.denominator <= 2): # Deleted vertex contains Clifford phase
+            if v2 in self.phantom_phases:
+                v3,i3 = self.phantom_phases[v2]
+                m2 = m2*self.simplifygraph.phase_mult[i3]
+                v2,i2 = v3,i3
+                p2 = self.mastergraph.phase(v2)
+            else: return
+        if (p1 == 0 or p1.denominator <= 2): # Need to save non-Clifford location
+            if v1 in self.phantom_phases: # Already fused with non-Clifford before
+                v3,i3 = self.phantom_phases[v1]
+                self.mastergraph.phase_index[v3] = i1
+                p1 = self.mastergraph.phase(v3)
+                if (p1+p2).denominator <= 2:
+                    del self.phantom_phases[v1]
+                v1,i1 = v3,i3
+                m1 = m1*self.simplifygraph.phase_mult[i1]
+            else:
+                self.phantom_phases[v1] = (v2,i2)
+                return
+        if p1.denominator <= 2 or p2.denominator <= 2: raise Exception("Clifford phases here??")
+        # Both have non-Clifford phase
+        if m1*m2 == 1: phase = (p1 + p2)%2
+        else: phase = p1 - p2
+        self.mastergraph.set_phase(v1,phase)
+        self.mastergraph.set_phase(v2,0)
+        self.simplifygraph.phase_mult[i1] = 1
+        self.simplifygraph.phase_mult[i2] = 1
+    
+    def full_reduce(self, quiet=True):
+        full_reduce(self.simplifygraph,quiet=quiet)
+
+
+
+def to_gh(g,quiet=True):
+    """Turns every red node into a green node by changing regular edges into hadamard edges"""
+    ty = g.types()
+    for v in g.vertices():
+        if ty[v] == 2:
+            g.set_type(v, 1)
+            for e in g.incident_edges(v):
+                et = g.edge_type(e)
+                if et == 2: g.set_edge_type(e,1)
+                elif et == 1: g.set_edge_type(e,2)
+
+def to_rg(g, select=None):
+    """Turn green nodes into red nodes by colour-changing vertices which satisfy the predicate ``select``.
+    By default, the predicate is set to greedily reducing the number of Hadamard-edges.
+    :param g: A ZX-graph.
+    :param select: A function taking in vertices and returning ``True`` or ``False``."""
+    if not select:
+        select = lambda v: (
+            len([e for e in g.incident_edges(v) if g.edge_type(e) == 1]) <
+            len([e for e in g.incident_edges(v) if g.edge_type(e) == 2])
+            )
+
+    ty = g.types()
+    for v in g.vertices():
+        if select(v):
+            if ty[v] == 1:
+                g.set_type(v, 2)
+                for e in g.incident_edges(v):
+                    g.set_edge_type(e, 1 if g.edge_type(e) == 2 else 2)
+            elif ty[v] == 2:
+                g.set_type(v, 1)
+                for e in g.incident_edges(v):
+                    g.set_edge_type(e, 1 if g.edge_type(e) == 2 else 2)
+
+def tcount(g):
+    """Returns the amount of nodes in g that have a non-Clifford phase."""
+    if not hasattr(g, "vertices"): # It is probably a circuit
+        return g.tcount()
+    count = 0
+    phases = g.phases()
+    for v in g.vertices():
+        if phases[v]!=0 and phases[v].denominator > 2:
+            count += 1
+    return count
+
+
 # def pivot_double_boundary(g, quiet=False):
 #     """Finds Pauli-phase interior non-phase gadget nodes that are connected
 #     to the boundary. It changes the boundary nodes so that a pivot can be done
@@ -180,78 +304,6 @@ def clifford_simp(g, quiet=False):
 #                                 len(skiplist),len(pivotable_edges)))
 #     i = pivot_simp(g, matchf=lambda e: e in pivotable_edges, quiet=quiet)
 #     return i
-
-
-
-def to_gh(g,quiet=True):
-    """Turns every red node into a green node by changing regular edges into hadamard edges"""
-    ty = g.types()
-    for v in g.vertices():
-        if ty[v] == 2:
-            g.set_type(v, 1)
-            for e in g.incident_edges(v):
-                et = g.edge_type(e)
-                if et == 2: g.set_edge_type(e,1)
-                elif et == 1: g.set_edge_type(e,2)
-
-def to_rg(g, select=None):
-    """Turn green nodes into red nodes by colour-changing vertices which satisfy the predicate ``select``.
-    By default, the predicate is set to greedily reducing the number of Hadamard-edges.
-    :param g: A ZX-graph.
-    :param select: A function taking in vertices and returning ``True`` or ``False``."""
-    if not select:
-        select = lambda v: (
-            len([e for e in g.incident_edges(v) if g.edge_type(e) == 1]) <
-            len([e for e in g.incident_edges(v) if g.edge_type(e) == 2])
-            )
-
-    ty = g.types()
-    for v in g.vertices():
-        if select(v):
-            if ty[v] == 1:
-                g.set_type(v, 2)
-                for e in g.incident_edges(v):
-                    g.set_edge_type(e, 1 if g.edge_type(e) == 2 else 2)
-            elif ty[v] == 2:
-                g.set_type(v, 1)
-                for e in g.incident_edges(v):
-                    g.set_edge_type(e, 1 if g.edge_type(e) == 2 else 2)
-
-
-def full_reduce(g, quiet=True):
-    interior_clifford_simp(g, quiet=quiet)
-    while True:
-        pivot_gadget_simp(g,quiet=quiet)
-        clifford_simp(g,quiet=quiet)
-        i = gadget_simp(g, quiet=quiet)
-        interior_clifford_simp(g,quiet=quiet)
-        if not i:
-            break
-
-def teleport_reduce(g, quiet=True):
-    s = Simplifier(g)
-    s.full_reduce(quiet)
-    return s.mastergraph
-
-
-class Simplifier(object):
-    def __init__(self, g):
-        g.track_phases = True
-        self.mastergraph = g.copy()
-        self.simplifygraph = g.copy()
-        self.simplifygraph.set_phase_master(self)
-
-    def fuse_phases(self,i1, i2):
-        try:
-            v1 = self.mastergraph.vertex_from_phase_index(i1)
-            v2 = self.mastergraph.vertex_from_phase_index(i2)
-        except ValueError: pass
-        p = self.mastergraph.phase(v2)
-        self.mastergraph.add_to_phase(v1,p)
-        self.mastergraph.set_phase(v2,0)
-    
-    def full_reduce(self, quiet=True):
-        full_reduce(self.simplifygraph,quiet=quiet)
 
 # def gadgetize(g):
 #     """Un-fuses every node with a non-Pauli phase, so that they act like phase gadgets. 
@@ -335,18 +387,7 @@ class Simplifier(object):
 #         clifford_simp(g,quiet=quiet)
 #         i = gadget_simp(g, quiet=quiet)
 
-
-def tcount(g):
-    """Returns the amount of nodes in g that have a non-Clifford phase."""
-    if not hasattr(g, "vertices"): # It is probably a circuit
-        return g.tcount()
-    count = 0
-    phases = g.phases()
-    for v in g.vertices():
-        if phases[v]!=0 and phases[v].denominator > 2:
-            count += 1
-    return count
-
+#The functions below haven't been updated in a while. Use at your own risk.
 
 def simp_iter(g, name, match, rewrite):
     """Version of :func:`simp` that instead of performing all rewrites at once, returns an iterator."""

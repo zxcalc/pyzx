@@ -23,7 +23,7 @@ The current rewrites are based on:
 - Spider fusion.
 - The bialgebra equation.
 - Local Complementation.
-- Pivoting.
+- A few variations on Pivoting.
 - Removing of identities.
 
 Each of these rewrite rules consists of three methods:
@@ -38,7 +38,8 @@ Each of these rewrite rules consists of three methods:
   :meth:`~graph.base.BaseGraph.remove_isolated_vertices`
   should be called.
 
-These rewrite rules are used in the simplification procedures of :mod:`simplify`.
+These rewrite rules are used in the simplification procedures of :mod:`simplify`. 
+In particular, they are used in combination with :func:`simplify.simp` to create rewrite strategies.
 """
 
 from fractions import Fraction
@@ -134,7 +135,7 @@ def match_spider(g):
     return []
 
 def match_spider_parallel(g, matchf=None, num=-1):
-    """Finds noninteracting matchings of the spider fusion rule.
+    """Finds non-interacting matchings of the spider fusion rule.
     
     :param g: An instance of a ZX-graph.
     :param matchf: An optional filtering function for candidate edge, should
@@ -221,14 +222,13 @@ def unspider(g, m, qubit=-1, row=-1):
     return v
 
 
-# TODO: optimise for single-match case
 def match_pivot(g):
     """Does the same as :func:`match_pivot_parallel` but with ``num=1``."""
     return match_pivot_parallel(g, num=1, check_edge_types=True)
 
 
 def match_pivot_parallel(g, matchf=None, num=-1, check_edge_types=False):
-    """Finds noninteracting matchings of the pivot rule.
+    """Finds non-interacting matchings of the pivot rule.
     
     :param g: An instance of a ZX-graph.
     :param num: Maximal amount of matchings to find. If -1 (the default)
@@ -263,9 +263,6 @@ def match_pivot_parallel(g, matchf=None, num=-1, check_edge_types=False):
         v0n = list(g.neighbours(v0))
         v0b = []
         for n in v0n:
-            #if g.phase(n).denominator > 2:
-            #    invalid_edge = True
-            #    break
             et = g.edge_type(g.edge(v0,n))
             if types[n] == 1 and et == 2: pass
             elif types[n] == 0: v0b.append(n)
@@ -278,9 +275,6 @@ def match_pivot_parallel(g, matchf=None, num=-1, check_edge_types=False):
         v1n = list(g.neighbours(v1))
         v1b = []
         for n in v1n:
-            #if g.phase(n).denominator > 2:
-            #    invalid_edge = True
-            #    break
             et = g.edge_type(g.edge(v1,n))
             if types[n] == 1 and et == 2: pass
             elif types[n] == 0: v1b.append(n)
@@ -296,9 +290,6 @@ def match_pivot_parallel(g, matchf=None, num=-1, check_edge_types=False):
             for c in g.incident_edges(v): candidates.discard(c)
         for v in v1n:
             for c in g.incident_edges(v): candidates.discard(c)
-        #n0 = list(v0n - v1n)
-        #n01 = list(v0n & v1n)
-        #n1 = list(v1n - v0n)
         b0 = list(v0b)
         b1 = list(v1b)
         m.append([v0,v1,b0,b1])
@@ -384,6 +375,7 @@ def match_pivot_boundary(g, matchf=None, num=-1):
     rs = g.rows()
     
     edge_list = []
+    consumed_vertices = set()
     i = 0
     m = []
     while (num == -1 or i < num) and len(candidates) > 0:
@@ -400,7 +392,7 @@ def match_pivot_boundary(g, matchf=None, num=-1):
             if len(g.neighbours(n)) == 1: # v is a phase gadget
                 good_vert = False
                 break
-            if n not in candidates: 
+            if n in consumed_vertices:
                 good_vert = False
                 break
             boundaries = [b for b in g.neighbours(n) if types[b]==0]
@@ -422,6 +414,8 @@ def match_pivot_boundary(g, matchf=None, num=-1):
         g.update_phase_index(w,v1)
         edge_list.append((w,v2) if w<v2 else (v2,w))
         edge_list.append((v1,v2) if v1<v2 else (v2,v1))
+        for n in g.neighbours(v): consumed_vertices.add(n)
+        for n in g.neighbours(w): consumed_vertices.add(n)
         
         m.append([v,w,[],[bound]])
         i += 1
@@ -448,6 +442,7 @@ def pivot(g, matches):
         #  n[0] <- non-boundary neighbours of m[0] only
         #  n[1] <- non-boundary neighbours of m[1] only
         #  n[2] <- non-boundary neighbours of m[0] and m[1]
+        g.update_phase_index(m[0],m[1])
         n = [set(g.neighbours(m[0])), set(g.neighbours(m[1]))]
         for i in range(2):
             n[i].remove(m[1-i])
@@ -482,7 +477,6 @@ def pivot(g, matches):
                 elif g.edge_type(e) == 2: ne += 1
                 etab[new_e] = (ne,nhe)
                 rem_edges.append(e)
-                
 
 
         for e in es:
@@ -559,7 +553,7 @@ def match_ids(g):
     return match_ids_parallel(g, num=1)
 
 def match_ids_parallel(g, vertexf=None, num=-1):
-    """Finds noninteracting identity nodes.
+    """Finds non-interacting identity vertices.
     
     :param g: An instance of a ZX-graph.
     :param num: Maximal amount of matchings to find. If -1 (the default)
@@ -606,10 +600,16 @@ def remove_ids(g, matches):
 
 
 def match_phase_gadgets(g):
+    """Determines which phase gadgets act on the same vertices, so that they can be fused together.
+    
+    :param g: An instance of a ZX-graph.
+    :rtype: List of 5-tuples ``(axel,leaf, total combined phase, other axels with same targets, other leafs)``.
+    """
     phases = g.phases()
 
     parities = dict()
     gadgets = dict()
+    # First we find all the phase-gadgets, and the list of vertices they act on
     for v in g.vertices():
         if phases[v] != 0 and phases[v].denominator > 2 and len(list(g.neighbours(v)))==1:
             n = list(g.neighbours(v))[0]
@@ -623,17 +623,21 @@ def match_phase_gadgets(g):
         if len(gad) == 1: 
             n = gad[0]
             v = gadgets[n]
-            if phases[n] != 0:
+            if phases[n] != 0: # If the phase of the axel vertex is pi, we change the phase of the gadget
+                g.phase_negate(v)
                 m.append((v,n,-phases[v],[],[]))
         else:
             totphase = sum((1 if phases[n]==0 else -1)*phases[gadgets[n]] for n in gad)%2
+            for n in gad:
+                if phases[n] != 0:
+                    g.phase_negate(gadgets[n])
             n = gad.pop()
             v = gadgets[n]
             m.append((v,n,totphase, gad, [gadgets[n] for n in gad]))
-
     return m
 
 def merge_phase_gadgets(g, matches):
+    """Given the output of :func:``match_phase_gadgets``, removes phase gadgets that act on the same set of targets."""
     rem = []
     for v, n, phase, othergadgets, othertargets in matches:
         g.set_phase(v, phase)
@@ -646,7 +650,10 @@ def merge_phase_gadgets(g, matches):
 
 
 
+
 def match_gadgets_phasepoly(g):
+    """Finds groups of phase-gadgets that act on the same set of 4 vertices in order to apply a rewrite based on
+    rule R_13 of the paper *A Finite Presentation of CNOT-Dihedral Operators*.""" 
     targets = {}
     gadgets = {}
     for v in g.vertices():
@@ -694,6 +701,8 @@ def match_gadgets_phasepoly(g):
 
 
 def apply_gadget_phasepoly(g, matches):
+    """Uses the output of :func:`match_gadgets_phasepoly` to apply a rewrite based 
+    on rule R_13 of the paper *A Finite Presentation of CNOT-Dihedral Operators*.""" 
     rs = g.rows()
     phases = g.phases()
     for group, gadgets in matches:

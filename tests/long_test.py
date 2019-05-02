@@ -26,6 +26,8 @@ from pyzx.generate import cliffordT
 from pyzx.simplify import *
 from pyzx.extract import *
 from pyzx.phasepoly import *
+from pyzx.circuit import Circuit
+from pyzx.optimize import *
 
 
 ITERATIONS = 500
@@ -81,6 +83,23 @@ def do_tests(qubits, depth, iterations, test_clifford_graph=True):
             c2, blocks = circuit_phase_polynomial_blocks(c, optimize=True)
             steps[-1] = "phase_polynomial_optimized"
             compare(t, c2)
+
+            steps = []
+            g = circ.copy()
+            #to_gh(g)
+            #id_simp(g,quiet=True)
+            #spider_simp(g,quiet=True)
+            g = teleport_reduce(g)
+            steps.append("teleport_reduce")
+            compare(t,g)
+            #c1 = zx.Circuit.from_graph(g,split_phases=True).to_basic_gates()
+            #c1 = zx.optimize.basic_optimization(c_opt).to_basic_gates()
+            #self.c_opt = c_opt
+            #c_id = c_orig.adjoint()
+            #c_id.add_circuit(c_opt)
+            #g = c_id.to_graph()
+            #zx.simplify.full_reduce(g)
+                        
 
     except AssertionError:
         print("Unequality for circuit with seed {:d}, qubits {:d} and depth {:d}".format(seed, qubits, depth))

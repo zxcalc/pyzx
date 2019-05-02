@@ -61,6 +61,7 @@ class BaseGraph(object):
         self.track_phases = False
         self.phase_index = dict()
         self.phase_master = None
+        self.phase_mult = dict()
         self.max_phase_index = -1
 
     def __str__(self):
@@ -69,6 +70,18 @@ class BaseGraph(object):
 
     def __repr__(self):
         return str(self)
+
+    def stats(self):
+        s = str(self) + "\n"
+        degrees = {}
+        for v in self.vertices():
+            d = self.vertex_degree(v)
+            if d in degrees: degrees[d] += 1
+            else: degrees[d] = 1
+        s += "degree distribution: \n"
+        for d, n in sorted(degrees.items(),key=lambda x: x[0]):
+            s += "{:d}: {:d}\n".format(d,n)
+        return s
 
     def copy(self, adjoint=False, backend=None):
         """Create a copy of the graph. If ``adjoint`` is set, 
@@ -137,7 +150,7 @@ class BaseGraph(object):
         if set(self.qubit(v) for v in qright)!= set(replace.qubit(v) for v in replace.outputs):
             raise TypeError("Output qubit indices do not match")
         
-        self.remove_vertices([v for v in self.vertices() if left_row<self.row(v)<right_row])
+        self.remove_vertices([v for v in self.vertices() if (left_row < self.row(v) and self.row(v) < right_row)])
         self.remove_edges([self.edge(s,t) for s in qleft for t in qright if self.connected(s,t)])
         rdepth = replace.depth() -1
         for v in (v for v in self.vertices() if self.row(v)>=right_row):
@@ -287,6 +300,7 @@ class BaseGraph(object):
         if self.track_phases:
             self.max_phase_index += 1
             self.phase_index[v] = self.max_phase_index
+            self.phase_mult[v] = 1
         return v
 
     def add_edges(self, edges, edgetype=1):
@@ -356,10 +370,18 @@ class BaseGraph(object):
         self.phase_index[new] = i
 
     def fuse_phases(self, p1, p2):
-        if p1 not in self.phase_index or p2 not in self.phase_index: return
+        if p1 not in self.phase_index or p2 not in self.phase_index: 
+            return
         if self.phase_master: 
             self.phase_master.fuse_phases(self.phase_index[p1],self.phase_index[p2])
         self.phase_index[p2] = self.phase_index[p1]
+
+    def phase_negate(self, v):
+        if v not in self.phase_index: return
+        index = self.phase_index[v]
+        #print("Negating phase", v, index)
+        mult = self.phase_mult[index]
+        self.phase_mult[index] = -1*mult 
 
     def vertex_from_phase_index(self, i):
         return list(self.phase_index.keys())[list(self.phase_index.values()).index(i)]

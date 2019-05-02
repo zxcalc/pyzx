@@ -47,7 +47,7 @@ class Circuit(object):
 
     def copy(self):
         c = Circuit(self.qubits, self.name)
-        c.gates = self.gates.copy()
+        c.gates = [g.copy() for g in self.gates]
         return c
 
     def adjoint(self):
@@ -210,10 +210,10 @@ class Circuit(object):
                 else:
                     raise TypeError("Unknown gate with control: " + l)
             else:
-                if gname not in ('t4', 't5', 't6', 'tof'):
+                if gname not in ('t4', 't5', 't6', 't7', 'tof'):
                     raise TypeError("Unknown gate with multiple controls: " + l)
                 *ctrls, t = targets
-                if len(ctrls) > 5: raise TypeError("No more than 5 ctrls supported")
+                if len(ctrls) > 6: raise TypeError("No more than 5 ctrls supported")
                 while len(ancillas) < len(ctrls) - 2:
                     ancillas[len(ancillas)] = qcount
                     qcount += 1
@@ -224,10 +224,16 @@ class Circuit(object):
                     gates.append(Tofolli(ctrls[2],ctrls[3],ancillas[1]))
                     if len(ctrls) == 4:
                         gates.append(Tofolli(ancillas[0],ancillas[1],t))
-                    else:
+                    elif len(ctrls) == 5:
                         gates.append(Tofolli(ancillas[0],ancillas[1],ancillas[2]))
                         gates.append(Tofolli(ctrls[4],ancillas[2],t))
                         gates.append(Tofolli(ancillas[0],ancillas[1],ancillas[2]))
+                    else: # len(ctrls) == 6
+                        gates.append(Tofolli(ctrls[4],ctrls[5],ancillas[2]))
+                        gates.append(Tofolli(ancillas[0],ancillas[1],ancillas[3]))
+                        gates.append(Tofolli(ancillas[2],ancillas[3],t))
+                        gates.append(Tofolli(ancillas[0],ancillas[1],ancillas[3]))
+                        gates.append(Tofolli(ctrls[4],ctrls[5],ancillas[2]))
                     gates.append(Tofolli(ctrls[2],ctrls[3],ancillas[1]))
                 gates.append(Tofolli(ctrls[0],ctrls[1],ancillas[0]))
 
@@ -247,7 +253,10 @@ class Circuit(object):
         if ext == 'qgraph':
             raise TypeError(".qgraph files are not Circuits. Please load them as graphs using json_to_graph")
         if ext == 'quipper':
-            return Circuit.from_quipper_file(circuitfile)
+            try:
+                return Circuit.from_quipper_file(circuitfile)
+            except:
+                return quipper_center_block(circuitfile)
         raise TypeError("Couldn't determine filetype")
 
     def to_basic_gates(self):
@@ -280,6 +289,8 @@ class Circuit(object):
                         n = (n-4)%8
                     if n == 1: c.add_gate("T", g.target)
                     if n == 7: c.add_gate("T", g.target, adjoint=True)
+                else:
+                    c.add_gate("ZPhase", g.target, g.phase)
                 if isinstance(g, XPhase):
                     c.add_gate("HAD", g.target) 
             else:
@@ -325,11 +336,11 @@ class Circuit(object):
                 del rs[l]
                 del labels[l]
             else:
-                if compress_rows and not isinstance(gate, (ZPhase, XPhase, HAD)):
+                if not compress_rows: #or not isinstance(gate, (ZPhase, XPhase, HAD)):
                     r = max(rs.values())
                     for i in rs: rs[i] = r
                 gate.to_graph(g,labels, qs,rs)
-                if compress_rows and not isinstance(gate, (ZPhase, XPhase, HAD)):
+                if not compress_rows: # or not isinstance(gate, (ZPhase, XPhase, HAD)):
                     r = max(rs.values())
                     for i in rs: rs[i] = r
 
@@ -371,6 +382,24 @@ class Circuit(object):
     def to_tensor(self):
         """Returns a numpy tensor describing the circuit."""
         return self.to_graph().to_tensor()
+
+    def verify_equality(self, other):
+        """Composes the other circuit with the adjoint of this circuit, and tries to reduce
+        it to the identity using :func:`simplify.full_reduce``. If successful returns True,
+        if not returns None. 
+
+        Note that while a successful reduction to the identity is strong evidence that the two
+        circuits are equal, if this function is not able to reduce the graph to the identity
+        this does not prove anything. """
+        from .simplify import full_reduce
+        c = self.adjoint()
+        c.add_circuit(other)
+        g = c.to_graph()
+        full_reduce(g)
+        if g.num_vertices() == self.qubits*2:
+            return True
+        else:
+            return False
                     
 
     def add_gate(self, gate, *args, **kwargs):
@@ -423,9 +452,15 @@ class Circuit(object):
             self.add_gate(g)
 
     def tcount(self):
+        """Returns the amount of T-gates necessary to implement this circuit."""
         return sum(g.tcount() for g in self.gates)
         #return sum(1 for g in self.gates if isinstance(g, (ZPhase, XPhase, ParityPhase)) and g.phase.denominator >= 4)
     
+    def twoqubitcount(self):
+        """Returns the amount of 2-qubit gates necessary to implement this circuit."""
+        c = self.to_basic_gates()
+        return sum(1 for g in c.gates if g.name in ('CNOT','CZ'))
+
     def stats(self):
         """Returns statistics on the amount of gates in the circuit, separated into different classes 
         (such as amount of T-gates, two-qubit gates, Hadamard gates)."""
@@ -516,7 +551,7 @@ def parse_quipper_block(lines):
                 f = float(f)
             except ValueError:
                 raise TypeError("Unsupported expression: " + gate)
-            phase = Fraction(f/math.pi).limit_denominator()
+            phase = Fraction(f/math.pi)
             target = gate[gate.rfind('(')+1:gate.rfind(')')]
             try: 
                 target = int(target)
@@ -570,6 +605,22 @@ def parse_quipper_block(lines):
             raise TypeError("Unsupported controlled gate: " + gname)
     return c
 
+def quipper_center_block(fname):
+    """Function to load the PF files of the NRSCM paper."""
+    f = open(fname, 'r')
+    text = f.read()
+    f.close()
+    i = text.find('Subroutine: "C"')
+    if i == -1: 
+        i = text.find('Subroutine: "S1"')
+        if i == -1: raise Exception("Not a valid format")
+        text = text[i:].strip()
+    else:
+        j = text.find('Subroutine: "R"',i)
+        if j == -1: raise Exception("Not a valid format")
+        text = text[i:j].strip()
+    lines = text.splitlines()[3:]
+    return parse_quipper_block(lines)
 
 class QASMParser(object):
     """Class for parsing QASM source files into circuit descriptions."""
@@ -704,9 +755,9 @@ class QASMParser(object):
                 try:
                     phase = float(val)/math.pi
                 except ValueError:
-                    if not val.find('pi'): raise TypeError("Invalid specification {}".format(name))
-                    val.replace('pi', '')
-                    val.replace('*','')
+                    if val.find('pi') == -1: raise TypeError("Invalid specification {}".format(name))
+                    val = val.replace('pi', '')
+                    val = val.replace('*','')
                     try: phase = float(val)
                     except: raise TypeError("Invalid specification {}".format(name))
                 phase = Fraction(phase).limit_denominator(100000000)

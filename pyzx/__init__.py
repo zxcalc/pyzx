@@ -33,3 +33,7 @@ from . import simplify
 from . import d3
 from . import cnot_mapper
 from . import architecture
+from . import tikz
+
+if __name__ == '__main__':
+    print("Please execute this as a module by running 'python -m pyzx'")

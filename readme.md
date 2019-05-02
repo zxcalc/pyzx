@@ -6,17 +6,16 @@ PyZX (pronounce as *Pisics*) is a **Py**thon tool implementing the theory of **Z
 
 PyZX currently allows you to:
 
-* Generate random quantum circuits containing millions of gates.
+* Read in quantum circuits in the file format of [QASM](https://en.wikipedia.org/wiki/OpenQASM), [Quipper](https://www.mathstat.dal.ca/~selinger/quipper/doc/) or [Quantomatic](https://quantomatic.github.io/).
 * Rewrite circuits into a pseudo-normal form using the ZX-calculus.
 * Extract new simplified circuits from these reduced graphs.
-* Read in quantum circuits in the file format of [QASM](https://en.wikipedia.org/wiki/OpenQASM), [Quipper](https://www.mathstat.dal.ca/~selinger/quipper/doc/) or [Quantomatic](https://quantomatic.github.io/).
-* Visualize the ZX-graphs and rewrites using either [Matplotlib](https://matplotlib.org/), Quantomatic or generate TikZ output for use in LaTeX documents.
-* Output the optimized circuits in QASM, QC or QUIPPER format.
+* Visualise the ZX-graphs and rewrites using either [Matplotlib](https://matplotlib.org/), Quantomatic or as a TikZ file for use in LaTeX documents.
+* Output the optimised circuits in QASM, QC or QUIPPER format.
 
 ## About the ZX-calculus
 
 ZX-diagrams are a type of tensor network built out of combinations of linear maps known as *spiders*. There are 2 types of spiders: the Z-spiders (represented as green dots in PyZX) and the X-spiders (represented as red dots). Every linear map between some set of qubits can be represented by a ZX-diagram.
-The ZX-calculus is a set of rewrite rules for ZX-diagrams. There are various extensive set of rewrite rules. PyZX however, uses only rewrite rules concerning the Clifford fragment of the ZX-calculus. Importantly, this set of rewrite rules is *complete* for Clifford diagrams meaning that two representations of a Clifford map can be rewritten into one another if and only if the two linear maps they represent are equal.
+The ZX-calculus is a set of rewrite rules for ZX-diagrams. There are various extensive set of rewrite rules. PyZX however, uses only rewrite rules concerning the Clifford fragment of the ZX-calculus. Importantly, this set of rewrite rules is *complete* for Clifford diagrams, meaning that two representations of a Clifford map can be rewritten into one another if and only if the two linear maps they represent are equal.
 
 For a short introduction to the ZX-calculus see [this paper](https://arxiv.org/abs/1602.04744) while for a complete overview we recommend [this book](https://www.amazon.com/Picturing-Quantum-Processes-Diagrammatic-Reasoning/dp/110710422X). PyZX extensively uses two derived rewrite rules known as *local complementation* and *pivoting*. More information about these operations can be found in [this paper](https://arxiv.org/abs/1307.7048).
 
@@ -50,3 +49,6 @@ zx.simplify.full_reduce(circuit)
 #See the result
 zx.draw(circuit)
 ```
+
+PyZX can also be run from the commandline. To optimise a circuit you can for instance run
+```python -m pyzx opt input_circuit.qasm```

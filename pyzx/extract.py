@@ -107,8 +107,7 @@ def connectivity_from_biadj(g, m, left, right, edgetype=2):
 def streaming_extract(g, allow_ancillae=False, quiet=True, stopcount=-1):
     """Given a graph put into semi-normal form by :func:`simplify.full_reduce`, 
     it extracts its equivalent set of gates into an instance of :class:`circuit.Circuit`.
-    This method uses a different algorithm than :func:`circuit_extract`, and seems
-    to be faster and produce smaller circuits."""
+    """
     g.normalise()
     qs = g.qubits() # We are assuming that these are objects that update...
     rs = g.rows()   # ...to reflect changes to the graph, so that when...

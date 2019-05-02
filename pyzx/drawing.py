@@ -134,7 +134,7 @@ def draw(g, layout=None, labels=False, figsize=(8,2), h_edge_draw='blue', rows=N
 
     if rows:
         minrow,maxrow = rows
-        vertices = [v for v in g.vertices() if minrow<=g.row(v)<=maxrow]
+        vertices = [v for v in g.vertices() if (minrow<=g.row(v) and g.row(v) <=maxrow)]
         edges = [e for e in g.edges() if g.edge_s(e) in vertices and g.edge_t(e) in vertices]
     else:
         vertices = g.vertices()
@@ -195,77 +195,4 @@ def draw(g, layout=None, labels=False, figsize=(8,2), h_edge_draw='blue', rows=N
     plt.close()
     return fig1
     #plt.show()
-
-
-TIKZ_BASE = """
-\\begin{{tikzpicture}}
-    \\begin{{pgfonlayer}}{{nodelayer}}
-{vertices}
-    \\end{{pgfonlayer}}
-    \\begin{{pgfonlayer}}{{edgelayer}}
-{edges}
-    \\end{{pgfonlayer}}
-\\end{{tikzpicture}}
-"""
-
-def to_tikz(g, xoffset=0, yoffset=0, idoffset=0, full_output=True):
-    verts = []
-    maxindex = idoffset
-    for v in g.vertices():
-        phase = g.phase(v)
-        ty = g.type(v)
-        if ty == 0:
-            style = "none"
-        else:
-            style = 'Z' if ty==1 else 'X'
-            if phase != 0: style += " phase"
-            style += " dot"
-        if phase == 0: phase = ""
-        else:
-            ns = '' if phase.numerator == 1 else str(phase.numerator)
-            dn = '' if phase.denominator == 1 else str(phase.denominator)
-            if dn: phase = r"$\frac{%s\pi}{%s}$" % (ns, dn)
-            else: phase = r"$%s\pi$" % ns
-        x = g.row(v) + xoffset
-        y = - g.qubit(v) - yoffset
-        s = "        \\node [style={}] ({:d}) at ({:.2f}, {:.2f}) {{{:s}}};".format(style,v+idoffset,x,y,phase)
-        verts.append(s)
-        maxindex = max([v+idoffset,maxindex])
-    edges = []
-    for e in g.edges():
-        v,w = g.edge_st(e)
-        ty = g.edge_type(e)
-        s = "        \\draw "
-        if ty == 2: 
-            if g.type(v) != 0 and g.type(w) != 0:
-                s += "[style=hadamard edge] "
-            else:
-                x = (g.row(v) + g.row(w))/2.0 +xoffset
-                y = -(g.qubit(v)+g.qubit(w))/2.0 -yoffset
-                t = "        \\node [style=hadamard] ({:d}) at ({:.2f}, {:.2f}) {{}};".format(maxindex+1, x,y)
-                verts.append(t)
-                maxindex += 1
-        s += "({:d}) to ({:d});".format(v+idoffset,w+idoffset)
-        edges.append(s)
-    if full_output: return TIKZ_BASE.format(vertices="\n".join(verts), edges="\n".join(edges))
-    else: return (verts, edges)
-
-def to_tikz_sequence(graphs, maxwidth=10):
-    xoffset = -maxwidth
-    yoffset = -10
-    idoffset = 0
-    total_verts, total_edges = [],[]
-    for g in graphs:
-        max_index = max(g.vertices()) + 2*len(g.inputs) + 1
-        verts, edges = to_tikz(g,xoffset,yoffset,idoffset,False)
-        total_verts.extend(verts)
-        total_edges.extend(edges)
-        if xoffset + g.depth() + 2> maxwidth:
-            xoffset = -maxwidth
-            yoffset += g.qubit_count() + 2
-        else:
-            xoffset += g.depth() + 2
-        idoffset += max_index
-
-    return TIKZ_BASE.format(vertices="\n".join(total_verts), edges="\n".join(total_edges))
 
