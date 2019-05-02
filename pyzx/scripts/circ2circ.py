@@ -80,7 +80,7 @@ def main(args):
         if options.simp == 'full':
             simplify.full_reduce(g,quiet=(not options.verbose))
         if options.simp == 'cliff':
-            simplify.cliff_simp(g,quiet=(not options.verbose))
+            simplify.clifford_simp(g,quiet=(not options.verbose))
         if options.verbose: print("Extracting circuit...")
         c2 = extract.streaming_extract(g)
     if options.verbose: print("Optimizing...")

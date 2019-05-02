@@ -735,6 +735,241 @@ def clifford_extract(g, left_row, right_row, cnot_blocksize=2):
     g.replace_subgraph(left_row, right_row, c.g.adjoint())
 
 
+
+def simple_extract(g, quiet=True):
+    g.normalise()
+    qs = g.qubits() # We are assuming that these are objects that update...
+    rs = g.rows()   # ...to reflect changes to the graph, so that when...
+    ty = g.types()  # ... g.set_row/g.set_qubit is called, these things update directly to reflect that
+    phases = g.phases()
+    
+    h = Graph()
+    
+    qindex = {}
+    depth = 0
+    for i in range(len(g.inputs)):
+        v = h.add_vertex(0,i,depth)
+        h.inputs.append(v)
+        qindex[i] = v
+    depth = 1
+    
+    def add_phase_gate(q, phase):
+        nonlocal depth
+        v = h.add_vertex(1, q, depth, phase)
+        h.add_edge((qindex[q],v),1)
+        qindex[q] = v
+        depth += 1
+        return v
+    def add_hadamard(q):
+        nonlocal depth
+        v = h.add_vertex(1, q, depth)
+        h.add_edge((qindex[q],v),2)
+        qindex[q] = v
+        depth += 1
+        return v
+    def add_cnot(ctrl, tgt):
+        nonlocal depth
+        v1 = h.add_vertex(1, ctrl, depth)
+        v2 = h.add_vertex(2, tgt, depth)
+        h.add_edges([(qindex[ctrl],v1),(qindex[tgt],v2),(v1,v2)],1)
+        qindex[ctrl] = v1
+        qindex[tgt] = v2
+        depth += 1
+        return v1,v2
+    def add_cz(ctrl, tgt):
+        nonlocal depth
+        v1 = h.add_vertex(1, ctrl, depth)
+        v2 = h.add_vertex(1, tgt, depth)
+        h.add_edges([(qindex[ctrl],v1),(qindex[tgt],v2)],1)
+        h.add_edge((v1,v2),2)
+        qindex[ctrl] = v1
+        qindex[tgt] = v2
+        depth += 1
+        return v1,v2
+    
+    def add_gadget(targets, phase):
+        nonlocal depth
+        verts = {q:h.add_vertex(1,q,depth) for q in targets}
+        axel = h.add_vertex(2,-1,depth+0.5)
+        leaf = h.add_vertex(1,-2,depth+0.5,phase)
+        h.add_edges([(qindex[q],verts[q]) for q in targets] + [(verts[q],axel) for q in targets] + [(axel,leaf)], 1)
+        for q in targets: qindex[q] = verts[q]
+        depth += 1
+        return targets, axel, leaf
+    
+    def add_nonlocal_gadget(qubits, vertices, phase):
+        nonlocal depth
+        new_verts = {q:h.add_vertex(1,q,depth) for q in qubits}
+        axel = h.add_vertex(2,-1,depth+0.5)
+        leaf = h.add_vertex(1,-2,depth+0.5,phase)
+        h.add_edges([(qindex[q],new_verts[q]) for q in qubits] + [(new_verts[q],axel) for q in qubits] + 
+                    [(v,axel) for v in vertices] + [(axel,leaf)], 1)
+        for q in qubits: qindex[q] = new_verts[q]
+        depth += 1
+        return new_verts, axel, leaf
+    
+    leftrow = 1
+    #maxq = max(qs.values()) + 1
+    
+    gadgets = {}
+    nodes = [] # Non phase-gadgets
+    for v in g.vertices(): # Find which vertices are gadgets
+        if rs[v] > 1: g.set_row(v, rs[v]+20)
+        if v in g.inputs or v in g.outputs: continue
+        if len(list(g.neighbours(v))) == 1: #phase gadget
+            n = list(g.neighbours(v))[0]
+            gadgets[n] = v
+        elif all(w in g.inputs or w in g.outputs or len(list(g.neighbours(w)))!=1 for w in g.neighbours(v)): # regular vertex
+            nodes.append(v)
+    
+    nodestotal = len(nodes)
+    nodesparsed = 0
+    nodestotal = 19
+    
+    processed_targets = {}
+    while True:
+        left = [v for v in g.vertices() if rs[v] == leftrow]
+        for v in left:
+            # First we add the gates to the circuit that can be processed now,
+            # and we simplify the graph to represent this.
+            q = qs[v]
+            phase = phases[v]
+            t = ty[v]
+            if t != 1: raise TypeError("Only supports zx-diagrams in graph-like state")
+            neigh = [w for w in g.neighbours(v) if rs[w]<leftrow]
+            if len(neigh) != 1:
+                raise TypeError("Graph doesn't seem circuit like: multiple parents")
+            n = neigh[0]
+            if qs[n] != q:
+                raise TypeError("Graph doesn't seem circuit like: cross qubit connections")
+            if g.edge_type(g.edge(n,v)) == 2:
+                add_hadamard(q)
+                g.set_edge_type(g.edge(n,v),1)
+            #if t == 0: continue # it is an output
+            if phase != 0:
+                add_phase_gate(q, phase)
+                g.set_phase(v, 0)
+        
+        boundary_verts = []
+        neighbours = set()
+        for v in left: # Parse CZ gates between frontier
+            q = qs[v]
+            neigh = [w for w in g.neighbours(v) if rs[w]==leftrow and w<v]
+            for n in neigh:
+                q2 = qs[n]
+                if g.edge_type(g.edge(v,n)) != 2:
+                    raise TypeError("Invalid vertical connection between vertices of the same type")
+                add_cz(q2, q)
+                g.remove_edge(g.edge(v,n))
+            d = [w for w in g.neighbours(v) if rs[w]>leftrow]
+            neighbours.update(d)
+        
+        for w in neighbours: # Phase gadget stuff
+            if w in gadgets:
+                tgts = set(g.neighbours(w))
+                tgts.remove(gadgets[w])
+                if tgts.issubset(left):
+                    add_gadget([qs[v] for v in tgts], phases[gadgets[w]])
+                    g.remove_vertex(gadgets[w])
+                    g.remove_vertex(w)
+                elif tgts.issubset(left+list(processed_targets.keys())):
+                    qubits = [qs[v] for v in left if v in tgts]
+                    verts = [processed_targets[v] for v in tgts if v in processed_targets]
+                    add_nonlocal_gadget(qubits,verts, phases[gadgets[w]])
+                    g.remove_vertex(gadgets[w])
+                    g.remove_vertex(w)
+        neighbours = set()
+        for v in left.copy(): # Deal with frontier connected to outputs
+            d = [w for w in g.neighbours(v) if rs[w]>leftrow]
+            if any(w in g.outputs for w in d):
+                if len(d) == 1:
+                    left.remove(v)
+                    continue
+                b = [w for w in d if w in g.outputs][0]
+                if all(w in gadgets or w==b for w in d):
+                    processed_targets[v] = add_phase_gate(qs[v],0)
+                    left.remove(v)
+                    continue
+                else:
+                    q = qs[b]
+                    r = rs[b]
+                    w = g.add_vertex(1,q,r-1)
+                    nodes.append(w)
+                    e = g.edge(v,b)
+                    et = g.edge_type(e)
+                    g.remove_edge(e)
+                    g.add_edge((v,w),2)
+                    g.add_edge((w,b),3-et)
+                    d.remove(b)
+                    d.append(w)
+            neighbours.update(d)
+                
+        if not left: break # We are done
+        right = [w for w in neighbours if w in nodes] # Only get non-phase-gadget neighbours
+        m = bi_adj(g,right,left)
+        #print(m)
+#         target = column_optimal_swap(m)
+#         right = [right[j] for (i,j) in sorted(target,key=lambda x:x[0])]
+#         m = bi_adj(g,right,left)
+#         print()
+#         print(m)
+        neighbours.difference_update(right)
+        neighbours = right + list(neighbours)
+        cnots = m.to_cnots()
+        m2 = bi_adj(g, neighbours, left)
+        for cnot in cnots:
+            m.row_add(cnot.target,cnot.control)
+            m2.row_add(cnot.target, cnot.control)
+            add_cnot(qs[left[cnot.control]],qs[left[cnot.target]])
+        connectivity_from_biadj(g,m2,neighbours,left)
+        good_verts = {}
+        for i, row in enumerate(m.data):
+            if sum(row) == 1:
+                v = left[i]
+                w = right[[j for j in range(len(m.data[i])) if m.data[i][j]][0]]
+                good_verts[v] = w
+        if not good_verts:
+            print(m)
+            print(left)
+            print(right)
+            print(nodes)
+            raise Exception("No good match found")
+        for v in left:
+            if v not in good_verts:
+                g.set_row(v,leftrow+1)
+            else:
+                g.set_row(good_verts[v],leftrow+1)
+                g.set_qubit(good_verts[v],qs[v])
+                if len(list(g.neighbours(v))) > 2: # Gadgets are still connected to it
+                    w = add_phase_gate(qs[v],0)
+                    processed_targets[v] = w
+        leftrow += 1
+        if leftrow >= nodestotal:
+            nodestotal += 20
+            for v in g.vertices():
+                if rs[v] > leftrow: g.set_row(v,rs[v]+20)
+    # We are done processing now. Time to deal with swaps.
+    swap_map = {}
+    for w in g.outputs:
+        v = list(g.neighbours(w))[0]
+        if g.edge_type(g.edge(v,w)) == 2:
+            add_hadamard(qs[v])
+            g.set_edge_type(g.edge(v,w),1)
+        swap_map[qs[v]] = qs[w]
+    for t1, t2 in permutation_as_swaps(swap_map):
+        add_cnot(t1,t2)
+        add_cnot(t2,t1)
+        add_cnot(t1,t2)
+    
+    for i in range(len(g.outputs)):
+        v = h.add_vertex(0,i,depth)
+        h.outputs.append(v)
+        h.add_edge((qindex[i],v),1)
+        qindex[i] = v
+    
+    return h
+
+
 # def greedy_cut_extract(g, quiet=True):
 #     """Given a graph that has been put into semi-normal form by
 #     :func:`simplify.clifford_simp` it cuts the graph at :math:`\pi/4` nodes
