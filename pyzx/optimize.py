@@ -26,11 +26,11 @@ def full_optimize(circuit, quiet=True):
     c = phase_block_optimize(c, quiet=quiet)
     return basic_optimization(c.to_basic_gates())
 
-def basic_optimization(circuit, quiet=True):
+def basic_optimization(circuit, do_swaps=True, quiet=True):
     if not isinstance(circuit, Circuit):
         raise TypeError("Input must be a Circuit")
     o = Optimizer(circuit)
-    return o.parse_circuit(quiet=quiet)
+    return o.parse_circuit(do_swaps=do_swaps,quiet=quiet)
 
 def toggle_element(l, e):
     if e in l: l.remove(e)
@@ -63,9 +63,16 @@ class Optimizer:
         self.qubits = circuit.qubits
         self.minimize_czs = False
     
-    def parse_circuit(self, separate_correction=False, max_iterations=1000, quiet=True):
-        """Repeatedly does forward and backward passes trough the circuit, until no more improvements are found."""
+    def parse_circuit(self, separate_correction=False, max_iterations=1000, do_swaps=True, quiet=True):
+        """Repeatedly does forward and backward passes trough the circuit, 
+        until no more improvements are found.
+        When ``separate_correction`` is True, it returns the list of NOT, Z and SWAP gates that is 
+        has collected at the end separately.
 
+        When ``do_swaps`` is set to False, it does not apply the rule 
+        CNOT(r1,r2)CNOT(r2,r1) = CNOT(r1,r2)SWAP, so that the connectivity of the circuit is preserved,
+        in case the circuit already had been mapped."""
+        self.do_swaps = do_swaps
         self.minimize_czs = False
         self.circuit, correction = self.parse_forward()
         count = stats(self.circuit)
@@ -294,13 +301,12 @@ class Optimizer:
                     if g.name == 'CNOT' and g.control == t and g.target == c:
                         found_match = True
                         break
-                if found_match: # We do the CNOT(t,c)CNOT(c,t) = CNOT(c,t)SWAP(c,t) commutation
+                if found_match and self.do_swaps: # We do the CNOT(t,c)CNOT(c,t) = CNOT(c,t)SWAP(c,t) commutation
                     if g in self.available[t]:
                         self.gates[c].remove(g)
                         self.gates[t].remove(g)
                         self.availty[c] = 1
                         self.availty[t] = 2
-                        cnot.index = self.gcount
                         self.gcount += 1
                         self.gates[c].append(cnot)
                         self.gates[t].append(cnot)
