@@ -29,7 +29,7 @@ import numpy as np
 
 if __name__ == '__main__':
     print("Please call this as python -m pyzx mapper ...")
-    return
+    #return
     #sys.path.append('..')
 
 from ..linalg import Mat2
@@ -38,6 +38,7 @@ from ..routing.parity_maps import CNOT_tracker
 from ..routing.machine_learning import GeneticAlgorithm
 # from pyzx.routing.fitness import get_gate_count_fitness_func as get_fitness_func
 from ..routing.steiner import steiner_gauss
+from ..routing.architecture import architectures, SQUARE, dynamic_size_architectures
 
 description = "Compiles given qasm files or those in the given folder to a given architecture."
 
@@ -327,7 +328,6 @@ def map_cnot_circuit(file, architecture, mode=GENETIC_STEINER_MODE, dest_file=No
 
 def main(args):
     import argparse
-    from ..routing.architecture import architectures, SQUARE, dynamic_size_architectures
 
     def restricted_float(x):
         x = float(x)

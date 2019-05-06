@@ -30,10 +30,4 @@ from . import extract
 from . import rules
 from . import optimize
 from . import simplify
-from . import d3
-from pyzx.routing import cnot_mapper
-from . import architecture
-from . import tikz
-
-if __name__ == '__main__':
-    print("Please execute this as a module by running 'python -m pyzx'")
+from . import steiner_tree

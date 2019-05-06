@@ -33,6 +33,7 @@ if __name__ == '__main__':
         from .scripts import circ2circ
         from .scripts import circ2tikz
         from .scripts import cnot_mapper
+        from .scripts import circuit_router
     except SystemError:
         print("Please run as a module by using 'python -m pyzx'")
         exit(1)
@@ -44,7 +45,7 @@ if __name__ == '__main__':
         parser.print_help()
         exit(1)
     args = parser.parse_args(sys.argv[1:2])
-    if args.command not in ('opt', 'tikz', 'mapper'):
+    if args.command not in ('opt', 'tikz', 'mapper', 'router'):
         print("Unrecognized command '{}'".format(args.command))
         parser.print_help()
         exit(1)
@@ -55,3 +56,6 @@ if __name__ == '__main__':
         circ2tikz.main(sys.argv[2:])
     if args.command == 'mapper':
         cnot_mapper.main(sys.argv[2:])
+    if args.command == 'router':
+        circuit_router.main(sys.argv[2:])
+

@@ -120,7 +120,7 @@ def build_random_parity_map(qubits, n_cnots, circuit=None):
 if __name__ == '__main__':
     import argparse
     import os
-    from pyzx.cnot_mapper import make_into_list
+    from pyzx.routing.cnot_mapper import make_into_list
 
     parser = argparse.ArgumentParser(description="Generates random CNOT circuits and stores them as QASM files.")
     parser.add_argument("folder", help="The QASM file or folder with QASM files to be routed.")

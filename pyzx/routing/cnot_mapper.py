@@ -47,7 +47,7 @@ def gauss(mode, matrix, architecture=None, **kwargs):
         if architecture is None:
             print(
                 "\033[91m Warning: Architecture is not given, assuming fully connected architecture of size matrix.shape[0]. \033[0m ")
-            architecture = create_fully_connected_architecture(matrix.data.shape[0])
+            architecture = create_fully_connected_architecture(len(matrix.data))
         return steiner_gauss(matrix, architecture, **kwargs)
     elif mode == GENETIC_STEINER_MODE:
         perm, cnots, rank = permutated_gauss(matrix, STEINER_MODE, architecture=architecture, **kwargs)
@@ -81,22 +81,22 @@ def steiner_gauss(matrix, architecture, full_reduce=False, x=None, y=None):
             zeros = []
             while next_check is not None:
                 s0, s1 = next_check
-                if matrix.data[s0, col] == 0:  # s1 is a new steiner point or root = 0
+                if matrix.data[s0][col] == 0:  # s1 is a new steiner point or root = 0
                     zeros.append(next_check)
                 next_check = next(steiner_tree)
             while len(zeros) > 0:
                 s0, s1 = zeros.pop(-1)
-                if matrix.data[s0, col] == 0:
+                if matrix.data[s0][col] == 0:
                     row_add(s1, s0)
-                    debug and print(matrix.data[s0, col], matrix.data[s1, col])
+                    debug and print(matrix.data[s0][col], matrix.data[s1][col])
         else:
             debug and print("deal with zero root")
-            if next_check is not None and matrix.data[next_check[0], col] == 0:  # root is zero
+            if next_check is not None and matrix.data[next_check[0]][col] == 0:  # root is zero
                 print("WARNING : Root is 0 => reducing non-pivot column", matrix.data)
-            debug and print("Step 1: remove zeros", matrix.data[:, c])
+            debug and print("Step 1: remove zeros", [r[c] for r in matrix.data])
             while next_check is not None:
                 s0, s1 = next_check
-                if matrix.data[s1, col] == 0:  # s1 is a new steiner point
+                if matrix.data[s1][col] == 0:  # s1 is a new steiner point
                     row_add(s0, s1)
                 next_check = next(steiner_tree)
         # Reduce stuff
@@ -114,18 +114,19 @@ def steiner_gauss(matrix, architecture, full_reduce=False, x=None, y=None):
     p_cols = []
     pivot = 0
     for c in range(cols):
-        nodes = [r for r in range(pivot, rows) if pivot==r or matrix.data[r][c] == 1]
-        steiner_reduce(c, pivot, nodes, True)
-        if matrix.data[pivot][c] == 1:
-            p_cols.append(c)
-            pivot += 1
+        if pivot < rows:
+            nodes = [r for r in range(pivot, rows) if pivot==r or matrix.data[r][c] == 1]
+            steiner_reduce(c, pivot, nodes, True)
+            if matrix.data[pivot][c] == 1:
+                p_cols.append(c)
+                pivot += 1
     debug and print("Upper triangle form", matrix.data)
     rank = pivot
     debug and print(p_cols)
     if full_reduce:
         pivot -= 1
         for c in reversed(p_cols):
-            debug and print(pivot, matrix.data[:,c])
+            debug and print(pivot, [r[c] for r in matrix.data])
             nodes = [r for r in range(0, pivot+1) if r==pivot or matrix.data[r][c] == 1]
             if len(nodes) > 1:
                 steiner_reduce(c, pivot, nodes, False)
@@ -188,12 +189,6 @@ def count_cnots_circuit(mode, circuit, n_compile=1, store_circuit_as=None):
         with open(store_circuit_as, 'w') as f:
             f.write(circuit.to_qasm())
     return count
-
-
-def make_into_list(possible_list):
-    if type(possible_list) != type([]):
-        return [possible_list]
-    return possible_list
 
 def create_dest_filename(original_file, population=None, iteration=None, crossover_prob=None, mutation_prob=None, index=None):
     pop_ext = "" if population is None else "pop" + str(population)
