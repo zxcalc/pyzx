@@ -291,7 +291,6 @@ def route_circuit(c, architecture, mode=STEINER_MODE, dest_file=None, population
         g = c.to_graph()
         g = teleport_reduce(g)
         interior_clifford_simp(g)
-        g2 = preprocess_graph(g)
         if type(architecture) == type(""):
             architecture = create_architecture(architecture)
         def gauss_func(m):
@@ -311,30 +310,22 @@ def route_circuit(c, architecture, mode=STEINER_MODE, dest_file=None, population
             return cn.cnots
         compiled_g = simple_extract_no_gadgets(g, gauss_func)
         compiled_circuit = Circuit.from_graph(compiled_g)
-        compiled_circuit2 = basic_optimization(compiled_circuit)
-        #fig2 = draw(compiled_circuit, figsize=(100,50))
-        #fig2.show()
+        compiled_circuit = basic_optimization(compiled_circuit, do_swaps=False)
 
-    # sanity check.
-    from ..extract import simple_extract
-    #c2 = Circuit.from_graph(simple_extract(g2)) # check preprocessing phase
+    # sanity checks.
     from ..tensor import compare_tensors
-    #print(compare_tensors(c, c2))
-    print(len([gate for gate in c.gates if hasattr(gate, "name") and (gate.name == "CNOT" or gate.name == "CZ")]))
-    print(compare_tensors(c, compiled_circuit)) #check extraction procedure
-    for gate in compiled_circuit.gates:
-        if hasattr(gate, "name") and gate.name == "CNOT":
-            if not (architecture.graph.connected(gate.target, gate.control) or architecture.graph.connected(gate.control, gate.target)):
-                print(gate)
-    if not all([architecture.graph.connected(gate.target, gate.control) or architecture.graph.connected(gate.control, gate.target) for gate in compiled_circuit.gates if hasattr(gate, "name") and gate.name == "CNOT"]):
-        print(False)
-        input("nope")
-    else:
-        print(True)
+    print("Initial CNOT/CZ count:", len([gate for gate in c.gates if hasattr(gate, "name") and (gate.name == "CNOT" or gate.name == "CZ")]))
+    print("Extract circuit equals initial circuit?", compare_tensors(c, compiled_circuit)) #check extraction procedure
+    illegal_gates = [gate for gate in compiled_circuit.gates
+                     if hasattr(gate, "name")
+                     and (gate.name == "CNOT" or gate.name == "CZ")
+                     and not (architecture.graph.connected(gate.target, gate.control)
+                          or architecture.graph.connected(gate.control, gate.target))]
+    print("All CNOT/CZ gates allowed in the architecture?", len(illegal_gates) == 0)
+    if illegal_gates:
+        print("Which ones?", illegal_gates)
 
-    print(len([gate for gate in compiled_circuit.gates if hasattr(gate, "name") and gate.name == "CNOT"]))
-    print(len([gate for gate in compiled_circuit2.gates if hasattr(gate, "name") and (gate.name == "CNOT" or gate.name == "CZ")]))
-    input("Done")
+    print("Final CNOT/CZ count:",len([gate for gate in compiled_circuit.gates if hasattr(gate, "name") and (gate.name == "CNOT" or gate.name == "CZ")]))
 
     if dest_file is not None:
         compiled_qasm = compiled_circuit.to_qasm()
