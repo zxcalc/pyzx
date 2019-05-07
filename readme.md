@@ -54,3 +54,15 @@ zx.draw(circuit)
 
 PyZX can also be run from the commandline. To optimise a circuit you can for instance run
 ```python -m pyzx opt input_circuit.qasm```
+
+## Attribution
+
+If you wish to cite PyZX in an academic work, please cite the [accompanying paper](https://arxiv.org/abs/1904.04735):
+<pre>
+  @article{kissinger2019pyzx,
+    title={Pyzx: Large scale automated diagrammatic reasoning},
+    author={Kissinger, Aleks and van de Wetering, John},
+    journal={arXiv preprint arXiv:1904.04735},
+    year={2019}
+  }
+</pre>
