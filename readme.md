@@ -12,12 +12,14 @@ PyZX currently allows you to:
 * Visualise the ZX-graphs and rewrites using either [Matplotlib](https://matplotlib.org/), Quantomatic or as a TikZ file for use in LaTeX documents.
 * Output the optimised circuits in QASM, QC or QUIPPER format.
 
+You can try out the in-browser demo which shows some of these features [here](http://zxcalculus.com/pyzx.html).
+
 ## About the ZX-calculus
 
 ZX-diagrams are a type of tensor network built out of combinations of linear maps known as *spiders*. There are 2 types of spiders: the Z-spiders (represented as green dots in PyZX) and the X-spiders (represented as red dots). Every linear map between some set of qubits can be represented by a ZX-diagram.
 The ZX-calculus is a set of rewrite rules for ZX-diagrams. There are various extensive set of rewrite rules. PyZX however, uses only rewrite rules concerning the Clifford fragment of the ZX-calculus. Importantly, this set of rewrite rules is *complete* for Clifford diagrams, meaning that two representations of a Clifford map can be rewritten into one another if and only if the two linear maps they represent are equal.
 
-For a short introduction to the ZX-calculus see [this paper](https://arxiv.org/abs/1602.04744) while for a complete overview we recommend [this book](https://www.amazon.com/Picturing-Quantum-Processes-Diagrammatic-Reasoning/dp/110710422X). PyZX extensively uses two derived rewrite rules known as *local complementation* and *pivoting*. More information about these operations can be found in [this paper](https://arxiv.org/abs/1307.7048).
+[Here](http://zxcalculus.com) is a website with resources and information about the ZX-calculus. For a short introduction to the ZX-calculus see [this paper](https://arxiv.org/abs/1602.04744) while for a complete overview we recommend [this book](https://www.amazon.com/Picturing-Quantum-Processes-Diagrammatic-Reasoning/dp/110710422X). PyZX extensively uses two derived rewrite rules known as *local complementation* and *pivoting*. More information about these operations can be found in [this paper](https://arxiv.org/abs/1307.7048).
 
 
 ## Installation
