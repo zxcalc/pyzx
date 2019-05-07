@@ -313,6 +313,7 @@ def route_circuit(c, architecture, mode=STEINER_MODE, dest_file=None, population
         compiled_circuit = basic_optimization(compiled_circuit, do_swaps=False)
 
     # sanity checks.
+    print("Done extracting!")
     from ..tensor import compare_tensors
     print("Initial CNOT/CZ count:", len([gate for gate in c.gates if hasattr(gate, "name") and (gate.name == "CNOT" or gate.name == "CZ")]))
     print("Extract circuit equals initial circuit?", compare_tensors(c, compiled_circuit)) #check extraction procedure
@@ -327,7 +328,8 @@ def route_circuit(c, architecture, mode=STEINER_MODE, dest_file=None, population
 
     print("Final CNOT/CZ count:",len([gate for gate in compiled_circuit.gates if hasattr(gate, "name") and (gate.name == "CNOT" or gate.name == "CZ")]))
 
-    if dest_file is not None:
+    if dest_file is not None:   
+        print("Saving the resulting circuit.")
         compiled_qasm = compiled_circuit.to_qasm()
         with open(dest_file, "w") as f:
             f.write(compiled_qasm)
