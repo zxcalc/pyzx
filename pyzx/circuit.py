@@ -382,6 +382,9 @@ class Circuit(object):
     def to_tensor(self):
         """Returns a numpy tensor describing the circuit."""
         return self.to_graph().to_tensor()
+    def to_matrix(self):
+        """Returns a numpy matrix describing the circuit."""
+        return self.to_graph().to_matrix()
 
     def verify_equality(self, other):
         """Composes the other circuit with the adjoint of this circuit, and tries to reduce

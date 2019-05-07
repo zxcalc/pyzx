@@ -17,7 +17,7 @@
 
 import abc
 
-from pyzx.tensor import tensorfy
+from pyzx.tensor import tensorfy, tensor_to_matrix
 
 class DocstringMeta(abc.ABCMeta):
     """Metaclass that allows docstring 'inheritance'."""
@@ -192,6 +192,10 @@ class BaseGraph(object):
     def to_tensor(self):
         """Returns a representation of the graph as a tensor using :func:`~pyzx.tensor.tensorfy`"""
         return tensorfy(self)
+    def to_matrix(self):
+        """Returns a representation of the graph as a matrix using :func:`~pyzx.tensor.tensorfy`"""
+        return tensor_to_matrix(tensorfy(self), len(self.inputs), len(self.outputs))
+
 
     def vindex(self):
         """The index given to the next vertex added to the graph. It should always
