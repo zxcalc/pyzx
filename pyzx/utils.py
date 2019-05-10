@@ -15,26 +15,16 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from .graph.graph import Graph
-from .linalg import Mat2
-from .drawing import *
-from .simplify import *
-from .io import *
-from .tensor import *
-from .circuit import Circuit
-from . import quantomatic
-from . import generate
-from . import todd
-from . import linalg
-from . import extract
-from . import rules
-from . import optimize
-from . import simplify
-from . import d3
-from . import utils
-from pyzx.routing import cnot_mapper
-from pyzx.routing import architecture
-from . import tikz
+from argparse import ArgumentTypeError
 
-if __name__ == '__main__':
-    print("Please execute this as a module by running 'python -m pyzx'")
+
+def restricted_float(x):
+    x = float(x)
+    if x < 0.0 or x > 1.0:
+        raise ArgumentTypeError("%r not in range [0.0, 1.0]." % (x,))
+    return x
+
+def make_into_list(possible_list):
+    if type(possible_list) != type([]):
+        return [possible_list]
+    return possible_list

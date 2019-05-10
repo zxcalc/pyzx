@@ -2,7 +2,12 @@ import sys, os
 if __name__ == '__main__':
     sys.path.append('..')
 import numpy as np
-from pandas import DataFrame
+try:
+    from pandas import DataFrame
+except:
+    DataFrame = None
+    if __name__ == '__main__':
+        print("Warning: could not import pandas. No performance data will be exported.")
 import time
 
 from pyzx.linalg import Mat2
@@ -10,6 +15,7 @@ from pyzx.architecture import create_fully_connected_architecture, create_archit
 from pyzx.parity_maps import CNOT_tracker
 from pyzx.machine_learning import GeneticAlgorithm
 from pyzx.fitness import get_gate_count_fitness_func as get_fitness_func
+from pyzx.utils import make_into_list
 
 debug = False
 
@@ -30,6 +36,31 @@ NO_COMPILER = "not_compiled"
 compiler_modes = [QUIL_COMPILER, NO_COMPILER]
 
 
+def get_fitness_func(mode, matrix, architecture, row=True, col=True, full_reduce=True):
+    """
+    Creates and returns a fitness function to be used for the genetic algorithm that uses CNOT gate count as fitness.
+
+    :param mode: The type of Gaussian elimination to be used
+    :param matrix: A Mat2 parity map to route.
+    :param architecture: The architecture to take into account when routing
+    :param row: Whether to find a row permutation
+    :param col: Whether to find a column permutation
+    :param full_reduce: Whether to fully reduce the matrix, thus rebuild the full circuit.
+    :return: A fitness function that calculates the number of gates needed for a given permutation.
+    """
+    matrix = matrix.data
+    n_qubits = matrix.shape[0]
+
+    def fitness_func(permutation):
+        e = np.arange(len(permutation))
+        row_perm = permutation if row else e
+        col_perm = permutation if col else e
+        circuit = CNOT_tracker(n_qubits)
+        mat = Mat2(np.copy(matrix[row_perm][:, col_perm]))
+        gauss(mode, mat, architecture=architecture, x=circuit, full_reduce=full_reduce)
+        return circuit.count_cnots()
+
+    return fitness_func
 
 def gauss(mode, matrix, architecture=None, **kwargs):
     """
@@ -307,7 +338,7 @@ def batch_map_cnot_circuits(source, modes, architectures, n_qubits=None, populat
                                             else:
                                                 raise e
 
-    if len(metrics) > 0:
+    if len(metrics) > 0 and DataFrame is not None:
         df = DataFrame(metrics)
         if os.path.exists(metrics_file): # append to the file - do not overwrite!
             df.to_csv(metrics_file, columns=get_metric_header(), header=False, index=False, mode='a')
@@ -337,69 +368,3 @@ def map_cnot_circuit(file, architecture, mode=GENETIC_STEINER_MODE, dest_file=No
         with open(dest_file, "w") as f:
             f.write(compiled_qasm)
     return compiled_circuit
-
-
-if __name__ == '__main__':
-    import argparse
-    from pyzx.architecture import architectures, SQUARE, dynamic_size_architectures
-
-    def restricted_float(x):
-        x = float(x)
-        if x < 0.0 or x > 1.0:
-            raise argparse.ArgumentTypeError("%r not in range [0.0, 1.0]." % (x,))
-        return x
-
-    parser = argparse.ArgumentParser(description="Compiles given qasm files or those in the given folder to a given architecture.")
-    parser.add_argument("QASM_source", nargs='+', help="The QASM file or folder with QASM files to be routed.")
-    parser.add_argument("-m", "--mode", nargs='+', dest="mode", default=STEINER_MODE, help="The mode specifying how to route. choose 'all' for using all modes.", choices=elim_modes+[QUIL_COMPILER, "all"])
-    parser.add_argument("-a", "--architecture", nargs='+', dest="architecture", default=SQUARE, choices=architectures, help="Which architecture it should run compile to.")
-    parser.add_argument("-q", "--qubits", nargs='+', default=None, type=int, help="The number of qubits for the fully connected architecture.")
-    #parser.add_argument("-f", "--full_reduce", dest="full_reduce", default=1, type=int, choices=[0,1], help="Full reduce")
-    parser.add_argument("--population", nargs='+', default=30, type=int, help="The population size for the genetic algorithm.")
-    parser.add_argument("--iterations", nargs='+', default=15, type=int, help="The number of iterations for the genetic algorithm.")
-    parser.add_argument("--crossover_prob", nargs='+', default=0.8, type=restricted_float, help="The crossover probability for the genetic algorithm. Must be between 0.0 and 1.0.")
-    parser.add_argument("--mutation_prob", nargs='+', default=0.2, type=restricted_float, help="The mutation probability for the genetic algorithm. Must be between 0.0 and 1.0.")
-    #parser.add_argument("--perm", default="both", choices=["row", "col", "both"], help="Whether to find a single optimal permutation that permutes the rows, columns or both with the genetic algorithm.")
-    parser.add_argument("--destination", help="Destination file or folder where the compiled circuit should be stored. Otherwise the source folder is used.")
-    parser.add_argument("--metrics_csv", default=None, help="The location to store compiling metrics as csv, if not given, the metrics are not calculated. Only used when the source is a folder")
-    parser.add_argument("--n_compile", default=1, type=int, help="How often to run the Quilc compiler, since it is not deterministic.")
-    parser.add_argument("--subfolder", default=None, type=str, nargs="+", help="Possible subfolders from the main QASM source to compile from. Less typing when source folders are in the same folder. Can also be used for subfiles.")
-
-    args = parser.parse_args()
-    if args.metrics_csv is not None and os.path.exists(args.metrics_csv):
-        delete_csv = None
-        text = input("The given metrics file [%s] already exists. Do you want to overwrite it? (Otherwise it is appended) [y|n]" % args.metrics_csv)
-        if text.lower() in ['y', "yes"]:
-            delete_csv = True
-        elif text.lower() in ['n', 'no']:
-            delete_csv = False
-        while delete_csv is None:
-            text = input("Please answer yes or no.")
-            if text.lower() in ['y', "yes"]:
-                delete_csv = True
-            elif text.lower() in ['n', 'no']:
-                delete_csv = False
-        if delete_csv:
-            os.remove(args.metrics_csv)
-
-    sources = make_into_list(args.QASM_source)
-    if args.subfolder is not None:
-        sources = [os.path.join(source, subfolder) for source in sources for subfolder in args.subfolder if os.path.isdir(source)]
-        # Remove non existing paths
-
-    sources = [source for source in sources if os.path.exists(source) or print("Warning, skipping non-existing source:", source)]
-
-    if "all" in args.mode:
-        mode = elim_modes + [QUIL_COMPILER]
-    else:
-        mode = args.mode
-
-    all_circuits = []
-    for source in sources:
-        print("Mapping qasm files in path:", source)
-        circuits = batch_map_cnot_circuits(source, mode, args.architecture, n_qubits=args.qubits, populations=args.population,
-                                           iterations=args.iterations,
-                                           crossover_probs=args.crossover_prob, mutation_probs=args.mutation_prob,
-                                           dest_folder=args.destination, metrics_file=args.metrics_csv, n_compile=args.n_compile)
-        all_circuits.extend(circuits)
-

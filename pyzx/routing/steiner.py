@@ -57,7 +57,7 @@ def steiner_gauss(matrix, architecture, full_reduce=False, x=None, y=None):
             debug and print("deal with zero root")
             if next_check is not None and matrix.data[next_check[0], col] == 0:  # root is zero
                 print("WARNING : Root is 0 => reducing non-pivot column", matrix.data)
-            debug and print("Step 1: remove zeros", matrix.data[:, c])
+            debug and print("Step 1: remove zeros", matrix.data[:, col])
             while next_check is not None:
                 s0, s1 = next_check
                 if matrix.data[s1, col] == 0:  # s1 is a new steiner point

@@ -35,10 +35,10 @@ from ..graph import Graph
 from ..simplify import teleport_reduce, interior_clifford_simp
 from ..circuit import Circuit
 from ..optimize import basic_optimization
-from ..routing.cnot_mapper import elim_modes, STEINER_MODE, QUIL_COMPILER, genetic_elim_modes, gauss, no_genetic_elim_modes
+from ..routing.cnot_mapper import elim_modes, STEINER_MODE, QUIL_COMPILER, genetic_elim_modes, gauss, no_genetic_elim_modes, make_metrics, get_metric_header
 from ..routing.architecture import architectures, SQUARE, dynamic_size_architectures, create_architecture
-from .cnot_mapper import make_into_list, make_metrics, get_metric_header
 from ..drawing import draw
+from ..utils import make_into_list, restricted_float
 
 description = "Compiles given qasm files or those in the given folder to a given architecture."
 
@@ -68,7 +68,6 @@ def read_circuit(source):
         print("File {} does not exist".format(source))
         return
     return Circuit.load(source)
-
 
 def simple_extract_no_gadgets(g, extract_cnots=None, quiet=True):
     g.normalise()
@@ -232,20 +231,6 @@ def simple_extract_no_gadgets(g, extract_cnots=None, quiet=True):
         h.add_edge((qindex[i], v), 3-et)
         qindex[i] = v
     return h
-
-def permutation_as_cnots(initial_perm, target_perm, extract_cnots=None):
-    print(initial_perm)
-    print(target_perm)
-    if extract_cnots is None:
-        cnots = []
-        swap_map = {i:t for i,t in zip(initial_perm, target_perm)}
-        for t1, t2 in permutation_as_swaps(swap_map):
-            cnots += [(t1, t2), (t2, t1), (t1, t2)]
-    else:
-        m = Mat2([[1 if initial_perm[j]==target_perm[i] else 0 for i in range(len(target_perm))] for j in range(len(initial_perm))])
-        print(m)
-        cnots = extract_cnots(m)
-    return cnots
 
 def preprocess_graph(g):
     g.normalise()
@@ -433,12 +418,6 @@ def batch_route_circuits(source, modes, architectures, n_qubits=None, population
     return circuits
 
 def main(args):
-    def restricted_float(x):
-        x = float(x)
-        if x < 0.0 or x > 1.0:
-            raise argparse.ArgumentTypeError("%r not in range [0.0, 1.0]." % (x,))
-        return x
-
     parser = argparse.ArgumentParser(prog="pyzx router", description=description)
     parser.add_argument("QASM_source", nargs='+', help="The QASM file or folder with QASM files to be routed.")
     parser.add_argument("-m", "--mode", nargs='+', dest="mode", default=STEINER_MODE,
@@ -514,7 +493,4 @@ def main(args):
 
 
 if __name__ == '__main__':
-    print("Please call this as python -m pyzx mapper ...")
-    main(None)
-    exit()
-    # sys.path.append('..')
+    print("Please call this as python -m pyzx router ...")

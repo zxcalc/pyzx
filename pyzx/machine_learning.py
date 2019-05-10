@@ -1,5 +1,36 @@
+# PyZX - Python library for quantum circuit rewriting 
+#        and optimisation using the ZX-calculus
+# Copyright (C) 2019 - Aleks Kissinger, John van de Wetering,
+#                      and Arianne Meijer-van de Griend
+
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import numpy as np
+
+
+def make_fitness_func(func, **func_args):
+    """
+    Creates and returns a fitness function to be used for the genetic algorithm that uses CNOT gate count as fitness.
+
+    :param func: a function determining the fitness of a single permutation
+    :param func_args: extra arguments for the fitness function
+    :return: A fitness function that only requires a permutation.
+    """
+    def fitness_func(permutation):
+        return func(permutation=permutation, **func_args)
+
+    return fitness_func
 
 class GeneticAlgorithm():
 
