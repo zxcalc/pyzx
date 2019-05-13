@@ -77,9 +77,10 @@ class GeneticAlgorithm():
 
         if n_child is None:
             n_child = self.population_size
-
-        for _ in range(n_generations):
+            
+        for i in range(n_generations):
             self._update_population(n_child)
+            print("Iteration", i, "best fitness:", [p[1] for p in self.population[:5]])
         if partial_solution:
             return self.population[0] + initial_order[n_qubits:]
         return self.population[0][0]

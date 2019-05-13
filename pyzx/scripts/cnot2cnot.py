@@ -24,11 +24,7 @@ if __name__ == '__main__':
     exit()
 
 from ..linalg import Mat2
-from ..routing.architecture import create_fully_connected_architecture, create_architecture
-from ..routing.parity_maps import CNOT_tracker
-from ..routing.machine_learning import GeneticAlgorithm
-from ..routing.steiner import steiner_gauss
-from ..routing.architecture import architectures, SQUARE, dynamic_size_architectures
+from ..routing.architecture import architectures, SQUARE
 from ..routing.cnot_mapper import STEINER_MODE, QUIL_COMPILER, batch_map_cnot_circuits, elim_modes, compiler_modes
 from ..utils import make_into_list, restricted_float
 

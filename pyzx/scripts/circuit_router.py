@@ -39,6 +39,7 @@ from ..routing.cnot_mapper import elim_modes, STEINER_MODE, QUIL_COMPILER, genet
 from ..routing.architecture import architectures, SQUARE, dynamic_size_architectures, create_architecture
 from ..drawing import draw
 from ..utils import make_into_list, restricted_float
+from ..machine_learning import GeneticAlgorithm
 
 description = "Compiles given qasm files or those in the given folder to a given architecture."
 
@@ -69,7 +70,9 @@ def read_circuit(source):
         return
     return Circuit.load(source)
 
-def simple_extract_no_gadgets(g, extract_cnots=None, quiet=True):
+def simple_extract_no_gadgets(g, extract_cnots=None, quiet=True, initial_qubit_placement=None, allow_output_perm=False):
+    if initial_qubit_placement is None:
+        initial_qubit_placement = [i for i in range(g.qubit_count())]
     g.normalise()
     g = preprocess_graph(g)
     qs = g.qubits()  # We are assuming that these are objects that update...
@@ -77,7 +80,7 @@ def simple_extract_no_gadgets(g, extract_cnots=None, quiet=True):
     ty = g.types()  # ... g.set_row/g.set_qubit is called, these things update directly to reflect that
     phases = g.phases()
     if extract_cnots is None:
-        extract_cnots = lambda mat2: mat2.to_cnots()
+        extract_cnots = lambda mat2, p, col=False: Mat2([[mat2.data[i][j] for j in p] if col else mat2.data[i] for i in p]).to_cnots() 
 
     h = Graph()
 
@@ -129,6 +132,10 @@ def simple_extract_no_gadgets(g, extract_cnots=None, quiet=True):
     processed_targets = {}
     while True:
         left = [v for v in g.vertices() if rs[v] == leftrow]
+        #fig = draw(g)
+        #fig.savefig("test.png", dpi=720)
+        #import matplotlib.pyplot as plt 
+        #plt.close(fig)
         for v in left:
             # First we add the gates to the circuit that can be processed now,
             # and we simplify the graph to represent this.
@@ -177,7 +184,7 @@ def simple_extract_no_gadgets(g, extract_cnots=None, quiet=True):
         left.sort(key=lambda v: g.qubit(v))
         right = [w for w in neighbours if w in nodes]  # Only get non-phase-gadget neighbours
         m = bi_adj(g, right, left)
-        cnots = extract_cnots(m)
+        cnots = extract_cnots(m, initial_qubit_placement)
         for cnot in cnots:
             m.row_add(cnot.target, cnot.control)
             add_cnot(qs[left[cnot.control]], qs[left[cnot.target]])
@@ -214,23 +221,34 @@ def simple_extract_no_gadgets(g, extract_cnots=None, quiet=True):
     # We are done processing now. Time to deal with swaps.
     left.sort(key=lambda v: g.qubit(v))
     right = [w for v in left for w in g.neighbours(v) if rs[w] > leftrow]
-    right.sort(key=lambda v: g.qubit(v))
-    m = bi_adj(g, right, left)
+    if not allow_output_perm:
+        right.sort(key=lambda v: g.qubit(v))
+        m = bi_adj(g, right, left)
+        cnots = extract_cnots(m, initial_qubit_placement, col=True)  # Does Gauss
+        for cnot in cnots:
+            m.row_add(cnot.target, cnot.control)
+            add_cnot(cnot.control, cnot.target)
+        connectivity_from_biadj(g, m, right, left)  # Removes connections from g
 
-    cnots = extract_cnots(m)  # Does Gauss
-    for cnot in cnots:
-        m.row_add(cnot.target, cnot.control)
-        add_cnot(cnot.control, cnot.target)
-    connectivity_from_biadj(g, m, right, left)  # Removes connections from g
-
-    for i, w in enumerate(g.outputs):
-        n = list(g.neighbours(w))[0]
-        et = g.edge_type(g.edge(n, w))
-        v = h.add_vertex(0, i, depth)
-        h.outputs.append(v)
-        h.add_edge((qindex[i], v), 3-et)
-        qindex[i] = v
-    return h
+        for i, w in enumerate(g.outputs):
+            n = list(g.neighbours(w))[0]
+            et = g.edge_type(g.edge(n, w))
+            v = h.add_vertex(0, i, depth)
+            h.outputs.append(v)
+            h.add_edge((qindex[i], v), 3-et)
+            qindex[i] = v
+        final_placement = [i for i in range(g.qubit_count())]
+    else:
+        final_placement = [g.qubit(r) for r in right]
+        for q, l in enumerate(left):
+            n = right[q]
+            r = [v for v in g.outputs if n == list(g.neighbours(v))[0]][0]
+            et = g.edge_type(g.edge(n, r))
+            v = h.add_vertex(0, q, depth)
+            h.outputs.append(v)
+            h.add_edge((qindex[q], v), 3-et)
+            qindex[q] = v
+    return h, final_placement
 
 def preprocess_graph(g):
     g.normalise()
@@ -278,40 +296,59 @@ def route_circuit(c, architecture, mode=STEINER_MODE, dest_file=None, population
         interior_clifford_simp(g)
         if type(architecture) == type(""):
             architecture = create_architecture(architecture)
-        def gauss_func(m):
+        def gauss_func(m, permutation=None, col=False):
             cn = CNOTMaker()
-            m = m.copy()
-            if mode in no_genetic_elim_modes:
-                rank = gauss(mode, m, architecture, full_reduce=True, x=cn)
-            elif mode in genetic_elim_modes:
-                rank = gauss(mode, m, architecture, full_reduce=True, x=cn,
-                             population_size=population, crossover_prob=crossover_prob, mutate_prob=mutation_prob,
-                             n_iterations=iterations)
-
-            if not all([architecture.graph.connected(g.target, g.control) or architecture.graph.connected(g.control,
-                                                                                                          g.target) for
-                        g in cn.cnots]):
-                input("nope")
+            if col:
+                m = Mat2([[row[col] for col in permutation] for row in m.data])
+            else:
+                m = m.copy()
+            rank = gauss(STEINER_MODE, m, architecture, full_reduce=True, x=cn, permutation=permutation)
+            #print(permutation)
+            #print(len(cn.cnots), cn.cnots)
             return cn.cnots
-        compiled_g = simple_extract_no_gadgets(g, gauss_func)
+        best_permutation = [i for i in range(g.qubit_count())]
+        allow_output_perm = False
+        metric = lambda c: len([gate for gate in c.gates if hasattr(gate, "name") and gate.name in ["CNOT", "CZ"]])
+        if mode in genetic_elim_modes:
+            def fitness(permutation):
+                new_g = g.copy()
+                compiled_g, _ = simple_extract_no_gadgets(new_g, gauss_func, initial_qubit_placement=permutation.tolist(), allow_output_perm=allow_output_perm)
+                compiled_circuit = Circuit.from_graph(compiled_g)
+                compiled_circuit = basic_optimization(compiled_circuit, do_swaps=False)
+                return metric(compiled_circuit)
+            optimizer = GeneticAlgorithm(population, crossover_prob, mutation_prob, fitness)
+            best_permutation = optimizer.find_optimimum(architecture.n_qubits, iterations)
+
+        print("Permutation found!", best_permutation)
+        new_g = g.copy()
+        compiled_g, final_placement = simple_extract_no_gadgets(new_g, gauss_func, initial_qubit_placement=best_permutation.tolist(), allow_output_perm=allow_output_perm)
         compiled_circuit = Circuit.from_graph(compiled_g)
         compiled_circuit = basic_optimization(compiled_circuit, do_swaps=False)
 
     # sanity checks.
     print("Done extracting!")
     from ..tensor import compare_tensors
-    print("Initial CNOT/CZ count:", len([gate for gate in c.gates if hasattr(gate, "name") and (gate.name == "CNOT" or gate.name == "CZ")]))
+    print("Initial CNOT/CZ count:", metric(c))
     print("Extract circuit equals initial circuit?", compare_tensors(c, compiled_circuit)) #check extraction procedure
+    if allow_output_perm:
+        compiled_circuit2 = Circuit.from_graph(compiled_circuit.to_graph())
+        swap_map = {i:final_placement[i] for i, q in enumerate(best_permutation)}
+        for t1, t2 in permutation_as_swaps(swap_map):
+            compiled_circuit2.add_gate("CNOT", control=t1, target=t2)
+            compiled_circuit2.add_gate("CNOT", control=t2, target=t1)
+            compiled_circuit2.add_gate("CNOT", control=t1, target=t2)
+        print("Extract circuit equals initial circuit?", compare_tensors(c, compiled_circuit2)) #check extraction procedure
+    qubit_lookup = {i:best_permutation.tolist().index(i) for i in range(len(best_permutation))}
     illegal_gates = [gate for gate in compiled_circuit.gates
                      if hasattr(gate, "name")
                      and (gate.name == "CNOT" or gate.name == "CZ")
-                     and not (architecture.graph.connected(gate.target, gate.control)
-                          or architecture.graph.connected(gate.control, gate.target))]
+                     and not (architecture.graph.connected(qubit_lookup[gate.target], qubit_lookup[gate.control])
+                          or architecture.graph.connected(qubit_lookup[gate.control], qubit_lookup[gate.target]))]
     print("All CNOT/CZ gates allowed in the architecture?", len(illegal_gates) == 0)
     if illegal_gates:
         print("Which ones?", illegal_gates)
 
-    print("Final CNOT/CZ count:",len([gate for gate in compiled_circuit.gates if hasattr(gate, "name") and (gate.name == "CNOT" or gate.name == "CZ")]))
+    print("Final CNOT/CZ count:", metric(compiled_circuit))
 
     if dest_file is not None:   
         print("Saving the resulting circuit.")

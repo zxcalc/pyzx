@@ -34,7 +34,7 @@ if __name__ == '__main__':
     try:
         from .scripts import circ2circ
         from .scripts import circ2tikz
-        from .scripts import cnot_mapper
+        from .scripts import cnot2cnot
         from .scripts import circuit_router
         from .scripts import cnot_generator
     except SystemError:
@@ -58,7 +58,7 @@ if __name__ == '__main__':
     if args.command == 'tikz':
         circ2tikz.main(sys.argv[2:])
     if args.command == 'mapper':
-        cnot_mapper.main(sys.argv[2:])
+        cnot2cnot.main(sys.argv[2:])
     if args.command == 'router':
         circuit_router.main(sys.argv[2:])
     if args.command == 'cnots':

@@ -10,12 +10,12 @@ except:
         print("Warning: could not import pandas. No performance data will be exported.")
 import time
 
-from pyzx.linalg import Mat2
-from pyzx.architecture import create_fully_connected_architecture, create_architecture
-from pyzx.parity_maps import CNOT_tracker
-from pyzx.machine_learning import GeneticAlgorithm
-from pyzx.fitness import get_gate_count_fitness_func as get_fitness_func
-from pyzx.utils import make_into_list
+from ..linalg import Mat2
+from .architecture import create_fully_connected_architecture, create_architecture
+from ..parity_maps import CNOT_tracker
+from ..machine_learning import GeneticAlgorithm
+from ..utils import make_into_list
+from .steiner import steiner_gauss
 
 debug = False
 
@@ -36,7 +36,7 @@ NO_COMPILER = "not_compiled"
 compiler_modes = [QUIL_COMPILER, NO_COMPILER]
 
 
-def get_fitness_func(mode, matrix, architecture, row=True, col=True, full_reduce=True):
+def cnot_fitness_func(mode, matrix, architecture, row=True, col=True, full_reduce=True):
     """
     Creates and returns a fitness function to be used for the genetic algorithm that uses CNOT gate count as fitness.
 
@@ -62,7 +62,7 @@ def get_fitness_func(mode, matrix, architecture, row=True, col=True, full_reduce
 
     return fitness_func
 
-def gauss(mode, matrix, architecture=None, **kwargs):
+def gauss(mode, matrix, architecture=None, permutation=None, **kwargs):
     """
     Performs gaussian elimination of type mode on Mat2 matrix on the given architecture, if needed.
 
@@ -73,96 +73,22 @@ def gauss(mode, matrix, architecture=None, **kwargs):
     :return: The rank of the matrix. Mat2 matrix is transformed.
     """
     if mode == GAUSS_MODE:
+        # TODO - adjust to get the right gate locations for the given permutation.
+        print(
+            "\033[91m Warning: Permutation parameter with Gauss-Jordan elimination is not yet supported, it can be optimized with permutated_gauss(). \033[0m ")
         return matrix.gauss(**kwargs)
     elif mode == STEINER_MODE:
         if architecture is None:
             print(
                 "\033[91m Warning: Architecture is not given, assuming fully connected architecture of size matrix.shape[0]. \033[0m ")
             architecture = create_fully_connected_architecture(len(matrix.data))
-        return steiner_gauss(matrix, architecture, **kwargs)
+        return steiner_gauss(matrix, architecture, permutation=permutation, **kwargs)
     elif mode == GENETIC_STEINER_MODE:
         perm, cnots, rank = permutated_gauss(matrix, STEINER_MODE, architecture=architecture, **kwargs)
         return rank
     elif mode == GENETIC_GAUSS_MODE:
         perm, cnots, rank = permutated_gauss(matrix, GAUSS_MODE, architecture=architecture, **kwargs)
         return rank
-
-def steiner_gauss(matrix, architecture, full_reduce=False, x=None, y=None):
-    """
-    Performs Gaussian elimination that is constraint bij the given architecture
-    
-    :param matrix: PyZX Mat2 matrix to be reduced
-    :param architecture: The Architecture object to conform to
-    :param full_reduce: Whether to fully reduce or only create an upper triangular form
-    :param x: 
-    :param y: 
-    :return: Rank of the given matrix
-    """
-    def row_add(c0, c1):
-        matrix.row_add(c0, c1)
-        debug and print("Reducing", c0, c1)
-        if x != None: x.row_add(c0, c1)
-        if y != None: y.col_add(c1, c0)
-    def steiner_reduce(col, root, nodes, upper):
-        steiner_tree = architecture.steiner_tree(root, nodes, upper)
-        # Remove all zeros
-        next_check = next(steiner_tree)
-        debug and print("Step 1: remove zeros")
-        if upper:
-            zeros = []
-            while next_check is not None:
-                s0, s1 = next_check
-                if matrix.data[s0][col] == 0:  # s1 is a new steiner point or root = 0
-                    zeros.append(next_check)
-                next_check = next(steiner_tree)
-            while len(zeros) > 0:
-                s0, s1 = zeros.pop(-1)
-                if matrix.data[s0][col] == 0:
-                    row_add(s1, s0)
-                    debug and print(matrix.data[s0][col], matrix.data[s1][col])
-        else:
-            debug and print("deal with zero root")
-            if next_check is not None and matrix.data[next_check[0]][col] == 0:  # root is zero
-                print("WARNING : Root is 0 => reducing non-pivot column", matrix.data)
-            debug and print("Step 1: remove zeros", [r[c] for r in matrix.data])
-            while next_check is not None:
-                s0, s1 = next_check
-                if matrix.data[s1][col] == 0:  # s1 is a new steiner point
-                    row_add(s0, s1)
-                next_check = next(steiner_tree)
-        # Reduce stuff
-        debug and print("Step 2: remove ones")
-        next_add = next(steiner_tree)
-        while next_add is not None:
-            s0, s1 = next_add
-            row_add(s0, s1)
-            next_add = next(steiner_tree)
-            debug and print(next_add)
-        debug and print("Step 3: profit")
-
-    rows = matrix.rows()
-    cols = matrix.cols()
-    p_cols = []
-    pivot = 0
-    for c in range(cols):
-        if pivot < rows:
-            nodes = [r for r in range(pivot, rows) if pivot==r or matrix.data[r][c] == 1]
-            steiner_reduce(c, pivot, nodes, True)
-            if matrix.data[pivot][c] == 1:
-                p_cols.append(c)
-                pivot += 1
-    debug and print("Upper triangle form", matrix.data)
-    rank = pivot
-    debug and print(p_cols)
-    if full_reduce:
-        pivot -= 1
-        for c in reversed(p_cols):
-            debug and print(pivot, [r[c] for r in matrix.data])
-            nodes = [r for r in range(0, pivot+1) if r==pivot or matrix.data[r][c] == 1]
-            if len(nodes) > 1:
-                steiner_reduce(c, pivot, nodes, False)
-            pivot -= 1
-    return rank
 
 def permutated_gauss(matrix, mode=None, architecture=None, population_size=30, crossover_prob=0.8, mutate_prob=0.2, n_iterations=50,
                      row=True, col=True, full_reduce=True, fitness_func=None, x=None, y=None):
@@ -180,7 +106,7 @@ def permutated_gauss(matrix, mode=None, architecture=None, population_size=30, c
     :return: Best permutation found, list of CNOTS corresponding to the elimination.
     """
     if fitness_func is None:
-        fitness_func =  get_fitness_func(mode, matrix, architecture, row=row, col=col, full_reduce=full_reduce)
+        fitness_func =  cnot_fitness_func(mode, matrix, architecture, row=row, col=col, full_reduce=full_reduce)
     optimizer = GeneticAlgorithm(population_size, crossover_prob, mutate_prob, fitness_func)
     best_permutation = optimizer.find_optimimum(architecture.n_qubits, n_iterations, continued=True)
 
@@ -346,18 +272,18 @@ def batch_map_cnot_circuits(source, modes, architectures, n_qubits=None, populat
             df.to_csv(metrics_file, columns=get_metric_header(), index=False)
     return circuits
 
-def map_cnot_circuit(file, architecture, mode=GENETIC_STEINER_MODE, dest_file=None, population=30, iterations=15, crossover_prob=0.8, mutation_prob=0.2):
+def map_cnot_circuit(file, architecture, mode=GENETIC_STEINER_MODE, dest_file=None, population=30, iterations=15, crossover_prob=0.8, mutation_prob=0.2, **kwargs):
     if type(architecture) == type(""):
         architecture = create_architecture(architecture)
     circuit = CNOT_tracker.from_qasm_file(file)
     matrix = circuit.matrix
     compiled_circuit = CNOT_tracker(circuit.n_qubits)
     if mode in no_genetic_elim_modes:
-        rank = gauss(mode, matrix, architecture, full_reduce=True, y=compiled_circuit)
+        rank = gauss(mode, matrix, architecture, full_reduce=True, y=compiled_circuit, **kwargs)
     elif mode in genetic_elim_modes:
         rank = gauss(mode, matrix, architecture, full_reduce=True, y=compiled_circuit,
                      population_size=population, crossover_prob=crossover_prob, mutate_prob=mutation_prob,
-                     n_iterations=iterations)
+                     n_iterations=iterations, **kwargs)
     elif mode == QUIL_COMPILER:
         from pyzx.pyquil_circuit import PyQuilCircuit
         compiled_circuit = PyQuilCircuit.from_CNOT_tracker(circuit, architecture)
