@@ -286,6 +286,7 @@ def preprocess_graph(g):
     return g
 
 def route_circuit(c, architecture, mode=STEINER_MODE, dest_file=None, population=30, iterations=15, crossover_prob=0.8, mutation_prob=0.2):
+    metric = lambda c: len([gate for gate in c.gates if hasattr(gate, "name") and gate.name in ["CNOT", "CZ"]])
     if mode == QUIL_COMPILER:
         from pyzx.pyquil_circuit import PyQuilCircuit
         compiled_circuit = PyQuilCircuit.from_CNOT_tracker(c, architecture) # TODO fix this to include other gates aswell
@@ -294,59 +295,64 @@ def route_circuit(c, architecture, mode=STEINER_MODE, dest_file=None, population
         g = c.to_graph()
         g = teleport_reduce(g)
         interior_clifford_simp(g)
+        g = g.copy() # reduces the number of gates when extracting.
         if type(architecture) == type(""):
             architecture = create_architecture(architecture)
         def gauss_func(m, permutation=None, col=False):
             cn = CNOTMaker()
             if col:
                 m = Mat2([[row[col] for col in permutation] for row in m.data])
+                rank = gauss(STEINER_MODE, m, architecture, full_reduce=True, x=cn, permutation=permutation)
             else:
                 m = m.copy()
-            rank = gauss(STEINER_MODE, m, architecture, full_reduce=True, x=cn, permutation=permutation)
+                if mode in genetic_elim_modes:
+                    rank = gauss(mode, m, architecture, full_reduce=True, x=cn, permutation=permutation, row=False, col=True, 
+                                population_size=population, crossover_prob=crossover_prob, mutate_prob=mutation_prob, n_iterations=iterations)
+                else:
+                    rank = gauss(mode, m, architecture, full_reduce=True, x=cn, permutation=permutation)
             #print(permutation)
             #print(len(cn.cnots), cn.cnots)
             return cn.cnots
         best_permutation = [i for i in range(g.qubit_count())]
-        allow_output_perm = False
-        metric = lambda c: len([gate for gate in c.gates if hasattr(gate, "name") and gate.name in ["CNOT", "CZ"]])
-        if mode in genetic_elim_modes:
+        allow_output_perm = True
+        if False: #mode in genetic_elim_modes:
             def fitness(permutation):
                 new_g = g.copy()
                 compiled_g, _ = simple_extract_no_gadgets(new_g, gauss_func, initial_qubit_placement=permutation.tolist(), allow_output_perm=allow_output_perm)
                 compiled_circuit = Circuit.from_graph(compiled_g)
                 compiled_circuit = basic_optimization(compiled_circuit, do_swaps=False)
                 return metric(compiled_circuit)
-            optimizer = GeneticAlgorithm(population, crossover_prob, mutation_prob, fitness)
-            best_permutation = optimizer.find_optimimum(architecture.n_qubits, iterations)
+            optimizer = GeneticAlgorithm(population, crossover_prob, mutation_prob, fitness, quiet=False)
+            best_permutation = optimizer.find_optimimum(architecture.n_qubits, iterations).tolist()
 
         print("Permutation found!", best_permutation)
         new_g = g.copy()
-        compiled_g, final_placement = simple_extract_no_gadgets(new_g, gauss_func, initial_qubit_placement=best_permutation.tolist(), allow_output_perm=allow_output_perm)
+        compiled_g, final_placement = simple_extract_no_gadgets(new_g, gauss_func, initial_qubit_placement=best_permutation, allow_output_perm=allow_output_perm)
         compiled_circuit = Circuit.from_graph(compiled_g)
         compiled_circuit = basic_optimization(compiled_circuit, do_swaps=False)
 
-    # sanity checks.
-    print("Done extracting!")
-    from ..tensor import compare_tensors
-    print("Initial CNOT/CZ count:", metric(c))
-    print("Extract circuit equals initial circuit?", compare_tensors(c, compiled_circuit)) #check extraction procedure
-    if allow_output_perm:
-        compiled_circuit2 = Circuit.from_graph(compiled_circuit.to_graph())
-        swap_map = {i:final_placement[i] for i, q in enumerate(best_permutation)}
-        for t1, t2 in permutation_as_swaps(swap_map):
-            compiled_circuit2.add_gate("CNOT", control=t1, target=t2)
-            compiled_circuit2.add_gate("CNOT", control=t2, target=t1)
-            compiled_circuit2.add_gate("CNOT", control=t1, target=t2)
-        print("Extract circuit equals initial circuit?", compare_tensors(c, compiled_circuit2)) #check extraction procedure
-    qubit_lookup = {i:best_permutation.tolist().index(i) for i in range(len(best_permutation))}
-    illegal_gates = [gate for gate in compiled_circuit.gates
-                     if hasattr(gate, "name")
-                     and (gate.name == "CNOT" or gate.name == "CZ")
-                     and not (architecture.graph.connected(qubit_lookup[gate.target], qubit_lookup[gate.control])
-                          or architecture.graph.connected(qubit_lookup[gate.control], qubit_lookup[gate.target]))]
-    print("All CNOT/CZ gates allowed in the architecture?", len(illegal_gates) == 0)
-    if illegal_gates:
-        print("Which ones?", illegal_gates)
+        # sanity checks.
+        print("Done extracting!", final_placement)
+        from ..tensor import compare_tensors
+        print("Initial CNOT/CZ count:", metric(c))
+        print("Extract circuit equals initial circuit?", compare_tensors(c, compiled_circuit)) #check extraction procedure
+        if allow_output_perm:
+            compiled_circuit2 = Circuit.from_graph(compiled_circuit.to_graph())
+            swap_map = {i:final_placement[i] for i, q in enumerate(best_permutation)}
+            for t1, t2 in permutation_as_swaps(swap_map):
+                compiled_circuit2.add_gate("CNOT", control=t1, target=t2)
+                compiled_circuit2.add_gate("CNOT", control=t2, target=t1)
+                compiled_circuit2.add_gate("CNOT", control=t1, target=t2)
+            print("Extract circuit equals initial circuit?", compare_tensors(c, compiled_circuit2)) #check extraction procedure
+        qubit_lookup = {i:best_permutation.index(i) for i in range(len(best_permutation))}
+        illegal_gates = [gate for gate in compiled_circuit.gates
+                        if hasattr(gate, "name")
+                        and (gate.name == "CNOT" or gate.name == "CZ")
+                        and not (architecture.graph.connected(qubit_lookup[gate.target], qubit_lookup[gate.control])
+                            or architecture.graph.connected(qubit_lookup[gate.control], qubit_lookup[gate.target]))]
+        print("All CNOT/CZ gates allowed in the architecture?", len(illegal_gates) == 0)
+        if illegal_gates:
+            print("Which ones?", illegal_gates)
 
     print("Final CNOT/CZ count:", metric(compiled_circuit))
 

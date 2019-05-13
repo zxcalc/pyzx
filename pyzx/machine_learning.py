@@ -34,7 +34,7 @@ def make_fitness_func(func, **func_args):
 
 class GeneticAlgorithm():
 
-    def __init__(self, population_size, crossover_prob, mutation_prob, fitness_func, maximize=False):
+    def __init__(self, population_size, crossover_prob, mutation_prob, fitness_func, maximize=False, quiet=True):
         self.population_size = population_size
         self.negative_population_size = int(np.sqrt(population_size))
         self.crossover_prob = crossover_prob
@@ -44,6 +44,7 @@ class GeneticAlgorithm():
         self.maximize = maximize
         self.n_qubits = 0
         self.population = None
+        self.quiet=quiet
 
     def _select(self):
         fitness_scores = [f for c,f in self.population]
@@ -80,7 +81,7 @@ class GeneticAlgorithm():
             
         for i in range(n_generations):
             self._update_population(n_child)
-            print("Iteration", i, "best fitness:", [p[1] for p in self.population[:5]])
+            (not self.quiet) and print("Iteration", i, "best fitness:", [p[1] for p in self.population[:5]])
         if partial_solution:
             return self.population[0] + initial_order[n_qubits:]
         return self.population[0][0]

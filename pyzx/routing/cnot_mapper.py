@@ -36,7 +36,7 @@ NO_COMPILER = "not_compiled"
 compiler_modes = [QUIL_COMPILER, NO_COMPILER]
 
 
-def cnot_fitness_func(mode, matrix, architecture, row=True, col=True, full_reduce=True):
+def cnot_fitness_func(mode, matrix, architecture, row=True, col=True, full_reduce=True, **kwargs):
     """
     Creates and returns a fitness function to be used for the genetic algorithm that uses CNOT gate count as fitness.
 
@@ -48,16 +48,14 @@ def cnot_fitness_func(mode, matrix, architecture, row=True, col=True, full_reduc
     :param full_reduce: Whether to fully reduce the matrix, thus rebuild the full circuit.
     :return: A fitness function that calculates the number of gates needed for a given permutation.
     """
-    matrix = matrix.data
-    n_qubits = matrix.shape[0]
+    n_qubits = len(matrix.data)
 
     def fitness_func(permutation):
-        e = np.arange(len(permutation))
-        row_perm = permutation if row else e
-        col_perm = permutation if col else e
+        row_perm = permutation if row else np.arange(len(matrix.data))
+        col_perm = permutation if col else np.arange(len(matrix.data[0]))
         circuit = CNOT_tracker(n_qubits)
-        mat = Mat2(np.copy(matrix[row_perm][:, col_perm]))
-        gauss(mode, mat, architecture=architecture, x=circuit, full_reduce=full_reduce)
+        mat = Mat2([[matrix.data[r][c] for c in col_perm] for r in row_perm])
+        gauss(mode, mat, architecture=architecture, y=circuit, full_reduce=full_reduce, **kwargs)
         return circuit.count_cnots()
 
     return fitness_func
@@ -91,7 +89,7 @@ def gauss(mode, matrix, architecture=None, permutation=None, **kwargs):
         return rank
 
 def permutated_gauss(matrix, mode=None, architecture=None, population_size=30, crossover_prob=0.8, mutate_prob=0.2, n_iterations=50,
-                     row=True, col=True, full_reduce=True, fitness_func=None, x=None, y=None):
+                     row=True, col=True, full_reduce=True, fitness_func=None, x=None, y=None, **kwargs):
     """
     Finds an optimal permutation of the matrix to reduce the number of CNOT gates.
     
@@ -106,22 +104,22 @@ def permutated_gauss(matrix, mode=None, architecture=None, population_size=30, c
     :return: Best permutation found, list of CNOTS corresponding to the elimination.
     """
     if fitness_func is None:
-        fitness_func =  cnot_fitness_func(mode, matrix, architecture, row=row, col=col, full_reduce=full_reduce)
+        fitness_func =  cnot_fitness_func(mode, matrix, architecture, row=row, col=col, full_reduce=full_reduce, **kwargs)
     optimizer = GeneticAlgorithm(population_size, crossover_prob, mutate_prob, fitness_func)
-    best_permutation = optimizer.find_optimimum(architecture.n_qubits, n_iterations, continued=True)
+    permsize = len(matrix.data) if row else len(matrix.data[0])
+    best_permutation = optimizer.find_optimimum(permsize, n_iterations, continued=True)
 
-    n_qubits=matrix.data.shape[0]
-    no_perm = np.arange(len(best_permutation))
-    row_perm = best_permutation if row else no_perm
-    col_perm = best_permutation if col else no_perm
+    n_qubits=len(matrix.data)
+    row_perm = best_permutation if row else np.arange(len(matrix.data))
+    col_perm = best_permutation if col else np.arange(len(matrix.data[0]))
     if y is None:
         circuit = CNOT_tracker(n_qubits)
     else:
         circuit = y
-    mat = Mat2(np.copy(matrix.data[row_perm][:, col_perm]))
+    mat = Mat2([[matrix.data[r][c] for c in col_perm] for r in row_perm])
     circuit.row_perm = row_perm
     circuit.col_perm = col_perm
-    rank = gauss(mode, mat, architecture, x=x, y=circuit, full_reduce=full_reduce)
+    rank = gauss(mode, mat, architecture, x=x, y=circuit, full_reduce=full_reduce, **kwargs)
     return best_permutation, circuit.count_cnots(), rank
 
 def count_cnots_mat2(mode, matrix, compile_mode=None, architecture=None, n_compile=1, store_circuit_as=None, **kwargs):
