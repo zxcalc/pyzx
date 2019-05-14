@@ -11,7 +11,7 @@ except:
 import time
 
 from ..linalg import Mat2
-from .architecture import create_fully_connected_architecture, create_architecture
+from .architecture import create_fully_connected_architecture, create_architecture, dynamic_size_architectures
 from ..parity_maps import CNOT_tracker
 from ..machine_learning import GeneticAlgorithm
 from ..utils import make_into_list
@@ -82,10 +82,10 @@ def gauss(mode, matrix, architecture=None, permutation=None, **kwargs):
             architecture = create_fully_connected_architecture(len(matrix.data))
         return steiner_gauss(matrix, architecture, permutation=permutation, **kwargs)
     elif mode == GENETIC_STEINER_MODE:
-        perm, cnots, rank = permutated_gauss(matrix, STEINER_MODE, architecture=architecture, **kwargs)
+        perm, cnots, rank = permutated_gauss(matrix, STEINER_MODE, architecture=architecture, permutation=permutation, **kwargs)
         return rank
     elif mode == GENETIC_GAUSS_MODE:
-        perm, cnots, rank = permutated_gauss(matrix, GAUSS_MODE, architecture=architecture, **kwargs)
+        perm, cnots, rank = permutated_gauss(matrix, GAUSS_MODE, architecture=architecture, permutation=permutation, **kwargs)
         return rank
 
 def permutated_gauss(matrix, mode=None, architecture=None, population_size=30, crossover_prob=0.8, mutate_prob=0.2, n_iterations=50,

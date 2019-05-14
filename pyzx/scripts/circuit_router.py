@@ -35,11 +35,11 @@ from ..graph import Graph
 from ..simplify import teleport_reduce, interior_clifford_simp
 from ..circuit import Circuit
 from ..optimize import basic_optimization
-from ..routing.cnot_mapper import elim_modes, STEINER_MODE, QUIL_COMPILER, genetic_elim_modes, gauss, no_genetic_elim_modes, make_metrics, get_metric_header
+from ..routing.cnot_mapper import elim_modes, STEINER_MODE, QUIL_COMPILER, genetic_elim_modes, gauss, no_genetic_elim_modes, make_metrics, get_metric_header, cnot_fitness_func
 from ..routing.architecture import architectures, SQUARE, dynamic_size_architectures, create_architecture
 from ..drawing import draw
 from ..utils import make_into_list, restricted_float
-from ..machine_learning import GeneticAlgorithm
+from ..machine_learning import GeneticAlgorithm, ParticleSwarmOptimization
 
 description = "Compiles given qasm files or those in the given folder to a given architecture."
 
@@ -314,16 +314,36 @@ def route_circuit(c, architecture, mode=STEINER_MODE, dest_file=None, population
             #print(len(cn.cnots), cn.cnots)
             return cn.cnots
         best_permutation = [i for i in range(g.qubit_count())]
-        allow_output_perm = True
-        if False: #mode in genetic_elim_modes:
+        allow_output_perm = False
+        if allow_output_perm: #mode in genetic_elim_modes:
             def fitness(permutation):
                 new_g = g.copy()
                 compiled_g, _ = simple_extract_no_gadgets(new_g, gauss_func, initial_qubit_placement=permutation.tolist(), allow_output_perm=allow_output_perm)
                 compiled_circuit = Circuit.from_graph(compiled_g)
                 compiled_circuit = basic_optimization(compiled_circuit, do_swaps=False)
                 return metric(compiled_circuit)
-            optimizer = GeneticAlgorithm(population, crossover_prob, mutation_prob, fitness, quiet=False)
-            best_permutation = optimizer.find_optimimum(architecture.n_qubits, iterations).tolist()
+            # Build a reversed circuit to find a new initial qubit placement.
+            rev_c = Circuit(g.qubit_count())
+            for gate in reversed(c.gates):
+                rev_c.add_gate(gate)
+            rev_g = rev_c.to_graph()
+            rev_g = teleport_reduce(rev_g)
+            interior_clifford_simp(rev_g)
+            rev_g = rev_g.copy() # reduces the number of gates when extracting.
+            def step(permutation):
+                new_g = g.copy()
+                compiled_g, permutation = simple_extract_no_gadgets(new_g, gauss_func, initial_qubit_placement=permutation.tolist(), allow_output_perm=allow_output_perm)
+                #compiled_circuit = Circuit.from_graph(compiled_g)
+                #compiled_circuit = basic_optimization(compiled_circuit, do_swaps=False)
+                new_g = rev_g.copy()
+                compiled_g, output_perm = simple_extract_no_gadgets(new_g, gauss_func, initial_qubit_placement=permutation, allow_output_perm=allow_output_perm)
+                #compiled_circuit = Circuit.from_graph(compiled_g)
+                #compiled_circuit = basic_optimization(compiled_circuit, do_swaps=False)
+                return np.asarray(output_perm)
+
+            #optimizer = GeneticAlgorithm(population, crossover_prob, mutation_prob, fitness, quiet=False)
+            optimizer = ParticleSwarmOptimization(swarm_size=5, fitness_func=fitness, step_func=step, s_best_crossover=0.4, p_best_crossover=0.3, mutation=0.15)
+            best_permutation = optimizer.find_optimimum(architecture.n_qubits, 5, False).tolist()
 
         print("Permutation found!", best_permutation)
         new_g = g.copy()
@@ -335,7 +355,6 @@ def route_circuit(c, architecture, mode=STEINER_MODE, dest_file=None, population
         print("Done extracting!", final_placement)
         from ..tensor import compare_tensors
         print("Initial CNOT/CZ count:", metric(c))
-        print("Extract circuit equals initial circuit?", compare_tensors(c, compiled_circuit)) #check extraction procedure
         if allow_output_perm:
             compiled_circuit2 = Circuit.from_graph(compiled_circuit.to_graph())
             swap_map = {i:final_placement[i] for i, q in enumerate(best_permutation)}
@@ -343,7 +362,9 @@ def route_circuit(c, architecture, mode=STEINER_MODE, dest_file=None, population
                 compiled_circuit2.add_gate("CNOT", control=t1, target=t2)
                 compiled_circuit2.add_gate("CNOT", control=t2, target=t1)
                 compiled_circuit2.add_gate("CNOT", control=t1, target=t2)
-            print("Extract circuit equals initial circuit?", compare_tensors(c, compiled_circuit2)) #check extraction procedure
+            print("Extract circuit equals initial circuit? (with appended swaps)", compare_tensors(c, compiled_circuit2)) #check extraction procedure
+        else:
+            print("Extract circuit equals initial circuit? (without appended swaps)", compare_tensors(c, compiled_circuit)) #check extraction procedure
         qubit_lookup = {i:best_permutation.index(i) for i in range(len(best_permutation))}
         illegal_gates = [gate for gate in compiled_circuit.gates
                         if hasattr(gate, "name")
