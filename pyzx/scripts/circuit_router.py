@@ -289,7 +289,7 @@ def route_circuit(c, architecture, mode=STEINER_MODE, dest_file=None, population
     metric = lambda c: len([gate for gate in c.gates if hasattr(gate, "name") and gate.name in ["CNOT", "CZ"]])
     if mode == QUIL_COMPILER:
         from pyzx.pyquil_circuit import PyQuilCircuit
-        compiled_circuit = PyQuilCircuit.from_CNOT_tracker(c, architecture) # TODO fix this to include other gates aswell
+        compiled_circuit = PyQuilCircuit.from_circuit(c, architecture) # TODO fix this to include other gates aswell
         compiled_circuit.compile()
     else:
         g = c.to_graph()
