@@ -72,9 +72,30 @@ def gauss(mode, matrix, architecture=None, permutation=None, **kwargs):
     """
     if mode == GAUSS_MODE:
         # TODO - adjust to get the right gate locations for the given permutation.
-        print(
-            "\033[91m Warning: Permutation parameter with Gauss-Jordan elimination is not yet supported, it can be optimized with permutated_gauss(). \033[0m ")
-        return matrix.gauss(**kwargs)
+        
+        if permutation is not None:
+            #print("\033[91m Warning: Permutation parameter with Gauss-Jordan elimination is not yet supported, it can be optimized with permutated_gauss(). \033[0m ")
+            #return matrix.gauss(**kwargs)
+            # Broken code that tries to implement this.
+            matrix = Mat2([matrix.data[i] for i in permutation])
+            old_x, old_y = None, None
+            if "x" in kwargs:
+                old_x = kwargs["x"]
+            if "y" in kwargs:
+                old_y = kwargs["y"]
+            n_qubits = len(matrix.data)
+            x = CNOT_tracker(n_qubits)
+            kwargs["x"] = x
+            kwargs["y"] = None
+            rank = matrix.gauss(**kwargs)
+            for gate in x.gates:
+                c = permutation[gate.control]
+                t = permutation[gate.target]
+                if old_x != None: old_x.row_add(c, t)
+                if old_y != None: old_y.col_add(t, c)
+            return rank
+        else:
+            return matrix.gauss(**kwargs)
     elif mode == STEINER_MODE:
         if architecture is None:
             print(
