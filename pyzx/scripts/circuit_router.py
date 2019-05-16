@@ -35,7 +35,7 @@ from ..graph import Graph
 from ..simplify import teleport_reduce, interior_clifford_simp
 from ..circuit import Circuit
 from ..optimize import basic_optimization
-from ..routing.cnot_mapper import elim_modes, STEINER_MODE, QUIL_COMPILER, genetic_elim_modes, gauss, no_genetic_elim_modes, make_metrics, get_metric_header, cnot_fitness_func
+from ..routing.cnot_mapper import elim_modes, STEINER_MODE, QUIL_COMPILER, genetic_elim_modes, gauss, no_genetic_elim_modes, make_metrics, get_metric_header, cnot_fitness_func, GAUSS_MODE
 from ..routing.architecture import architectures, SQUARE, dynamic_size_architectures, create_architecture
 from ..drawing import draw
 from ..utils import make_into_list, restricted_float
@@ -47,11 +47,12 @@ debug = False
 
 from ..extract import bi_adj, connectivity_from_biadj, permutation_as_swaps
 
-def create_dest_filename(original_file, outformat, population=None, iteration=None, crossover_prob=None, mutation_prob=None, index=None):
+def create_dest_filename(original_file, outformat, population=None, iteration=None, crossover_prob=None, mutation_prob=None, index=None, pso_size=None, pso_step=None, pso_sco=None, pso_pco=None, pso_m=None):
     pop_ext = "" if population is None else "pop" + str(population)
     iter_ext = "" if iteration is None else "iter" + str(iteration)
     crosover_ext = "" if crossover_prob is None else "crossover" + str(crossover_prob)
     mutation_ext = "" if mutation_prob is None else "mutate" + str(mutation_prob)
+    pso_ext = "pso"+"_".join([s + str(v) for s, v in zip(["swarm", "steps", "sco", "pco", "mut"], [pso_size, pso_step, pso_sco, pso_pco, pso_m])]) if pso_size != None else "" 
     index_ext = "" if index is None else "(" + str(index) + ")"
     filename = os.path.basename(original_file)
     base_file, extension = os.path.splitext(filename)
@@ -61,7 +62,7 @@ def create_dest_filename(original_file, outformat, population=None, iteration=No
     elif outformat != 'match':
         extension = outformat
 
-    new_filename = '_'.join([part for part in [base_file, pop_ext, iter_ext, crosover_ext, mutation_ext, index_ext] if part != ""]) + extension
+    new_filename = '_'.join([part for part in [base_file, pop_ext, iter_ext, crosover_ext, mutation_ext, pso_ext, index_ext] if part != ""]) + extension
     return new_filename
 
 def read_circuit(source):
@@ -285,7 +286,8 @@ def preprocess_graph(g):
     g.normalise()
     return g
 
-def route_circuit(c, architecture, mode=STEINER_MODE, dest_file=None, population=30, iterations=15, crossover_prob=0.8, mutation_prob=0.2):
+def route_circuit(c, architecture, mode=STEINER_MODE, dest_file=None, population=30, iterations=15, crossover_prob=0.8, mutation_prob=0.2, 
+                    allow_output_perm=True, swarm_size=15, n_steps=10, s_crossover=0.4, p_crossover=0.3, pso_mutation=0.2):
     metric = lambda c: len([gate for gate in c.gates if hasattr(gate, "name") and gate.name in ["CNOT", "CZ"]])
     if mode == QUIL_COMPILER:
         from pyzx.pyquil_circuit import PyQuilCircuit
@@ -300,6 +302,8 @@ def route_circuit(c, architecture, mode=STEINER_MODE, dest_file=None, population
             architecture = create_architecture(architecture)
         def gauss_func(m, permutation=None, col=False):
             cn = CNOTMaker()
+            if False: #mode == GAUSS_MODE:
+                return m.to_cnots()
             if col:
                 m = Mat2([[row[col] for col in permutation] for row in m.data])
                 rank = gauss(STEINER_MODE, m, architecture, full_reduce=True, x=cn, permutation=permutation)
@@ -314,8 +318,8 @@ def route_circuit(c, architecture, mode=STEINER_MODE, dest_file=None, population
             #print(len(cn.cnots), cn.cnots)
             return cn.cnots
         best_permutation = [i for i in range(g.qubit_count())]
-        allow_output_perm = False
-        if allow_output_perm: #mode in genetic_elim_modes:
+        best_solution = None
+        if allow_output_perm not in [True, False]: #mode in genetic_elim_modes:
             def fitness(permutation):
                 new_g = g.copy()
                 compiled_g, _ = simple_extract_no_gadgets(new_g, gauss_func, initial_qubit_placement=permutation.tolist(), allow_output_perm=allow_output_perm)
@@ -332,27 +336,30 @@ def route_circuit(c, architecture, mode=STEINER_MODE, dest_file=None, population
             rev_g = rev_g.copy() # reduces the number of gates when extracting.
             def step(permutation):
                 new_g = g.copy()
-                compiled_g, permutation = simple_extract_no_gadgets(new_g, gauss_func, initial_qubit_placement=permutation.tolist(), allow_output_perm=allow_output_perm)
-                #compiled_circuit = Circuit.from_graph(compiled_g)
-                #compiled_circuit = basic_optimization(compiled_circuit, do_swaps=False)
+                compiled_g, output_perm = simple_extract_no_gadgets(new_g, gauss_func, initial_qubit_placement=permutation.tolist(), allow_output_perm=allow_output_perm)
+                compiled_circuit = Circuit.from_graph(compiled_g)
+                compiled_circuit = basic_optimization(compiled_circuit, do_swaps=False)
+                solution = (permutation.tolist(), compiled_circuit, output_perm)
                 new_g = rev_g.copy()
-                compiled_g, output_perm = simple_extract_no_gadgets(new_g, gauss_func, initial_qubit_placement=permutation, allow_output_perm=allow_output_perm)
+                compiled_g, output_perm = simple_extract_no_gadgets(new_g, gauss_func, initial_qubit_placement=output_perm, allow_output_perm=allow_output_perm)
                 #compiled_circuit = Circuit.from_graph(compiled_g)
                 #compiled_circuit = basic_optimization(compiled_circuit, do_swaps=False)
-                return np.asarray(output_perm)
+                return np.asarray(output_perm), solution, metric(compiled_circuit)
 
             #optimizer = GeneticAlgorithm(population, crossover_prob, mutation_prob, fitness, quiet=False)
-            optimizer = ParticleSwarmOptimization(swarm_size=5, fitness_func=fitness, step_func=step, s_best_crossover=0.4, p_best_crossover=0.3, mutation=0.15)
-            best_permutation = optimizer.find_optimimum(architecture.n_qubits, 5, False).tolist()
+            optimizer = ParticleSwarmOptimization(swarm_size=swarm_size, fitness_func=fitness, step_func=step, s_best_crossover=s_crossover, p_best_crossover=p_crossover, mutation=pso_mutation)
+            best_solution = optimizer.find_optimimum(architecture.n_qubits, n_steps, False)
 
+        if best_solution is None:
+            new_g = g.copy()
+            compiled_g, final_placement = simple_extract_no_gadgets(new_g, gauss_func, initial_qubit_placement=best_permutation, allow_output_perm=allow_output_perm)
+            compiled_circuit = Circuit.from_graph(compiled_g)
+            compiled_circuit = basic_optimization(compiled_circuit, do_swaps=False)
+        else: 
+            best_permutation, compiled_circuit, final_placement = best_solution
         print("Permutation found!", best_permutation)
-        new_g = g.copy()
-        compiled_g, final_placement = simple_extract_no_gadgets(new_g, gauss_func, initial_qubit_placement=best_permutation, allow_output_perm=allow_output_perm)
-        compiled_circuit = Circuit.from_graph(compiled_g)
-        compiled_circuit = basic_optimization(compiled_circuit, do_swaps=False)
-
-        # sanity checks.
         print("Done extracting!", final_placement)
+        # sanity checks.
         from ..tensor import compare_tensors
         print("Initial CNOT/CZ count:", metric(c))
         if allow_output_perm:
@@ -385,13 +392,24 @@ def route_circuit(c, architecture, mode=STEINER_MODE, dest_file=None, population
     return compiled_circuit
 
 def batch_route_circuits(source, modes, architectures, n_qubits=None, populations=30, iterations=15, crossover_probs=0.8,
-                            mutation_probs=0.5, dest_folder=None, metrics_file=None, n_compile=1):
+                            mutation_probs=0.5, dest_folder=None, metrics_file=None, n_compile=1, allow_output_perm=True, swarm_size=15, 
+                            n_steps=10, s_crossover=0.4, p_crossover=0.3, pso_mutation=0.2):
     modes = make_into_list(modes)
     architectures = make_into_list(architectures)
     populations = make_into_list(populations)
     iterations = make_into_list(iterations)
     crossover_probs = make_into_list(crossover_probs)
     mutation_probs = make_into_list(mutation_probs)
+    swarm_size = make_into_list(swarm_size)
+    n_steps = make_into_list(n_steps)
+    s_crossover = make_into_list(s_crossover)
+    p_crossover = make_into_list(p_crossover)
+    pso_mutation = make_into_list(pso_mutation)
+    if allow_output_perm == "y":
+        allow_output_perm = True
+    elif allow_output_perm == "n":
+        allow_output_perm = False
+
 
     if os.path.isfile(source):
         source, file = os.path.split(source)
@@ -440,38 +458,49 @@ def batch_route_circuits(source, modes, architectures, n_qubits=None, population
                 iter_iter = [None]
                 crossover_iter = [None]
                 mutation_iter = [None]
-
+            if allow_output_perm in [True, False]:
+                swarm_size = [None]
+                n_steps = [None]
+                p_crossover = [None]
+                s_crossover = [None]
+                pso_mutation = [None]
             for population in pop_iter:
                 for iteration in iter_iter:
                     for crossover_prob in crossover_iter:
                         for mutation_prob in mutation_iter:
-                            for file in files:
-                                origin_file = os.path.join(source, file)
-                                original_circuit = read_circuit(origin_file)
-                                if original_circuit:
-                                    for i in n_compile_list:
-                                        dest_filename = create_dest_filename(origin_file, "match", population, iteration, crossover_prob, mutation_prob, i)
-                                        dest_file = os.path.join(dest_folder, architecture.name, mode, dest_filename)
-                                        original_circuit = read_circuit(origin_file)
-                                        try:
-                                            start_time = time.time()
-                                            circuit = route_circuit(original_circuit, architecture, mode=mode, dest_file=dest_file,
-                                                                       population=population, iterations=iteration,
-                                                                       crossover_prob=crossover_prob, mutation_prob=mutation_prob)
-                                            end_time = time.time()
-                                            if metrics_file is not None:
-                                                metrics.append(make_metrics(circuit, origin_file, architecture.name, mode, dest_file, population, iteration, crossover_prob, mutation_prob, end_time-start_time, i))
-                                            if mode in genetic_elim_modes:
-                                                circuits[architecture.name][mode][(population, iteration, crossover_prob, mutation_prob)] = circuit
-                                            elif mode == QUIL_COMPILER:
-                                                circuits[architecture.name][mode].append(circuit)
-                                            else:
-                                                circuits[architecture.name][mode] = circuit
-                                        except KeyError as e: # Should only happen with quilc
-                                            if mode == QUIL_COMPILER:
-                                                print("\033[31mCould not compile", origin_file, "into", dest_file, end="\033[0m\n")
-                                            else:
-                                                raise e
+                            for swarm in swarm_size:
+                                for steps in n_steps:
+                                    for pco in p_crossover:
+                                        for sco in s_crossover:
+                                            for pso_m  in pso_mutation:
+                                                for file in files:
+                                                    origin_file = os.path.join(source, file)
+                                                    original_circuit = read_circuit(origin_file)
+                                                    if original_circuit:
+                                                        for i in n_compile_list:
+                                                            dest_filename = create_dest_filename(origin_file, "match", population, iteration, crossover_prob, mutation_prob, i, swarm, steps, sco, pco, pso_m)
+                                                            dest_file = os.path.join(dest_folder, architecture.name, mode, dest_filename)
+                                                            original_circuit = read_circuit(origin_file)
+                                                            try:
+                                                                start_time = time.time()
+                                                                circuit = route_circuit(original_circuit, architecture, mode=mode, dest_file=dest_file,
+                                                                                        population=population, iterations=iteration,
+                                                                                        crossover_prob=crossover_prob, mutation_prob=mutation_prob, allow_output_perm=allow_output_perm, 
+                                                                                        swarm_size=swarm, n_steps=steps, s_crossover=sco, p_crossover=pco, pso_mutation=pso_m)
+                                                                end_time = time.time()
+                                                                if metrics_file is not None:
+                                                                    metrics.append(make_metrics(circuit, origin_file, architecture.name, mode, dest_file, population, iteration, crossover_prob, mutation_prob, end_time-start_time, i))
+                                                                if mode in genetic_elim_modes:
+                                                                    circuits[architecture.name][mode][(population, iteration, crossover_prob, mutation_prob)] = circuit
+                                                                elif mode == QUIL_COMPILER:
+                                                                    circuits[architecture.name][mode].append(circuit)
+                                                                else:
+                                                                    circuits[architecture.name][mode] = circuit
+                                                            except KeyError as e: # Should only happen with quilc
+                                                                if mode == QUIL_COMPILER:
+                                                                    print("\033[31mCould not compile", origin_file, "into", dest_file, end="\033[0m\n")
+                                                                else:
+                                                                    raise e
 
     if len(metrics) > 0 and DataFrame != None:
         df = DataFrame(metrics)
@@ -490,7 +519,9 @@ def main(args):
     parser.add_argument("-a", "--architecture", nargs='+', dest="architecture", default=SQUARE, choices=architectures,
                         help="Which architecture it should run compile to.")
     parser.add_argument("-q", "--qubits", nargs='+', default=None, type=int,
-                        help="The number of qubits for the fully connected architecture.")
+                        help="The number of qubits for the architecture.")
+    parser.add_argument("--output_perm", default='y', choices=['y', 'n', 'pso'], #, nargs='+'
+                        help="Whether the location of the output qubits can be different for the input location. Qubit locations can be optimized with pso.")
     # parser.add_argument("-f", "--full_reduce", dest="full_reduce", default=1, type=int, choices=[0,1], help="Full reduce")
     parser.add_argument("--population", nargs='+', default=30, type=int,
                         help="The population size for the genetic algorithm.")
@@ -500,6 +531,17 @@ def main(args):
                         help="The crossover probability for the genetic algorithm. Must be between 0.0 and 1.0.")
     parser.add_argument("--mutation_prob", nargs='+', default=0.2, type=restricted_float,
                         help="The mutation probability for the genetic algorithm. Must be between 0.0 and 1.0.")
+    # PSO args
+    parser.add_argument("--swarm_size", nargs='+', default=15, type=int,
+                        help="The swarm size for the particle swarm optimizer.")
+    parser.add_argument("--steps", nargs='+', default=10, type=int,
+                        help="The number of steps/iterations for the particle swarm optimizer.")
+    parser.add_argument("--sco", nargs='+', default=0.4, type=restricted_float,
+                        help="The crossover percentage with the best particle in the swarm for the particle swarm optimizer. Must be between 0.0 and 1.0.")
+    parser.add_argument("--pco", nargs='+', default=0.3, type=restricted_float,
+                        help="The crossover percentage with the personal best of a particle for the particle swarm optimizer. Must be between 0.0 and 1.0.")
+    parser.add_argument("--mutation_perc", nargs='+', default=0.2, type=restricted_float,
+                        help="The mutation percentage of a particle for the particle swarm optimizer. Must be between 0.0 and 1.0.")
     # parser.add_argument("--perm", default="both", choices=["row", "col", "both"], help="Whether to find a single optimal permutation that permutes the rows, columns or both with the genetic algorithm.")
     parser.add_argument("--destination",
                         help="Destination file or folder where the compiled circuit should be stored. Otherwise the source folder is used.")
@@ -552,7 +594,8 @@ def main(args):
                                            iterations=args.iterations,
                                            crossover_probs=args.crossover_prob, mutation_probs=args.mutation_prob,
                                            dest_folder=args.destination, metrics_file=args.metrics_csv,
-                                           n_compile=args.n_compile)
+                                           n_compile=args.n_compile, allow_output_perm=args.output_perm, swarm_size=args.swarm_size, 
+                                           n_steps=args.steps, s_crossover=args.sco, p_crossover=args.pco, pso_mutation=args.mutation_perc)
         all_circuits.extend(circuits)
 
 
