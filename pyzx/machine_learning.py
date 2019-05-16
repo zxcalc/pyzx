@@ -146,22 +146,18 @@ class ParticleSwarmOptimization():
     def _create_swarm(self, n):
         self.swarm = [Particle(n, self.fitness_func, self.step_func, self.s_crossover, self.p_crossover, self.mutation, self.maximize, id=i) 
                         for i in range(self.size)]
-        if self.maximize:
-            self.best_particle = max(self.swarm, key=lambda p: p.best)
-        else:
-            self.best_particle = min(self.swarm, key=lambda p: p.best)
 
     def find_optimimum(self, n_qubits, n_steps, quiet=True):
         self._create_swarm(n_qubits)
-        (not quiet) and print("Initial best fitness:", self.best_particle.best, self.best_particle.best_point)
+        self.best_particle = self.swarm[0]
         for i in range(n_steps):
             self._update_swarm()
             (not quiet) and print("Iteration", i, "best fitness:", self.best_particle.best, self.best_particle.best_point)
-        return self.best_particle.best_point
+        return self.best_particle.best_solution
 
     def _update_swarm(self):
         for p in self.swarm:
-            if p.step(self.best_particle.best) and self.best_particle.compare(p.best):
+            if p.step(self.best_particle) and self.best_particle.compare(p.best):
                 #print(p.best, self.best_particle.best)
                 self.best_particle = p
 
@@ -173,7 +169,8 @@ class Particle():
         self.size = size
         self.current = np.random.permutation(size)
         self.best_point = self.current
-        self.best = fitness_func(self.current)
+        self.best = None#fitness_func(self.current)
+        self.best_solution = None
         self.s_crossover = int(s_best_crossover*size)
         self.p_crossover = int(p_best_crossover*size)
         self.mutation = int(mutation*size)
@@ -187,38 +184,43 @@ class Particle():
             return x < self.best 
 
     def step(self, swarm_best):
-        new = self.step_func(self.current)
-        if all([self.current[i] == n for i, n in enumerate(new)]):
-            new = self._mutate(self.current)
-            new = self._crossover(new, self.best, self.p_crossover)
-            new = self._crossover(new, swarm_best, self.s_crossover)
-        fitness = self.fitness_func(new)
-        self.current = new
-        is_better = self.compare(fitness)
+        new, solution, fitness = self.step_func(self.current)
+        is_better = self.best is None or self.compare(fitness)
         if is_better:
             self.best = fitness
-            self.best_point = new
+            self.best_point = self.current
+            self.best_solution = solution
+        elif all([self.current[i] == n for i, n in enumerate(new)]):
+            new = self._mutate(self.current)
+            new = self._crossover(new, self.best_point, self.p_crossover)
+            new = self._crossover(new, swarm_best.best_point, self.s_crossover)
+            # Sanity check
+            if any([i not in new for i in range(self.size)]): raise Exception("The new particle point is not a permutation anymore!" + str(self.current))
+        self.current = new
         return is_better
 
     def _mutate(self, particle):
-        new = particle.copy()
+        new_particle = particle.copy()
         m_idxs = np.random.choice(self.size, size=self.mutation, replace=False)
         m_perm = np.random.permutation(self.mutation)
-        for old, new in enumerate(m_perm):
-            new[m_idxs[old]] = particle[new]
-        return new
+        for old_i, new_i in enumerate(m_perm):
+            new_particle[m_idxs[old_i]] = particle[m_idxs[new_i]]
+        return new_particle
 
     def _crossover(self, particle, best_particle, n):
         cross_idxs = np.random.choice(self.size, size=n, replace=False)
-        new = -1*np.ones_like(particle)
-        new[cross_idxs] = best_particle[cross_idxs]
+        new_particle = -1*np.ones_like(particle)
+        new_particle[cross_idxs] = best_particle[cross_idxs]
         idx = 0
-        for i, gen in enumerate(new):
+        for i, gen in enumerate(new_particle):
             if gen == -1: # skip over the parent1 part in child
-                while(particle[idx] in new):
+                while(particle[idx] in new_particle):
                     idx += 1
-                new[i] = particle[idx]
-        return new
+                    if idx == len(particle):
+                        break
+                if idx < len(particle):
+                    new_particle[i] = particle[idx]
+        return new_particle
 
 
 if __name__ == '__main__':
