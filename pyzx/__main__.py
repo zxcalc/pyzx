@@ -37,6 +37,7 @@ if __name__ == '__main__':
         from .scripts import cnot2cnot
         from .scripts import circuit_router
         from .scripts import cnot_generator
+        from . import reinforcement_learning
     except SystemError:
         print("Please run as a module by using 'python -m pyzx'")
         exit(1)
