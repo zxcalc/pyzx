@@ -225,7 +225,7 @@ from .linalg import Mat2
 
 class Environment():
 
-    def __init__(self, architecture, max_gates, test_size=50, allow_perm=True):
+    def __init__(self, architecture, max_gates, test_size=50, allow_perm=True, beta=0.4):
         self.n_qubits = architecture.n_qubits
         self.architecture = architecture
         self.max_gates = max_gates
@@ -234,6 +234,7 @@ class Environment():
         self.reset()
         self.test_set = self.create_test_set()
         self.allow_perm = allow_perm
+        self.beta = beta
 
     def create_test_set(self, fitting=False):
         return [self._create_instance(fitting) for _ in range(test_size)]
@@ -263,8 +264,9 @@ class Environment():
         return self.matrix, reward, done, []
 
     def reward(self):
-        reward = len([v for row in self.matrix.data for v in row if v == 0])
-        done = reward == self.n_qubits * (n_qubits - 1)
+        distance = len([v for row in self.matrix.data for v in row if v == 1]) - self.n_qubits
+        #reward = len([v for row in self.matrix.data for v in row if v == 0])
+        done = len([v for row in self.matrix.data for v in row if v == 0]) == self.n_qubits * (n_qubits - 1)
         diag = [self.matrix.data[i][i]==1 for i in range(n_qubits)]
         if not self.allow_perm:
             done = done and all(diag)
@@ -274,6 +276,7 @@ class Environment():
         #steiner_gauss(m, self.architecture, full_reduce=True, x=cn)
         #reward = -cn.count_cnots()
         #reward = 1 if done else 0
+        reward = -(distance/self.n_qubits**2)**self.beta
         reward = torch.Tensor(np.asarray(reward, dtype=np.float32)).to(device)
         return reward, done
 
@@ -289,9 +292,10 @@ hidden = [1000, 500, 100]
 memory_size = 100000
 test_size = 50
 max_gates = 30
-n_qubits = 9
-prioritized = True
+n_qubits = 5
+prioritized = False
 mode = "dueling"
+architecture = create_architecture(LINE, n_qubits=n_qubits)
 
 network = DQN
 loss_function = F.smooth_l1_loss
@@ -310,7 +314,6 @@ elif mode == "dueling":
     network = Duel_DQN
     #loss_function = F.mse_loss
 
-architecture = create_architecture(SQUARE, n_qubits=n_qubits)
 env = Environment(architecture, max_gates, test_size)
 n_actions = env.n_actions
 n_qubits = env.n_qubits
@@ -434,12 +437,13 @@ for n_gates in range(1, max_gates+1):
             # Select and perform an action
             action = select_action(state)
             _, reward, done, _ = env.step(action.item())
+            """
             if done:
                 reward = 10. # success
             elif t == n_gates:
                 reward = -10. # Fail
             else:
-                reward = -0.5 # an extra step
+                reward = -0.5 # an extra step"""
             reward = torch.tensor([reward], device=device)
             target = policy_net(state).data[0]
             old_val = target[action]
@@ -511,13 +515,13 @@ for n_gates in range(1, max_gates+1):
                                 break
                             
                 if counts:
-                    print("\t".join([str(n_gates), str(i_episode), str(time)[:-3]] + ["{:2.3f}".format(i) for i in [mean_loss, len(counts)/test_size, np.mean(counts), min(counts), max(counts)]]))
+                    print("\t".join([str(n_gates), str(i_episode), str(time)[:-3]] + ["{:2.3f}".format(i*100) for i in [mean_loss, len(counts)/test_size, np.mean(counts), min(counts), max(counts)]]))
                     if len(counts) == test_size: break
                 else:
                     print("\t".join([str(n_gates), str(i_episode), str(time)[:-3]] + ["{:2.3f}".format(i) for i in [mean_loss, len(counts)/test_size, np.nan, np.nan, np.nan]]))
             else:
                 #print("\t".join(["episode", "loss"]))
-                print("\t".join([str(n_gates), str(i_episode), str(time)[:-3]] + ["{:2.3f}".format(i) for i in [mean_loss]]))
+                print("\t".join([str(n_gates), str(i_episode), str(time)[:-3]] + ["{:2.3f}".format(i*100) for i in [mean_loss]]))
         else:
             if i_episode % 10 == 0: 
                 print("episode\ttime\t")
