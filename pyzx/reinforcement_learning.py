@@ -12,40 +12,169 @@ import torchvision.transforms as T
 
 # if gpu is to be used
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print("cuda" if torch.cuda.is_available() else "cpu")
 
 Transition = namedtuple('Transition',
                         ('state', 'action', 'next_state', 'reward'))
 
-
-class ReplayMemory(object):
+class SumTree:
+    write = 0
+    e = 0.01
+    a = 0.6
+    beta = 0.4
+    beta_increment_per_sampling = 0.001
 
     def __init__(self, capacity):
         self.capacity = capacity
-        self.memory = []
-        self.position = 0
+        self.tree = np.zeros(2 * capacity - 1)
+        self.data = np.zeros(capacity, dtype=object)
+        self.n_entries = 0
 
-    def push(self, *args):
+    def _get_priority(self, error):
+        return (error + self.e) ** self.a
+
+    def sample(self, n):
+        batch = []
+        idxs = []
+        segment = self.total() / n
+        priorities = []
+
+        self.beta = np.min([1., self.beta + self.beta_increment_per_sampling])
+
+        for i in range(n):
+            a = segment * i
+            b = segment * (i + 1)
+            data = 0 # Handle cases where the memory is not yet completely full
+            iter_fallback = 0
+            while data == 0 :
+                if iter_fallback > segment**2:
+                    #print("---- Could not sample a data point from the memory segment")
+                    break
+                s = np.random.uniform(a, b)
+                (idx, p, data) = self.get(s)
+                iter_fallback += 1
+            else:
+                priorities.append(p)
+                idxs.append(idx)
+                batch.append(data)
+
+        #sampling_probabilities = priorities / self.total()
+        #is_weight = np.power(self.tree.n_entries * sampling_probabilities, -self.beta)
+        #is_weight /= is_weight.max()
+        return batch, idxs#, is_weight
+
+    # update to the root node
+    def _propagate(self, idx, change):
+        parent = (idx - 1) // 2
+
+        self.tree[parent] += change
+
+        if parent != 0:
+            self._propagate(parent, change)
+
+    # find sample on leaf node
+    def _retrieve(self, idx, s):
+        left = 2 * idx + 1
+        right = left + 1
+
+        if left >= len(self.tree):
+            return idx
+
+        if s <= self.tree[left]:
+            return self._retrieve(left, s)
+        else:
+            return self._retrieve(right, s - self.tree[left])
+
+    def total(self):
+        return self.tree[0]
+
+    # store priority and sample
+    def add(self, error, sample):
+        p = self._get_priority(error)
+        idx = self.write + self.capacity - 1
+
+        self.data[self.write] = sample
+        self.update(idx, p)
+
+        self.write = (self.write + 1) % self.capacity
+        self.n_entries = min(self.n_entries + 1, self.capacity-1)
+
+    # update priority
+    def update(self, idx, p):
+        change = p - self.tree[idx]
+        self.tree[idx] = p
+        self._propagate(idx, change)
+
+    # get priority and sample
+    def get(self, s):
+        idx = self._retrieve(0, s)
+        dataIdx = idx - self.capacity + 1
+        return (idx, self.tree[idx], self.data[dataIdx])
+
+    def __len__(self):
+        return self.n_entries
+
+class Storage():
+    position = 0
+
+    def __init__(self, capacity):
+        self.capacity = capacity
+        self.data = []
+        self.n_entries = 0
+
+    # store priority and sample
+    def add(self, error, sample):
         """Saves a transition."""
-        if len(self.memory) < self.capacity:
-            self.memory.append(None)
-        self.memory[self.position] = Transition(*args)
+        if len(self.data) < self.capacity:
+            self.data.append(None)
+        self.data[self.position] = sample
         self.position = (self.position + 1) % self.capacity
 
+    # update priority
+    def update(self, idx, p):
+        pass
+    
     def sample(self, batch_size):
-        choices = np.random.choice(len(self.memory), batch_size)
-        return [self.memory[i] for i in choices]
+        choices = np.random.choice(len(self.data), batch_size)
+        return [self.data[i] for i in choices], choices
+    
+    def __len__(self):
+        return len(self.data)
+        
+class ReplayMemory(object):
+
+    def __init__(self, capacity, prioritized=False):
+        self.capacity = capacity
+        self.prioritized = prioritized
+        if prioritized:
+            self.memory = SumTree(capacity)
+        else:
+            self.memory = Storage(capacity)
+
+    def push(self, error, *args):
+        """Saves a transition."""
+        self.memory.add(error, Transition(*args))
+
+    def sample(self, batch_size):
+        return self.memory.sample(batch_size)
+    
+    def update(self, errors, idxs):
+        for i, idx in enumerate(idxs):
+            self.memory.update(idx, errors[i])
 
     def __len__(self):
         return len(self.memory)
+
+from .utils import make_into_list
 
 class DQN(nn.Module):
 
     def __init__(self, n_qubits, outputs, hidden=100):
         super(DQN, self).__init__()
-        self.layers = nn.Sequential(
-            nn.Linear(n_qubits*n_qubits, hidden),
-            nn.ReLU(),
-            nn.Linear(hidden, outputs)
+        hidden = make_into_list(hidden)
+        layers = [layer for in_size, out_size in zip([n_qubits*n_qubits] + hidden, hidden + [outputs]) 
+                        for layer in [nn.Linear(in_size, out_size), nn.ReLU()]][:-1]
+        self.layers = nn.Sequential( *layers
         )
         self.n_qubits = n_qubits
 
@@ -55,27 +184,71 @@ class DQN(nn.Module):
         x = x.view(x.size(0), -1)
         return self.layers(x)
 
-from .routing.architecture import create_architecture, SQUARE
-from .parity_maps import build_random_parity_map
+
+class Duel_DQN(nn.Module):
+
+    def __init__(self, n_qubits, n_actions, hidden=100):
+        super(Duel_DQN, self).__init__()
+        hidden = make_into_list(hidden)
+        if len(hidden) == 1:
+            hidden += hidden[-1:]
+        self.relu = nn.ReLU()
+        layers = [layer for in_size, out_size in zip([n_qubits*n_qubits] + hidden, hidden[:-1])
+                        for layer in [nn.Linear(in_size, out_size), self.relu]][:-1]
+        self.layers = nn.Sequential(*layers)
+
+        self.fc1_adv = nn.Linear(hidden[-2], hidden[-1])
+        self.fc1_val = nn.Linear(hidden[-2], hidden[-1])
+
+        self.fc2_adv = nn.Linear(hidden[-1], n_actions)
+        self.fc2_val = nn.Linear(hidden[-1], 1)
+        self.n_qubits = n_qubits
+        self.n_actions = n_actions
+
+    # Called with either one element to determine next action, or a batch
+    # during optimization. Returns tensor([[left0exp,right0exp]...]).
+    def forward(self, x):
+        x = x.view(x.size(0), -1)
+        x = self.relu(self.layers(x))
+        adv = self.relu(self.fc1_adv(x))
+        val = self.relu(self.fc1_val(x))
+        adv = self.fc2_adv(adv)
+        val = self.fc2_val(val).expand(x.size(0), self.n_actions)
+        
+        x = val + adv - adv.mean(1).unsqueeze(1).expand(x.size(0), self.n_actions)
+        return x
+
+from .routing.architecture import create_architecture, SQUARE, LINE, FULLY_CONNNECTED
+from .routing.steiner import steiner_gauss
+from .parity_maps import build_random_parity_map, CNOT_tracker
 from .linalg import Mat2
 
 class Environment():
 
     def __init__(self, architecture, max_gates, test_size=50, allow_perm=True):
         self.n_qubits = architecture.n_qubits
+        self.architecture = architecture
         self.max_gates = max_gates
         self.actions = [(v1, v2) for v1, v2 in architecture.graph.edges()] + [(v2, v1) for v1, v2 in architecture.graph.edges()] 
         self.n_actions = len(self.actions)
         self.reset()
-        self.test_set = [self._create_instance() for _ in range(test_size)]
+        self.test_set = self.create_test_set()
         self.allow_perm = allow_perm
 
-    def _create_instance(self):
-        n_cnots = np.random.choice(self.max_gates)+1
-        return Mat2(build_random_parity_map(self.n_qubits, n_cnots).tolist()), n_cnots
+    def create_test_set(self, fitting=False):
+        return [self._create_instance(fitting) for _ in range(test_size)]
 
-    def reset(self):
-        self.matrix = self._create_instance()[0]
+    def _create_instance(self, fitting=True):
+        n_cnots = np.random.choice(self.max_gates)+1
+        if fitting:
+            matrix = build_random_parity_map(self.n_qubits, n_cnots, architecture=self.architecture)
+        else:
+            matrix = build_random_parity_map(self.n_qubits, n_cnots)
+        matrix = matrix[:, np.random.permutation(matrix.shape[1])]
+        return Mat2(matrix.tolist()), n_cnots
+
+    def reset(self, fitting=True):
+        self.matrix = self._create_instance(fitting)[0]
 
     def start(self, matrix):
         self.matrix = matrix
@@ -92,42 +265,64 @@ class Environment():
     def reward(self):
         reward = len([v for row in self.matrix.data for v in row if v == 0])
         done = reward == self.n_qubits * (n_qubits - 1)
+        diag = [self.matrix.data[i][i]==1 for i in range(n_qubits)]
         if not self.allow_perm:
-            diag = [self.matrix.data[i][i]==1 for i in range(n_qubits)]
             done = done and all(diag)
-            reward *= len([v for v in diag if v]) + 1
+        #reward *= len([v for v in diag if v]) + 1
+        #m = self.matrix.copy()
+        #cn = CNOT_tracker(self.n_qubits)
+        #steiner_gauss(m, self.architecture, full_reduce=True, x=cn)
+        #reward = -cn.count_cnots()
+        #reward = 1 if done else 0
         reward = torch.Tensor(np.asarray(reward, dtype=np.float32)).to(device)
         return reward, done
 
 
-BATCH_SIZE = 256
-GAMMA = 0.999
+BATCH_SIZE = 1024
+GAMMA = 0.5
 EPS_START = 0.9
 EPS_END = 0.05
 EPS_DECAY = 200
 TARGET_UPDATE = 10
 
-hidden = 1000
-periodic_update = False
-double_dqn = True
+hidden = [1000, 500, 100]
 memory_size = 100000
 test_size = 50
 max_gates = 30
-max_steps = max_gates*max_gates
+n_qubits = 9
+prioritized = True
+mode = "dueling"
 
-architecture = create_architecture(SQUARE, n_qubits=9)
+network = DQN
+loss_function = F.smooth_l1_loss
+if mode == "dqn":
+    double_dqn = False
+    periodic_update = True
+elif mode == "ddqn":
+    double_dqn = True
+    periodic_update = True
+elif mode == "ddqn2":
+    double_dqn = True
+    periodic_update = False
+elif mode == "dueling":
+    double_dqn = True
+    periodic_update = True
+    network = Duel_DQN
+    #loss_function = F.mse_loss
+
+architecture = create_architecture(SQUARE, n_qubits=n_qubits)
 env = Environment(architecture, max_gates, test_size)
 n_actions = env.n_actions
 n_qubits = env.n_qubits
 print("Environment created", architecture.name, n_qubits, n_actions)
 
-policy_net = DQN(n_qubits, n_actions, hidden=hidden).to(device)
-target_net = DQN(n_qubits, n_actions, hidden=hidden).to(device)
+policy_net = network(n_qubits, n_actions, hidden=hidden).to(device)
+target_net = network(n_qubits, n_actions, hidden=hidden).to(device)
 target_net.load_state_dict(policy_net.state_dict())
 target_net.eval()
 
 optimizer = optim.RMSprop(policy_net.parameters())
-memory = ReplayMemory(memory_size)
+memory = ReplayMemory(memory_size, prioritized=prioritized)
 
 periodic_update = periodic_update or not double_dqn
 losses = []
@@ -170,10 +365,11 @@ def plot_durations():
 def optimize_model(policy_net, target_net):
     if len(memory) < BATCH_SIZE:
         return
-    transitions = memory.sample(BATCH_SIZE)
+    transitions, idxs = memory.sample(BATCH_SIZE)
     # Transpose the batch (see https://stackoverflow.com/a/19343/3343043 for
     # detailed explanation). This converts batch-array of Transitions
     # to Transition of batch-arrays.
+    batch_size = len(transitions) # TODO - deal with different batch sizes for better GPU memory allocation!
     batch = Transition(*zip(*transitions))
 
     # Compute a mask of non-final states and concatenate the batch elements
@@ -197,7 +393,7 @@ def optimize_model(policy_net, target_net):
     # on the "older" target_net; selecting their best reward with max(1)[0].
     # This is merged based on the mask, such that we'll have either the expected
     # state value or 0 in case the state was final.
-    next_state_values = torch.zeros(BATCH_SIZE, device=device)
+    next_state_values = torch.zeros(batch_size, device=device)
     if double_dqn:
         next_state_actions = policy_net(non_final_next_states).max(1, keepdim=True)[1]
         next_state_values[non_final_mask] = target_net(non_final_next_states).gather(1, next_state_actions).flatten()
@@ -205,6 +401,9 @@ def optimize_model(policy_net, target_net):
         next_state_values[non_final_mask] = target_net(non_final_next_states).max(1)[0].detach()
     # Compute the expected Q values
     expected_state_action_values = (next_state_values * GAMMA) + reward_batch
+
+    errors = torch.abs(state_action_values -expected_state_action_values.unsqueeze(1)).data.cpu().numpy()
+    memory.update(errors, idxs)
 
     # Compute Huber loss
     loss = F.smooth_l1_loss(state_action_values, expected_state_action_values.unsqueeze(1))
@@ -220,91 +419,161 @@ def optimize_model(policy_net, target_net):
     optimizer.step()
 
 num_episodes = 300
+stats = []
 start_time = datetime.datetime.now()
-for i_episode in count():#range(num_episodes):
-    # Initialize the environment and state
-    env.reset()
-    state = env.get_state()
-    for t in count():
-        # Select and perform an action
-        action = select_action(state)
-        _, reward, done, _ = env.step(action.item())
-        reward = torch.tensor([reward], device=device)
+for n_gates in range(1, max_gates+1):
+    losses = []
+    env.max_gates = n_gates
+    test_set = env.create_test_set(fitting=True)
+    for i_episode in count():#range(num_episodes):
+        # Initialize the environment and state
+        env.reset()
+        state = env.get_state()
+        start = datetime.datetime.now()
+        for t in range(n_gates+1):#count():
+            # Select and perform an action
+            action = select_action(state)
+            _, reward, done, _ = env.step(action.item())
+            if done:
+                reward = 10. # success
+            elif t == n_gates:
+                reward = -10. # Fail
+            else:
+                reward = -0.5 # an extra step
+            reward = torch.tensor([reward], device=device)
+            target = policy_net(state).data[0]
+            old_val = target[action]
 
-        # Observe new state
-        if not done:
-            next_state = env.get_state()
-        else:
-            next_state = None
+            # Observe new state
+            if not done:
+                next_state = env.get_state()
+                target_val = target_net(next_state).data[0]
+                error = abs(old_val - reward - GAMMA*torch.max(target_val))
+            else:
+                next_state = None
+                error = abs(old_val - reward)
 
-        # Store the transition in memory
-        memory.push(state, action, next_state, reward)
+            # Store the transition in memory
+            memory.push(error, state, action, next_state, reward)
 
-        # Move to the next state
-        state = next_state
+            # Move to the next state
+            state = next_state
 
-        # Perform one step of the optimization (on the target network)
-        if periodic_update or np.random.rand(1) < 0.5:
-            optimize_model(policy_net, target_net)
-        else:
-            optimize_model(target_net, policy_net)
+            # Perform one step of the optimization (on the target network)
+            if periodic_update or np.random.rand(1) < 0.5:
+                optimize_model(policy_net, target_net)
+            else:
+                optimize_model(target_net, policy_net)
 
-        if done:
-            episode_durations.append(t + 1)
-            #plot_durations()
-            break
-        #if t > 2*max_steps: print(t)
-    # Update the target network, copying all weights and biases in DQN
-    if periodic_update and i_episode % TARGET_UPDATE == 0:
-        target_net.load_state_dict(policy_net.state_dict())
-    time = datetime.datetime.now() - start_time
-    if losses:
-        mean_loss = np.mean(losses)
-        if i_episode % 10 == 0:
-            print("\t".join(["episode", "time\t", "loss", "done", "cnots", "min", "max"]))
-            losses = []
-            counts = []
-            for m, n in env.test_set:
-                env.start(m)
-                state = env.get_state()
-                for t in range(max_steps):
-                    # Select and perform an action
-                    action = policy_net(state).max(1)[1].view(1, 1)
-                    _, reward, done, _ = env.step(action.item())
-                    state = env.get_state()
-                    if done:
-                        overhead = (t+1)/n
-                        counts.append(overhead)
-                        break
-                else: 
-                    # Retry when sometimes taking non-optimal actions.
+            if done:
+                episode_durations.append(t + 1)
+                #plot_durations()
+                break
+            if datetime.datetime.now() - start > datetime.timedelta(minutes=1): break
+            #if t > 2*max_steps: print(t)
+        # Update the target network, copying all weights and biases in DQN
+        if periodic_update and i_episode % TARGET_UPDATE == 0:
+            target_net.load_state_dict(policy_net.state_dict())
+        time = datetime.datetime.now() - start_time
+        if losses:
+            mean_loss = np.mean(losses)
+            if i_episode % 10 == 0:
+                print("\t".join(["gates", "episode", "time\t", "loss", "done", "cnots", "min", "max"]))
+                counts = []
+                for m, n in test_set:
                     env.start(m)
                     state = env.get_state()
-                    topk = 2
-                    for t in range(max_steps):
+                    for t in range(n_gates+1):
                         # Select and perform an action
-                        choice = np.random.randint(topk)
-                        actions = policy_net(state).topk(topk, dim=1)
-                        action = actions.indices[0][choice].view(1,1)
-                        #action = policy_net(state).max(1)[1].view(1, 1)
+                        action = policy_net(state).max(1)[1].view(1, 1)
                         _, reward, done, _ = env.step(action.item())
                         state = env.get_state()
                         if done:
                             overhead = (t+1)/n
                             counts.append(overhead)
                             break
-                        
-            if counts:
-                print("\t".join([str(i_episode), str(time)[:-3]] + ["{:2.2f}".format(i) for i in [mean_loss, len(counts)/test_size, np.mean(counts), min(counts), max(counts)]]))
+                    else: 
+                        # Retry when sometimes taking non-optimal actions.
+                        env.start(m)
+                        state = env.get_state()
+                        topk = 2
+                        for t in range(n_gates +1):
+                            # Select and perform an action
+                            choice = np.random.randint(topk)
+                            actions = policy_net(state).topk(topk, dim=1)
+                            action = actions.indices[0][choice].view(1,1)
+                            #action = policy_net(state).max(1)[1].view(1, 1)
+                            _, reward, done, _ = env.step(action.item())
+                            state = env.get_state()
+                            if done:
+                                overhead = (t+1)/n
+                                counts.append(overhead)
+                                break
+                            
+                if counts:
+                    print("\t".join([str(n_gates), str(i_episode), str(time)[:-3]] + ["{:2.3f}".format(i) for i in [mean_loss, len(counts)/test_size, np.mean(counts), min(counts), max(counts)]]))
+                    if len(counts) == test_size: break
+                else:
+                    print("\t".join([str(n_gates), str(i_episode), str(time)[:-3]] + ["{:2.3f}".format(i) for i in [mean_loss, len(counts)/test_size, np.nan, np.nan, np.nan]]))
             else:
-                print("\t".join([str(i_episode), str(time)[:-3]] + ["{:2.2f}".format(i) for i in [mean_loss, len(counts)/test_size, np.nan, np.nan, np.nan]]))
+                #print("\t".join(["episode", "loss"]))
+                print("\t".join([str(n_gates), str(i_episode), str(time)[:-3]] + ["{:2.3f}".format(i) for i in [mean_loss]]))
         else:
-            #print("\t".join(["episode", "loss"]))
-            print("\t".join([str(i_episode), str(time)[:-3]] + ["{:2.2f}".format(i) for i in [mean_loss]]))
-    else:
-        if i_episode % 10 == 0: 
-            print("episode\ttime\t")
-        print("\t".join([str(i_episode), str(time)[:-3]]))
+            if i_episode % 10 == 0: 
+                print("episode\ttime\t")
+            print("\t".join([str(n_gates), str(i_episode), str(time)[:-3]]))
+    statistics = {}
+    statistics["gates"] = n_gates
+    statistics["episodes"] = i_episode
+    statistics["time finished"] = datetime.datetime.now() - start
+    statistics["loss"] = np.mean(losses) if losses else np.nan 
+    stats.append(statistics)
 
+p = ["gates", "episodes", "time finished", "loss"]
+print("\t".join(p))
+for d in stats:
+    print("\t".join([str(d[k]) for k in p]))
+from .routing.cnot_mapper import gauss, GENETIC_GAUSS_MODE
+counts = []
+baseline = []
+for m, n in test_set:
+    cn = CNOT_tracker(n_qubits)
+    gauss(GENETIC_GAUSS_MODE, m.copy(), architecture, full_reduce=True, x=cn)
+    baseline.append(cn.count_cnots()/n)
+    env.start(m)
+    state = env.get_state()
+    for t in count():
+        # Select and perform an action
+        action = policy_net(state).max(1)[1].view(1, 1)
+        _, reward, done, _ = env.step(action.item())
+        state = env.get_state()
+        if done:
+            overhead = (t+1)/n
+            counts.append(overhead)
+            break
+    else: 
+        # Retry when sometimes taking non-optimal actions.
+        env.start(m)
+        state = env.get_state()
+        topk = 2
+        for t in range(n_gates +1):
+            # Select and perform an action
+            choice = np.random.randint(topk)
+            actions = policy_net(state).topk(topk, dim=1)
+            action = actions.indices[0][choice].view(1,1)
+            #action = policy_net(state).max(1)[1].view(1, 1)
+            _, reward, done, _ = env.step(action.item())
+            state = env.get_state()
+            if done:
+                overhead = (t+1)/n
+                counts.append(overhead)
+                break
+                
+print("Training finished", architecture.name, n_qubits, n_actions)
+print(mode, prioritized)
+print("Final performance:")  
+print("\t".join(["gates", "episode", "total", "time\t", "loss", "done", "cnots", "min", "max", "baseline"]))
+if counts:
+    print("\t".join([str(max_gates), "Eval", str(sum([s["episodes"]+1 for s in stats])), str(time)[:-3], "-"] + ["{:2.3f}".format(i) for i in [len(counts)/test_size, np.mean(counts), min(counts), max(counts), np.mean(baseline)]]))
 
 exit(1)

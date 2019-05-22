@@ -92,7 +92,7 @@ class CNOT_tracker(Circuit):
         circuit = Circuit.from_qasm_file(fname)
         return CNOT_tracker.from_circuit(circuit)
 
-def build_random_parity_map(qubits, n_cnots, circuit=None):
+def build_random_parity_map(qubits, n_cnots, circuit=None, architecture=None):
     """
     Builds a random parity map.
 
@@ -105,8 +105,16 @@ def build_random_parity_map(qubits, n_cnots, circuit=None):
         circuit = []
     if not isinstance(circuit, list):
         circuit = [circuit]
-    g = generate_cnots(qubits=qubits, depth=n_cnots)
-    c = Circuit.from_graph(g)
+    if architecture is None:
+        g = generate_cnots(qubits=qubits, depth=n_cnots)
+        c = Circuit.from_graph(g)   
+    else:
+        gates = [(v1, v2) for v1, v2 in architecture.graph.edges()] + [(v2, v1) for v1, v2 in architecture.graph.edges()] 
+        c = Circuit(qubits)
+        cnots = np.random.choice(len(gates), n_cnots)
+        for i in cnots:
+            ctl, tgt = gates[i]
+            c.add_gate("CNOT", target=tgt, control=ctl)
     matrix = Mat2(np.identity(qubits))
     for gate in c.gates:
         matrix.row_add(gate.control, gate.target)
