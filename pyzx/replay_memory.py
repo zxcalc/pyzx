@@ -106,10 +106,9 @@ class PrioritizedStorage:
 
     def __init__(self, capacity):
         self.capacity = capacity
-        self.tree = np.zeros(capacity)
+        self.errors = np.zeros(capacity)
         self.data = np.zeros(capacity, dtype=object)
         self.n_entries = 0
-        self.sum = 0
 
     def _get_priority(self, error):
         return (error + self.e) ** self.a
@@ -117,11 +116,11 @@ class PrioritizedStorage:
     def sample(self, n):
         self.beta = np.min([1., self.beta + self.beta_increment_per_sampling])
 
-        probs = self.tree/self.sum
-        choices = np.random.choice(self.n_entries, n, probs)
+        probs = self.errors/self.total()
+        choices = np.random.choice(self.capacity, n, p=probs)
         batch = [self.data[i] for i in choices]
         idxs = choices.tolist()
-        priorities = [self.tree[i] for i in choices]
+        priorities = [self.errors[i] for i in choices]
 
         sampling_probabilities = priorities / self.total()
         is_weight = np.power(self.n_entries * sampling_probabilities, -self.beta)
@@ -129,7 +128,7 @@ class PrioritizedStorage:
         return batch, idxs, is_weight
 
     def total(self):
-        return self.sum
+        return self.errors.sum()
 
     # store priority and sample
     def add(self, error, sample):
@@ -142,9 +141,7 @@ class PrioritizedStorage:
 
     # update priority
     def update(self, idx, p):
-        change = p - self.tree[idx]
-        self.tree[idx] = p
-        self.sum += change
+        self.errors[idx] = p
 
     def __len__(self):
         return self.n_entries
@@ -195,8 +192,10 @@ class ReplayMemory(object):
             self.memory.update(idx, errors[i])
 
     def reset(self):
-        if self.prioritized:
+        if self.prioritized == "sumtree":
             self.memory = SumTree(self.capacity)
+        elif self.prioritized:
+            self.memory = PrioritizedStorage(self.capacity)
         else:
             self.memory = Storage(self.capacity)
 

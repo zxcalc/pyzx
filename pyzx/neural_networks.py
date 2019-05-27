@@ -2,20 +2,25 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+# if gpu is to be used
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
 from .utils import make_into_list
 
 class DQN(nn.Module):
 
-    def __init__(self, inputs, outputs, embedding):
+    def __init__(self, inputs, outputs, embedding, dropout=None):
         super(DQN, self).__init__()
         layers = []
         if inputs != embedding.inputs:
             layers += [nn.Linear(inputs, embedding.inputs), nn.ReLU()]
-        layers.append(embedding)
+        if dropout:
+            layers += [embedding, nn.Dropout(dropout)]
+        else:
+            layers.append(embedding)
         if outputs != embedding.outputs:
             layers += [nn.ReLU(), nn.Linear(embedding.outputs, outputs)]
         self.layers = nn.Sequential(*layers)
-        
         self.inputs = inputs
         self.outputs = outputs
 
@@ -28,7 +33,7 @@ class DQN(nn.Module):
 
 class Duel_DQN(nn.Module):
 
-    def __init__(self, inputs, outputs, embedding, fc1=100, fc2=50):
+    def __init__(self, inputs, outputs, embedding, fc1=100, fc2=50, dropout=None):
         super(Duel_DQN, self).__init__()
         layers = []
         if inputs != embedding.inputs:
@@ -37,6 +42,7 @@ class Duel_DQN(nn.Module):
         if fc1 != embedding.outputs:
             layers += [nn.ReLU(), nn.Linear(embedding.outputs, fc1)]
         self.layers = nn.Sequential(*layers)
+        self.dropout = nn.Dropout(dropout) if dropout else None
         self.relu = nn.ReLU()
 
         self.fc1_adv = nn.Linear(fc1, fc2)
@@ -53,6 +59,8 @@ class Duel_DQN(nn.Module):
     def forward(self, x):
         x = x.view(x.size(0), -1)
         x = self.relu(self.layers(x))
+        if self.dropout:
+            x = self.dropout(x)
         adv = self.relu(self.fc1_adv(x))
         val = self.relu(self.fc1_val(x))
         adv = self.fc2_adv(adv)
@@ -101,3 +109,36 @@ class CNN_Embedding(nn.Module):
         x = torch.cat(passed, 1)
         x = x.view(x.shape[0], -1)
         return self.last(x)
+
+class RNN_Embedding(nn.Module):
+
+    def __init__(self, inputs, outputs, hidden=100, max_length=None):
+        super(RNN_Embedding, self).__init__()
+        self.max_length = max_length if max_length else inputs
+        self.hidden = hidden
+        self.attn = nn.Linear(hidden+inputs, self.max_length)
+        self.attn_combine = nn.Linear(inputs+self.max_length, hidden)
+        self.gru = nn.GRU(hidden, hidden)
+        self.out = nn.Linear(hidden, outputs)
+        self.inputs = inputs
+        self.outputs = outputs
+
+    def forward(self, x):
+        batch = x.shape[0]
+        x = x.view(batch, self.inputs, -1)
+        outputs = []
+        for j in range(batch):
+            hidden = torch.zeros((1, 1, self.hidden), device=device)
+            for i in range(x.shape[-1]):
+                inputs = x[j, :, i]
+                inputs = inputs.view(1, 1, -1)
+                attn_weights = F.softmax(self.attn(torch.cat((inputs[0], hidden[0]), 1)), dim=1)
+                attn_applied = torch.bmm(attn_weights.unsqueeze(0), x[j:j+1])
+                output = torch.cat((inputs[0], attn_applied[0]), 1)
+                output = self.attn_combine(output).unsqueeze(0)
+
+                output = F.relu(output)
+                output, hidden = self.gru(output, hidden)
+            output = self.out(hidden[0])
+            outputs.append(output)
+        return torch.cat(outputs, 0)
