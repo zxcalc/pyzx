@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 # if gpu is to be used
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda" if torch.cuda.is_available() and False else "cpu")
 
 from .utils import make_into_list
 

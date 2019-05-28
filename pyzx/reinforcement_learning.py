@@ -3,6 +3,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from collections import namedtuple
 from itertools import count
+import queue
+import torch.multiprocessing as mp
 
 import torch
 import torch.optim as optim
@@ -13,6 +15,7 @@ from torch.utils.tensorboard import SummaryWriter
 np.random.seed(1337)
 # if gpu is to be used
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = torch.device("cpu")
 print("cuda" if torch.cuda.is_available() else "cpu")
 
 Transition = namedtuple('Transition',
@@ -57,7 +60,7 @@ class Environment():
         self.matrix = matrix
 
     def get_state(self):
-        return torch.Tensor(np.expand_dims(self.matrix.data, axis=0)).to(device)
+        return self.matrix#torch.Tensor(np.expand_dims(self.matrix.data, axis=0)).to(device)
     
     def step(self, action):
         control, target = self.actions[action]
@@ -73,7 +76,7 @@ class Environment():
         if not self.allow_perm:
             done = done and all(diag)
         reward = -(distance/self.n_qubits**2)**self.beta
-        reward = torch.Tensor(np.asarray(reward, dtype=np.float32)).to(device)
+        #reward = torch.Tensor(np.asarray(reward, dtype=np.float32)).to(device)
         return reward, done
 
 class EGreedySelector():
@@ -84,10 +87,11 @@ class EGreedySelector():
         self.EPS_START = EPS_START
         self.EPS_END = EPS_END
         self.EPS_DECAY = EPS_DECAY
+        self.steps_done = 0
 
-    def select_action(self, state, steps_done):
+    def select_action(self, state):
         sample = np.random.rand()
-        eps_threshold = self.EPS_END + (self.EPS_START - self.EPS_END) * np.exp(-1. * steps_done / self.EPS_DECAY)
+        eps_threshold = self.EPS_END + (self.EPS_START - self.EPS_END) * np.exp(-1. * self.steps_done / self.EPS_DECAY)
         if sample > eps_threshold:
             with torch.no_grad():
                 # t.max(1) will return largest column value of each row.
@@ -103,17 +107,29 @@ class SoftmaxSelector():
         self.n_actions = n_actions
         self.policy_net = policy_net
         self.TEMP = TEMP
+        self.steps_done = 0
 
-    def select_action(self, state, steps_done):
+    def select_action(self, state):
         Q_values = self.policy_net(state)
         # I need to add a minus because the Q-values are negative
         probs = F.softmax(-Q_values/self.TEMP, dim=1).data[0].cpu().numpy()
         choice = np.random.choice(self.n_actions, p=probs)
-        return torch.tensor([[choice]], device=device, dtype=torch.long)
+        return choice #torch.tensor([[choice]], device=device, dtype=torch.long)
+
+class AllActionSelector():
+
+    def __init__(self, n_actions, policy_net=None):
+        self.n_actions = n_actions
+        self.last_action = -1
+        self.steps_done = 0
+    
+    def select_action(self, state):
+        self.last_action = (self.last_action + 1) % self.n_actions
+        return self.last_action #torch.tensor([[self.last_action]], device=device, dtype=torch.long)
 
 class RLAgent():
 
-    BATCH_SIZE = 64
+    BATCH_SIZE = 32
     GAMMA = 0.
     TARGET_UPDATE = 10
 
@@ -122,10 +138,13 @@ class RLAgent():
         self.policy_net = policy_net
         self.target_net = target_net
         self.selector = selector
+        self.iter_selector = AllActionSelector(self.selector.n_actions)
         self.memory = memory
         self.steps_done = 0
         self.writer = SummaryWriter()
         self.optimizer = optimizer
+    
+            
     
     def optimize_model(self, policy_net, target_net):
         batch_size = self.BATCH_SIZE
@@ -163,7 +182,7 @@ class RLAgent():
                 next_state_values[non_final_mask] = target_net(non_final_next_states).max(1)[0].detach()
         # Compute the expected Q values
         expected_state_action_values = (next_state_values * self.GAMMA) + reward_batch
-
+        
         # Compute Huber loss
         loss = F.smooth_l1_loss(state_action_values, expected_state_action_values.unsqueeze(1), reduction="none")
         # Update the memory with the new losses
@@ -180,6 +199,7 @@ class RLAgent():
         return loss
 
     def train(self, periodic_update, max_gates, test_size = 1):
+        MAX_QUEUE_SIZE = self.environment.n_actions**2
         start_time = datetime.datetime.now()
         total_steps = -1
         for n_gates in range(1, max_gates+1):
@@ -191,12 +211,65 @@ class RLAgent():
             losses = []
             self.environment.max_gates = n_gates
             test_set = self.environment.create_test_set(test_size, fitting=True)
+
             for i_episode in count():#range(num_episodes):
                 total_steps += 1
                 # Initialize the environment and state
                 self.environment.reset()
                 state = self.environment.get_state()
-                start = datetime.datetime.now()
+                state_queue = mp.Queue(MAX_QUEUE_SIZE)
+                state_queue.put((Transition(None, None, state, None), 0))
+                ext_queue = mp.Queue(MAX_QUEUE_SIZE)
+                sim_process = mp.Process(target=simulate, args=(self.environment, self.selector, n_gates, state_queue, ext_queue))
+                sim_process.start()
+                self.selector.steps_done += 1
+                while sim_process.is_alive() or not ext_queue.empty():
+                    #print("alive")
+                    if not ext_queue.empty(): 
+                        print(state_queue.qsize(), ext_queue.qsize())
+                        state, action, next_state, reward = ext_queue.get()
+                        state = torch.tensor([state.data])
+                        action = torch.tensor([[action]])
+                        if next_state is not None:
+                            next_state = torch.tensor([next_state.data])
+                        reward = torch.tensor([reward])
+                        # TODO move all tensors to cuda if available.
+                        transition = Transition(state, action, next_state, reward)
+                        self.memory.push(100, transition)
+                        if periodic_update or np.random.rand(1) < 0.5:
+                            loss = self.optimize_model(self.policy_net, self.target_net)
+                        else:
+                            loss = self.optimize_model(self.target_net, self.policy_net)
+                        if loss: losses.append(loss)
+                # Update the target network, copying all weights and biases in DQN
+                if periodic_update and i_episode % self.TARGET_UPDATE == 0:
+                    self.target_net.load_state_dict(self.policy_net.state_dict())
+                time = datetime.datetime.now() - start_time
+                self.writer.add_scalar("gates", n_gates, total_steps)
+                self.writer.add_scalar("episode", i_episode, total_steps)
+                loss = torch.stack(losses).mean().item() if losses else np.nan
+                if not losses:
+                    n_episodes += 1
+                self.writer.add_scalar("loss", loss, global_step=total_steps)
+                losses = []
+                
+                if i_episode % 10 == 0:
+                    counts = self.test(test_set, n_gates+1)
+                    if counts:
+                        self.writer.add_scalar("cnots_done", len(counts)/test_size, total_steps)
+                        self.writer.add_scalar("cnots_mean", np.mean(counts), total_steps)
+                        self.writer.add_scalar("cnots_min", min(counts), total_steps)
+                        self.writer.add_scalar("cnots_max", max(counts), total_steps)
+                        if len(counts) == test_size: 
+                            counts= np.asarray(counts)
+                            self.writer.add_histogram("cnots_hist", counts, total_steps)#, bins=np.arange(n_gates+1))
+                            break
+                    else:
+                        self.writer.add_scalar("cnots_done", 0, total_steps)
+                    print(n_gates, i_episode, loss, len(counts)/test_size)
+                else:
+                    print(n_gates, i_episode, loss)
+                """"
                 for t in range(n_gates+1):#count():
                     # Select and perform an action
                     action = self.selector.select_action(state, self.steps_done)
@@ -219,34 +292,7 @@ class RLAgent():
                     self.steps_done += 1
                     if done:
                         break
-                # Update the target network, copying all weights and biases in DQN
-                if periodic_update and i_episode % self.TARGET_UPDATE == 0:
-                    self.target_net.load_state_dict(self.policy_net.state_dict())
-                time = datetime.datetime.now() - start_time
-                self.writer.add_scalar("gates", n_gates, total_steps)
-                self.writer.add_scalar("episode", i_episode, total_steps)
-                loss = torch.stack(losses).mean().item() if losses else np.nan
-                if not losses:
-                    n_episodes += 1
-                self.writer.add_scalar("loss", loss, global_step=total_steps)
-                losses = []
-
-                print(n_gates, i_episode, loss)
-                
-                if i_episode % 10 == 0:
-                    counts = self.test(test_set, n_gates+1)
-                    if counts:
-                        self.writer.add_scalar("cnots_done", len(counts)/test_size, total_steps)
-                        self.writer.add_scalar("cnots_mean", np.mean(counts), total_steps)
-                        self.writer.add_scalar("cnots_min", min(counts), total_steps)
-                        self.writer.add_scalar("cnots_max", max(counts), total_steps)
-                        if len(counts) == test_size: 
-                            counts= np.asarray(counts)
-                            self.writer.add_histogram("cnots_hist", counts, total_steps)#, bins=np.arange(n_gates+1))
-                            break
-                    else:
-                        self.writer.add_scalar("cnots_done", 0, total_steps)
-            
+                """ 
             self.writer.add_scalar("total_gates", n_gates, total_steps)
             self.writer.add_scalar("total_episodes", i_episode-n_episodes, total_steps)
             #self.writer.add_scalar("total_time", datetime.datetime.now() - dataset_start, total_steps)
@@ -258,13 +304,43 @@ class RLAgent():
             state = self.environment.get_state()
             for t in range(max_steps):
                 # Select and perform an action
+                state = torch.tensor([state.data], device=device)
                 action = self.policy_net(state).max(1)[1].view(1, 1)
-                state, reward, done, _ = self.environment.step(action.item())
+                state, reward, done, _ = self.environment.step(action)
                 if done:
                     overhead = (t+1)/n
                     counts.append(overhead)
                     break
         return counts
+
+
+def simulate(environment, selector, max_steps, state_queue, ext_queue):
+    #print("Started simulation")
+    action = 0
+    do_iter_actions = not state_queue.full()
+    transition, n_steps  = state_queue.get()
+    old_state, _, state, _ = transition
+    if old_state is not None:
+        ext_queue.put(transition)
+    if n_steps < max_steps: # We can still do more steps
+        if do_iter_actions: # First few iterations pick all actions in parallel
+            while not state_queue.full() and action < selector.n_actions and state is not None:
+                environment.start(state)
+                next_state, reward, done, _ = environment.step(action)
+                #reward = torch.tensor([reward], device=device)
+                #state_queue.put((Transition(state, torch.tensor([[action]], device=device), next_state, reward), n_steps+1))
+                transition = Transition(state, action, next_state, reward)
+                #print(transition, n_steps+1)
+                state_queue.put((transition, n_steps+1))
+                action += 1
+        else: # Otherwise, pick the action according to the policy
+            environment.start(state)
+            action = selector.select_action(torch.tensor([state.data], device=device))
+            next_state, reward, done, _ = environment.step(action)
+            #reward = torch.tensor([reward], device=device)
+            state_queue.put((Transition(state, action, next_state, reward), n_steps+1))
+    if not state_queue.empty(): # empty the queue when all steps are done.
+        simulate(environment, selector, max_steps, state_queue, ext_queue)
 
 def main(*args):
     EPS_START = 0.9
@@ -278,8 +354,8 @@ def main(*args):
     memory_size = 10000
     test_size = 50
     max_gates = 10
-    n_qubits = 2
-    prioritized = True
+    n_qubits = 3
+    prioritized = False
     dropout = 0.5
     mode = "dueling"
     architecture = create_architecture(LINE, n_qubits=n_qubits)
@@ -318,6 +394,8 @@ def main(*args):
     target_net.load_state_dict(policy_net.state_dict())
     target_net.eval()
     policy_net.train()
+    policy_net.share_memory()
+    target_net.share_memory()
 
     optimizer = optim.RMSprop(policy_net.parameters())
     memory = ReplayMemory(memory_size, prioritized=prioritized)
@@ -349,5 +427,5 @@ def main(*args):
     else:
         agent.writer.add_scalar("final_cnots_done", 0)
 
-main()
-exit(42)
+#main()
+#exit(42)
