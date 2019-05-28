@@ -1,4 +1,5 @@
 import datetime
+import time as time_lib
 import numpy as np
 import matplotlib.pyplot as plt
 from collections import namedtuple
@@ -15,8 +16,8 @@ from torch.utils.tensorboard import SummaryWriter
 np.random.seed(1337)
 # if gpu is to be used
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-device = torch.device("cpu")
-print("cuda" if torch.cuda.is_available() else "cpu")
+#device = torch.device("cpu")
+#print("cuda" if torch.cuda.is_available() else "cpu")
 
 Transition = namedtuple('Transition',
                         ('state', 'action', 'next_state', 'reward'))
@@ -110,6 +111,7 @@ class SoftmaxSelector():
         self.steps_done = 0
 
     def select_action(self, state):
+        print(state)
         Q_values = self.policy_net(state)
         # I need to add a minus because the Q-values are negative
         probs = F.softmax(-Q_values/self.TEMP, dim=1).data[0].cpu().numpy()
@@ -129,7 +131,7 @@ class AllActionSelector():
 
 class RLAgent():
 
-    BATCH_SIZE = 32
+    BATCH_SIZE = 64
     GAMMA = 0.
     TARGET_UPDATE = 10
 
@@ -220,19 +222,20 @@ class RLAgent():
                 state_queue = mp.Queue(MAX_QUEUE_SIZE)
                 state_queue.put((Transition(None, None, state, None), 0))
                 ext_queue = mp.Queue(MAX_QUEUE_SIZE)
-                sim_process = mp.Process(target=simulate, args=(self.environment, self.selector, n_gates, state_queue, ext_queue))
+                sim_process = mp.Process(target=simulate, args=(self.environment, self.selector, n_gates, state_queue, ext_queue))#, self.policy_net.state_dict()))
                 sim_process.start()
                 self.selector.steps_done += 1
-                while sim_process.is_alive() or not ext_queue.empty():
+                busy = True
+                while sim_process.is_alive() or not ext_queue.empty(): #TODO fix deadlock 
                     #print("alive")
-                    if not ext_queue.empty(): 
+                    if not ext_queue.empty():
                         print(state_queue.qsize(), ext_queue.qsize())
                         state, action, next_state, reward = ext_queue.get()
-                        state = torch.tensor([state.data])
-                        action = torch.tensor([[action]])
+                        state = torch.tensor([state.data]).cuda(non_blocking=True)
+                        action = torch.tensor([[action]]).cuda(non_blocking=True)
                         if next_state is not None:
-                            next_state = torch.tensor([next_state.data])
-                        reward = torch.tensor([reward])
+                            next_state = torch.tensor([next_state.data]).cuda(non_blocking=True)
+                        reward = torch.tensor([reward]).cuda(non_blocking=True)
                         # TODO move all tensors to cuda if available.
                         transition = Transition(state, action, next_state, reward)
                         self.memory.push(100, transition)
@@ -241,6 +244,9 @@ class RLAgent():
                         else:
                             loss = self.optimize_model(self.target_net, self.policy_net)
                         if loss: losses.append(loss)
+                    else:
+                        time_lib.sleep(0.0001)
+                sim_process.close()
                 # Update the target network, copying all weights and biases in DQN
                 if periodic_update and i_episode % self.TARGET_UPDATE == 0:
                     self.target_net.load_state_dict(self.policy_net.state_dict())
@@ -252,7 +258,7 @@ class RLAgent():
                     n_episodes += 1
                 self.writer.add_scalar("loss", loss, global_step=total_steps)
                 losses = []
-                
+                time_passed = datetime.datetime.now( ) - start_time
                 if i_episode % 10 == 0:
                     counts = self.test(test_set, n_gates+1)
                     if counts:
@@ -266,9 +272,9 @@ class RLAgent():
                             break
                     else:
                         self.writer.add_scalar("cnots_done", 0, total_steps)
-                    print(n_gates, i_episode, loss, len(counts)/test_size)
+                    print(n_gates, i_episode, time_passed, loss, len(counts)/test_size)
                 else:
-                    print(n_gates, i_episode, loss)
+                    print(n_gates, i_episode, time_passed, loss)
                 """"
                 for t in range(n_gates+1):#count():
                     # Select and perform an action
@@ -314,33 +320,39 @@ class RLAgent():
         return counts
 
 
-def simulate(environment, selector, max_steps, state_queue, ext_queue):
-    #print("Started simulation")
+def simulate(environment, selector, max_steps, state_queue, ext_queue):#, policy_dict):
+#print("Simulate", state_queue.qsize(), ext_queue.qsize(), end=" ", flush=True)
+    print(".", end=" ", flush=True)
     action = 0
     do_iter_actions = not state_queue.full()
     transition, n_steps  = state_queue.get()
-    old_state, _, state, _ = transition
-    if old_state is not None:
+    _, _, state, _ = transition
+    if n_steps != 0:
         ext_queue.put(transition)
-    if n_steps < max_steps: # We can still do more steps
-        if do_iter_actions: # First few iterations pick all actions in parallel
-            while not state_queue.full() and action < selector.n_actions and state is not None:
+    if state is not None:
+        if n_steps < max_steps: # We can still do more steps
+            if do_iter_actions: # First few iterations pick all actions in parallel
+                while not state_queue.full() and action < selector.n_actions:# and state is not None:
+                    environment.start(state)
+                    next_state, reward, done, _ = environment.step(action)
+                    #reward = torch.tensor([reward], device=device)
+                    #state_queue.put((Transition(state, torch.tensor([[action]], device=device), next_state, reward), n_steps+1))
+                    if done: 
+                        next_state = None
+                    transition = Transition(state, action, next_state, reward)
+                    #print(transition, n_steps+1)
+                    state_queue.put((transition, n_steps+1))
+                    action += 1
+            else: # Otherwise, pick the action according to the policy
                 environment.start(state)
+                action = selector.select_action(torch.tensor([state.data], device="cpu"))
                 next_state, reward, done, _ = environment.step(action)
+                if done:
+                    next_state = None
                 #reward = torch.tensor([reward], device=device)
-                #state_queue.put((Transition(state, torch.tensor([[action]], device=device), next_state, reward), n_steps+1))
-                transition = Transition(state, action, next_state, reward)
-                #print(transition, n_steps+1)
-                state_queue.put((transition, n_steps+1))
-                action += 1
-        else: # Otherwise, pick the action according to the policy
-            environment.start(state)
-            action = selector.select_action(torch.tensor([state.data], device=device))
-            next_state, reward, done, _ = environment.step(action)
-            #reward = torch.tensor([reward], device=device)
-            state_queue.put((Transition(state, action, next_state, reward), n_steps+1))
-    if not state_queue.empty(): # empty the queue when all steps are done.
-        simulate(environment, selector, max_steps, state_queue, ext_queue)
+                state_queue.put((Transition(state, action, next_state, reward), n_steps+1))
+        if not state_queue.empty(): # empty the queue when all steps are done.
+            simulate(environment, selector, max_steps, state_queue, ext_queue)#, policy_dict)
 
 def main(*args):
     EPS_START = 0.9
@@ -350,12 +362,12 @@ def main(*args):
     selector_class, selector_args = SoftmaxSelector, [TEMP]
     #selector, args = EGreedySelector, [EPS_START, EPS_END, EPS_DECAY]
 
-    hidden = [100, 50, 10]
+    hidden = [1000, 500, 100]
     memory_size = 10000
     test_size = 50
     max_gates = 10
     n_qubits = 3
-    prioritized = False
+    prioritized = True
     dropout = 0.5
     mode = "dueling"
     architecture = create_architecture(LINE, n_qubits=n_qubits)
@@ -365,11 +377,13 @@ def main(*args):
     n_qubits = env.n_qubits
 
     if mode == "dueling":
-        embedding = FC_Embedding(n_qubits, hidden[-2], hidden[:-2])
+        embedding = FC_Embedding(n_qubits, hidden[-2], hidden[:-2], device=device)
+        cpu_embedding = FC_Embedding(n_qubits, hidden[-2], hidden[:-2], device="cpu")
         #embedding = CNN_Embedding(n_qubits, hidden[-2])
-        embedding = RNN_Embedding(n_qubits, hidden[-2], hidden=hidden[0])
+        #embedding = RNN_Embedding(n_qubits, hidden[-2], hidden=hidden[0], device=device)
+        #cpu_embedding = RNN_Embedding(n_qubits, hidden[-2], hidden=hidden[0], device="cpu")
     else:
-        embedding = FC_Embedding(n_qubits, n_actions, hidden)
+        embedding = FC_Embedding(n_qubits, n_actions, hidden, device=device)
     network = DQN
     loss_function = F.smooth_l1_loss
     if mode == "dqn":
@@ -384,14 +398,19 @@ def main(*args):
     elif mode == "dueling":
         double_dqn = True
         periodic_update = True
-        network = lambda i, o, e, d: Duel_DQN(i, o, e, fc1=hidden[-2], fc2=hidden[-1], dropout=d)
+        network = lambda i, o, e, d, device=device: Duel_DQN(i, o, e, fc1=hidden[-2], fc2=hidden[-1], dropout=d, device=device)
         #loss_function = F.mse_loss
 
     print("Environment created", architecture.name, n_qubits, n_actions)
 
-    policy_net = network(n_qubits, n_actions, embedding, dropout).to(device)
-    target_net = network(n_qubits, n_actions, embedding, dropout).to(device)
+    policy_net = network(n_qubits, n_actions, embedding, dropout, device=device).to(device)
+    print("Created policy net")
+    target_net = network(n_qubits, n_actions, embedding, dropout, device=device).to(device)
+    print("Created target net")
     target_net.load_state_dict(policy_net.state_dict())
+    cpu_net = network(n_qubits, n_actions, cpu_embedding, dropout, device="cpu").to("cpu")
+    print("Created cpu net")
+    cpu_net.eval()
     target_net.eval()
     policy_net.train()
     policy_net.share_memory()
@@ -399,12 +418,14 @@ def main(*args):
 
     optimizer = optim.RMSprop(policy_net.parameters())
     memory = ReplayMemory(memory_size, prioritized=prioritized)
+    print("Created replay memory")
 
     periodic_update = periodic_update or not double_dqn
 
-    select_action = selector_class(n_actions, policy_net, *selector_args)
+    select_action = selector_class(n_actions, cpu_net, *selector_args)
 
     agent = RLAgent(env, policy_net, target_net, select_action, memory, optimizer)
+    print("Start training")
     agent.train(periodic_update, max_gates, test_size)
 
     val_set = env.create_test_set(test_size, fitting=False)
