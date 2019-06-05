@@ -5,6 +5,7 @@ define(['d3'], function(d3) {
         if (t == 0) return "black";
         else if (t == 1) return "green";
         else if (t == 2) return "red";
+        else if (t == 3) return "yellow";
     }
 
     function edgeColor(t) {
@@ -24,6 +25,14 @@ define(['d3'], function(d3) {
             ntab[d.name] = d;
             d.selected = false;
             d.previouslySelected = false;
+        });
+
+        var spiders_and_boundaries = graph.nodes.filter(function(d) {
+            return d.t != 3;
+        });
+
+        var hboxes = graph.nodes.filter(function(d) {
+            return d.t == 3;
         });
 
         graph.links.forEach(function(d) {
@@ -62,46 +71,79 @@ define(['d3'], function(d3) {
 
         var node = svg.append("g")
             .attr("class", "node")
-            .selectAll("circle")
+            .selectAll("g")
             .data(graph.nodes)
-            .enter().append("circle")
+            .enter().append("g")
+            .attr("transform", function(d) {
+                return "translate(" + d.x + "," + d.y +")";
+            });
+
+        node.filter(function(d) { return d.t != 3; })
+            .append("circle")
             .attr("r", function(d) {
                if (d.t == 0) return 0.5 * node_size;
                else return node_size;
             })
-            .attr("cx", function(d) { return d.x; })
-            .attr("cy", function(d) { return d.y; })
             .attr("fill", function(d) { return nodeColor(d.t); })
             .attr("stroke", "black");
 
-        var text = svg.selectAll("text")
-            .data(graph.nodes)
-            .enter()
+        node.filter(function(d) { return d.t == 3; })
+            .append("rect")
+            .attr("x", -0.75 * node_size).attr("y", -0.75 * node_size)
+            .attr("width", node_size * 1.5).attr("height", node_size * 1.5)
+            .attr("fill", function(d) { return nodeColor(d.t); })
+            .attr("stroke", "black");
+
+        node.filter(function(d) { return d.phase != ''; })
             .append("text")
-            .attr("x", function(d) { return d.x; })
-            .attr("y", function(d) { return d.y + 0.7 * node_size + 14; })
-            .text( function (d) { return d.phase })
+            .attr("y", 0.7 * node_size + 14)
+            .text(function (d) { return d.phase })
             .attr("text-anchor", "middle")
             .attr("font-size", "12px")
             .attr("font-family", "monospace")
             .attr("fill", "#00d");
+        node.append("text")
+            .attr("y", -0.7 * node_size - 5)
+            .text(function (d) { return d.name; })
+            .attr("text-anchor", "middle")
+            .attr("font-size", "8px")
+            .attr("font-family", "monospace")
+            .attr("fill", "#ccc");
+
+        // var text = svg.selectAll("text")
+        //     .data(graph.nodes)
+        //     .enter()
+        //     .append("text")
+        //     .attr("x", function(d) { return d.x; })
+        //     .attr("y", function(d) { return d.y + 0.7 * node_size + 14; })
+        //     .text( function (d) { return d.phase })
+        //     .attr("text-anchor", "middle")
+        //     .attr("font-size", "12px")
+        //     .attr("font-family", "monospace")
+        //     .attr("fill", "#00d");
 
         // EVENTS FOR DRAGGING AND SELECTION
 
         node.on("mousedown", function(d) {
                 if (shiftKey) {
-                    d3.select(this).attr("style", nodeStyle(d.selected = !d.selected));
+                    d3.select(this).select(":first-child").attr("style", nodeStyle(d.selected = !d.selected));
                     d3.event.stopImmediatePropagation();
                 } else if (!d.selected) {
-                    node.attr("style", function(p) { return nodeStyle(p.selected = d === p); });
+                    node.select(":first-child").attr("style", function(p) { return nodeStyle(p.selected = d === p); });
                 }
             })
             .call(d3.drag().on("drag", function(d) {
                 var dx = d3.event.dx;
                 var dy = d3.event.dy;
+                // node.filter(function(d) { return d.selected; })
+                //     .attr("cx", function(d) { return d.x += dx; })
+                //     .attr("cy", function(d) { return d.y += dy; });
                 node.filter(function(d) { return d.selected; })
-                    .attr("cx", function(d) { return d.x += dx; })
-                    .attr("cy", function(d) { return d.y += dy; })
+                    .attr("transform", function(d) {
+                        d.x += dx;
+                        d.y += dy;
+                        return "translate(" + d.x + "," + d.y +")";
+                    });
 
                 link.filter(function(d) { return d.source.selected; })
                     .attr("x1", function(d) { return d.source.x; })
@@ -111,16 +153,16 @@ define(['d3'], function(d3) {
                     .attr("x2", function(d) { return d.target.x; })
                     .attr("y2", function(d) { return d.target.y; });
 
-                text.filter(function(d) { return d.selected; })
-                    .attr("x", function(d) { return d.x; })
-                    .attr("y", function(d) { return d.y + 0.7 * node_size + 14; });
+                // text.filter(function(d) { return d.selected; })
+                //     .attr("x", function(d) { return d.x; })
+                //     .attr("y", function(d) { return d.y + 0.7 * node_size + 14; });
             }));
 
         brush.call(d3.brush()
             .extent([[0, 0], [width, height]])
             .on("start", function() {
                 if (d3.event.sourceEvent.type !== "end") {
-                    node.attr("style", function(d) {
+                    node.select(":first-child").attr("style", function(d) {
                         return nodeStyle(
                             d.selected = d.previouslySelected = shiftKey &&
                             d.selected);
@@ -130,7 +172,7 @@ define(['d3'], function(d3) {
             .on("brush", function() {
                 if (d3.event.sourceEvent.type !== "end") {
                     var selection = d3.event.selection;
-                    node.attr("style", function(d) {
+                    node.select(":first-child").attr("style", function(d) {
                         return nodeStyle(d.selected = d.previouslySelected ^
                             (selection != null
                             && selection[0][0] <= d.x && d.x < selection[1][0]

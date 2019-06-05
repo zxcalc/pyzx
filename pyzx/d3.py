@@ -23,8 +23,10 @@ __all__ = ['init', 'draw']
 try:
     from IPython.display import display, HTML
     in_notebook = True
+    javascript_location = '../js'
 except ImportError:
     in_notebook = False
+    javascript_location = '/js'
     try:
         from browser import document, html
         in_webpage = True
@@ -34,7 +36,8 @@ except ImportError:
 # Provides functions for displaying pyzx graphs in jupyter notebooks using d3
 
 _d3_display_seq = 0
-javascript_location = '/js'
+
+
 
 # TODO: avoid duplicate (copied from drawing.py)
 def phase_to_s(a):

@@ -975,8 +975,11 @@ class HAD(Gate):
         self.target = target
 
     def to_graph(self, g, labels, qs, rs):
-        v = g.add_vertex(1,labels[self.target],rs[self.target])
-        g.add_edge((qs[self.target],v),2)
+        #v = g.add_vertex(1,labels[self.target],rs[self.target])
+        # g.add_edge((qs[self.target],v),2)
+
+        v = g.add_vertex(3,labels[self.target],rs[self.target])
+        g.add_edge((qs[self.target],v),1)
         qs[self.target] = v
         rs[self.target] += 1
 
@@ -1084,11 +1087,11 @@ class SWAP(CZ):
         for gate in self.to_basic_gates():
             gate.to_graph(g, labels, qs,rs)
 
-class Tofolli(Gate):
-    name = 'Tof'
-    quippername = 'not'
-    qasm_name = 'ccx'
-    qc_name = 'Tof'
+class CCZ(Gate):
+    name = 'CCZ'
+    quippername = 'Z'
+    qasm_name = 'ccz'
+    qc_name = 'Z'
     def __init__(self, ctrl1, ctrl2, target):
         self.target = target
         self.ctrl1 = ctrl1
@@ -1117,9 +1120,22 @@ class Tofolli(Gate):
         mask = [self.ctrl1, self.ctrl2, self.target]
         return [g.reposition(mask) for g in self.circuit_rep.gates]
 
+    # def to_graph(self, g, labels, qs, rs):
+    #     for gate in self.to_basic_gates():
+    #         gate.to_graph(g, labels, qs, rs)
     def to_graph(self, g, labels, qs, rs):
-        for gate in self.to_basic_gates():
-            gate.to_graph(g, labels, qs, rs)
+        r = max(rs[self.target],rs[self.ctrl1],rs[self.ctrl2])
+        qmin = min(self.target,self.ctrl1,self.ctrl2)
+        t = self.graph_add_node(g,labels, qs,1,self.target,r)
+        c1 = self.graph_add_node(g,labels, qs,1,self.ctrl1,r)
+        c2 = self.graph_add_node(g,labels, qs,1,self.ctrl2,r)
+        h = g.add_vertex(3, qmin + 0.5, r + 0.5)
+        g.add_edge((t,h),1)
+        g.add_edge((c1,h),1)
+        g.add_edge((c2,h),1)
+        rs[self.target] = r+1
+        rs[self.ctrl1] = r+1
+        rs[self.ctrl2] = r+1
 
     def to_quipper(self):
         s = 'QGate["{}"]({!s})'.format(self.quippername,self.target)
@@ -1127,12 +1143,12 @@ class Tofolli(Gate):
         s += ' with nocontrol'
         return s
 
+class Tofolli(CCZ):
+    name = 'Tof'
+    quippername = 'not'
+    qasm_name = 'ccx'
+    qc_name = 'Tof'
 
-class CCZ(Tofolli):
-    name = 'CCZ'
-    quippername = 'Z'
-    qasm_name = 'ccz'
-    qc_name = 'Z'
 
 gate_types = {
     "XPhase": XPhase,
