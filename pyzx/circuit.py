@@ -995,6 +995,7 @@ class CNOT(Gate):
         g.add_edge((t,c))
         rs[self.target] = r+1
         rs[self.control] = r+1
+        g.scalar.add_power(1)
 
 class CZ(Gate):
     name = 'CZ'
@@ -1062,6 +1063,7 @@ class CX(CZ):
     name = 'CX'
     quippername = 'X'
     qasm_name = 'undefined'
+    qc_name = 'undefined'
     def to_graph(self, g, labels, qs, rs):
         r = max(rs[self.target],rs[self.control])
         t = self.graph_add_node(g,labels, qs,2,self.target,r)
@@ -1069,6 +1071,9 @@ class CX(CZ):
         g.add_edge((t,c),2)
         rs[self.target] = r+1
         rs[self.control] = r+1
+
+    def to_basic_gates(self):
+        return [HAD(self.control), CNOT(self.control,self.target), HAD(self.control)]
 
 class SWAP(CZ):
     name = 'SWAP'

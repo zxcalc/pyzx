@@ -16,8 +16,40 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import abc
+from fractions import Fraction
+import math
+import cmath
 
 from pyzx.tensor import tensorfy, tensor_to_matrix
+
+class Scalar(object):
+    def __init__(self):
+        self.power2 = 0 # Stores power of square root of two
+        self.phase = Fraction(0) # Stores complex phase of the number
+        self.phasenodes = [] # Stores list of legless spiders, by their phases.
+        self.floatfactor = 1.0
+        self.is_unknown = False # Whether this represents an unknown scalar value
+
+    def to_number(self):
+        val = math.sqrt(2)**self.power2
+        val *= cmath.exp(1j*math.pi*self.phase)
+        for node in phasenodes: # Node should be a Fraction
+            val *= 1+cmath.exp(math.pi*node)
+        return val*self.floatfactor
+
+    def set_unknown(self):
+        self.is_unknown = True
+        self.phasenodes = []
+
+    def add_power(self, n):
+        self.power2 += n
+    def add_phase(self, phase):
+        self.phase += phase
+    def add_node(self, node):
+        self.phasenodes.append(node)
+    def add_float(self,f):
+        self.floatfactor *= f
+
 
 class DocstringMeta(abc.ABCMeta):
     """Metaclass that allows docstring 'inheritance'."""
@@ -58,6 +90,8 @@ class BaseGraph(object):
     backend = 'None'
 
     def __init__(self):
+        self.scalar = Scalar()
+        #Data necessary for phase tracking for phase teleportation
         self.track_phases = False
         self.phase_index = dict()
         self.phase_master = None
@@ -383,7 +417,6 @@ class BaseGraph(object):
     def phase_negate(self, v):
         if v not in self.phase_index: return
         index = self.phase_index[v]
-        #print("Negating phase", v, index)
         mult = self.phase_mult[index]
         self.phase_mult[index] = -1*mult 
 
