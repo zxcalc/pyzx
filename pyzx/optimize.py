@@ -307,6 +307,7 @@ class Optimizer:
                         self.gates[t].remove(g)
                         self.availty[c] = 1
                         self.availty[t] = 2
+                        cnot.index = self.gcount
                         self.gcount += 1
                         self.gates[c].append(cnot)
                         self.gates[t].append(cnot)
