@@ -180,14 +180,16 @@ def draw(g, layout=None, labels=False, figsize=(8,2), h_edge_draw='blue', rows=N
         p = layout[v]
         t = g.type(v)
         a = g.phase(v)
-        
-        sz = 0.2
-        col = 'black'
-        if t == 1: col = 'green'
-        elif t == 2: col = 'red'
-        else: sz = 0.1
-            
-        ax.add_patch(patches.Circle(p, sz, facecolor=col, edgecolor='black', zorder=1))
+
+        if t == 1:
+            ax.add_patch(patches.Circle(p, 0.2, facecolor='green', edgecolor='black', zorder=1))
+        elif t == 2:
+            ax.add_patch(patches.Circle(p, 0.2, facecolor='red', edgecolor='black', zorder=1))
+        elif t == 3:
+            ax.add_patch(patches.Rectangle((p[0]-0.1, p[1]-0.1), 0.2, 0.2, facecolor='yellow', edgecolor='black'))
+        else:
+            ax.add_patch(patches.Circle(p, 0.1, facecolor='black', edgecolor='black', zorder=1))
+
         if labels: plt.text(p[0]+0.25, p[1]+0.25, str(v), ha='center', color='gray', fontsize=5)
         if a: plt.text(p[0], p[1]-0.5, phase_to_s(a), ha='center', color='blue', fontsize=8)
     
