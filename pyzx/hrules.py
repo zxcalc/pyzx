@@ -15,33 +15,33 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from .simplify import to_gh
+from .simplify import *
 from .graph.base import BaseGraph
 
 
-def to_zh(g: BaseGraph):
-    to_gh(g)
-    del_e = []
-    add_e = []
-    es = list(g.edges())
-    for e in es:
-        if g.edge_type(e) == 2:
-            s,t = g.edge_st(e)
-            qs = g.qubit(s)
-            qt = g.qubit(t)
-            h = g.add_vertex(3)
-            del_e.append(e)
-            add_e.append((s, h))
-            add_e.append((h, t))
-            if qs == qt:
-                g.set_qubit(h, qs)
-            else:
-                q = (qs + qt) / 2
-                if round(q) == q: q += 0.5
-                g.set_qubit(h, q)
-            g.set_row(h, (g.row(s) + g.row(t)) / 2)
-    g.remove_edges(del_e)
-    g.add_edges(add_e)
+# def to_zh(g: BaseGraph):
+#     to_gh(g)
+#     del_e = []
+#     add_e = []
+#     es = list(g.edges())
+#     for e in es:
+#         if g.edge_type(e) == 2:
+#             s,t = g.edge_st(e)
+#             qs = g.qubit(s)
+#             qt = g.qubit(t)
+#             h = g.add_vertex(3)
+#             del_e.append(e)
+#             add_e.append((s, h))
+#             add_e.append((h, t))
+#             if qs == qt:
+#                 g.set_qubit(h, qs)
+#             else:
+#                 q = (qs + qt) / 2
+#                 if round(q) == q: q += 0.5
+#                 g.set_qubit(h, q)
+#             g.set_row(h, (g.row(s) + g.row(t)) / 2)
+#     g.remove_edges(del_e)
+#     g.add_edges(add_e)
 
 
 def match_h2(g: BaseGraph):
@@ -75,6 +75,7 @@ def h2(g: BaseGraph, m):
     g.add_edge_table(etab)
 
 def basic_simp(g):
+    to_gh(g)
     progress = True
     while progress:
         progress = False
