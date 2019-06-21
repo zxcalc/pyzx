@@ -1,4 +1,6 @@
 import numpy as np
+import queue
+import torch.multiprocessing as mp
 
 class SumTree:
     write = 0
@@ -172,6 +174,27 @@ class Storage():
     
     def __len__(self):
         return len(self.data)
+
+class Queue(object):
+
+    def __init__(self, capacity):
+        self.capacity = capacity
+        self.q = queue.Queue(self.capacity)
+
+    def add(self, error, sample):
+        self.q.put(sample)
+
+    def update(self, idx, p):
+        pass
+    
+    def sample(self, batch_size):
+        choices = [i for i in range(batch_size)]
+        if len(self) >= batch_size:
+            return [self.q.get() for _ in range(batch_size)], choices, np.ones_like(choices)
+        return [], choices, np.ones_like(choices)
+
+    def __len__(self):
+        return self.q.qsize()
         
 class ReplayMemory(object):
 
@@ -194,6 +217,8 @@ class ReplayMemory(object):
     def reset(self):
         if self.prioritized == "sumtree":
             self.memory = SumTree(self.capacity)
+        elif self.prioritized == "forgetfull":
+            self.memory = Queue(self.capacity)
         elif self.prioritized:
             self.memory = PrioritizedStorage(self.capacity)
         else:

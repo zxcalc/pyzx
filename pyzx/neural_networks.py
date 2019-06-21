@@ -9,6 +9,7 @@ class DQN(nn.Module):
     def __init__(self, inputs, outputs, embedding, dropout=None, device="cpu"):
         super(DQN, self).__init__()
         self.device = device
+        layers = []
         if inputs != embedding.inputs:
             layers += [nn.Linear(inputs, embedding.inputs), nn.ReLU()]
         if dropout:
