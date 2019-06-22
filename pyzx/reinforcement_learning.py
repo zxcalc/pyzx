@@ -13,7 +13,7 @@ from torch.utils.tensorboard import SummaryWriter
 np.random.seed(1337)
 # if gpu is to be used
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-print("cuda" if torch.cuda.is_available() else "cpu")
+print(device)
 
 Transition = namedtuple('Transition',
                         ('state', 'action', 'next_state', 'reward'))
@@ -291,7 +291,7 @@ def main(*args):
     if mode == "dueling":
         embedding = FC_Embedding(n_qubits, hidden[-2], hidden[:-2])
         #embedding = CNN_Embedding(n_qubits, hidden[-2])
-        embedding = RNN_Embedding(n_qubits, hidden[-2], hidden=hidden[0])
+        #embedding = RNN_Embedding(n_qubits, hidden[-2], hidden=hidden[0])
     else:
         embedding = FC_Embedding(n_qubits, n_actions, hidden)
     network = DQN
@@ -348,6 +348,3 @@ def main(*args):
         agent.writer.add_histogram("final_cnots_hist", counts)#, bins=np.arange(n_gates+1))
     else:
         agent.writer.add_scalar("final_cnots_done", 0)
-
-main()
-exit(42)
