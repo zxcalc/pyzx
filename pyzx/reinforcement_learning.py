@@ -371,15 +371,15 @@ def main(*args):
     selector_class, selector_args = SoftmaxSelector, [TEMP]
     #selector, args = EGreedySelector, [EPS_START, EPS_END, EPS_DECAY]
 
-    hidden = [100, 50, 10]
+    hidden = [256, 128, 64, 32]
     memory_size = 10000
     test_size = 50
     n_qubits = 4
     max_gates = int(n_qubits**2/np.log(n_qubits))+1
-    prioritized = False
+    prioritized = True
     dropout = 0.5
+    learning_rate = 1e-3
     mode = "dqn"
-    hidden = hidden[:1]
     architecture = create_architecture(LINE, n_qubits=n_qubits)
 
     env = Environment(architecture, max_gates, test_size)
@@ -418,7 +418,7 @@ def main(*args):
     target_net.eval()
     policy_net.train()
 
-    optimizer = optim.RMSprop(policy_net.parameters())
+    optimizer = optim.RMSprop(policy_net.parameters(), lr=learning_rate)
     memory = ReplayMemory(memory_size, prioritized=prioritized)
 
     periodic_update = periodic_update or not double_dqn
