@@ -28,15 +28,15 @@ from .linalg import Mat2
 
 class Environment():
 
-    def __init__(self, architecture, max_gates, test_size=50, allow_perm=True, beta=0.4):
+    def __init__(self, architecture, max_gates, allow_perm=True, beta=0.4):
         self.n_qubits = architecture.n_qubits
         self.architecture = architecture
         self.max_gates = max_gates
         self.actions = [(v1, v2) for v1, v2 in architecture.graph.edges()] + [(v2, v1) for v1, v2 in architecture.graph.edges()] 
         self.n_actions = len(self.actions)
-        self.reset()
         self.allow_perm = allow_perm
         self.beta = beta
+        self.reset()
 
     def create_test_set(self, size, fitting=False):
         return [self._create_instance(fitting) for _ in range(size)]
@@ -47,17 +47,21 @@ class Environment():
             matrix = build_random_parity_map(self.n_qubits, n_cnots, architecture=self.architecture)
         else:
             matrix = build_random_parity_map(self.n_qubits, n_cnots)
-        matrix = matrix[:, np.random.permutation(matrix.shape[1])]
+        if self.allow_perm:
+            matrix = matrix[:, np.random.permutation(matrix.shape[1])]
         return Mat2(matrix.tolist()), n_cnots
 
     def reset(self, fitting=True):
         self.matrix = self._create_instance(fitting)[0]
 
     def start(self, matrix):
-        self.matrix = matrix
+        self.matrix = matrix.copy()
+        return self.get_state()
+
 
     def get_state(self):
-        return torch.Tensor(np.expand_dims(self.matrix.data, axis=0)).to(device)
+        #return torch.Tensor(np.expand_dims(self.matrix.data, axis=0)).to(device)
+        return self.matrix
     
     def step(self, action):
         control, target = self.actions[action]
@@ -73,17 +77,21 @@ class Environment():
         if not self.allow_perm:
             done = done and all(diag)
         reward = -(distance/self.n_qubits**2)**self.beta
-        reward = torch.Tensor(np.asarray(reward, dtype=np.float32)).to(device)
+        #reward = torch.Tensor(np.asarray(reward, dtype=np.float32)).to(device)
         return reward, done
+
+    def copy(self):
+        return Environment(self.architecture, self.max_gates, self.allow_perm, self.beta)
 
 class EGreedySelector():
 
-    def __init__(self, n_actions, policy_net, EPS_START, EPS_END, EPS_DECAY):
+    def __init__(self, n_actions, policy_net, EPS_START, EPS_END, EPS_DECAY, device="cuda"):
         self.n_actions = n_actions
         self.policy_net = policy_net
         self.EPS_START = EPS_START
         self.EPS_END = EPS_END
         self.EPS_DECAY = EPS_DECAY
+        self.device=device
 
     def select_action(self, state, steps_done):
         sample = np.random.rand()
@@ -93,31 +101,37 @@ class EGreedySelector():
                 # t.max(1) will return largest column value of each row.
                 # second column on max result is index of where max element was
                 # found, so we pick action with the larger expected reward.
-                return self.policy_net(state).max(1)[1].view(1, 1)
+                #return self.policy_net(state).max(1)[1].view(1, 1)
+                state = torch.tensor([state.data], dtype=torch.float, device=self.device)
+                return self.policy_net(state).max(1)[1].view(1, 1).item()
         else:
-            return torch.tensor([[np.random.choice(self.n_actions)]], device=device, dtype=torch.long)
+            #return torch.tensor([[np.random.choice(self.n_actions)]], device=device, dtype=torch.long)
+            return np.random.choice(self.n_actions)
 
 class SoftmaxSelector():
 
-    def __init__(self, n_actions, policy_net, TEMP):
+    def __init__(self, n_actions, policy_net, TEMP, device="cuda"):
         self.n_actions = n_actions
         self.policy_net = policy_net
         self.TEMP = TEMP
+        self.device=device
 
     def select_action(self, state, steps_done):
+        state = torch.tensor([state.data], dtype=torch.float, device=self.device)
         Q_values = self.policy_net(state)
         # I need to add a minus because the Q-values are negative
         probs = F.softmax(-Q_values/self.TEMP, dim=1).data[0].cpu().numpy()
         choice = np.random.choice(self.n_actions, p=probs)
-        return torch.tensor([[choice]], device=device, dtype=torch.long)
+        #return torch.tensor([[choice]], device=device, dtype=torch.long)
+        return choice
 
 class RLAgent():
 
     BATCH_SIZE = 64
-    GAMMA = 0.
-    TARGET_UPDATE = 10
+    GAMMA = 0.9
+    TARGET_UPDATE = 100
 
-    def __init__(self, environment, policy_net, target_net, selector, memory, optimizer):
+    def __init__(self, environment, policy_net, target_net, selector, memory, optimizer, topk=1):
         self.environment = environment
         self.policy_net = policy_net
         self.target_net = target_net
@@ -126,6 +140,7 @@ class RLAgent():
         self.steps_done = 0
         self.writer = SummaryWriter()
         self.optimizer = optimizer
+        self.topk = topk
     
     def optimize_model(self, policy_net, target_net):
         batch_size = self.BATCH_SIZE
@@ -184,6 +199,7 @@ class RLAgent():
         total_steps = -1
         for n_gates in range(1, max_gates+1):
             self.steps_done = 0
+            all_counts = []
             self.memory.reset()
             # TODO fill memory
             n_episodes = 0
@@ -191,21 +207,28 @@ class RLAgent():
             losses = []
             self.environment.max_gates = n_gates
             test_set = self.environment.create_test_set(test_size, fitting=True)
-            for i_episode in count():#range(num_episodes):
+            #for i_episode in count():#range(num_episodes):
+            for i_episode, state in enumerate(train_set_generator(self.environment)):
                 total_steps += 1
                 # Initialize the environment and state
-                self.environment.reset()
-                state = self.environment.get_state()
+                #self.environment.reset()
+                #state = self.environment.get_state()
                 start = datetime.datetime.now()
                 for t in range(n_gates+1):#count():
                     # Select and perform an action
                     action = self.selector.select_action(state, self.steps_done)
-                    next_state, reward, done, _ = self.environment.step(action.item())
-                    reward = torch.tensor([reward], device=device)
+                    self.environment.start(state)
+                    next_state, reward, done, _ = self.environment.step(action)
+                    #state, action, next_state, reward = simulate_run(state, self.environment, self.selector, self.steps_done)
+                    #print(np.asarray(state.data) - np.asarray(next_state.data))
+                    torch_state = torch.tensor([state.data], dtype=torch.float, device=device)
+                    action = torch.tensor([[action]], dtype=torch.long, device=device)
+                    torch_next_state = torch.tensor([next_state.data], dtype=torch.float, device=device) if next_state is not None else None
+                    reward = torch.tensor([reward], dtype=torch.float, device=device)
 
                     # These are new items, so first add them with a rediculous error so they are picked first
                     # Store the transition in memory
-                    self.memory.push(100, Transition(state, action, next_state, reward))
+                    self.memory.push(100, Transition(torch_state, action, torch_next_state, reward))
 
                     # Move to the next state
                     state = next_state
@@ -217,7 +240,7 @@ class RLAgent():
                         loss = self.optimize_model(self.target_net, self.policy_net)
                     if loss: losses.append(loss)
                     self.steps_done += 1
-                    if done:
+                    if next_state is None:
                         break
                 # Update the target network, copying all weights and biases in DQN
                 if periodic_update and i_episode % self.TARGET_UPDATE == 0:
@@ -230,41 +253,115 @@ class RLAgent():
                     n_episodes += 1
                 self.writer.add_scalar("loss", loss, global_step=total_steps)
                 losses = []
-
-                print(n_gates, i_episode, loss)
                 
                 if i_episode % 10 == 0:
+                    test_time = datetime.datetime.now()
                     counts = self.test(test_set, n_gates+1)
+                    test_time = datetime.datetime.now() - test_time
+                    all_counts.append(len(counts)/test_size)
+                    if len(all_counts) > 10:
+                        print(np.convolve(all_counts, np.ones((100,))/100, mode="valid")[-10:])
                     if counts:
                         self.writer.add_scalar("cnots_done", len(counts)/test_size, total_steps)
                         self.writer.add_scalar("cnots_mean", np.mean(counts), total_steps)
                         self.writer.add_scalar("cnots_min", min(counts), total_steps)
                         self.writer.add_scalar("cnots_max", max(counts), total_steps)
+                        print(str(n_gates) + "/" + str(max_gates), time, i_episode, loss, len(counts)/test_size, np.mean(counts), min(counts), max(counts), "\t\t", test_time)
                         if len(counts) == test_size: 
                             counts= np.asarray(counts)
                             self.writer.add_histogram("cnots_hist", counts, total_steps)#, bins=np.arange(n_gates+1))
                             break
                     else:
                         self.writer.add_scalar("cnots_done", 0, total_steps)
+                        print(str(n_gates) + "/" + str(max_gates), time, i_episode, loss, len(counts)/test_size, "\t\t", test_time)
+                else:
+                    print(str(n_gates) + "/" + str(max_gates), time, i_episode, loss)
             
             self.writer.add_scalar("total_gates", n_gates, total_steps)
             self.writer.add_scalar("total_episodes", i_episode-n_episodes, total_steps)
+            #print(n_gates, total_steps)
             #self.writer.add_scalar("total_time", datetime.datetime.now() - dataset_start, total_steps)
 
-    def test(self, test_set, max_steps):
+    def dfs_find_solution(self, state, k=1, max_steps=None):
+        if k == 1:
+            return self.greedy_find_solution(state, max_steps)
+        if max_steps == 0:
+            return None
+        state_tensor = torch.tensor([state.data], dtype=torch.float, device=device)
+        best_actions = self.policy_net(state_tensor).topk(k, dim=1)
+        max_steps = None if max_steps is None else max_steps-1
+        for i in best_actions.indices[0]:
+            self.environment.start(state)
+            action = i.item()
+            next_state, reward, done, _ = self.environment.step(action)
+            if done:
+                return [self.environment.actions[action]]
+            next_actions = self.dfs_find_solution(next_state, k=k, max_steps=max_steps)
+            if next_actions is not None: # a solution was found
+                return [self.environment.actions[action]] + next_actions
+        return None
+
+    def greedy_find_solution(self, state, max_steps=None):
+        iterator = count() if max_steps is None else range(max_steps)
+        actions = []
+        self.environment.start(state)
+        state = self.environment.get_state()
+        for t in iterator:
+            # Select and perform an action
+            state = torch.tensor([state.data], dtype=torch.float, device=device)
+            action = self.policy_net(state).max(1)[1].view(1, 1)
+            state, reward, done, _ = self.environment.step(action.item())
+            actions.append(self.environment.actions[action])
+            if done:
+                return actions
+        return None
+
+    def bfs_find_solution(self, state, k=1, max_steps=None):
+        if k == 1:
+            return self.greedy_find_solution(state, max_steps)
+        queue = []
+        queue.append((state, []))
+        while queue:
+            state, prev_actions = queue.pop(0)
+            #print(prev_actions)
+            if max_steps is None or len(prev_actions) < max_steps:
+                state_tensor = torch.tensor([state.data], dtype=torch.float, device=device)
+                best_actions = self.policy_net(state_tensor).topk(k, dim=1)
+                #print(action.indices)
+                for i in best_actions.indices[0]:
+                    action = i.item()
+                    self.environment.start(state)
+                    next_state, reward, done, _ = self.environment.step(action)
+                    queue.append((next_state, prev_actions + [self.environment.actions[action]]))
+                    if done:
+                        return prev_actions + [self.environment.actions[action]]
+        return None
+
+    def test(self, test_set, max_steps=None):
         counts = []
         for m, n in test_set:
-            self.environment.start(m)
-            state = self.environment.get_state()
-            for t in range(max_steps):
-                # Select and perform an action
-                action = self.policy_net(state).max(1)[1].view(1, 1)
-                state, reward, done, _ = self.environment.step(action.item())
-                if done:
-                    overhead = (t+1)/n
-                    counts.append(overhead)
-                    break
+            #cnots = self.greedy_find_solution(m, k=self.topk, max_steps=max_steps)
+            #cnots = self.bfs_find_solution(m, k=self.topk, max_steps=max_steps)
+            cnots = self.dfs_find_solution(m, k=self.topk, max_steps=max_steps)
+            if cnots is not None:
+                overhead = len(cnots)/n
+                counts.append(overhead)
         return counts
+
+def simulate_run(matrix, environment, selector, steps_done):
+    state = environment.start(matrix)
+    action = selector.select_action(state, steps_done)
+    next_state, reward, done, _ = environment.step(action)
+    #if next_state is not None:
+    #    print(np.sum(np.asarray(matrix.data) - np.asarray(next_state.data)))
+    return Transition(matrix, action, next_state, reward)
+
+def train_set_generator(environment, n=None):
+    iterator = count() if n is None else range(n)
+    for _ in iterator:
+        environment.reset()
+        yield environment.get_state()
+
 
 def main(*args):
     EPS_START = 0.9
@@ -277,16 +374,18 @@ def main(*args):
     hidden = [100, 50, 10]
     memory_size = 10000
     test_size = 50
-    max_gates = 10
-    n_qubits = 2
-    prioritized = True
+    n_qubits = 4
+    max_gates = int(n_qubits**2/np.log(n_qubits))+1
+    prioritized = False
     dropout = 0.5
-    mode = "dueling"
+    mode = "dqn"
+    hidden = hidden[:1]
     architecture = create_architecture(LINE, n_qubits=n_qubits)
 
     env = Environment(architecture, max_gates, test_size)
     n_actions = env.n_actions
     n_qubits = env.n_qubits
+    topk = 2#int(0.3*n_actions)+2
 
     if mode == "dueling":
         embedding = FC_Embedding(n_qubits, hidden[-2], hidden[:-2])
@@ -326,25 +425,34 @@ def main(*args):
 
     select_action = selector_class(n_actions, policy_net, *selector_args)
 
-    agent = RLAgent(env, policy_net, target_net, select_action, memory, optimizer)
+    agent = RLAgent(env, policy_net, target_net, select_action, memory, optimizer, topk)
     agent.train(periodic_update, max_gates, test_size)
 
     val_set = env.create_test_set(test_size, fitting=False)
+    val_time = datetime.datetime.now()
     counts = agent.test(val_set, n_qubits**2+1)
+    val_time = datetime.datetime.now() - val_time
+    baseline_time = datetime.datetime.now()
     baseline = []
     for m, n in val_set:
         cn = CNOT_tracker(n_qubits)
         gauss(GENETIC_GAUSS_MODE, m.copy(), architecture, full_reduce=True, x=cn)
         baseline.append(cn.count_cnots()/n)
+    baseline_time = datetime.datetime.now() - baseline_time
     counts = np.asarray(counts)
     baseline = np.asarray(baseline)
     agent.writer.add_histogram("final_baseline_hist", baseline)#, bins=np.arange(n_gates+1))
     agent.writer.add_scalar("final_baseline_mean", np.mean(baseline))
+    print("\nbaseline:")
+    print(1.0, baseline_time, np.mean(baseline), min(baseline), max(baseline))
+    print("\n" + mode + ":")
     if len(counts)>0:
         agent.writer.add_scalar("final_cnots_done", len(counts)/len(val_set))
         agent.writer.add_scalar("final_cnots_mean", np.mean(counts))
         agent.writer.add_scalar("final_cnots_min", min(counts))
         agent.writer.add_scalar("final_cnots_max", max(counts))
         agent.writer.add_histogram("final_cnots_hist", counts)#, bins=np.arange(n_gates+1))
+        print(len(counts)/len(val_set), val_time, np.mean(counts), min(counts), max(counts))
     else:
         agent.writer.add_scalar("final_cnots_done", 0)
+        print(0.0, val_time, 0., np.nan, np.nan)
