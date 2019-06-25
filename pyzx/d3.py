@@ -34,7 +34,7 @@ except ImportError:
 # Provides functions for displaying pyzx graphs in jupyter notebooks using d3
 
 _d3_display_seq = 0
-javascript_location = '/js'
+javascript_location = '../js'
 
 # TODO: avoid duplicate (copied from drawing.py)
 def phase_to_s(a):
