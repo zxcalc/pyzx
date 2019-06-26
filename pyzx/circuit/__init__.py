@@ -65,7 +65,7 @@ class Circuit(object):
         Note that while a successful reduction to the identity is strong evidence that the two
         circuits are equal, if this function is not able to reduce the graph to the identity
         this does not prove anything. """
-        from .simplify import full_reduce
+        from ..simplify import full_reduce
         c = self.adjoint()
         c.add_circuit(other)
         g = c.to_graph()
