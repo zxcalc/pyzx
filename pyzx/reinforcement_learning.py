@@ -1,4 +1,5 @@
 import datetime
+import time as time_lib
 import numpy as np
 import matplotlib.pyplot as plt
 from collections import namedtuple
@@ -9,10 +10,12 @@ import torch.optim as optim
 import torch.nn.functional as F
 import torchvision.transforms as T
 from torch.utils.tensorboard import SummaryWriter
+import torch.multiprocessing as mp
 
 np.random.seed(1337)
 # if gpu is to be used
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+#device = torch.device("cpu")
 print(device)
 
 Transition = namedtuple('Transition',
@@ -131,7 +134,7 @@ class RLAgent():
     GAMMA = 0.9
     TARGET_UPDATE = 100
 
-    def __init__(self, environment, policy_net, target_net, selector, memory, optimizer, topk=1):
+    def __init__(self, environment, policy_net, target_net, selector, memory, optimizer, topk=1, n_threads=0):
         self.environment = environment
         self.policy_net = policy_net
         self.target_net = target_net
@@ -141,6 +144,7 @@ class RLAgent():
         self.writer = SummaryWriter()
         self.optimizer = optimizer
         self.topk = topk
+        self.n_threads = n_threads
     
     def optimize_model(self, policy_net, target_net):
         batch_size = self.BATCH_SIZE
@@ -194,93 +198,171 @@ class RLAgent():
         self.optimizer.step()
         return loss
 
+    def update(self, transition, periodic_update):
+        state, action, next_state, reward = transition
+        torch_state = torch.tensor([state.data], dtype=torch.float, device=device)
+        action = torch.tensor([[action]], dtype=torch.long, device=device)
+        torch_next_state = torch.tensor([next_state.data], dtype=torch.float, device=device) if next_state is not None else None
+        reward = torch.tensor([reward], dtype=torch.float, device=device)
+
+        # These are new items, so first add them with a rediculous error so they are picked first
+        # Store the transition in memory
+        self.memory.push(100, Transition(torch_state, action, torch_next_state, reward))
+
+        # Perform one step of the optimization (on the target network)
+        if periodic_update or np.random.rand(1) < 0.5:
+            return self.optimize_model(self.policy_net, self.target_net)
+        else:
+            return self.optimize_model(self.target_net, self.policy_net)
+                    
+    def write_episode_performance(self, start_time, n_gates, max_gates, total_steps, i_episode, losses, test_set):
+        time = datetime.datetime.now() - start_time
+        self.writer.add_scalar("gates", n_gates, total_steps)
+        self.writer.add_scalar("episode", i_episode, total_steps)
+        loss = torch.stack(losses).mean().item() if losses else np.nan
+        self.writer.add_scalar("loss", loss, global_step=total_steps)
+        losses = []
+        test_size = len(test_set)
+        counts = None
+        if i_episode % 1000 == 0:
+            test_time = datetime.datetime.now()
+            counts = self.test(test_set, n_gates+1)
+            test_time = datetime.datetime.now() - test_time
+            if counts:
+                self.writer.add_scalar("cnots_done", len(counts)/test_size, total_steps)
+                self.writer.add_scalar("cnots_mean", np.mean(counts), total_steps)
+                self.writer.add_scalar("cnots_min", min(counts), total_steps)
+                self.writer.add_scalar("cnots_max", max(counts), total_steps)
+                print(str(n_gates) + "/" + str(max_gates), time, i_episode, loss, len(counts)/test_size, np.mean(counts), min(counts), max(counts), "\t\t", test_time)
+                if len(counts) == test_size: 
+                    counts= np.asarray(counts)
+                    self.writer.add_histogram("cnots_hist", counts, total_steps)#, bins=np.arange(n_gates+1))
+            else:
+                self.writer.add_scalar("cnots_done", 0, total_steps)
+                print(str(n_gates) + "/" + str(max_gates), time, i_episode, loss, len(counts)/test_size, "\t\t", test_time)
+        else:
+            print(str(n_gates) + "/" + str(max_gates), time, i_episode, loss)
+        return counts
+
     def train(self, periodic_update, max_gates, test_size = 1):
         start_time = datetime.datetime.now()
         total_steps = -1
-        for n_gates in range(1, max_gates+1):
-            self.steps_done = 0
-            all_counts = []
-            self.memory.reset()
-            # TODO fill memory
-            n_episodes = 0
-            dataset_start = datetime.datetime.now()
-            losses = []
-            self.environment.max_gates = n_gates
-            test_set = self.environment.create_test_set(test_size, fitting=True)
-            #for i_episode in count():#range(num_episodes):
-            for i_episode, state in enumerate(train_set_generator(self.environment)):
-                total_steps += 1
-                # Initialize the environment and state
-                #self.environment.reset()
-                #state = self.environment.get_state()
-                start = datetime.datetime.now()
-                for t in range(n_gates+1):#count():
-                    # Select and perform an action
-                    action = self.selector.select_action(state, self.steps_done)
-                    self.environment.start(state)
-                    next_state, reward, done, _ = self.environment.step(action)
-                    #state, action, next_state, reward = simulate_run(state, self.environment, self.selector, self.steps_done)
-                    #print(np.asarray(state.data) - np.asarray(next_state.data))
-                    torch_state = torch.tensor([state.data], dtype=torch.float, device=device)
-                    action = torch.tensor([[action]], dtype=torch.long, device=device)
-                    torch_next_state = torch.tensor([next_state.data], dtype=torch.float, device=device) if next_state is not None else None
-                    reward = torch.tensor([reward], dtype=torch.float, device=device)
-
-                    # These are new items, so first add them with a rediculous error so they are picked first
-                    # Store the transition in memory
-                    self.memory.push(100, Transition(torch_state, action, torch_next_state, reward))
-
-                    # Move to the next state
-                    state = next_state
-
-                    # Perform one step of the optimization (on the target network)
-                    if periodic_update or np.random.rand(1) < 0.5:
-                        loss = self.optimize_model(self.policy_net, self.target_net)
-                    else:
-                        loss = self.optimize_model(self.target_net, self.policy_net)
-                    if loss: losses.append(loss)
-                    self.steps_done += 1
-                    if next_state is None:
-                        break
-                # Update the target network, copying all weights and biases in DQN
-                if periodic_update and i_episode % self.TARGET_UPDATE == 0:
-                    self.target_net.load_state_dict(self.policy_net.state_dict())
-                time = datetime.datetime.now() - start_time
-                self.writer.add_scalar("gates", n_gates, total_steps)
-                self.writer.add_scalar("episode", i_episode, total_steps)
-                loss = torch.stack(losses).mean().item() if losses else np.nan
-                if not losses:
-                    n_episodes += 1
-                self.writer.add_scalar("loss", loss, global_step=total_steps)
+        #self.n_threads = 3
+        if self.n_threads == 0:
+            for n_gates in range(1, max_gates+1):
+                self.steps_done = 0
+                all_counts = []
+                self.memory.reset()
+                # TODO fill memory
+                n_episodes = 0
+                dataset_start = datetime.datetime.now()
                 losses = []
-                
-                if i_episode % 10 == 0:
-                    test_time = datetime.datetime.now()
-                    counts = self.test(test_set, n_gates+1)
-                    test_time = datetime.datetime.now() - test_time
-                    all_counts.append(len(counts)/test_size)
-                    if len(all_counts) > 10:
-                        print(np.convolve(all_counts, np.ones((100,))/100, mode="valid")[-10:])
-                    if counts:
-                        self.writer.add_scalar("cnots_done", len(counts)/test_size, total_steps)
-                        self.writer.add_scalar("cnots_mean", np.mean(counts), total_steps)
-                        self.writer.add_scalar("cnots_min", min(counts), total_steps)
-                        self.writer.add_scalar("cnots_max", max(counts), total_steps)
-                        print(str(n_gates) + "/" + str(max_gates), time, i_episode, loss, len(counts)/test_size, np.mean(counts), min(counts), max(counts), "\t\t", test_time)
-                        if len(counts) == test_size: 
-                            counts= np.asarray(counts)
-                            self.writer.add_histogram("cnots_hist", counts, total_steps)#, bins=np.arange(n_gates+1))
+                self.environment.max_gates = n_gates
+                test_set = self.environment.create_test_set(test_size, fitting=True)
+                #for i_episode in count():#range(num_episodes):
+                for i_episode, state in enumerate(train_set_generator(self.environment)):
+                    total_steps += 1
+                    # Initialize the environment and state
+                    start = datetime.datetime.now()
+                    for t in range(n_gates+1):#count():
+                        # Select and perform an action
+                        #action = self.selector.select_action(state, self.steps_done)
+                        #self.environment.start(state)
+                        #next_state, reward, done, _ = self.environment.step(action)
+                        transition = simulate_run(state, self.environment, self.selector, self.steps_done)
+                        #print(np.asarray(state.data) - np.asarray(next_state.data))
+                        loss = self.update(transition, periodic_update)
+                        if loss: losses.append(loss)
+                        self.steps_done += 1
+                        _, _, state, _ = transition
+                        if state is None:
                             break
+                    # Update the target network, copying all weights and biases in DQN
+                    if periodic_update and i_episode % self.TARGET_UPDATE == 0:
+                        self.target_net.load_state_dict(self.policy_net.state_dict())
+                    counts = self.write_episode_performance(start_time, n_gates, max_gates, total_steps, i_episode, losses, test_set)            
+                    if not losses:
+                        n_episodes += 1
+                    if counts is not None:
+                        all_counts.append(len(counts)/test_size)
+                        if len(all_counts) > 10:
+                            print(np.convolve(all_counts, np.ones((10,))/10, mode="valid")[-10:])
+                        if len(counts) == test_size:
+                            break
+                
+                self.writer.add_scalar("total_gates", n_gates, total_steps)
+                self.writer.add_scalar("total_episodes", i_episode-n_episodes, total_steps)
+                #print(n_gates, total_steps)
+                #self.writer.add_scalar("total_time", datetime.datetime.now() - dataset_start, total_steps)
+        else:
+            MAX_QUEUE_SIZE = self.memory.capacity
+            ext_queue = mp.Queue(MAX_QUEUE_SIZE)
+            # Setup the threads
+            consumer_event = mp.Event()
+            pipes = [mp.Pipe(duplex=False) for _ in range(self.n_threads)]
+            barrier = mp.Barrier(self.n_threads+1)
+            #simulate_process(environment, selector, max_gates, consumerQ, consumer_event, policy_pipe, barrier, thread)
+            producers = [mp.Process(target=simulate_process, args=(self.environment, self.selector, max_gates, ext_queue, consumer_event, pipes[i][0], barrier, i)) for i in range(self.n_threads)]
+            [p.start() for p in producers]
+            i_episode = 0
+            n_gates += 1
+            update = True # TODO only update if policy has changed.
+            while any([p.is_alive() for p in producers]):
+                while consumer_event.is_set():
+                    if test_set is None:  # Generate testset if it doesnt exist
+                        self.environment.max_gates = n_gates
+                        test_set = self.environment.create_test_set(test_size, fitting=True)
+                    
+                    if ext_queue.empty():
+                        if barrier.n_waiting == self.n_threads: # New episode.
+                            i_episode += 1
+                            total_steps += 1
+                            barrier.wait()
+                        else:
+                            time_lib.sleep(0.01)
                     else:
-                        self.writer.add_scalar("cnots_done", 0, total_steps)
-                        print(str(n_gates) + "/" + str(max_gates), time, i_episode, loss, len(counts)/test_size, "\t\t", test_time)
-                else:
-                    print(str(n_gates) + "/" + str(max_gates), time, i_episode, loss)
-            
-            self.writer.add_scalar("total_gates", n_gates, total_steps)
-            self.writer.add_scalar("total_episodes", i_episode-n_episodes, total_steps)
-            #print(n_gates, total_steps)
-            #self.writer.add_scalar("total_time", datetime.datetime.now() - dataset_start, total_steps)
+                        # Get the transistion, make into cuda and add to the memory
+                        transition, thread, t_steps = ext_queue.get(False)
+                        loss = self.update(transition, periodic_update)
+                        self.steps_done += 1
+                        if periodic_update and i_episode % self.TARGET_UPDATE == 0:
+                            self.target_net.load_state_dict(self.policy_net.state_dict())
+                            
+                        if loss: 
+                            losses.append(loss)
+                            if update:
+                                # update the state_dict on the producer side
+                                model_dict = self.policy_net.cpu().state_dict()
+                                #print("updating..", end=" ", flush=True)
+                                for i, p in enumerate(pipes):
+                                    if not p[0].poll(): # If something is still in the pipe, remove it.
+                                        """ try:
+                                            p[0].recv() # It was already read
+                                        except: 
+                                            time_lib.sleep(0.001)
+                                            """
+                                        #print(i, end="", flush=True)
+                                        p[1].send(model_dict)
+                                #[p[1].send(model_dict) for p in pipes]
+                                #pipes[thread][1].send(self.policy_net.cpu().state_dict())
+                                #print("done", end="\t", flush=True)
+                                self.policy_net.cuda()
+                        # Log the data
+                        counts = self.write_episode_performance(start_time, n_gates, max_gates, total_steps, i_episode, losses, test_set)
+                        if counts is not None:
+                            all_counts.append(len(counts)/test_size)
+                            if len(all_counts) > 10:
+                                print(np.convolve(all_counts, np.ones((100,))/100, mode="valid")[-10:])
+                            if len(counts) == test_size:
+                                consumer_event.clear()
+                                self.memory.reset()
+                                self.writer.add_scalar("total_gates", n_gates, total_steps)
+                                self.writer.add_scalar("total_episodes", i_episode-n_episodes, total_steps)
+                                i_episode = 0
+                                n_gates += 1
+                                test_set = None
+                                self.steps_done = 0
+
 
     def dfs_find_solution(self, state, k=1, max_steps=None):
         if k == 1:
@@ -356,6 +438,87 @@ def simulate_run(matrix, environment, selector, steps_done):
     #    print(np.sum(np.asarray(matrix.data) - np.asarray(next_state.data)))
     return Transition(matrix, action, next_state, reward)
 
+def simulate_process(environment, selector, max_gates, consumerQ, consumer_event, policy_pipe, barrier, thread):
+    #environment = environment.copy()
+    queue_size = 2**min(environment.n_actions, 10)
+    for n_gates in range(1, max_gates):
+        #barrier.wait()
+        state_queue = mp.Queue(queue_size)
+        consumer_event.set()
+        environment.max_gates = n_gates
+        max_steps = n_gates + 1
+        environment.reset()
+        state = environment.get_state()
+        state_queue.put((Transition(None, None, state, None), 0))
+        do_iter_actions = False#True
+        action = 0
+        selector.steps_done = 0
+        t_steps = 0
+        while consumer_event.is_set():
+            #print(thread, end=" ", flush=True)
+            if policy_pipe.poll(0.001):
+                #print(thread, "reading")
+                policy_dict = policy_pipe.recv()
+                selector.update_policy(policy_dict)
+            if state_queue.empty(): # finished simulating, get a new start state
+                # Wait for the consumer to be finished
+                #print(barrier.n_waiting + 1, "/", barrier.parties)
+                barrier.wait() # wait for the other processes to be finished aswell
+                if not consumerQ.empty():
+                    time_lib.sleep(0.01)
+                else:
+                    environment.reset()
+                    state = environment.get_state()
+                    state_queue.put((Transition(None, None, state, None), 0))
+                    do_iter_actions = False #True
+                    action = 0
+            else:
+                transition, n_steps  = state_queue.get()            
+                _, _, state, _ = transition
+                if n_steps != 0:
+                    try:
+                        consumerQ.put((transition, thread, t_steps), False)
+                    except:
+                        # Try again later
+                        #print(thread, "Queue is full - waiting for consumer to remove some")
+                        state_queue.put((transition, n_steps))
+                        time_lib.sleep(0.1)
+                        continue
+                    t_steps += 1
+                if state is not None:
+                    if n_steps < max_steps: # We can still do more steps
+                        """if do_iter_actions: # First few iterations pick all actions in parallel
+                            while not state_queue.full() and action < selector.n_actions:
+                                environment.start(state)
+                                next_state, reward, done, _ = environment.step(action)
+                                if done: 
+                                    next_state = None
+                                transition = Transition(state, action, next_state, reward)
+                                state_queue.put((transition, n_steps+1))
+                                action += 1
+                            do_iter_actions = False
+                        else: # Otherwise, pick the action according to the policy"""
+                        #environment.start(state)
+                        action = selector.select_action(torch.tensor([state.data], device="cpu"))
+                        actions = make_into_list(action)
+                        space = queue_size - state_queue.qsize()
+                        if space < len(actions):
+                            choice = np.random.choice(len(actions), space, replace=False)
+                            actions = [actions[i] for i in choice]
+                        for action in actions:
+                            environment.start(state)
+                            next_state, reward, done, _ = environment.step(action)
+                            if done:
+                                next_state = None
+                            state_queue.put((Transition(state, action, next_state, reward), n_steps+1))
+                        selector.steps_done += 1
+        print(thread, "done")
+        while not consumerQ.empty(): # empty the shared queue
+            try:
+                consumerQ.get(False)
+            except: # Queue is already empty
+                break
+
 def train_set_generator(environment, n=None):
     iterator = count() if n is None else range(n)
     for _ in iterator:
@@ -371,15 +534,15 @@ def main(*args):
     selector_class, selector_args = SoftmaxSelector, [TEMP]
     #selector, args = EGreedySelector, [EPS_START, EPS_END, EPS_DECAY]
 
-    hidden = [256, 128, 64, 32]
+    hidden = [128, 64, 32]
     memory_size = 10000
-    test_size = 50
+    test_size = 10000
     n_qubits = 4
     max_gates = int(n_qubits**2/np.log(n_qubits))+1
     prioritized = True
     dropout = 0.5
     learning_rate = 1e-3
-    mode = "dqn"
+    mode = "dueling"
     architecture = create_architecture(LINE, n_qubits=n_qubits)
 
     env = Environment(architecture, max_gates, test_size)
