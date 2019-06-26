@@ -11,6 +11,7 @@ class DQN(nn.Module):
 
     def __init__(self, inputs, outputs, embedding, dropout=None):
         super(DQN, self).__init__()
+        self.name = "DQN_" + embedding.name
         layers = []
         if inputs != embedding.inputs:
             layers += [nn.Linear(inputs, embedding.inputs), nn.ReLU()]
@@ -35,6 +36,7 @@ class Duel_DQN(nn.Module):
 
     def __init__(self, inputs, outputs, embedding, fc1=100, fc2=50, dropout=None):
         super(Duel_DQN, self).__init__()
+        self.name="Duel_DQN_" + embedding.name
         layers = []
         if inputs != embedding.inputs:
             layers += [nn.Linear(inputs, embedding.inputs), nn.ReLU()]
@@ -73,6 +75,7 @@ class FC_Embedding(nn.Module):
 
     def __init__(self, inputs, outputs, hidden=100):
         super(FC_Embedding, self).__init__()
+        self.name = "FC"
         hidden = make_into_list(hidden)
         layers = [layer for in_size, out_size in zip([inputs*inputs] + hidden, hidden + [outputs]) 
                         for layer in [nn.Linear(in_size, out_size), nn.ReLU()]][:-1]
@@ -90,6 +93,7 @@ class CNN_Embedding(nn.Module):
 
     def __init__(self, inputs, outputs):
         super(CNN_Embedding, self).__init__()
+        self.name = "CNN"
         self.layers = []
         size = 0
         stride = 1
@@ -114,6 +118,7 @@ class RNN_Embedding(nn.Module):
 
     def __init__(self, inputs, outputs, hidden=100, max_length=None):
         super(RNN_Embedding, self).__init__()
+        self.name = "RNN"
         self.max_length = max_length if max_length else inputs
         self.hidden = hidden
         self.attn = nn.Linear(hidden+inputs, self.max_length)

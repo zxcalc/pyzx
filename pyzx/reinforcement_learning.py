@@ -145,6 +145,13 @@ class RLAgent():
         self.optimizer = optimizer
         self.topk = topk
         self.n_threads = n_threads
+
+    def save(self, path, **kwargs):
+        save_dict = kwargs
+        save_dict["model_state_dict"] = self.policy_net.state_dict()
+        save_dict["optimizer_state_dict"] = self.optimizer.state_dict()
+        save_dict["replay_memory"] = self.memory 
+        torch.save(save_dict, path)
     
     def optimize_model(self, policy_net, target_net):
         batch_size = self.BATCH_SIZE
@@ -292,6 +299,7 @@ class RLAgent():
                 
                 self.writer.add_scalar("total_gates", n_gates, total_steps)
                 self.writer.add_scalar("total_episodes", i_episode-n_episodes, total_steps)
+                self.save("checkpoints/RLAgent_"+self.policy_net.name+"_phase_"+str(n_gates), total_steps=total_steps, test_set=test_set)
                 #print(n_gates, total_steps)
                 #self.writer.add_scalar("total_time", datetime.datetime.now() - dataset_start, total_steps)
         else:
@@ -419,12 +427,14 @@ class RLAgent():
                         return prev_actions + [self.environment.actions[action]]
         return None
 
-    def test(self, test_set, max_steps=None):
+    def test(self, test_set, max_steps=None, topk=None):
+        if topk is None:
+            topk = self.topk
         counts = []
         for m, n in test_set:
             #cnots = self.greedy_find_solution(m, k=self.topk, max_steps=max_steps)
             #cnots = self.bfs_find_solution(m, k=self.topk, max_steps=max_steps)
-            cnots = self.dfs_find_solution(m, k=self.topk, max_steps=max_steps)
+            cnots = self.dfs_find_solution(m, k=topk, max_steps=max_steps)
             if cnots is not None:
                 overhead = len(cnots)/n
                 counts.append(overhead)
@@ -537,7 +547,7 @@ def main(*args):
     hidden = [128, 64, 32]
     memory_size = 10000
     test_size = 10000
-    n_qubits = 4
+    n_qubits = 2
     max_gates = int(n_qubits**2/np.log(n_qubits))+1
     prioritized = True
     dropout = 0.5
@@ -548,7 +558,7 @@ def main(*args):
     env = Environment(architecture, max_gates, test_size)
     n_actions = env.n_actions
     n_qubits = env.n_qubits
-    topk = 2#int(0.3*n_actions)+2
+    topk = 1#int(0.3*n_actions)+2
 
     if mode == "dueling":
         embedding = FC_Embedding(n_qubits, hidden[-2], hidden[:-2])
@@ -595,6 +605,11 @@ def main(*args):
     val_time = datetime.datetime.now()
     counts = agent.test(val_set, n_qubits**2+1)
     val_time = datetime.datetime.now() - val_time
+    
+    val_time2 = datetime.datetime.now()
+    counts2 = agent.test(val_set, n_qubits**2+1, topk=2)
+    val_time2 = datetime.datetime.now() - val_time
+
     baseline_time = datetime.datetime.now()
     baseline = []
     for m, n in val_set:
@@ -616,6 +631,18 @@ def main(*args):
         agent.writer.add_scalar("final_cnots_max", max(counts))
         agent.writer.add_histogram("final_cnots_hist", counts)#, bins=np.arange(n_gates+1))
         print(len(counts)/len(val_set), val_time, np.mean(counts), min(counts), max(counts))
+    else:
+        agent.writer.add_scalar("final_cnots_done", 0)
+        print(0.0, val_time, 0., np.nan, np.nan)
+        
+    print("\n" + mode + " topk=2:")
+    if len(counts2)>0:
+        agent.writer.add_scalar("final_cnots_done2", len(counts2)/len(val_set))
+        agent.writer.add_scalar("final_cnots_mean2", np.mean(counts2))
+        agent.writer.add_scalar("final_cnots_min2", min(counts2))
+        agent.writer.add_scalar("final_cnots_max2", max(counts2))
+        agent.writer.add_histogram("final_cnots_hist2", counts2)#, bins=np.arange(n_gates+1))
+        print(len(counts2)/len(val_set), val_time, np.mean(counts2), min(counts2), max(counts2))
     else:
         agent.writer.add_scalar("final_cnots_done", 0)
         print(0.0, val_time, 0., np.nan, np.nan)
