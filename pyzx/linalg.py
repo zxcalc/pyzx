@@ -284,7 +284,7 @@ class Mat2(object):
             cn = best_cn
         return cn.cnots # list(reversed(cn.cnots)) 
 
-from .circuit import CNOT
+from .circuit.gates import CNOT
 class CNOTMaker:
     def __init__(self):
         self.cnots = []

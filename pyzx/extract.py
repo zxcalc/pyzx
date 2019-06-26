@@ -26,7 +26,8 @@ from .linalg import Mat2, greedy_reduction, column_optimal_swap
 from .graph import Graph
 from .simplify import id_simp, tcount
 from .rules import match_spider_parallel, spider
-from .circuit import Circuit, ParityPhase, CNOT, HAD, ZPhase, CZ, InitAncilla
+from .circuit import Circuit
+from .circuit.gates import ParityPhase, CNOT, HAD, ZPhase, CZ, InitAncilla
 
 
 def bi_adj(g, vs, ws):
