@@ -28,6 +28,7 @@ from .routing.architecture import create_architecture, SQUARE, LINE, FULLY_CONNN
 from .routing.cnot_mapper import gauss, GENETIC_GAUSS_MODE
 from .parity_maps import build_random_parity_map, CNOT_tracker
 from .linalg import Mat2
+from .utils import make_into_list
 
 class Environment():
 
@@ -128,6 +129,20 @@ class SoftmaxSelector():
         #return torch.tensor([[choice]], device=device, dtype=torch.long)
         return choice
 
+class AllActionSelector():
+
+    def __init__(self, n_actions, policy_net=None, multi_select=True):
+        self.n_actions = n_actions
+        self.multi_select = multi_select
+        self.current_action = -1
+
+    def select_action(self, state, steps_done):
+        if self.multi_select:
+            return np.random.permutation(self.n_actions)
+        self.current_action += 1
+        self.current_action %= self.n_actions
+        return self.current_action
+
 class RLAgent():
 
     BATCH_SIZE = 64
@@ -151,6 +166,8 @@ class RLAgent():
         save_dict["model_state_dict"] = self.policy_net.state_dict()
         save_dict["optimizer_state_dict"] = self.optimizer.state_dict()
         save_dict["replay_memory"] = self.memory 
+        save_dict["topk"] = self.topk
+        save_dict["environment"] = self.environment
         torch.save(save_dict, path)
     
     def optimize_model(self, policy_net, target_net):
@@ -256,6 +273,7 @@ class RLAgent():
         total_steps = -1
         #self.n_threads = 3
         if self.n_threads == 0:
+            first_action_selector = AllActionSelector(self.environment.n_actions, self.policy_net, multi_select=True)
             for n_gates in range(1, max_gates+1):
                 self.steps_done = 0
                 all_counts = []
@@ -271,19 +289,30 @@ class RLAgent():
                     total_steps += 1
                     # Initialize the environment and state
                     start = datetime.datetime.now()
-                    for t in range(n_gates+1):#count():
-                        # Select and perform an action
-                        #action = self.selector.select_action(state, self.steps_done)
-                        #self.environment.start(state)
-                        #next_state, reward, done, _ = self.environment.step(action)
-                        transition = simulate_run(state, self.environment, self.selector, self.steps_done)
-                        #print(np.asarray(state.data) - np.asarray(next_state.data))
+                    min_steps = n_gates + 1
+                    for first_action in first_action_selector.select_action(state, self.steps_done):
+                        self.environment.start(state)
+                        next_state, reward, done, _ = self.environment.step(first_action)
+                        transition = Transition(state, first_action, next_state, reward)
                         loss = self.update(transition, periodic_update)
-                        if loss: losses.append(loss)
-                        self.steps_done += 1
-                        _, _, state, _ = transition
-                        if state is None:
-                            break
+                        if loss is not None: losses.append(loss)
+                        for t in range(n_gates):#count():
+                            if next_state is None:
+                                min_steps = min(t+1, min_steps)
+                                break
+                            # Select and perform an action
+                            #action = self.selector.select_action(state, self.steps_done)
+                            #self.environment.start(state)
+                            #next_state, reward, done, _ = self.environment.step(action)
+                            transition = simulate_run(next_state, self.environment, self.selector, self.steps_done+t+1)
+                            #print(np.asarray(state.data) - np.asarray(next_state.data))
+                            loss = self.update(transition, periodic_update)
+                            if loss: losses.append(loss)
+                            #self.steps_done += 1
+                            _, _, next_state, _ = transition
+                            #if state is None:
+                            #    break
+                    self.steps_done += min_steps
                     # Update the target network, copying all weights and biases in DQN
                     if periodic_update and i_episode % self.TARGET_UPDATE == 0:
                         self.target_net.load_state_dict(self.policy_net.state_dict())
@@ -547,7 +576,7 @@ def main(*args):
     hidden = [128, 64, 32]
     memory_size = 10000
     test_size = 10000
-    n_qubits = 2
+    n_qubits = 4
     max_gates = int(n_qubits**2/np.log(n_qubits))+1
     prioritized = True
     dropout = 0.5
@@ -558,7 +587,7 @@ def main(*args):
     env = Environment(architecture, max_gates, test_size)
     n_actions = env.n_actions
     n_qubits = env.n_qubits
-    topk = 1#int(0.3*n_actions)+2
+    topk = 2#int(0.3*n_actions)+2
 
     if mode == "dueling":
         embedding = FC_Embedding(n_qubits, hidden[-2], hidden[:-2])
