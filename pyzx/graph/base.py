@@ -19,6 +19,7 @@ import abc
 from fractions import Fraction
 import math
 import cmath
+import copy
 
 from pyzx.tensor import tensorfy, tensor_to_matrix
 
@@ -30,12 +31,37 @@ class Scalar(object):
         self.floatfactor = 1.0
         self.is_unknown = False # Whether this represents an unknown scalar value
 
+    def __repr__(self):
+        return "Scalar({})".format(str(self))
+
+    def __str__(self):
+        if self.is_unknown:
+            return "UNKNOWN"
+        s = "{:.2f} = ".format(self.to_number())
+        if self.floatfactor != 1.0:
+            s += "{:.2f}".format(self.floatfactor)
+        if self.phase:
+            s += "exp({}ipi)".format(str(self.phase))
+        s += "sqrt(2)^{:d}".format(self.power2)
+        for node in self.phasenodes:
+            s += "(1+exp({}ipi))".format(str(node))
+        return s
+
+    def copy(self):
+        s = Scalar()
+        s.power2 = self.power2
+        s.phase = self.phase
+        s.phasenodes = copy.copy(self.phasenodes)
+        s.floatfactor = self.floatfactor
+        s.is_unknown = self.is_unknown
+        return s
+
     def to_number(self):
         val = math.sqrt(2)**self.power2
         val *= cmath.exp(1j*math.pi*self.phase)
-        for node in phasenodes: # Node should be a Fraction
-            val *= 1+cmath.exp(math.pi*node)
-        return val*self.floatfactor
+        for node in self.phasenodes: # Node should be a Fraction
+            val *= 1+cmath.exp(1j*math.pi*node)
+        return complex(val*self.floatfactor)
 
     def set_unknown(self):
         self.is_unknown = True
@@ -44,7 +70,7 @@ class Scalar(object):
     def add_power(self, n):
         self.power2 += n
     def add_phase(self, phase):
-        self.phase += phase
+        self.phase = (self.phase + phase) % 2
     def add_node(self, node):
         self.phasenodes.append(node)
     def add_float(self,f):
@@ -131,6 +157,7 @@ class BaseGraph(object):
             backend = type(self).backend
         g = Graph(backend = backend)
         g.track_phases = self.track_phases
+        g.scalar = self.scalar.copy()
         mult = 1
         if adjoint: mult = -1
 
@@ -223,12 +250,12 @@ class BaseGraph(object):
         d = self.depth()
         self.replace_subgraph(d-1,d,other)
 
-    def to_tensor(self):
+    def to_tensor(self, preserve_scalar=False):
         """Returns a representation of the graph as a tensor using :func:`~pyzx.tensor.tensorfy`"""
-        return tensorfy(self)
-    def to_matrix(self):
+        return tensorfy(self, preserve_scalar)
+    def to_matrix(self,preserve_scalar=False):
         """Returns a representation of the graph as a matrix using :func:`~pyzx.tensor.tensorfy`"""
-        return tensor_to_matrix(tensorfy(self), len(self.inputs), len(self.outputs))
+        return tensor_to_matrix(tensorfy(self, preserve_scalar), len(self.inputs), len(self.outputs))
 
 
     def vindex(self):
@@ -358,7 +385,6 @@ class BaseGraph(object):
         result from adding (#edges, #h-edges), and then removing all parallel edges using Hopf/spider laws."""
         add = ([],[]) # list of edges and h-edges to add
         remove = []   # list of edges to remove
-        #add_pi_phase = []
         for (v1,v2),(n1,n2) in etab.items():
             conn_type = self.edge_type(self.edge(v1,v2))
             if conn_type == 1: n1 += 1 #and add to the relevant edge count
@@ -366,23 +392,25 @@ class BaseGraph(object):
             
             t1 = self.type(v1)
             t2 = self.type(v2)
-            if t1 == t2:         #types are equal,
-                n1 = bool(n1)     #so normal edges fuse
-                n2 = n2%2         #while hadamard edges go modulo 2
+            if t1 == t2:                #types are equal,
+                n1 = bool(n1)           #so normal edges fuse
+                pairs, n2 = divmod(n2,2)#while hadamard edges go modulo 2
+                self.scalar.add_power(-2*pairs)
                 if n1 != 0 and n2 != 0:  #reduction rule for when both edges appear
                     new_type = 1
                     self.add_to_phase(v1, 1)
-                    #add_pi_phase.append(v1)
+                    self.scalar.add_power(-1)
                 elif n1 != 0: new_type = 1
                 elif n2 != 0: new_type = 2
                 else: new_type = 0
-            else:                #types are different
-                n1 = n1%2        #so normal edges go modulo 2
-                n2 = bool(n2)    #while hadamard edges fuse
+            else:                       #types are different
+                pairs, n1 = divmod(n1,2)#so normal edges go modulo 2
+                n2 = bool(n2)           #while hadamard edges fuse
+                self.scalar.add_power(-2*pairs)
                 if n1 != 0 and n2 != 0:  #reduction rule for when both edges appear
                     new_type = 2
                     self.add_to_phase(v1, 1)
-                    #add_pi_phase.append(v1)
+                    self.scalar.add_power(-1)
                 elif n1 != 0: new_type = 1
                 elif n2 != 0: new_type = 2
                 else: new_type = 0
@@ -435,7 +463,10 @@ class BaseGraph(object):
     def remove_isolated_vertices(self):
         """Deletes all vertices that are not connected to any other vertex.
         Should be replaced by a faster alternative if available in the backend."""
-        self.remove_vertices([v for v in self.vertices() if self.vertex_degree(v)==0])
+        isolated = [v for v in self.vertices() if self.vertex_degree(v)==0]
+        for v in isolated:
+            self.scalar.add_node(self.phase(v))
+        self.remove_vertices(isolated)
 
     def remove_edges(self, edges):
         """Removes the list of edges from the graph."""

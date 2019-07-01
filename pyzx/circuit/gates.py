@@ -316,6 +316,7 @@ class CZ(Gate):
         g.add_edge((t,c),2)
         rs[self.target] = r+1
         rs[self.control] = r+1
+        g.scalar.add_power(1)
 
 
 class ParityPhase(Gate):

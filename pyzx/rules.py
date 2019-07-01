@@ -437,6 +437,8 @@ def pivot(g, matches):
     rem_verts = []
     rem_edges = []
     etab = dict()
+
+
     for m in matches:
         # compute:
         #  n[0] <- non-boundary neighbours of m[0] only
@@ -453,15 +455,23 @@ def pivot(g, matches):
         es = ([(s,t) if s < t else (t,s) for s in n[0] for t in n[1]] +
               [(s,t) if s < t else (t,s) for s in n[1] for t in n[2]] +
               [(s,t) if s < t else (t,s) for s in n[0] for t in n[2]])
+        k0, k1, k2 = len(n[0]), len(n[1]), len(n[2])
+        g.scalar.add_power(k0*k2 + k1*k2 + k0*k1)
         
         for v in n[2]: g.add_to_phase(v, 1)
+
+        if g.phase(m[0]) and g.phase(m[1]): g.scalar.add_phase(Fraction(1))
+        if not m[2] and not m[3]: 
+            g.scalar.add_power(-(k0+k1+2*k2-1))
+        elif not m[2]:
+            g.scalar.add_power(-(k1+k2))
+        else: g.scalar.add_power(-(k0+k2))
 
         for i in range(2):
             # if m[i] has a phase, it will get copied on to the neighbours of m[1-i]:
             a = g.phase(m[i])
             for v in n[1-i]: g.add_to_phase(v, a)
             for v in n[2]: g.add_to_phase(v, a)
-
 
             if not m[i+2]:
                 # if there is no boundary, the other vertex is destroyed
@@ -537,9 +547,13 @@ def lcomp(g, matches):
     for m in matches:
         a = g.phase(m[0])
         rem.append(m[0])
-        for i in range(len(m[1])):
+        if a.numerator == 1: g.scalar.add_phase(Fraction(1,4))
+        else: g.scalar.add_phase(Fraction(7,4))
+        n = len(m[1])
+        g.scalar.add_power((n-2)*(n-1)//2)
+        for i in range(n):
             g.add_to_phase(m[1][i], -a)
-            for j in range(i+1, len(m[1])):
+            for j in range(i+1, n):
                 e = (m[1][i],m[1][j])
                 if (e[0] > e[1]): e = (e[1],e[0])
                 he = etab.get(e, (0,0))[1]
@@ -624,13 +638,16 @@ def match_phase_gadgets(g):
             n = gad[0]
             v = gadgets[n]
             if phases[n] != 0: # If the phase of the axel vertex is pi, we change the phase of the gadget
+                g.scalar.add_phase(phases[v])
                 g.phase_negate(v)
                 m.append((v,n,-phases[v],[],[]))
         else:
             totphase = sum((1 if phases[n]==0 else -1)*phases[gadgets[n]] for n in gad)%2
             for n in gad:
                 if phases[n] != 0:
+                    g.scalar.add_phase(phases[gadgets[n]])
                     g.phase_negate(gadgets[n])
+            g.scalar.add_power(-((len(par)-1)*(len(gad)-1)))
             n = gad.pop()
             v = gadgets[n]
             m.append((v,n,totphase, gad, [gadgets[n] for n in gad]))

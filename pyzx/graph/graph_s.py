@@ -88,9 +88,6 @@ class GraphS(BaseGraph):
 	def remove_vertex(self, vertex):
 		self.remove_vertices([vertex])
 
-	def remove_isolated_vertices(self):
-		self.remove_vertices([v for v in self.vertices() if self.vertex_degree(v)==0])
-
 	def remove_edges(self, edges):
 		for s,t in edges:
 			self.nedges -= 1

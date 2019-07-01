@@ -53,7 +53,7 @@ def pop_and_shift(verts, indices):
             indices[w] = l2
     return res
 
-def tensorfy(g):
+def tensorfy(g, preserve_scalar=False):
     """Takes in a Graph and outputs a multidimensional numpy array
     representing the linear map the ZX-diagram implements.
     Beware that quantum circuits take exponential memory to represent."""
@@ -69,7 +69,7 @@ def tensorfy(g):
     
     had = 1/sqrt(2)*np.mat([[1,1],[1,-1]])
     id2 = np.identity(2)
-    tensor = np.array(1.0)
+    tensor = np.array(1.0,dtype='complex128')
     qubits = len(g.inputs)
     for i in range(qubits): tensor = np.tensordot(tensor,id2,axes=0)
     inputs = sorted(g.inputs,key=g.qubit)
@@ -104,7 +104,7 @@ def tensorfy(g):
             tensor = np.tensordot(tensor,t,axes=(contr,list(range(len(t.shape)-len(contr),len(t.shape)))))
             indices[v] = list(range(len(tensor.shape)-d+len(contr), len(tensor.shape)))
             
-            if i % 10 == 0:
+            if preserve_scalar and i % 10 == 0:
                 if np.abs(tensor).max() < 10**-6: # Values are becoming too small
                     tensor *= 10**4 # So scale all the numbers up
     perm = []
@@ -114,7 +114,7 @@ def tensorfy(g):
         perm.append(i)
 
     tensor = np.transpose(tensor,perm)
-        
+    if preserve_scalar: tensor *= g.scalar.to_number()
     return tensor
 
 def tensor_to_matrix(t, inputs, outputs):
@@ -134,7 +134,7 @@ def tensor_to_matrix(t, inputs, outputs):
         rows.append(row)
     return np.matrix(rows)
 
-def compare_tensors(t1,t2):
+def compare_tensors(t1,t2, preserve_scalar=False):
     """Returns true if ``t1`` and ``t2`` are tensors equal up to a nonzero number.
 
     Example: To check whether two ZX-graphs are semantically the same you would do::
@@ -144,11 +144,12 @@ def compare_tensors(t1,t2):
         compare_tensors(t1,t2) # True if g1 and g2 represent the same circuit
     """
     if not isinstance(t1, np.ndarray):
-        t1 = t1.to_tensor()
+        t1 = t1.to_tensor(preserve_scalar)
     if not isinstance(t2, np.ndarray):
-        t2 = t2.to_tensor()
-    epsilon = 10**-14
+        t2 = t2.to_tensor(preserve_scalar)
     if np.allclose(t1,t2): return True
+    if preserve_scalar: return False # We do not check for equality up to scalar
+    epsilon = 10**-14
     for i,a in enumerate(t1.flat):
         if abs(a)>epsilon: 
             if abs(t2.flat[i])<epsilon: return False
