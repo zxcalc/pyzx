@@ -123,14 +123,20 @@ def tensor_to_matrix(t, inputs, outputs):
     2^(outputs) x 2^(inputs)"""
     rows = []
     for r in range(2**outputs):
-        o = [int(i) for i in bin(r)[2:].zfill(outputs)]
+        if outputs == 0:
+            o = []
+        else:
+            o = [int(i) for i in bin(r)[2:].zfill(outputs)]
         row = []
-        for c in range(2**inputs):
-            a = o.copy()
-            a.extend([int(i) for i in bin(c)[2:].zfill(inputs)])
-            #print(a)
-            #print(t[tuple(a)])
-            row.append(t[tuple(a)])
+        if inputs == 0:
+            row.append(t[tuple(o)])
+        else:
+            for c in range(2**inputs):
+                a = o.copy()
+                a.extend([int(i) for i in bin(c)[2:].zfill(inputs)])
+                #print(a)
+                #print(t[tuple(a)])
+                row.append(t[tuple(a)])
         rows.append(row)
     return np.matrix(rows)
 
