@@ -71,22 +71,34 @@ def replace_magic_states(g):
     phases = g.phases()
 
     # First we find 6 T-like spiders
-    states = []
+    boundary = []
+    internal = []
     gadgets = []
+    ranking = dict()
     for v in g.vertices():
         if not phases[v] or phases[v].denominator != 4: continue
-        if len(g.neighbours(v)) == 1:
+        if g.vertex_degree(v) == 1:
             w = list(g.neighbours(v))[0]
-            #if g.type(w) == 1:
-            gadgets.append(v)
+            if g.type(w) == 1:
+                gadgets.append(v)
+                ranking[v] = g.vertex_degree(w)-1
         else:
-            states.append(v)
+            if any(w in g.inputs or w in g.outputs for w in g.neighbours(v)):
+                boundary.append(v)
+            else:
+                internal.append(v)
+            ranking[v] = g.vertex_degree(v)
 
-    if len(states) >= 6:
-        candidates = states[:6]
-    else:
-        candidates = states.copy()
-        candidates.extend(gadgets[:6-len(states)])
+    candidates = sorted(ranking.keys(), key=lambda v: ranking[v], reverse=True)[:6]
+    # if len(internal) >= 6:
+    #     candidates = internal[:6]
+    # else:
+    #     candidates = internal.copy()
+    #     candidates.extend(boundary[:6-len(candidates)])
+    # if len(candidates) < 6:
+    #     candidates.extend(gadgets[:6-len(candidates)])
+    if len(candidates) < 6:
+        raise Exception("Not enough T states to split. Need at least 6")
 
     graphs = []
     replace_functions = [replace_B60, replace_B66, replace_E6, replace_O6, replace_K6, replace_phi1, replace_phi2]
