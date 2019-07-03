@@ -250,6 +250,32 @@ class BaseGraph(object):
         d = self.depth()
         self.replace_subgraph(d-1,d,other)
 
+    def apply_state(self, state):
+        """Inserts a state into the inputs of the graph. ``state`` should be
+        a string with every character representing an input state for each qubit.
+        The possible types of states are on of '0', '1', '+', '-' for the respective
+        kets. If '-' is specified this input is skipped."""
+        if len(state) > len(self.inputs): raise TypeError("Too many input states specified")
+        inputs = self.inputs.copy()
+        self.inputs = []
+        for i,s in enumerate(state):
+            v = inputs[i]
+            if s == '/': 
+                self.inputs.append(v)
+                continue
+            if s in ('0', '1'):
+                self.scalar.add_power(-1)
+                self.set_type(v, 2)
+                if s == '1':
+                    self.set_phase(v, Fraction(1))
+            elif s in ('+', '-'):
+                self.scalar.add_power(-1)
+                self.set_type(v, 1)
+                if s == '-':
+                    self.set_phase(v, Fraction(1))
+            else:
+                raise TypeError("Unknown input state " + s)
+
     def to_tensor(self, preserve_scalar=False):
         """Returns a representation of the graph as a tensor using :func:`~pyzx.tensor.tensorfy`"""
         return tensorfy(self, preserve_scalar)
@@ -463,10 +489,22 @@ class BaseGraph(object):
     def remove_isolated_vertices(self):
         """Deletes all vertices that are not connected to any other vertex.
         Should be replaced by a faster alternative if available in the backend."""
-        isolated = [v for v in self.vertices() if self.vertex_degree(v)==0]
-        for v in isolated:
-            self.scalar.add_node(self.phase(v))
-        self.remove_vertices(isolated)
+        rem = []
+        for v in self.vertices():
+            d = self.vertex_degree(v)
+            if d == 0:
+                rem.append(v)
+                self.scalar.add_node(self.phase(v))
+            if d == 1: # It has a unique neighbour
+                if v in rem: continue # Already taken care of
+                if g.type(v) == 0: continue # Ignore in/outputs
+                w = list(self.neighbours(v))[0]
+                if len(self.neighbours(w)) > 1: continue # But this neighbour has other neighbours
+                # At this point w and v are only connected to each other
+                # We will assume they are of different colours (or same colour connected by H-edge),
+                # because otherwise some spider fusion should have already fused them together.
+                p1, p2 = self.phase(v1), self.phase(v2)
+        self.remove_vertices(rem)
 
     def remove_edges(self, edges):
         """Removes the list of edges from the graph."""
