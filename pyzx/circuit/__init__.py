@@ -225,10 +225,10 @@ class Circuit(object):
 
     def to_quipper(self):
         """Produces a Quipper ASCII description of the circuit."""
-        s = "Inputs: " + ", ".join("{!s}Qbit".format(i) for i in range(self.qubits)) + "\n"
+        s = "Inputs: " + ", ".join("{!s}:Qbit".format(i) for i in range(self.qubits)) + "\n"
         for g in self.gates:
             s += g.to_quipper() + "\n"
-        s += "Outputs: " + ", ".join("{!s}Qbit".format(i) for i in range(self.qubits))
+        s += "Outputs: " + ", ".join("{!s}:Qbit".format(i) for i in range(self.qubits))
         return s
 
     def to_qasm(self):
