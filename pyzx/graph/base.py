@@ -497,7 +497,7 @@ class BaseGraph(object):
                 self.scalar.add_node(self.phase(v))
             if d == 1: # It has a unique neighbour
                 if v in rem: continue # Already taken care of
-                if g.type(v) == 0: continue # Ignore in/outputs
+                if self.type(v) == 0: continue # Ignore in/outputs
                 w = list(self.neighbours(v))[0]
                 if len(self.neighbours(w)) > 1: continue # But this neighbour has other neighbours
                 # At this point w and v are only connected to each other
