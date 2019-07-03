@@ -23,6 +23,9 @@ import copy
 
 from pyzx.tensor import tensorfy, tensor_to_matrix
 
+def cexp(val):
+    return cmath.exp(1j*math.pi*val)
+
 class Scalar(object):
     def __init__(self):
         self.power2 = 0 # Stores power of square root of two
@@ -58,9 +61,9 @@ class Scalar(object):
 
     def to_number(self):
         val = math.sqrt(2)**self.power2
-        val *= cmath.exp(1j*math.pi*self.phase)
+        val *= cexp(self.phase)
         for node in self.phasenodes: # Node should be a Fraction
-            val *= 1+cmath.exp(1j*math.pi*node)
+            val *= 1+cexp(node)
         return complex(val*self.floatfactor)
 
     def set_unknown(self):
@@ -75,6 +78,43 @@ class Scalar(object):
         self.phasenodes.append(node)
     def add_float(self,f):
         self.floatfactor *= f
+
+    def add_spider_pair(self, p1,p2):
+        """Add the scalar corresponding to a connected pair of spiders (p1)-H-(p2)."""
+        # These if statements look quite arbitary, but they are just calculations of the scalar
+        # of a pair of connected single wire spiders of opposite colours.
+        # We make special cases for Clifford phases and pi/4 phases.
+        if p2 in (0,1):
+            p1,p2 = p2, p1
+        if p1 == 0:
+            self.add_power(1)
+            return
+        elif p1 == 1:
+            self.add_power(1)
+            self.add_phase(p2)
+            return
+        if p2.denominator == 2:
+            p1, p2 = p2, p1
+        if p1 == Fraction(1,2):
+            self.add_phase(Fraction(1,4))
+            self.add_node((p2-Fraction(1,2))%2)
+            return
+        elif p1 == Fraction(3,2):
+            self.add_phase(Fraction(7,4))
+            self.add_node((p2-Fraction(3,2))%2)
+            return
+        if (p1 + p2) % 2 == 0:
+            if p1.denominator == 4:
+                if p1.numerator in (3,5):
+                    self.add_phase(Fraction(1))
+                return
+            self.add_power(1)
+            self.add_float(math.cos(p1))
+            return
+        # Generic case
+        self.add_power(-1)
+        self.add_float(1+cexp(p1)+cexp(p2) - cexp(p1+p2))
+        return
 
 
 class DocstringMeta(abc.ABCMeta):
@@ -500,10 +540,12 @@ class BaseGraph(object):
                 if self.type(v) == 0: continue # Ignore in/outputs
                 w = list(self.neighbours(v))[0]
                 if len(self.neighbours(w)) > 1: continue # But this neighbour has other neighbours
+                if self.type(w) == 0: continue # It's a state/effect
                 # At this point w and v are only connected to each other
-                # We will assume they are of different colours (or same colour connected by H-edge),
-                # because otherwise some spider fusion should have already fused them together.
-                p1, p2 = self.phase(v1), self.phase(v2)
+                rem.append(v)
+                rem.append(w)
+                self.scalar.add_spider_pair(self.phase(v), self.phase(w))
+
         self.remove_vertices(rem)
 
     def remove_edges(self, edges):
