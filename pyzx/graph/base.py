@@ -316,10 +316,36 @@ class BaseGraph(object):
             else:
                 raise TypeError("Unknown input state " + s)
 
-    def to_tensor(self, preserve_scalar=False):
+    def apply_effect(self, effect):
+        """Inserts a state into the inputs of the graph. ``state`` should be
+        a string with every character representing an input state for each qubit.
+        The possible types of states are on of '0', '1', '+', '-' for the respective
+        kets. If '-' is specified this input is skipped."""
+        if len(effect) > len(self.outputs): raise TypeError("Too many output effects specified")
+        outputs = self.outputs.copy()
+        self.outputs = []
+        for i,s in enumerate(effect):
+            v = outputs[i]
+            if s == '/': 
+                self.outputs.append(v)
+                continue
+            if s in ('0', '1'):
+                self.scalar.add_power(-1)
+                self.set_type(v, 2)
+                if s == '1':
+                    self.set_phase(v, Fraction(1))
+            elif s in ('+', '-'):
+                self.scalar.add_power(-1)
+                self.set_type(v, 1)
+                if s == '-':
+                    self.set_phase(v, Fraction(1))
+            else:
+                raise TypeError("Unknown output effect " + s)
+
+    def to_tensor(self, preserve_scalar=True):
         """Returns a representation of the graph as a tensor using :func:`~pyzx.tensor.tensorfy`"""
         return tensorfy(self, preserve_scalar)
-    def to_matrix(self,preserve_scalar=False):
+    def to_matrix(self,preserve_scalar=True):
         """Returns a representation of the graph as a matrix using :func:`~pyzx.tensor.tensorfy`"""
         return tensor_to_matrix(tensorfy(self, preserve_scalar), len(self.inputs), len(self.outputs))
 

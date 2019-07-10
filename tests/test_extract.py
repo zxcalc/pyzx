@@ -83,12 +83,12 @@ class TestExtract(unittest.TestCase):
         random.seed(SEED)
         for i in range(5):
             circ = cliffordT(4,50,0.1)
-            t = tensorfy(circ)
+            t = tensorfy(circ,False)
             clifford_simp(circ,quiet=True)
             with self.subTest(i=i):
                 c = streaming_extract(circ)
-                t2 = c.to_tensor()
-                self.assertTrue(compare_tensors(t,t2))
+                t2 = c.to_tensor(False)
+                self.assertTrue(compare_tensors(t,t2,False))
 
 if __name__ == '__main__':
     unittest.main()

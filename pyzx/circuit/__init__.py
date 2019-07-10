@@ -162,10 +162,10 @@ class Circuit(object):
         from .graphparser import circuit_to_graph
         return circuit_to_graph(self, compress_rows, backend)
 
-    def to_tensor(self, preserve_scalar=False):
+    def to_tensor(self, preserve_scalar=True):
         """Returns a numpy tensor describing the circuit."""
         return self.to_graph().to_tensor(preserve_scalar)
-    def to_matrix(self, preserve_scalar=False):
+    def to_matrix(self, preserve_scalar=True):
         """Returns a numpy matrix describing the circuit."""
         return self.to_graph().to_matrix(preserve_scalar)
 

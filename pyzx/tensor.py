@@ -53,7 +53,7 @@ def pop_and_shift(verts, indices):
             indices[w] = l2
     return res
 
-def tensorfy(g, preserve_scalar=False):
+def tensorfy(g, preserve_scalar=True):
     """Takes in a Graph and outputs a multidimensional numpy array
     representing the linear map the ZX-diagram implements.
     Beware that quantum circuits take exponential memory to represent."""
@@ -140,7 +140,7 @@ def tensor_to_matrix(t, inputs, outputs):
         rows.append(row)
     return np.matrix(rows)
 
-def compare_tensors(t1,t2, preserve_scalar=False):
+def compare_tensors(t1,t2, preserve_scalar=True):
     """Returns true if ``t1`` and ``t2`` are tensors equal up to a nonzero number.
 
     Example: To check whether two ZX-graphs are semantically the same you would do::
