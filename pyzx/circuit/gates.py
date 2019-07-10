@@ -368,6 +368,7 @@ class CX(CZ):
         g.add_edge((t,c),2)
         rs[self.target] = r+1
         rs[self.control] = r+1
+        g.scalar.add_power(1)
 
     def to_basic_gates(self):
         return [HAD(self.control), CNOT(self.control,self.target), HAD(self.control)]
