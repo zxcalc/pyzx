@@ -50,6 +50,9 @@ class Scalar(object):
             s += "(1+exp({}ipi))".format(str(node))
         return s
 
+    def __complex__(self):
+        return self.to_number()
+
     def copy(self):
         s = Scalar()
         s.power2 = self.power2
@@ -60,10 +63,10 @@ class Scalar(object):
         return s
 
     def to_number(self):
-        val = math.sqrt(2)**self.power2
-        val *= cexp(self.phase)
+        val = cexp(self.phase)
         for node in self.phasenodes: # Node should be a Fraction
             val *= 1+cexp(node)
+        val *= math.sqrt(2)**self.power2
         return complex(val*self.floatfactor)
 
     def set_unknown(self):
@@ -553,8 +556,7 @@ class BaseGraph(object):
         self.remove_vertices([vertex])
 
     def remove_isolated_vertices(self):
-        """Deletes all vertices that are not connected to any other vertex.
-        Should be replaced by a faster alternative if available in the backend."""
+        """Deletes all vertices and vertex pairs that are not connected to any other vertex."""
         rem = []
         for v in self.vertices():
             d = self.vertex_degree(v)
@@ -570,8 +572,17 @@ class BaseGraph(object):
                 # At this point w and v are only connected to each other
                 rem.append(v)
                 rem.append(w)
-                self.scalar.add_spider_pair(self.phase(v), self.phase(w))
-
+                et = self.edge_type(self.edge(v,w))
+                if self.type(v) == self.type(w):
+                    if et == 1:
+                        self.scalar.add_node(self.phase(v)+self.phase(w))
+                    else:
+                        self.scalar.add_spider_pair(self.phase(v), self.phase(w))
+                else:
+                    if et == 1:
+                        self.scalar.add_spider_pair(self.phase(v), self.phase(w))
+                    else:
+                        self.scalar.add_node(self.phase(v)+self.phase(w))
         self.remove_vertices(rem)
 
     def remove_edges(self, edges):
