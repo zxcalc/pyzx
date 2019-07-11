@@ -21,9 +21,17 @@
 
 import math
 sq2 = math.sqrt(2)
+omega = (1+1j)/sq2
 from fractions import Fraction
+import itertools
+
+try:
+    import numpy as np
+except:
+    np = None
 
 from . import simplify
+from .circuit import Circuit
 
 MAGIC_GLOBAL = -(7+5*sq2)/(2+2j)
 MAGIC_B60 = -16 + 12*sq2
@@ -60,6 +68,74 @@ class SumGraph(object):
             if not quiet:
                 print("Graph {:d}:".format(i))
             simplify.full_reduce(g, quiet=quiet)
+
+def calculate_path_sum(g):
+    """Input should be a fully reduced scalar graph-like Clifford+T ZX-diagram. 
+    Calculates the scalar it represents."""
+    if g.num_vertices() < 10: return g.to_tensor().flatten()[0]
+    phases = g.phases()
+    prefactor = 0
+    variable_dict = dict()
+    variables = [] # Contains the phases of each of the variables
+    czs = []
+    xors = dict()
+    for v in g.vertices():
+        if v in variable_dict: continue
+        if not phases[v]: continue #It is the axle of a phase gadget, ignore it
+        if g.vertex_degree(v) == 1: # Probably phase gadget
+            w = list(g.neighbours(v))[0]
+            if not phases[w]: # It is indeed a phase gadget
+                targets = set()
+                for t in g.neighbours(w):
+                    if t == v: continue
+                    if t not in variable_dict:
+                        variable_dict[t] = len(variables)
+                        variables.append(int(phases[t]*4))
+                    targets.add(variable_dict[t])
+                prefactor += len(targets)-1
+                xors[frozenset(targets)] = int(phases[v]*4)
+            continue
+        variable_dict[v] = len(variables)
+        variables.append(int(phases[v]*4))
+    verts = list(variable_dict.keys())
+    variables = np.array(variables)
+    n = len(verts)
+    for i in range(n):
+        v = verts[i]
+        for j in range(i+1,n):
+            w = verts[j]
+            if g.connected(v,w):
+                czs.append((i,j))
+                prefactor += 1
+
+    # c = Circuit(n)
+    # for i in range(n):
+    #     c.add_gate("ZPhase",i,phase=Fraction(variables[i],4))
+    # for targets, phase in xors.items():
+    #     c.add_gate("ParityPhase", Fraction(phase,4), *list(targets))
+    # for i,j in czs:
+    #     c.add_gate("CZ", i,j)
+    # g2 = c.to_graph()
+    # g2.apply_state("+"*n)
+    # g2.apply_effect("+"*n)
+    # g2.scalar.add_power(2*n)
+    # val = g2.to_tensor().flatten()[0]
+    # return g.scalar.to_number()*val*sq2**(-prefactor)
+    xors = [(np.array([int(k in xor) for k in range(n)]),phase) for xor,phase in xors.items()]
+    print(n,len(czs),len(xors))
+    
+    results = [0]*8
+    for bitstring in itertools.product([0,1],repeat=n):
+        val = np.dot(variables,bitstring)
+        val += sum(phase*(np.dot(bitstring,xor)%2) for xor,phase in xors)
+        val += 4*sum(1 for i,j in czs if bitstring[i] and bitstring[j])
+        try: results[val % 8] += 1
+        except: print(val)
+    print(results)
+    r = results
+    return g.scalar.to_number()*sq2**(-prefactor)*(r[0]-r[4]+omega*(r[1]-r[5]) +1j*(r[2]-r[6]) + 1j*omega*(r[3]-r[7]))
+
+
 
 def replace_magic_states(g):
     """This function takes in a ZX-diagram in graph-like form 

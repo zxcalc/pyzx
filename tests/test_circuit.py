@@ -69,14 +69,6 @@ class TestCircuit(unittest.TestCase):
         t2 = tensorfy(g2,False)
         self.assertTrue(compare_tensors(t,t2,False))
 
-    # def test_circuit_extract_produces_circuit(self):
-    #     random.seed(SEED)
-    #     g = cliffordT(6, 60, 0.15)
-    #     clifford_simp(g, quiet=True)
-    #     circuit_extract(g)
-    #     # This should not result in an exception
-    #     Circuit.from_graph(g)
-
     def test_circuit_extract_preserves_semantics(self):
         random.seed(SEED)
         g = cliffordT(5, 70, 0.15)
@@ -85,6 +77,16 @@ class TestCircuit(unittest.TestCase):
         c = streaming_extract(g)
         t2 = c.to_tensor(False)
         self.assertTrue(compare_tensors(t,t2,False))
+
+    def test_two_qubit_gate_semantics(self):
+        c = Circuit(2)
+        c.add_gate("CNOT",0,1)
+        cnot_matrix = np.array([[1,0,0,0],[0,1,0,0],[0,0,0,1],[0,0,1,0]])
+        self.assertTrue(compare_tensors(c.to_matrix(),cnot_matrix))
+        c = Circuit(2)
+        c.add_gate("CZ",0,1)
+        cz_matrix = np.array([[1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,-1]])
+        self.assertTrue(compare_tensors(c.to_matrix(),cz_matrix))
 
 if __name__ == '__main__':
     unittest.main()

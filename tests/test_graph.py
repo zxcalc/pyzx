@@ -17,12 +17,19 @@
 
 import unittest
 from fractions import Fraction
+import itertools
 import sys
 if __name__ == '__main__':
     sys.path.append('..')
     sys.path.append('.')
 
 from pyzx.graph import Graph
+
+try:
+    import numpy as np
+    from pyzx.tensor import compare_tensors
+except ImportError:
+    np = None
 
 
 class TestGraphBasicMethods(unittest.TestCase):
@@ -118,6 +125,33 @@ class TestGraphBasicMethods(unittest.TestCase):
         v1, v2 = list(g2.vertices())
         self.assertEqual(g.edge_type(g.edge(v1,v2)),2)
 
+    @unittest.skipUnless(np, "numpy needs to be installed for this to run")
+    def test_remove_isolated_vertex_preserves_semantics(self):
+        g = Graph()
+        v = g.add_vertex(1,0,0)
+        g2 = g.copy()
+        g2.remove_isolated_vertices()
+        self.assertTrue(compare_tensors(g,g2))
+        self.assertEqual(g2.scalar.to_number(),2)
+        g.set_phase(v,Fraction(1))
+        g2 = g.copy()
+        g2.remove_isolated_vertices()
+        self.assertTrue(compare_tensors(g,g2))
+        self.assertAlmostEqual(g2.scalar.to_number(),0)
+
+    @unittest.skipUnless(np, "numpy needs to be installed for this to run")
+    def test_remove_isolated_pair_preserves_semantics(self):
+        for i,j,k in itertools.product([1,2],repeat=3):
+            for phase1, phase2 in itertools.product([0,1,2],[0,4,5]):
+                with self.subTest(i=i,j=j,k=k,phase1=phase1,phase2=phase2):
+                    g = Graph()
+                    v = g.add_vertex(i,0,0,phase=phase1)
+                    w = g.add_vertex(j,1,0,phase=phase2)
+                    g.add_edge((v,w),k)
+                    g2 = g.copy()
+                    g2.remove_isolated_vertices()
+                    self.assertEqual(g2.num_vertices(),0)
+                    self.assertTrue(compare_tensors(g,g2))
 
 class TestGraphCircuitMethods(unittest.TestCase):
 

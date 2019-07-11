@@ -26,12 +26,18 @@ from math import pi, sqrt
 
 def Z_to_tensor(arity, phase):
     m = np.zeros([2]*arity, dtype = complex)
+    if arity == 0:
+        m[()] = 1 + np.exp(1j*phase)
+        return m
     m[(0,)*arity] = 1
     m[(1,)*arity] = np.exp(1j*phase)
     return m
 
 def X_to_tensor(arity, phase):
     m = np.ones(2**arity, dtype = complex)
+    if arity == 0:
+        m[()] = 1 + np.exp(1j*phase)
+        return m
     for i in range(2**arity):
         if bin(i).count("1")%2 == 0: 
             m[i] += np.exp(1j*phase)
@@ -138,7 +144,7 @@ def tensor_to_matrix(t, inputs, outputs):
                 #print(t[tuple(a)])
                 row.append(t[tuple(a)])
         rows.append(row)
-    return np.matrix(rows)
+    return np.array(rows)
 
 def compare_tensors(t1,t2, preserve_scalar=True):
     """Returns true if ``t1`` and ``t2`` are tensors equal up to a nonzero number.

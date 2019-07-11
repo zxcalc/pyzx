@@ -622,6 +622,8 @@ def match_phase_gadgets(g):
     for v in g.vertices():
         if phases[v] != 0 and phases[v].denominator > 2 and len(list(g.neighbours(v)))==1:
             n = list(g.neighbours(v))[0]
+            if phases[n] not in (0,1): continue # Not a real phase gadget (happens for scalar diagrams)
+            if n in gadgets: continue # Not a real phase gadget (happens for scalar diagrams)
             gadgets[n] = v
             par = frozenset(set(g.neighbours(n)).difference({v}))
             if par in parities: parities[par].append(n)
