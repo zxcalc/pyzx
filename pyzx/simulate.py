@@ -72,7 +72,7 @@ class SumGraph(object):
 def calculate_path_sum(g):
     """Input should be a fully reduced scalar graph-like Clifford+T ZX-diagram. 
     Calculates the scalar it represents."""
-    if g.num_vertices() < 10: return g.to_tensor().flatten()[0]
+    if g.num_vertices() < 2: return g.to_tensor().flatten()[0]
     phases = g.phases()
     prefactor = 0
     variable_dict = dict()
@@ -94,11 +94,10 @@ def calculate_path_sum(g):
                     targets.add(variable_dict[t])
                 prefactor += len(targets)-1
                 xors[frozenset(targets)] = int(phases[v]*4)
-            continue
+                continue
         variable_dict[v] = len(variables)
         variables.append(int(phases[v]*4))
-    verts = list(variable_dict.keys())
-    variables = np.array(variables)
+    verts = sorted(list(variable_dict.keys()), key=lambda x: variable_dict[x])
     n = len(verts)
     for i in range(n):
         v = verts[i]
@@ -108,32 +107,33 @@ def calculate_path_sum(g):
                 czs.append((i,j))
                 prefactor += 1
 
-    # c = Circuit(n)
-    # for i in range(n):
-    #     c.add_gate("ZPhase",i,phase=Fraction(variables[i],4))
-    # for targets, phase in xors.items():
-    #     c.add_gate("ParityPhase", Fraction(phase,4), *list(targets))
-    # for i,j in czs:
-    #     c.add_gate("CZ", i,j)
-    # g2 = c.to_graph()
-    # g2.apply_state("+"*n)
-    # g2.apply_effect("+"*n)
-    # g2.scalar.add_power(2*n)
-    # val = g2.to_tensor().flatten()[0]
-    # return g.scalar.to_number()*val*sq2**(-prefactor)
-    xors = [(np.array([int(k in xor) for k in range(n)]),phase) for xor,phase in xors.items()]
-    print(n,len(czs),len(xors))
+    c = Circuit(n)
+    for i in range(n):
+        c.add_gate("ZPhase",i,phase=Fraction(variables[i],4))
+    for targets, phase in xors.items():
+        c.add_gate("ParityPhase", Fraction(phase,4), *list(targets))
+    for i,j in czs:
+        c.add_gate("CZ", i,j)
+    g2 = c.to_graph()
+    g2.apply_state("+"*n)
+    g2.apply_effect("+"*n)
+    g2.scalar.add_power(2*n)
+    val = g2.to_tensor().flatten()[0]
+    return g.scalar.to_number()*val*(sq2**(-prefactor))
+    # variables = np.array(variables)
+    # xors = [(np.array([int(k in xor) for k in range(n)]),phase) for xor,phase in xors.items()]
+    # print(n,len(czs),len(xors))
     
-    results = [0]*8
-    for bitstring in itertools.product([0,1],repeat=n):
-        val = np.dot(variables,bitstring)
-        val += sum(phase*(np.dot(bitstring,xor)%2) for xor,phase in xors)
-        val += 4*sum(1 for i,j in czs if bitstring[i] and bitstring[j])
-        try: results[val % 8] += 1
-        except: print(val)
-    print(results)
-    r = results
-    return g.scalar.to_number()*sq2**(-prefactor)*(r[0]-r[4]+omega*(r[1]-r[5]) +1j*(r[2]-r[6]) + 1j*omega*(r[3]-r[7]))
+    # results = [0]*8
+    # for bitstring in itertools.product([0,1],repeat=n):
+    #     val = np.dot(variables,bitstring)
+    #     val += sum(phase*(np.dot(bitstring,xor)%2) for xor,phase in xors)
+    #     val += 4*sum(1 for i,j in czs if bitstring[i] and bitstring[j])
+    #     try: results[val % 8] += 1
+    #     except: print(val)
+    # print(results)
+    # r = results
+    # return g.scalar.to_number()*sq2**(-prefactor)*(r[0]-r[4]+omega*(r[1]-r[5]) +1j*(r[2]-r[6]) + 1j*omega*(r[3]-r[7]))
 
 
 

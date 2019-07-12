@@ -21,18 +21,23 @@ if __name__ == '__main__':
     sys.path.append('..')
     sys.path.append('.')
 
+import numpy as np
+
 from pyzx.tensor import compare_tensors
 from pyzx.generate import CNOT_HAD_PHASE_circuit
 from pyzx.simplify import clifford_simp, full_reduce
+from pyzx.simulate import calculate_path_sum
 from pyzx.circuit import Circuit
 
-SEED = 1337
+SEED = 1338
 random.seed(SEED)
 
 
 def compare(a,b):
-    if not compare_tensors(a, b):
-        raise AssertionError("Not equal")
+    try:
+        if not compare_tensors(a, b):
+            raise AssertionError("Not equal")
+    except (ValueError, MemoryError): pass
 
 
 def do_tests(qubits, depth, iterations):
@@ -42,7 +47,7 @@ def do_tests(qubits, depth, iterations):
             if i%25 == 0: print(i, end='.', flush=True)
             seed = random.randint(100000,500000)
             random.seed(seed)
-            c = CNOT_HAD_PHASE_circuit(qubits,depth,p_had=0.1, p_t=0.2)
+            c = CNOT_HAD_PHASE_circuit(qubits,depth,p_had=0.1, p_t=0.3)
             g = c.to_graph()
             g.apply_state(''.join(random.choice('+-01') for _ in range(qubits)))
             g.apply_effect(''.join(random.choice('+-01') for _ in range(qubits)))
@@ -50,12 +55,16 @@ def do_tests(qubits, depth, iterations):
             g2 = g.copy()
             clifford_simp(g2,quiet=True)
             steps = ["clifford_simp"]
-            compare(t, g2.to_tensor())
+            compare(t, g2)
 
             g2 = g.copy()
             full_reduce(g2,quiet=True)
             steps = ["full_reduce"]
-            compare(t, g2.to_tensor())
+            compare(t, g2)
+
+            val = calculate_path_sum(g2)
+            steps.append("calculate_path_sum")
+            compare(t,np.array([val]))
      
     except AssertionError:
         print("Unequality for circuit with seed {:d}, qubits {:d} and depth {:d}".format(seed, qubits, depth))
@@ -67,7 +76,8 @@ def do_tests(qubits, depth, iterations):
     else:
         print("\nTests finished successfully")
 
-do_tests(3, 20, 250)
-do_tests(3, 50, 250)
+do_tests(3, 20, 500)
+do_tests(3, 50, 500)
+do_tests(4,70,500)
 do_tests(5, 100, 250)
 do_tests(10, 100, 250)
