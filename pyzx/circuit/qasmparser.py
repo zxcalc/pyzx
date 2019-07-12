@@ -20,7 +20,7 @@ import math
 from fractions import Fraction
 
 from . import Circuit
-from .gates import qasm_gate_table
+from .gates import qasm_gate_table, ZPhase, XPhase
 
 class QASMParser(object):
     """Class for parsing QASM source files into circuit descriptions."""
