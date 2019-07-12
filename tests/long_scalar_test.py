@@ -25,11 +25,11 @@ import numpy as np
 
 from pyzx.tensor import compare_tensors
 from pyzx.generate import CNOT_HAD_PHASE_circuit
-from pyzx.simplify import clifford_simp, full_reduce
+from pyzx.simplify import clifford_simp, full_reduce, reduce_scalar
 from pyzx.simulate import calculate_path_sum
 from pyzx.circuit import Circuit
 
-SEED = 1338
+SEED = 1337
 random.seed(SEED)
 
 
@@ -65,6 +65,13 @@ def do_tests(qubits, depth, iterations):
             val = calculate_path_sum(g2)
             steps.append("calculate_path_sum")
             compare(t,np.array([val]))
+
+            g2 = g.copy()
+            steps = ["clifford_simp", "reduce_scalar"]
+            clifford_simp(g2,quiet=True)
+            reduce_scalar(g2,quiet=True)
+            compare(t,g2)
+            
      
     except AssertionError:
         print("Unequality for circuit with seed {:d}, qubits {:d} and depth {:d}".format(seed, qubits, depth))

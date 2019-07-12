@@ -664,6 +664,80 @@ def merge_phase_gadgets(g, matches):
 
 
 
+def match_supplementarity(g):
+    """Finds pairs of non-Clifford spiders that are connected to exactly the same set of vertices.
+    
+    :param g: An instance of a ZX-graph.
+    :rtype: List of 4-tuples ``(vertex1, vertex2, type of supplementarity, neighbours)``.
+    """
+    candidates = g.vertex_set()
+    phases = g.phases()
+
+    parities = dict()
+    m = []
+    taken = set()
+    # First we find all the non-Clifford vertices and their list of neighbours
+    while len(candidates) > 0:
+        v = candidates.pop()
+        if phases[v] == 0 or phases[v].denominator <= 2: continue # Skip Clifford vertices
+        neigh = set(g.neighbours(v))
+        if not neigh.isdisjoint(taken): continue
+        par = frozenset(neigh)
+        if par in parities: 
+            for w in parities[par]:
+                if (phases[v]-phases[w]) % 2 == 1 or (phases[v]+phases[w]) % 2 == 1:
+                    m.append((v,w,1,par))
+                    taken.update({v,w})
+                    taken.update(neigh)
+                    candidates.difference_update(neigh)
+                    break
+            else: parities[par].append(v)
+            if v in taken: continue
+        else: parities[par] = [v]
+        for w in neigh:
+            if phases[w] == 0 or phases[w].denominator <= 2 or w in taken: continue
+            diff = neigh.symmetric_difference(g.neighbours(w))
+            if len(diff) == 2: # Perfect overlap
+                if (phases[v] + phases[w]) % 2 == 0 or (phases[v] - phases[w]) % 2 == 1:
+                    m.append((v,w,2,neigh.difference({w})))
+                    taken.update({v,w})
+                    taken.update(neigh)
+                    candidates.difference_update(neigh)
+                    break
+    if m: 
+        print(m)
+        #if m[0][2] == 2: raise Exception("Good pair")
+    return m
+
+def apply_supplementarity(g, matches):
+    """Given the output of :func:``match_supplementarity``, removes non-Clifford spiders that act on the same set of targets trough supplementarity."""
+    rem = []
+    for v, w, t, neigh in matches:
+        rem.append(v)
+        rem.append(w)
+        alpha = g.phase(v)
+        beta = g.phase(w)
+        g.scalar.add_power(-2*len(neigh))
+        if t == 1: # v and w are not connected
+            g.scalar.add_node(2*alpha+1)
+            #if (alpha-beta)%2 == 1: # Standard supplementarity    
+            if (alpha+beta)%2 == 1: # Need negation on beta
+                g.scalar.add_phase(-alpha + 1)
+                for n in neigh:
+                    g.add_to_phase(n,1)
+        elif t == 2: # they are connected
+            g.scalar.add_power(-1)
+            g.scalar.add_node(2*alpha)
+            #if (alpha-beta)%2 == 1: # Standard supplementarity 
+            if (alpha+beta)%2 == 0: # Need negation
+                g.scalar.add_phase(-alpha)
+                for n in neigh:
+                    g.add_to_phase(n,1)
+        else: raise Exception("Shouldn't happen")
+    return ({}, rem, [], True)
+
+
+
 
 def match_gadgets_phasepoly(g):
     """Finds groups of phase-gadgets that act on the same set of 4 vertices in order to apply a rewrite based on

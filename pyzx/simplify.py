@@ -30,7 +30,7 @@ except ImportError:
 
 __all__ = ['bialg_simp','spider_simp', 'id_simp', 'phase_free_simp', 'pivot_simp', 
         'pivot_gadget_simp', 'pivot_boundary_simp', 'gadget_simp',
-        'lcomp_simp', 'clifford_simp', 'tcount', 'to_gh', 'to_rg', 'full_reduce', 'teleport_reduce']
+        'lcomp_simp', 'clifford_simp', 'tcount', 'to_gh', 'to_rg', 'full_reduce', 'teleport_reduce', 'reduce_scalar']
 
 from .rules import *
 
@@ -94,6 +94,9 @@ def id_simp(g, matchf=None, quiet=False):
 def gadget_simp(g, quiet=False):
     return simp(g, 'gadget_simp', match_phase_gadgets, merge_phase_gadgets, quiet=quiet)
 
+def supplementarity_simp(g, quiet=False):
+    return simp(g, 'supplementarity_simp', match_supplementarity, apply_supplementarity, quiet=quiet)
+
 def phase_free_simp(g, quiet=False):
     '''Performs the following set of simplifications on the graph:
     spider -> bialg'''
@@ -123,6 +126,29 @@ def clifford_simp(g, quiet=False):
         i = pivot_boundary_simp(g, quiet=quiet)
         if i == 0:
             break
+
+def reduce_scalar(g, quiet=True):
+    """Modification of ``full_reduce`` that is tailered for scalar ZX-diagrams.
+    It skips the boundary pivots, and it additionally does ``supplementarity_simp``."""
+    i = 0
+    while True:
+        i1 = id_simp(g, quiet=quiet)
+        i2 = spider_simp(g, quiet=quiet)
+        i3 = pivot_simp(g, quiet=quiet)
+        i4 = lcomp_simp(g, quiet=quiet)
+        if i1+i2+i3+i4: 
+            i += 1
+            continue
+        i5 = pivot_gadget_simp(g,quiet=quiet)
+        i6 = gadget_simp(g, quiet=quiet)
+        if i5 + i6:
+            i += 1
+            continue
+        i7 = supplementarity_simp(g,quiet=quiet)
+        if not i7: break
+        i += 1
+    return i
+
 
 
 def full_reduce(g, quiet=True):
