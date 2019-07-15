@@ -31,7 +31,7 @@ class QASMParser(object):
         self.qubit_count = 0
         self.circuit = None
 
-    def parse(self, s):
+    def parse(self, s, strict=True):
         lines = s.splitlines()
         r = []
         #strip comments
@@ -40,11 +40,18 @@ class QASMParser(object):
                 t = s[0:s.find("//")].strip()
             else: t = s.strip()
             if t: r.append(t)
-        if not r[0].startswith("OPENQASM"):
+
+        if r[0].startswith("OPENQASM"):
+            r.pop(0)
+        elif strict:
             raise TypeError("File does not start with OPENQASM descriptor")
-        if not r[1].startswith('include "qelib1.inc";'):
+
+        if r[0].startswith('include "qelib1.inc";'):
+            r.pop(0)
+        elif strict:
             raise TypeError("File is not importing standard library")
-        data = "\n".join(r[2:])
+
+        data = "\n".join(r)
         # Strip the custom command definitions from the normal commands
         while True:
             i = data.find("gate ")
