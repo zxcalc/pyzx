@@ -174,8 +174,11 @@ def spider(g, matches):
     types = g.types()
 
     for m in matches:
-        v0 = m[0]
-        v1 = m[1]
+        if g.row(m[0]) == 0:
+            v0, v1 = m[1], m[0]
+        else:
+            v0, v1 = m[0], m[1]
+
         g.set_phase(v0, g.phase(v0) + g.phase(v1))
         if g.track_phases:
             g.fuse_phases(v0,v1)
