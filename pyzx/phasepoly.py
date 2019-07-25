@@ -14,8 +14,8 @@
 
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
-
-from .circuit import Circuit, HAD, ZPhase, CNOT, CZ, S, NOT, Z
+from .circuit import Circuit
+from .circuit.gates import HAD, ZPhase, CNOT, CZ, S, NOT, Z
 from .linalg import Mat2
 
 def circuit_phase_polynomial_blocks(circuit, optimize=False, quiet=True):

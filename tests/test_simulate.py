@@ -15,26 +15,31 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from .graph.graph import Graph
-from .linalg import Mat2
-from .drawing import *
-from .simplify import *
-from .io import *
-from .tensor import *
-from .circuit import Circuit, gates
-from .circuit.sqasm import sqasm
-from . import quantomatic
-from . import generate
-from . import todd
-from . import linalg
-from . import extract
-from . import rules
-from . import hrules
-from . import optimize
-from . import simplify
-from . import d3
-from . import tikz
-from . import simulate
+import unittest
+import sys
+if __name__ == '__main__':
+    sys.path.append('..')
+    sys.path.append('.')
+
+try:
+    import numpy as np
+    from pyzx.tensor import tensorfy, compare_tensors
+except ImportError:
+    np = None
+
+from pyzx.circuit import Circuit
+from pyzx.simulate import replace_magic_states
+
+@unittest.skipUnless(np, "numpy needs to be installed for this to run")
+class TestSimulate(unittest.TestCase):
+
+    def test_magic_state_decomposition_is_correct(self):
+        c = Circuit(6)
+        for i in range(6):
+            c.add_gate("T",i)
+        g = c.to_graph()
+        gsum = replace_magic_states(g)
+        self.assertTrue(np.allclose(g.to_tensor(),gsum.to_tensor()))
 
 if __name__ == '__main__':
-    print("Please execute this as a module by running 'python -m pyzx'")
+    unittest.main()

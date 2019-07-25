@@ -174,8 +174,11 @@ def spider(g, matches):
     types = g.types()
 
     for m in matches:
-        v0 = m[0]
-        v1 = m[1]
+        if g.row(m[0]) == 0:
+            v0, v1 = m[1], m[0]
+        else:
+            v0, v1 = m[0], m[1]
+
         g.set_phase(v0, g.phase(v0) + g.phase(v1))
         if g.track_phases:
             g.fuse_phases(v0,v1)
@@ -189,7 +192,6 @@ def spider(g, matches):
             e = (v0,w)
             if e not in etab: etab[e] = [0,0]
             etab[e][g.edge_type((v1,w))-1] += 1
-    
     return (etab, rem_verts, [], True)
 
 def unspider(g, m, qubit=-1, row=-1):
@@ -319,28 +321,24 @@ def match_pivot_gadget(g, matchf=None, num=-1):
         
         if v0a not in (0,1):
             if v1a in (0,1):
-                t = v0
-                v0 = v1
-                v1 = t
-                t = v0a
-                v0a = v1a
-                v1a = t
+                v0, v1 = v1, v0
+                v0a, v1a = v1a, v0a
             else: continue
         elif v1a in (0,1): continue
         # Now v0 has a Pauli phase and v1 has a non-Pauli phase
         
         v0n = list(g.neighbours(v0))
         v1n = list(g.neighbours(v1))
-        if len(v0n) == 1 or len(v1n) == 1: continue # one of them is a phase gadget
+        if len(v1n) == 1: continue # It is a phase gadget
         bad_match = False
         discard_edges = []
-        for l in (v0n, v1n):
+        for i,l in enumerate((v0n, v1n)):
             for n in l:
                 if types[n] != 1: 
                     bad_match = True
                     break
                 ne = list(g.incident_edges(n))
-                if len(ne) == 1: # v0 or v1 is a phase gadget
+                if i==0 and len(ne) == 1 and not (e == ne[0]): # v0 is a phase gadget
                     bad_match = True
                     break
                 discard_edges.extend(ne)
@@ -437,6 +435,8 @@ def pivot(g, matches):
     rem_verts = []
     rem_edges = []
     etab = dict()
+
+
     for m in matches:
         # compute:
         #  n[0] <- non-boundary neighbours of m[0] only
@@ -453,15 +453,23 @@ def pivot(g, matches):
         es = ([(s,t) if s < t else (t,s) for s in n[0] for t in n[1]] +
               [(s,t) if s < t else (t,s) for s in n[1] for t in n[2]] +
               [(s,t) if s < t else (t,s) for s in n[0] for t in n[2]])
+        k0, k1, k2 = len(n[0]), len(n[1]), len(n[2])
+        g.scalar.add_power(k0*k2 + k1*k2 + k0*k1)
         
         for v in n[2]: g.add_to_phase(v, 1)
+
+        if g.phase(m[0]) and g.phase(m[1]): g.scalar.add_phase(Fraction(1))
+        if not m[2] and not m[3]: 
+            g.scalar.add_power(-(k0+k1+2*k2-1))
+        elif not m[2]:
+            g.scalar.add_power(-(k1+k2))
+        else: g.scalar.add_power(-(k0+k2))
 
         for i in range(2):
             # if m[i] has a phase, it will get copied on to the neighbours of m[1-i]:
             a = g.phase(m[i])
             for v in n[1-i]: g.add_to_phase(v, a)
             for v in n[2]: g.add_to_phase(v, a)
-
 
             if not m[i+2]:
                 # if there is no boundary, the other vertex is destroyed
@@ -537,15 +545,19 @@ def lcomp(g, matches):
     for m in matches:
         a = g.phase(m[0])
         rem.append(m[0])
-        for i in range(len(m[1])):
+        if a.numerator == 1: g.scalar.add_phase(Fraction(1,4))
+        else: g.scalar.add_phase(Fraction(7,4))
+        n = len(m[1])
+        g.scalar.add_power((n-2)*(n-1)//2)
+        for i in range(n):
             g.add_to_phase(m[1][i], -a)
-            for j in range(i+1, len(m[1])):
+            for j in range(i+1, n):
                 e = (m[1][i],m[1][j])
                 if (e[0] > e[1]): e = (e[1],e[0])
                 he = etab.get(e, (0,0))[1]
                 etab[e] = (0, he+1)
 
-    return (etab, rem, [], False)
+    return (etab, rem, [], True)
 
 
 def match_ids(g):
@@ -613,6 +625,8 @@ def match_phase_gadgets(g):
     for v in g.vertices():
         if phases[v] != 0 and phases[v].denominator > 2 and len(list(g.neighbours(v)))==1:
             n = list(g.neighbours(v))[0]
+            if phases[n] not in (0,1): continue # Not a real phase gadget (happens for scalar diagrams)
+            if n in gadgets: continue # Not a real phase gadget (happens for scalar diagrams)
             gadgets[n] = v
             par = frozenset(set(g.neighbours(n)).difference({v}))
             if par in parities: parities[par].append(n)
@@ -624,13 +638,16 @@ def match_phase_gadgets(g):
             n = gad[0]
             v = gadgets[n]
             if phases[n] != 0: # If the phase of the axel vertex is pi, we change the phase of the gadget
+                g.scalar.add_phase(phases[v])
                 g.phase_negate(v)
                 m.append((v,n,-phases[v],[],[]))
         else:
             totphase = sum((1 if phases[n]==0 else -1)*phases[gadgets[n]] for n in gad)%2
             for n in gad:
                 if phases[n] != 0:
+                    g.scalar.add_phase(phases[gadgets[n]])
                     g.phase_negate(gadgets[n])
+            g.scalar.add_power(-((len(par)-1)*(len(gad)-1)))
             n = gad.pop()
             v = gadgets[n]
             m.append((v,n,totphase, gad, [gadgets[n] for n in gad]))
@@ -647,6 +664,80 @@ def merge_phase_gadgets(g, matches):
         for w in othertargets:
             g.fuse_phases(v,w)
     return ({}, rem, [], False)
+
+
+
+def match_supplementarity(g):
+    """Finds pairs of non-Clifford spiders that are connected to exactly the same set of vertices.
+    
+    :param g: An instance of a ZX-graph.
+    :rtype: List of 4-tuples ``(vertex1, vertex2, type of supplementarity, neighbours)``.
+    """
+    candidates = g.vertex_set()
+    phases = g.phases()
+
+    parities = dict()
+    m = []
+    taken = set()
+    # First we find all the non-Clifford vertices and their list of neighbours
+    while len(candidates) > 0:
+        v = candidates.pop()
+        if phases[v] == 0 or phases[v].denominator <= 2: continue # Skip Clifford vertices
+        neigh = set(g.neighbours(v))
+        if not neigh.isdisjoint(taken): continue
+        par = frozenset(neigh)
+        if par in parities: 
+            for w in parities[par]:
+                if (phases[v]-phases[w]) % 2 == 1 or (phases[v]+phases[w]) % 2 == 1:
+                    m.append((v,w,1,par))
+                    taken.update({v,w})
+                    taken.update(neigh)
+                    candidates.difference_update(neigh)
+                    break
+            else: parities[par].append(v)
+            if v in taken: continue
+        else: parities[par] = [v]
+        for w in neigh:
+            if phases[w] == 0 or phases[w].denominator <= 2 or w in taken: continue
+            diff = neigh.symmetric_difference(g.neighbours(w))
+            if len(diff) == 2: # Perfect overlap
+                if (phases[v] + phases[w]) % 2 == 0 or (phases[v] - phases[w]) % 2 == 1:
+                    m.append((v,w,2,neigh.difference({w})))
+                    taken.update({v,w})
+                    taken.update(neigh)
+                    candidates.difference_update(neigh)
+                    break
+    if m: 
+        print(m)
+        #if m[0][2] == 2: raise Exception("Good pair")
+    return m
+
+def apply_supplementarity(g, matches):
+    """Given the output of :func:``match_supplementarity``, removes non-Clifford spiders that act on the same set of targets trough supplementarity."""
+    rem = []
+    for v, w, t, neigh in matches:
+        rem.append(v)
+        rem.append(w)
+        alpha = g.phase(v)
+        beta = g.phase(w)
+        g.scalar.add_power(-2*len(neigh))
+        if t == 1: # v and w are not connected
+            g.scalar.add_node(2*alpha+1)
+            #if (alpha-beta)%2 == 1: # Standard supplementarity    
+            if (alpha+beta)%2 == 1: # Need negation on beta
+                g.scalar.add_phase(-alpha + 1)
+                for n in neigh:
+                    g.add_to_phase(n,1)
+        elif t == 2: # they are connected
+            g.scalar.add_power(-1)
+            g.scalar.add_node(2*alpha)
+            #if (alpha-beta)%2 == 1: # Standard supplementarity 
+            if (alpha+beta)%2 == 0: # Need negation
+                g.scalar.add_phase(-alpha)
+                for n in neigh:
+                    g.add_to_phase(n,1)
+        else: raise Exception("Shouldn't happen")
+    return ({}, rem, [], True)
 
 
 

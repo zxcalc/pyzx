@@ -15,7 +15,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from .circuit import Circuit, ZPhase, XPhase, CNOT, CZ, ParityPhase, NOT, HAD, SWAP, S, Z
+from .circuit import Circuit
+from .circuit.gates import ZPhase, XPhase, CNOT, CZ, ParityPhase, NOT, HAD, SWAP, S, Z
 from .extract import permutation_as_swaps
 from .todd import todd_simp
 
@@ -307,6 +308,7 @@ class Optimizer:
                         self.gates[t].remove(g)
                         self.availty[c] = 1
                         self.availty[t] = 2
+                        cnot.index = self.gcount
                         self.gcount += 1
                         self.gates[c].append(cnot)
                         self.gates[t].append(cnot)

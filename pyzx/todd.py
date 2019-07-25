@@ -32,7 +32,7 @@ try:
 except:
     np = None
 
-from .circuit import T, S, Z, ZPhase, CZ, CNOT, ParityPhase
+from .circuit.gates import T, S, Z, ZPhase, CZ, CNOT, ParityPhase
 from .linalg import Mat2, column_optimal_swap
 from .extract import permutation_as_swaps
 from .phasepoly import parity_network

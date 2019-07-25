@@ -41,7 +41,11 @@ class TestTensor(unittest.TestCase):
     def test_scalar_difference(self):
         array = np.array([[0,1],[1,0]])
         scalar = 0.75 + 3j
-        self.assertTrue(compare_tensors(scalar*array,array))
+        self.assertFalse(compare_tensors(scalar*array,array,True))
+    def test_scalar_difference_ignore(self):
+        array = np.array([[0,1],[1,0]])
+        scalar = 0.75 + 3j
+        self.assertTrue(compare_tensors(scalar*array,array,False))
 
     def test_trivial_inequality(self):
         array = np.array([[1,0],[0,1]])

@@ -37,7 +37,7 @@ except ImportError:
 
 _d3_display_seq = 0
 
-
+# javascript_location = '../js'
 
 # TODO: avoid duplicate (copied from drawing.py)
 def phase_to_s(a):

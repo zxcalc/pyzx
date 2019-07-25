@@ -29,14 +29,11 @@ from pyzx.phasepoly import *
 from pyzx.circuit import Circuit
 from pyzx.optimize import *
 
-
-ITERATIONS = 500
-
 SEED = 1337
 random.seed(SEED)
 
-def compare(a,b):
-    if not compare_tensors(a, b.to_tensor()):
+def compare(a,b, scalar_accurate=True):
+    if not compare_tensors(a, b,scalar_accurate):
         raise AssertionError("Not equal")
 
 def do_tests(qubits, depth, iterations, test_clifford_graph=True):
@@ -56,19 +53,19 @@ def do_tests(qubits, depth, iterations, test_clifford_graph=True):
 
             c = streaming_extract(g)
             steps.append("streaming_extract")
-            compare(t, c)
+            compare(t, c, False)
 
             c = c.to_basic_gates()
             steps.append("to_basic_gates")
-            compare(t, c)
+            compare(t, c, False)
 
             c2, blocks = circuit_phase_polynomial_blocks(c, optimize=False)
             steps.append("phase_polynomial")
-            compare(t, c2)
+            compare(t, c2, False)
 
             c2, blocks = circuit_phase_polynomial_blocks(c, optimize=True)
             steps[-1] = "phase_polynomial_optimized"
-            compare(t, c2)
+            compare(t, c2, False)
 
             steps = []
             g = circ.copy()
@@ -78,11 +75,11 @@ def do_tests(qubits, depth, iterations, test_clifford_graph=True):
 
             c = streaming_extract(g).to_basic_gates()
             steps.append("streaming_extract")
-            compare(t, c)
+            compare(t, c, False)
 
             c2, blocks = circuit_phase_polynomial_blocks(c, optimize=True)
             steps[-1] = "phase_polynomial_optimized"
-            compare(t, c2)
+            compare(t, c2, False)
 
             steps = []
             g = circ.copy()
@@ -91,7 +88,7 @@ def do_tests(qubits, depth, iterations, test_clifford_graph=True):
             #spider_simp(g,quiet=True)
             g = teleport_reduce(g)
             steps.append("teleport_reduce")
-            compare(t,g)
+            compare(t,g, False)
             #c1 = zx.Circuit.from_graph(g,split_phases=True).to_basic_gates()
             #c1 = zx.optimize.basic_optimization(c_opt).to_basic_gates()
             #self.c_opt = c_opt

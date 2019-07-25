@@ -74,6 +74,21 @@ class TestSimplify(unittest.TestCase):
     def test_clifford_simp(self):
         self.func_test(clifford_simp)
 
+    def test_supplementarity_simp(self):
+        g = zx.Graph()
+        v = g.add_vertex(1,0,0,phase=Fraction(1,4))
+        w = g.add_vertex(1,1,0,phase=Fraction(7,4))
+        g.add_edge((v,w),2)
+        vs = []
+        for i in range(3):
+            h = g.add_vertex(1,i,2,Fraction(1))
+            vs.append(h)
+            g.add_edges([(v,h),(w,h)],2)
+        t = g.to_tensor()
+        i = supplementarity_simp(g,quiet=True)
+        self.assertEqual(i,1)
+        self.assertTrue(compare_tensors(t,g.to_tensor()))
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -16,8 +16,109 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import abc
+from fractions import Fraction
+import math
+import cmath
+import copy
 
 from pyzx.tensor import tensorfy, tensor_to_matrix
+
+def cexp(val):
+    return cmath.exp(1j*math.pi*val)
+
+class Scalar(object):
+    def __init__(self):
+        self.power2 = 0 # Stores power of square root of two
+        self.phase = Fraction(0) # Stores complex phase of the number
+        self.phasenodes = [] # Stores list of legless spiders, by their phases.
+        self.floatfactor = 1.0
+        self.is_unknown = False # Whether this represents an unknown scalar value
+
+    def __repr__(self):
+        return "Scalar({})".format(str(self))
+
+    def __str__(self):
+        if self.is_unknown:
+            return "UNKNOWN"
+        s = "{:.2f} = ".format(self.to_number())
+        if self.floatfactor != 1.0:
+            s += "{:.2f}".format(self.floatfactor)
+        if self.phase:
+            s += "exp({}ipi)".format(str(self.phase))
+        s += "sqrt(2)^{:d}".format(self.power2)
+        for node in self.phasenodes:
+            s += "(1+exp({}ipi))".format(str(node))
+        return s
+
+    def __complex__(self):
+        return self.to_number()
+
+    def copy(self):
+        s = Scalar()
+        s.power2 = self.power2
+        s.phase = self.phase
+        s.phasenodes = copy.copy(self.phasenodes)
+        s.floatfactor = self.floatfactor
+        s.is_unknown = self.is_unknown
+        return s
+
+    def to_number(self):
+        val = cexp(self.phase)
+        for node in self.phasenodes: # Node should be a Fraction
+            val *= 1+cexp(node)
+        val *= math.sqrt(2)**self.power2
+        return complex(val*self.floatfactor)
+
+    def set_unknown(self):
+        self.is_unknown = True
+        self.phasenodes = []
+
+    def add_power(self, n):
+        self.power2 += n
+    def add_phase(self, phase):
+        self.phase = (self.phase + phase) % 2
+    def add_node(self, node):
+        self.phasenodes.append(node)
+    def add_float(self,f):
+        self.floatfactor *= f
+
+    def add_spider_pair(self, p1,p2):
+        """Add the scalar corresponding to a connected pair of spiders (p1)-H-(p2)."""
+        # These if statements look quite arbitary, but they are just calculations of the scalar
+        # of a pair of connected single wire spiders of opposite colours.
+        # We make special cases for Clifford phases and pi/4 phases.
+        if p2 in (0,1):
+            p1,p2 = p2, p1
+        if p1 == 0:
+            self.add_power(1)
+            return
+        elif p1 == 1:
+            self.add_power(1)
+            self.add_phase(p2)
+            return
+        if p2.denominator == 2:
+            p1, p2 = p2, p1
+        if p1 == Fraction(1,2):
+            self.add_phase(Fraction(1,4))
+            self.add_node((p2-Fraction(1,2))%2)
+            return
+        elif p1 == Fraction(3,2):
+            self.add_phase(Fraction(7,4))
+            self.add_node((p2-Fraction(3,2))%2)
+            return
+        if (p1 + p2) % 2 == 0:
+            if p1.denominator == 4:
+                if p1.numerator in (3,5):
+                    self.add_phase(Fraction(1))
+                return
+            self.add_power(1)
+            self.add_float(math.cos(p1))
+            return
+        # Generic case
+        self.add_power(-1)
+        self.add_float(1+cexp(p1)+cexp(p2) - cexp(p1+p2))
+        return
+
 
 class DocstringMeta(abc.ABCMeta):
     """Metaclass that allows docstring 'inheritance'."""
@@ -58,6 +159,8 @@ class BaseGraph(object):
     backend = 'None'
 
     def __init__(self):
+        self.scalar = Scalar()
+        #Data necessary for phase tracking for phase teleportation
         self.track_phases = False
         self.phase_index = dict()
         self.phase_master = None
@@ -97,6 +200,7 @@ class BaseGraph(object):
             backend = type(self).backend
         g = Graph(backend = backend)
         g.track_phases = self.track_phases
+        g.scalar = self.scalar.copy()
         mult = 1
         if adjoint: mult = -1
 
@@ -189,12 +293,64 @@ class BaseGraph(object):
         d = self.depth()
         self.replace_subgraph(d-1,d,other)
 
-    def to_tensor(self):
+    def apply_state(self, state):
+        """Inserts a state into the inputs of the graph. ``state`` should be
+        a string with every character representing an input state for each qubit.
+        The possible types of states are on of '0', '1', '+', '-' for the respective
+        kets. If '-' is specified this input is skipped."""
+        if len(state) > len(self.inputs): raise TypeError("Too many input states specified")
+        inputs = self.inputs.copy()
+        self.inputs = []
+        for i,s in enumerate(state):
+            v = inputs[i]
+            if s == '/': 
+                self.inputs.append(v)
+                continue
+            if s in ('0', '1'):
+                self.scalar.add_power(-1)
+                self.set_type(v, 2)
+                if s == '1':
+                    self.set_phase(v, Fraction(1))
+            elif s in ('+', '-'):
+                self.scalar.add_power(-1)
+                self.set_type(v, 1)
+                if s == '-':
+                    self.set_phase(v, Fraction(1))
+            else:
+                raise TypeError("Unknown input state " + s)
+
+    def apply_effect(self, effect):
+        """Inserts a state into the inputs of the graph. ``state`` should be
+        a string with every character representing an input state for each qubit.
+        The possible types of states are on of '0', '1', '+', '-' for the respective
+        kets. If '-' is specified this input is skipped."""
+        if len(effect) > len(self.outputs): raise TypeError("Too many output effects specified")
+        outputs = self.outputs.copy()
+        self.outputs = []
+        for i,s in enumerate(effect):
+            v = outputs[i]
+            if s == '/': 
+                self.outputs.append(v)
+                continue
+            if s in ('0', '1'):
+                self.scalar.add_power(-1)
+                self.set_type(v, 2)
+                if s == '1':
+                    self.set_phase(v, Fraction(1))
+            elif s in ('+', '-'):
+                self.scalar.add_power(-1)
+                self.set_type(v, 1)
+                if s == '-':
+                    self.set_phase(v, Fraction(1))
+            else:
+                raise TypeError("Unknown output effect " + s)
+
+    def to_tensor(self, preserve_scalar=True):
         """Returns a representation of the graph as a tensor using :func:`~pyzx.tensor.tensorfy`"""
-        return tensorfy(self)
-    def to_matrix(self):
+        return tensorfy(self, preserve_scalar)
+    def to_matrix(self,preserve_scalar=True):
         """Returns a representation of the graph as a matrix using :func:`~pyzx.tensor.tensorfy`"""
-        return tensor_to_matrix(tensorfy(self), len(self.inputs), len(self.outputs))
+        return tensor_to_matrix(tensorfy(self, preserve_scalar), len(self.inputs), len(self.outputs))
 
 
     def vindex(self):
@@ -324,7 +480,6 @@ class BaseGraph(object):
         result from adding (#edges, #h-edges), and then removing all parallel edges using Hopf/spider laws."""
         add = ([],[]) # list of edges and h-edges to add
         remove = []   # list of edges to remove
-        #add_pi_phase = []
         for (v1,v2),(n1,n2) in etab.items():
             conn_type = self.edge_type(self.edge(v1,v2))
             if conn_type == 1: n1 += 1 #and add to the relevant edge count
@@ -332,23 +487,25 @@ class BaseGraph(object):
             
             t1 = self.type(v1)
             t2 = self.type(v2)
-            if t1 == t2:         #types are equal,
-                n1 = bool(n1)     #so normal edges fuse
-                n2 = n2%2         #while hadamard edges go modulo 2
+            if t1 == t2:                #types are equal,
+                n1 = bool(n1)           #so normal edges fuse
+                pairs, n2 = divmod(n2,2)#while hadamard edges go modulo 2
+                self.scalar.add_power(-2*pairs)
                 if n1 != 0 and n2 != 0:  #reduction rule for when both edges appear
                     new_type = 1
                     self.add_to_phase(v1, 1)
-                    #add_pi_phase.append(v1)
+                    self.scalar.add_power(-1)
                 elif n1 != 0: new_type = 1
                 elif n2 != 0: new_type = 2
                 else: new_type = 0
-            else:                #types are different
-                n1 = n1%2        #so normal edges go modulo 2
-                n2 = bool(n2)    #while hadamard edges fuse
+            else:                       #types are different
+                pairs, n1 = divmod(n1,2)#so normal edges go modulo 2
+                n2 = bool(n2)           #while hadamard edges fuse
+                self.scalar.add_power(-2*pairs)
                 if n1 != 0 and n2 != 0:  #reduction rule for when both edges appear
                     new_type = 2
                     self.add_to_phase(v1, 1)
-                    #add_pi_phase.append(v1)
+                    self.scalar.add_power(-1)
                 elif n1 != 0: new_type = 1
                 elif n2 != 0: new_type = 2
                 else: new_type = 0
@@ -383,7 +540,6 @@ class BaseGraph(object):
     def phase_negate(self, v):
         if v not in self.phase_index: return
         index = self.phase_index[v]
-        #print("Negating phase", v, index)
         mult = self.phase_mult[index]
         self.phase_mult[index] = -1*mult 
 
@@ -400,9 +556,34 @@ class BaseGraph(object):
         self.remove_vertices([vertex])
 
     def remove_isolated_vertices(self):
-        """Deletes all vertices that are not connected to any other vertex.
-        Should be replaced by a faster alternative if available in the backend."""
-        self.remove_vertices([v for v in self.vertices() if self.vertex_degree(v)==0])
+        """Deletes all vertices and vertex pairs that are not connected to any other vertex."""
+        rem = []
+        for v in self.vertices():
+            d = self.vertex_degree(v)
+            if d == 0:
+                rem.append(v)
+                self.scalar.add_node(self.phase(v))
+            if d == 1: # It has a unique neighbour
+                if v in rem: continue # Already taken care of
+                if self.type(v) == 0: continue # Ignore in/outputs
+                w = list(self.neighbours(v))[0]
+                if len(self.neighbours(w)) > 1: continue # But this neighbour has other neighbours
+                if self.type(w) == 0: continue # It's a state/effect
+                # At this point w and v are only connected to each other
+                rem.append(v)
+                rem.append(w)
+                et = self.edge_type(self.edge(v,w))
+                if self.type(v) == self.type(w):
+                    if et == 1:
+                        self.scalar.add_node(self.phase(v)+self.phase(w))
+                    else:
+                        self.scalar.add_spider_pair(self.phase(v), self.phase(w))
+                else:
+                    if et == 1:
+                        self.scalar.add_spider_pair(self.phase(v), self.phase(w))
+                    else:
+                        self.scalar.add_node(self.phase(v)+self.phase(w))
+        self.remove_vertices(rem)
 
     def remove_edges(self, edges):
         """Removes the list of edges from the graph."""

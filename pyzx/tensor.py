@@ -26,12 +26,18 @@ from math import pi, sqrt
 
 def Z_to_tensor(arity, phase):
     m = np.zeros([2]*arity, dtype = complex)
+    if arity == 0:
+        m[()] = 1 + np.exp(1j*phase)
+        return m
     m[(0,)*arity] = 1
     m[(1,)*arity] = np.exp(1j*phase)
     return m
 
 def X_to_tensor(arity, phase):
     m = np.ones(2**arity, dtype = complex)
+    if arity == 0:
+        m[()] = 1 + np.exp(1j*phase)
+        return m
     for i in range(2**arity):
         if bin(i).count("1")%2 == 0: 
             m[i] += np.exp(1j*phase)
@@ -53,7 +59,7 @@ def pop_and_shift(verts, indices):
             indices[w] = l2
     return res
 
-def tensorfy(g):
+def tensorfy(g, preserve_scalar=True):
     """Takes in a Graph and outputs a multidimensional numpy array
     representing the linear map the ZX-diagram implements.
     Beware that quantum circuits take exponential memory to represent."""
@@ -69,7 +75,7 @@ def tensorfy(g):
     
     had = 1/sqrt(2)*np.mat([[1,1],[1,-1]])
     id2 = np.identity(2)
-    tensor = np.array(1.0)
+    tensor = np.array(1.0,dtype='complex128')
     qubits = len(g.inputs)
     for i in range(qubits): tensor = np.tensordot(tensor,id2,axes=0)
     inputs = sorted(g.inputs,key=g.qubit)
@@ -104,7 +110,7 @@ def tensorfy(g):
             tensor = np.tensordot(tensor,t,axes=(contr,list(range(len(t.shape)-len(contr),len(t.shape)))))
             indices[v] = list(range(len(tensor.shape)-d+len(contr), len(tensor.shape)))
             
-            if i % 10 == 0:
+            if not preserve_scalar and i % 10 == 0:
                 if np.abs(tensor).max() < 10**-6: # Values are becoming too small
                     tensor *= 10**4 # So scale all the numbers up
     perm = []
@@ -114,7 +120,7 @@ def tensorfy(g):
         perm.append(i)
 
     tensor = np.transpose(tensor,perm)
-        
+    if preserve_scalar: tensor *= g.scalar.to_number()
     return tensor
 
 def tensor_to_matrix(t, inputs, outputs):
@@ -123,18 +129,24 @@ def tensor_to_matrix(t, inputs, outputs):
     2^(outputs) x 2^(inputs)"""
     rows = []
     for r in range(2**outputs):
-        o = [int(i) for i in bin(r)[2:].zfill(outputs)]
+        if outputs == 0:
+            o = []
+        else:
+            o = [int(i) for i in bin(r)[2:].zfill(outputs)]
         row = []
-        for c in range(2**inputs):
-            a = o.copy()
-            a.extend([int(i) for i in bin(c)[2:].zfill(inputs)])
-            #print(a)
-            #print(t[tuple(a)])
-            row.append(t[tuple(a)])
+        if inputs == 0:
+            row.append(t[tuple(o)])
+        else:
+            for c in range(2**inputs):
+                a = o.copy()
+                a.extend([int(i) for i in bin(c)[2:].zfill(inputs)])
+                #print(a)
+                #print(t[tuple(a)])
+                row.append(t[tuple(a)])
         rows.append(row)
-    return np.matrix(rows)
+    return np.array(rows)
 
-def compare_tensors(t1,t2):
+def compare_tensors(t1,t2, preserve_scalar=True):
     """Returns true if ``t1`` and ``t2`` are tensors equal up to a nonzero number.
 
     Example: To check whether two ZX-graphs are semantically the same you would do::
@@ -144,11 +156,12 @@ def compare_tensors(t1,t2):
         compare_tensors(t1,t2) # True if g1 and g2 represent the same circuit
     """
     if not isinstance(t1, np.ndarray):
-        t1 = t1.to_tensor()
+        t1 = t1.to_tensor(preserve_scalar)
     if not isinstance(t2, np.ndarray):
-        t2 = t2.to_tensor()
-    epsilon = 10**-14
+        t2 = t2.to_tensor(preserve_scalar)
     if np.allclose(t1,t2): return True
+    if preserve_scalar: return False # We do not check for equality up to scalar
+    epsilon = 10**-14
     for i,a in enumerate(t1.flat):
         if abs(a)>epsilon: 
             if abs(t2.flat[i])<epsilon: return False
