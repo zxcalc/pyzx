@@ -25,6 +25,7 @@ define(['d3'], function(d3) {
             ntab[d.name] = d;
             d.selected = false;
             d.previouslySelected = false;
+            d.nhd = [];
         });
 
         var spiders_and_boundaries = graph.nodes.filter(function(d) {
@@ -36,8 +37,12 @@ define(['d3'], function(d3) {
         });
 
         graph.links.forEach(function(d) {
-            d.source = ntab[d.source];
-            d.target = ntab[d.target];
+            var s = ntab[d.source];
+            var t = ntab[d.target];
+            d.source = s;
+            d.target = t;
+            s.nhd.push(t);
+            t.nhd.push(s);
         });
 
         var shiftKey;
