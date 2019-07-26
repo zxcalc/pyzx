@@ -18,7 +18,7 @@ define(['d3'], function(d3) {
     }
 
     return {
-    showGraph: function(tag, graph, width, height, node_size) {
+    showGraph: function(tag, graph, width, height, node_size, auto_hbox) {
         var ntab = {};
 
         graph.nodes.forEach(function(d) {
@@ -30,10 +30,6 @@ define(['d3'], function(d3) {
 
         var spiders_and_boundaries = graph.nodes.filter(function(d) {
             return d.t != 3;
-        });
-
-        var hboxes = graph.nodes.filter(function(d) {
-            return d.t == 3;
         });
 
         graph.links.forEach(function(d) {
@@ -64,10 +60,6 @@ define(['d3'], function(d3) {
             .selectAll("line")
             .data(graph.links)
             .enter().append("line")
-            .attr("x1", function(d) { return d.source.x; })
-            .attr("y1", function(d) { return d.source.y; })
-            .attr("x2", function(d) { return d.target.x; })
-            .attr("y2", function(d) { return d.target.y; })
             .attr("stroke", function(d) { return edgeColor(d.t); })
             .attr("style", "stroke-width: 1.5px");
 
@@ -92,8 +84,9 @@ define(['d3'], function(d3) {
             .attr("fill", function(d) { return nodeColor(d.t); })
             .attr("stroke", "black");
 
-        node.filter(function(d) { return d.t == 3; })
-            .append("rect")
+        var hbox = node.filter(function(d) { return d.t == 3; });
+
+        hbox.append("rect")
             .attr("x", -0.75 * node_size).attr("y", -0.75 * node_size)
             .attr("width", node_size * 1.5).attr("height", node_size * 1.5)
             .attr("fill", function(d) { return nodeColor(d.t); })
@@ -115,17 +108,44 @@ define(['d3'], function(d3) {
             .attr("font-family", "monospace")
             .attr("fill", "#ccc");
 
-        // var text = svg.selectAll("text")
-        //     .data(graph.nodes)
-        //     .enter()
-        //     .append("text")
-        //     .attr("x", function(d) { return d.x; })
-        //     .attr("y", function(d) { return d.y + 0.7 * node_size + 14; })
-        //     .text( function (d) { return d.phase })
-        //     .attr("text-anchor", "middle")
-        //     .attr("font-size", "12px")
-        //     .attr("font-family", "monospace")
-        //     .attr("fill", "#00d");
+        function update_hboxes() {
+            if (auto_hbox) {
+                var pos = {};
+                hbox.attr("transform", function(d) {
+                    // calculate barycenter of non-hbox neighbours, then nudge a bit
+                    // to the NE.
+                    var x=0,y=0,sz=0;
+                    for (var i = 0; i < d.nhd.length; ++i) {
+                        if (d.nhd[i].t != 3) {
+                            sz++;
+                            x += d.nhd[i].x;
+                            y += d.nhd[i].y;
+                        }
+                    }
+
+                    if (sz != 0) {
+                        x = (x/sz) + 20;
+                        y = (y/sz) - 20;
+
+                        while (pos[[x,y]]) {
+                            x += 20;
+                        }
+                        d.x = x;
+                        d.y = y;
+                        pos[[x,y]] = true;
+                    }
+
+                    return "translate("+d.x+","+d.y+")";
+                });
+            }
+        }
+
+        update_hboxes();
+
+        link.attr("x1", function(d) { return d.source.x; })
+            .attr("y1", function(d) { return d.source.y; })
+            .attr("x2", function(d) { return d.target.x; })
+            .attr("y2", function(d) { return d.target.y; });
 
         // EVENTS FOR DRAGGING AND SELECTION
 
@@ -150,11 +170,15 @@ define(['d3'], function(d3) {
                         return "translate(" + d.x + "," + d.y +")";
                     });
 
-                link.filter(function(d) { return d.source.selected; })
+                update_hboxes();
+
+                link.filter(function(d) { return d.source.selected ||
+                                            (auto_hbox && d.source.t == 3); })
                     .attr("x1", function(d) { return d.source.x; })
                     .attr("y1", function(d) { return d.source.y; });
 
-                link.filter(function(d) { return d.target.selected; })
+                link.filter(function(d) { return d.target.selected ||
+                                            (auto_hbox && d.target.t == 3); })
                     .attr("x2", function(d) { return d.target.x; })
                     .attr("y2", function(d) { return d.target.y; });
 
