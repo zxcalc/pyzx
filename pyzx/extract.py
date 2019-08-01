@@ -17,7 +17,7 @@
 
 from __future__ import print_function
 
-__all__ = ['clifford_extract', 'streaming_extract']
+__all__ = ['clifford_extract', 'streaming_extract', 'modified_extract']
 
 from fractions import Fraction
 import itertools
@@ -25,7 +25,7 @@ import itertools
 from .linalg import Mat2, greedy_reduction, column_optimal_swap
 from .graph import Graph
 from .simplify import id_simp, tcount
-from .rules import match_spider_parallel, spider
+from .rules import apply_rule, pivot, match_spider_parallel, spider
 from .circuit import Circuit
 from .circuit.gates import ParityPhase, CNOT, HAD, ZPhase, CZ, InitAncilla
 
@@ -1000,17 +1000,20 @@ def modified_extract(g, quiet=True):
         # preprocessing
         for v in frontier:
             q = qubit_map[v]
-            if phases[v]: c.add_gate("ZPhase", q, phases[v])
-            g.set_phase(v,0)
+            b = [w for w in g.neighbours(v) if w in g.outputs][0]
+            e = g.edge(v,b)
+            if g.edge_type(e) == 2: # Hadamard edge
+                c.add_gate("HAD",q)
+                g.set_edge_type(e,1)
+            if phases[v]: 
+                c.add_gate("ZPhase", q, phases[v])
+                g.set_phase(v,0)
+        for v in frontier:
             for w in list(g.neighbours(v)):
-                if w in g.outputs:
-                    e = g.edge(v,w)
-                    if g.edge_type(e) == 2: # Hadamard edge
-                        c.add_gate("HAD",q)
-                        g.set_edge_type(e,1)
-                elif w in frontier:
-                    c.add_gate("CZ",q, qubit_map[w])
+                if w in frontier:
+                    c.add_gate("CZ",qubit_map[v], qubit_map[w])
                     g.remove_edge(g.edge(v,w))
+            
         # Check for connectivity to inputs
         neighbours = set()
         for v in frontier.copy():
@@ -1043,7 +1046,7 @@ def modified_extract(g, quiet=True):
                 i = [i for i,j in enumerate(l) if j == 1][0]
                 max_vertices.append(neighbours[i])
         if max_vertices:
-            print("Reducing", len(max_vertices), "vertices")
+            if not quiet: print("Reducing", len(max_vertices), "vertices")
             for v in max_vertices: neighbours.remove(v)
             neighbours = max_vertices + neighbours
             m = bi_adj(g,neighbours,frontier)
@@ -1066,11 +1069,11 @@ def modified_extract(g, quiet=True):
                 g.add_edge((w,b))
                 frontier.remove(v)
                 frontier.append(w)
-            print("Vertices extracted:", len(good_verts))
+            if not quiet: print("Vertices extracted:", len(good_verts))
             continue
         else:
-            print("No maximal vertex found. Pivoting on gadgets")
-            print("Gadgets before:", len(gadgets))
+            if not quiet: print("No maximal vertex found. Pivoting on gadgets")
+            if not quiet: print("Gadgets before:", len(gadgets))
             for w in neighbours:
                 if w not in gadgets: continue
                 for v in g.neighbours(w):
@@ -1081,7 +1084,7 @@ def modified_extract(g, quiet=True):
                         frontier.append(w)
                         qubit_map[w] = qubit_map[v]
                         break
-            print("Gadgets after:", len(gadgets))
+            if not quiet: print("Gadgets after:", len(gadgets))
             continue
             
     # Outside of loop. Finish up the permutation

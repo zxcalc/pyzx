@@ -50,7 +50,7 @@ def do_tests(qubits, depth, iterations, test_clifford_graph=True):
             clifford_simp(g,quiet=True)
             steps.append("clifford_simp")
             if test_clifford_graph: compare(t, g)
-
+            
             c = streaming_extract(g)
             steps.append("streaming_extract")
             compare(t, c, False)
@@ -73,6 +73,14 @@ def do_tests(qubits, depth, iterations, test_clifford_graph=True):
             steps.append("full_reduce")
             if test_clifford_graph: compare(t, g)
 
+            c = modified_extract(g)
+            steps.append("modified_extract")
+            compare(t,c,False)
+
+            steps = []
+            g = circ.copy()
+            full_reduce(g, quiet=True)
+            steps.append("full_reduce")
             c = streaming_extract(g).to_basic_gates()
             steps.append("streaming_extract")
             compare(t, c, False)
