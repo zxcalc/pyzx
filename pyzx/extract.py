@@ -970,6 +970,41 @@ def simple_extract(g, quiet=True):
     
     return h
 
+# O(N^3)
+def max_overlap(cz_matrix):
+    """Given an adjacency matrix of qubit connectivity of a CZ circuit, returns:
+    a) the rows which have the maximum inner product
+    b) a bool dictating the direction of the CNOTs to be added
+    c) the list of common qubits between these rows
+    """
+    N = len(cz_matrix.data[0])
+
+    max_inner_product = 0
+    final_common_qbs = list()
+    overlapping_rows = tuple()
+    for i in range(N):
+        for j in range(i+1,N):
+            inner_product = 0
+            i_czs = 0
+            j_czs = 0
+            common_qbs = list()
+            for k in range(N):
+                i_czs += cz_matrix.data[i][k]
+                j_czs += cz_matrix.data[j][k]
+
+                if cz_matrix.data[i][k]!=0 and cz_matrix.data[j][k]!=0:
+                    inner_product+=1
+                    common_qbs.append(k)
+
+            if inner_product > max_inner_product:
+                max_inner_product = inner_product
+                if i_czs < j_czs:
+                    overlapping_rows = [j,i]
+                else:
+                    overlapping_rows = [i,j]
+                final_common_qbs = common_qbs
+    return [overlapping_rows,final_common_qbs]
+
 ## Currently broken!!
 def modified_extract(g, quiet=True):
     """Given a graph put into semi-normal form by :func:`simplify.full_reduce`, 
@@ -1008,12 +1043,32 @@ def modified_extract(g, quiet=True):
             if phases[v]: 
                 c.add_gate("ZPhase", q, phases[v])
                 g.set_phase(v,0)
+        cz_mat = Mat2([[0 for i in range(g.qubit_count())] for j in range(g.qubit_count())])
         for v in frontier:
             for w in list(g.neighbours(v)):
                 if w in frontier:
-                    c.add_gate("CZ",qubit_map[v], qubit_map[w])
+                    cz_mat.data[qubit_map[v]][qubit_map[w]] = 1
+                    cz_mat.data[qubit_map[w]][qubit_map[v]] = 1
                     g.remove_edge(g.edge(v,w))
-            
+
+        overlap_data = max_overlap(cz_mat)
+        while len(overlap_data[1]) > 2: #there are enough common qubits to be worth optimising
+            i,j = overlap_data[0][0], overlap_data[0][1]
+            c.add_gate("CNOT",i,j)
+            for qb in overlap_data[1]:
+                c.add_gate("CZ",j,qb)
+                cz_mat.data[i][qb]=0
+                cz_mat.data[j][qb]=0
+                cz_mat.data[qb][i]=0
+                cz_mat.data[qb][j]=0
+            c.add_gate("CNOT",i,j)
+            overlap_data = max_overlap(cz_mat)
+
+        for i in range(g.qubit_count()):
+            for j in range(i+1,g.qubit_count()):
+                if cz_mat.data[i][j]==1:
+                    c.add_gate("CZ",i,j)
+
         # Check for connectivity to inputs
         neighbours = set()
         for v in frontier.copy():
