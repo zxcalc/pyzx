@@ -974,8 +974,7 @@ def simple_extract(g, quiet=True):
 def max_overlap(cz_matrix):
     """Given an adjacency matrix of qubit connectivity of a CZ circuit, returns:
     a) the rows which have the maximum inner product
-    b) a bool dictating the direction of the CNOTs to be added
-    c) the list of common qubits between these rows
+    b) the list of common qubits between these rows
     """
     N = len(cz_matrix.data[0])
 
