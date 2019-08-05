@@ -1005,7 +1005,7 @@ def max_overlap(cz_matrix):
     return [overlapping_rows,final_common_qbs]
 
 ## Currently broken!!
-def modified_extract(g, quiet=True):
+def modified_extract(g, optimize_czs=True, quiet=True):
     """Given a graph put into semi-normal form by :func:`simplify.full_reduce`, 
     it extracts its equivalent set of gates into an instance of :class:`circuit.Circuit`.
     """
@@ -1050,18 +1050,19 @@ def modified_extract(g, quiet=True):
                     cz_mat.data[qubit_map[w]][qubit_map[v]] = 1
                     g.remove_edge(g.edge(v,w))
 
-        overlap_data = max_overlap(cz_mat)
-        while len(overlap_data[1]) > 2: #there are enough common qubits to be worth optimising
-            i,j = overlap_data[0][0], overlap_data[0][1]
-            c.add_gate("CNOT",i,j)
-            for qb in overlap_data[1]:
-                c.add_gate("CZ",j,qb)
-                cz_mat.data[i][qb]=0
-                cz_mat.data[j][qb]=0
-                cz_mat.data[qb][i]=0
-                cz_mat.data[qb][j]=0
-            c.add_gate("CNOT",i,j)
+        if optimize_czs:
             overlap_data = max_overlap(cz_mat)
+            while len(overlap_data[1]) > 2: #there are enough common qubits to be worth optimising
+                i,j = overlap_data[0][0], overlap_data[0][1]
+                c.add_gate("CNOT",i,j)
+                for qb in overlap_data[1]:
+                    c.add_gate("CZ",j,qb)
+                    cz_mat.data[i][qb]=0
+                    cz_mat.data[j][qb]=0
+                    cz_mat.data[qb][i]=0
+                    cz_mat.data[qb][j]=0
+                c.add_gate("CNOT",i,j)
+                overlap_data = max_overlap(cz_mat)
 
         for i in range(g.qubit_count()):
             for j in range(i+1,g.qubit_count()):
