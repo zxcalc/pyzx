@@ -28,8 +28,11 @@ try:
 except ImportError:
     np = None
 
+from pyzx.graph import Graph
+from fractions import Fraction
 from pyzx.generate import cliffordT
 from pyzx.simplify import *
+from pyzx.simplify import supplementarity_simp
 
 SEED = 1337
 
@@ -75,7 +78,7 @@ class TestSimplify(unittest.TestCase):
         self.func_test(clifford_simp)
 
     def test_supplementarity_simp(self):
-        g = zx.Graph()
+        g = Graph()
         v = g.add_vertex(1,0,0,phase=Fraction(1,4))
         w = g.add_vertex(1,1,0,phase=Fraction(7,4))
         g.add_edge((v,w),2)
