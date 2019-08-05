@@ -49,7 +49,7 @@ if __name__ == '__main__':
         parser.print_help()
         exit(1)
     args = parser.parse_args(sys.argv[1:2])
-    if args.command not in ('opt', 'tikz', 'mapper', 'router', 'cnots', 'rl'):
+    if args.command not in ('opt', 'tikz', 'mapper', 'router', 'cnots', 'rl', 'perm'):
         print("Unrecognized command '{}'".format(args.command))
         parser.print_help()
         exit(1)
@@ -66,4 +66,6 @@ if __name__ == '__main__':
         cnot_generator.main(sys.argv[2:])
     if args.command == 'rl':
         reinforcement_learning.main(sys.argv[2:])
+    if args.command == 'perm':
+        reinforcement_learning.main2(sys.argv[2:])
 

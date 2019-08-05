@@ -75,7 +75,7 @@ class SumTree:
     def add(self, error, sample):
         p = self._get_priority(error)
         idx = self.write + self.capacity - 1
-
+        
         self.data[self.write] = sample
         self.update(idx, p)
 
@@ -120,9 +120,9 @@ class PrioritizedStorage:
         choices = np.random.choice(self.capacity, n, p=probs)
         batch = [self.data[i] for i in choices]
         idxs = choices.tolist()
-        priorities = [self.errors[i] for i in choices]
+        #priorities = [self.errors[i] for i in choices]
 
-        sampling_probabilities = priorities / self.total()
+        sampling_probabilities = [probs[i] for i in choices] #priorities / self.total()
         is_weight = np.power(self.n_entries * sampling_probabilities, -self.beta)
         is_weight /= is_weight.max()
         return batch, idxs, is_weight
@@ -137,7 +137,7 @@ class PrioritizedStorage:
         self.update(self.write, p)
 
         self.write = (self.write + 1) % self.capacity
-        self.n_entries = min(self.n_entries + 1, self.capacity-1)
+        self.n_entries = min(self.n_entries + 1, self.capacity)
 
     # update priority
     def update(self, idx, p):
@@ -173,6 +173,35 @@ class Storage():
     def __len__(self):
         return len(self.data)
         
+
+class ForgetfulStorage():
+    position = 0
+
+    def __init__(self, capacity):
+        self.capacity = capacity
+        self.data = []
+        self.n_entries = 0
+
+    # store priority and sample
+    def add(self, error, sample):
+        """Saves a transition."""
+        # TODO check capacity
+        self.data.append(sample)
+
+    # update priority
+    def update(self, idx, p):
+        pass
+    
+    def sample(self, batch_size):
+        if batch_size >= len(self):
+            sample = self.data[:batch_size]
+            self.data = self.data[batch_size:]
+            return sample, np.arange(batch_size), [1. for _ in range(batch_size)]# np.ones_like(sample, dtype=np.float32)
+        return [], [], np.ones_like([])
+    
+    def __len__(self):
+        return len(self.data)
+
 class ReplayMemory(object):
 
     def __init__(self, capacity, prioritized=False):
@@ -194,6 +223,8 @@ class ReplayMemory(object):
     def reset(self):
         if self.prioritized == "sumtree":
             self.memory = SumTree(self.capacity)
+        elif self.prioritized == "forgetful":
+            self.memory = ForgetfulStorage(self.capacity)
         elif self.prioritized:
             self.memory = PrioritizedStorage(self.capacity)
         else:

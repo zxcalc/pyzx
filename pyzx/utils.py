@@ -25,6 +25,8 @@ def restricted_float(x):
     return x
 
 def make_into_list(possible_list):
+    if possible_list is None:
+        return []
     if type(possible_list) != type([]):
         return [possible_list]
     return possible_list
