@@ -50,7 +50,7 @@ To verify that the simplified circuit is still equal to the original we can conv
 	
 	>>> t1 = c.to_tensor()
 	>>> t2 = g.to_tensor()
-	>>> zx.compare_tensors(t1,t2)
+	>>> zx.compare_tensors(t1,t2,preserve_scalar=False)
 		True
 
 The circuit-like ZX-graph ``g`` can also be concretely represented as a circuit::
