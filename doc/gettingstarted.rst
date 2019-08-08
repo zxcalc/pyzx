@@ -53,9 +53,8 @@ To verify that the simplified circuit is still equal to the original we can conv
 	>>> zx.compare_tensors(t1,t2,preserve_scalar=False)
 		True
 
-The circuit-like ZX-graph ``g`` can also be concretely represented as a circuit::
+We can also inspect `c` as a series of gates::
 	
-	>>> c = zx.Circuit.from_graph(g)
 	>>> print(c.gates)
 		[S(1), S*(2), Z(3), CZ(1,3), CZ(2,3), S(0), CZ(1,0), CZ(3,0), CNOT(1,0), CNOT(2,0), CNOT(3,0), CNOT(2,3), CNOT(0,3), NOT(2), CX(2,3), HAD(3)]
 
