@@ -405,7 +405,10 @@ class BaseGraph(object):
         if not self.inputs:
             self.auto_detect_inputs()
         max_r = self.depth() - 1
-        if max_r <= 2: return
+        if max_r <= 2: 
+            for o in self.outputs:
+                self.set_row(o,4)
+            max_r = self.depth() -1
         claimed = []
         for q,i in enumerate(sorted(self.inputs, key=self.qubit)):
             self.set_row(i,0)
