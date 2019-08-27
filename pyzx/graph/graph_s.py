@@ -35,9 +35,7 @@ class GraphS(BaseGraph):
 		self._maxq = -1
 		self._rindex = dict()
 		self._maxr = -1
-
-		self.inputs = []
-		self.outputs = []
+		
 		self._vdata = dict()
 		
 

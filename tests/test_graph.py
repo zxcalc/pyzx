@@ -24,6 +24,7 @@ if __name__ == '__main__':
     sys.path.append('.')
 
 from pyzx.graph import Graph
+from pyzx.generate import identity
 
 try:
     import numpy as np
@@ -191,20 +192,14 @@ class TestGraphCircuitMethods(unittest.TestCase):
     def test_compose_basic(self):
         g = self.graph.copy()
         g.compose(g)
-        self.assertEqual(g.num_vertices(), self.graph.num_vertices()+2)
         self.assertEqual((len(g.inputs),len(g.outputs)),(2,2))
 
-    def test_compose_handling_hadamards(self):
+    def test_compose_unitary(self):
         g = self.graph
         g.set_edge_type(g.edge(self.v,self.o1),2)
-        g2 = g.copy()
+        g2 = g.adjoint()
         g2.compose(g)
-        num_hadamards = len([e for e in g2.edges() if g2.edge_type(e)==2])
-        self.assertEqual(num_hadamards, 2)
-        g2 = g.copy()
-        g2.compose(g.adjoint())
-        num_hadamards = len([e for e in g2.edges() if g2.edge_type(e)==2])
-        self.assertEqual(num_hadamards, 0)
+        self.assertTrue(compare_tensors(g2,identity(2), False))
 
 if __name__ == '__main__':
     unittest.main()

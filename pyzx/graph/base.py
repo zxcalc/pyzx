@@ -166,6 +166,8 @@ class BaseGraph(object):
         self.phase_master = None
         self.phase_mult = dict()
         self.max_phase_index = -1
+        self.inputs = []
+        self.outputs = []
 
     def __str__(self):
         return "Graph({} vertices, {} edges)".format(
@@ -371,9 +373,8 @@ class BaseGraph(object):
             self.set_row(v, new_rows[self.row(v)])
 
     def qubit_count(self):
-        """Returns the value of the highest qubit index given to a vertex.
-        This is -1 when no qubit indices have been set."""
-        raise NotImplementedError("Not implemented on backend " + type(self).backend)
+        """Returns the number of inputs of the graph"""
+        return len(self.inputs)
 
     def auto_detect_inputs(self):
         if self.inputs or self.outputs: return self.inputs, self.outputs
