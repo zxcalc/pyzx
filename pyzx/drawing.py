@@ -118,6 +118,44 @@ def pack_circuit_nf(g, nf='grg'):
 def circuit_layout(g,keys = ('r','q')):
     return {v:(g.row(v),-g.qubit(v)) for v in g.vertices()}
 
+def arrange_scalar_diagram(g):
+    g.normalise()
+    rs = g.rows()
+    qs = g.qubits()
+    ty = g.types()
+    gadgets = dict()
+    verts = []
+    min_row = 1000000
+    rows_used = dict()
+    for v in g.vertices():
+        if len(list(g.neighbours(v))) == 1:
+            w = list(g.neighbours(v))[0]
+            gadgets[(v,w)] = 0
+        elif all(g.vertex_degree(w) > 1 for w in g.neighbours(v)): # Not part of a phase gadget
+            verts.append(v)
+            #if rs[v] < min_row: min_row = rs[v]
+            if rs[v] in rows_used: rows_used[rs[v]].append(v)
+            else: rows_used[rs[v]] = [v]
+    
+    for i, r in enumerate(sorted(rows_used.keys())):
+        for v in rows_used[r]:
+            g.set_row(v,i)
+            if qs[v] < 0: g.set_qubit(v,1)
+            else: g.set_qubit(v,qs[v]+1)
+    
+    for v,w in gadgets.keys():
+        score = sum(rs[n] for n in g.neighbours(w))/len(list(g.neighbours(w)))
+        gadgets[(v,w)] = score
+    
+    l = list(gadgets.items())
+    l = sorted(l, key=lambda x: x[1])
+    for i in range(len(l)):
+        v,w = l[i][0]
+        g.set_row(v, i+0.5)
+        g.set_row(w, i+0.5)
+        g.set_qubit(v,-1)
+        g.set_qubit(w,0)
+
 def draw(g, layout=None, labels=False, figsize=(8,2), h_edge_draw='blue', rows=None):
     if not isinstance(g, BaseGraph):
         g = g.to_graph()

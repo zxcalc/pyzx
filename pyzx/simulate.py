@@ -19,6 +19,7 @@
 # https://journals.aps.org/prx/pdf/10.1103/PhysRevX.6.021043
 # In particular the text below equation (10) and equation (11) itself.
 
+import random
 import math
 sq2 = math.sqrt(2)
 omega = (1+1j)/sq2
@@ -68,6 +69,12 @@ class SumGraph(object):
             if not quiet:
                 print("Graph {:d}:".format(i))
             simplify.full_reduce(g, quiet=quiet)
+
+    def reduce_scalar(self, quiet=True):
+        for i, g in enumerate(self.graphs):
+            if not quiet:
+                print("Graph {:d}:".format(i))
+            simplify.reduce_scalar(g, quiet=quiet)
 
 def calculate_path_sum(g):
     """Input should be a fully reduced scalar graph-like Clifford+T ZX-diagram. 
@@ -137,7 +144,7 @@ def calculate_path_sum(g):
 
 
 
-def replace_magic_states(g):
+def replace_magic_states(g, pick_random=False):
     """This function takes in a ZX-diagram in graph-like form 
     (all spiders fused, only Z spiders, only H-edges between spiders),
     and splits it into a sum over smaller diagrams by using the magic
@@ -165,7 +172,15 @@ def replace_magic_states(g):
                 internal.append(v)
             ranking[v] = g.vertex_degree(v)
 
-    candidates = sorted(ranking.keys(), key=lambda v: ranking[v], reverse=True)[:6]
+    if len(ranking) < 6:
+        raise Exception("Not enough T states to split. Need at least 6")
+
+    if not pick_random:
+        candidates = sorted(ranking.keys(), key=lambda v: ranking[v], reverse=True)[:6]
+    else:
+        if not isinstance(pick_random,bool):
+            random.seed(pick_random)
+        candidates = random.sample(ranking.keys(),6)
     # if len(internal) >= 6:
     #     candidates = internal[:6]
     # else:
@@ -173,8 +188,6 @@ def replace_magic_states(g):
     #     candidates.extend(boundary[:6-len(candidates)])
     # if len(candidates) < 6:
     #     candidates.extend(gadgets[:6-len(candidates)])
-    if len(candidates) < 6:
-        raise Exception("Not enough T states to split. Need at least 6")
 
     graphs = []
     replace_functions = [replace_B60, replace_B66, replace_E6, replace_O6, replace_K6, replace_phi1, replace_phi2]
