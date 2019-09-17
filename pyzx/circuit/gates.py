@@ -387,7 +387,6 @@ class SWAP(CZ):
         for gate in self.to_basic_gates():
             gate.to_graph(g, labels, qs,rs)
 
-
 class CCZ(Gate):
     name = 'CCZ'
     quippername = 'Z'
@@ -418,13 +417,17 @@ class CCZ(Gate):
         return g
 
     def to_basic_gates(self):
-        mask = [self.ctrl1, self.ctrl2, self.target]
-        return [g.reposition(mask) for g in self.circuit_rep.gates]
+        c1,c2,t = self.ctrl1, self.ctrl2, self.target
+        return [CNOT(c2,t), T(t,adjoint=True),
+                CNOT(c1,t), T(t),CNOT(c2,t),T(t,adjoint=True),
+                CNOT(c1,t), T(c2), T(t), CNOT(c1,c2),T(c1),
+                T(c2,adjoint=True),CNOT(c1,c2)]
 
-    # def to_graph(self, g, labels, qs, rs):
-    #     for gate in self.to_basic_gates():
-    #         gate.to_graph(g, labels, qs, rs)
     def to_graph(self, g, labels, qs, rs):
+        # if basic_gates:
+        #     for gate in self.to_basic_gates():
+        #         gate.to_graph(g, labels, qs, rs)
+        # else:
         r = max(rs[self.target],rs[self.ctrl1],rs[self.ctrl2])
         qmin = min(self.target,self.ctrl1,self.ctrl2)
         t = self.graph_add_node(g,labels, qs,1,self.target,r)
@@ -449,6 +452,18 @@ class Tofolli(CCZ):
     quippername = 'not'
     qasm_name = 'ccx'
     qc_name = 'Tof'
+    def to_basic_gates(self):
+        c1,c2,t = self.ctrl1, self.ctrl2, self.target
+        return [HAD(t), CNOT(c2,t), T(t,adjoint=True),
+                CNOT(c1,t), T(t),CNOT(c2,t),T(t,adjoint=True),
+                CNOT(c1,t), T(c2), T(t), CNOT(c1,c2),T(c1),
+                T(c2,adjoint=True),CNOT(c1,c2), HAD(t)]
+
+    def to_graph(self, g, labels, qs, rs):
+        t = self.target
+        HAD(t).to_graph(g, labels, qs, rs)
+        super(CCZ, self).to_graph(g, labels, qs, rs)
+        HAD(t).to_graph(g, labels, qs, rs)
 
 gate_types = {
     "XPhase": XPhase,

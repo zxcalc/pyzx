@@ -156,9 +156,9 @@ def arrange_scalar_diagram(g):
         g.set_qubit(v,-1)
         g.set_qubit(w,0)
 
-def draw(g, layout=None, labels=False, figsize=(8,2), h_edge_draw='blue', rows=None):
+def draw(g, zh=True, layout=None, labels=False, figsize=(8,2), h_edge_draw='blue', rows=None):
     if not isinstance(g, BaseGraph):
-        g = g.to_graph()
+        g = g.to_graph(zh=zh)
     fig1 = plt.figure(figsize=figsize)
     ax = fig1.add_axes([0, 0, 1, 1], frameon=False)
     ax.xaxis.set_visible(False)

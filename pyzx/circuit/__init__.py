@@ -155,12 +155,14 @@ class Circuit(object):
         from .graphparser import graph_to_circuit
         return graph_to_circuit(g, split_phases=split_phases)
 
-    def to_graph(self, compress_rows=True, backend=None):
+    def to_graph(self, zh=False, compress_rows=True, backend=None):
         """Turns the circuit into a ZX-Graph.
         If ``compress_rows`` is set, it tries to put single qubit gates on different qubits,
         on the same row."""
         from .graphparser import circuit_to_graph
-        return circuit_to_graph(self, compress_rows, backend)
+
+        return circuit_to_graph(self if zh else self.to_basic_gates(),
+            compress_rows, backend)
 
     def to_tensor(self, preserve_scalar=True):
         """Returns a numpy tensor describing the circuit."""
