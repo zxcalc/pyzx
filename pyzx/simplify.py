@@ -30,7 +30,8 @@ except ImportError:
 
 __all__ = ['bialg_simp','spider_simp', 'id_simp', 'phase_free_simp', 'pivot_simp', 
         'pivot_gadget_simp', 'pivot_boundary_simp', 'gadget_simp',
-        'lcomp_simp', 'clifford_simp', 'tcount', 'to_gh', 'to_rg', 'full_reduce', 'teleport_reduce', 'reduce_scalar']
+        'lcomp_simp', 'clifford_simp', 'tcount', 'to_gh', 'to_rg', 
+        'full_reduce', 'teleport_reduce', 'reduce_scalar']
 
 from .rules import *
 

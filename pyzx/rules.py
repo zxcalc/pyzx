@@ -707,8 +707,8 @@ def match_supplementarity(g):
                     taken.update(neigh)
                     candidates.difference_update(neigh)
                     break
-    if m: 
-        print(m)
+    #if m: 
+    #    print(m)
         #if m[0][2] == 2: raise Exception("Good pair")
     return m
 

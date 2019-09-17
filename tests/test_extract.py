@@ -28,9 +28,10 @@ try:
 except ImportError:
     np = None
 
+from pyzx.circuit import Circuit, CNOT
 from pyzx.generate import cliffordT, cliffords
 from pyzx.simplify import clifford_simp
-from pyzx.extract import streaming_extract
+from pyzx.extract import streaming_extract, modified_extract
 
 SEED = 1337
 
@@ -89,6 +90,25 @@ class TestExtract(unittest.TestCase):
                 c = streaming_extract(circ)
                 t2 = c.to_tensor(False)
                 self.assertTrue(compare_tensors(t,t2,False))
+
+    def test_cz_optimise_extract(self):
+        qb_no = 8
+        c = Circuit(qb_no)
+        for i in range(qb_no):
+            for j in range(i+1,qb_no):
+                c.add_gate("CZ",i,j)
+
+        g = c.to_graph()
+        clifford_simp(g,quiet=True)
+        c2 = modified_extract(g)
+        cnot_count = 0
+        for gate in c2.gates:
+            if isinstance(gate, CNOT):
+                cnot_count+=1
+        self.assertTrue(cnot_count==4)
+        self.assertTrue(c.verify_equality(c2))
+        
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -17,7 +17,7 @@
 
 from __future__ import print_function
 
-__all__ = ['clifford_extract', 'streaming_extract']
+__all__ = ['clifford_extract', 'streaming_extract', 'modified_extract']
 
 from fractions import Fraction
 import itertools
@@ -25,7 +25,7 @@ import itertools
 from .linalg import Mat2, greedy_reduction, column_optimal_swap
 from .graph import Graph
 from .simplify import id_simp, tcount
-from .rules import match_spider_parallel, spider
+from .rules import apply_rule, pivot, match_spider_parallel, spider
 from .circuit import Circuit
 from .circuit.gates import ParityPhase, CNOT, HAD, ZPhase, CZ, InitAncilla
 
@@ -970,6 +970,199 @@ def simple_extract(g, quiet=True):
     
     return h
 
+# O(N^3)
+def max_overlap(cz_matrix):
+    """Given an adjacency matrix of qubit connectivity of a CZ circuit, returns:
+    a) the rows which have the maximum inner product
+    b) the list of common qubits between these rows
+    """
+    N = len(cz_matrix.data[0])
+
+    max_inner_product = 0
+    final_common_qbs = list()
+    overlapping_rows = tuple()
+    for i in range(N):
+        for j in range(i+1,N):
+            inner_product = 0
+            i_czs = 0
+            j_czs = 0
+            common_qbs = list()
+            for k in range(N):
+                i_czs += cz_matrix.data[i][k]
+                j_czs += cz_matrix.data[j][k]
+
+                if cz_matrix.data[i][k]!=0 and cz_matrix.data[j][k]!=0:
+                    inner_product+=1
+                    common_qbs.append(k)
+
+            if inner_product > max_inner_product:
+                max_inner_product = inner_product
+                if i_czs < j_czs:
+                    overlapping_rows = [j,i]
+                else:
+                    overlapping_rows = [i,j]
+                final_common_qbs = common_qbs
+    return [overlapping_rows,final_common_qbs]
+
+## Currently broken!!
+def modified_extract(g, optimize_czs=True, quiet=True):
+    """Given a graph put into semi-normal form by :func:`simplify.full_reduce`, 
+    it extracts its equivalent set of gates into an instance of :class:`circuit.Circuit`.
+    """
+    #g.normalise()
+    qs = g.qubits() # We are assuming that these are objects that update...
+    rs = g.rows()   # ...to reflect changes to the graph, so that when...
+    ty = g.types()  # ... g.set_row/g.set_qubit is called, these things update directly to reflect that
+    phases = g.phases()
+    c = Circuit(g.qubit_count())
+
+    gadgets = {}
+    for v in g.vertices():
+        if g.vertex_degree(v) == 1 and v not in g.inputs and v not in g.outputs:
+            n = list(g.neighbours(v))[0]
+            gadgets[n] = v
+    
+    qubit_map = dict()
+    frontier = []
+    for o in g.outputs:
+        v = list(g.neighbours(o))[0]
+        if v in g.inputs: continue
+        frontier.append(v)
+        qubit_map[v] = qs[o]
+    
+    while True:
+        # preprocessing
+        for v in frontier:
+            q = qubit_map[v]
+            b = [w for w in g.neighbours(v) if w in g.outputs][0]
+            e = g.edge(v,b)
+            if g.edge_type(e) == 2: # Hadamard edge
+                c.add_gate("HAD",q)
+                g.set_edge_type(e,1)
+            if phases[v]: 
+                c.add_gate("ZPhase", q, phases[v])
+                g.set_phase(v,0)
+        cz_mat = Mat2([[0 for i in range(g.qubit_count())] for j in range(g.qubit_count())])
+        for v in frontier:
+            for w in list(g.neighbours(v)):
+                if w in frontier:
+                    cz_mat.data[qubit_map[v]][qubit_map[w]] = 1
+                    cz_mat.data[qubit_map[w]][qubit_map[v]] = 1
+                    g.remove_edge(g.edge(v,w))
+
+        if optimize_czs:
+            overlap_data = max_overlap(cz_mat)
+            while len(overlap_data[1]) > 2: #there are enough common qubits to be worth optimising
+                i,j = overlap_data[0][0], overlap_data[0][1]
+                c.add_gate("CNOT",i,j)
+                for qb in overlap_data[1]:
+                    c.add_gate("CZ",j,qb)
+                    cz_mat.data[i][qb]=0
+                    cz_mat.data[j][qb]=0
+                    cz_mat.data[qb][i]=0
+                    cz_mat.data[qb][j]=0
+                c.add_gate("CNOT",i,j)
+                overlap_data = max_overlap(cz_mat)
+
+        for i in range(g.qubit_count()):
+            for j in range(i+1,g.qubit_count()):
+                if cz_mat.data[i][j]==1:
+                    c.add_gate("CZ",i,j)
+
+        # Check for connectivity to inputs
+        neighbours = set()
+        for v in frontier.copy():
+            d = [w for w in g.neighbours(v) if w not in g.outputs]
+            if any(w in g.inputs for w in d):
+                if len(d) == 1: # Only connected to input, remove from frontier
+                    frontier.remove(v)
+                    continue
+                # We disconnect v from the input b via a new spider
+                b = [w for w in d if w in g.inputs][0]
+                q = qs[b]
+                r = rs[b]
+                w = g.add_vertex(1,q,r+1)
+                e = g.edge(v,b)
+                et = g.edge_type(e)
+                g.remove_edge(e)
+                g.add_edge((v,w),2)
+                g.add_edge((w,b),3-et)
+                d.remove(b)
+                d.append(w)
+            neighbours.update(d)
+        if not frontier: break # We are done
+            
+        neighbours = list(neighbours)
+        m = bi_adj(g,neighbours,frontier)
+        m.gauss(full_reduce=True)
+        max_vertices = []
+        for l in m.data:
+            if sum(l) == 1: 
+                i = [i for i,j in enumerate(l) if j == 1][0]
+                max_vertices.append(neighbours[i])
+        if max_vertices:
+            if not quiet: print("Reducing", len(max_vertices), "vertices")
+            for v in max_vertices: neighbours.remove(v)
+            neighbours = max_vertices + neighbours
+            m = bi_adj(g,neighbours,frontier)
+            cnots = m.to_cnots()
+            for cnot in cnots:
+                m.row_add(cnot.target,cnot.control)
+                c.add_gate("CNOT",qubit_map[frontier[cnot.control]],qubit_map[frontier[cnot.target]])
+            connectivity_from_biadj(g,m,neighbours,frontier)
+            good_verts = dict()
+            for i, row in enumerate(m.data):
+                if sum(row) == 1:
+                    v = frontier[i]
+                    w = neighbours[[j for j in range(len(row)) if row[j]][0]]
+                    good_verts[v] = w
+            for v,w in good_verts.items():
+                c.add_gate("HAD",qubit_map[v])
+                qubit_map[w] = qubit_map[v]
+                b = [o for o in g.neighbours(v) if o in g.outputs][0]
+                g.remove_vertex(v)
+                g.add_edge((w,b))
+                frontier.remove(v)
+                frontier.append(w)
+            if not quiet: print("Vertices extracted:", len(good_verts))
+            continue
+        else:
+            if not quiet: print("No maximal vertex found. Pivoting on gadgets")
+            if not quiet: print("Gadgets before:", len(gadgets))
+            for w in neighbours:
+                if w not in gadgets: continue
+                for v in g.neighbours(w):
+                    if v in frontier:
+                        apply_rule(g,pivot,[(w,v,[],[o for o in g.neighbours(v) if o in g.outputs])])
+                        frontier.remove(v)
+                        del gadgets[w]
+                        frontier.append(w)
+                        qubit_map[w] = qubit_map[v]
+                        break
+            if not quiet: print("Gadgets after:", len(gadgets))
+            continue
+            
+    # Outside of loop. Finish up the permutation
+    id_simp(g,quiet=True) # Now the graph should only contain inputs and outputs
+    swap_map = {}
+    leftover_swaps = False
+    for v in g.outputs: # Finally, check for the last layer of Hadamards, and see if swap gates need to be applied.
+        q = qs[v]
+        i = list(g.neighbours(v))[0]
+        if i not in g.inputs: 
+            raise TypeError("Algorithm failed: Not fully reducable")
+            return c
+        if g.edge_type(g.edge(v,i)) == 2:
+            c.add_gate("HAD", q)
+            g.set_edge_type(g.edge(v,i),1)
+        if qs[i] != q: leftover_swaps = True
+        swap_map[q] = qs[i]
+    if leftover_swaps: 
+        for t1, t2 in permutation_as_swaps(swap_map):
+            c.add_gate("SWAP", t1, t2)
+    # Since we were extracting from right to left, we reverse the order of the gates
+    c.gates = list(reversed(c.gates))
+    return c
 
 # def greedy_cut_extract(g, quiet=True):
 #     """Given a graph that has been put into semi-normal form by
