@@ -50,7 +50,7 @@ def phase_to_s(a):
     # unicode 0x03c0 = pi
     return ns + '\u03c0' + ds
 
-def draw(g, scale=None, auto_hbox=True):
+def draw(g, scale=None, auto_hbox=True, show_labels=False):
     global _d3_display_seq
 
     if not in_notebook and not in_webpage: 
@@ -90,11 +90,12 @@ def draw(g, scale=None, auto_hbox=True):
                          paths: {{d3: "d3.v4.min"}} }});
         require(['pyzx'], function(pyzx) {{
             pyzx.showGraph('#graph-output-{0}',
-            JSON.parse('{2}'), {3}, {4}, {5}, {6});
+            JSON.parse('{2}'), {3}, {4}, {5}, {6}, {7});
         }});
         </script>
         """.format(seq, javascript_location, graphj, w, h, node_size,
-            'true' if auto_hbox else 'false')
+            'true' if auto_hbox else 'false',
+            'true' if show_labels else 'false')
     if in_notebook:
         display(HTML(text))
     elif in_webpage:

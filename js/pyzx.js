@@ -18,7 +18,7 @@ define(['d3'], function(d3) {
     }
 
     return {
-    showGraph: function(tag, graph, width, height, node_size, auto_hbox) {
+    showGraph: function(tag, graph, width, height, node_size, auto_hbox, show_labels) {
         var ntab = {};
 
         graph.nodes.forEach(function(d) {
@@ -100,13 +100,16 @@ define(['d3'], function(d3) {
             .attr("font-size", "12px")
             .attr("font-family", "monospace")
             .attr("fill", "#00d");
-        node.append("text")
-            .attr("y", -0.7 * node_size - 5)
-            .text(function (d) { return d.name; })
-            .attr("text-anchor", "middle")
-            .attr("font-size", "8px")
-            .attr("font-family", "monospace")
-            .attr("fill", "#ccc");
+
+        if (show_labels) {
+            node.append("text")
+                .attr("y", -0.7 * node_size - 5)
+                .text(function (d) { return d.name; })
+                .attr("text-anchor", "middle")
+                .attr("font-size", "8px")
+                .attr("font-family", "monospace")
+                .attr("fill", "#ccc");
+        }
 
         function update_hboxes() {
             if (auto_hbox) {
