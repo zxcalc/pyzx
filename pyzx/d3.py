@@ -50,14 +50,14 @@ def phase_to_s(a):
     # unicode 0x03c0 = pi
     return ns + '\u03c0' + ds
 
-def draw(g, zh=True, scale=None, auto_hbox=True):
+def draw(g, scale=None, auto_hbox=True):
     global _d3_display_seq
 
     if not in_notebook and not in_webpage: 
         raise Exception("This method only works when loaded in a webpage or Jupyter notebook")
 
     if not hasattr(g, 'vertices'):
-        g = g.to_graph(zh=zh)
+        g = g.to_graph(zh=True)
 
     _d3_display_seq += 1
     seq = _d3_display_seq
