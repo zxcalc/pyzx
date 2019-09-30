@@ -462,7 +462,7 @@ class Tofolli(CCZ):
     def to_graph(self, g, labels, qs, rs):
         t = self.target
         HAD(t).to_graph(g, labels, qs, rs)
-        super(CCZ, self).to_graph(g, labels, qs, rs)
+        CCZ.to_graph(self, g, labels, qs, rs)
         HAD(t).to_graph(g, labels, qs, rs)
 
 gate_types = {

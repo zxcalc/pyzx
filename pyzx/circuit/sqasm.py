@@ -18,7 +18,7 @@ def remove_ids_nocheck(g, ms):
 def sqasm(s, simplify=True):
     p = QASMParser()
     c = p.parse(s, strict=False)
-    g = c.to_graph()
+    g = c.to_graph(zh=True)
     for r,sp in p.registers.items():
         if len(r) > 0 and r[0].isupper():
             for q in range(sp[0],sp[0]+sp[1]):

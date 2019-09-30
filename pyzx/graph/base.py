@@ -451,12 +451,15 @@ class BaseGraph(object):
         new vertices added to the graph, namely: range(g.vindex() - amount, g.vindex())"""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
-    def add_vertex(self, ty=0, qubit=-1, row=-1, phase=0):
+    def add_vertex(self, ty=0, qubit=-1, row=-1, phase=None):
         """Add a single vertex to the graph and return its index.
         The optional parameters allow you to respectively set
         the type, qubit index, row index and phase of the vertex."""
         v = self.add_vertices(1)[0]
         if ty: self.set_type(v, ty)
+        if phase is None:
+            if ty == 3: phase = 1
+            else: phase = 0
         if qubit!=-1: self.set_qubit(v, qubit)
         if row!=-1: self.set_row(v, row)
         if phase: 

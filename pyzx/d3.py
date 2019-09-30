@@ -40,8 +40,9 @@ _d3_display_seq = 0
 # javascript_location = '../js'
 
 # TODO: avoid duplicate (copied from drawing.py)
-def phase_to_s(a):
-    if not a: return ''
+def phase_to_s(a, t):
+    if (a == 0 and t != 3): return ''
+    if (a == 1 and t == 3): return ''
     if not isinstance(a, Fraction):
         a = Fraction(a)
     ns = '' if a.numerator == 1 else str(a.numerator)
@@ -50,7 +51,7 @@ def phase_to_s(a):
     # unicode 0x03c0 = pi
     return ns + '\u03c0' + ds
 
-def draw(g, scale=None, auto_hbox=True, show_labels=False):
+def draw(g, scale=None, auto_hbox=True, labels=False):
     global _d3_display_seq
 
     if not in_notebook and not in_webpage: 
@@ -77,7 +78,7 @@ def draw(g, scale=None, auto_hbox=True, show_labels=False):
               'x': (g.row(v) + 1) * scale,
               'y': (g.qubit(v) + 2) * scale,
               't': g.type(v),
-              'phase': phase_to_s(g.phase(v)) }
+              'phase': phase_to_s(g.phase(v), g.type(v)) }
              for v in g.vertices()]
     links = [{'source': str(g.edge_s(e)),
               'target': str(g.edge_t(e)),
@@ -95,7 +96,7 @@ def draw(g, scale=None, auto_hbox=True, show_labels=False):
         </script>
         """.format(seq, javascript_location, graphj, w, h, node_size,
             'true' if auto_hbox else 'false',
-            'true' if show_labels else 'false')
+            'true' if labels else 'false')
     if in_notebook:
         display(HTML(text))
     elif in_webpage:
