@@ -19,42 +19,8 @@ from .simplify import *
 from .graph.base import BaseGraph
 
 from fractions import Fraction
+from itertools import combinations
 
-
-def hedge_to_hbox(g: BaseGraph):
-    to_gh(g)
-    del_e = []
-    add_e = []
-    types = g.types()
-    es = list(g.edges())
-    for e in es:
-        if g.edge_type(e) == 2:
-            s,t = g.edge_st(e)
-            if types[s] == 0 or types[t] == 0: continue
-            qs = g.qubit(s)
-            qt = g.qubit(t)
-            h = g.add_vertex(3)
-            del_e.append(e)
-            add_e.append((s, h))
-            add_e.append((h, t))
-            if qs == qt:
-                g.set_qubit(h, qs)
-            else:
-                q = (qs + qt) / 2
-                if round(q) == q: q += 0.5
-                g.set_qubit(h, q)
-            g.set_row(h, (g.row(s) + g.row(t)) / 2)
-    g.remove_edges(del_e)
-    g.add_edges(add_e)
-
-def hbox_to_hedge(g):
-    types = g.types()
-    hs = [h for h in g.vertices() if types[h] == 3]
-    for h in hs:
-        if g.vertex_degree(h) == 2 and g.phase(h) == 1:
-            s,t = g.neighbours(h)
-            g.add_edge((s,t), 2)
-            g.remove_vertex(h)
 
 def match_h2(g: BaseGraph):
     m = set()
@@ -105,7 +71,8 @@ def match_hpivot(g, matchf=None):
         if not (
             (matchf is None or matchf(h)) and
             g.vertex_degree(h) == 2 and
-            types[h] == 3
+            types[h] == 3 and
+            phases[h] == 1
         ): continue
 
         v0, v1 = g.neighbours(h)
@@ -125,13 +92,28 @@ def match_hpivot(g, matchf=None):
         v1b = [v for v in v1n if types[v] == 0]
         v1h = [v for v in v1n if types[v] == 3 and v != h]
 
+        # check that at least one of v0 or v1 has all pi phases on adjacent
+        # hboxes.
+        if not (all(phases[v] == 1 for v in v0h)):
+            if not (all(phases[v] == 1 for v in v1h)):
+                continue
+            else:
+                # interchange the roles of v0 <-> v1
+                v0,v1 = v1,v0
+                v0n,v1n = v1n,v0n
+                v0b,v1b = v1b,v0b
+                v0h,v1h = v1h,v0h
+
         v0nn = [list(filter(lambda w : w != v0, g.neighbours(v))) for v in v0h]
-        v1nn = [list(filter(lambda w : w != v1, g.neighbours(v))) for v in v1h]
+        v1nn = [
+          (phases[v],
+           list(filter(lambda w : w != v1, g.neighbours(v))))
+          for v in v1h]
 
 
         if not (
             all(all(types[v] == 1 for v in vs) for vs in v0nn) and
-            all(all(types[v] == 1 for v in vs) for vs in v1nn) and
+            all(all(types[v] == 1 for v in vs[1]) for vs in v1nn) and
             len(v0b) + len(v1b) <= 1 and
             len(v0b) + len(v0h) + 1 == len(v0n) and
             len(v1b) + len(v1h) + 1 == len(v1n)
@@ -162,20 +144,25 @@ def hpivot(g, m):
     else:
         e = g.edge(v1, v1b[0])
         g.set_edge_type(e, 2 if g.edge_type(e) == 1 else 1)
-        v1nn.append([v1])
+        v1nn.append((Fraction(1,1), [v1]))
 
-    for vs in v0nn:
-        for ws in v1nn:
-            us = vs + ws
-            h0 = g.add_vertex(3)
-            q = 0
-            r = 0
-            for u in us:
-                q += g.qubit(u)
-                r += g.row(u)
-                g.add_edge((h0,u))
-            g.set_qubit(h0, q / len(us) + 0.1)
-            g.set_row(h0, r / len(us) + 0.1)
+    for phase,ws in v1nn:
+        for weight in range(1,len(v0nn)+1):
+            f_phase = (phase * ((-2)**(weight-1))) % 2
+            if f_phase == 0: continue
+            for vvs in combinations(v0nn, weight):
+                us = sum(vvs, ws)
+                #us = vs + ws
+                h0 = g.add_vertex(3)
+                g.set_phase(h0, f_phase)
+                q = 0
+                r = 0
+                for u in us:
+                    q += g.qubit(u)
+                    r += g.row(u)
+                    g.add_edge((h0,u))
+                g.set_qubit(h0, q / len(us) - 0.4)
+                g.set_row(h0, r / len(us) + 0.4)
 
 def match_par_hbox(g):
     hs = dict()
