@@ -45,6 +45,10 @@ def X_to_tensor(arity, phase):
             m[i] -= np.exp(1j*phase)
     return np.power(np.sqrt(0.5),arity)*m.reshape([2]*arity)
 
+def H_to_tensor(arity, phase):
+    m = np.ones(2**arity, dtype = complex)
+    if phase != 0: m[-1] = np.exp(1j*phase)
+    return m.reshape([2]*arity)
 
 def pop_and_shift(verts, indices):
     res = []
@@ -97,9 +101,15 @@ def tensorfy(g, preserve_scalar=True):
                 d += 1
                 t = id2
             else:
-                if types[v] == 0: raise ValueError("Non-ZX internal vertex", v)
                 phase = pi*phases[v]
-                t = Z_to_tensor(d,phase) if types[v] == 1 else X_to_tensor(d,phase)
+                if types[v] == 1:
+                    t = Z_to_tensor(d,phase)
+                elif types[v] == 2:
+                    t = X_to_tensor(d,phase)
+                elif types[v] == 3:
+                    t = H_to_tensor(d,phase)
+                else:
+                    raise ValueError("Non-ZXH internal vertex", v)
             nn = list(filter(lambda n: rows[n]<r or (rows[n]==r and n<v), neigh))
             ety = {n:g.edge_type(g.edge(v,n)) for n in nn}
             nn.sort(key=lambda n: ety[n])
