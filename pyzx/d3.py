@@ -91,10 +91,10 @@ def draw(g, scale=None, auto_hbox=True, labels=False):
                          paths: {{d3: "d3.v4.min"}} }});
         require(['pyzx'], function(pyzx) {{
             pyzx.showGraph('#graph-output-{0}',
-            JSON.parse('{2}'), {3}, {4}, {5}, {6}, {7});
+            JSON.parse('{2}'), {3}, {4}, {5}, {6}, {7}, {8});
         }});
         </script>
-        """.format(seq, javascript_location, graphj, w, h, node_size,
+        """.format(seq, javascript_location, graphj, w, h, scale, node_size,
             'true' if auto_hbox else 'false',
             'true' if labels else 'false')
     if in_notebook:

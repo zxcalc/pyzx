@@ -152,7 +152,10 @@ def hpivot(g, m):
             if f_phase == 0: continue
             for vvs in combinations(v0nn, weight):
                 us = sum(vvs, ws)
-                #us = vs + ws
+
+                # TODO: check if this is the right thing to do (and update scalar)
+                if len(us) == 0: continue
+
                 h0 = g.add_vertex(3)
                 g.set_phase(h0, f_phase)
                 q = 0
@@ -171,16 +174,16 @@ def match_par_hbox(g):
         if types[h] != 3: continue
         nhd = tuple(sorted(g.neighbours(h)))
         if nhd in hs:
-            return [(h, hs[nhd])]
+            hs[nhd].append(h)
         else:
-            hs[nhd] = h
-    return []
+            hs[nhd] = [h]
+    return list(filter(lambda l: len(l) > 1, hs.values()))
 
-def par_hbox(g, m):
-    if len(m) == 0: return None
-    h0,h1 = m[0]
-    p = (g.phase(h0) + g.phase(h1)) % 2
-    g.remove_vertex(h1)
-    if p == 0: g.remove_vertex(h0)
-    else: g.set_phase(h0, p)
+def par_hbox(g, ms):
+    for m in ms:
+        p = sum(g.phase(h) for h in m) % 2
+        for h in m[1:]: g.remove_vertex(h)
+        if p == 0: g.remove_vertex(m[0])
+        else: g.set_phase(m[0], p)
+
 

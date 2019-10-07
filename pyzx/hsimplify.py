@@ -77,9 +77,9 @@ def from_hbox(g):
             g.remove_vertex(h)
 
 # a stripped-down version of "simp", since hrules don't return edge tables etc
-def hsimp(g, name, match, rule, quiet=False):
+def hsimp(g, name, match, rule, iterations=-1, quiet=False):
     i = 0
-    while True:
+    while iterations == -1 or i < iterations:
         ms = match(g)
         if len(ms) > 0:
             rule(g, ms)
@@ -97,7 +97,7 @@ def hpivot_simp(g, quiet=False):
         i += id_simp(g, quiet=quiet)
 
         to_hbox(g)
-        i += hsimp(g, 'hpivot', match_hpivot, hpivot, quiet)
+        i += hsimp(g, 'hpivot', match_hpivot, hpivot, 1, quiet)
         i += hsimp(g, 'par_hbox', match_par_hbox, par_hbox, quiet)
         from_hbox(g)
 

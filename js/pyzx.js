@@ -18,7 +18,7 @@ define(['d3'], function(d3) {
     }
 
     return {
-    showGraph: function(tag, graph, width, height, node_size, auto_hbox, show_labels) {
+    showGraph: function(tag, graph, width, height, scale, node_size, auto_hbox, show_labels) {
         var ntab = {};
 
         graph.nodes.forEach(function(d) {
@@ -126,12 +126,14 @@ define(['d3'], function(d3) {
                         }
                     }
 
+                    offset = 0.5 * scale;
+
                     if (sz != 0) {
-                        x = (x/sz) + 20;
-                        y = (y/sz) - 20;
+                        x = (x/sz) + offset;
+                        y = (y/sz) - offset;
 
                         while (pos[[x,y]]) {
-                            x += 20;
+                            x += offset;
                         }
                         d.x = x;
                         d.y = y;
