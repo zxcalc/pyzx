@@ -97,8 +97,9 @@ def hpivot_simp(g, quiet=False):
         i += id_simp(g, quiet=quiet)
 
         to_hbox(g)
-        i += hsimp(g, 'hpivot', match_hpivot, hpivot, 1, quiet)
-        i += hsimp(g, 'par_hbox', match_par_hbox, par_hbox, quiet)
+        i += hsimp(g, 'hpivot', match_hpivot, hpivot, iterations=1, quiet=quiet)
+        #i += hsimp(g, 'zero_hbox', match_zero_hbox, zero_hbox, quiet=quiet)
+        i += hsimp(g, 'par_hbox', match_par_hbox, par_hbox, quiet=quiet)
         from_hbox(g)
 
         if i == 0: break

@@ -494,7 +494,7 @@ class BaseGraph(object):
             
             t1 = self.type(v1)
             t2 = self.type(v2)
-            if t1 == t2:                #types are equal,
+            if (t1 == 1 and t2 == 1) or (t1 == 2 and t2 == 2): #types are ZX & equal,
                 n1 = bool(n1)           #so normal edges fuse
                 pairs, n2 = divmod(n2,2)#while hadamard edges go modulo 2
                 self.scalar.add_power(-2*pairs)
@@ -505,7 +505,7 @@ class BaseGraph(object):
                 elif n1 != 0: new_type = 1
                 elif n2 != 0: new_type = 2
                 else: new_type = 0
-            else:                       #types are different
+            elif (t1 == 1 and t2 == 2) or (t1 == 2 and t2 == 1): #types are ZX & different
                 pairs, n1 = divmod(n1,2)#so normal edges go modulo 2
                 n2 = bool(n2)           #while hadamard edges fuse
                 self.scalar.add_power(-2*pairs)
@@ -516,6 +516,23 @@ class BaseGraph(object):
                 elif n1 != 0: new_type = 1
                 elif n2 != 0: new_type = 2
                 else: new_type = 0
+            elif (t1 == 1 and t2 == 3) or (t1 == 3 and t2 == 1): # Z & H-box
+                n1 = bool(n1)
+                if n1 + n2 > 1:
+                    raise ValueError("Unhandled parallel edges between nodes of type (%s,%s)" % (t1,t2))
+                else:
+                    if n1 == 1: new_type = 1
+                    elif n2 == 1: new_type = 2
+                    else: new_type = 0
+            else:
+                if n1 + n2 > 1:
+                    raise ValueError("Unhandled parallel edges between nodes of type (%s,%s)" % (t1,t2))
+                else:
+                    if n1 == 1: new_type = 1
+                    elif n2 == 1: new_type = 2
+                    else: new_type = 0
+
+
             if new_type != 0: # They should be connected, so update the graph
                 if conn_type == 0: #new edge added
                     add[new_type-1].append((v1,v2))
