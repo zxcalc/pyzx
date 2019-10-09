@@ -66,6 +66,9 @@ def match_hpivot(g, matchf=None):
 
     types = g.types()
     phases = g.phases()
+    m = []
+
+    min_degree = -1
 
     for h in g.vertices():
         if not (
@@ -76,11 +79,6 @@ def match_hpivot(g, matchf=None):
         ): continue
 
         v0, v1 = g.neighbours(h)
-
-        if not (
-            types[v0] == 1 and phases[v0] == 0 and
-            types[v1] == 1 and phases[v1] == 0
-        ): continue
 
         v0n = set(g.neighbours(v0))
         v1n = set(g.neighbours(v1))
@@ -119,8 +117,12 @@ def match_hpivot(g, matchf=None):
             len(v1b) + len(v1h) + 1 == len(v1n)
         ): continue
 
-        return [(h, v0, v1, v0b, v1b, v0nn, v1nn)]
-    return []
+        degree = g.vertex_degree(v0) * g.vertex_degree(v1)
+
+        if min_degree == -1 or degree < min_degree:
+            m = [(h, v0, v1, v0b, v1b, v0nn, v1nn)]
+            min_degree = degree
+    return m
 
 
 def hpivot(g, m):
