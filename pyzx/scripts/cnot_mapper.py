@@ -29,7 +29,7 @@ import numpy as np
 
 if __name__ == '__main__':
     print("Please call this as python -m pyzx mapper ...")
-    return
+    exit()
     #sys.path.append('..')
 
 from ..linalg import Mat2
