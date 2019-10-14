@@ -16,9 +16,9 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 """Contains simplification procedures based on the rewrite rules in rules_.
-The main procedures of interest are :func:``clifford_simp` for simple reductions, 
-:func:``full_reduce`` for the full rewriting power of PyZX, and :func:`teleport_reduce` to 
-use the power of :func:``full_reduce`` while not changing the structure of the graph.
+The main procedures of interest are :func:`clifford_simp` for simple reductions, 
+:func:`full_reduce` for the full rewriting power of PyZX, and :func:`teleport_reduce` to 
+use the power of :func:`full_reduce` while not changing the structure of the graph.
 """
 
 from __future__ import print_function
@@ -31,7 +31,7 @@ except ImportError:
 __all__ = ['bialg_simp','spider_simp', 'id_simp', 'phase_free_simp', 'pivot_simp', 
         'pivot_gadget_simp', 'pivot_boundary_simp', 'gadget_simp',
         'lcomp_simp', 'clifford_simp', 'tcount', 'to_gh', 'to_rg', 
-        'full_reduce', 'teleport_reduce', 'reduce_scalar']
+        'full_reduce', 'teleport_reduce', 'reduce_scalar', 'supplementarity_simp']
 
 from .rules import *
 
