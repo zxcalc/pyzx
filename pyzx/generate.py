@@ -129,6 +129,8 @@ def cnots(qubits, depth, backend=None):
     for i in range(qubits):
         g.inputs.append(i)
         g.outputs.append(v-i-1)
+
+    g.scalar.add_power(depth)
     return g
 
 def accept(p):
@@ -213,6 +215,7 @@ def cliffordT(qubits, depth, p_t=None, p_s=None, p_hsh=None, p_cnot=None, backen
             g.add_vertex(2,q1,r-1)
             g.add_edge((qs[q1], v))
             g.add_edge((v-1,v))
+            g.scalar.add_power(1)
             qs[q1] = v
             v += 1
         elif p > 1 - p_cnot - p_hsh:
