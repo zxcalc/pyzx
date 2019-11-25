@@ -126,7 +126,7 @@ define(['d3'], function(d3) {
                         }
                     }
 
-                    offset = 0.5 * scale;
+                    offset = 0.25 * scale;
 
                     if (sz != 0) {
                         x = (x/sz) + offset;

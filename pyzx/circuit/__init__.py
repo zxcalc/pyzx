@@ -180,6 +180,8 @@ class Circuit(object):
             return Circuit.from_qc_file(circuitfile)
         if ext == 'qasm':
             return Circuit.from_qasm_file(circuitfile)
+        if ext == 'qsim':
+            return Circuit.from_qsim_file(circuitfile)
         if ext == 'qgraph':
             raise TypeError(".qgraph files are not Circuits. Please load them as graphs using json_to_graph")
         if ext == 'quipper':
@@ -198,6 +200,16 @@ class Circuit(object):
         with open(fname, 'r') as f:
             data = f.read()
         return parse_qc(data)
+
+    @staticmethod
+    def from_qsim_file(fname):
+        """Produces a :class:`Circuit` based on a .qc description of a circuit.
+        If a Tofolli gate with more than 2 controls is encountered, ancilla qubits are added.
+        Currently up to 5 controls are supported."""
+        from .qsimparser import parse_qsim
+        with open(fname, 'r') as f:
+            data = f.read()
+        return parse_qsim(data)
 
     @staticmethod
     def from_quipper_file(fname):
@@ -307,6 +319,8 @@ def determine_file_type(circuitfile):
             return "qasm"
         if ext == '.qgraph':
             return "qgraph"
+        if ext == '.qsim':
+            return 'qsim'
         if ext.find('quip') != -1:
             return "quipper"
         f = open(fname, 'r')

@@ -188,3 +188,49 @@ def graph_to_json(g):
     return json.dumps({"wire_vertices": wire_vs, 
             "node_vertices": node_vs, 
             "undir_edges": edges})
+
+def to_graphml(g):
+    gml = """<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<graphml xmlns="http://graphml.graphdrawing.org/xmlns">
+    <key attr.name="type" attr.type="int" for="node" id="type">
+        <default>1</default>
+    </key>
+    <key attr.name="phase" attr.type="string" for="node" id="phase">
+        <default>0</default>
+    </key>
+    <key attr.name="edge type" attr.type="int" for="edge" id="etype">
+        <default>1</default>
+    </key>
+    <key attr.name="x" attr.type="double" for="node" id="x">
+        <default>0</default>
+    </key>
+    <key attr.name="y" attr.type="double" for="node" id="y">
+        <default>0</default>
+    </key>
+    <graph edgedefault="undirected">
+"""
+
+    for v in g.vertices():
+        gml += (
+            (8*" " +
+             """<node id="{!s}"><data key="type">{!s}</data><data key="phase">{!s}</data>"""+
+             """<data key="x">{!s}</data><data key="y">{!s}</data></node>\n"""
+            ).format(
+                v, g.type(v), g.phase(v), g.row(v) * 100, g.qubit(v) * 100
+            ))
+
+    for e in g.edges():
+        s,t = g.edge_st(e)
+        gml += (
+            (8*" " +
+             """<edge id="{!s}_{!s}" source="{!s}" target="{!s}">"""+
+             """<data key="etype">{!s}</data></edge>\n"""
+            ).format(
+                s, t, s, t, g.edge_type(e)
+            ))
+    gml += """
+    </graph>
+</graphml>
+"""
+
+    return gml
