@@ -46,10 +46,10 @@ define(['d3'], function(d3) {
         // SETUP SVG ITEMS
 
         var svg = d3.select(tag)
-            .attr("tabindex", 1)
+            //.attr("tabindex", 1)
             .on("keydown.brush", function() {shiftKey = d3.event.shiftKey || d3.event.metaKey;})
             .on("keyup.brush", function() {shiftKey = d3.event.shiftKey || d3.event.metaKey;})
-            .each(function() { this.focus(); })
+            //.each(function() { this.focus(); })
             .append("svg")
             .attr("style", "max-width: none; max-height: none")
             .attr("width", width)
