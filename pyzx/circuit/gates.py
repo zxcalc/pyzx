@@ -24,6 +24,8 @@ import copy
 import math
 from fractions import Fraction
 
+from . import Circuit
+
 class InitAncilla:
     name = 'InitAncilla'
     def __init__(self, label):
@@ -57,6 +59,25 @@ class Gate(object):
             elif hasattr(other,a): return False
         if self.index != other.index: return False
         return True
+
+    def _max_target(self):
+        qubits = self.target
+        if hasattr(self, "control"):
+            qubits = max([qubits, self.control])
+        return qubits
+
+    def __add__(self, other):
+        c = Circuit(self._max_target()+1)
+        c.add_gate(self)
+        c += other
+        return c
+
+    def __matmul__(self,other):
+        c = Circuit(self._max_target()+1)
+        c.add_gate(self)
+        c2 = Circuit(other._max_target()+1)
+        c2.add_gate(other)
+        return c@c2
 
     def copy(self):
         return copy.copy(self)
@@ -338,6 +359,9 @@ class ParityPhase(Gate):
     def __str__(self):
         return "ParityPhase({!s}, {!s})".format(self.phase, ", ".join(str(t) for t in self.targets))
 
+    def _max_target(self):
+        return max(self.targets)
+
     def reposition(self, mask):
         g = self.copy()
         g.targets = [mask[t] for t in g.targets]
@@ -524,6 +548,9 @@ class CCZ(Gate):
             ((self.ctrl1 == other.ctrl1 and self.ctrl2 == other.ctrl2) or
              (self.ctrl1 == other.ctrl2 and self.ctrl2 == other.ctrl1))): return True
         return False
+
+    def _max_target(self):
+        return max([self.target,self.ctrl1,self.ctrl2])
 
     def tcount(self):
         return 7

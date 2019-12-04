@@ -28,7 +28,8 @@ try:
 except ImportError:
     np = None
 
-from pyzx.circuit import Circuit, CNOT
+from pyzx.circuit import Circuit
+from pyzx.circuit.gates import CNOT
 from pyzx.generate import cliffordT, cliffords
 from pyzx.simplify import clifford_simp
 from pyzx.extract import streaming_extract, modified_extract

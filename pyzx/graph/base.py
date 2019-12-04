@@ -279,7 +279,8 @@ class BaseGraph(object):
             self.set_edge_type(self.edge(s,t), replace.edge_type(e))
 
     def compose(self, other):
-        """Inserts a circuit after this one. The amount of qubits of the circuits must match."""
+        """Inserts a graph after this one. The amount of qubits of the graphs must match.
+        Also available by the operator `graph1 + graph2`"""
         if self.qubit_count() != other.qubit_count():
             raise TypeError("Circuits work on different qubit amounts")
         self.normalise()
@@ -294,6 +295,41 @@ class BaseGraph(object):
                 other.set_edge_type(e, 3-other.edge_type(e)) # toggle the edge type
         d = self.depth()
         self.replace_subgraph(d-1,d,other)
+
+    def tensor(self, other):
+        """Take the tensor product of two graphs. Places the second graph below the first one.
+        Can also be called using the operator `graph1 @ graph2`"""
+        g = self.copy()
+        ts = other.types()
+        qs = other.qubits()
+        height = max(qs.values()) + 1
+        rs = other.rows()
+        phases = other.phases()
+        vertex_map = dict()
+        for v in other.vertices():
+            w = g.add_vertex(ts[v],qs[v]+height,rs[v],phases[v])
+            vertex_map[v] = w
+        for e in other.edges():
+            s,t = other.edge_st(e)
+            g.add_edge((vertex_map[s],vertex_map[t]),other.edge_type(e))
+        for v in other.inputs:
+            g.inputs.append(vertex_map[v])
+        for v in other.outputs:
+            g.outputs.append(vertex_map[v])
+        return g
+
+
+    def __iadd__(self, other):
+        self.compose(other)
+        return self
+
+    def __add__(self, other):
+        g = self.copy()
+        g += other
+        return g
+
+    def __matmul__(self, other):
+        return self.tensor(other)
 
     def apply_state(self, state):
         """Inserts a state into the inputs of the graph. ``state`` should be

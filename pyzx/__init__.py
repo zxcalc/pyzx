@@ -21,7 +21,7 @@ from .drawing import *
 from .simplify import *
 from .io import *
 from .tensor import *
-from .circuit import Circuit, gates
+from .circuit import Circuit, gates, id
 from .circuit.qasmparser import qasm
 from .circuit.sqasm import sqasm
 from . import quantomatic
