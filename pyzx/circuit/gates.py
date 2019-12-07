@@ -413,7 +413,7 @@ class FSim(Gate):
         # TODO
         #cnots = [CNOT(self.targets[i],self.targets[i+1]) for i in range(len(self.targets)-1)]
         #p = ZPhase(self.targets[-1], self.phase)
-        return []
+        return [self]
 
     def to_graph(self, g, labels, qs, rs):
         # TODO: this version assumes theta is always (pi/2)

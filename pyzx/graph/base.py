@@ -169,6 +169,10 @@ class BaseGraph(object):
         self.inputs = []
         self.outputs = []
 
+        # merge_vdata(v0,v1) is an optional, custom function for merging
+        # vdata of v1 into v0 during spider fusion etc.
+        self.merge_vdata = None
+
     def __str__(self):
         return "Graph({} vertices, {} edges)".format(
                 str(self.num_vertices()),str(self.num_edges()))
@@ -203,6 +207,7 @@ class BaseGraph(object):
         g = Graph(backend = backend)
         g.track_phases = self.track_phases
         g.scalar = self.scalar.copy()
+        g.merge_vdata = self.merge_vdata
         mult = 1
         if adjoint: mult = -1
 
@@ -238,6 +243,19 @@ class BaseGraph(object):
     def adjoint(self):
         """Returns a new graph equal to the adjoint of this graph."""
         return self.copy(adjoint=True)
+
+    def map_qubits(self, qubit_map):
+        for v in self.vertices():
+            q = self.qubit(v)
+            r = self.row(v)
+            q0 = min(max(0,math.floor(q)), len(qubit_map)-1)
+            offset = q - q0
+            coord = qubit_map[q0]
+            qf = 3*(coord[0]+offset)+(0.6 * coord[1])
+            rf = 3*r+(0.6 * coord[1])
+            self.set_qubit(v, qf)
+            self.set_row(v, rf)
+
 
     def replace_subgraph(self, left_row, right_row, replace):
         """Deletes the subgraph of all nodes with rank strictly between ``left_row``
@@ -390,6 +408,19 @@ class BaseGraph(object):
         """Returns a representation of the graph as a matrix using :func:`~pyzx.tensor.tensorfy`"""
         return tensor_to_matrix(tensorfy(self, preserve_scalar), len(self.inputs), len(self.outputs))
 
+
+    def is_id(self):
+        for e in self.edges():
+            s,t = self.edge_st(e)
+            if s in self.inputs and t in self.outputs:
+                if self.inputs.index(s) != self.outputs.index(t):
+                    return False
+            elif t in self.inputs and s in self.outputs:
+                if self.inputs.index(t) != self.outputs.index(s):
+                    return False
+            else:
+                return False
+        return True
 
     def vindex(self):
         """The index given to the next vertex added to the graph. It should always
