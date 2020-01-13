@@ -160,17 +160,21 @@ def replace_magic_states(g, pick_random=False):
     ranking = dict()
     for v in g.vertices():
         if not phases[v] or phases[v].denominator != 4: continue
+
+        ### begin AK changes ....
+        deg = g.vertex_degree(v)
         if g.vertex_degree(v) == 1:
             w = list(g.neighbours(v))[0]
             if g.type(w) == 1:
                 gadgets.append(v)
-                ranking[v] = g.vertex_degree(w)-1
+                deg = g.vertex_degree(w)-1
+
+        if any(w in g.inputs or w in g.outputs for w in g.neighbours(v)):
+            boundary.append(v)
         else:
-            if any(w in g.inputs or w in g.outputs for w in g.neighbours(v)):
-                boundary.append(v)
-            else:
-                internal.append(v)
-            ranking[v] = g.vertex_degree(v)
+            internal.append(v)
+        ranking[v] = deg
+        ### ... end AK changes
 
     if len(ranking) < 6:
         raise Exception("Not enough T states to split. Need at least 6")
