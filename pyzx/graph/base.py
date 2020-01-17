@@ -33,6 +33,7 @@ class Scalar(object):
         self.phasenodes = [] # Stores list of legless spiders, by their phases.
         self.floatfactor = 1.0
         self.is_unknown = False # Whether this represents an unknown scalar value
+        self.is_zero = False
 
     def __repr__(self):
         return "Scalar({})".format(str(self))
@@ -60,6 +61,7 @@ class Scalar(object):
         s.phasenodes = copy.copy(self.phasenodes)
         s.floatfactor = self.floatfactor
         s.is_unknown = self.is_unknown
+        s.is_zero = self.is_zero
         return s
 
     def to_number(self):
@@ -79,6 +81,7 @@ class Scalar(object):
         self.phase = (self.phase + phase) % 2
     def add_node(self, node):
         self.phasenodes.append(node)
+        if node == 1: self.is_zero = True
     def add_float(self,f):
         self.floatfactor *= f
 
