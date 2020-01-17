@@ -631,6 +631,7 @@ def match_phase_gadgets(g):
             n = list(g.neighbours(v))[0]
             if phases[n] not in (0,1): continue # Not a real phase gadget (happens for scalar diagrams)
             if n in gadgets: continue # Not a real phase gadget (happens for scalar diagrams)
+            if n in g.inputs or n in g.outputs: continue # Not a real phase gadget (happens for non-unitary diagrams)
             gadgets[n] = v
             par = frozenset(set(g.neighbours(n)).difference({v}))
             if par in parities: parities[par].append(n)
