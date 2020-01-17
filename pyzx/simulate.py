@@ -33,6 +33,7 @@ except:
 
 from . import simplify
 from .circuit import Circuit
+from .graph import Graph
 
 MAGIC_GLOBAL = -(7+5*sq2)/(2+2j)
 MAGIC_B60 = -16 + 12*sq2
@@ -142,6 +143,53 @@ def calculate_path_sum(g):
     # r = results
     # return g.scalar.to_number()*sq2**(-prefactor)*(r[0]-r[4]+omega*(r[1]-r[5]) +1j*(r[2]-r[6]) + 1j*omega*(r[3]-r[7]))
 
+def find_stabilizer_decomp(g):
+    if simplify.tcount(g) == 0: return [g]
+    gsum = replace_magic_states(g, True)
+    gsum.reduce_scalar()
+    output = []
+    for h in gsum.graphs:
+        if h.scalar.is_zero: continue
+        output.extend(find_stabilizer_decomp(h))
+    return output
+
+def max_terms_needed(g):
+    """Returns the maximum amount of stabilizer terms that g could be split in
+    by :func:``find_stabilizer_decomp``."""
+    v = simplify.tcount(g)
+    count = 7**(v//6)
+    v -= 6*(v//6)
+    if v == 5: return count*8
+    if v in (4,3): return count*4
+    if v in (2,1): return count*2
+    return count
+
+def inner_product_with_random_state(g):
+    """``g`` should be a Clifford state. Composes it with a random equatorial Clifford effect,
+    and calculates the resulting inner product. Used in the norm estimation algorithm of
+    https://arxiv.org/pdf/1808.00128.pdf"""
+    g = g.copy()
+    # We want to compose g with a random equatorial Clifford effect.
+    # Such an effect in the ZX-calculus consists of green spiders with a random k*pi/2 phase
+    # with connections determined by a Erdos-Renyi random graph with probability 1/2.
+    # We make these spiders by replacing the outputs of g.
+    vs = g.outputs.copy()
+    for v in vs:
+        g.set_type(v, 1)
+        g.set_phase(v, Fraction(random.randint(0,3),2))
+    g.outputs = []
+    edges = []
+    for i in range(len(vs)):
+        for j in range(i+1,len(vs)):
+            if random.random() > 0.5:
+                edges.append((vs[i],vs[j]))
+    g.add_edges(edges,2)
+    # Now that we have composed g with a right sort of effect, 
+    # we need to calculate the value of the resulting inner product.
+    # Since the diagram is a scalar, full_reduce() will completely annihilate it.
+    simplify.full_reduce(g) 
+    if g.num_vertices() != 0: raise Exception("Diagram wasn't fully reduced")
+    return g.scalar
 
 
 def replace_magic_states(g, pick_random=False):
@@ -176,28 +224,28 @@ def replace_magic_states(g, pick_random=False):
         ranking[v] = deg
         ### ... end AK changes
 
-    if len(ranking) < 6:
-        raise Exception("Not enough T states to split. Need at least 6")
+    if len(ranking) >= 6: num_replace = 6
+    elif len(ranking) >= 2: num_replace = 2
+    elif len(ranking) == 1: num_replace = 1
+    else: raise Exception("No magic states to replace")
 
     if not pick_random:
-        candidates = sorted(ranking.keys(), key=lambda v: ranking[v], reverse=True)[:6]
+        candidates = sorted(ranking.keys(), key=lambda v: ranking[v], reverse=True)[:num_replace]
     else:
         if not isinstance(pick_random,bool):
             random.seed(pick_random)
-        candidates = random.sample(ranking.keys(),6)
-    # if len(internal) >= 6:
-    #     candidates = internal[:6]
-    # else:
-    #     candidates = internal.copy()
-    #     candidates.extend(boundary[:6-len(candidates)])
-    # if len(candidates) < 6:
-    #     candidates.extend(gadgets[:6-len(candidates)])
+        candidates = random.sample(ranking.keys(),num_replace)
 
     graphs = []
-    replace_functions = [replace_B60, replace_B66, replace_E6, replace_O6, replace_K6, replace_phi1, replace_phi2]
+    if num_replace == 6:
+        replace_functions = [replace_B60, replace_B66, replace_E6, replace_O6, replace_K6, replace_phi1, replace_phi2]
+    if num_replace == 2:
+        replace_functions = [replace_2_S, replace_2_N]
+    if num_replace == 1:
+        replace_functions = [replace_1_0, replace_1_1]
     for func in replace_functions:
         h = func(g.copy(), candidates)
-        h.scalar.add_float(MAGIC_GLOBAL)
+        if num_replace == 6: h.scalar.add_float(MAGIC_GLOBAL)
         graphs.append(h)
 
     return SumGraph(graphs)
@@ -277,3 +325,33 @@ def replace_phi2(g, verts):
     v1,v2,v3,v4,v5,v6 = verts
     verts = [v1,v2,v4,v5,v6,v3]
     return replace_phi1(g,verts)
+
+
+def replace_2_S(g, verts):
+    w = g.add_vertex(1,g.qubit(verts[0])-0.5, g.row(verts[0])-0.5, Fraction(1,2))
+    g.add_edges([(verts[0],w),(verts[1],w)],1)
+    for v in verts: g.add_to_phase(v,Fraction(-1,4))
+    return g
+
+
+def replace_2_N(g, verts):
+    g.scalar.add_phase(Fraction(1,4))
+    w = g.add_vertex(1,g.qubit(verts[0])-0.5, g.row(verts[0])-0.5, Fraction(1,1))
+    g.add_edges([(verts[0],w),(verts[1],w)],2)
+    for v in verts: g.add_to_phase(v,Fraction(-1,4))
+    return g
+
+def replace_1_0(g, verts):
+    g.scalar.add_power(-1)
+    w = g.add_vertex(1,g.qubit(verts[0])-0.5, g.row(verts[0])-0.5, 0)
+    g.add_edge((verts[0],w),2)
+    for v in verts: g.add_to_phase(v,Fraction(-1,4))
+    return g
+
+def replace_1_1(g, verts):
+    g.scalar.add_phase(Fraction(1,4))
+    g.scalar.add_power(-1)
+    w = g.add_vertex(1,g.qubit(verts[0])-0.5, g.row(verts[0])-0.5, Fraction(1,1))
+    g.add_edge((verts[0],w),2) 
+    for v in verts: g.add_to_phase(v,Fraction(-1,4))
+    return g
