@@ -16,7 +16,8 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import os
-#from . import gates
+
+#Note that many of the method of Circuit contain inline imports. These are there to prevent circular imports.
 
 __all__ = ['Circuit', 'id']
 
@@ -155,6 +156,7 @@ class Circuit(object):
         return c
 
     def split_phase_gates(self):
+        from .gates import ZPhase, XPhase
         c = Circuit(self.qubits, name=self.name)
         for g in self.gates:
             if isinstance(g, (ZPhase, XPhase)):
