@@ -85,6 +85,14 @@ class Scalar(object):
     def add_float(self,f):
         self.floatfactor *= f
 
+    def mult_with_scalar(self, other):
+    	self.power2 += other.power2
+    	self.phase = (self.phase +other.phase)%2
+    	self.phasenodes.extend(other.phasenodes)
+    	self.floatfactor *= other.floatfactor
+    	if other.is_zero: self.is_zero = True
+    	if other.is_unknown: self.is_unknown = True
+
     def add_spider_pair(self, p1,p2):
         """Add the scalar corresponding to a connected pair of spiders (p1)-H-(p2)."""
         # These if statements look quite arbitary, but they are just calculations of the scalar
@@ -307,6 +315,7 @@ class BaseGraph(object):
         self.normalise()
         other = other.copy()
         other.normalise()
+        self.scalar.mult_with_scalar(other.scalar)
         for o in self.outputs:
             q = self.qubit(o)
             e = list(self.incident_edges(o))[0]
