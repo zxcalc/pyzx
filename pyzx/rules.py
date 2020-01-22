@@ -398,8 +398,8 @@ def match_pivot_boundary(g, matchf=None, num=-1):
                 good_vert = False
                 break
             boundaries = [b for b in g.neighbours(n) if types[b]==0]
-            if len(boundaries) != 1: # n is not on the boundary
-                continue        #, or it is connected to both an input and an output
+            if len(boundaries) != 1: # n is not on the boundary,
+                continue             # or it is connected to both an input and an output
             if phases[n] and phases[n].denominator == 2:
                 w = n
                 bound = boundaries[0]
@@ -608,7 +608,7 @@ def remove_ids(g, matches):
     rem = []
     for m in matches:
         rem.append(m[0])
-        e = (m[1],m[2])
+        e = (m[1],m[2]) if m[1] < m[2] else (m[2],m[1])
         if not e in etab: etab[e] = [0,0]
         etab[e][m[3]-1] += 1
     return (etab, rem, [], False)
