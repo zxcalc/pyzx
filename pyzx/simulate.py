@@ -133,8 +133,8 @@ class SumGraph(object):
 
     def post_select(self, qubits):
         """Outputs a new GraphSum, where for every term we replace the post-selected
-        outputs by an effects. The argument `qubits` should be {q1:e1, q2:e2,...}
-        where the e1,e2, etc. are in the set {'0', '1', '+', '-'}."""
+        outputs by an effects. The argument ``qubits`` should be ``{q1:e1, q2:e2,...}``
+        where the ``e1,e2,`` etc. are in the set ``{'0', '1', '+', '-'}``."""
         terms = []
         for g in self.graphs:
             g = g.copy()
@@ -152,7 +152,14 @@ class SumGraph(object):
             terms.append(g)
         return SumGraph(terms)
 
-    def sample(self, qubits, post_selected=None, amount = 10):
+    def sample(self, qubits, post_selected=None, amount = 10, quiet=True):
+        """Implements the weak simulation algorithm of https://arxiv.org/pdf/1808.00128.pdf.
+        ``qubits`` should be a list of qubit numbers from which measurement outcomes in the 
+        computational basis are to be sampled. ``post_selected`` should be in the format of
+        :func:`~SumGraph.post_select`. ``amount`` dictates the amount of samples to be taken.
+
+        Example: ``gsum.sample([1,2,3], {5:'+', 6:'0'}, 20)``
+        """
         if post_selected: gsum = self.post_select(post_selected)
         else: gsum = self
         gsum.full_reduce()
@@ -160,11 +167,16 @@ class SumGraph(object):
         qubit_map = {q:q for q in qubits}
         for q in qubits: #If we post-select, this changes which qubit points to which output
             qubit_map[q] -= sum(1 for v in post_selected if v<q)
-        norm = self.estimate_norm()
+        norm = gsum.estimate_norm()
+        if not quiet: print("Estimated original norm:", norm)
+        if norm < 0.01 and not quiet: 
+            print("Norm very close to zero. Possibly post-selected to zero probability event?")
         probs = {}
         outputs = []
-        for _ in range(amount):
-            path = ''
+        for i in range(amount):
+            if not quiet: print("Sample", i)
+            prevprob = 1.0
+            path = '' # which qubits have which outcomes in this 'run'
             output = []
             current = gsum
             qubit_map2 = {q:qubit_map[q] for q in qubits}
@@ -175,17 +187,27 @@ class SumGraph(object):
                     temp = current.post_select({qubit_map2[q]:'0'})
                     temp.full_reduce()
                     norm2 = temp.estimate_norm()
-                    probs[path] = norm2/norm
+                    probs[path] = (norm2/norm)/prevprob
+                    if not quiet: print("New prob:", "path", path, "norm", norm2, "prob", probs[path])
                 prob = probs[path]
-                val = int(random.random() > prob)
+                val = int(random.random() > prob) # Actually make a sample
                 output.append((q,val))
                 path += str(val)
 
-                if val == 0 and temp != None: current = temp
+                if val == 0:
+                    if temp != None: current = temp
+                    else: current = current.post_select({qubit_map2[q]:'0'})
+                    prevprob *= prob
                 else:
                     current = current.post_select({qubit_map2[q]:'1'})
+                    prevprob *= 1-prob
                 for h in qubits:
                     if h>q: qubit_map2[h] -= 1
+            if not quiet: print(output)
+
+            outputs.append(output)
+        return outputs
+                
 
                 
 
