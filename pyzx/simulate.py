@@ -66,16 +66,128 @@ class SumGraph(object):
         return t
 
     def full_reduce(self, quiet=True):
+        terms = []
         for i, g in enumerate(self.graphs):
             if not quiet:
                 print("Graph {:d}:".format(i))
             simplify.full_reduce(g, quiet=quiet)
+            if not g.scalar.is_zero: terms.append(g)
+            elif not quiet: print("Graph {:d} is zero".format(i))
+        self.graphs = terms
 
     def reduce_scalar(self, quiet=True):
+        terms = []
         for i, g in enumerate(self.graphs):
             if not quiet:
                 print("Graph {:d}:".format(i))
             simplify.reduce_scalar(g, quiet=quiet)
+            if not g.scalar.is_zero: terms.append(g)
+            elif not quiet: print("Graph {:d} is zero".format(i))
+        self.graphs = terms
+
+    def inner_product_with_random_state(self):
+        """All the graphs should be Clifford states with same amount of outputs.
+        We compose them with a random equatorial Clifford effect,
+        and we calculate the resulting inner product. 
+        Used in the norm estimation algorithm of
+        https://arxiv.org/pdf/1808.00128.pdf"""
+        terms = self.graphs
+        if len(terms) == 0: return 0.0
+        q = len(terms[0].outputs)
+        # We want to compose g with a random equatorial Clifford effect.
+        # In the ZX-calculus this consists of random k*pi/2 phases
+        # with connections being a Erdos-Renyi random graph with probability 1/2.
+        # We make these spiders by replacing the outputs of the graphs.
+        # Generate the data for a random equatorial Clifford effect
+        phases = [Fraction(random.randint(0,3),2) for _ in range(q)]
+        connections = [(i1,i2) for i1 in range(q) for i2 in range(i1+1,q) if random.random() > 0.5]
+        
+        val = 0
+        for g in terms:
+            g = g.copy()
+            vs = g.outputs.copy()
+            for i, v in enumerate(vs):
+                g.set_type(v, 1)
+                g.set_phase(v, phases[i])
+            g.outputs = []
+            g.add_edges([(vs[i1],vs[i2]) for (i1,i2) in connections],2)
+            g.scalar.add_power(len(connections))
+            # Now that we have composed g with a right sort of effect, 
+            # we need to calculate the value of the resulting inner product.
+            # Since the diagram is a scalar, full_reduce() will completely annihilate it.
+            simplify.full_reduce(g)
+            g.remove_isolated_vertices()
+            if g.num_vertices() != 0: raise Exception("Diagram wasn't fully reduced")
+            val += g.scalar.to_number()
+        return val
+
+    def estimate_norm(self, epsilon=0.05):
+        """Uses the algorithm of https://arxiv.org/pdf/1808.00128.pdf (p.22)
+        to estimate the norm squared of this state."""
+        count = int(4*(1/epsilon)**2)
+        total = 0
+        for _ in range(count):
+            val = self.inner_product_with_random_state()
+            total += abs(val)**2
+        return total/count
+
+    def post_select(self, qubits):
+        """Outputs a new GraphSum, where for every term we replace the post-selected
+        outputs by an effects. The argument `qubits` should be {q1:e1, q2:e2,...}
+        where the e1,e2, etc. are in the set {'0', '1', '+', '-'}."""
+        terms = []
+        for g in self.graphs:
+            g = g.copy()
+            for qubit, effect in qubits.items():
+                v = g.outputs[qubit]
+                g.set_type(v,1)
+                g.scalar.add_power(-1)
+                if effect in ('0', '1'): #Push a Hadamard gate out of the spider
+                    e = list(g.incident_edges(v))[0]
+                    et = g.edge_type(e)
+                    g.set_edge_type(e,3-et)
+                if effect in ('1', '-'):
+                    g.set_phase(v,1)
+            g.outputs = [v for i,v in enumerate(g.outputs) if i not in qubits]
+            terms.append(g)
+        return SumGraph(terms)
+
+    def sample(self, qubits, post_selected=None, amount = 10):
+        if post_selected: gsum = self.post_select(post_selected)
+        else: gsum = self
+        gsum.full_reduce()
+
+        qubit_map = {q:q for q in qubits}
+        for q in qubits: #If we post-select, this changes which qubit points to which output
+            qubit_map[q] -= sum(1 for v in post_selected if v<q)
+        norm = self.estimate_norm()
+        probs = {}
+        outputs = []
+        for _ in range(amount):
+            path = ''
+            output = []
+            current = gsum
+            qubit_map2 = {q:qubit_map[q] for q in qubits}
+            for q in qubits:
+                path += str(q)
+                temp = None
+                if path not in probs:
+                    temp = current.post_select({qubit_map2[q]:'0'})
+                    temp.full_reduce()
+                    norm2 = temp.estimate_norm()
+                    probs[path] = norm2/norm
+                prob = probs[path]
+                val = int(random.random() > prob)
+                output.append((q,val))
+                path += str(val)
+
+                if val == 0 and temp != None: current = temp
+                else:
+                    current = current.post_select({qubit_map2[q]:'1'})
+                for h in qubits:
+                    if h>q: qubit_map2[h] -= 1
+
+                
 
 def calculate_path_sum(g):
     """Input should be a fully reduced scalar graph-like Clifford+T ZX-diagram. 
@@ -163,33 +275,6 @@ def max_terms_needed(g):
     if v in (4,3): return count*4
     if v in (2,1): return count*2
     return count
-
-def inner_product_with_random_state(g):
-    """``g`` should be a Clifford state. Composes it with a random equatorial Clifford effect,
-    and calculates the resulting inner product. Used in the norm estimation algorithm of
-    https://arxiv.org/pdf/1808.00128.pdf"""
-    g = g.copy()
-    # We want to compose g with a random equatorial Clifford effect.
-    # Such an effect in the ZX-calculus consists of green spiders with a random k*pi/2 phase
-    # with connections determined by a Erdos-Renyi random graph with probability 1/2.
-    # We make these spiders by replacing the outputs of g.
-    vs = g.outputs.copy()
-    for v in vs:
-        g.set_type(v, 1)
-        g.set_phase(v, Fraction(random.randint(0,3),2))
-    g.outputs = []
-    edges = []
-    for i in range(len(vs)):
-        for j in range(i+1,len(vs)):
-            if random.random() > 0.5:
-                edges.append((vs[i],vs[j]))
-    g.add_edges(edges,2)
-    # Now that we have composed g with a right sort of effect, 
-    # we need to calculate the value of the resulting inner product.
-    # Since the diagram is a scalar, full_reduce() will completely annihilate it.
-    simplify.full_reduce(g) 
-    if g.num_vertices() != 0: raise Exception("Diagram wasn't fully reduced")
-    return g.scalar
 
 
 def replace_magic_states(g, pick_random=False):
