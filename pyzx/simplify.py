@@ -98,6 +98,9 @@ def gadget_simp(g, quiet=False):
 def supplementarity_simp(g, quiet=False):
     return simp(g, 'supplementarity_simp', match_supplementarity, apply_supplementarity, quiet=quiet)
 
+def copy_simp(g, quiet=False):
+    return simp(g, 'copy_simp', match_copy, apply_copy, quiet=quiet)
+
 def phase_free_simp(g, quiet=False):
     '''Performs the following set of simplifications on the graph:
     spider -> bialg'''

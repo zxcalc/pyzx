@@ -747,6 +747,45 @@ def apply_supplementarity(g, matches):
     return ({}, rem, [], True)
 
 
+def match_copy(g):
+    """Finds spiders with a 0 or pi phase that have a single neighbour,
+    and copies them through. Assumes that all the spiders are green and maximally fused."""
+    candidates = g.vertex_set()
+    phases = g.phases()
+    types = g.types()
+    m = []
+
+    while len(candidates) > 0:
+        v = candidates.pop()
+        if phases[v] not in (0,1) or types[v] != 1 or g.vertex_degree(v) != 1: continue
+        w = list(g.neighbours(v))[0]
+        if types[w] != 1: continue
+        neigh = [n for n in g.neighbours(w) if n != v]
+        m.append((v,w,phases[v],phases[w],neigh))
+        candidates.discard(w)
+        candidates.difference_update(neigh)
+
+    return m
+
+def apply_copy(g, matches):
+    rem = []
+    types = g.types()
+    for v,w,a,alpha, neigh in matches:
+        rem.append(v)
+        rem.append(w)
+        g.scalar.add_power(-len(neigh)+1)
+        if a: g.scalar.add_phase(alpha)
+        for n in neigh: 
+            if types[n] == 0:
+                r = g.row(n) - 1 if n in g.outputs else g.row(n)+1
+                u = g.add_vertex(1, g.qubit(n), r, a)
+                e = g.edge((w,n))
+                et = g.edge_type(e)
+                g.add_edge((n,u), 3-et)
+            g.add_to_phase(n, a)
+    return ({}, rem, [], True)
+
+
 
 
 def match_gadgets_phasepoly(g):
