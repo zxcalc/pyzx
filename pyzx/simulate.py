@@ -152,11 +152,12 @@ class SumGraph(object):
             terms.append(g)
         return SumGraph(terms)
 
-    def sample(self, qubits, post_selected=None, amount = 10, quiet=True):
+    def sample(self, qubits, post_selected=None, amount = 10, epsilon=0.05, quiet=True):
         """Implements the weak simulation algorithm of https://arxiv.org/pdf/1808.00128.pdf.
         ``qubits`` should be a list of qubit numbers from which measurement outcomes in the 
         computational basis are to be sampled. ``post_selected`` should be in the format of
         :func:`~SumGraph.post_select`. ``amount`` dictates the amount of samples to be taken.
+        ``epsilon`` is the error used in the norm estimation.
 
         Example: ``gsum.sample([1,2,3], {5:'+', 6:'0'}, 20)``
         """
@@ -167,7 +168,7 @@ class SumGraph(object):
         qubit_map = {q:q for q in qubits}
         for q in qubits: #If we post-select, this changes which qubit points to which output
             qubit_map[q] -= sum(1 for v in post_selected if v<q)
-        norm = gsum.estimate_norm()
+        norm = gsum.estimate_norm(epsilon)
         if not quiet: print("Estimated original norm:", norm)
         if norm < 0.01 and not quiet: 
             print("Norm very close to zero. Possibly post-selected to zero probability event?")
@@ -186,7 +187,7 @@ class SumGraph(object):
                 if path not in probs:
                     temp = current.post_select({qubit_map2[q]:'0'})
                     temp.full_reduce()
-                    norm2 = temp.estimate_norm()
+                    norm2 = temp.estimate_norm(epsilon)
                     probs[path] = (norm2/norm)/prevprob
                     if not quiet: print("New prob:", "path", path, "norm", norm2, "prob", probs[path])
                 prob = probs[path]
