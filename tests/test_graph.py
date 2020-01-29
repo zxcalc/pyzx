@@ -194,6 +194,7 @@ class TestGraphCircuitMethods(unittest.TestCase):
         g.compose(g)
         self.assertEqual((len(g.inputs),len(g.outputs)),(2,2))
 
+    @unittest.skipUnless(np, "numpy needs to be installed for this to run")
     def test_compose_unitary(self):
         g = self.graph
         g.set_edge_type(g.edge(self.v,self.o1),2)
