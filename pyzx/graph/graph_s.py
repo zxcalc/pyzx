@@ -16,7 +16,7 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from fractions import Fraction
-from .base import BaseGraph
+from .base import BaseGraph, VertexType, EdgeType
 
 class GraphS(BaseGraph):
 	"""Purely Pythonic implementation of :class:`~graph.base.BaseGraph`."""
@@ -52,12 +52,12 @@ class GraphS(BaseGraph):
 	def add_vertices(self, amount):
 		for i in range(self._vindex, self._vindex + amount):
 			self.graph[i] = dict()
-			self.ty[i] = 0
+			self.ty[i] = VertexType.BOUNDARY
 			self._phase[i] = 0
 		self._vindex += amount
 		return range(self._vindex - amount, self._vindex)
 
-	def add_edges(self, edges, edgetype=1):
+	def add_edges(self, edges, edgetype=EdgeType.REGULAR):
 		for s,t in edges:
 			self.nedges += 1
 			self.graph[s][t] = edgetype
@@ -166,6 +166,7 @@ class GraphS(BaseGraph):
 			return 0
 
 	def set_edge_type(self, e, t):
+		t = EdgeType(t)
 		v1,v2 = e
 		self.graph[v1][v2] = t
 		self.graph[v2][v1] = t
@@ -175,6 +176,7 @@ class GraphS(BaseGraph):
 	def types(self):
 		return self.ty
 	def set_type(self, vertex, t):
+		t = VertexType(t)
 		self.ty[vertex] = t
 
 	def phase(self, vertex):

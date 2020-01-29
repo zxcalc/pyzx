@@ -16,6 +16,7 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import abc
+from enum import IntEnum
 from fractions import Fraction
 import math
 import cmath
@@ -160,6 +161,24 @@ def pack_indices(lst):
             d[y] = i
             i += 1
     return d
+
+class VertexType(IntEnum):
+    """Type of a vertex in the graph."""
+    BOUNDARY=0
+    Z=1
+    X=2
+    H_BOX=3
+
+    def is_zx(self):
+        return self in (VertexType.Z, VertexType.X)
+
+class EdgeType(IntEnum):
+    """Type of an edge in the graph."""
+    REGULAR=1
+    HADAMARD=2
+
+    def toggle(self):
+        return EdgeType.HADAMARD if self == EdgeType.REGULAR else EdgeType.REGULAR
 
 class BaseGraph(object):
     """Base class for letting graph backends interact with PyZX.
@@ -321,10 +340,10 @@ class BaseGraph(object):
         for o in self.outputs:
             q = self.qubit(o)
             e = list(self.incident_edges(o))[0]
-            if self.edge_type(e) == 2: #hadamard edge
+            if self.edge_type(e) == EdgeType.HADAMARD:
                 i = [v for v in other.inputs if other.qubit(v)==q][0]
                 e = list(other.incident_edges(i))[0]
-                other.set_edge_type(e, 3-other.edge_type(e)) # toggle the edge type
+                other.set_edge_type(e, other.edge_type(e).toggle())
         d = self.depth()
         self.replace_subgraph(d-1,d,other)
 
@@ -367,7 +386,7 @@ class BaseGraph(object):
         """Inserts a state into the inputs of the graph. ``state`` should be
         a string with every character representing an input state for each qubit.
         The possible types of states are on of '0', '1', '+', '-' for the respective
-        kets. If '-' is specified this input is skipped."""
+        kets. If '/' is specified this input is skipped."""
         if len(state) > len(self.inputs): raise TypeError("Too many input states specified")
         inputs = self.inputs.copy()
         self.inputs = []
@@ -378,12 +397,12 @@ class BaseGraph(object):
                 continue
             if s in ('0', '1'):
                 self.scalar.add_power(-1)
-                self.set_type(v, 2)
+                self.set_type(v, VertexType.X)
                 if s == '1':
                     self.set_phase(v, Fraction(1))
             elif s in ('+', '-'):
                 self.scalar.add_power(-1)
-                self.set_type(v, 1)
+                self.set_type(v, VertexType.Z)
                 if s == '-':
                     self.set_phase(v, Fraction(1))
             else:
@@ -393,7 +412,7 @@ class BaseGraph(object):
         """Inserts an effect into the outputs of the graph. ``effect`` should be
         a string with every character representing an output effect for each qubit.
         The possible types of effects are one of '0', '1', '+', '-' for the respective
-        kets. If '-' is specified this output is skipped."""
+        kets. If '/' is specified this output is skipped."""
         if len(effect) > len(self.outputs): raise TypeError("Too many output effects specified")
         outputs = self.outputs.copy()
         self.outputs = []
@@ -404,12 +423,12 @@ class BaseGraph(object):
                 continue
             if s in ('0', '1'):
                 self.scalar.add_power(-1)
-                self.set_type(v, 2)
+                self.set_type(v, VertexType.X)
                 if s == '1':
                     self.set_phase(v, Fraction(1))
             elif s in ('+', '-'):
                 self.scalar.add_power(-1)
-                self.set_type(v, 1)
+                self.set_type(v, VertexType.Z)
                 if s == '-':
                     self.set_phase(v, Fraction(1))
             else:
@@ -464,7 +483,7 @@ class BaseGraph(object):
         nodes = {}
         ty = self.types()
         for v in self.vertices():
-            if ty[v] == 0:
+            if ty[v] == VertexType.BOUNDARY:
                 r = self.row(v)
                 nodes[v] = r
                 if r < minrow:
@@ -497,7 +516,7 @@ class BaseGraph(object):
             self.set_qubit(i,q)
             #q = self.qubit(i)
             n = list(self.neighbours(i))[0]
-            if self.type(n) in (1,2):
+            if self.type(n) in (VertexType.Z, VertexType.X):
                 claimed.append(n)
                 self.set_row(n,1)
                 self.set_qubit(n, q)
@@ -505,9 +524,9 @@ class BaseGraph(object):
                 e = self.edge(i, n)
                 t = self.edge_type(e)
                 self.remove_edge(e)
-                v = self.add_vertex(1,q,1)
-                self.add_edge((i,v),3-t)
-                self.add_edge((v,n), 2)
+                v = self.add_vertex(VertexType.Z,q,1)
+                self.add_edge((i,v),t.toggle())
+                self.add_edge((v,n),EdgeType.HADAMARD)
                 claimed.append(v)
         for q, o in enumerate(sorted(self.outputs,key=self.qubit)):
             #q = self.qubit(o)
@@ -521,9 +540,9 @@ class BaseGraph(object):
                 e = self.edge(o, n)
                 t = self.edge_type(e)
                 self.remove_edge(e)
-                v = self.add_vertex(1,q,max_r)
-                self.add_edge((o,v),3-t)
-                self.add_edge((v,n), 2)
+                v = self.add_vertex(VertexType.Z,q,max_r)
+                self.add_edge((o,v),t.toggle())
+                self.add_edge((v,n),EdgeType.HADAMARD)
 
         self.pack_circuit_rows()
 
@@ -532,14 +551,15 @@ class BaseGraph(object):
         new vertices added to the graph, namely: range(g.vindex() - amount, g.vindex())"""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
-    def add_vertex(self, ty=0, qubit=-1, row=-1, phase=None):
+    def add_vertex(self, ty=VertexType.BOUNDARY, qubit=-1, row=-1, phase=None):
         """Add a single vertex to the graph and return its index.
         The optional parameters allow you to respectively set
         the type, qubit index, row index and phase of the vertex."""
         v = self.add_vertices(1)[0]
-        if ty: self.set_type(v, ty)
+        ty = VertexType(ty)
+        self.set_type(v, ty)
         if phase is None:
-            if ty == 3: phase = 1
+            if ty == VertexType.H_BOX: phase = 1
             else: phase = 0
         if qubit!=-1: self.set_qubit(v, qubit)
         if row!=-1: self.set_row(v, row)
@@ -551,14 +571,12 @@ class BaseGraph(object):
             self.phase_mult[v] = 1
         return v
 
-    def add_edges(self, edges, edgetype=1):
-        """Adds a list of edges to the graph. 
-        If edgetype is 1 (the default), these will be regular edges.
-        If edgetype is 2, these edges will be Hadamard edges."""
+    def add_edges(self, edges, edgetype=EdgeType.REGULAR):
+        """Adds a list of edges to the graph."""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
-    def add_edge(self, edge, edgetype=1):
-        """Adds a single edge of the given type (1=regular, 2=Hadamard edge)"""
+    def add_edge(self, edge, edgetype=EdgeType.REGULAR):
+        """Adds a single edge of the given type"""
         self.add_edges([edge], edgetype)
 
     def add_edge_table(self, etab):
@@ -566,65 +584,66 @@ class BaseGraph(object):
         #edges regular edges must be added between source and target and $h-edges Hadamard edges.
         The method selectively adds or removes edges to produce that ZX diagram which would 
         result from adding (#edges, #h-edges), and then removing all parallel edges using Hopf/spider laws."""
-        add = ([],[]) # list of edges and h-edges to add
+        add = {EdgeType.REGULAR: [], EdgeType.HADAMARD: []} # list of edges and h-edges to add
         remove = []   # list of edges to remove
         for (v1,v2),(n1,n2) in etab.items():
             conn_type = self.edge_type(self.edge(v1,v2))
-            if conn_type == 1: n1 += 1 #and add to the relevant edge count
-            elif conn_type == 2: n2 += 1
-            
+            if conn_type == EdgeType.REGULAR: n1 += 1 #and add to the relevant edge count
+            elif conn_type == EdgeType.HADAMARD: n2 += 1
+
             t1 = self.type(v1)
             t2 = self.type(v2)
-            if (t1 == 1 and t2 == 1) or (t1 == 2 and t2 == 2): #types are ZX & equal,
+            if t1 == t2 and t1.is_zx() and t2.is_zx(): #types are ZX & equal,
                 n1 = bool(n1)           #so normal edges fuse
                 pairs, n2 = divmod(n2,2)#while hadamard edges go modulo 2
                 self.scalar.add_power(-2*pairs)
                 if n1 != 0 and n2 != 0:  #reduction rule for when both edges appear
-                    new_type = 1
+                    new_type = EdgeType.REGULAR
                     self.add_to_phase(v1, 1)
                     self.scalar.add_power(-1)
-                elif n1 != 0: new_type = 1
-                elif n2 != 0: new_type = 2
-                else: new_type = 0
-            elif (t1 == 1 and t2 == 2) or (t1 == 2 and t2 == 1): #types are ZX & different
+                elif n1 != 0: new_type = EdgeType.REGULAR
+                elif n2 != 0: new_type = EdgeType.HADAMARD
+                else: new_type = None
+            elif t1 != t2 and t1.is_zx() and t2.is_zx(): #types are ZX & different
                 pairs, n1 = divmod(n1,2)#so normal edges go modulo 2
                 n2 = bool(n2)           #while hadamard edges fuse
                 self.scalar.add_power(-2*pairs)
                 if n1 != 0 and n2 != 0:  #reduction rule for when both edges appear
-                    new_type = 2
+                    new_type = EdgeType.HADAMARD
                     self.add_to_phase(v1, 1)
                     self.scalar.add_power(-1)
-                elif n1 != 0: new_type = 1
-                elif n2 != 0: new_type = 2
-                else: new_type = 0
-            elif (t1 == 1 and t2 == 3) or (t1 == 3 and t2 == 1): # Z & H-box
+                elif n1 != 0: new_type = EdgeType.REGULAR
+                elif n2 != 0: new_type = EdgeType.HADAMARD
+                else: new_type = None
+            elif (t1 == VertexType.Z and t2 == VertexType.H_BOX) or (t1 == VertexType.H_BOX and t2 == VertexType.Z):
+                # Z & H-box
                 n1 = bool(n1)
                 if n1 + n2 > 1:
                     raise ValueError("Unhandled parallel edges between nodes of type (%s,%s)" % (t1,t2))
                 else:
-                    if n1 == 1: new_type = 1
-                    elif n2 == 1: new_type = 2
-                    else: new_type = 0
+                    if n1 == 1: new_type = EdgeType.REGULAR
+                    elif n2 == 1: new_type = EdgeType.HADAMARD
+                    else: new_type = None
             else:
                 if n1 + n2 > 1:
                     raise ValueError("Unhandled parallel edges between nodes of type (%s,%s)" % (t1,t2))
                 else:
-                    if n1 == 1: new_type = 1
-                    elif n2 == 1: new_type = 2
-                    else: new_type = 0
+                    if n1 == 1: new_type = EdgeType.REGULAR
+                    elif n2 == 1: new_type = EdgeType.HADAMARD
+                    else: new_type = None
 
 
-            if new_type != 0: # They should be connected, so update the graph
-                if conn_type == 0: #new edge added
-                    add[new_type-1].append((v1,v2))
+            if new_type: # They should be connected, so update the graph
+                if not conn_type: #new edge added
+                    add[new_type].append((v1,v2))
                 elif conn_type != new_type: #type of edge has changed
                     self.set_edge_type(self.edge(v1,v2), new_type)
-            elif conn_type != 0: #They were connected, but not anymore, so update the graph
+            elif conn_type: #They were connected, but not anymore, so update the graph
                 remove.append(self.edge(v1,v2))
 
         self.remove_edges(remove)
-        self.add_edges(add[0],1)
-        self.add_edges(add[1],2)
+        self.add_edges(add[EdgeType.REGULAR],EdgeType.REGULAR)
+        self.add_edges(add[EdgeType.HADAMARD],EdgeType.HADAMARD)
 
     def set_phase_master(self, m):
         """Points towards an instance of the class :class:`simplify.Simplifier`.
@@ -763,16 +782,14 @@ class BaseGraph(object):
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
     def edge_type(self, e):
-        """Returns the type of the given edge:
-        1 if it is regular, 2 if it is a Hadamard edge, 0 if the edge is not in the graph."""
+        """Returns the type of the given edge, or None if the edge is not in the graph."""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
     def set_edge_type(self, e, t):
         """Sets the type of the given edge."""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
     def type(self, vertex):
-        """Returns the type of the given vertex:
-        0 if it is a boundary, 1 if is a Z node, 2 if it a X node."""
+        """Returns the type of the given vertex."""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
     def types(self):
         """Returns a mapping of vertices to their types."""

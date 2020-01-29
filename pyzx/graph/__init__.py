@@ -15,5 +15,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-_all__ = ['Graph', 'graph']
+_all__ = ['Graph', 'graph', 'EdgeType', 'VertexType']
 from .graph import Graph
+from .base import EdgeType, VertexType
