@@ -166,7 +166,6 @@ class GraphS(BaseGraph):
 			return 0
 
 	def set_edge_type(self, e, t):
-		t = EdgeType(t)
 		v1,v2 = e
 		self.graph[v1][v2] = t
 		self.graph[v2][v1] = t
@@ -176,7 +175,6 @@ class GraphS(BaseGraph):
 	def types(self):
 		return self.ty
 	def set_type(self, vertex, t):
-		t = VertexType(t)
 		self.ty[vertex] = t
 
 	def phase(self, vertex):

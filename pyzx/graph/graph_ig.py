@@ -113,7 +113,6 @@ class GraphIG(BaseGraph):
 			return 0
 
 	def set_edge_type(self, e, t):
-		t = EdgeType(t)
 		self.graph.es[e]['_t'] = t
 
 
@@ -125,7 +124,6 @@ class GraphIG(BaseGraph):
 		return self.graph.vs['_t']
 
 	def set_type(self, v, t):
-		t = VertexType(t)
 		self.graph.vs[v]['_t'] = t
 		
 	def phase(self, vertex):

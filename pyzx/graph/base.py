@@ -16,7 +16,6 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import abc
-from enum import IntEnum
 from fractions import Fraction
 import math
 import cmath
@@ -162,23 +161,23 @@ def pack_indices(lst):
             i += 1
     return d
 
-class VertexType(IntEnum):
+class VertexType:
     """Type of a vertex in the graph."""
-    BOUNDARY=0
-    Z=1
-    X=2
-    H_BOX=3
+    BOUNDARY = 0
+    Z = 1
+    X = 2
+    H_BOX = 3
 
-    def is_zx(self):
-        return self in (VertexType.Z, VertexType.X)
+def vertex_is_zx(ty):
+    return ty in (VertexType.Z, VertexType.X)
 
-class EdgeType(IntEnum):
+class EdgeType:
     """Type of an edge in the graph."""
-    REGULAR=1
-    HADAMARD=2
+    REGULAR = 1
+    HADAMARD = 2
 
-    def toggle(self):
-        return EdgeType.HADAMARD if self == EdgeType.REGULAR else EdgeType.REGULAR
+def toggle_edge(ty):
+    return EdgeType.HADAMARD if ty == EdgeType.REGULAR else EdgeType.REGULAR
 
 class BaseGraph(object):
     """Base class for letting graph backends interact with PyZX.
@@ -343,7 +342,7 @@ class BaseGraph(object):
             if self.edge_type(e) == EdgeType.HADAMARD:
                 i = [v for v in other.inputs if other.qubit(v)==q][0]
                 e = list(other.incident_edges(i))[0]
-                other.set_edge_type(e, other.edge_type(e).toggle())
+                other.set_edge_type(e, toggle_edge(other.edge_type(e)))
         d = self.depth()
         self.replace_subgraph(d-1,d,other)
 
@@ -525,7 +524,7 @@ class BaseGraph(object):
                 t = self.edge_type(e)
                 self.remove_edge(e)
                 v = self.add_vertex(VertexType.Z,q,1)
-                self.add_edge((i,v),t.toggle())
+                self.add_edge((i,v),toggle_edge(t))
                 self.add_edge((v,n),EdgeType.HADAMARD)
                 claimed.append(v)
         for q, o in enumerate(sorted(self.outputs,key=self.qubit)):
@@ -541,7 +540,7 @@ class BaseGraph(object):
                 t = self.edge_type(e)
                 self.remove_edge(e)
                 v = self.add_vertex(VertexType.Z,q,max_r)
-                self.add_edge((o,v),t.toggle())
+                self.add_edge((o,v),toggle_edge(t))
                 self.add_edge((v,n),EdgeType.HADAMARD)
 
         self.pack_circuit_rows()
@@ -556,7 +555,6 @@ class BaseGraph(object):
         The optional parameters allow you to respectively set
         the type, qubit index, row index and phase of the vertex."""
         v = self.add_vertices(1)[0]
-        ty = VertexType(ty)
         self.set_type(v, ty)
         if phase is None:
             if ty == VertexType.H_BOX: phase = 1
@@ -593,7 +591,7 @@ class BaseGraph(object):
 
             t1 = self.type(v1)
             t2 = self.type(v2)
-            if t1 == t2 and t1.is_zx() and t2.is_zx(): #types are ZX & equal,
+            if t1 == t2 and vertex_is_zx(t1) and vertex_is_zx(t2): #types are ZX & equal,
                 n1 = bool(n1)           #so normal edges fuse
                 pairs, n2 = divmod(n2,2)#while hadamard edges go modulo 2
                 self.scalar.add_power(-2*pairs)
@@ -604,7 +602,7 @@ class BaseGraph(object):
                 elif n1 != 0: new_type = EdgeType.REGULAR
                 elif n2 != 0: new_type = EdgeType.HADAMARD
                 else: new_type = None
-            elif t1 != t2 and t1.is_zx() and t2.is_zx(): #types are ZX & different
+            elif t1 != t2 and vertex_is_zx(t1) and vertex_is_zx(t2): #types are ZX & different
                 pairs, n1 = divmod(n1,2)#so normal edges go modulo 2
                 n2 = bool(n2)           #while hadamard edges fuse
                 self.scalar.add_power(-2*pairs)
@@ -782,7 +780,8 @@ class BaseGraph(object):
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
     def edge_type(self, e):
-        """Returns the type of the given edge, or None if the edge is not in the graph."""
+        """Returns the type of the given edge:
+        1 if it is regular, 2 if it is a Hadamard edge, 0 if the edge is not in the graph."""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
     def set_edge_type(self, e, t):
         """Sets the type of the given edge."""
@@ -790,6 +789,8 @@ class BaseGraph(object):
 
     def type(self, vertex):
         """Returns the type of the given vertex."""
+        """Returns the type of the given vertex:
+        0 if it is a boundary, 1 if is a Z node, 2 if it a X node."""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
     def types(self):
         """Returns a mapping of vertices to their types."""
