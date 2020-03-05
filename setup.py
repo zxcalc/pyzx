@@ -11,7 +11,7 @@ setup(
         "pyzx",
         "pyzx.circuit",
         "pyzx.graph",
-        "pyzx.routting",
+        "pyzx.routing",
         "pyzx.scripts"
     ],
     install_requires=[
