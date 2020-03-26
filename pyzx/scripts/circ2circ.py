@@ -61,7 +61,7 @@ def main(args):
     else:
         dtype = options.outformat
     if not options.dest:
-        base = os.path.splitext(options)[0]
+        base = os.path.splitext(options.source)[0]
         dest = base + "." + dtype
     else:
         dest = options.dest
