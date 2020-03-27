@@ -185,13 +185,13 @@ class ZPhase(Gate):
     def to_emoji(self,strings):
         s = ''
         phase = self.phase % 2
-        if phase == Fraction(1,2): s = ':GreenCircle_Pi2_lr:'
-        elif phase == Fraction(1,4): s = ':GreenCircle_Pi4_lr:'
-        elif phase == Fraction(1,1): s = ':GreenCircle_Pi_lr:'
-        elif phase == Fraction(3,4): s = ':GreenCircle_3Pi4_lr:'
-        elif phase == Fraction(5,4): s = ':GreenCircle_5Pi4_lr:'
-        elif phase == Fraction(3,2): s = ':GreenCircle_3Pi2_lr:'
-        elif phase == Fraction(7,4): s = ':GreenCircle_7Pi4_lr:'
+        if phase == Fraction(1,2): s = ':Zp4:'
+        elif phase == Fraction(1,4): s = ':Zp4:'
+        elif phase == Fraction(1,1): s = ':Zp:'
+        elif phase == Fraction(3,4): s = ':Z3p4:'
+        elif phase == Fraction(5,4): s = ':Z5p4:'
+        elif phase == Fraction(3,2): s = ':Z3p2:'
+        elif phase == Fraction(7,4): s = ':Z7p4:'
         else: raise Exception("Unsupported phase " + str(phase))
         strings[self.target].append(s)
 
@@ -262,13 +262,13 @@ class XPhase(Gate):
     def to_emoji(self,strings):
         s = ''
         phase = self.phase % 2
-        if phase == Fraction(1,2): s = ':RedCircle_Pi2_lr:'
-        elif phase == Fraction(1,4): s = ':RedCircle_Pi4_lr:'
-        elif phase == Fraction(1,1): s = ':RedCircle_Pi_lr:'
-        elif phase == Fraction(3,4): s = ':RedCircle_3Pi4_lr:'
-        elif phase == Fraction(5,4): s = ':RedCircle_5Pi4_lr:'
-        elif phase == Fraction(3,2): s = ':RedCircle_3Pi2_lr:'
-        elif phase == Fraction(7,4): s = ':RedCircle_7Pi4_lr:'
+        if phase == Fraction(1,2): s = ':Xp4:'
+        elif phase == Fraction(1,4): s = ':Xp4:'
+        elif phase == Fraction(1,1): s = ':Xp:'
+        elif phase == Fraction(3,4): s = ':X3p4:'
+        elif phase == Fraction(5,4): s = ':X5p4:'
+        elif phase == Fraction(3,2): s = ':X3p2:'
+        elif phase == Fraction(7,4): s = ':X7p4:'
         else: raise Exception("Unsupported phase " + str(phase))
         strings[self.target].append(s)
 
@@ -324,7 +324,7 @@ class HAD(Gate):
         rs[self.target] += 1
 
     def to_emoji(self,strings):
-        strings[self.target].append(':WhiteSquare_lr:')
+        strings[self.target].append(':H_:')
 
 class CNOT(Gate):
     name = 'CNOT'
@@ -349,14 +349,14 @@ class CNOT(Gate):
         ma = max([c,t])
         r = max([len(s) for s in strings[mi:ma+1]])
         for s in (strings[mi:ma+1]): 
-                s.extend([':Wire_lr:']*(r-len(s)))
-        for i in range(mi+1,ma): strings[i].append(':Wire_udlr:')
+                s.extend([':W_:']*(r-len(s)))
+        for i in range(mi+1,ma): strings[i].append(':Wud:')
         if c<t:
-            strings[self.control].append(':GreenCircle_dlr:')
-            strings[self.target].append(':RedCircle_ulr:')
+            strings[self.control].append(':Zd:')
+            strings[self.target].append(':Xu:')
         else:
-            strings[self.control].append(':GreenCircle_ulr:')
-            strings[self.target].append(':RedCircle_dlr:')
+            strings[self.control].append(':Zu:')
+            strings[self.target].append(':Xd:')
 
 class CZ(Gate):
     name = 'CZ'
@@ -382,6 +382,12 @@ class CZ(Gate):
         rs[self.target] = r+1
         rs[self.control] = r+1
         g.scalar.add_power(1)
+
+    def to_emoji(self,strings):
+        c,t = self.control, self.target
+        strings[t].append(':H_:')
+        CNOT.to_emoji(self,strings)
+        strings[t].append(':H_:')
 
 
 class ParityPhase(Gate):
