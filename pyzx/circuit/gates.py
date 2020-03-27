@@ -182,6 +182,19 @@ class ZPhase(Gate):
             return super().to_quipper()
         return 'QRot["exp(-i%Z)",{!s}]({!s})'.format(math.pi*self.phase/2,self.target)
 
+    def to_emoji(self,strings):
+        s = ''
+        phase = self.phase % 2
+        if phase == Fraction(1,2): s = ':GreenCircle_Pi2_lr:'
+        elif phase == Fraction(1,4): s = ':GreenCircle_Pi4_lr:'
+        elif phase == Fraction(1,1): s = ':GreenCircle_Pi_lr:'
+        elif phase == Fraction(3,4): s = ':GreenCircle_3Pi4_lr:'
+        elif phase == Fraction(5,4): s = ':GreenCircle_5Pi4_lr:'
+        elif phase == Fraction(3,2): s = ':GreenCircle_3Pi2_lr:'
+        elif phase == Fraction(7,4): s = ':GreenCircle_7Pi4_lr:'
+        else: raise Exception("Unsupported phase " + str(phase))
+        strings[self.target].append(s)
+
     def tcount(self):
         return 1 if self.phase.denominator > 2 else 0
 
@@ -246,6 +259,19 @@ class XPhase(Gate):
         self.graph_add_node(g,labels, qs,2,self.target,rs[self.target],self.phase)
         rs[self.target] += 1
 
+    def to_emoji(self,strings):
+        s = ''
+        phase = self.phase % 2
+        if phase == Fraction(1,2): s = ':RedCircle_Pi2_lr:'
+        elif phase == Fraction(1,4): s = ':RedCircle_Pi4_lr:'
+        elif phase == Fraction(1,1): s = ':RedCircle_Pi_lr:'
+        elif phase == Fraction(3,4): s = ':RedCircle_3Pi4_lr:'
+        elif phase == Fraction(5,4): s = ':RedCircle_5Pi4_lr:'
+        elif phase == Fraction(3,2): s = ':RedCircle_3Pi2_lr:'
+        elif phase == Fraction(7,4): s = ':RedCircle_7Pi4_lr:'
+        else: raise Exception("Unsupported phase " + str(phase))
+        strings[self.target].append(s)
+
     def to_quipper(self):
         if not self.printphase:
             return super().to_quipper()
@@ -297,6 +323,9 @@ class HAD(Gate):
         qs[self.target] = v
         rs[self.target] += 1
 
+    def to_emoji(self,strings):
+        strings[self.target].append(':WhiteSquare_lr:')
+
 class CNOT(Gate):
     name = 'CNOT'
     quippername = 'not'
@@ -313,6 +342,21 @@ class CNOT(Gate):
         rs[self.target] = r+1
         rs[self.control] = r+1
         g.scalar.add_power(1)
+
+    def to_emoji(self,strings):
+        c,t = self.control, self.target
+        mi = min([c,t])
+        ma = max([c,t])
+        r = max([len(s) for s in strings[mi:ma+1]])
+        for s in (strings[mi:ma+1]): 
+                s.extend([':Wire_lr:']*(r-len(s)))
+        for i in range(mi+1,ma): strings[i].append(':Wire_udlr:')
+        if c<t:
+            strings[self.control].append(':GreenCircle_dlr:')
+            strings[self.target].append(':RedCircle_ulr:')
+        else:
+            strings[self.control].append(':GreenCircle_ulr:')
+            strings[self.target].append(':RedCircle_dlr:')
 
 class CZ(Gate):
     name = 'CZ'

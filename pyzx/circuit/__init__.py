@@ -226,6 +226,12 @@ class Circuit(object):
         """Returns a numpy matrix describing the circuit."""
         return self.to_graph().to_matrix(preserve_scalar)
 
+    def to_emoji(self):
+    	"""Converts circuit into a representation that can be copy-pasted
+    	into the ZX-calculus Discord server."""
+    	from .emojiparser import circuit_to_emoji
+    	return circuit_to_emoji(self)
+
     @staticmethod
     def load(circuitfile):
         """Tries to detect the circuit description language from the filename and its contents,
@@ -317,6 +323,7 @@ class Circuit(object):
             s += g.to_qc() + "\n"
         s += "END\n"
         return s
+
 
 
     ### STAT FUNCTIONS
