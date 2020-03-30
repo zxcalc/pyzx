@@ -94,9 +94,9 @@ def draw(g, scale=None, auto_hbox=True, labels=False):
         <div style="overflow:auto" id="graph-output-{0}"></div>
         <script type="text/javascript">
         require.config({{ baseUrl: "{1}",
-                         paths: {{d3: "d3.v4.min"}} }});
-        require(['pyzx'], function(pyzx) {{
-            pyzx.showGraph('#graph-output-{0}',
+                         paths: {{d3: "d3.v5.min"}} }});
+        require(['zx_viewer'], function(zx_viewer) {{
+            zx_viewer.showGraph('#graph-output-{0}',
             JSON.parse('{2}'), {3}, {4}, {5}, {6}, {7}, {8});
         }});
         </script>
@@ -108,8 +108,8 @@ def draw(g, scale=None, auto_hbox=True, labels=False):
     elif in_webpage:
         d = html.DIV(style={"overflow": "auto"}, id="graph-output-{}".format(seq))
         source = """
-        require(['pyzx'], function(pyzx) {{
-            pyzx.showGraph('#graph-output-{0}',
+        require(['zx_viewer'], function(zx_viewer) {{
+            zx_viewer.showGraph('#graph-output-{0}',
             JSON.parse('{2}'), {3}, {4}, {5});
         }});
         """.format(seq, javascript_location, graphj, w, h, node_size)
