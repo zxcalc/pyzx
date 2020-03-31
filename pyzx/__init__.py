@@ -37,6 +37,7 @@ from . import hsimplify
 from . import d3
 from . import tikz
 from . import simulate
+from . import editor
 
 
 if __name__ == '__main__':
