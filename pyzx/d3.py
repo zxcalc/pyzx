@@ -37,25 +37,7 @@ except ImportError:
 
 _d3_display_seq = 0
 
-# javascript_location = '../js'
-
-# TODO: avoid duplicate (copied from drawing.py)
-def phase_to_s(a, t):
-    if (a == 0 and t != 3): return ''
-    if (a == 1 and t == 3): return ''
-    if not isinstance(a, Fraction):
-        a = Fraction(a)
-
-    simstr = ''
-    if a.denominator > 256:
-        a = a.limit_denominator(256)
-        simstr = '~'
-
-    ns = '' if a.numerator == 1 else str(a.numerator)
-    ds = '' if a.denominator == 1 else '/' + str(a.denominator)
-
-    # unicode 0x03c0 = pi
-    return simstr + ns + '\u03c0' + ds
+from .drawing import phase_to_s
 
 def draw(g, scale=None, auto_hbox=True, labels=False):
     global _d3_display_seq

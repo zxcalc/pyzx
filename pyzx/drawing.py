@@ -27,16 +27,22 @@ import math
 
 from .graph.base import BaseGraph
 
-def phase_to_s(a, t):
+def phase_to_s(a, t=1):
     if (a == 0 and t != 3): return ''
     if (a == 1 and t == 3): return ''
     if not isinstance(a, Fraction):
         a = Fraction(a)
+
+    simstr = ''
+    if a.denominator > 256:
+        a = a.limit_denominator(256)
+        simstr = '~'
+
     ns = '' if a.numerator == 1 else str(a.numerator)
     ds = '' if a.denominator == 1 else '/' + str(a.denominator)
 
     # unicode 0x03c0 = pi
-    return ns + '\u03c0' + ds
+    return simstr + ns + '\u03c0' + ds
 
 def vcol(t):
     if not t: return 'black'
