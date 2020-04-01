@@ -47,6 +47,7 @@ define('zx_editor', ["@jupyter-widgets/base", "make_editor"], function(widgets,m
                 let btn = document.createElement('button');
                 buttons[btn_id] = btn
                 btn.textContent = operations[btn_id]['text'];
+                btn.setAttribute('title',operations[btn_id]['tooltip'])
                 //btn.setAttribute('id', 'zx-button' + graph_id + '-' + btn_id);
                 btn.disabled = true;
                 btn.setAttribute('style', 'opacity: 60%;');

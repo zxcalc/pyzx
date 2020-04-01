@@ -745,10 +745,11 @@ def apply_supplementarity(g, matches):
     return ({}, rem, [], True)
 
 
-def match_copy(g):
+def match_copy(g, vertexf=None):
     """Finds spiders with a 0 or pi phase that have a single neighbour,
     and copies them through. Assumes that all the spiders are green and maximally fused."""
-    candidates = g.vertex_set()
+    if vertexf != None: candidates = set([v for v in g.vertices() if vertexf(v)])
+    else: candidates = g.vertex_set()
     phases = g.phases()
     types = g.types()
     m = []

@@ -38,7 +38,7 @@ define('make_editor', ['d3'], function(d3) {
             d.previouslySelected = false;
             d.nhd = [];
         });
-        selection.nodes.forEach(function(d) {vtab[d.name].selected=true;});
+        selection.nodes.forEach(function(d) {if (d.name in vtab) vtab[d.name].selected=true;});
 
         var ltab = {};
         graph.links.forEach(function(d) {
@@ -51,7 +51,7 @@ define('make_editor', ['d3'], function(d3) {
             t.nhd.push(s);
             d.selected = false;
         });
-        selection.links.forEach(function(d) {ltab[d.source +"_" + d.target].selected=true;});
+        selection.links.forEach(function(d) {if (d.source +"_" + d.target in ltab) ltab[d.source +"_" + d.target].selected=true;});
         return max_name;
     }
 
@@ -466,8 +466,8 @@ define('make_editor', ['d3'], function(d3) {
                             
                         // }
                     });
-                    model.selection_changed();
                     model.push_changes();
+                    model.selection_changed();
                     break;
                 case 88: // X
                     d3.event.preventDefault();

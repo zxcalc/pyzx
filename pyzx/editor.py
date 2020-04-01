@@ -38,21 +38,27 @@ from . import rules
 
 __all__ = ['edit', 'help']
 
-HELP_STRING = """To create an editor, call
-> e = zx.editor.edit(g)
-On a graph g. This will display the editor, and give you access to the underlying Python instance e.
+HELP_STRING = """To create an editor, call `e = zx.editor.edit(g)` on a graph g. 
+This will display the editor, and give you access to 
+the underlying Python instance e. Your changes are automatically pushed onto 
+the underlying graph instance g (which can also be accessed as e.graph).
 
-Click on edges or vertices to select them. Drag a box or hold shift to select multiple vertices or edges.
+Click on edges or vertices to select them. 
+Drag a box or hold shift to select multiple vertices or edges.
 Press delete or backspace to delete the current selection.
 Double-click a vertex to choose its phase.
-Ctrl-click on empty space to add a new vertex. The type of the vertex is determined by the box "Vertex type".
+Ctrl-click on empty space to add a new vertex. 
+The type of the vertex is determined by the box "Vertex type".
 Click this box (or press the hotkey 'x') to change the adding type. 
-Ctrl-drag between two vertices to add an edge between them. The type of edge is determined by the box "Edge type".
+Ctrl-drag between two vertices to add an edge between them. 
+The type of edge is determined by the box "Edge type".
 Click this box (or press the hotkey 'e') to change the adding type.
 
-Your changes are automatically pushed onto the underlying graph instance g (which can also be accessed as e.graph).
+When you have a selection, the buttons below the graph light up to denote that 
+a rewrite rule can be applied to some of the vertices or edges in this selection.
 
-When conversely you want to see a change of g made in the Python kernel reflected in the editor, call e.update().
+In order to reflect a change done on g in the Python kernel in the editor itself,
+call e.update().
 
 Example usage:
 In [0]: c = zx.Circuit(3)
@@ -118,20 +124,109 @@ def graph_to_json(g, scale):
 			  't': g.edge_type(e) } for e in g.edges()]
 	return json.dumps({'nodes': nodes, 'links': links})
 
+
+
+def colour_change_matcher(g, vertexf):
+	if vertexf != None: candidates = set([v for v in g.vertices() if vertexf(v)])
+	else: candidates = g.vertex_set()
+	types = g.types()
+
+	m = []
+	while len(candidates) > 0:
+		v = candidates.pop()
+		if types[v] == 2:
+			m.append(v)
+
+	return m
+
+def colour_change(g, matches):
+	for v in matches:
+		g.set_type(v, 1)
+		for e in g.incident_edges(v):
+			et = g.edge_type(e)
+			if et == 2: g.set_edge_type(e,1)
+			elif et == 1: g.set_edge_type(e,2)
+	return ({}, [],[],False)
+
+def copy_matcher(g, vertexf=None):
+	if vertexf != None: candidates = set([v for v in g.vertices() if vertexf(v)])
+	else: candidates = g.vertex_set()
+	phases = g.phases()
+	types = g.types()
+	m = []
+
+	while len(candidates) > 0:
+		v = candidates.pop()
+		if phases[v] not in (0,1) or types[v] not in (1,2) or g.vertex_degree(v) != 1: continue
+		w = list(g.neighbours(v))[0]
+		e = g.edge(v,w)
+		et = g.edge_type(e)
+		if (types[w] != types[v] and et==2) or (types[w] == types[v] and et==1): continue
+		neigh = [n for n in g.neighbours(w) if n != v]
+		m.append((v,w,et,phases[v],phases[w],neigh))
+		candidates.discard(w)
+		candidates.difference_update(neigh)
+
+	return m
+
+def apply_copy(g, matches):
+	rem = []
+	types = g.types()
+	for v,w,t,a,alpha, neigh in matches:
+		rem.append(v)
+		rem.append(w)
+		g.scalar.add_power(1)
+		
+		if a: g.scalar.add_phase(alpha)
+		for n in neigh: 
+			r = g.row(n)
+			vt = types[v] if t == 1 else 2-types[v]
+			u = g.add_vertex(vt, g.qubit(n)-0.8, r, a)
+			e = g.edge(n,w)
+			et = g.edge_type(e)
+			g.add_edge((n,u), et)
+	return ({}, rem, [], True)
+
 MATCHES_VERTICES = 1
 MATCHES_EDGES = 2
 
 operations = {
 	"spider": {"text": "fuse spiders", 
+			   "tooltip": "Fuses connected spiders of the same colour",
 			   "matcher": rules.match_spider_parallel, 
 			   "rule": rules.spider, 
+			   "type": MATCHES_EDGES},
+	"colour": {"text": "change colour", 
+			   "tooltip": "Changes X spiders into Z spiders by pushing out Hadamards",
+			   "matcher": colour_change_matcher, 
+			   "rule": colour_change, 
+			   "type": MATCHES_VERTICES},
+	"rem_id": {"text": "remove identity", 
+			   "tooltip": "Removes a 2-ary phaseless spider",
+			   "matcher": rules.match_ids_parallel, 
+			   "rule": rules.remove_ids, 
+			   "type": MATCHES_VERTICES},
+	"copy": {"text": "copy 0/pi spider", 
+			   "tooltip": "Copies a single-legged spider with a 0/pi phase through its neighbour",
+			   "matcher": copy_matcher, 
+			   "rule": apply_copy, 
+			   "type": MATCHES_VERTICES},
+	"lcomp": {"text": "local complementation", 
+			   "tooltip": "Deletes a spider with a pi/2 phase by performing a local complementation on its neighbours",
+			   "matcher": rules.match_lcomp_parallel, 
+			   "rule": rules.lcomp, 
+			   "type": MATCHES_VERTICES},
+	"pivot": {"text": "pivot", 
+			   "tooltip": "Deletes a pair of spiders with 0/pi phases by performing a pivot",
+			   "matcher": lambda g, matchf: rules.match_pivot_parallel(g, matchf, check_edge_types=True), 
+			   "rule": rules.pivot, 
 			   "type": MATCHES_EDGES}
 }
 
 
 def operations_to_js():
 	global operations
-	return json.dumps({k:{"active":False, "text":v["text"]} for k,v in operations.items()})
+	return json.dumps({k:{"active":False, "text":v["text"], "tooltip":v["tooltip"]} for k,v in operations.items()})
 
 
 @widgets.register
@@ -172,16 +267,18 @@ class ZXEditorWidget(widgets.DOMWidget):
 		return vertex_set, edge_set
 
 	def _selection_changed(self, change):
-		# selection =json.loads(change['new'])
-		vertex_set, edge_set = self._parse_selection()
-		g = self.graph
-		js = json.loads(self.graph_buttons)
-		for op_id, data in operations.items():
-			if data["type"] == MATCHES_EDGES:
-				matches = data["matcher"](g, matchf=lambda e: e in edge_set)
-			else: matches = data["matcher"](g, matchf=lambda v: v in vertex_set)
-			js[op_id]["active"] = (len(matches) != 0)
-		self.graph_buttons = json.dumps(js)
+		try:
+			vertex_set, edge_set = self._parse_selection()
+			g = self.graph
+			js = json.loads(self.graph_buttons)
+			for op_id, data in operations.items():
+				if data["type"] == MATCHES_EDGES:
+					matches = data["matcher"](g, lambda e: e in edge_set)
+				else: matches = data["matcher"](g, lambda v: v in vertex_set)
+				js[op_id]["active"] = (len(matches) != 0)
+			self.graph_buttons = json.dumps(js)
+		except Exception as e:
+			self.excepts = traceback.format_exc()
 
 	def _apply_operation(self, change):
 		try:
@@ -191,20 +288,21 @@ class ZXEditorWidget(widgets.DOMWidget):
 			g = self.graph
 			data = operations[op]
 			if data["type"] == MATCHES_EDGES:
-				matches = data["matcher"](g, matchf=lambda e: e in edge_set)
-			else: matches = data["matcher"](g, matchf=lambda v: v in vertex_set)
+				matches = data["matcher"](g, lambda e: e in edge_set)
+			else: matches = data["matcher"](g, lambda v: v in vertex_set)
 			# Apply the rule
 			etab, rem_verts, rem_edges, check_isolated_vertices = data["rule"](g, matches)
 			g.add_edge_table(etab)
-			g.remove_edges(rem_edges)
 			g.remove_vertices(rem_verts)
+			g.remove_edges(rem_edges)
 			if check_isolated_vertices: g.remove_isolated_vertices()
 			# Remove stuff from the selection
-			for v in rem_verts: vertex_set.discard(v)
-			for e in rem_edges: edge_set.discard(e)
 			selection = json.loads(self.graph_selected)
 			selection["nodes"] = [v for v in selection["nodes"] if v["name"] not in rem_verts]
-			selection["links"] = [e for e in selection["links"] if (e["source"], e["target"]) not in rem_verts]
+			selection["links"] = [e for e in selection["links"] if (
+										(e["source"], e["target"]) not in rem_edges 
+										and e["source"] not in rem_verts
+										and e["target"] not in rem_verts)]
 			self.graph_selected = json.dumps(selection)
 			self.button_clicked = ''
 			self.update()
@@ -243,7 +341,7 @@ class ZXEditorWidget(widgets.DOMWidget):
 					self.graph.add_edge((s,t),et)
 			self.graph.remove_edges(marked)
 		except Exception as e:
-			self.excepts = e
+			self.excepts = traceback.format_exc()
 
 	def to_graph(self, zh=True):
 		return self.graph
@@ -267,8 +365,8 @@ def edit(g, scale=None):
 	node_size = 0.2 * scale
 	if node_size < 2: node_size = 2
 
-	w = (g.depth() + 2) * scale
-	h = (g.qubit_count() + 3) * scale
+	w = max([(g.depth() + 2) * scale, 400])
+	h = max([(g.qubit_count() + 3) * scale + 30, 200])
 	
 	js = graph_to_json(g, scale)
 
