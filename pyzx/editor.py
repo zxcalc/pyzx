@@ -19,6 +19,7 @@
 import json
 import os
 from fractions import Fraction
+import traceback
 
 javascript_location = '../js'
 _d3_editor_id = 0
@@ -32,6 +33,8 @@ except ImportError:
 	in_notebook = False
 
 from .drawing import phase_to_s
+
+from . import rules
 
 __all__ = ['edit', 'help']
 
@@ -53,12 +56,12 @@ When conversely you want to see a change of g made in the Python kernel reflecte
 
 Example usage:
 In [0]: c = zx.Circuit(3)
-        c.add_gate("TOF",0,1,2)
-        g = c.to_basic_gates().to_graph()
-        e = zx.editor_edit(g)
+		c.add_gate("TOF",0,1,2)
+		g = c.to_basic_gates().to_graph()
+		e = zx.editor_edit(g)
 >>> Now the graph g is shown in the output of the cell.
 In [1]: zx.spider_simp(g)
-        e.update()
+		e.update()
 >>> Now the view of g in the editor above is updated.
 """
 
@@ -115,6 +118,20 @@ def graph_to_json(g, scale):
 			  't': g.edge_type(e) } for e in g.edges()]
 	return json.dumps({'nodes': nodes, 'links': links})
 
+MATCHES_VERTICES = 1
+MATCHES_EDGES = 2
+
+operations = {
+	"spider": {"text": "fuse spiders", 
+			   "matcher": rules.match_spider_parallel, 
+			   "rule": rules.spider, 
+			   "type": MATCHES_EDGES}
+}
+
+
+def operations_to_js():
+	global operations
+	return json.dumps({k:{"active":False, "text":v["text"]} for k,v in operations.items()})
 
 
 @widgets.register
@@ -132,23 +149,69 @@ class ZXEditorWidget(widgets.DOMWidget):
 	graph_width = Float(600.0).tag(sync=True)
 	graph_height = Float(400.0).tag(sync=True)
 	graph_node_size = Float(5.0).tag(sync=True)
+	graph_buttons = Unicode('{empty: false}').tag(sync=True)
+	button_clicked = Unicode('').tag(sync=True)
 	
 	def __init__(self, graph, *args, **kwargs):
 		super().__init__(*args,**kwargs)
-		self.observe(self.handle_graph_change, 'graph_json')
-		self.observe(self.selection_changed, 'graph_selected')
+		self.observe(self._handle_graph_change, 'graph_json')
+		self.observe(self._selection_changed, 'graph_selected')
+		self.observe(self._apply_operation, 'button_clicked')
 		self.graph = graph
 		self.changes = []
 	
 	def update(self):
 		self.graph_json = graph_to_json(self.graph, self.graph.scale)
 
-	def selection_changed(self, change):
-		js =json.loads(change['new'])
-		self.js = js
-		
+	def _parse_selection(self):
+		selection = json.loads(self.graph_selected)
+		g = self.graph
+		vertex_set = set([n["name"] for n in selection["nodes"]])
+		edge_set = set([g.edge(e["source"],e["target"]) for e in selection["links"]])
+		edge_set.update([g.edge(v,w) for v in vertex_set for w in vertex_set if g.connected(v,w)])
+		return vertex_set, edge_set
+
+	def _selection_changed(self, change):
+		# selection =json.loads(change['new'])
+		vertex_set, edge_set = self._parse_selection()
+		g = self.graph
+		js = json.loads(self.graph_buttons)
+		for op_id, data in operations.items():
+			if data["type"] == MATCHES_EDGES:
+				matches = data["matcher"](g, matchf=lambda e: e in edge_set)
+			else: matches = data["matcher"](g, matchf=lambda v: v in vertex_set)
+			js[op_id]["active"] = (len(matches) != 0)
+		self.graph_buttons = json.dumps(js)
+
+	def _apply_operation(self, change):
+		try:
+			op = change['new']
+			if not op: return
+			vertex_set, edge_set = self._parse_selection()
+			g = self.graph
+			data = operations[op]
+			if data["type"] == MATCHES_EDGES:
+				matches = data["matcher"](g, matchf=lambda e: e in edge_set)
+			else: matches = data["matcher"](g, matchf=lambda v: v in vertex_set)
+			# Apply the rule
+			etab, rem_verts, rem_edges, check_isolated_vertices = data["rule"](g, matches)
+			g.add_edge_table(etab)
+			g.remove_edges(rem_edges)
+			g.remove_vertices(rem_verts)
+			if check_isolated_vertices: g.remove_isolated_vertices()
+			# Remove stuff from the selection
+			for v in rem_verts: vertex_set.discard(v)
+			for e in rem_edges: edge_set.discard(e)
+			selection = json.loads(self.graph_selected)
+			selection["nodes"] = [v for v in selection["nodes"] if v["name"] not in rem_verts]
+			selection["links"] = [e for e in selection["links"] if (e["source"], e["target"]) not in rem_verts]
+			self.graph_selected = json.dumps(selection)
+			self.button_clicked = ''
+			self.update()
+		except Exception as e:
+			self.excepts = traceback.format_exc()
 	
-	def handle_graph_change(self, change):
+	def _handle_graph_change(self, change):
 		try:
 			js = json.loads(change['new'])
 			scale = self.graph.scale
@@ -208,7 +271,10 @@ def edit(g, scale=None):
 	h = (g.qubit_count() + 3) * scale
 	
 	js = graph_to_json(g, scale)
+
+
 	w = ZXEditorWidget(g, graph_json = js, graph_id = str(seq), 
-					  graph_width=w, graph_height=h, graph_node_size=node_size)
+					  graph_width=w, graph_height=h, graph_node_size=node_size,
+					  graph_buttons = operations_to_js())
 	display(w)
 	return w

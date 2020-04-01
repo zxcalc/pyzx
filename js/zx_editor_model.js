@@ -24,23 +24,40 @@ define('zx_editor', ["@jupyter-widgets/base", "make_editor"], function(widgets,m
     var ZXEditorView = widgets.DOMWidgetView.extend({
         
         render: function() {
-            // var btn = document.createElement('button')
-            // btn.textContent = 'Push changes'
-            // btn.onclick = this.push_changes.bind(this);
-            // this.el.appendChild(btn)
-            var mydiv = document.createElement('div');
-            mydiv.setAttribute('style', 'overflow:auto');
-            var div_id = 'graph-interactive-' + this.model.get('graph_id');
-            mydiv.setAttribute('id', div_id);
-            this.el.appendChild(mydiv);
+            var div_editor = document.createElement('div');
+            div_editor.setAttribute('style', 'overflow:auto');
+            var graph_id = this.model.get('graph_id');
+            var div_id = 'zx-interactive-' + graph_id;
+            div_editor.setAttribute('id', div_id);
+            this.el.appendChild(div_editor);
             this.graph = JSON.parse(this.model.get('graph_json'));
             this.selected = JSON.parse(this.model.get('graph_selected'));
             this.max_name = make_editor.prepareGraph(this.graph,this.selected);
             this.width = this.model.get("graph_width");
             this.height = this.model.get("graph_height");
             this.node_size = this.model.get("graph_node_size");
-            this.update_graph = make_editor.showGraph(mydiv, this, false, false);
+            this.update_graph = make_editor.showGraph(div_editor, this, false, false);
             this.listenTo(this.model, 'change:graph_json', this.graph_changed, this);
+
+            var div_buttons = document.createElement('div');
+            var operations = JSON.parse(this.model.get('graph_buttons'));
+            var buttons = {};
+            var model = this.model;
+            Object.keys(operations).forEach(function(btn_id) {
+                let btn = document.createElement('button');
+                buttons[btn_id] = btn
+                btn.textContent = operations[btn_id]['text'];
+                //btn.setAttribute('id', 'zx-button' + graph_id + '-' + btn_id);
+                btn.disabled = true;
+                btn.setAttribute('style', 'opacity: 60%;');
+                btn.addEventListener('click', function(e) {model.set('button_clicked', btn_id);model.save_changes();});
+                div_buttons.appendChild(btn);
+            });
+            this.el.appendChild(div_buttons);
+            this.buttons = buttons;
+            this.listenTo(this.model, 'change:graph_buttons', this.buttons_changed, this);
+            //btn.onclick = this.push_changes.bind(this);
+            //this.el.appendChild(btn)
         },
 
         strip_graph: function(graph) {
@@ -79,6 +96,22 @@ define('zx_editor', ["@jupyter-widgets/base", "make_editor"], function(widgets,m
             this.model.set('graph_json', JSON.stringify(this.strip_graph(this.graph)));
             this.model.save_changes();
             //this.model.touch();
+        },
+
+        buttons_changed: function() {
+            console.log("Updating buttons");
+            var operations = JSON.parse(this.model.get('graph_buttons'));
+            var buttons = this.buttons;
+            Object.keys(operations).forEach(function(btn_id) {
+                if (operations[btn_id]["active"]) {
+                    buttons[btn_id].disabled = false; 
+                    buttons[btn_id].setAttribute('style', 'opacity: 100%;');
+                }
+                else {
+                    buttons[btn_id].disabled = true; 
+                    buttons[btn_id].setAttribute('style', 'opacity: 60%;');
+                }
+            });
         }
     });
     
