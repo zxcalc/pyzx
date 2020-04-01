@@ -35,7 +35,7 @@ define('zx_editor', ["@jupyter-widgets/base", "make_editor"], function(widgets,m
             this.el.appendChild(mydiv);
             this.graph = JSON.parse(this.model.get('graph_json'));
             this.selected = JSON.parse(this.model.get('graph_selected'));
-            this.max_name = make_editor.prepareGraph(this.graph);
+            this.max_name = make_editor.prepareGraph(this.graph,this.selected);
             this.width = this.model.get("graph_width");
             this.height = this.model.get("graph_height");
             this.node_size = this.model.get("graph_node_size");
@@ -55,16 +55,20 @@ define('zx_editor', ["@jupyter-widgets/base", "make_editor"], function(widgets,m
             return g
         },
 
-        selection_changed: function(nodes, links) {
-            var g = this.strip_graph({nodes: nodes, links: links});
-            this.model.set('graph_selected', JSON.stringify(g));
+        selection_changed: function() {
+            console.log("Pushing selection changes");
+            var g = {links: [], nodes: []}
+            this.graph.nodes.forEach(function(d) {if (d.selected) g.nodes.push(d);})
+            this.graph.links.forEach(function(d) {if (d.selected) g.links.push(d);})
+            this.model.set('graph_selected', JSON.stringify(this.strip_graph(g)));
             this.model.save_changes();
         },
 
         graph_changed: function() {
             console.log("Updating graph");
             var new_graph = JSON.parse(this.model.get('graph_json'));
-            this.max_name = make_editor.prepareGraph(new_graph);
+            var selection = JSON.parse(this.model.get('graph_selected'));
+            this.max_name = make_editor.prepareGraph(new_graph, selection);
             this.graph = new_graph;
             //console.log(this.graphData.graph);
             this.update_graph();

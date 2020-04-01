@@ -27,25 +27,31 @@ define('make_editor', ['d3'], function(d3) {
         return selected ? "stroke-width: 2px; stroke: #00f" : "stroke-width: 1.5px";
     }
 
-    function prepareGraph(graph) {
-        var ntab = {};
+    function prepareGraph(graph, selection) {
         var max_name = -1;
+        
+        var vtab = {};
         graph.nodes.forEach(function(d) {
-            ntab[d.name] = d;
+            vtab[d.name] = d;
             if (d.name > max_name) max_name = d.name;
             d.selected = false;
             d.previouslySelected = false;
             d.nhd = [];
         });
+        selection.nodes.forEach(function(d) {vtab[d.name].selected=true;});
+
+        var ltab = {};
         graph.links.forEach(function(d) {
-            var s = ntab[d.source];
-            var t = ntab[d.target];
+            ltab[d.source + "_" + d.target] = d;
+            var s = vtab[d.source];
+            var t = vtab[d.target];
             d.source = s;
             d.target = t;
             s.nhd.push(t);
             t.nhd.push(s);
             d.selected = false;
         });
+        selection.links.forEach(function(d) {ltab[d.source +"_" + d.target].selected=true;});
         return max_name;
     }
 
@@ -208,16 +214,7 @@ define('make_editor', ['d3'], function(d3) {
             //All the keyboard events of the nodes
 
             newnodes.on("mousedown", function(d) {
-                if (shiftKey) {
-                    d3.select(this).select(":first-child").attr("style", nodeStyle(d.selected = !d.selected));
-                    d3.event.stopImmediatePropagation();
-                    resetMouseVars();
-                } else if (!d.selected && !d3.event.ctrlKey) {
-                    node.select(":first-child").attr("style", function(p) { return nodeStyle(p.selected = d === p); });
-                    deselectEdges();
-                    resetMouseVars();
-                }
-                else if (d3.event.ctrlKey) {
+                if (d3.event.ctrlKey) { // Start the adding of an edge
                     mousedownNode = d;
                     d3.event.stopImmediatePropagation();
                     dragLine.classed('hidden', false)
@@ -225,6 +222,19 @@ define('make_editor', ['d3'], function(d3) {
                         .attr("y1", mousedownNode.y)
                         .attr("x2", mousedownNode.x)
                         .attr("y2", mousedownNode.y);
+                }
+                else if (shiftKey) { // Add the node to the selection
+                    console.log("Adding to selection");
+                    d3.select(this).select(":first-child").attr("style", nodeStyle(d.selected = !d.selected));
+                    d3.event.stopImmediatePropagation();
+                    resetMouseVars();
+                    model.selection_changed();
+                } else if (!d.selected) {
+                    console.log("Deselecting all except this vertex");
+                    node.select(":first-child").attr("style", function(p) { return nodeStyle(p.selected = d === p); });
+                    deselectEdges();
+                    resetMouseVars();
+                    model.selection_changed();
                 }
             })
             .on("mouseup", function(d) { //Check if we need to add an edge
@@ -293,9 +303,6 @@ define('make_editor', ['d3'], function(d3) {
             .call(d3.drag().on("drag", function(d) {
                 var dx = d3.event.dx;
                 var dy = d3.event.dy;
-                // node.filter(function(d) { return d.selected; })
-                //     .attr("cx", function(d) { return d.x += dx; })
-                //     .attr("cy", function(d) { return d.y += dy; });
                 node.filter(function(d) { return d.selected; })
                     .attr("transform", function(d) {
                         d.x += dx;
@@ -381,20 +388,21 @@ define('make_editor', ['d3'], function(d3) {
             link.exit().remove();
             
             var newlinks = link.enter().append("line")
-                .attr("style", "stroke-width: 1.5px")
                 .on("click", function(d) {
                     if (d3.event.ctrlKey) {return;}
                     if (!shiftKey) {
                         deselectEdges();
-                        node.select(":first-child").attr("style", nodeStyle(false));
+                        node.select(":first-child").attr("style", function(n) {nodeStyle(n.selected=false)});
                     }
                     d.selected = !d.selected
                     d3.select(this).attr("stroke", edgeColor(d.t,d.selected))
                         .attr("style", edgeWidth(d.selected));
+                    model.selection_changed();
                 });
             
             link = newlinks.merge(link);
-            link.attr("stroke", function(d) { return edgeColor(d.t); })
+            link.attr("stroke", function(d) { return edgeColor(d.t,d.selected); })
+                .attr("style", function(d) {return edgeWidth(d.selected); })
                 .attr("x1", function(d) { return d.source.x; })
                 .attr("y1", function(d) { return d.source.y; })
                 .attr("x2", function(d) { return d.target.x; })
@@ -458,8 +466,8 @@ define('make_editor', ['d3'], function(d3) {
                             
                         // }
                     });
+                    model.selection_changed();
                     model.push_changes();
-                    //updateGraph();
                     break;
                 case 88: // X
                     d3.event.preventDefault();
@@ -485,6 +493,7 @@ define('make_editor', ['d3'], function(d3) {
                             d.selected);
                     });
                     if (!shiftKey) deselectEdges();
+                    model.selection_changed();
                 }
             })
             .on("brush", function() {
@@ -501,6 +510,7 @@ define('make_editor', ['d3'], function(d3) {
             .on("end", function() {
                 if (d3.event.selection != null) {
                     d3.select(this).call(d3.event.target.move, null);
+                    model.selection_changed();
                 }
             }));
 
