@@ -49,7 +49,7 @@ define('make_editor', ['d3'], function(d3) {
         return max_name;
     }
 
-    function showGraph(tag, graphData, auto_hbox, show_labels) {
+    function showGraph(tag, model, auto_hbox, show_labels) {
         var shiftKey;
 
         // SETUP SVG ITEMS
@@ -61,8 +61,8 @@ define('make_editor', ['d3'], function(d3) {
             .each(function() { this.focus(); })
             .append("svg")
             .attr("style", "max-width: none; max-height: none")
-            .attr("width", graphData.width)
-            .attr("height", graphData.height);
+            .attr("width", model.width)
+            .attr("height", model.height);
         
         var brush = svg.append("g")
             .attr("class", "brush");
@@ -95,28 +95,28 @@ define('make_editor', ['d3'], function(d3) {
         const vertexTypeBox = svg.append('g').attr('id', 'vertexTypeButton');
         vertexTypeBox.append('rect')
                 .attr('x',0)
-                .attr('y',graphData.height-24)
+                .attr('y',model.height-24)
                 .attr('width', 100).attr('height', 24)
                 .attr("stroke", "black")
                 .attr("fill", "white")
                 .attr("style", "stroke-width: 2.5px");
         vertexTypeBox.append('text')
                 .attr('x',5)
-                .attr('y',graphData.height-7)
+                .attr('y',model.height-7)
                 .attr('style', 'pointer-events: none; user-select: none;')
                 .text("Vertex type: Z");
 
         const edgeTypeBox = svg.append('g').attr('id', 'edgeTypeButton');
         edgeTypeBox.append('rect')
                 .attr('x',100)
-                .attr('y',graphData.height-24)
+                .attr('y',model.height-24)
                 .attr('width', 100).attr('height', 24)
                 .attr("stroke", "black")
                 .attr("fill", "white")
                 .attr("style", "stroke-width: 2.5px");
         edgeTypeBox.append('text')
                 .attr('x',105)
-                .attr('y',graphData.height-7)
+                .attr('y',model.height-7)
                 .attr('style', 'pointer-events: none; user-select: none;')
                 .text("Edge type: R");
 
@@ -164,8 +164,9 @@ define('make_editor', ['d3'], function(d3) {
 
         
         function updateGraph() {
-            var node_size = graphData.node_size;
-            var graph = graphData.graph;
+            console.log("Updating graph view")
+            var node_size = model.node_size;
+            var graph = model.graph;
             
             //First initialize all the nodes properly, before looking at edges.
             node = node.data(graph.nodes, function(d) {return d.name;});
@@ -247,9 +248,10 @@ define('make_editor', ['d3'], function(d3) {
                     console.log("Adding edge")
                     mousedownNode.nhd.push(d);
                     d.nhd.push(mousedownNode);
-                    graphData.graph.links.push(edge);
-                    updateGraph();
+                    model.graph.links.push(edge);
+                    //updateGraph();
                     }
+                    model.push_changes();
                 }
             })
             .on("dblclick", function(d) {
@@ -283,6 +285,7 @@ define('make_editor', ['d3'], function(d3) {
                     }
                 }
                 d.phase = phase
+                model.push_changes();
 
                 d3.select(this).select("text").text(phase)
                                 .attr("visibility", (phase == "") ? 'hidden' : 'visible')
@@ -315,7 +318,8 @@ define('make_editor', ['d3'], function(d3) {
                 // text.filter(function(d) { return d.selected; })
                 //     .attr("x", function(d) { return d.x; })
                 //     .attr("y", function(d) { return d.y + 0.7 * node_size + 14; });
-            }));
+            }).on("end", function(d) {model.push_changes();})
+            );
 
             //Finally position all the nodes and update the texts and types
             
@@ -404,13 +408,14 @@ define('make_editor', ['d3'], function(d3) {
             if (!d3.event.ctrlKey) return;
             console.log("Adding vertex");
             const point = d3.mouse(this);
-            graphData.max_name += 1
-            const vert = { name: graphData.max_name, t: addVertexType, 
+            model.max_name += 1
+            const vert = { name: model.max_name, t: addVertexType, 
                            selected: false, previouslySelected: false,
                            nhd: [], x: point[0], y: point[1], phase:''};
-            graphData.graph.nodes.push(vert);
+            model.graph.nodes.push(vert);
             resetMouseVars();
-            updateGraph();
+            model.push_changes();
+            //updateGraph();
             })
             .on("mousemove", function(d) {
                 if (!mousedownNode) return;
@@ -436,11 +441,11 @@ define('make_editor', ['d3'], function(d3) {
                     d3.event.preventDefault();
                     node.each(function(d) {
                         if (!d.selected) return;
-                        graphData.graph.nodes.splice(graphData.graph.nodes.indexOf(d),1);
+                        model.graph.nodes.splice(model.graph.nodes.indexOf(d),1);
                     });
                     link.each(function(d) {
                         if (!d.source.selected && !d.target.selected && !d.selected) return;
-                        graphData.graph.links.splice(graphData.graph.links.indexOf(d),1);
+                        model.graph.links.splice(model.graph.links.indexOf(d),1);
                         var l = d.target.nhd;
                         l.splice(l.indexOf(d.source),1);
                         l = d.source.nhd;
@@ -453,7 +458,8 @@ define('make_editor', ['d3'], function(d3) {
                             
                         // }
                     });
-                    updateGraph();
+                    model.push_changes();
+                    //updateGraph();
                     break;
                 case 88: // X
                     d3.event.preventDefault();
@@ -470,7 +476,7 @@ define('make_editor', ['d3'], function(d3) {
         // EVENTS FOR DRAGGING AND SELECTION
         
         brush.call(d3.brush().keyModifiers(false).filter(() => !d3.event.ctrlKey)
-            //.extent([[0, 0], [graphData.width, graphData.height]])
+            //.extent([[0, 0], [model.width, model.height]])
             .on("start", function() {
                 if (d3.event.sourceEvent.type !== "end") {
                     node.select(":first-child").attr("style", function(d) {
