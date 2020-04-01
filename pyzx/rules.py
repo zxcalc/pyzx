@@ -139,7 +139,7 @@ def match_spider_parallel(g, matchf=None, num=-1):
     
     :param g: An instance of a ZX-graph.
     :param matchf: An optional filtering function for candidate edge, should
-       return True if a edge should considered as a match. Passing None will
+       return True if the edge should be considered for matchings. Passing None will
        consider all edges.
     :param num: Maximal amount of matchings to find. If -1 (the default)
        tries to find as many as possible.
@@ -157,7 +157,7 @@ def match_spider_parallel(g, matchf=None, num=-1):
         v0, v1 = g.edge_st(e)
         v0t = types[v0]
         v1t = types[v1]
-        if (v0t == v1t and v0t!=0):
+        if (v0t == v1t and v0t!=0 and v0t!=3):
                 i += 1
                 for v in g.neighbours(v0):
                     for c in g.incident_edges(v): candidates.discard(c)
@@ -165,6 +165,7 @@ def match_spider_parallel(g, matchf=None, num=-1):
                     for c in g.incident_edges(v): candidates.discard(c)
                 m.append([v0,v1])
     return m
+
 
 def spider(g, matches):
     '''Performs spider fusion given a list of matchings from ``match_spider(_parallel)``
@@ -179,10 +180,7 @@ def spider(g, matches):
         else:
             v0, v1 = m[0], m[1]
 
-        g.set_phase(v0, g.phase(v0) + g.phase(v1))
-
-        if g.merge_vdata != None:
-            g.merge_vdata(g, v0, v1)
+        g.add_to_phase(v0, g.phase(v1))
 
         if g.track_phases:
             g.fuse_phases(v0,v1)
