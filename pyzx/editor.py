@@ -31,6 +31,20 @@ try:
 	in_notebook = True
 except ImportError:
 	in_notebook = False
+	# Make some dummy classes to prevent errors with the definition
+	# of ZXEditorWidget
+	class DOMWidget(object):
+		pass
+	class Unicode(object):
+		def __init__(self,*args,**kwargs):
+			pass
+		def tag(self, sync=False):
+			pass
+	class Float(Unicode):
+		pass
+	class widgets(object):
+		register = lambda x: x
+		DOMWidget = DOMWidget
 
 from .drawing import phase_to_s
 
