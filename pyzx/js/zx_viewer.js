@@ -1,4 +1,6 @@
-define(['d3'], function(d3) {
+require.undef('zx_viewer');
+
+define('zx_viewer', ['d3'], function(d3) {
     
     // styling functions
     function nodeColor(t) {

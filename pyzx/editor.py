@@ -21,9 +21,6 @@ import os
 from fractions import Fraction
 import traceback
 
-javascript_location = '../js'
-_d3_editor_id = 0
-
 try:
 	import ipywidgets as widgets
 	from traitlets import Unicode, validate, Bool, Int, Float
@@ -88,23 +85,43 @@ In [1]: zx.spider_simp(g)
 def help():
 	print(HELP_STRING)
 
+ERROR_STRING = """This functionality is only supported in a Jupyter Notebook.
+If you are running this in a Jupyter notebook, then you probably don't have ipywidgets installed.
+Run %%pip install ipywidgets in a cell in your notebook to install the correct package.
+"""
+
+# We default to importing d3 from a CDN
+d3_load_string = 'require.config({paths: {d3: "https://d3js.org/d3.v5.min"} });'
+# However, if we are working in the pyzx directory itself, we can use the copy of d3
+# local to pyzx, which doesn't require an internet connection
+# We only do this if we believe we are running in the PyZX directory itself.
+
+javascript_location = os.path.join(os.path.dirname(__file__), 'js')
+relpath = os.path.relpath(javascript_location, os.getcwd())
+if relpath.count('..') <= 1: # We are *probably* working in the PyZX directory
+	javascript_location = os.path.relpath(javascript_location, os.getcwd())
+	d3_load_string = 'require.config({{baseUrl: "{}",paths: {{d3: "d3.v5.min"}} }});'.format(
+						javascript_location.replace('\\','/'))
+	# TODO: This will fail if Jupyter is started in the parent directory of pyzx, while
+	# the notebook is not in the pyzx directory
+
 def load_js():
 	if not in_notebook:
-		raise Exception("This functionality is only supported in a Jupyter Notebook")
+		raise Exception(ERROR_STRING)
 	with open(os.path.join(javascript_location,"zx_editor_widget.js")) as f:
 		data1 = f.read()
 	with open(os.path.join(javascript_location,"zx_editor_model.js")) as f:
 		data2 = f.read()
 	#"""<div style="overflow:auto">Loading scripts</div>
-	text = """<script type="text/javascript">require.config({{ baseUrl: "{0}",paths: {{d3: "d3.v5.min"}} }});
+	text = """<script type="text/javascript">{0}
 				{1}
 			</script>
 			<script type="text/javascript">
 				{2}
-			</script>""".format(javascript_location,data1,data2)
+			</script>""".format(d3_load_string,data1,data2)
 	display(HTML(text))
 
-
+_d3_editor_id = 0
 
 # def phase_to_s(a):
 #	 if not a: return ''
