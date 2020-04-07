@@ -1,0 +1,3 @@
+include pyzx/js/zx_editor_model.js
+include pyzx/js/zx_editor_widget.js
+include pyzx/js/zx_viewer.js
