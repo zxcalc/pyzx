@@ -22,8 +22,10 @@ if __name__ == '__main__':
 from pyzx.generate import cnots as generate_cnots
 from pyzx.circuit import Circuit, gates
 from pyzx.linalg import Mat2
-
-import numpy as np
+try:
+    import numpy as np
+except:
+    np = None
 
 class CNOT_tracker(Circuit):
     def __init__(self, n_qubits, **kwargs):
