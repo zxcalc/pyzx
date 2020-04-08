@@ -56,7 +56,8 @@ def json_to_graph(js):
     names = {}
     hadamards = {}
     for name,attr in j.get('node_vertices',{}).items():
-        if 'data' in attr and 'type' in attr['data'] and attr['data']['type'] == "hadamard":
+        if ('data' in attr and 'type' in attr['data'] and attr['data']['type'] == "hadamard" 
+            and 'is_edge' in attr['data'] and attr['data']['is_edge'] == 'true'):
             hadamards[name] = []
             continue
         c = attr['annotation']['coord']
@@ -70,6 +71,7 @@ def json_to_graph(js):
             d = attr['data']
             if not 'type' in d or d['type'] == 'Z': g.set_type(v,1)
             elif d['type'] == 'X': g.set_type(v,2)
+            elif d['type'] == 'hadamard': g.set_type(v,3)
             else: raise TypeError("unsupported type '{}'".format(d['type']))
             if 'value' in d:
                 g.set_phase(v,_quanto_value_to_phase(d['value']))
@@ -101,7 +103,7 @@ def json_to_graph(js):
     for edge in j.get('undir_edges',{}).values():
         n1, n2 = edge['src'], edge['tgt']
         if n1 in hadamards and n2 in hadamards: #Both 
-            g.add_vertex(ty=1)
+            g.add_vertex(1)
             name = "v"+str(len(names))
             g.set_vdata(v, 'name',name)
             names[name] = v
@@ -157,9 +159,12 @@ def graph_to_json(g):
                                            "input":(v in g.inputs), "output":(v in g.outputs)}}
         else:
             node_vs[name] = {"annotation": {"coord":coord},"data":{}}
-            if t==2: node_vs[name]["data"]["type"] = "X"
-            elif t==1:node_vs[name]["data"]["type"] = "Z"
-            elif t!=1: raise Exception("Unkown type "+ str(t))
+            if t==1:node_vs[name]["data"]["type"] = "Z"
+            elif t==2: node_vs[name]["data"]["type"] = "X"
+            elif t==3: 
+                node_vs[name]["data"]["type"] = "hadamard"
+                node_vs[name]["data"]["is_edge"] = "false"
+            else: raise Exception("Unkown vertex type "+ str(t))
             phase = _phase_to_quanto_value(g.phase(v))
             if phase: node_vs[name]["data"]["value"] = phase
             if not node_vs[name]["data"]: del node_vs[name]["data"]
@@ -176,7 +181,7 @@ def graph_to_json(g):
             x2,y2 = g.row(tgt), -g.qubit(tgt)
             hadname = freenamesv.pop(0)
             node_vs[hadname] = {"annotation": {"coord":[(x1+x2)/2.0,(y1+y2)/2.0]},
-                             "data": {"type": "hadamard"}}
+                             "data": {"type": "hadamard","is_edge": "true"}}
             edges["e"+str(i)] = {"src": names[src],"tgt": hadname}
             i += 1
             edges["e"+str(i)] = {"src": names[tgt],"tgt": hadname}
