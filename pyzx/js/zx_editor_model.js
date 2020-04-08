@@ -36,7 +36,7 @@ define('zx_editor', ["@jupyter-widgets/base", "make_editor"], function(widgets,m
             this.width = this.model.get("graph_width");
             this.height = this.model.get("graph_height");
             this.node_size = this.model.get("graph_node_size");
-            this.update_graph = make_editor.showGraph(div_editor, this, false, false);
+            this.update_graph = make_editor.showGraph(div_editor, this, false);
             this.listenTo(this.model, 'change:graph_json', this.graph_changed, this);
 
             var div_buttons = document.createElement('div');

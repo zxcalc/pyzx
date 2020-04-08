@@ -55,7 +55,7 @@ define('make_editor', ['d3'], function(d3) {
         return max_name;
     }
 
-    function showGraph(tag, model, auto_hbox, show_labels) {
+    function showGraph(tag, model, show_labels) {
         var shiftKey;
 
         // SETUP SVG ITEMS
@@ -98,7 +98,7 @@ define('make_editor', ['d3'], function(d3) {
         }
 
         
-        const vertexTypeBox = svg.append('g').attr('id', 'vertexTypeButton');
+        const vertexTypeBox = svg.append('g');
         vertexTypeBox.append('rect')
                 .attr('x',0)
                 .attr('y',model.height-24)
@@ -112,7 +112,7 @@ define('make_editor', ['d3'], function(d3) {
                 .attr('style', 'pointer-events: none; user-select: none;')
                 .text("Vertex type: Z");
 
-        const edgeTypeBox = svg.append('g').attr('id', 'edgeTypeButton');
+        const edgeTypeBox = svg.append('g');
         edgeTypeBox.append('rect')
                 .attr('x',100)
                 .attr('y',model.height-24)
@@ -131,22 +131,17 @@ define('make_editor', ['d3'], function(d3) {
 
         function switchAddVertexType() {
             console.log("Switching vertex type");
-            var thetext = d3.select("#vertexTypeButton").select("text");
-            if (addVertexType == 1) {
-                thetext.text("Vertex type: X");
-                addVertexType = 2;
-            }
-            else {
-                thetext.text("Vertex type: Z");
-                addVertexType = 1;
-            }
+            addVertexType = (addVertexType + 1) % 4;
+            var thetext = vertexTypeBox.select("text");
+            let options = ['B','Z','X','H'];
+            thetext.text("Vertex type: " + options[addVertexType]);
             d3.event.stopImmediatePropagation();
             resetMouseVars();
         }
 
         function switchAddEdgeType() {
             console.log("Switching edge type");
-            var thetext = d3.select("#edgeTypeButton").select("text");
+            var thetext = edgeTypeBox.select("text");
             if (addEdgeType == 1) {
                 thetext.text("Edge type: H");
                 addEdgeType = 2;
@@ -268,14 +263,13 @@ define('make_editor', ['d3'], function(d3) {
                 const pi = '\u03c0';
                 var phase = prompt("Input phase as fraction of pi (like 3/4 or 1):", d.phase);
                 if (phase == null) {return;}
-                if (phase == "0" || phase == "0\u03c0") {phase = "";}
                 if (phase.includes('.')) {alert("Invalid value " + phase) + phase; return;}
                 if (phase != "") {
                     phase = phase.replace(pi, '').replace('pi', '');
                     if (phase.includes("/")) {
                         var terms = phase.split("/");
                         if (terms.length != 2) {alert("Invalid value " + phase); return;}
-                        a = terms[0]; b = terms[1];
+                        let a = terms[0]; let b = terms[1];
                         if (a!= "" && a != "-" && isNaN(a)) {alert("Invalid value " + phase); return;}
                         if (a=="1") {a = "";}
                         if (a=="-1") {a = "-";}
@@ -289,9 +283,17 @@ define('make_editor', ['d3'], function(d3) {
                     }
                     else {
                         if (isNaN(phase)) {alert("Invalid value " + phase); return;}
-                        if (phase == "1") {phase = "";}
-                        if (phase == "-1") {phase = "";}
-                        phase += pi;
+                        let a = parseInt(phase) % 2
+                        if (d.t != 3) {
+                            if (phase == "") {phase = pi;}
+                            else if (a == 0) {phase = "";} 
+                            else {phase = pi;}
+                        }
+                        else {
+                            if (phase == "") {phase = "";}
+                            else if (a == 1) {phase = "";}
+                            else {phase = "0"}
+                        }
                     }
                 }
                 d.phase = phase
@@ -310,15 +312,12 @@ define('make_editor', ['d3'], function(d3) {
                         return "translate(" + d.x + "," + d.y +")";
                     });
 
-                update_hboxes();
 
-                link.filter(function(d) { return d.source.selected ||
-                                            (auto_hbox && d.source.t == 3); })
+                link.filter(function(d) { return d.source.selected; })
                     .attr("x1", function(d) { return d.source.x; })
                     .attr("y1", function(d) { return d.source.y; });
 
-                link.filter(function(d) { return d.target.selected ||
-                                            (auto_hbox && d.target.t == 3); })
+                link.filter(function(d) { return d.target.selected; })
                     .attr("x2", function(d) { return d.target.x; })
                     .attr("y2", function(d) { return d.target.y; });
 
@@ -347,40 +346,6 @@ define('make_editor', ['d3'], function(d3) {
             //TODO: Right now, if a node changes from non-type 3 to type 3 or back, 
             //then the square wouldn't update to a circle and vice versa
             hbox = node.filter(function(d) { return d.t == 3; });
-
-            function update_hboxes() {
-                if (auto_hbox) {
-                    var pos = {};
-                    hbox.attr("transform", function(d) {
-                        // calculate barycenter of non-hbox neighbours, then nudge a bit
-                        // to the NE.
-                        var x=0,y=0,sz=0;
-                        for (var i = 0; i < d.nhd.length; ++i) {
-                            if (d.nhd[i].t != 3) {
-                                sz++;
-                                x += d.nhd[i].x;
-                                y += d.nhd[i].y;
-                            }
-                        }
-
-                        if (sz != 0) {
-                            x = (x/sz) + 20;
-                            y = (y/sz) - 20;
-
-                            while (pos[[x,y]]) {
-                                x += 20;
-                            }
-                            d.x = x;
-                            d.y = y;
-                            pos[[x,y]] = true;
-                        }
-
-                        return "translate("+d.x+","+d.y+")";
-                    });
-                }
-            }
-
-            update_hboxes();
 
             // Now let's construct and update all the edges
             

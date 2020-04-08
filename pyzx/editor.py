@@ -133,8 +133,10 @@ _d3_editor_id = 0
 #	 # unicode 0x03c0 = pi
 #	 return ns + '\u03c0' + ds
 
-def s_to_phase(s):
-	if not s: return Fraction(0)
+def s_to_phase(s, t=1):
+	if not s: 
+		if t!= 3: return Fraction(0)
+		else: return Fraction(1)
 	s = s.replace('\u03c0', '')
 	if s.find('/') != -1:
 		a,b = s.split("/", 2)
@@ -148,7 +150,7 @@ def graph_to_json(g, scale):
 			  'x': (g.row(v) + 1) * scale,
 			  'y': (g.qubit(v) + 2) * scale,
 			  't': g.type(v),
-			  'phase': phase_to_s(g.phase(v)) }
+			  'phase': phase_to_s(g.phase(v),g.type(v)) }
 			 for v in g.vertices()]
 	links = [{'source': int(g.edge_s(e)),
 			  'target': int(g.edge_t(e)),
@@ -350,7 +352,7 @@ class ZXEditorWidget(widgets.DOMWidget):
 				r = float(n["x"])/scale -1
 				q = float(n["y"])/scale -2
 				t = int(n["t"])
-				phase = s_to_phase(n["phase"])
+				phase = s_to_phase(n["phase"], t)
 				if v not in marked:
 					self.graph.add_vertex(t, q, r, phase)
 				else: 

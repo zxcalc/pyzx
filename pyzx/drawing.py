@@ -33,6 +33,7 @@ def phase_to_s(a, t=1):
     if not isinstance(a, Fraction):
         a = Fraction(a)
 
+    if a == 0: return '0'
     simstr = ''
     if a.denominator > 256:
         a = a.limit_denominator(256)
