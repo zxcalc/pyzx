@@ -24,11 +24,12 @@ The ZX-calculus is a set of rewrite rules for ZX-diagrams. There are various ext
 
 ## Installation
 
-To install pyzx from source, clone this repository, `cd` into it, and run:
-```
-pip install -e .
-```
+If you wish to use PyZX as a Python module for use in other projects, we recommend installing via pip:
+```pip install pyzx```
 
+If you want to use the demos or the benchmark circuits you should install PyZX from source by cloning the git repository.
+
+PyZX has no strict dependencies, although some functionality requires numpy. PyZX is built to interact well with Jupyter, so we additionally recommend you have Jupyter and matplotlib installed.
 
 ## Usage
 
