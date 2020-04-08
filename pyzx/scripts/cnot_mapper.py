@@ -28,7 +28,7 @@ except:
 try:
     import numpy as np
 except:
-    np = pass
+    np = None
     
 if __name__ == '__main__':
     print("Please call this as python -m pyzx mapper ...")
