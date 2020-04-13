@@ -204,16 +204,19 @@ class Simplifier(object):
                 p2 = self.mastergraph.phase(v2)
             else: return
         if (p1 == 0 or p1.denominator <= 2): # Need to save non-Clifford location
+            self.simplifygraph.phase_mult[i1] = 1
             if v1 in self.phantom_phases: # Already fused with non-Clifford before
                 v3,i3 = self.phantom_phases[v1]
                 self.mastergraph.phase_index[v3] = i1
+                del self.mastergraph.phase_index[v1]
                 p1 = self.mastergraph.phase(v3)
                 if (p1+p2).denominator <= 2:
                     del self.phantom_phases[v1]
                 v1,i1 = v3,i3
-                m1 = m1*self.simplifygraph.phase_mult[i1]
+                m1 = m1*self.simplifygraph.phase_mult[i3]
             else:
                 self.phantom_phases[v1] = (v2,i2)
+                self.simplifygraph.phase_mult[i2] = m2
                 return
         if p1.denominator <= 2 or p2.denominator <= 2: raise Exception("Clifford phases here??")
         # Both have non-Clifford phase
@@ -221,7 +224,7 @@ class Simplifier(object):
         else: phase = p1 - p2
         self.mastergraph.set_phase(v1,phase)
         self.mastergraph.set_phase(v2,0)
-        self.simplifygraph.phase_mult[i1] = 1
+        
         self.simplifygraph.phase_mult[i2] = 1
     
     def full_reduce(self, quiet=True):

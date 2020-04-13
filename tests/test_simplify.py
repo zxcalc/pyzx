@@ -29,6 +29,8 @@ except ImportError:
     np = None
 
 from pyzx.graph import Graph
+from pyzx.circuit import Circuit
+from pyzx.circuit.qasmparser import qasm
 from fractions import Fraction
 from pyzx.generate import cliffordT
 from pyzx.simplify import *
@@ -91,6 +93,67 @@ class TestSimplify(unittest.TestCase):
         i = supplementarity_simp(g,quiet=True)
         self.assertEqual(i,1)
         self.assertTrue(compare_tensors(t,g.to_tensor()))
+
+    def test_teleport_reduce(self):
+        """Tests whether teleport_reduce preserves semantics on a set of circuits that have been broken before."""
+        for i,s in enumerate([qasm_1,qasm_2,qasm_3,qasm_4]):
+            with self.subTest(i=i):
+                c = qasm(s)
+                g = c.to_graph()
+                c2 = Circuit.from_graph(teleport_reduce(g))
+                self.assertTrue(c.verify_equality(c2))
+
+qasm_1 = """OPENQASM 2.0;
+include "qelib1.inc";
+qreg q[3];
+x q[2];
+ccx q[0], q[2], q[1];
+x q[2];
+ccx q[2], q[1], q[0];
+cx q[2], q[0];
+x q[2];
+ccx q[0], q[2], q[1];
+ccx q[0], q[2], q[1];
+"""
+
+qasm_2 = """OPENQASM 2.0;
+include "qelib1.inc";
+qreg q[3];
+ccx q[0], q[1], q[2];
+ccx q[0], q[1], q[2];
+ccx q[1], q[0], q[2];
+x q[0];
+ccx q[1], q[0], q[2];
+ccx q[2], q[1], q[0];
+ccx q[2], q[1], q[0];
+ccx q[1], q[0], q[2];
+"""
+
+qasm_3 = """OPENQASM 2.0;
+include "qelib1.inc";
+qreg q[3];
+ccx q[1], q[2], q[0];
+x q[0];
+x q[1];
+ccx q[1], q[0], q[2];
+ccx q[1], q[0], q[2];
+ccx q[1], q[0], q[2];
+ccx q[0], q[1], q[2];
+ccx q[0], q[2], q[1];
+"""
+
+qasm_4 = """OPENQASM 2.0;
+include "qelib1.inc";
+qreg q[3];
+ccx q[1], q[2], q[0];
+x q[1];
+ccx q[2], q[1], q[0];
+ccx q[2], q[1], q[0];
+ccx q[0], q[1], q[2];
+ccx q[0], q[2], q[1];
+ccx q[2], q[0], q[1];
+cx q[1], q[2];
+"""
 
 
 if __name__ == '__main__':

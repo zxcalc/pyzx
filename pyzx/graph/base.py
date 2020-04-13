@@ -171,18 +171,20 @@ class BaseGraph(object):
 
     def __init__(self):
         self.scalar = Scalar()
+        self.inputs = []
+        self.outputs = []
         #Data necessary for phase tracking for phase teleportation
         self.track_phases = False
-        self.phase_index = dict()
+        self.phase_index = dict() # {vertex:index tracking its phase for phase teleportation}
         self.phase_master = None
         self.phase_mult = dict()
         self.max_phase_index = -1
-        self.inputs = []
-        self.outputs = []
 
         # merge_vdata(v0,v1) is an optional, custom function for merging
         # vdata of v1 into v0 during spider fusion etc.
         self.merge_vdata = None
+
+        self.debug=False
 
     def __str__(self):
         return "Graph({} vertices, {} edges)".format(
@@ -625,15 +627,22 @@ class BaseGraph(object):
         self.add_edges(add[1],2)
 
     def set_phase_master(self, m):
+        """Points towards an instance of the class :class:`simplify.Simplifier`.
+        Used for phase teleportation."""
         self.phase_master = m
 
     def update_phase_index(self, old, new):
+        """When a phase is moved from a vertex to another vertex,
+        we need to tell the phase_teleportation algorithm that this has happened.
+        This function does that. Used in some of the rules in `simplify`."""
         if not self.track_phases: return
         i = self.phase_index[old]
         self.phase_index[old] = self.phase_index[new]
         self.phase_index[new] = i
 
     def fuse_phases(self, p1, p2):
+        if self.debug:
+            print("fuse_phases:",p1,p2)
         if p1 not in self.phase_index or p2 not in self.phase_index: 
             return
         if self.phase_master: 
@@ -641,6 +650,7 @@ class BaseGraph(object):
         self.phase_index[p2] = self.phase_index[p1]
 
     def phase_negate(self, v):
+        #print("phase_negate", v)
         if v not in self.phase_index: return
         index = self.phase_index[v]
         mult = self.phase_mult[index]
