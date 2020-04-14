@@ -17,7 +17,11 @@ define('zx_editor', ["@jupyter-widgets/base", "make_editor"], function(widgets,m
             graph_id: '0',
             graph_width: 600.0,
             graph_height: 400.0,
-            graph_node_size: 5.0
+            graph_node_size: 5.0,
+            graph_buttons: '{empty: false}',
+            button_clicked: '',
+            last_operation: '',
+            action: ''
         })
     });
     
@@ -38,6 +42,7 @@ define('zx_editor', ["@jupyter-widgets/base", "make_editor"], function(widgets,m
             this.node_size = this.model.get("graph_node_size");
             this.update_graph = make_editor.showGraph(div_editor, this, false);
             this.listenTo(this.model, 'change:graph_json', this.graph_changed, this);
+            this.listenTo(this.model, 'change:graph_selected', this.graph_changed, this);
 
             var div_buttons = document.createElement('div');
             var operations = JSON.parse(this.model.get('graph_buttons'));
@@ -92,11 +97,19 @@ define('zx_editor', ["@jupyter-widgets/base", "make_editor"], function(widgets,m
             this.update_graph();
         },
 
-        push_changes: function() {
+        push_changes: function(description) {
             console.log("Pushing changes to kernel")
             this.model.set('graph_json', JSON.stringify(this.strip_graph(this.graph)));
+            this.model.set('last_operation',description);
             this.model.save_changes();
             //this.model.touch();
+        },
+
+        perform_action: function(action) {
+            console.log("action: " + action);
+            this.model.set('action', action);
+            this.model.save_changes();
+
         },
 
         buttons_changed: function() {

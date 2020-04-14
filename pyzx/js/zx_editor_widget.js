@@ -56,14 +56,16 @@ define('make_editor', ['d3'], function(d3) {
     }
 
     function showGraph(tag, model, show_labels) {
-        var shiftKey;
+        var shiftKey, ctrlKey;
 
         // SETUP SVG ITEMS
 
         var svg = d3.select(tag)
             .attr("tabindex", 1)
-            .on("keydown.brush", function() {shiftKey = d3.event.shiftKey || d3.event.metaKey;})
-            .on("keyup.brush", function() {shiftKey = d3.event.shiftKey || d3.event.metaKey;})
+            .on("keydown.brush", function() {shiftKey = d3.event.shiftKey || d3.event.metaKey;
+            								 ctrlKey  = d3.event.ctrlKey;})
+            .on("keyup.brush", function() {shiftKey = d3.event.shiftKey || d3.event.metaKey;
+            							   ctrlKey  = d3.event.ctrlKey;})
             .each(function() { this.focus(); })
             .append("svg")
             .attr("style", "max-width: none; max-height: none")
@@ -256,7 +258,7 @@ define('make_editor', ['d3'], function(d3) {
                     model.graph.links.push(edge);
                     //updateGraph();
                     }
-                    model.push_changes();
+                    model.push_changes("Added edge");
                 }
             })
             .on("dblclick", function(d) {
@@ -297,7 +299,7 @@ define('make_editor', ['d3'], function(d3) {
                     }
                 }
                 d.phase = phase
-                model.push_changes();
+                model.push_changes("Changed phase");
 
                 d3.select(this).select("text").text(phase)
                                 .attr("visibility", (phase == "") ? 'hidden' : 'visible')
@@ -324,7 +326,7 @@ define('make_editor', ['d3'], function(d3) {
                 // text.filter(function(d) { return d.selected; })
                 //     .attr("x", function(d) { return d.x; })
                 //     .attr("y", function(d) { return d.y + 0.7 * node_size + 14; });
-            }).on("end", function(d) {model.push_changes();})
+            }).on("end", function(d) {model.push_changes("Moved selection");})
             );
 
             //Finally position all the nodes and update the texts and types
@@ -387,7 +389,7 @@ define('make_editor', ['d3'], function(d3) {
                            nhd: [], x: point[0], y: point[1], phase:''};
             model.graph.nodes.push(vert);
             resetMouseVars();
-            model.push_changes();
+            model.push_changes("Added vertex");
             //updateGraph();
             })
             .on("mousemove", function(d) {
@@ -431,7 +433,7 @@ define('make_editor', ['d3'], function(d3) {
                             
                         // }
                     });
-                    model.push_changes();
+                    model.push_changes("Delete");
                     model.selection_changed();
                     break;
                 case 88: // X
@@ -440,6 +442,11 @@ define('make_editor', ['d3'], function(d3) {
                 case 69: // E
                     d3.event.preventDefault();
                     switchAddEdgeType(); break
+                case 90: // Z
+                	d3.event.preventDefault();
+                	if (!shiftKey) {model.perform_action("undo");}
+                	else {model.perform_action("redo");}
+                	break;
             }
             
         }).on("keyup", function() {

@@ -277,21 +277,30 @@ class ZXEditorWidget(widgets.DOMWidget):
 	graph_width = Float(600.0).tag(sync=True)
 	graph_height = Float(400.0).tag(sync=True)
 	graph_node_size = Float(5.0).tag(sync=True)
-	graph_buttons = Unicode('{empty: false}').tag(sync=True)
+
+	graph_buttons  = Unicode('{empty: false}').tag(sync=True)
 	button_clicked = Unicode('').tag(sync=True)
+	last_operation = Unicode('').tag(sync=True)
+	action 		   = Unicode('').tag(sync=True)
 	
 	def __init__(self, graph, *args, **kwargs):
 		super().__init__(*args,**kwargs)
 		self.observe(self._handle_graph_change, 'graph_json')
 		self.observe(self._selection_changed, 'graph_selected')
 		self.observe(self._apply_operation, 'button_clicked')
+		self.observe(self._perform_action, 'action')
 		self.graph = graph
-		self.changes = []
+		self.undo_stack = [('initial',str(self.graph_json))]
+		self.undo_position = 1
+		self.halt_callbacks = False
+		self.msg = []
+		self.output = widgets.Output()
 	
 	def update(self):
 		self.graph_json = graph_to_json(self.graph, self.graph.scale)
 
 	def _parse_selection(self):
+		"""Helper function for `_selection_changed` and `_apply_operation`."""
 		selection = json.loads(self.graph_selected)
 		g = self.graph
 		vertex_set = set([n["name"] for n in selection["nodes"]])
@@ -300,6 +309,8 @@ class ZXEditorWidget(widgets.DOMWidget):
 		return vertex_set, edge_set
 
 	def _selection_changed(self, change):
+		"""Is called when the selection in the editor changes.
+		Updates the action buttons so that the correct ones are active."""
 		try:
 			vertex_set, edge_set = self._parse_selection()
 			g = self.graph
@@ -311,9 +322,11 @@ class ZXEditorWidget(widgets.DOMWidget):
 				js[op_id]["active"] = (len(matches) != 0)
 			self.graph_buttons = json.dumps(js)
 		except Exception as e:
-			self.excepts = traceback.format_exc()
+			with self.output: print(traceback.format_exc())
 
 	def _apply_operation(self, change):
+		"""called when one of the action buttons is clicked. 
+		Performs the action on the selection."""
 		try:
 			op = change['new']
 			if not op: return
@@ -340,11 +353,50 @@ class ZXEditorWidget(widgets.DOMWidget):
 			self.button_clicked = ''
 			self.update()
 		except Exception as e:
-			self.excepts = traceback.format_exc()
-	
-	def _handle_graph_change(self, change):
+			with self.output: print(traceback.format_exc())
+
+	def _perform_action(self, change):
 		try:
-			js = json.loads(change['new'])
+			action = change['new']
+			if action == '': return
+			elif action == 'undo': self.undo()
+			elif action == 'redo': self.redo()
+			else: raise ValueError("Unknown action '{}'".format(action))
+			self.action = ''
+		except Exception as e:
+			with self.output: print(traceback.format_exc())
+
+
+	def undo_stack_add(self, description, js):
+		self.undo_stack = self.undo_stack[:len(self.undo_stack)-self.undo_position+1]
+		self.undo_position = 1
+		self.undo_stack.append((description,js))
+		self.msg.append("Adding to undo stack: " + description)
+
+	def undo(self):
+		if self.undo_position == len(self.undo_stack): return
+		self.undo_position += 1
+		description, js = self.undo_stack[len(self.undo_stack)-self.undo_position]
+		self.msg.append("Undo {}: {:d}-{:d}".format(description,len(self.undo_stack),self.undo_position))
+		self.halt_callbacks = True
+		self.graph_selected = '{"nodes": [], "links": []}'
+		self.graph_from_json(json.loads(js))
+		self.update()
+		self.halt_callbacks = False
+
+	def redo(self):
+		if self.undo_position == 1: return
+		self.undo_position -= 1
+		description, js = self.undo_stack[len(self.undo_stack)-self.undo_position]
+		self.msg.append("Redo {}: {:d}-{:d}".format(description,len(self.undo_stack),self.undo_position))
+		self.halt_callbacks = True
+		self.graph_selected = '{"nodes": [], "links": []}'
+		self.graph_from_json(json.loads(js))
+		self.update()
+		self.halt_callbacks = False
+
+	def graph_from_json(self, js):
+		try:
 			scale = self.graph.scale
 			marked = self.graph.vertex_set()
 			for n in js["nodes"]:
@@ -354,12 +406,12 @@ class ZXEditorWidget(widgets.DOMWidget):
 				t = int(n["t"])
 				phase = s_to_phase(n["phase"], t)
 				if v not in marked:
-					self.graph.add_vertex(t, q, r, phase)
+					self.graph.add_vertex_indexed(v)
 				else: 
 					marked.remove(v)
-					self.graph.set_position(v, q, r)
-					self.graph.set_phase(v, phase)
-					self.graph.set_type(v, t)
+				self.graph.set_position(v, q, r)
+				self.graph.set_phase(v, phase)
+				self.graph.set_type(v, t)
 			self.graph.remove_vertices(marked)
 			marked = self.graph.edge_set()
 			for e in js["links"]:
@@ -374,7 +426,19 @@ class ZXEditorWidget(widgets.DOMWidget):
 					self.graph.add_edge((s,t),et)
 			self.graph.remove_edges(marked)
 		except Exception as e:
-			self.excepts = traceback.format_exc()
+			with self.output: print(traceback.format_exc())
+	
+	def _handle_graph_change(self, change):
+		"""Called whenever the graph in the editor is modified."""
+		if self.halt_callbacks: return
+		self.msg.append("Handling graph change")
+		try:
+			js = json.loads(change['new'])
+			self.graph_from_json(js)
+			self.undo_stack_add(self.last_operation, change['new'])
+		except Exception as e:
+			with self.output: print(traceback.format_exc())
+		
 
 	def to_graph(self, zh=True):
 		return self.graph
