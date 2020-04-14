@@ -168,10 +168,12 @@ class VertexType:
     X = 2
     H_BOX = 3
 
-def vertex_is_zx(ty):
+def vertex_is_zx(ty: VertexType):
+    """Check if a vertex type corresponds to a green or red spider."""
     return ty in (VertexType.Z, VertexType.X)
 
-def toggle_vertex(ty):
+def toggle_vertex(ty: VertexType) -> VertexType:
+    """Swap the X and Z vertex types."""
     if not vertex_is_zx(ty):
         return ty
     return VertexType.Z if ty == VertexType.X else VertexType.X
@@ -181,7 +183,8 @@ class EdgeType:
     SIMPLE = 1
     HADAMARD = 2
 
-def toggle_edge(ty):
+def toggle_edge(ty: EdgeType) -> EdgeType:
+    """Swap the regular and Hadamard edge types."""
     return EdgeType.HADAMARD if ty == EdgeType.SIMPLE else EdgeType.SIMPLE
 
 class BaseGraph(object):
