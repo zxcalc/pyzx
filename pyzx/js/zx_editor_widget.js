@@ -407,7 +407,7 @@ define('make_editor', ['d3'], function(d3) {
         var lastKeyDown = -1;
         
         d3.select(tag).on("keydown", function() {
-            if (lastKeyDown !== -1) return;
+            if (lastKeyDown !== -1 && lastKeyDown != 16 && lastKeyDown != 17) return; // 16 == shiftKey, 17 == ctrlKey
             lastKeyDown = d3.event.keyCode;
             switch (d3.event.keyCode) {
                 case 46: //delete
@@ -443,6 +443,8 @@ define('make_editor', ['d3'], function(d3) {
                     d3.event.preventDefault();
                     switchAddEdgeType(); break
                 case 90: // Z
+                	console.log("fired");
+                	if (!d3.event.ctrlKey) return;
                 	d3.event.preventDefault();
                 	if (!shiftKey) {model.perform_action("undo");}
                 	else {model.perform_action("redo");}
