@@ -345,7 +345,7 @@ class ZXEditorWidget(widgets.DOMWidget):
 			g.add_edge_table(etab)
 			g.remove_vertices(rem_verts)
 			g.remove_edges(rem_edges)
-			if check_isolated_vertices: g.remove_isolated_vertices()
+			#if check_isolated_vertices: g.remove_isolated_vertices()
 			# Remove stuff from the selection
 			selection = json.loads(self.graph_selected)
 			selection["nodes"] = [v for v in selection["nodes"] if v["name"] not in rem_verts]
