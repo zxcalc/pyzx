@@ -45,7 +45,7 @@ In particular, they are used in combination with :func:`simplify.simp` to create
 from fractions import Fraction
 import itertools
 
-from .graph import VertexType, EdgeType
+from .graph import VertexType, EdgeType, toggle_edge
 
 def apply_rule(g, rewrite, m, check_isolated_vertices=True):
     etab, rem_verts, rem_edges, check_isolated_vertices = rewrite(g, m)
@@ -154,7 +154,7 @@ def match_spider_parallel(g, matchf=None, num=-1):
     m = []
     while (num == -1 or i < num) and len(candidates) > 0:
         e = candidates.pop()
-        if g.edge_type(e) != 1: continue
+        if g.edge_type(e) != EdgeType.SIMPLE: continue
         v0, v1 = g.edge_st(e)
         v0t = types[v0]
         v1t = types[v1]
@@ -423,7 +423,7 @@ def match_pivot_boundary(g, matchf=None, num=-1):
         for n in g.neighbours(v): candidates.discard(n)
         for n in g.neighbours(w): candidates.discard(n)
 
-    g.add_edges(edge_list,2)
+    g.add_edges(edge_list, EdgeType.HADAMARD)
     return m
 
 def pivot(g, matches):
@@ -775,10 +775,10 @@ def apply_copy(g, matches):
         for n in neigh: 
             if types[n] == VertexType.BOUNDARY:
                 r = g.row(n) - 1 if n in g.outputs else g.row(n)+1
-                u = g.add_vertex(1, g.qubit(n), r, a)
+                u = g.add_vertex(VertexType.Z, g.qubit(n), r, a)
                 e = g.edge((w,n))
                 et = g.edge_type(e)
-                g.add_edge((n,u), 3-et)
+                g.add_edge((n,u), toggle_edge(et))
             g.add_to_phase(n, a)
     return ({}, rem, [], True)
 

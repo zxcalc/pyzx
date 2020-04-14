@@ -171,6 +171,11 @@ class VertexType:
 def vertex_is_zx(ty):
     return ty in (VertexType.Z, VertexType.X)
 
+def toggle_vertex(ty):
+    if not vertex_is_zx(ty):
+        return ty
+    return VertexType.Z if ty == VertexType.X else VertexType.X
+
 class EdgeType:
     """Type of an edge in the graph."""
     SIMPLE = 1
@@ -695,21 +700,21 @@ class BaseGraph(object):
                 self.scalar.add_node(self.phase(v))
             if d == 1: # It has a unique neighbour
                 if v in rem: continue # Already taken care of
-                if self.type(v) == 0: continue # Ignore in/outputs
+                if self.type(v) == VertexType.BOUNDARY: continue # Ignore in/outputs
                 w = list(self.neighbours(v))[0]
                 if len(self.neighbours(w)) > 1: continue # But this neighbour has other neighbours
-                if self.type(w) == 0: continue # It's a state/effect
+                if self.type(w) == VertexType.BOUNDARY: continue # It's a state/effect
                 # At this point w and v are only connected to each other
                 rem.append(v)
                 rem.append(w)
                 et = self.edge_type(self.edge(v,w))
                 if self.type(v) == self.type(w):
-                    if et == 1:
+                    if et == EdgeType.SIMPLE:
                         self.scalar.add_node(self.phase(v)+self.phase(w))
                     else:
                         self.scalar.add_spider_pair(self.phase(v), self.phase(w))
                 else:
-                    if et == 1:
+                    if et == EdgeType.SIMPLE:
                         self.scalar.add_spider_pair(self.phase(v), self.phase(w))
                     else:
                         self.scalar.add_node(self.phase(v)+self.phase(w))
@@ -781,7 +786,8 @@ class BaseGraph(object):
 
     def edge_type(self, e):
         """Returns the type of the given edge:
-        1 if it is regular, 2 if it is a Hadamard edge, 0 if the edge is not in the graph."""
+        EdgeType.SIMPLE_ if it is regular, EdgeType.HADAMARD_ if it is a Hadamard edge,
+        0 if the edge is not in the graph."""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
     def set_edge_type(self, e, t):
         """Sets the type of the given edge."""
@@ -790,7 +796,8 @@ class BaseGraph(object):
     def type(self, vertex):
         """Returns the type of the given vertex."""
         """Returns the type of the given vertex:
-        0 if it is a boundary, 1 if is a Z node, 2 if it a X node."""
+        VertexType.BOUNDARY_ if it is a boundary, VertexType.Z_ if it is a Z node,
+        VertexType.X_ if it is a X node."""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
     def types(self):
         """Returns a mapping of vertices to their types."""

@@ -24,6 +24,7 @@ import copy
 import math
 from fractions import Fraction
 
+from ..graph import EdgeType, VertexType
 from . import Circuit
 
 class InitAncilla:
@@ -157,7 +158,7 @@ class Gate(object):
         #     args.insert(0, phase_to_s(self.phase))
         return "{} {}".format(n, " ".join(args))
 
-    def graph_add_node(self, g, labels, qs, t, q, r, phase=0, etype=1):
+    def graph_add_node(self, g, labels, qs, t, q, r, phase=0, etype=EdgeType.SIMPLE):
         v = g.add_vertex(t,labels[q],r,phase)
         g.add_edge((qs[q],v), etype)
         qs[q] = v
@@ -174,7 +175,7 @@ class ZPhase(Gate):
         self.name 
 
     def to_graph(self, g, labels, qs, rs):
-        self.graph_add_node(g,labels, qs,1,self.target,rs[self.target],self.phase)
+        self.graph_add_node(g,labels, qs, VertexType.Z,self.target,rs[self.target],self.phase)
         rs[self.target] += 1
 
     def to_quipper(self):
@@ -256,7 +257,7 @@ class XPhase(Gate):
         self.phase = phase
 
     def to_graph(self, g, labels, qs, rs):
-        self.graph_add_node(g,labels, qs,2,self.target,rs[self.target],self.phase)
+        self.graph_add_node(g,labels, qs, VertexType.X, self.target,rs[self.target],self.phase)
         rs[self.target] += 1
 
     def to_emoji(self,strings):
@@ -318,8 +319,8 @@ class HAD(Gate):
         self.target = target
 
     def to_graph(self, g, labels, qs, rs):
-        v = g.add_vertex(1,labels[self.target],rs[self.target])
-        g.add_edge((qs[self.target],v),2)
+        v = g.add_vertex(VertexType.Z, labels[self.target],rs[self.target])
+        g.add_edge((qs[self.target],v), EdgeType.HADAMARD)
         qs[self.target] = v
         rs[self.target] += 1
 
@@ -336,8 +337,8 @@ class CNOT(Gate):
         self.control = control
     def to_graph(self, g, labels, qs, rs):
         r = max(rs[self.target],rs[self.control])
-        t = self.graph_add_node(g,labels, qs,2,self.target,r)
-        c = self.graph_add_node(g,labels, qs,1,self.control,r)
+        t = self.graph_add_node(g,labels, qs, VertexType.X, self.target,r)
+        c = self.graph_add_node(g,labels, qs, VertexType.Z, self.control,r)
         g.add_edge((t,c))
         rs[self.target] = r+1
         rs[self.control] = r+1
@@ -376,9 +377,9 @@ class CZ(Gate):
 
     def to_graph(self, g, labels, qs, rs):
         r = max(rs[self.target],rs[self.control])
-        t = self.graph_add_node(g,labels, qs,1,self.target,r)
-        c = self.graph_add_node(g,labels, qs,1,self.control,r)
-        g.add_edge((t,c),2)
+        t = self.graph_add_node(g,labels, qs, VertexType.Z, self.target,r)
+        c = self.graph_add_node(g,labels, qs, VertexType.Z, self.control,r)
+        g.add_edge((t,c), EdgeType.HADAMARD)
         rs[self.target] = r+1
         rs[self.control] = r+1
         g.scalar.add_power(1)
@@ -469,25 +470,25 @@ class FSim(Gate):
         # TODO: this version assumes theta is always (pi/2)
         r = max(rs[self.target],rs[self.control])
         qmin = min(self.target,self.control)
-        c0 = self.graph_add_node(g,labels, qs,1,self.control,r)
-        t0 = self.graph_add_node(g,labels, qs,1,self.target,r)
-        c = g.add_vertex(1, self.control, r+1)
-        t = g.add_vertex(1, self.target, r+1)
+        c0 = self.graph_add_node(g,labels, qs, VertexType.Z, self.control,r)
+        t0 = self.graph_add_node(g,labels, qs, VertexType.Z, self.target,r)
+        c = g.add_vertex(VertexType.Z, self.control, r+1)
+        t = g.add_vertex(VertexType.Z, self.target, r+1)
         g.add_edge((c0, t))
         g.add_edge((t0, c))
         qs[self.control] = c
         qs[self.target] = t
 
-        pg0 = g.add_vertex(1, qmin+0.5,r+2)
-        pg1 = g.add_vertex(1, qmin+0.5,r+3)
+        pg0 = g.add_vertex(VertexType.Z, qmin+0.5,r+2)
+        pg1 = g.add_vertex(VertexType.Z, qmin+0.5,r+3)
 
         g.set_phase(c, Fraction(-1,2) * self.phi)
         g.set_phase(t, Fraction(-1,2) * self.phi)
         g.set_phase(pg1, (Fraction(1,2) * self.phi) - Fraction(1,2))
 
-        g.add_edge((c, pg0), 2)
-        g.add_edge((t, pg0), 2)
-        g.add_edge((pg0, pg1), 2)
+        g.add_edge((c, pg0), EdgeType.HADAMARD)
+        g.add_edge((t, pg0), EdgeType.HADAMARD)
+        g.add_edge((pg0, pg1), EdgeType.HADAMARD)
 
         #rs[self.target] = r+2
         #rs[self.control] = r+2
@@ -497,46 +498,46 @@ class FSim(Gate):
 
         g.scalar.add_power(1)
 
-        # c1 = self.graph_add_node(g,labels, qs,1,self.control,r)
-        # t1 = self.graph_add_node(g,labels, qs,1,self.target,r)
-        # c2 = self.graph_add_node(g,labels, qs,1,self.control,r+1)
-        # t2 = self.graph_add_node(g,labels, qs,1,self.target,r+1)
+        # c1 = self.graph_add_node(g,labels, qs, VertexType.Z, self.control,r)
+        # t1 = self.graph_add_node(g,labels, qs, VertexType.Z, self.target,r)
+        # c2 = self.graph_add_node(g,labels, qs, VertexType.Z, self.control,r+1)
+        # t2 = self.graph_add_node(g,labels, qs, VertexType.Z, self.target,r+1)
         
-        # pg1 = g.add_vertex(1,qmin-0.5,r+1)
-        # pg1b = g.add_vertex(1,qmin-1.5,r+1, phase=self.theta)
-        # g.add_edge((c1,pg1),2)
-        # g.add_edge((t1,pg1),2)
-        # g.add_edge((pg1,pg1b),2)
+        # pg1 = g.add_vertex(VertexType.Z,qmin-0.5,r+1)
+        # pg1b = g.add_vertex(VertexType.Z,qmin-1.5,r+1, phase=self.theta)
+        # g.add_edge((c1,pg1),EdgeType.HADAMARD)
+        # g.add_edge((t1,pg1),EdgeType.HADAMARD)
+        # g.add_edge((pg1,pg1b),EdgeType.HADAMARD)
 
-        # pg2 = g.add_vertex(1,qmin-0.5,r+2)
-        # pg2b = g.add_vertex(1,qmin-1.5,r+2, phase=-self.theta)
-        # g.add_edge((c1,pg2),2)
-        # g.add_edge((t1,pg2),2)
-        # g.add_edge((c2,pg2),2)
-        # g.add_edge((t2,pg2),2)
-        # g.add_edge((pg2,pg2b),2)
+        # pg2 = g.add_vertex(VertexType.Z,qmin-0.5,r+2)
+        # pg2b = g.add_vertex(VertexType.Z,qmin-1.5,r+2, phase=-self.theta)
+        # g.add_edge((c1,pg2),EdgeType.HADAMARD)
+        # g.add_edge((t1,pg2),EdgeType.HADAMARD)
+        # g.add_edge((c2,pg2),EdgeType.HADAMARD)
+        # g.add_edge((t2,pg2),EdgeType.HADAMARD)
+        # g.add_edge((pg2,pg2b),EdgeType.HADAMARD)
 
         # if zh_form:
-        #     hbox = g.add_vertex(3,qmin-0.5,r+3, phase=self.phi)
-        #     g.add_edge((c2,hbox),1)
-        #     g.add_edge((t2,hbox),1)
+        #     hbox = g.add_vertex(VertexType.H_BOX,qmin-0.5,r+3, phase=self.phi)
+        #     g.add_edge((c2,hbox),EdgeType.SIMPLE)
+        #     g.add_edge((t2,hbox),EdgeType.SIMPLE)
         # else:
         #     half_phi = Fraction(1,2) * self.phi
-        #     pg3 = g.add_vertex(1,qmin-0.5,r+3)
-        #     pg3b = g.add_vertex(1,qmin-1.5,r+3, phase=half_phi)
-        #     g.add_edge((c2,pg3),2)
-        #     g.add_edge((t2,pg3),2)
-        #     g.add_edge((pg3,pg3b),2)
+        #     pg3 = g.add_vertex(VertexType.Z,qmin-0.5,r+3)
+        #     pg3b = g.add_vertex(VertexType.Z,qmin-1.5,r+3, phase=half_phi)
+        #     g.add_edge((c2,pg3),EdgeType.HADAMARD)
+        #     g.add_edge((t2,pg3),EdgeType.HADAMARD)
+        #     g.add_edge((pg3,pg3b),EdgeType.HADAMARD)
         #     g.set_phase(c2, -half_phi)
         #     g.set_phase(t2, -half_phi)
 
         # for i in range(len(rs)):
         #     rs[i] = r+5
 
-        #h = g.add_vertex(3, qmin + 0.5, r + 0.5)
-        #g.add_edge((t,h),1)
-        #g.add_edge((c1,h),1)
-        #g.add_edge((c2,h),1)
+        #h = g.add_vertex(VertexType.H_BOX, qmin + 0.5, r + 0.5)
+        #g.add_edge((t,h),EdgeType.SIMPLE)
+        #g.add_edge((c1,h),EdgeType.SIMPLE)
+        #g.add_edge((c2,h),EdgeType.SIMPLE)
         
         #rs[self.target] = r+4
         #rs[self.control] = r+4
@@ -556,9 +557,9 @@ class CX(CZ):
     qc_name = 'undefined'
     def to_graph(self, g, labels, qs, rs):
         r = max(rs[self.target],rs[self.control])
-        t = self.graph_add_node(g,labels, qs,2,self.target,r)
-        c = self.graph_add_node(g,labels, qs,2,self.control,r)
-        g.add_edge((t,c),2)
+        t = self.graph_add_node(g,labels, qs,VertexType.X,self.target,r)
+        c = self.graph_add_node(g,labels, qs,VertexType.X,self.control,r)
+        g.add_edge((t,c),EdgeType.HADAMARD)
         rs[self.target] = r+1
         rs[self.control] = r+1
         g.scalar.add_power(1)
@@ -626,13 +627,13 @@ class CCZ(Gate):
         # else:
         r = max(rs[self.target],rs[self.ctrl1],rs[self.ctrl2])
         qmin = min(self.target,self.ctrl1,self.ctrl2)
-        t = self.graph_add_node(g,labels, qs,1,self.target,r)
-        c1 = self.graph_add_node(g,labels, qs,1,self.ctrl1,r)
-        c2 = self.graph_add_node(g,labels, qs,1,self.ctrl2,r)
+        t = self.graph_add_node(g,labels, qs,VertexType.Z,self.target,r)
+        c1 = self.graph_add_node(g,labels, qs,VertexType.Z,self.ctrl1,r)
+        c2 = self.graph_add_node(g,labels, qs,VertexType.Z,self.ctrl2,r)
         h = g.add_vertex(3, qmin + 0.5, r + 0.5)
-        g.add_edge((t,h),1)
-        g.add_edge((c1,h),1)
-        g.add_edge((c2,h),1)
+        g.add_edge((t,h),EdgeType.SIMPLE)
+        g.add_edge((c1,h),EdgeType.SIMPLE)
+        g.add_edge((c2,h),EdgeType.SIMPLE)
         rs[self.target] = r+1
         rs[self.ctrl1] = r+1
         rs[self.ctrl2] = r+1

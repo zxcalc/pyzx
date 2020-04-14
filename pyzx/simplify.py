@@ -33,6 +33,7 @@ __all__ = ['bialg_simp','spider_simp', 'id_simp', 'phase_free_simp', 'pivot_simp
         'lcomp_simp', 'clifford_simp', 'tcount', 'to_gh', 'to_rg', 
         'full_reduce', 'teleport_reduce', 'reduce_scalar', 'supplementarity_simp']
 
+from .graph import EdgeType, VertexType, toggle_edge, vertex_is_zx, toggle_vertex
 from .rules import *
 
 def simp(g, name, match, rewrite, matchf=None, quiet=False):
@@ -236,12 +237,11 @@ def to_gh(g,quiet=True):
     """Turns every red node into a green node by changing regular edges into hadamard edges"""
     ty = g.types()
     for v in g.vertices():
-        if ty[v] == 2:
-            g.set_type(v, 1)
+        if ty[v] == VertexType.X:
+            g.set_type(v, VertexType.Z)
             for e in g.incident_edges(v):
                 et = g.edge_type(e)
-                if et == 2: g.set_edge_type(e,1)
-                elif et == 1: g.set_edge_type(e,2)
+                g.set_edge_type(e, toggle_edge(et))
 
 def to_rg(g, select=None):
     """Turn green nodes into red nodes by colour-changing vertices which satisfy the predicate ``select``.
@@ -250,21 +250,16 @@ def to_rg(g, select=None):
     :param select: A function taking in vertices and returning ``True`` or ``False``."""
     if not select:
         select = lambda v: (
-            len([e for e in g.incident_edges(v) if g.edge_type(e) == 1]) <
-            len([e for e in g.incident_edges(v) if g.edge_type(e) == 2])
+            len([e for e in g.incident_edges(v) if g.edge_type(e) == EdgeType.SIMPLE]) <
+            len([e for e in g.incident_edges(v) if g.edge_type(e) == EdgeType.HADAMARD])
             )
 
     ty = g.types()
     for v in g.vertices():
-        if select(v):
-            if ty[v] == 1:
-                g.set_type(v, 2)
-                for e in g.incident_edges(v):
-                    g.set_edge_type(e, 1 if g.edge_type(e) == 2 else 2)
-            elif ty[v] == 2:
-                g.set_type(v, 1)
-                for e in g.incident_edges(v):
-                    g.set_edge_type(e, 1 if g.edge_type(e) == 2 else 2)
+        if select(v) and vertex_is_zx(ty[v]):
+            g.set_type(v, toggle_vertex(ty[v]))
+            for e in g.incident_edges(v):
+                g.set_edge_type(e, toggle_edge(g.edge_type(e)))
 
 def tcount(g):
     """Returns the amount of nodes in g that have a non-Clifford phase."""
@@ -290,10 +285,10 @@ def tcount(g):
 #     skiplist = []
 #     for v in list(g.vertices()):
 #         if v in skiplist: continue
-#         if ty[v] != 1 or phases[v] not in (0,1): continue
+#         if ty[v] != VertexType.Z or phases[v] not in (0,1): continue
 #         good_vert = True
 #         for w in g.neighbours(v):
-#             if ty[w] != 1: 
+#             if ty[w] != VertexType.Z: 
 #                 good_vert = False
 #                 break
 #             if len(list(g.neighbours(w))) == 1: # v is a phase gadget
@@ -310,8 +305,8 @@ def tcount(g):
 #             if phases[v2] in (Fraction(1,2), Fraction(3,2)):
 #                 if borders != 1: continue
 #                 # v2 is a node on the border with a pi/2 phase
-#                 w = g.add_vertex(1,-1, rs[v2], phase=-phases[v2])
-#                 g.add_edge((v2,w),2)
+#                 w = g.add_vertex(VertexType.Z,-1, rs[v2], phase=-phases[v2])
+#                 g.add_edge((v2,w),EdgeType.HADAMARD)
 #                 g.set_phase(v2, 0)
 #                 skiplist.append(v2)
 #                 pivotable_edges.append(e)
@@ -320,16 +315,16 @@ def tcount(g):
 #             if borders > 1:
 #                 i = next(w for w in g.neighbours(v2) if w in g.inputs)
 #                 o = next(w for w in g.neighbours(v2) if w in g.outputs)
-#                 w1 = g.add_vertex(1,qs[i], rs[i]+1)
-#                 w2 = g.add_vertex(1,qs[o], rs[o]-1)
+#                 w1 = g.add_vertex(VertexType.Z,qs[i], rs[i]+1)
+#                 w2 = g.add_vertex(VertexType.Z,qs[o], rs[o]-1)
 #                 e1 = g.edge(v2,i)
 #                 e2 = g.edge(v2,o)
 #                 et1 = g.edge_type(e1)
 #                 et2 = g.edge_type(e2)
 #                 g.remove_edges([e1,e2])
-#                 g.add_edges([(v2,w1),(v2,w2)],2)
-#                 g.add_edge((i,w1),3-et1)
-#                 g.add_edge((o,w2),3-et2)
+#                 g.add_edges([(v2,w1),(v2,w2)],EdgeType.HADAMARD)
+#                 g.add_edge((i,w1),toggle_edge(et1))
+#                 g.add_edge((o,w2),toggle_edge(et2))
 #             skiplist.append(v2)
 #             pivotable_edges.append(e)
 #     if not quiet and pivotable_edges: 
@@ -356,16 +351,16 @@ def tcount(g):
 #             if len(list(g.neighbours(v))) == 1: # It is already a gadget
 #                 allgadgets.append(v)
 #                 continue
-#             v1 = g.add_vertex(1,-1,rs[v]+0.5,0)
-#             v2 = g.add_vertex(1,-2,rs[v]+0.5,phases[v])
-#             # v1 = g.add_vertex(1,-2*qs[v]-1,rs[v]+0.5,0)
-#             # v2 = g.add_vertex(1,-2*qs[v]-2,rs[v]+0.5,phases[v])
+#             v1 = g.add_vertex(VertexType.Z,-1,rs[v]+0.5,0)
+#             v2 = g.add_vertex(VertexType.Z,-2,rs[v]+0.5,phases[v])
+#             # v1 = g.add_vertex(VertexType.Z,-2*qs[v]-1,rs[v]+0.5,0)
+#             # v2 = g.add_vertex(VertexType.Z,-2*qs[v]-2,rs[v]+0.5,phases[v])
 #             g.set_phase(v, 0)
 #             edges.append((v,v1))
 #             edges.append((v1,v2))
 #             newgadgets.append(v1)
 #             allgadgets.append(v1)
-#     g.add_edges(edges, 2)
+#     g.add_edges(edges, EdgeType.HADAMARD)
 #     return set(newgadgets), set(allgadgets)
 
 # def full_reduce(g, quiet=True):

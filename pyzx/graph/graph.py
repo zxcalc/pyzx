@@ -17,10 +17,6 @@
 
 backends = {'simple': True}
 
-typeB = 0
-typeZ = 1
-typeX = 2
-
 def Graph(backend=None):
 	"""Returns an instance of an implementation of :class:`~graph.base.BaseGraph`. 
 	By default :class:`~graph.graph_s.GraphS` is used. 

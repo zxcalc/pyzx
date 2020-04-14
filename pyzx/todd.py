@@ -33,6 +33,7 @@ except:
     np = None
 
 from .circuit.gates import T, S, Z, ZPhase, CZ, CNOT, ParityPhase
+from .graph import EdgeType, VertexType
 from .linalg import Mat2, column_optimal_swap
 from .extract import permutation_as_swaps
 from .phasepoly import parity_network
@@ -530,9 +531,9 @@ def todd_on_graph(g):
     for par in newgadgets:
         pos = sum(rs[t] for t in par)/len(par) + 0.5
         while pos in positions: pos += 0.5
-        n = g.add_vertex(1, -1, pos)
-        v = g.add_vertex(1, -2, pos, phase=Fraction(1,4))
+        n = g.add_vertex(VertexType.Z, -1, pos)
+        v = g.add_vertex(VertexType.Z, -2, pos, phase=Fraction(1,4))
         edges.append((n,v))
         positions.add(pos)
         for t in par: edges.append((n,t))
-    g.add_edges(edges, 2)
+    g.add_edges(edges, EdgeType.HADAMARD)

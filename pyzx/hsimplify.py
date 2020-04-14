@@ -16,6 +16,7 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from .simplify import spider_simp, id_simp
+from .graph import EdgeType, VertexType
 from .hrules import *
 
 def to_hbox(g):
@@ -30,20 +31,20 @@ def to_hbox(g):
     es = list(g.edges())
     vs = list(g.vertices())
     for v in vs:
-        if types[v] == 1 and phases[v] != 0:
-            h = g.add_vertex(3)
+        if types[v] == VertexType.Z and phases[v] != 0:
+            h = g.add_vertex(VertexType.H_BOX)
             g.add_edge((h,v))
             g.set_qubit(h, g.qubit(v) - 0.5)
             g.set_row(h, g.row(v) + 0.5)
             g.set_phase(h, phases[v])
             g.set_phase(v, 0)
     for e in es:
-        if g.edge_type(e) == 2:
+        if g.edge_type(e) == VertexType.X:
             s,t = g.edge_st(e)
-            if types[s] == 0 or types[t] == 0: continue
+            if types[s] == VertexType.BOUNDARY or types[t] == VertexType.BOUNDARY: continue
             qs = g.qubit(s)
             qt = g.qubit(t)
-            h = g.add_vertex(3)
+            h = g.add_vertex(VertexType.H_BOX)
             del_e.append(e)
             add_e.append((s, h))
             add_e.append((h, t))
@@ -64,16 +65,16 @@ def from_hbox(g):
     are not changed, so this does *not* give a ZX graph in general."""
     types = g.types()
     phases = g.phases()
-    hs = [h for h in g.vertices() if types[h] == 3]
+    hs = [h for h in g.vertices() if types[h] == VertexType.H_BOX]
     for h in hs:
         if g.vertex_degree(h) == 1:
             n = next(iter(g.neighbours(h)))
-            if types[n] == 1:
+            if types[n] == VertexType.Z:
                 g.set_phase(n, phases[n] + phases[h])
                 g.remove_vertex(h)
         elif g.vertex_degree(h) == 2 and g.phase(h) == 1:
             s,t = g.neighbours(h)
-            g.add_edge((s,t), 2)
+            g.add_edge((s,t), EdgeType.HADAMARD)
             g.remove_vertex(h)
 
 # a stripped-down version of "simp", since hrules don't return edge tables etc
