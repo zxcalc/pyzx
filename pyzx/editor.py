@@ -21,6 +21,8 @@ import os
 from fractions import Fraction
 import traceback
 
+from .graph import EdgeType, VertexType, toggle_edge, vertex_is_zx, toggle_vertex
+
 try:
 	import ipywidgets as widgets
 	from traitlets import Unicode, validate, Bool, Int, Float
@@ -167,18 +169,17 @@ def colour_change_matcher(g, vertexf):
 	m = []
 	while len(candidates) > 0:
 		v = candidates.pop()
-		if types[v] == 2:
+		if types[v] == VertexType.X:
 			m.append(v)
 
 	return m
 
 def colour_change(g, matches):
 	for v in matches:
-		g.set_type(v, 1)
+		g.set_type(v, VertexType.Z)
 		for e in g.incident_edges(v):
 			et = g.edge_type(e)
-			if et == 2: g.set_edge_type(e,1)
-			elif et == 1: g.set_edge_type(e,2)
+			g.set_edge_type(e, toggle_edge(et))
 	return ({}, [],[],False)
 
 def copy_matcher(g, vertexf=None):
@@ -190,11 +191,14 @@ def copy_matcher(g, vertexf=None):
 
 	while len(candidates) > 0:
 		v = candidates.pop()
-		if phases[v] not in (0,1) or types[v] not in (1,2) or g.vertex_degree(v) != 1: continue
+		if phases[v] not in (0,1) or not vertex_is_zx(types[v]) or g.vertex_degree(v) != 1:
+                    continue
 		w = list(g.neighbours(v))[0]
 		e = g.edge(v,w)
 		et = g.edge_type(e)
-		if (types[w] != types[v] and et==2) or (types[w] == types[v] and et==1): continue
+		if ((types[w] != types[v] and et==EdgeType.HADAMARD) or
+			(types[w] == types[v] and et==EdgeType.SIMPLE)):
+			continue
 		neigh = [n for n in g.neighbours(w) if n != v]
 		m.append((v,w,et,phases[v],phases[w],neigh))
 		candidates.discard(w)
@@ -213,7 +217,7 @@ def apply_copy(g, matches):
 		if a: g.scalar.add_phase(alpha)
 		for n in neigh: 
 			r = g.row(n)
-			vt = types[v] if t == 1 else 2-types[v]
+			vt = types[v] if t == EdgeType.SIMPLE else toggle_vertex(types[v])
 			u = g.add_vertex(vt, g.qubit(n)-0.8, r, a)
 			e = g.edge(n,w)
 			et = g.edge_type(e)

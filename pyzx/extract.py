@@ -23,7 +23,7 @@ from fractions import Fraction
 import itertools
 
 from .linalg import Mat2, greedy_reduction, column_optimal_swap
-from .graph import Graph
+from .graph import Graph, EdgeType, VertexType, toggle_edge
 from .simplify import id_simp, tcount
 from .rules import apply_rule, pivot, match_spider_parallel, spider
 from .circuit import Circuit
@@ -62,33 +62,33 @@ def cut_edges(g, left, right, available=None):
         qs = available
 
     for i in qs:
-        v1 = g.add_vertex(1,i,max_r+1)
-        v2 = g.add_vertex(1,i,max_r+2)
+        v1 = g.add_vertex(VertexType.Z,i,max_r+1)
+        v2 = g.add_vertex(VertexType.Z,i,max_r+2)
         #v = vi+cut_rank+i
         #g.add_edge((vi+i,v))
-        g.add_edge((v1,v2),2)
+        g.add_edge((v1,v2),EdgeType.HADAMARD)
         left_verts.append(v1)
         right_verts.append(v2)
-        #g.set_edge_type(g.edge(vi+i,v), 2)
+        #g.set_edge_type(g.edge(vi+i,v), EdgeType.HADAMARD)
 
     for i in range(y.rows()):
         for j in range(y.cols()):
             if (y.data[i][j]):
-                g.add_edge((left[j],left_verts[i]),2)
+                g.add_edge((left[j],left_verts[i]),EdgeType.HADAMARD)
                 #g.add_edge((left[j], vi + i))
-                #g.set_edge_type(g.edge(left[j], vi + i), 2)
+                #g.set_edge_type(g.edge(left[j], vi + i), EdgeType.HADAMARD)
     for i in range(x.rows()):
         for j in range(x.cols()):
             if (x.data[i][j]):
-                g.add_edge((right_verts[j],right[i]),2)
+                g.add_edge((right_verts[j],right[i]),EdgeType.HADAMARD)
                 #g.add_edge((vi + cut_rank + j, right[i]))
-                #g.set_edge_type(g.edge(vi + cut_rank + j, right[i]), 2)
+                #g.set_edge_type(g.edge(vi + cut_rank + j, right[i]), EdgeType.HADAMARD)
     return left_verts
 
 
 def unspider_by_row(g, v):
     r = g.row(v)
-    w = g.add_vertex(1,g.qubit(v),r-1)
+    w = g.add_vertex(VertexType.Z,g.qubit(v),r-1)
     for n in list(g.neighbours(v)):
         if g.row(n) < r:
             e = g.edge(n,v)
@@ -97,7 +97,7 @@ def unspider_by_row(g, v):
     g.add_edge((w, v))
     return w
 
-def connectivity_from_biadj(g, m, left, right, edgetype=2):
+def connectivity_from_biadj(g, m, left, right, edgetype=EdgeType.HADAMARD):
     for i in range(len(right)):
         for j in range(len(left)):
             if m.data[i][j] and not g.connected(right[i],left[j]):
@@ -151,13 +151,13 @@ def streaming_extract(g, allow_ancillae=False, quiet=True, stopcount=-1):
             n = neigh[0]
             if qs[n] != q:
                 raise TypeError("Graph doesn't seem circuit like: cross qubit connections")
-            if g.edge_type(g.edge(n,v)) == 2:
+            if g.edge_type(g.edge(n,v)) == EdgeType.HADAMARD:
                 c.add_gate("HAD", q)
-                g.set_edge_type(g.edge(n,v),1)
-            if t == 0: continue # it is an output
+                g.set_edge_type(g.edge(n,v),EdgeType.SIMPLE)
+            if t == VertexType.BOUNDARY: continue # it is an output
             if phase != 0:
                 if phase.denominator > 2: nodesparsed += 1
-                if t == 1: c.add_gate("ZPhase", q, phase=phase)
+                if t == VertexType.Z: c.add_gate("ZPhase", q, phase=phase)
                 else: c.add_gate("XPhase", q, phase=phase)
                 g.set_phase(v, 0)
         for v in left:
@@ -168,14 +168,14 @@ def streaming_extract(g, allow_ancillae=False, quiet=True, stopcount=-1):
                 t2 = ty[n]
                 q2 = qs[n]
                 if t == t2:
-                    if g.edge_type(g.edge(v,n)) != 2:
+                    if g.edge_type(g.edge(v,n)) != EdgeType.HADAMARD:
                         raise TypeError("Invalid vertical connection between vertices of the same type")
-                    if t == 1: c.add_gate("CZ", q2, q)
+                    if t == VertexType.Z: c.add_gate("CZ", q2, q)
                     else: c.add_gate("CX", q2, q)
                 else:
-                    if g.edge_type(g.edge(v,n)) != 1:
+                    if g.edge_type(g.edge(v,n)) != EdgeType.SIMPLE:
                         raise TypeError("Invalid vertical connection between vertices of different type")
-                    if t == 1: c.add_gate("CNOT", q, q2)
+                    if t == VertexType.Z: c.add_gate("CNOT", q, q2)
                     else: c.add_gate("CNOT", q2, q)
                 g.remove_edge(g.edge(v,n))
             
@@ -187,7 +187,7 @@ def streaming_extract(g, allow_ancillae=False, quiet=True, stopcount=-1):
                 else:
                     postselects.append(v)
             if len(d) == 1: # Only connected to one node in its future
-                if ty[d[0]] != 0: # which is not an output
+                if ty[d[0]] != VertexType.BOUNDARY: # which is not an output
                     good_verts.append(v) # So we can make progress
                     good_neighs.append(d[0])
                 else:  # This node is done processing, since it is directly (and only) connected to an output
@@ -201,7 +201,7 @@ def streaming_extract(g, allow_ancillae=False, quiet=True, stopcount=-1):
             if qs[v] == maxq - 1:
                 maxq = maxq -1
         if not good_verts:  # There are no 'easy' nodes we can use to progress
-            if all(ty[v] == 0 for v in right): break # Actually we are done, since only outputs are left
+            if all(ty[v] == VertexType.BOUNDARY for v in right): break # Actually we are done, since only outputs are left
             for v in boundary_verts: left.remove(v) # We don't care about the nodes only connected to outputs
             have_removed_gadgets = False
             for n in right.intersection(special_nodes): # Neighbours that are phase gadgets
@@ -272,23 +272,23 @@ def streaming_extract(g, allow_ancillae=False, quiet=True, stopcount=-1):
                         #print("Adding node before output")
                         q = qs[v]
                         r = rs[v]
-                        w = g.add_vertex(1,q,r-1)
+                        w = g.add_vertex(VertexType.Z,q,r-1)
                         e = g.edge(left[control],v)
                         et = g.edge_type(e)
                         g.remove_edge(e)
-                        g.add_edge((left[control],w),2)
-                        g.add_edge((w,v),3-et)
+                        g.add_edge((left[control],w),EdgeType.HADAMARD)
+                        g.add_edge((w,v),toggle_edge(et))
                         k = right.index(v)
                         right[k] = w
                         break
                 for k in range(len(m.data[control])): # We update the graph to represent the extraction of a CNOT
                     if not m.data[control][k]: continue
                     if m.data[target][k]: g.remove_edge((left[target],right[k]))
-                    else: g.add_edge((left[target],right[k]), 2)
+                    else: g.add_edge((left[target],right[k]), EdgeType.HADAMARD)
                 m.row_add(control, target)
             for v in left:
                 d = [w for w in g.neighbours(v) if rs[w]>leftrow]
-                if len(d) == 1 and ty[d[0]] != 0:
+                if len(d) == 1 and ty[d[0]] != VertexType.BOUNDARY:
                     good_verts.append(v)
                     good_neighs.append(d[0])
             if not good_verts: continue
@@ -319,12 +319,12 @@ def streaming_extract(g, allow_ancillae=False, quiet=True, stopcount=-1):
             raise TypeError("Algorithm failed: Not fully reducable")
             return c
         n = neigh[0]
-        if ty[n] != 0: 
+        if ty[n] != VertexType.BOUNDARY: 
             raise TypeError("Algorithm failed: Not fully reducable")
             return c
-        if g.edge_type(g.edge(n,v)) == 2:
+        if g.edge_type(g.edge(n,v)) == EdgeType.HADAMARD:
             c.add_gate("HAD", q)
-            g.set_edge_type(g.edge(n,v),1)
+            g.set_edge_type(g.edge(n,v),EdgeType.SIMPLE)
         if qs[n] != q: leftover_swaps = True
         swap_map[q] = qs[n]
     if leftover_swaps: 
@@ -339,13 +339,13 @@ def try_greedy_cut(g, left, right, candidates, quiet=True):
     # Take care nothing is connected directly to an output
     for w in right.copy():
         if w in g.outputs:
-            w2 = g.add_vertex(1, g.qubit(w), g.row(w)-1)
+            w2 = g.add_vertex(VertexType.Z, g.qubit(w), g.row(w)-1)
             n = list(g.neighbours(w))[0] # Outputs should have unique neighbours
             e = g.edge(n,w)
             et = g.edge_type(e)
             g.remove_edge(e)
-            g.add_edge((n,w2),2)
-            g.add_edge((w2,w),3-et)
+            g.add_edge((n,w2),EdgeType.HADAMARD)
+            g.add_edge((w2,w),toggle_edge(et))
             right.remove(w)
             right.add(w2)
             if w in candidates:
@@ -392,7 +392,7 @@ def try_greedy_cut(g, left, right, candidates, quiet=True):
                 if i != j:
                     g.remove_edge(g.edge(left[i],new_right[j]))
             elif i == j:
-                g.add_edge((left[i],new_right[j]), 2)
+                g.add_edge((left[i],new_right[j]), EdgeType.HADAMARD)
     if not quiet: print("Greedy extract with {:d} nodes and {:d} CNOTs".format(len(good_nodes),len(gates)))
     return gates, True
 
@@ -430,13 +430,13 @@ def handle_phase_gadget(g, left, neigh, special_nodes, quiet=True):
     for i in range(len(right)):
         w = right[i]
         if w in g.outputs:
-            w2 = g.add_vertex(1, qs[w], rs[w]-1)
+            w2 = g.add_vertex(VertexType.Z, qs[w], rs[w]-1)
             n = list(g.neighbours(w))[0] # Outputs should have unique neighbours
             e = g.edge(n,w)
             et = g.edge_type(e)
             g.remove_edge(e)
-            g.add_edge((n,w2),2)
-            g.add_edge((w2,w),3-et)
+            g.add_edge((n,w2),EdgeType.HADAMARD)
+            g.add_edge((w2,w),toggle_edge(et))
             right[i] = w2
 
     if len(right) == q:
@@ -478,7 +478,7 @@ def handle_phase_gadget(g, left, neigh, special_nodes, quiet=True):
     for i in reversed(range(len(gadget_right))): # The following checks if every phase connected node is on the right
         w = gadget_right[i]
         v = next(v for v in left if g.connected(w,v))
-        g.set_edge_type((v,w),1)
+        g.set_edge_type((v,w),EdgeType.SIMPLE)
         g.set_qubit(w, qs[v])
         if qs[w] not in targets:
             gates.append(HAD(qs[w]))
@@ -582,8 +582,8 @@ def find_ancilla_qubits(g, left, right, gadgets, maxq, quiet=True):
     for i, v in enumerate(ancillas):
         g.set_row(v, leftrow)
         g.set_qubit(v, maxq+i)
-        w = g.add_vertex(1, maxq+i, leftrow-1)
-        g.add_edge((v,w),1)
+        w = g.add_vertex(VertexType.Z, maxq+i, leftrow-1)
+        g.add_edge((v,w),EdgeType.SIMPLE)
         gates.append(InitAncilla(maxq+i))
     #raise Exception
     return gates, maxq+len(ancillas)
@@ -622,14 +622,14 @@ class CNOTMaker(object):
         self.r = 0                     # current row
         
         for i in range(qubits):
-            self.add_node(i, 0, False)
+            self.add_node(i, VertexType.BOUNDARY, False)
             self.g.inputs.append(self.v)
             self.v += 1
         self.r += 1
     
     def finish(self):
         for i in range(self.qubits):
-            self.add_node(i, 0)
+            self.add_node(i, VertexType.BOUNDARY)
             self.g.outputs.append(self.v-1)
         self.r += 1
     
@@ -647,13 +647,13 @@ class CNOTMaker(object):
             self.row_add(r2, r1)
             self.row_add(r1, r2)
         else:
-            self.add_node(r1, 1)
-            self.add_node(r2, 1)
+            self.add_node(r1, VertexType.Z)
+            self.add_node(r2, VertexType.Z)
             self.r += 1
-            self.add_node(r1, 1, False)
+            self.add_node(r1, VertexType.Z, False)
             self.g.add_edge((self.qs[r2],self.v))
             self.v += 1
-            self.add_node(r2, 1, False)
+            self.add_node(r2, VertexType.Z, False)
             self.g.add_edge((self.qs[r1],self.v))
             self.qs[r1] = self.v - 1
             self.qs[r2] = self.v
@@ -662,8 +662,8 @@ class CNOTMaker(object):
     
     def row_add(self, r1, r2):
         #print("row_add", r1,r2)
-        self.add_node(r1, 1)
-        self.add_node(r2, 2)
+        self.add_node(r1, VertexType.Z)
+        self.add_node(r2, VertexType.X)
         self.g.add_edge((self.qs[r1],self.qs[r2]))
         self.r += 1
 
@@ -692,9 +692,9 @@ def clifford_extract(g, left_row, right_row, cnot_blocksize=2):
             e = g.edge(vert, conn)
             t = g.edge_type(e)
             g.remove_edge(e)
-            v1 = g.add_vertex(1,q,left_row)
-            g.add_edge((vert,v1),3-t)
-            g.add_edge((v1,conn), 2)
+            v1 = g.add_vertex(VertexType.Z,q,left_row)
+            g.add_edge((vert,v1),toggle_edge(t))
+            g.add_edge((v1,conn), EdgeType.HADAMARD)
             qleft.insert(q,v1)
             no_left = True
         else:
@@ -713,9 +713,9 @@ def clifford_extract(g, left_row, right_row, cnot_blocksize=2):
             e = g.edge(conn2,vert)
             t = g.edge_type(e)
             g.remove_edge(e)
-            v2 = g.add_vertex(1,q,right_row)
-            g.add_edge((conn2,v2),2)
-            g.add_edge((v2,vert),3-t)
+            v2 = g.add_vertex(VertexType.Z,q,right_row)
+            g.add_edge((conn2,v2),EdgeType.HADAMARD)
+            g.add_edge((v2,vert),toggle_edge(t))
             qright.insert(q,v2)
 
     if len(qleft) != len(qright):
@@ -724,11 +724,11 @@ def clifford_extract(g, left_row, right_row, cnot_blocksize=2):
     if m.rank() != qubits:
         raise ValueError("Adjency matrix rank does not match amount of qubits")
     for v in qright:
-       g.set_type(v,2)
+       g.set_type(v,VertexType.X)
        for e in g.incident_edges(v):
            if (g.row(g.edge_s(e)) <= right_row
                and g.row(g.edge_t(e)) <= left_row): continue
-           g.set_edge_type(e,3-g.edge_type(e)) # 2 -> 1, 1 -> 2
+           g.set_edge_type(e,toggle_edge(g.edge_type(e))) # HADAMARD -> SIMPLE, SIMPLE -> HADAMARD
     c = CNOTMaker(qubits, cnot_swaps=True)
     m.gauss(full_reduce=True,x=c,blocksize=cnot_blocksize)
     c.finish()
@@ -749,40 +749,40 @@ def simple_extract(g, quiet=True):
     qindex = {}
     depth = 0
     for i in range(len(g.inputs)):
-        v = h.add_vertex(0,i,depth)
+        v = h.add_vertex(VertexType.BOUNDARY,i,depth)
         h.inputs.append(v)
         qindex[i] = v
     depth = 1
     
     def add_phase_gate(q, phase):
         nonlocal depth
-        v = h.add_vertex(1, q, depth, phase)
-        h.add_edge((qindex[q],v),1)
+        v = h.add_vertex(VertexType.Z, q, depth, phase)
+        h.add_edge((qindex[q],v),EdgeType.SIMPLE)
         qindex[q] = v
         depth += 1
         return v
     def add_hadamard(q):
         nonlocal depth
-        v = h.add_vertex(1, q, depth)
-        h.add_edge((qindex[q],v),2)
+        v = h.add_vertex(VertexType.Z, q, depth)
+        h.add_edge((qindex[q],v),EdgeType.HADAMARD)
         qindex[q] = v
         depth += 1
         return v
     def add_cnot(ctrl, tgt):
         nonlocal depth
-        v1 = h.add_vertex(1, ctrl, depth)
-        v2 = h.add_vertex(2, tgt, depth)
-        h.add_edges([(qindex[ctrl],v1),(qindex[tgt],v2),(v1,v2)],1)
+        v1 = h.add_vertex(VertexType.Z, ctrl, depth)
+        v2 = h.add_vertex(VertexType.X, tgt, depth)
+        h.add_edges([(qindex[ctrl],v1),(qindex[tgt],v2),(v1,v2)],EdgeType.SIMPLE)
         qindex[ctrl] = v1
         qindex[tgt] = v2
         depth += 1
         return v1,v2
     def add_cz(ctrl, tgt):
         nonlocal depth
-        v1 = h.add_vertex(1, ctrl, depth)
-        v2 = h.add_vertex(1, tgt, depth)
-        h.add_edges([(qindex[ctrl],v1),(qindex[tgt],v2)],1)
-        h.add_edge((v1,v2),2)
+        v1 = h.add_vertex(VertexType.Z, ctrl, depth)
+        v2 = h.add_vertex(VertexType.Z, tgt, depth)
+        h.add_edges([(qindex[ctrl],v1),(qindex[tgt],v2)],EdgeType.SIMPLE)
+        h.add_edge((v1,v2),EdgeType.HADAMARD)
         qindex[ctrl] = v1
         qindex[tgt] = v2
         depth += 1
@@ -790,21 +790,21 @@ def simple_extract(g, quiet=True):
     
     def add_gadget(targets, phase):
         nonlocal depth
-        verts = {q:h.add_vertex(1,q,depth) for q in targets}
-        axel = h.add_vertex(2,-1,depth+0.5)
-        leaf = h.add_vertex(1,-2,depth+0.5,phase)
-        h.add_edges([(qindex[q],verts[q]) for q in targets] + [(verts[q],axel) for q in targets] + [(axel,leaf)], 1)
+        verts = {q:h.add_vertex(VertexType.Z,q,depth) for q in targets}
+        axel = h.add_vertex(VertexType.X,-1,depth+0.5)
+        leaf = h.add_vertex(VertexType.Z,-2,depth+0.5,phase)
+        h.add_edges([(qindex[q],verts[q]) for q in targets] + [(verts[q],axel) for q in targets] + [(axel,leaf)], EdgeType.SIMPLE)
         for q in targets: qindex[q] = verts[q]
         depth += 1
         return targets, axel, leaf
     
     def add_nonlocal_gadget(qubits, vertices, phase):
         nonlocal depth
-        new_verts = {q:h.add_vertex(1,q,depth) for q in qubits}
-        axel = h.add_vertex(2,-1,depth+0.5)
-        leaf = h.add_vertex(1,-2,depth+0.5,phase)
+        new_verts = {q:h.add_vertex(VertexType.Z,q,depth) for q in qubits}
+        axel = h.add_vertex(VertexType.X,-1,depth+0.5)
+        leaf = h.add_vertex(VertexType.Z,-2,depth+0.5,phase)
         h.add_edges([(qindex[q],new_verts[q]) for q in qubits] + [(new_verts[q],axel) for q in qubits] + 
-                    [(v,axel) for v in vertices] + [(axel,leaf)], 1)
+                    [(v,axel) for v in vertices] + [(axel,leaf)], EdgeType.SIMPLE)
         for q in qubits: qindex[q] = new_verts[q]
         depth += 1
         return new_verts, axel, leaf
@@ -836,16 +836,16 @@ def simple_extract(g, quiet=True):
             q = qs[v]
             phase = phases[v]
             t = ty[v]
-            if t != 1: raise TypeError("Only supports zx-diagrams in graph-like state")
+            if t != VertexType.Z: raise TypeError("Only supports zx-diagrams in graph-like state")
             neigh = [w for w in g.neighbours(v) if rs[w]<leftrow]
             if len(neigh) != 1:
                 raise TypeError("Graph doesn't seem circuit like: multiple parents")
             n = neigh[0]
             if qs[n] != q:
                 raise TypeError("Graph doesn't seem circuit like: cross qubit connections")
-            if g.edge_type(g.edge(n,v)) == 2:
+            if g.edge_type(g.edge(n,v)) == EdgeType.HADAMARD:
                 add_hadamard(q)
-                g.set_edge_type(g.edge(n,v),1)
+                g.set_edge_type(g.edge(n,v),EdgeType.SIMPLE)
             #if t == 0: continue # it is an output
             if phase != 0:
                 add_phase_gate(q, phase)
@@ -858,7 +858,7 @@ def simple_extract(g, quiet=True):
             neigh = [w for w in g.neighbours(v) if rs[w]==leftrow and w<v]
             for n in neigh:
                 q2 = qs[n]
-                if g.edge_type(g.edge(v,n)) != 2:
+                if g.edge_type(g.edge(v,n)) != EdgeType.HADAMARD:
                     raise TypeError("Invalid vertical connection between vertices of the same type")
                 add_cz(q2, q)
                 g.remove_edge(g.edge(v,n))
@@ -894,13 +894,13 @@ def simple_extract(g, quiet=True):
                 else:
                     q = qs[b]
                     r = rs[b]
-                    w = g.add_vertex(1,q,r-1)
+                    w = g.add_vertex(VertexType.Z,q,r-1)
                     nodes.append(w)
                     e = g.edge(v,b)
                     et = g.edge_type(e)
                     g.remove_edge(e)
-                    g.add_edge((v,w),2)
-                    g.add_edge((w,b),3-et)
+                    g.add_edge((v,w),EdgeType.HADAMARD)
+                    g.add_edge((w,b),toggle_edge(et))
                     d.remove(b)
                     d.append(w)
             neighbours.update(d)
@@ -953,9 +953,9 @@ def simple_extract(g, quiet=True):
     swap_map = {}
     for w in g.outputs:
         v = list(g.neighbours(w))[0]
-        if g.edge_type(g.edge(v,w)) == 2:
+        if g.edge_type(g.edge(v,w)) == EdgeType.HADAMARD:
             add_hadamard(qs[v])
-            g.set_edge_type(g.edge(v,w),1)
+            g.set_edge_type(g.edge(v,w),EdgeType.SIMPLE)
         swap_map[qs[v]] = qs[w]
     for t1, t2 in permutation_as_swaps(swap_map):
         add_cnot(t1,t2)
@@ -963,9 +963,9 @@ def simple_extract(g, quiet=True):
         add_cnot(t1,t2)
     
     for i in range(len(g.outputs)):
-        v = h.add_vertex(0,i,depth)
+        v = h.add_vertex(VertexType.BOUNDARY,i,depth)
         h.outputs.append(v)
-        h.add_edge((qindex[i],v),1)
+        h.add_edge((qindex[i],v),EdgeType.SIMPLE)
         qindex[i] = v
     
     return h
@@ -1036,9 +1036,9 @@ def modified_extract(g, optimize_czs=True, quiet=True):
             q = qubit_map[v]
             b = [w for w in g.neighbours(v) if w in g.outputs][0]
             e = g.edge(v,b)
-            if g.edge_type(e) == 2: # Hadamard edge
+            if g.edge_type(e) == EdgeType.HADAMARD:
                 c.add_gate("HAD",q)
-                g.set_edge_type(e,1)
+                g.set_edge_type(e,EdgeType.SIMPLE)
             if phases[v]: 
                 c.add_gate("ZPhase", q, phases[v])
                 g.set_phase(v,0)
@@ -1081,12 +1081,12 @@ def modified_extract(g, optimize_czs=True, quiet=True):
                 b = [w for w in d if w in g.inputs][0]
                 q = qs[b]
                 r = rs[b]
-                w = g.add_vertex(1,q,r+1)
+                w = g.add_vertex(VertexType.Z,q,r+1)
                 e = g.edge(v,b)
                 et = g.edge_type(e)
                 g.remove_edge(e)
-                g.add_edge((v,w),2)
-                g.add_edge((w,b),3-et)
+                g.add_edge((v,w),EdgeType.SIMPLE)
+                g.add_edge((w,b),toggle_edge(et))
                 d.remove(b)
                 d.append(w)
             neighbours.update(d)
@@ -1152,9 +1152,9 @@ def modified_extract(g, optimize_czs=True, quiet=True):
         if i not in g.inputs: 
             raise TypeError("Algorithm failed: Not fully reducable")
             return c
-        if g.edge_type(g.edge(v,i)) == 2:
+        if g.edge_type(g.edge(v,i)) == EdgeType.HADAMARD:
             c.add_gate("HAD", q)
-            g.set_edge_type(g.edge(v,i),1)
+            g.set_edge_type(g.edge(v,i),EdgeType.SIMPLE)
         if qs[i] != q: leftover_swaps = True
         swap_map[q] = qs[i]
     if leftover_swaps: 

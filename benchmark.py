@@ -1,4 +1,5 @@
 import sys
+from pathlib import Path
 import pyzx as zx
 import os
 import time
@@ -54,16 +55,16 @@ class CircuitComparer:
         self.time_simpl = time.time() - t
         t = time.time()
         self.extracts = True
-        try: 
+        try:
             c2 = zx.extract.streaming_extract(g,quiet=True)
             self.time_extr = time.time() - t
         except Exception:
             self.extracts = False
-            self.time_extr = "-"
+            self.time_extr = None
         self.has_run = True
         del c, g
         return True
-    
+
     def pretty(self):
         if not self.has_run:
             success = self.run()
@@ -74,7 +75,8 @@ class CircuitComparer:
         s += str(self.gatecount).rjust(8) + str(self.t_before).rjust(9) + str(self.t_opt).rjust(10) 
         s += str(self.tpar).rjust(6) + str(self.t_after).rjust(7)
         s += "{:.2f}".format(self.time_simpl).rjust(12)
-        s += "{:.2f}".format(self.time_extr).rjust(14)
+        time_extr = "{:.2f}".format(self.time_extr) if self.time_extr is not None else "-"
+        s += time_extr.rjust(14)
         #s += ("y" if self.extracts else "n").rjust(7)
         return s
 
@@ -87,7 +89,10 @@ def runner(arg):
     return s
 
 if __name__ == '__main__':
-    dirs = [r'circuits\Arithmetic_and_Toffoli', r'circuits\QFT_and_Adders', r'circuits\Other']
+    circ_dir = Path('circuits')
+    dirs = [circ_dir / 'Arithmetic_and_Toffoli',
+            circ_dir / 'QFT_and_Adders',
+            circ_dir / 'Other']
     beforefiles = []
     afterfiles = []
     tparfiles = []

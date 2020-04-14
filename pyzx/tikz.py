@@ -25,6 +25,8 @@ import os
 import subprocess
 import time
 
+from .graph import EdgeType, VertexType
+
 tikzit_location = None
 
 TIKZ_BASE = """
@@ -47,10 +49,10 @@ def to_tikz(g, xoffset=0, yoffset=0, idoffset=0, full_output=True):
     for v in g.vertices():
         phase = g.phase(v)
         ty = g.type(v)
-        if ty == 0:
+        if ty == VertexType.BOUNDARY:
             style = "none"
         else:
-            style = 'Z' if ty==1 else 'X'
+            style = 'Z' if ty==VertexType.Z else 'X'
             if phase != 0: style += " phase"
             style += " dot"
         if phase == 0: phase = ""
@@ -69,8 +71,8 @@ def to_tikz(g, xoffset=0, yoffset=0, idoffset=0, full_output=True):
         v,w = g.edge_st(e)
         ty = g.edge_type(e)
         s = "        \\draw "
-        if ty == 2: 
-            if g.type(v) != 0 and g.type(w) != 0:
+        if ty == EdgeType.HADAMARD: 
+            if g.type(v) != VertexType.BOUNDARY and g.type(w) != VertexType.BOUNDARY:
                 s += "[style=hadamard edge] "
             else:
                 x = (g.row(v) + g.row(w))/2.0 +xoffset
