@@ -59,7 +59,7 @@ class TestGraphBasicMethods(unittest.TestCase):
         self.assertEqual(g.vertex_degree(v1), 1)
         self.assertFalse(g.connected(v1,v3))
         e = g.edge(v1,v2)
-        self.assertEqual(g.edge_type(e),EdgeType.REGULAR)
+        self.assertEqual(g.edge_type(e),EdgeType.SIMPLE)
         g.set_edge_type(e,EdgeType.HADAMARD)
         self.assertEqual(g.edge_type(e),EdgeType.HADAMARD)
         g.remove_edge(e)
@@ -94,7 +94,7 @@ class TestGraphBasicMethods(unittest.TestCase):
         self.assertFalse(g.connected(v1,v2))
         etab = {(v1,v2): [1,1]}
         g.add_edge_table(etab)
-        self.assertEqual(g.edge_type(g.edge(v1,v2)),EdgeType.REGULAR)
+        self.assertEqual(g.edge_type(g.edge(v1,v2)),EdgeType.SIMPLE)
         self.assertTrue((g.phase(v1)==1  and g.phase(v2)==0) or (g.phase(v1)==0 and g.phase(v2)==1))
 
     def test_add_edge_table_different_type(self):
@@ -143,7 +143,7 @@ class TestGraphBasicMethods(unittest.TestCase):
     @unittest.skipUnless(np, "numpy needs to be installed for this to run")
     def test_remove_isolated_pair_preserves_semantics(self):
         for i,j in itertools.product([VertexType.Z,VertexType.X],repeat=2):
-            for k in [EdgeType.REGULAR, EdgeType.HADAMARD]:
+            for k in [EdgeType.SIMPLE, EdgeType.HADAMARD]:
                 for phase1, phase2 in itertools.product([0,1,2],[0,4,5]):
                     with self.subTest(i=i,j=j,k=k,phase1=phase1,phase2=phase2):
                         g = Graph()

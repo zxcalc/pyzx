@@ -57,7 +57,7 @@ class GraphS(BaseGraph):
 		self._vindex += amount
 		return range(self._vindex - amount, self._vindex)
 
-	def add_edges(self, edges, edgetype=EdgeType.REGULAR):
+	def add_edges(self, edges, edgetype=EdgeType.SIMPLE):
 		for s,t in edges:
 			self.nedges += 1
 			self.graph[s][t] = edgetype

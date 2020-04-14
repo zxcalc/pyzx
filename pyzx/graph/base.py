@@ -173,11 +173,11 @@ def vertex_is_zx(ty):
 
 class EdgeType:
     """Type of an edge in the graph."""
-    REGULAR = 1
+    SIMPLE = 1
     HADAMARD = 2
 
 def toggle_edge(ty):
-    return EdgeType.HADAMARD if ty == EdgeType.REGULAR else EdgeType.REGULAR
+    return EdgeType.HADAMARD if ty == EdgeType.SIMPLE else EdgeType.SIMPLE
 
 class BaseGraph(object):
     """Base class for letting graph backends interact with PyZX.
@@ -569,11 +569,11 @@ class BaseGraph(object):
             self.phase_mult[v] = 1
         return v
 
-    def add_edges(self, edges, edgetype=EdgeType.REGULAR):
+    def add_edges(self, edges, edgetype=EdgeType.SIMPLE):
         """Adds a list of edges to the graph."""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
-    def add_edge(self, edge, edgetype=EdgeType.REGULAR):
+    def add_edge(self, edge, edgetype=EdgeType.SIMPLE):
         """Adds a single edge of the given type"""
         self.add_edges([edge], edgetype)
 
@@ -582,11 +582,11 @@ class BaseGraph(object):
         #edges regular edges must be added between source and target and $h-edges Hadamard edges.
         The method selectively adds or removes edges to produce that ZX diagram which would 
         result from adding (#edges, #h-edges), and then removing all parallel edges using Hopf/spider laws."""
-        add = {EdgeType.REGULAR: [], EdgeType.HADAMARD: []} # list of edges and h-edges to add
+        add = {EdgeType.SIMPLE: [], EdgeType.HADAMARD: []} # list of edges and h-edges to add
         remove = []   # list of edges to remove
         for (v1,v2),(n1,n2) in etab.items():
             conn_type = self.edge_type(self.edge(v1,v2))
-            if conn_type == EdgeType.REGULAR: n1 += 1 #and add to the relevant edge count
+            if conn_type == EdgeType.SIMPLE: n1 += 1 #and add to the relevant edge count
             elif conn_type == EdgeType.HADAMARD: n2 += 1
 
             t1 = self.type(v1)
@@ -596,10 +596,10 @@ class BaseGraph(object):
                 pairs, n2 = divmod(n2,2)#while hadamard edges go modulo 2
                 self.scalar.add_power(-2*pairs)
                 if n1 != 0 and n2 != 0:  #reduction rule for when both edges appear
-                    new_type = EdgeType.REGULAR
+                    new_type = EdgeType.SIMPLE
                     self.add_to_phase(v1, 1)
                     self.scalar.add_power(-1)
-                elif n1 != 0: new_type = EdgeType.REGULAR
+                elif n1 != 0: new_type = EdgeType.SIMPLE
                 elif n2 != 0: new_type = EdgeType.HADAMARD
                 else: new_type = None
             elif t1 != t2 and vertex_is_zx(t1) and vertex_is_zx(t2): #types are ZX & different
@@ -610,7 +610,7 @@ class BaseGraph(object):
                     new_type = EdgeType.HADAMARD
                     self.add_to_phase(v1, 1)
                     self.scalar.add_power(-1)
-                elif n1 != 0: new_type = EdgeType.REGULAR
+                elif n1 != 0: new_type = EdgeType.SIMPLE
                 elif n2 != 0: new_type = EdgeType.HADAMARD
                 else: new_type = None
             elif (t1 == VertexType.Z and t2 == VertexType.H_BOX) or (t1 == VertexType.H_BOX and t2 == VertexType.Z):
@@ -619,14 +619,14 @@ class BaseGraph(object):
                 if n1 + n2 > 1:
                     raise ValueError("Unhandled parallel edges between nodes of type (%s,%s)" % (t1,t2))
                 else:
-                    if n1 == 1: new_type = EdgeType.REGULAR
+                    if n1 == 1: new_type = EdgeType.SIMPLE
                     elif n2 == 1: new_type = EdgeType.HADAMARD
                     else: new_type = None
             else:
                 if n1 + n2 > 1:
                     raise ValueError("Unhandled parallel edges between nodes of type (%s,%s)" % (t1,t2))
                 else:
-                    if n1 == 1: new_type = EdgeType.REGULAR
+                    if n1 == 1: new_type = EdgeType.SIMPLE
                     elif n2 == 1: new_type = EdgeType.HADAMARD
                     else: new_type = None
 
@@ -640,7 +640,7 @@ class BaseGraph(object):
                 remove.append(self.edge(v1,v2))
 
         self.remove_edges(remove)
-        self.add_edges(add[EdgeType.REGULAR],EdgeType.REGULAR)
+        self.add_edges(add[EdgeType.SIMPLE],EdgeType.SIMPLE)
         self.add_edges(add[EdgeType.HADAMARD],EdgeType.HADAMARD)
 
     def set_phase_master(self, m):

@@ -129,7 +129,7 @@ def bialg(g, matches):
 def match_spider(g):
     """Does the same as :func:`match_spider_parallel` but with ``num=1``."""
     for e in g.edges():
-        if g.edge_type(e) != EdgeType.REGULAR: continue
+        if g.edge_type(e) != EdgeType.SIMPLE: continue
         v0, v1 = g.edge_st(e)
         if (g.type(v0) == g.type(v1)):
             return [[v0,v1]]
@@ -361,7 +361,7 @@ def match_pivot_gadget(g, matchf=None, num=-1):
         m.append([v0,v1,[],[v]])
         i += 1
         for c in discard_edges: candidates.discard(c)
-    g.add_edges(edge_list,EdgeType.REGULAR)
+    g.add_edges(edge_list,EdgeType.SIMPLE)
     return m
 
 
@@ -484,7 +484,7 @@ def pivot(g, matches):
                 new_e = (m[1-i], m[i+2][0])
                 if new_e[0] > new_e[1]: new_e = (new_e[1],new_e[0])
                 ne,nhe = etab.get(new_e, (0,0))
-                if g.edge_type(e) == EdgeType.REGULAR: nhe += 1
+                if g.edge_type(e) == EdgeType.SIMPLE: nhe += 1
                 elif g.edge_type(e) == EdgeType.HADAMARD: ne += 1
                 etab[new_e] = (ne,nhe)
                 rem_edges.append(e)
