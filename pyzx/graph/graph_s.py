@@ -64,7 +64,7 @@ class GraphS(BaseGraph):
 		if index in self.graph: raise ValueError("Vertex with this index already exists")
 		if index >= self._vindex: self._vindex = index+1
 		self.graph[index] = dict()
-		self.ty[index] = 0
+		self.ty[index] = VertexType.BOUNDARY
 		self._phase[index] = 0
 
 	def add_edges(self, edges, edgetype=EdgeType.SIMPLE):

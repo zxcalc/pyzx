@@ -137,7 +137,7 @@ _d3_editor_id = 0
 
 def s_to_phase(s, t=1):
 	if not s: 
-		if t!= 3: return Fraction(0)
+		if t!= VertexType.H_BOX: return Fraction(0)
 		else: return Fraction(1)
 	s = s.replace('\u03c0', '')
 	if s.find('/') != -1:
