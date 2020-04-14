@@ -51,11 +51,14 @@ def to_tikz(g, xoffset=0, yoffset=0, idoffset=0, full_output=True):
         ty = g.type(v)
         if ty == VertexType.BOUNDARY:
             style = "none"
+        elif ty == VertexType.H_BOX:
+            style = "hadamard"
         else:
             style = 'Z' if ty==VertexType.Z else 'X'
             if phase != 0: style += " phase"
             style += " dot"
-        if phase == 0: phase = ""
+        if (ty == VertexType.H_BOX and phase == 1) or (ty != VertexType.H_BOX and phase == 0):
+            phase = ""
         else:
             ns = '' if phase.numerator == 1 else str(phase.numerator)
             dn = '' if phase.denominator == 1 else str(phase.denominator)
