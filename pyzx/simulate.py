@@ -33,7 +33,7 @@ except:
 
 from . import simplify
 from .circuit import Circuit
-from .graph import Graph
+from .graph import Graph, EdgeType, VertexType, toggle_edge
 
 MAGIC_GLOBAL = -(7+5*sq2)/(2+2j)
 MAGIC_B60 = -16 + 12*sq2
@@ -107,10 +107,10 @@ class SumGraph(object):
             g = g.copy()
             vs = g.outputs.copy()
             for i, v in enumerate(vs):
-                g.set_type(v, 1)
+                g.set_type(v, VertexType.Z)
                 g.set_phase(v, phases[i])
             g.outputs = []
-            g.add_edges([(vs[i1],vs[i2]) for (i1,i2) in connections],2)
+            g.add_edges([(vs[i1],vs[i2]) for (i1,i2) in connections],EdgeType.HADAMARD)
             g.scalar.add_power(len(connections))
             # Now that we have composed g with a right sort of effect, 
             # we need to calculate the value of the resulting inner product.
@@ -140,12 +140,12 @@ class SumGraph(object):
             g = g.copy()
             for qubit, effect in qubits.items():
                 v = g.outputs[qubit]
-                g.set_type(v,1)
+                g.set_type(v,VertexType.Z)
                 g.scalar.add_power(-1)
                 if effect in ('0', '1'): #Push a Hadamard gate out of the spider
                     e = list(g.incident_edges(v))[0]
                     et = g.edge_type(e)
-                    g.set_edge_type(e,3-et)
+                    g.set_edge_type(e,toggle_edge(et))
                 if effect in ('1', '-'):
                     g.set_phase(v,1)
             g.outputs = [v for i,v in enumerate(g.outputs) if i not in qubits]
@@ -321,7 +321,7 @@ def replace_magic_states(g, pick_random=False):
         deg = g.vertex_degree(v)
         if g.vertex_degree(v) == 1:
             w = list(g.neighbours(v))[0]
-            if g.type(w) == 1:
+            if g.type(w) == VertexType.Z:
                 gadgets.append(v)
                 deg = g.vertex_degree(w)-1
 
@@ -383,8 +383,8 @@ def replace_E6(g, verts):
         g.add_to_phase(v,Fraction(-1,4))
         g.add_to_phase(v, Fraction(1,2))
         av += g.row(v)
-    w = g.add_vertex(1,-1,av/6,Fraction(1))
-    g.add_edges([(v,w) for v in verts],2)
+    w = g.add_vertex(VertexType.Z,-1,av/6,Fraction(1))
+    g.add_edges([(v,w) for v in verts],EdgeType.HADAMARD)
     return g
 
 def replace_O6(g, verts):
@@ -396,8 +396,8 @@ def replace_O6(g, verts):
         g.add_to_phase(v,Fraction(-1,4))
         g.add_to_phase(v, Fraction(1,2))
         av += g.row(v)
-    w = g.add_vertex(1,-1,av/6,Fraction(0))
-    g.add_edges([(v,w) for v in verts],2)
+    w = g.add_vertex(VertexType.Z,-1,av/6,Fraction(0))
+    g.add_edges([(v,w) for v in verts],EdgeType.HADAMARD)
     return g
 
 def replace_K6(g, verts):
@@ -408,25 +408,25 @@ def replace_K6(g, verts):
     for v in verts:
         g.add_to_phase(v,Fraction(-1,4))
         av += g.row(v)
-    w = g.add_vertex(1,-1,av/6,Fraction(3,2))
-    g.add_edges([(v,w) for v in verts],1)
+    w = g.add_vertex(VertexType.Z,-1,av/6,Fraction(3,2))
+    g.add_edges([(v,w) for v in verts],EdgeType.SIMPLE)
     return g
 
 def replace_phi1(g, verts):
     g.scalar.add_float(MAGIC_PHI)
     g.scalar.add_power(9)
     g.scalar.add_phase(Fraction(3,2))
-    w6 = g.add_vertex(1,-1, g.row(verts[5])+0.5, Fraction(1))
+    w6 = g.add_vertex(VertexType.Z,-1, g.row(verts[5])+0.5, Fraction(1))
     g.add_to_phase(verts[5],Fraction(-1,4))
     g.add_edge((verts[5],w6))
     ws = []
     for v in verts[:-1]:
         g.add_to_phase(v,Fraction(-1,4))
-        w = g.add_vertex(1,-1, g.row(v)+0.5)
-        g.add_edges([(w6,w),(v,w)],2)
+        w = g.add_vertex(VertexType.Z,-1, g.row(v)+0.5)
+        g.add_edges([(w6,w),(v,w)],EdgeType.HADAMARD)
         ws.append(w)
     w1,w2,w3,w4,w5 = ws
-    g.add_edges([(w1,w3),(w1,w4),(w2,w4),(w2,w5),(w3,w5)],2)
+    g.add_edges([(w1,w3),(w1,w4),(w2,w4),(w2,w5),(w3,w5)],EdgeType.HADAMARD)
     return g
 
 def replace_phi2(g, verts):
@@ -436,30 +436,30 @@ def replace_phi2(g, verts):
 
 
 def replace_2_S(g, verts):
-    w = g.add_vertex(1,g.qubit(verts[0])-0.5, g.row(verts[0])-0.5, Fraction(1,2))
-    g.add_edges([(verts[0],w),(verts[1],w)],1)
+    w = g.add_vertex(VertexType.Z,g.qubit(verts[0])-0.5, g.row(verts[0])-0.5, Fraction(1,2))
+    g.add_edges([(verts[0],w),(verts[1],w)],EdgeType.SIMPLE)
     for v in verts: g.add_to_phase(v,Fraction(-1,4))
     return g
 
 
 def replace_2_N(g, verts):
     g.scalar.add_phase(Fraction(1,4))
-    w = g.add_vertex(1,g.qubit(verts[0])-0.5, g.row(verts[0])-0.5, Fraction(1,1))
-    g.add_edges([(verts[0],w),(verts[1],w)],2)
+    w = g.add_vertex(VertexType.Z,g.qubit(verts[0])-0.5, g.row(verts[0])-0.5, Fraction(1,1))
+    g.add_edges([(verts[0],w),(verts[1],w)],EdgeType.HADAMARD)
     for v in verts: g.add_to_phase(v,Fraction(-1,4))
     return g
 
 def replace_1_0(g, verts):
     g.scalar.add_power(-1)
-    w = g.add_vertex(1,g.qubit(verts[0])-0.5, g.row(verts[0])-0.5, 0)
-    g.add_edge((verts[0],w),2)
+    w = g.add_vertex(VertexType.Z,g.qubit(verts[0])-0.5, g.row(verts[0])-0.5, 0)
+    g.add_edge((verts[0],w),EdgeType.HADAMARD)
     for v in verts: g.add_to_phase(v,Fraction(-1,4))
     return g
 
 def replace_1_1(g, verts):
     g.scalar.add_phase(Fraction(1,4))
     g.scalar.add_power(-1)
-    w = g.add_vertex(1,g.qubit(verts[0])-0.5, g.row(verts[0])-0.5, Fraction(1,1))
-    g.add_edge((verts[0],w),2) 
+    w = g.add_vertex(VertexType.Z,g.qubit(verts[0])-0.5, g.row(verts[0])-0.5, Fraction(1,1))
+    g.add_edge((verts[0],w),EdgeType.HADAMARD) 
     for v in verts: g.add_to_phase(v,Fraction(-1,4))
     return g

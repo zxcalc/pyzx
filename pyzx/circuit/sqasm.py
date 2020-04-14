@@ -42,16 +42,20 @@ def sqasm(s, simplify=True):
                 if r[0] != 'Z':
                     v = g.inputs[q]
                     v1 = list(g.neighbours(v))
-                    if len(v1) > 0 and g.type(v1[0]) != 0: g.set_type(v, g.type(v1[0]))
-                    else: g.set_type(v, 1)
+                    if len(v1) > 0 and g.type(v1[0]) != VertexType.BOUNDARY:
+                        g.set_type(v, g.type(v1[0]))
+                    else:
+                        g.set_type(v, VertexType.Z)
                     g.inputs[q] = None
                     g.scalar.add_power(-1)
 
                 if r[0] != 'A':
                     v = g.outputs[q]
                     v1 = list(g.neighbours(v))
-                    if len(v1) > 0 and g.type(v1[0]) != 0: g.set_type(v, g.type(v1[0]))
-                    else: g.set_type(v, 1)
+                    if len(v1) > 0 and g.type(v1[0]) != VertexType.BOUNDARY:
+                        g.set_type(v, g.type(v1[0]))
+                    else:
+                        g.set_type(v, VertexType.Z)
                     g.outputs[q] = None
                     g.scalar.add_power(-1)
         

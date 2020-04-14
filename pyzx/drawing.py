@@ -25,11 +25,11 @@ except:
 from fractions import Fraction
 import math
 
-from .graph.base import BaseGraph
+from .graph.base import BaseGraph, EdgeType, VertexType
 
-def phase_to_s(a, t=1):
-    if (a == 0 and t != 3): return ''
-    if (a == 1 and t == 3): return ''
+def phase_to_s(a, t=VertexType.Z):
+    if (a == 0 and t != VertexType.H_BOX): return ''
+    if (a == 1 and t == VertexType.H_BOX): return ''
     if not isinstance(a, Fraction):
         a = Fraction(a)
 
@@ -47,13 +47,13 @@ def phase_to_s(a, t=1):
 
 def vcol(t):
     if not t: return 'black'
-    if t == 1: return 'green'
-    if t == 2: return 'red'
+    if t == VertexType.Z: return 'green'
+    if t == VertexType.X: return 'red'
     return 'black'
     
 def ecol(t):
     if not t: return 'black'
-    if t == 1: return 'magenta'
+    if t == EdgeType.SIMPLE: return 'magenta'
     return 'black'
 
 
@@ -90,11 +90,11 @@ def pack_circuit_nf(g, nf='grg'):
                 g.set_row(v, 0)
             elif v in g.outputs:
                 g.set_row(v, 4)
-            elif ty[v] == 2:
+            elif ty[v] == VertexType.X:
                 g.set_row(v, 2)
                 g.set_qubit(v, x_index)
                 x_index += 1
-            elif ty[v] == 1:
+            elif ty[v] == VertexType.Z:
                 for w in g.neighbours(v):
                     if w in g.inputs:
                         g.set_row(v,1)
@@ -110,7 +110,7 @@ def pack_circuit_nf(g, nf='grg'):
                 g.set_row(v,0)
             elif v in g.outputs:
                 g.set_row(v, 4)
-            elif ty[v] == 1:
+            elif ty[v] == VertexType.Z:
                 for w in g.neighbours(v):
                     if w in g.inputs:
                         g.set_row(v,1)
@@ -228,11 +228,11 @@ def draw(g, layout=None, labels=False, figsize=(8,2), h_edge_draw='blue', rows=N
         a = g.phase(v)
         a_offset = 0.5
 
-        if t == 1:
+        if t == VertexType.Z:
             ax.add_patch(patches.Circle(p, 0.2, facecolor='green', edgecolor='black', zorder=1))
-        elif t == 2:
+        elif t == VertexType.X:
             ax.add_patch(patches.Circle(p, 0.2, facecolor='red', edgecolor='black', zorder=1))
-        elif t == 3:
+        elif t == VertexType.H_BOX:
             ax.add_patch(patches.Rectangle((p[0]-0.1, p[1]-0.1), 0.2, 0.2, facecolor='yellow', edgecolor='black'))
             a_offset = 0.25
         else:

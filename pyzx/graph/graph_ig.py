@@ -21,7 +21,7 @@ except ImportError:
 	print("python-igraph not available")
 	ig = None
 
-from .base import BaseGraph
+from .base import BaseGraph, VertexType, EdgeType
 
 class GraphIG(BaseGraph):
 	"""Implementation of :class:`~graph.base.BaseGraph` using ``python-igraph`` 
@@ -118,7 +118,7 @@ class GraphIG(BaseGraph):
 
 	def type(self, v):
 		t = self.graph.vs[v]['_t']
-		return t if t != None else 0
+		return t if t is not None else VertexType.BOUNDARY
 
 	def types(self):
 		return self.graph.vs['_t']

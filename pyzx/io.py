@@ -18,7 +18,7 @@
 import json
 from fractions import Fraction
 
-from .graph.graph import Graph
+from .graph import Graph, EdgeType, VertexType
 from .simplify import id_simp
 
 def _quanto_value_to_phase(s):
@@ -69,16 +69,16 @@ def json_to_graph(js):
         names[name] = v
         if 'data' in attr:
             d = attr['data']
-            if not 'type' in d or d['type'] == 'Z': g.set_type(v,1)
-            elif d['type'] == 'X': g.set_type(v,2)
-            elif d['type'] == 'hadamard': g.set_type(v,3)
+            if not 'type' in d or d['type'] == 'Z': g.set_type(v,VertexType.Z)
+            elif d['type'] == 'X': g.set_type(v,VertexType.X)
+            elif d['type'] == 'hadamard': g.set_type(v,VertexType.H_BOX)
             else: raise TypeError("unsupported type '{}'".format(d['type']))
             if 'value' in d:
                 g.set_phase(v,_quanto_value_to_phase(d['value']))
             else:
                 g.set_phase(v,Fraction(0,1))
         else:
-            g.set_type(v,1)
+            g.set_type(v,VertexType.Z)
             g.set_phase(v,Fraction(0,1))
         
         #g.set_vdata(v, 'x', c[0])
@@ -90,7 +90,7 @@ def json_to_graph(js):
         q, r = -c[1], c[0]
         if q == int(q): q = int(q)
         if r == int(r): r = int(r)
-        g.add_vertex(0,q,r)
+        g.add_vertex(VertexType.BOUNDARY,q,r)
         g.set_vdata(v,'name',name)
         names[name] = v
         if "input" in ann and ann["input"]: g.inputs.append(v)
@@ -103,7 +103,7 @@ def json_to_graph(js):
     for edge in j.get('undir_edges',{}).values():
         n1, n2 = edge['src'], edge['tgt']
         if n1 in hadamards and n2 in hadamards: #Both 
-            g.add_vertex(1)
+            g.add_vertex(VertexType.Z)
             name = "v"+str(len(names))
             g.set_vdata(v, 'name',name)
             names[name] = v
@@ -144,24 +144,26 @@ def graph_to_json(g):
         coord = [g.row(v),-g.qubit(v)]
         name = g.vdata(v, 'name')
         if not name:
-            if t == 0: name = freenamesb.pop(0)
+            if t == VertexType.BOUNDARY: name = freenamesb.pop(0)
             else: name = freenamesv.pop(0)
         else: 
             try:
-                freenamesb.remove(name) if t==0 else freenamesv.remove(name)
+                freenamesb.remove(name) if t==VertexType.BOUNDARY else freenamesv.remove(name)
             except:
                 pass
                 #print("couldn't remove name '{}'".format(name))
         
         names[v] = name
-        if t == 0:
+        if t == VertexType.BOUNDARY:
             wire_vs[name] = {"annotation":{"boundary":True,"coord":coord,
                                            "input":(v in g.inputs), "output":(v in g.outputs)}}
         else:
             node_vs[name] = {"annotation": {"coord":coord},"data":{}}
-            if t==1:node_vs[name]["data"]["type"] = "Z"
-            elif t==2: node_vs[name]["data"]["type"] = "X"
-            elif t==3: 
+            if t==VertexType.Z:
+                node_vs[name]["data"]["type"] = "Z"
+            elif t==VertexType.X:
+                node_vs[name]["data"]["type"] = "X"
+            elif t==VertexType.H_BOX:
                 node_vs[name]["data"]["type"] = "hadamard"
                 node_vs[name]["data"]["is_edge"] = "false"
             else: raise Exception("Unkown vertex type "+ str(t))
@@ -173,10 +175,10 @@ def graph_to_json(g):
     for e in g.edges():
         src,tgt = g.edge_st(e)
         t = g.edge_type((src,tgt))
-        if t == 1:
+        if t == EdgeType.SIMPLE:
             edges["e"+ str(i)] = {"src": names[src],"tgt": names[tgt]}
             i += 1
-        elif t==2: #hadamard edge
+        elif t==EdgeType.HADAMARD:
             x1,y1 = g.row(src), -g.qubit(src)
             x2,y2 = g.row(tgt), -g.qubit(tgt)
             hadname = freenamesv.pop(0)

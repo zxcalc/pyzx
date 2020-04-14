@@ -20,7 +20,7 @@ __all__ = ['cnots','cliffords', 'cliffordT', 'identity']
 import random
 from fractions import Fraction
 
-from .graph.graph import Graph
+from .graph import Graph, EdgeType, VertexType
 from .circuit import Circuit
 
 
@@ -29,8 +29,8 @@ def identity(qubits, depth=1,backend=None):
     ``depth`` specifies at which row the outputs should be placed."""
     g = Graph(backend)
     for i in range(qubits):
-        v = g.add_vertex(0,i,0)
-        w = g.add_vertex(0,i,depth)
+        v = g.add_vertex(VertexType.BOUNDARY,i,0)
+        w = g.add_vertex(VertexType.BOUNDARY,i,depth)
         g.inputs.append(v)
         g.outputs.append(w)
         g.add_edge((v,w))
@@ -72,7 +72,7 @@ def cnots(qubits, depth, backend=None):
 
     q = list(range(qubits))   # qubit index, initialised with input
     r = 1                     # current rank
-    ty = [0] * qubits         # types of vertices
+    ty = [VertexType.BOUNDARY] * qubits         # types of vertices
     qs = list(range(qubits))  # tracks qubit indices of vertices
     rs = [0] * qubits         # tracks rank of vertices
     v = qubits                # next vertex to add
@@ -84,7 +84,7 @@ def cnots(qubits, depth, backend=None):
         q[i] = v
         rs.append(r)
         qs.append(i)
-        ty.append(1)
+        ty.append(VertexType.Z)
         v += 1
     r += 1
 
@@ -98,7 +98,7 @@ def cnots(qubits, depth, backend=None):
         q[t] = v+1
         rs += [r,r]
         qs += [c,t]
-        ty += [1,2]
+        ty += [VertexType.Z, VertexType.X]
         v += 2
         r += 1
 
@@ -108,14 +108,14 @@ def cnots(qubits, depth, backend=None):
         q[i] = v
         rs.append(r)
         qs.append(i)
-        ty.append(1)
+        ty.append(VertexType.Z)
         v += 1
     r += 1
 
     # outputs
     qs += list(range(qubits))
     rs += [r] * qubits
-    ty += [0] * qubits
+    ty += [VertexType.BOUNDARY] * qubits
     es += [(q[i], v+i) for i in range(qubits)]
     v += qubits
 
@@ -185,13 +185,13 @@ def cliffordT(qubits, depth, p_t=None, p_s=None, p_hsh=None, p_cnot=None, backen
     
 
     for i in range(qubits):
-        g.add_vertex(0,i,r)
+        g.add_vertex(VertexType.BOUNDARY,i,r)
         g.inputs.append(v)
         v += 1
     r += 1
 
     for i in range(qubits):
-        g.add_vertex(1,i,r)
+        g.add_vertex(VertexType.Z,i,r)
         g.add_edge((qs[i], v))
         qs[i] = v
         v += 1
@@ -201,7 +201,7 @@ def cliffordT(qubits, depth, p_t=None, p_s=None, p_hsh=None, p_cnot=None, backen
         p = random.random()
         q0 = random.randrange(qubits)
 
-        g.add_vertex(1,q0,r)
+        g.add_vertex(VertexType.Z,q0,r)
         g.add_edge((qs[q0], v))
         qs[q0] = v
         v += 1
@@ -212,7 +212,7 @@ def cliffordT(qubits, depth, p_t=None, p_s=None, p_hsh=None, p_cnot=None, backen
             q1 = random.randrange(qubits-1)
             if q1 >= q0: q1 += 1
 
-            g.add_vertex(2,q1,r-1)
+            g.add_vertex(VertexType.X,q1,r-1)
             g.add_edge((qs[q1], v))
             g.add_edge((v-1,v))
             g.scalar.add_power(1)
@@ -220,7 +220,7 @@ def cliffordT(qubits, depth, p_t=None, p_s=None, p_hsh=None, p_cnot=None, backen
             v += 1
         elif p > 1 - p_cnot - p_hsh:
             # apply HSH gate
-            g.set_type(v-1, 2)
+            g.set_type(v-1, VertexType.X)
             g.set_phase(v-1, Fraction(1,2))
         elif p > 1 - p_cnot - p_hsh - p_s:
             # apply S gate
@@ -230,14 +230,14 @@ def cliffordT(qubits, depth, p_t=None, p_s=None, p_hsh=None, p_cnot=None, backen
             g.set_phase(v-1, Fraction(1,4))
 
     for i in range(qubits):
-        g.add_vertex(1,i,r)
+        g.add_vertex(VertexType.Z,i,r)
         g.add_edge((qs[i], v))
         qs[i] = v
         v += 1
     r += 1
 
     for i in range(qubits):
-        g.add_vertex(0,i,r)
+        g.add_vertex(VertexType.BOUNDARY,i,r)
         g.add_edge((qs[i], v))
         g.outputs.append(v)
         v += 1
@@ -267,7 +267,7 @@ def cliffords(qubits, depth, no_hadamard=False,t_gates=False,backend=None):
 
     q = list(range(qubits))   # qubit index, initialised with input
     r = 1                     # current rank
-    ty = [0] * qubits         # types of vertices
+    ty = [VertexType.BOUNDARY] * qubits         # types of vertices
     qs = list(range(qubits))  # tracks qubit indices of vertices
     rs = [0] * qubits         # tracks rank of vertices
     v = qubits                # next vertex to add
@@ -293,17 +293,17 @@ def cliffords(qubits, depth, no_hadamard=False,t_gates=False,backend=None):
         if accept(p_two_qubit):
             if no_hadamard or accept(p_cnot): 
                 es1.append((v, v+1))
-                ty += [1,2]
+                ty += [VertexType.Z, VertexType.X]
             else: 
                 es2.append((v,v+1))
-                typ = random.randint(1,2)
-                ty += [typ,typ]
+                typ = random.choice((VertexType.Z, VertexType.X))
+                ty += [typ, typ]
             if accept(p_phase): phases[v] = random_phase(t_gates)
             if accept(p_phase): phases[v+1] = random_phase(t_gates)
         else:
             phases[v] = random_phase(t_gates)
             phases[v+1] = random_phase(t_gates)
-            ty += [1,2]
+            ty += [VertexType.Z, VertexType.X]
         
         if not no_hadamard and accept(p_had): es2.append((q[c],v))
         else: es1.append((q[c],v))
@@ -324,14 +324,14 @@ def cliffords(qubits, depth, no_hadamard=False,t_gates=False,backend=None):
         q[i] = v
         rs.append(r)
         qs.append(i)
-        ty.append(1)
+        ty.append(VertexType.Z)
         v += 1
     r += 1
 
     # outputs
     qs += list(range(qubits))
     rs += [r] * qubits
-    ty += [0] * qubits
+    ty += [VertexType.BOUNDARY] * qubits
     es1 += [(q[i], v+i) for i in range(qubits)]
     v += qubits
 
@@ -343,8 +343,8 @@ def cliffords(qubits, depth, no_hadamard=False,t_gates=False,backend=None):
     for w, phase in phases.items():
         g.set_phase(w,phase)
 
-    g.add_edges(es1,1)
-    g.add_edges(es2,2)
+    g.add_edges(es1, EdgeType.SIMPLE)
+    g.add_edges(es2, EdgeType.HADAMARD)
 
     for i in range(qubits):
         g.inputs.append(i)
