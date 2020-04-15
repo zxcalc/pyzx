@@ -77,7 +77,7 @@ def tensorfy(g, preserve_scalar=True):
         if r in verts_row: verts_row[r].append(v)
         else: verts_row[r] = [v]
     
-    had = 1/sqrt(2)*np.mat([[1,1],[1,-1]])
+    had = 1/sqrt(2)*np.array([[1,1],[1,-1]])
     id2 = np.identity(2)
     tensor = np.array(1.0,dtype='complex128')
     qubits = len(g.inputs)
