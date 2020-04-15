@@ -22,7 +22,7 @@ from fractions import Fraction
 __all__ = ['init', 'draw']
 
 try:
-    from IPython.display import display, HTML
+    from IPython.display import display, HTML # type: ignore
     in_notebook = True
     javascript_location = os.path.join(os.path.dirname(__file__), 'js')
     d3_load_string = 'require.config({paths: {d3: "https://d3js.org/d3.v5.min"} });'
@@ -36,7 +36,7 @@ except ImportError:
     javascript_location = '/js'
     d3_load_string = 'require.config({paths: {d3: "https://d3js.org/d3.v5.min"} });'
     try:
-        from browser import document, html
+        from browser import document, html # type: ignore
         in_webpage = True
         d3_load_string = 'require.config({baseUrl: "/js", paths: {d3: "d3.v5.min"} });'
     except ImportError:
@@ -58,7 +58,7 @@ def draw(g, scale=None, auto_hbox=True, labels=False):
         g = g.to_graph(zh=True)
 
     _d3_display_seq += 1
-    graph_id = _d3_display_seq
+    graph_id = str(_d3_display_seq)
 
     if scale == None:
         scale = 800 / (g.depth() + 2)
@@ -101,12 +101,12 @@ require(['zx_viewer'], function(zx_viewer) {{
     if in_notebook:
         display(HTML(text))
     elif in_webpage:
-        d = html.DIV(style={"overflow": "auto"}, id="graph-output-{}".format(seq))
+        d = html.DIV(style={"overflow": "auto"}, id="graph-output-{}".format(graph_id))
         source = """
         require(['zx_viewer'], function(zx_viewer) {{
             zx_viewer.showGraph('#graph-output-{0}',
-            JSON.parse('{2}'), {3}, {4}, {5});
+            JSON.parse('{1}'), {2}, {3}, {4}, false, false);
         }});
-        """.format(seq, javascript_location, graphj, w, h, node_size)
+        """.format(graph_id, graphj, str(w), str(h), str(node_size))
         s = html.SCRIPT(source, type="text/javascript")
         return d,s

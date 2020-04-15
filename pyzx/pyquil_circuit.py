@@ -5,7 +5,7 @@ from pyquil.api import LocalQVMCompiler
 from pyquil.parser import parse as parse_quil
 from pyquil.quilbase import Pragma, Gate
 
-from pyzx.parity_maps import CNOT_tracker
+from pyzx.routing.parity_maps import CNOT_tracker
 from pyzx.circuit import Circuit
 
 class PyQuilCircuit(CNOT_tracker):

@@ -45,7 +45,7 @@ In particular, they are used in combination with :func:`simplify.simp` to create
 from fractions import Fraction
 import itertools
 
-from .graph import VertexType, EdgeType, toggle_edge
+from .utils import VertexType, EdgeType, toggle_edge
 
 def apply_rule(g, rewrite, m, check_isolated_vertices=True):
     etab, rem_verts, rem_edges, check_isolated_vertices = rewrite(g, m)

@@ -33,7 +33,7 @@ __all__ = ['bialg_simp','spider_simp', 'id_simp', 'phase_free_simp', 'pivot_simp
         'lcomp_simp', 'clifford_simp', 'tcount', 'to_gh', 'to_rg', 
         'full_reduce', 'teleport_reduce', 'reduce_scalar', 'supplementarity_simp']
 
-from .graph import EdgeType, VertexType, toggle_edge, vertex_is_zx, toggle_vertex
+from .utils import EdgeType, VertexType, toggle_edge, vertex_is_zx, toggle_vertex
 from .rules import *
 
 def simp(g, name, match, rewrite, matchf=None, quiet=False):

@@ -17,7 +17,7 @@
 
 import math
 try:
-    from .linalg_c import do_gauss as gauss_fast
+    from .linalg_c import do_gauss as gauss_fast # type: ignore
 except ImportError:
    gauss_fast = None
 

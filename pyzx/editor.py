@@ -21,12 +21,12 @@ import os
 from fractions import Fraction
 import traceback
 
-from .graph import EdgeType, VertexType, toggle_edge, vertex_is_zx, toggle_vertex
+from .utils import EdgeType, VertexType, toggle_edge, vertex_is_zx, toggle_vertex
 
 try:
-	import ipywidgets as widgets
-	from traitlets import Unicode, validate, Bool, Int, Float
-	from IPython.display import display, HTML
+	import ipywidgets as widgets # type: ignore
+	from traitlets import Unicode, validate, Bool, Int, Float # type: ignore
+	from IPython.display import display, HTML # type: ignore
 	in_notebook = True
 except ImportError:
 	in_notebook = False
@@ -34,14 +34,14 @@ except ImportError:
 	# of ZXEditorWidget
 	class DOMWidget(object):
 		pass
-	class Unicode(object):
+	class Unicode(object): # type: ignore
 		def __init__(self,*args,**kwargs):
 			pass
 		def tag(self, sync=False):
 			pass
-	class Float(Unicode):
+	class Float(Unicode): # type: ignore
 		pass
-	class widgets(object):
+	class widgets(object): # type: ignore
 		register = lambda x: x
 		DOMWidget = DOMWidget
 
