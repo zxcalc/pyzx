@@ -30,6 +30,8 @@ setup(
         "pyzx.routing",
         "pyzx.scripts"
     ],
-    install_requires=["numpy>=1.12"],
+    python_requires='>=3.6',
+    install_requires=["typing_extensions>=3.7.4",
+                      "numpy>=1.12"],
     include_package_data=True,
 )
