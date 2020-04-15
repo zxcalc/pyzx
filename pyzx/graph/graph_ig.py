@@ -28,6 +28,7 @@ class GraphIG(BaseGraph):
 	as its backend"""
 	backend = 'igraph'
 	def __init__(self):
+		raise Warning("Python-igraph is currently not fully supported.")
 		BaseGraph.__init__(self)
 		self.graph = ig.Graph(directed=False)
 		self.graph.vs['_a'] = None

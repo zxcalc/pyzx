@@ -12,10 +12,10 @@ class GraphGT(BaseGraph):
 		self.graph.set_fast_edge_removal()
 		self.graph.vp.type = self.graph.new_vertex_property('int')
 
-	def add_vertices(self, amount, vertex_data=None):
+	def add_vertices(self, amount):
 		self.graph.add_vertex(amount)
 
-	def add_edges(self, edges, vertex_data=None):
+	def add_edges(self, edges):
 		self.graph.add_edge_list(edges)
 
 	def remove_vertices(self, vertices):
