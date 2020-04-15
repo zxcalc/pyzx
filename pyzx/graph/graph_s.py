@@ -16,9 +16,13 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from fractions import Fraction
-from .base import BaseGraph, VertexType, EdgeType
+from typing import Tuple, Dict, Any
 
-class GraphS(BaseGraph):
+from .base import BaseGraph
+
+from ..utils import VertexType, EdgeType, FractionLike, FloatInt
+
+class GraphS(BaseGraph[int,Tuple[int,int]]):
 	"""Purely Pythonic implementation of :class:`~graph.base.BaseGraph`."""
 	backend = 'simple'
 
@@ -26,17 +30,17 @@ class GraphS(BaseGraph):
 	#can be found in base.BaseGraph
 	def __init__(self):
 		BaseGraph.__init__(self)
-		self.graph = dict()
-		self._vindex = 0
-		self.nedges = 0
-		self.ty = dict()
-		self._phase = dict()
-		self._qindex = dict()
-		self._maxq = -1
-		self._rindex = dict()
-		self._maxr = -1
+		self.graph: Dict[int,Dict[int,EdgeType.Type]]	= dict()
+		self._vindex: int 								= 0
+		self.nedges: int 								= 0
+		self.ty: Dict[int,VertexType.Type]  			= dict()
+		self._phase: Dict[int, FractionLike]			= dict()
+		self._qindex: Dict[int, FloatInt]				= dict()
+		self._maxq: FloatInt							= -1
+		self._rindex: Dict[int, FloatInt] 				= dict()
+		self._maxr: FloatInt							= -1
 		
-		self._vdata = dict()
+		self._vdata: Dict[int,Any] 						= dict()
 		
 
 	def vindex(self): return self._vindex

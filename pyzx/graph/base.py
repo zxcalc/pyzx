@@ -16,34 +16,42 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import abc
-from fractions import Fraction
 import math
 import cmath
 import copy
+from fractions import Fraction
+from typing import Union, Optional, Generic, TypeVar, Any
+from typing import List, Dict, Set, Tuple, Mapping, Iterable, Callable
+from typing_extensions import Literal
 
-from pyzx.tensor import tensorfy, tensor_to_matrix
+import numpy as np
 
-def cexp(val):
+from ..utils import EdgeType, VertexType, toggle_edge, vertex_is_zx, toggle_vertex
+from ..utils import FloatInt, FractionLike
+from ..tensor import tensorfy, tensor_to_matrix
+from ..simplify import Simplifier
+
+def cexp(val) -> complex:
     return cmath.exp(1j*math.pi*val)
 
 class Scalar(object):
-    def __init__(self):
-        self.power2 = 0 # Stores power of square root of two
-        self.phase = Fraction(0) # Stores complex phase of the number
-        self.phasenodes = [] # Stores list of legless spiders, by their phases.
-        self.floatfactor = 1.0
-        self.is_unknown = False # Whether this represents an unknown scalar value
-        self.is_zero = False
+    def __init__(self) -> None:
+        self.power2: int = 0 # Stores power of square root of two
+        self.phase: Fraction = Fraction(0) # Stores complex phase of the number
+        self.phasenodes: List[FractionLike] = [] # Stores list of legless spiders, by their phases.
+        self.floatfactor: complex = 1.0
+        self.is_unknown: bool = False # Whether this represents an unknown scalar value
+        self.is_zero: bool = False
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "Scalar({})".format(str(self))
 
-    def __str__(self):
+    def __str__(self) -> str:
         if self.is_unknown:
             return "UNKNOWN"
-        s = "{:.2f} = ".format(self.to_number())
+        s = "{0.real:.2f}{0.imag:+.2f}i = ".format(self.to_number())
         if self.floatfactor != 1.0:
-            s += "{:.2f}".format(self.floatfactor)
+            s += "{0.real:.2f}{0.imag:+.2f}i".format(self.floatfactor)
         if self.phase:
             s += "exp({}ipi)".format(str(self.phase))
         s += "sqrt(2)^{:d}".format(self.power2)
@@ -51,10 +59,10 @@ class Scalar(object):
             s += "(1+exp({}ipi))".format(str(node))
         return s
 
-    def __complex__(self):
+    def __complex__(self) -> complex:
         return self.to_number()
 
-    def copy(self):
+    def copy(self) -> 'Scalar':
         s = Scalar()
         s.power2 = self.power2
         s.phase = self.phase
@@ -64,28 +72,28 @@ class Scalar(object):
         s.is_zero = self.is_zero
         return s
 
-    def to_number(self):
+    def to_number(self) -> complex:
         val = cexp(self.phase)
         for node in self.phasenodes: # Node should be a Fraction
             val *= 1+cexp(node)
         val *= math.sqrt(2)**self.power2
         return complex(val*self.floatfactor)
 
-    def set_unknown(self):
+    def set_unknown(self) -> None:
         self.is_unknown = True
         self.phasenodes = []
 
-    def add_power(self, n):
+    def add_power(self, n) -> None:
         self.power2 += n
-    def add_phase(self, phase):
+    def add_phase(self, phase: FractionLike) -> None:
         self.phase = (self.phase + phase) % 2
-    def add_node(self, node):
+    def add_node(self, node: FractionLike) -> None:
         self.phasenodes.append(node)
         if node == 1: self.is_zero = True
-    def add_float(self,f):
+    def add_float(self,f: complex) -> None:
         self.floatfactor *= f
 
-    def mult_with_scalar(self, other):
+    def mult_with_scalar(self, other: 'Scalar') -> None:
     	self.power2 += other.power2
     	self.phase = (self.phase +other.phase)%2
     	self.phasenodes.extend(other.phasenodes)
@@ -93,7 +101,7 @@ class Scalar(object):
     	if other.is_zero: self.is_zero = True
     	if other.is_unknown: self.is_unknown = True
 
-    def add_spider_pair(self, p1,p2):
+    def add_spider_pair(self, p1: FractionLike,p2: FractionLike) -> None:
         """Add the scalar corresponding to a connected pair of spiders (p1)-H-(p2)."""
         # These if statements look quite arbitary, but they are just calculations of the scalar
         # of a pair of connected single wire spiders of opposite colours.
@@ -147,12 +155,12 @@ class DocstringMeta(abc.ABCMeta):
                         pass
         return cls
 
-def pack_indices(lst):
-    d = dict()
+def pack_indices(lst: List[FloatInt]) -> Mapping[FloatInt,int]:
+    d: Dict[FloatInt,int] = dict()
     if len(lst) == 0: return d
     list.sort(lst)
-    i = 0
-    x = None
+    i: int = 0
+    x: Optional[FloatInt] = None
     for j in range(len(lst)):
         y = lst[j]
         if y != x:
@@ -161,67 +169,42 @@ def pack_indices(lst):
             i += 1
     return d
 
-class VertexType:
-    """Type of a vertex in the graph."""
-    BOUNDARY = 0
-    Z = 1
-    X = 2
-    H_BOX = 3
+VT = TypeVar('VT') # The type that is used for representing vertices (e.g. an integer)
+ET = TypeVar('ET') # The type used for representing edges (e.g. a pair of integers)
 
-def vertex_is_zx(ty: VertexType):
-    """Check if a vertex type corresponds to a green or red spider."""
-    return ty in (VertexType.Z, VertexType.X)
-
-def toggle_vertex(ty: VertexType) -> VertexType:
-    """Swap the X and Z vertex types."""
-    if not vertex_is_zx(ty):
-        return ty
-    return VertexType.Z if ty == VertexType.X else VertexType.X
-
-class EdgeType:
-    """Type of an edge in the graph."""
-    SIMPLE = 1
-    HADAMARD = 2
-
-def toggle_edge(ty: EdgeType) -> EdgeType:
-    """Swap the regular and Hadamard edge types."""
-    return EdgeType.HADAMARD if ty == EdgeType.SIMPLE else EdgeType.SIMPLE
-
-class BaseGraph(object):
+class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
     """Base class for letting graph backends interact with PyZX.
     For a backend to work with PyZX, there should be a class that implements
     all the methods of this class. For implementations of this class see 
     :class:`~graph.graph_s.GraphS` or :class `~graph.graph_ig.GraphIG`."""
-    __metaclass__ = DocstringMeta
-    backend = 'None'
 
-    def __init__(self):
-        self.scalar = Scalar()
-        self.inputs = []
-        self.outputs = []
+    backend: str = 'None'
+
+    def __init__(self) -> None:
+        self.scalar: Scalar = Scalar()
+        self.inputs: List[VT] = []
+        self.outputs: List[VT] = []
         #Data necessary for phase tracking for phase teleportation
-        self.track_phases = False
-        self.phase_index = dict() # {vertex:index tracking its phase for phase teleportation}
-        self.phase_master = None
-        self.phase_mult = dict()
-        self.max_phase_index = -1
+        self.track_phases: bool = False
+        self.phase_index : Dict[VT,int] = dict() # {vertex:index tracking its phase for phase teleportation}
+        self.phase_master: Optional[Simplifier] = None
+        self.phase_mult: Dict[int,Literal[1,-1]] = dict()
+        self.max_phase_index: int = -1
 
         # merge_vdata(v0,v1) is an optional, custom function for merging
         # vdata of v1 into v0 during spider fusion etc.
-        self.merge_vdata = None
+        self.merge_vdata: Optional[Callable[[VT,VT], None]] = None
 
-        self.debug=False
-
-    def __str__(self):
+    def __str__(self) -> str:
         return "Graph({} vertices, {} edges)".format(
                 str(self.num_vertices()),str(self.num_edges()))
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return str(self)
 
-    def stats(self):
+    def stats(self) -> str:
         s = str(self) + "\n"
-        degrees = {}
+        degrees: Dict[int,int] = {}
         for v in self.vertices():
             d = self.vertex_degree(v)
             if d in degrees: degrees[d] += 1
@@ -231,7 +214,7 @@ class BaseGraph(object):
             s += "{:d}: {:d}\n".format(d,n)
         return s
 
-    def copy(self, adjoint=False, backend=None):
+    def copy(self, adjoint:bool=False, backend:Optional[str]=None) -> 'BaseGraph':
         """Create a copy of the graph. If ``adjoint`` is set, 
         the adjoint of the graph will be returned (inputs and outputs flipped, phases reversed).
         When ``backend`` is set, a copy of the graph with the given backend is produced. 
@@ -241,13 +224,13 @@ class BaseGraph(object):
         graph did not.
         """
         from .graph import Graph # imported here to prevent circularity
-        if (backend == None):
+        if (backend is None):
             backend = type(self).backend
         g = Graph(backend = backend)
         g.track_phases = self.track_phases
         g.scalar = self.scalar.copy()
         g.merge_vdata = self.merge_vdata
-        mult = 1
+        mult:int = 1
         if adjoint: mult = -1
 
         #g.add_vertices(self.num_vertices())
@@ -274,16 +257,16 @@ class BaseGraph(object):
             if adjoint: g.inputs.append(vtab[o])
             else: g.outputs.append(vtab[o])
         
-        etab = {e:(vtab[self.edge_s(e)],vtab[self.edge_t(e)]) for e in self.edges()}
+        etab = {e:g.edge(vtab[self.edge_s(e)],vtab[self.edge_t(e)]) for e in self.edges()}
         g.add_edges(etab.values())
-        for e,(s,t) in etab.items():
-            g.set_edge_type(g.edge(s,t), self.edge_type(e))
+        for e,f in etab.items():
+            g.set_edge_type(f, self.edge_type(e))
         return g
-    def adjoint(self):
+    def adjoint(self) -> 'BaseGraph':
         """Returns a new graph equal to the adjoint of this graph."""
         return self.copy(adjoint=True)
 
-    def map_qubits(self, qubit_map):
+    def map_qubits(self, qubit_map:Mapping[int,Tuple[float,float]]) -> None:
         for v in self.vertices():
             q = self.qubit(v)
             r = self.row(v)
@@ -296,7 +279,7 @@ class BaseGraph(object):
             self.set_row(v, rf)
 
 
-    def replace_subgraph(self, left_row, right_row, replace):
+    def replace_subgraph(self, left_row: FloatInt, right_row: FloatInt, replace: 'BaseGraph') -> None:
         """Deletes the subgraph of all nodes with rank strictly between ``left_row``
         and ``right_row`` and replaces it with the graph ``replace``.
         The amount of nodes on the left row should match the amount of inputs of 
@@ -330,12 +313,12 @@ class BaseGraph(object):
         for v in replace.outputs:
             vtab[v] = [i for i in qright if self.qubit(i) == replace.qubit(v)][0]
 
-        etab = {e:(vtab[replace.edge_s(e)],vtab[replace.edge_t(e)]) for e in replace.edges()}
+        etab = {e:self.edge(vtab[replace.edge_s(e)],vtab[replace.edge_t(e)]) for e in replace.edges()}
         self.add_edges(etab.values())
-        for e,(s,t) in etab.items():
-            self.set_edge_type(self.edge(s,t), replace.edge_type(e))
+        for e,f in etab.items():
+            self.set_edge_type(f, replace.edge_type(e))
 
-    def compose(self, other):
+    def compose(self, other: 'BaseGraph') -> None:
         """Inserts a graph after this one. The amount of qubits of the graphs must match.
         Also available by the operator `graph1 + graph2`"""
         if self.qubit_count() != other.qubit_count():
@@ -354,7 +337,7 @@ class BaseGraph(object):
         d = self.depth()
         self.replace_subgraph(d-1,d,other)
 
-    def tensor(self, other):
+    def tensor(self, other: 'BaseGraph') -> 'BaseGraph':
         """Take the tensor product of two graphs. Places the second graph below the first one.
         Can also be called using the operator `graph1 @ graph2`"""
         g = self.copy()
@@ -377,19 +360,19 @@ class BaseGraph(object):
         return g
 
 
-    def __iadd__(self, other):
+    def __iadd__(self, other: 'BaseGraph') -> 'BaseGraph':
         self.compose(other)
         return self
 
-    def __add__(self, other):
+    def __add__(self, other: 'BaseGraph') -> 'BaseGraph':
         g = self.copy()
         g += other
         return g
 
-    def __matmul__(self, other):
+    def __matmul__(self, other: 'BaseGraph') -> 'BaseGraph':
         return self.tensor(other)
 
-    def apply_state(self, state):
+    def apply_state(self, state: str) -> None:
         """Inserts a state into the inputs of the graph. ``state`` should be
         a string with every character representing an input state for each qubit.
         The possible types of states are on of '0', '1', '+', '-' for the respective
@@ -415,7 +398,7 @@ class BaseGraph(object):
             else:
                 raise TypeError("Unknown input state " + s)
 
-    def apply_effect(self, effect):
+    def apply_effect(self, effect: str) -> None:
         """Inserts an effect into the outputs of the graph. ``effect`` should be
         a string with every character representing an output effect for each qubit.
         The possible types of effects are one of '0', '1', '+', '-' for the respective
@@ -441,15 +424,15 @@ class BaseGraph(object):
             else:
                 raise TypeError("Unknown output effect " + s)
 
-    def to_tensor(self, preserve_scalar=True):
+    def to_tensor(self, preserve_scalar:bool=True) -> np.ndarray:
         """Returns a representation of the graph as a tensor using :func:`~pyzx.tensor.tensorfy`"""
         return tensorfy(self, preserve_scalar)
-    def to_matrix(self,preserve_scalar=True):
+    def to_matrix(self,preserve_scalar:bool=True) -> np.ndarray:
         """Returns a representation of the graph as a matrix using :func:`~pyzx.tensor.tensorfy`"""
         return tensor_to_matrix(tensorfy(self, preserve_scalar), len(self.inputs), len(self.outputs))
 
 
-    def is_id(self):
+    def is_id(self) -> bool:
         for e in self.edges():
             s,t = self.edge_st(e)
             if s in self.inputs and t in self.outputs:
@@ -462,31 +445,31 @@ class BaseGraph(object):
                 return False
         return True
 
-    def vindex(self):
+    def vindex(self) -> VT:
         """The index given to the next vertex added to the graph. It should always
         be equal to ``max(g.vertices()) + 1``."""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
-    def depth(self):
+    def depth(self) -> FloatInt:
         """Returns the value of the highest row number given to a vertex.
         This is -1 when no rows have been set."""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
-    def pack_circuit_rows(self):
+    def pack_circuit_rows(self) -> None:
         """Compresses the rows of the graph so that every index is used."""
         rows = [self.row(v) for v in self.vertices()]
         new_rows = pack_indices(rows)
         for v in self.vertices():
             self.set_row(v, new_rows[self.row(v)])
 
-    def qubit_count(self):
+    def qubit_count(self) -> int:
         """Returns the number of inputs of the graph"""
         return len(self.inputs)
 
-    def auto_detect_inputs(self):
+    def auto_detect_inputs(self) -> Tuple[List[VT],List[VT]]:
         if self.inputs or self.outputs: return self.inputs, self.outputs
-        minrow = 100000
-        maxrow = -100000
+        minrow: FloatInt = 100000
+        maxrow: FloatInt = -100000
         nodes = {}
         ty = self.types()
         for v in self.vertices():
@@ -508,7 +491,7 @@ class BaseGraph(object):
         return self.inputs, self.outputs
 
 
-    def normalise(self):
+    def normalise(self) -> None:
         """Puts every node connecting to an input/output at the correct qubit index and row."""
         if not self.inputs:
             self.auto_detect_inputs()
@@ -532,8 +515,8 @@ class BaseGraph(object):
                 t = self.edge_type(e)
                 self.remove_edge(e)
                 v = self.add_vertex(VertexType.Z,q,1)
-                self.add_edge((i,v),toggle_edge(t))
-                self.add_edge((v,n),EdgeType.HADAMARD)
+                self.add_edge(self.edge(i,v),toggle_edge(t))
+                self.add_edge(self.edge(v,n),EdgeType.HADAMARD)
                 claimed.append(v)
         for q, o in enumerate(sorted(self.outputs,key=self.qubit)):
             #q = self.qubit(o)
@@ -548,17 +531,17 @@ class BaseGraph(object):
                 t = self.edge_type(e)
                 self.remove_edge(e)
                 v = self.add_vertex(VertexType.Z,q,max_r)
-                self.add_edge((o,v),toggle_edge(t))
-                self.add_edge((v,n),EdgeType.HADAMARD)
+                self.add_edge(self.edge(o,v),toggle_edge(t))
+                self.add_edge(self.edge(v,n),EdgeType.HADAMARD)
 
         self.pack_circuit_rows()
 
-    def add_vertices(self, amount):
+    def add_vertices(self, amount: int) -> List[VT]:
         """Add the given amount of vertices, and return the indices of the
         new vertices added to the graph, namely: range(g.vindex() - amount, g.vindex())"""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
-    def add_vertex(self, ty=VertexType.BOUNDARY, qubit=-1, row=-1, phase=None):
+    def add_vertex(self, ty:VertexType.Type=VertexType.BOUNDARY, qubit:FloatInt=-1, row:FloatInt=-1, phase:Optional[FractionLike]=None) -> VT:
         """Add a single vertex to the graph and return its index.
         The optional parameters allow you to respectively set
         the type, qubit index, row index and phase of the vertex."""
@@ -574,26 +557,28 @@ class BaseGraph(object):
         if self.track_phases:
             self.max_phase_index += 1
             self.phase_index[v] = self.max_phase_index
-            self.phase_mult[v] = 1
+            self.phase_mult[self.max_phase_index] = 1
         return v
 
-    def add_edges(self, edges, edgetype=EdgeType.SIMPLE):
+    def add_edges(self, edges: Iterable[ET], edgetype:EdgeType.Type=EdgeType.SIMPLE) -> None:
         """Adds a list of edges to the graph."""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
-    def add_edge(self, edge, edgetype=EdgeType.SIMPLE):
+    def add_edge(self, edge: ET, edgetype:EdgeType.Type=EdgeType.SIMPLE) -> None:
         """Adds a single edge of the given type"""
         self.add_edges([edge], edgetype)
 
-    def add_edge_table(self, etab):
+    def add_edge_table(self, etab:Mapping[ET,List[int]]) -> None:
         """Takes a dictionary mapping (source,target) --> (#edges, #h-edges) specifying that
         #edges regular edges must be added between source and target and $h-edges Hadamard edges.
         The method selectively adds or removes edges to produce that ZX diagram which would 
         result from adding (#edges, #h-edges), and then removing all parallel edges using Hopf/spider laws."""
-        add = {EdgeType.SIMPLE: [], EdgeType.HADAMARD: []} # list of edges and h-edges to add
-        remove = []   # list of edges to remove
-        for (v1,v2),(n1,n2) in etab.items():
-            conn_type = self.edge_type(self.edge(v1,v2))
+        add: Dict[EdgeType.Type,List] = {EdgeType.SIMPLE: [], EdgeType.HADAMARD: []} # list of edges and h-edges to add
+        new_type: Optional[EdgeType.Type]
+        remove: List = []   # list of edges to remove
+        for e,(n1,n2) in etab.items():
+            v1,v2 = self.edge_st(e)
+            conn_type = self.edge_type(e)
             if conn_type == EdgeType.SIMPLE: n1 += 1 #and add to the relevant edge count
             elif conn_type == EdgeType.HADAMARD: n2 += 1
 
@@ -621,7 +606,8 @@ class BaseGraph(object):
                 elif n1 != 0: new_type = EdgeType.SIMPLE
                 elif n2 != 0: new_type = EdgeType.HADAMARD
                 else: new_type = None
-            elif (t1 == VertexType.Z and t2 == VertexType.H_BOX) or (t1 == VertexType.H_BOX and t2 == VertexType.Z):
+            elif ((t1 == VertexType.Z and t2 == VertexType.H_BOX) or 
+                  (t1 == VertexType.H_BOX and t2 == VertexType.Z)):
                 # Z & H-box
                 n1 = bool(n1)
                 if n1 + n2 > 1:
@@ -651,12 +637,12 @@ class BaseGraph(object):
         self.add_edges(add[EdgeType.SIMPLE],EdgeType.SIMPLE)
         self.add_edges(add[EdgeType.HADAMARD],EdgeType.HADAMARD)
 
-    def set_phase_master(self, m):
+    def set_phase_master(self, m: Simplifier) -> None:
         """Points towards an instance of the class :class:`simplify.Simplifier`.
         Used for phase teleportation."""
         self.phase_master = m
 
-    def update_phase_index(self, old, new):
+    def update_phase_index(self, old:VT, new:VT) -> None:
         """When a phase is moved from a vertex to another vertex,
         we need to tell the phase_teleportation algorithm that this has happened.
         This function does that. Used in some of the rules in `simplify`."""
@@ -665,37 +651,36 @@ class BaseGraph(object):
         self.phase_index[old] = self.phase_index[new]
         self.phase_index[new] = i
 
-    def fuse_phases(self, p1, p2):
-        if self.debug:
-            print("fuse_phases:",p1,p2)
+    def fuse_phases(self, p1: VT, p2: VT) -> None:
         if p1 not in self.phase_index or p2 not in self.phase_index: 
             return
-        if self.phase_master: 
+        if self.phase_master is not None: 
             self.phase_master.fuse_phases(self.phase_index[p1],self.phase_index[p2])
         self.phase_index[p2] = self.phase_index[p1]
 
-    def phase_negate(self, v):
-        #print("phase_negate", v)
+    def phase_negate(self, v: VT) -> None:
         if v not in self.phase_index: return
         index = self.phase_index[v]
         mult = self.phase_mult[index]
-        self.phase_mult[index] = -1*mult 
+        if mult == 1: self.phase_mult[index] = -1
+        else: self.phase_mult[index] = 1
+        #self.phase_mult[index] = -1*mult 
 
-    def vertex_from_phase_index(self, i):
+    def vertex_from_phase_index(self, i: int) -> VT:
         return list(self.phase_index.keys())[list(self.phase_index.values()).index(i)]
 
 
-    def remove_vertices(self, vertices):
+    def remove_vertices(self, vertices: List[VT]) -> None:
         """Removes the list of vertices from the graph."""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
-    def remove_vertex(self, vertex):
+    def remove_vertex(self, vertex: VT) -> None:
         """Removes the given vertex from the graph."""
         self.remove_vertices([vertex])
 
-    def remove_isolated_vertices(self):
+    def remove_isolated_vertices(self) -> None:
         """Deletes all vertices and vertex pairs that are not connected to any other vertex."""
-        rem = []
+        rem: List[VT] = []
         for v in self.vertices():
             d = self.vertex_degree(v)
             if d == 0:
@@ -705,7 +690,7 @@ class BaseGraph(object):
                 if v in rem: continue # Already taken care of
                 if self.type(v) == VertexType.BOUNDARY: continue # Ignore in/outputs
                 w = list(self.neighbours(v))[0]
-                if len(self.neighbours(w)) > 1: continue # But this neighbour has other neighbours
+                if len(list(self.neighbours(w))) > 1: continue # But this neighbour has other neighbours
                 if self.type(w) == VertexType.BOUNDARY: continue # It's a state/effect
                 # At this point w and v are only connected to each other
                 rem.append(v)
@@ -723,140 +708,139 @@ class BaseGraph(object):
                         self.scalar.add_node(self.phase(v)+self.phase(w))
         self.remove_vertices(rem)
 
-    def remove_edges(self, edges):
+    def remove_edges(self, edges: List[ET]) -> None:
         """Removes the list of edges from the graph."""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
-    def remove_edge(self, edge):
+    def remove_edge(self, edge: ET) -> None:
         """Removes the given edge from the graph."""
-        self.remove_edge([edge])
+        self.remove_edges([edge])
 
-    def num_vertices(self):
+    def num_vertices(self) -> int:
         """Returns the amount of vertices in the graph."""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
-    def num_edges(self):
+    def num_edges(self) -> int:
         """Returns the amount of edges in the graph"""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
-    def vertices(self):
+    def vertices(self) -> Iterable[VT]:
         """Iterator over all the vertices."""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
-    def edges(self):
+    def edges(self) -> Iterable[ET]:
         """Iterator that returns all the edges. Output type depends on implementation in backend."""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
-    def vertex_set(self):
+    def vertex_set(self) -> Set[VT]:
         """Returns the vertices of the graph as a Python set. 
         Should be overloaded if the backend supplies a cheaper version than this."""
         return set(self.vertices())
 
-    def edge_set(self):
+    def edge_set(self) -> Set[ET]:
         """Returns the edges of the graph as a Python set. 
         Should be overloaded if the backend supplies a cheaper version than this."""
         return set(self.edges())
 
-    def edge(self, s, t):
+    def edge(self, s:VT, t:VT) -> ET:
         """Returns the edge object with the given source/target."""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
-    def edge_st(self, edge):
+    def edge_st(self, edge: ET) -> Tuple[VT, VT]:
         """Returns a tuple of source/target of the given edge."""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
-    def edge_s(self, edge):
+    def edge_s(self, edge: ET) -> VT:
         """Returns the source of the given edge."""
         return self.edge_st(edge)[0]
-    def edge_t(self, edge):
+    def edge_t(self, edge: ET) -> VT:
         """Returns the target of the given edge."""
         return self.edge_st(edge)[1]
 
-    def neighbours(self, vertex):
+    def neighbours(self, vertex: VT) -> Iterable[VT]:
         """Returns all neighbouring vertices of the given vertex."""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
-    def vertex_degree(self, vertex):
+    def vertex_degree(self, vertex: VT) -> int:
         """Returns the degree of the given vertex."""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
-    def incident_edges(self, vertex):
+    def incident_edges(self, vertex: VT) -> Iterable[ET]:
         """Returns all neighbouring edges of the given vertex."""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
-    def connected(self,v1,v2):
+    def connected(self,v1: VT,v2: VT) -> bool:
         """Returns whether vertices v1 and v2 share an edge."""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
-    def edge_type(self, e):
+    def edge_type(self, e: ET) -> EdgeType.Type:
         """Returns the type of the given edge:
         EdgeType.SIMPLE_ if it is regular, EdgeType.HADAMARD_ if it is a Hadamard edge,
         0 if the edge is not in the graph."""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
-    def set_edge_type(self, e, t):
+    def set_edge_type(self, e: ET, t: EdgeType.Type) -> None:
         """Sets the type of the given edge."""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
-    def type(self, vertex):
-        """Returns the type of the given vertex."""
+    def type(self, vertex: VT) -> VertexType.Type:
         """Returns the type of the given vertex:
-        VertexType.BOUNDARY_ if it is a boundary, VertexType.Z_ if it is a Z node,
-        VertexType.X_ if it is a X node."""
+        VertexType.BOUNDARY if it is a boundary, VertexType.Z if it is a Z node,
+        VertexType.X if it is a X node, VertexType.H_BOX if it is an H-box."""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
-    def types(self):
+    def types(self) -> Mapping[VT, VertexType.Type]:
         """Returns a mapping of vertices to their types."""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
-    def set_type(self, vertex, t):
+    def set_type(self, vertex: VT, t: VertexType.Type) -> None:
         """Sets the type of the given vertex to t."""
         raise NotImplementedError("Not implemented on backend" + type(self).backend)
     
-    def phase(self, vertex):
+    def phase(self, vertex: VT) -> FractionLike:
         """Returns the phase value of the given vertex."""
         raise NotImplementedError("Not implemented on backend" + type(self).backend)
-    def phases(self):
+    def phases(self) -> Mapping[VT, FractionLike]:
         """Returns a mapping of vertices to their phase values."""
         raise NotImplementedError("Not implemented on backend" + type(self).backend)
-    def set_phase(self, vertex, phase):
+    def set_phase(self, vertex: VT, phase: FractionLike) -> None:
         """Sets the phase of the vertex to the given value."""
         raise NotImplementedError("Not implemented on backend" + type(self).backend)
-    def add_to_phase(self, vertex, phase):
+    def add_to_phase(self, vertex: VT, phase: FractionLike) -> None:
         """Add the given phase to the phase value of the given vertex."""
         self.set_phase(vertex,self.phase(vertex)+phase)
 
-    def qubit(self, vertex):
+    def qubit(self, vertex: VT) -> FloatInt:
         """Returns the qubit index associated to the vertex. 
         If no index has been set, returns -1."""
         raise NotImplementedError("Not implemented on backend" + type(self).backend)
-    def qubits(self):
+    def qubits(self) -> Mapping[VT,FloatInt]:
         """Returns a mapping of vertices to their qubit index."""
         raise NotImplementedError("Not implemented on backend" + type(self).backend)
-    def set_qubit(self, vertex, q):
+    def set_qubit(self, vertex: VT, q: FloatInt) -> None:
         """Sets the qubit index associated to the vertex."""
         raise NotImplementedError("Not implemented on backend" + type(self).backend)
 
-    def row(self, vertex):
+    def row(self, vertex: VT) -> FloatInt:
         """Returns the row that the vertex is positioned at. 
         If no row has been set, returns -1."""
         raise NotImplementedError("Not implemented on backend" + type(self).backend)
-    def rows(self):
+    def rows(self) -> Mapping[VT, FloatInt]:
         """Returns a mapping of vertices to their row index."""
         raise NotImplementedError("Not implemented on backend" + type(self).backend)
-    def set_row(self, vertex, r):
+    def set_row(self, vertex: VT, r: FloatInt) -> None:
         """Sets the row the vertex should be positioned at."""
         raise NotImplementedError("Not implemented on backend" + type(self).backend)
 
-    def set_position(self, vertex, q, r):
+    def set_position(self, vertex: VT, q: FloatInt, r: FloatInt):
         """Set both the qubit index and row index of the vertex."""
         self.set_qubit(vertex, q)
         self.set_row(vertex, r)
 
-    def vdata_keys(self, vertex):
+    def vdata_keys(self, vertex: VT) -> Iterable[str]:
         """Returns an iterable of the vertex data key names.
         Used e.g. in making a copy of the graph in a backend-independent way."""
         raise NotImplementedError("Not implemented on backend" + type(self).backend)
-    def vdata(self, vertex, key, default=0):
+    def vdata(self, vertex: VT, key: str, default: Any=0) -> Any:
         """Returns the data value of the given vertex associated to the key.
         If this key has no value associated with it, it returns the default value."""
         raise NotImplementedError("Not implemented on backend" + type(self).backend)
-    def set_vdata(self, vertex, key, val):
+    def set_vdata(self, vertex: VT, key: str, val: Any) -> None:
         """Sets the vertex data associated to key to val."""
         raise NotImplementedError("Not implemented on backend" + type(self).backend)

@@ -15,25 +15,27 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+from typing import Optional
+
+from .base import BaseGraph
+from .graph_s import GraphS
+
 backends = {'simple': True}
 
-def Graph(backend=None):
+def Graph(backend:Optional[str]=None) -> BaseGraph:
 	"""Returns an instance of an implementation of :class:`~graph.base.BaseGraph`. 
 	By default :class:`~graph.graph_s.GraphS` is used. 
 	Currently ``backend`` is allowed to be `simple` (for the default),
 	or 'graph_tool' and 'igraph'.
 	**Note**: graph_tool is currently not fully supported."""
-	if not backend: backend = 'simple'
-	if backend:
-		if backend not in backends:
-			raise KeyError("Unavailable backend '{}'".format(backend))
-		if backend == 'simple': return GraphS()
-		if backend == 'graph_tool': 
-			return GraphGT()
-		if backend == 'igraph': return GraphIG()
+	if backend is None: backend = 'simple'
+	if backend not in backends:
+		raise KeyError("Unavailable backend '{}'".format(backend))
+	if backend == 'simple': return GraphS()
+	if backend == 'graph_tool': 
+		return GraphGT()
+	if backend == 'igraph': return GraphIG()
 	return GraphS()
-
-from .graph_s import GraphS
 
 try:
 	import graph_tool.all as gt
