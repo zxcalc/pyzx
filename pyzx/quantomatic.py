@@ -15,8 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-"""Implements methods for interacting with Quantomatic. This interaction works in both directions.
-When working in Python with PyZX you can edit graphs in the following way::
+"""Implements methods for interacting with Quantomatic::
 
     import pyzx as zx
     zx.quantomatic.quantomatic_location = "path/to/quantomatic/jar/file.jar"
@@ -24,108 +23,40 @@ When working in Python with PyZX you can edit graphs in the following way::
     g2 = zx.quantomatic.edit_graph(g) # Opens Quantomatic with the graph g opened. Execution is blocked until Quantomatic is closed again.
     # If you have saved the qgraph file in quantomatic, then g2 should now contain your changes.
 
-
-When running Quantomatic, you can invoke PyZX in the following ways::
-    
-    #This script generates a random clifford circuit in Quantomatic
-    from quanto.util.Scripting import *
-    import pyzx.quantomatic as zx
-    g = zx.generate.cliffords(3,15)
-    j = zx.graph_to_json(g)
-    new_graph_from_json(j)
-
-    #This script registers the PyZX clifford_simp simplifier as a simproc in Quantomatic
-    from quanto.util.Scripting import *
-    import pyzx.quantomatic as zx
-    zx.output = output
-    zx.register_python_simproc("clifford",zx.simplify.clifford_iter)
-
 """
 
-import json
-
-from .graph.graph import Graph
 from .io import json_to_graph, graph_to_json
-from . import simplify
-from . import rules
-from . import generate
 
-try:
-    import quanto.util.Scripting as quanto
-except ImportError:
-    quanto = None
+import tempfile
+import os
+import subprocess
 
+quantomatic_location = None
 
-class RewriteMaker(object):
-    """Helper class for generating SimProcs that interact nicely between 
-    Quantomatic and PyZX"""
-    def __init__(self,rewriter):
-        self.rewriter = rewriter
-        self.steps = []
-        self.names = []
+def edit_graph(g):
+    """Opens Quantomatic with the graph ``g`` loaded. When you are done editing the graph, 
+    you save it in Quantomatic and close the executable. The resulting graph is returned by this function.
+    Note that this function blocks until the Quantomatic executable is closed. For this function to work
+    you must first set ``zx.quantomatic.quantomatic_location`` to point towards the Quantomatic .jar file."""
+    if not quantomatic_location or not os.path.exists(quantomatic_location):
+        print("Please point towards the Quantomatic jar file with quantomatic.quantomatic_location")
+        return
 
-    def start(self, js):
-        self.steps = []
-        self.names = []
-        g = json_to_graph(js)
-        for s,n in self.rewriter(g):
-            self.steps.append(graph_to_json(s))
-            self.names.append(n)
-
-        return len(self.steps)
-
-    def get_step(self, index):
-        return self.steps[index]
-
-    def get_name(self, index):
-        return self.names[index]
-
-
-
-def register_python_simproc(name, rewriter):
-    """When called by Quantomatic, registers a Simproc implementing a PyZX
-    simplification strategy
-
-    :param str name: Name that the resulting simproc will have
-    :param rewriter: Should be a method from :class:`~pyzx.simplify`
-    """
-    maker = RewriteMaker(rewriter)
-    simproc = quanto.JSON_REWRITE_STEPS(maker.start, maker.get_step, maker.get_name)
-    quanto.register_simproc(name, simproc)
-    output.println("registered simproc " + name)
-
-
-if not quanto:
-    import tempfile
-    import os
-    import subprocess
-
-    quantomatic_location = None
-
-    def edit_graph(g):
-        """Opens Quantomatic with the graph ``g`` loaded. When you are done editing the graph, 
-        you save it in Quantomatic and close the executable. The resulting graph is returned by this function.
-        Note that this function blocks until the Quantomatic executable is closed. For this function to work
-        you must first set ``zx.quantomatic.quantomatic_location`` to point towards the Quantomatic .jar file."""
-        if not quantomatic_location or not os.path.exists(quantomatic_location):
-            print("Please point towards the Quantomatic jar file with quantomatic.quantomatic_location")
-            return
-
-        with tempfile.TemporaryDirectory() as tmpdirname:
-            projectname = os.path.join(tmpdirname, "main.qgraph")
-            with open(projectname,'w') as f:
-                f.write(pyzx_qproject)
-            js = graph_to_json(g)
-            fname = os.path.join(tmpdirname, "pyzxgraph.qgraph")
-            with open(fname,'w') as f:
-                f.write(js)
-            print("Opening Quantomatic...")
-            subprocess.check_call(["java", "-jar",quantomatic_location, projectname, fname])
-            print("Done")
-            with open(fname, 'r') as f:
-                js = f.read()
-                g = json_to_graph(js)
-        return g
+    with tempfile.TemporaryDirectory() as tmpdirname:
+        projectname = os.path.join(tmpdirname, "main.qgraph")
+        with open(projectname,'w') as f:
+            f.write(pyzx_qproject)
+        js = graph_to_json(g)
+        fname = os.path.join(tmpdirname, "pyzxgraph.qgraph")
+        with open(fname,'w') as f:
+            f.write(js)
+        print("Opening Quantomatic...")
+        subprocess.check_call(["java", "-jar",quantomatic_location, projectname, fname])
+        print("Done")
+        with open(fname, 'r') as f:
+            js = f.read()
+            g = json_to_graph(js)
+    return g
 
 
 pyzx_qproject = """
