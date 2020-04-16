@@ -16,67 +16,73 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import math
+from typing import Union, Any, Tuple, List, Optional, Set, Dict
+from typing_extensions import Literal
+
+import numpy as np
+
+from .circuit.gates import CNOT
+
 try:
     from .linalg_c import do_gauss as gauss_fast # type: ignore
 except ImportError:
    gauss_fast = None
+
+Z2 = Literal[0,1]
+MatLike = Union[np.ndarray, List[List[Z2]]]
 
 class Mat2(object):
     """A matrix over Z2, with methods for multiplication, primitive row and column
     operations, Gaussian elimination, rank, and epi-mono factorisation."""
     
     @staticmethod
-    def id(n):
+    def id(n: int) -> 'Mat2':
         return Mat2([[1 if i == j else 0
             for j in range(n)] 
               for i in range(n)])
 
-    def __init__(self, data):
-        self.data = data
-    def __mul__(self, m):
+    def __init__(self, data: MatLike):
+        self.data: MatLike = data
+    def __mul__(self, m: 'Mat2') -> 'Mat2':
         return Mat2([[sum(self.data[i][k] * m.data[k][j] for k in range(len(m.data))) % 2
                       for j in range(len(m.data[0]))] for i in range(len(self.data))])
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         if not isinstance(other, Mat2): return False
         if self.rows() != other.rows() or self.cols() != other.cols(): return False
         return all(self.data[i][j] == other.data[i][j] for i in range(len(self.data)) for j in range(len(self.data[i])))
-    def __str__(self):
+    def __str__(self) -> str:
         return "\n".join("[ " + 
             "  ".join(str(value) for value in row) +
             " ]" for row in self.data)
-    def __repr__(self):
+    def __repr__(self) -> str:
         return str(self)
-    def copy(self):
+    def copy(self) -> 'Mat2':
         return Mat2([list(row) for row in self.data])
-    def transpose(self):
+    def transpose(self) -> 'Mat2':
         return Mat2([[self.data[i][j] for i in range(self.rows())] for j in range(self.cols())])
-    def rows(self):
+    def rows(self) -> int:
         return len(self.data)
-    def cols(self):
+    def cols(self) -> int:
         return len(self.data[0]) if (len(self.data) != 0) else 0
-    def row_add(self, r0, r1):
+    def row_add(self, r0: int, r1: int) -> None:
         """Add r0 to r1"""
         row1 = self.data[r0]
         row2 = self.data[r1]
         for i, v in enumerate(row1):
             if v:
                 row2[i] = 0 if row2[i] else 1
-        # for i in range(len(row1)): row1[i] = (row)
-        # for i in range(self.cols()):
-        #     self.data[r1][i] = (self.data[r0][i] + self.data[r1][i]) % 2
-    def col_add(self, c0, c1):
+    def col_add(self, c0: int, c1: int) -> None:
         """Add r0 to r1"""
         for i in range(self.rows()):
             d = self.data[i]
             if d[c0]:
                 d[c1] = 0 if d[c1] else 1
-            #self.data[i][c1] = (self.data[i][c0] + self.data[i][c1]) % 2
-    def row_swap(self, r0, r1):
+    def row_swap(self, r0: int, r1: int) -> None:
         """Swap the rows r0 and r1"""
         r = self.data[r0]
         self.data[r0] = self.data[r1]
         self.data[r1] = r
-    def col_swap(self, c0, c1):
+    def col_swap(self, c0: int, c1: int) -> None:
         """Swap the columns c0 and c1"""
         for r in range(self.rows()):
             v = self.data[r][c0]
@@ -84,7 +90,7 @@ class Mat2(object):
             self.data[r][c1] = v
 
     
-    def gauss(self, full_reduce=False, x=None, y=None, blocksize=6):
+    def gauss(self, full_reduce:bool=False, x:Any=None, y:Any=None, blocksize:int=6) -> int:
         """Compute the echelon form. Returns the number of non-zero rows in the result, i.e.
         the rank of the matrix.
 
@@ -121,15 +127,15 @@ class Mat2(object):
             i1 = min(cols, (sec+1) * blocksize)
 
             # search for duplicate chunks of 'blocksize' bits and eliminate them
-            chunks = dict()
+            chunks: Dict[Tuple[Z2,...],int] = dict()
             for r in range(pivot_row, rows):
                 t = tuple(self.data[r][i0:i1])
                 if not any(t): continue
                 if t in chunks:
                     #print('hit (down)', r, chunks[t], t, i0, i1)
                     self.row_add(chunks[t], r)
-                    if x != None: x.row_add(chunks[t], r)
-                    if y != None: y.col_add(r, chunks[t])
+                    if x is not None: x.row_add(chunks[t], r)
+                    if y is not None: y.col_add(r, chunks[t])
                 else:
                     chunks[t] = r
 
@@ -139,14 +145,14 @@ class Mat2(object):
                     if self.data[r0][p] != 0:
                         if r0 != pivot_row:
                             self.row_add(r0, pivot_row)
-                            if x != None: x.row_add(r0, pivot_row)
-                            if y != None: y.col_add(pivot_row, r0)
+                            if x is not None: x.row_add(r0, pivot_row)
+                            if y is not None: y.col_add(pivot_row, r0)
 
                         for r1 in range(pivot_row+1, rows):
                             if pivot_row != r1 and self.data[r1][p] != 0:
                                 self.row_add(pivot_row, r1)
-                                if x != None: x.row_add(pivot_row, r1)
-                                if y != None: y.col_add(r1, pivot_row)
+                                if x is not None: x.row_add(pivot_row, r1)
+                                if y is not None: y.col_add(r1, pivot_row)
                         if full_reduce: pcols.append(p)
                         pivot_row += 1
                         break
@@ -169,8 +175,8 @@ class Mat2(object):
                     if t in chunks:
                         #print('hit (up)', r, chunks[t], t, i0, i1)
                         self.row_add(chunks[t], r)
-                        if x != None: x.row_add(chunks[t], r)
-                        if y != None: y.col_add(r, chunks[t])
+                        if x is not None: x.row_add(chunks[t], r)
+                        if y is not None: y.col_add(r, chunks[t])
                     else:
                         chunks[t] = r
 
@@ -179,18 +185,18 @@ class Mat2(object):
                     for r in range(0, pivot_row):
                         if self.data[r][pcol] != 0:
                             self.row_add(pivot_row, r)
-                            if x != None: x.row_add(pivot_row, r)
-                            if y != None: y.col_add(r, pivot_row)
+                            if x is not None: x.row_add(pivot_row, r)
+                            if y is not None: y.col_add(r, pivot_row)
                     pivot_row -= 1
 
         return rank
 
-    def rank(self):
+    def rank(self) -> int:
         """Returns the rank of the matrix."""
         m = self.copy()
         return m.gauss()
 
-    def factor(self):
+    def factor(self) -> Tuple['Mat2','Mat2']:
         """Produce a factorisation m = m0 * m1, where
 
         m0.cols() = m1.rows() = m.rank()
@@ -210,7 +216,7 @@ class Mat2(object):
         m1 = Mat2([m1.data[i] for i in range(rank)])
         return (m0, m1)
 
-    def inverse(self):
+    def inverse(self) -> Optional['Mat2']:
         """Returns the inverse of m is invertible and None otherwise."""
         if self.rows() != self.cols(): return None
         m = self.copy()
@@ -219,7 +225,7 @@ class Mat2(object):
         if rank < self.rows(): return None
         else: return inv
 
-    def solve(self, b):
+    def solve(self, b: 'Mat2') -> Optional['Mat2']:
         """Return a vector x such that M * x = b, or None if there is no solution."""
         m = self.copy()
         x = b.copy()
@@ -232,12 +238,12 @@ class Mat2(object):
                 return None
             i -= 1
         if x.rows() > m.cols():
-            x.data[0] = x.data[0][:m.cols()]
+            x.data = x.data[:m.cols()]
         else:
-            x.data[0] = x.data[0] + [[0]]*(m.cols()-x.rows())
+            x.data = x.data + [[0]]*(m.cols()-x.rows())
         return x
 
-    def nullspace(self, should_copy=True):
+    def nullspace(self, should_copy:bool=True) -> List[List[Z2]]:
         """Returns a list of non-zero vectors that span the nullspace
         of the matrix. If the matrix has trivial kernel it returns the empty list."""
         if gauss_fast:
@@ -258,17 +264,18 @@ class Mat2(object):
                     nonpivots.remove(j)
                     pivots.append(j)
                     break
-        vectors = []
+        vectors:List[List[Z2]] = []
         for n in nonpivots:
-            v = [0]*cols
+            v:List[Z2] = [0]*cols
             v[n] = 1
             for r, p in zip(m.data, pivots):
                 if r[n]: v[p] = 1
             vectors.append(v)
         return vectors
 
-    def to_cnots(self, optimize=False):
+    def to_cnots(self, optimize:bool=False) -> List[CNOT]:
         """Returns a list of CNOTs that implements the matrix as a reversible circuit of qubits."""
+        cn: Optional[CNOTMaker]
         if not optimize:
             cn = CNOTMaker()
             self.copy().gauss(full_reduce=True,x=cn, blocksize=5)
@@ -282,35 +289,36 @@ class Mat2(object):
                     best = len(cn.cnots)
                     best_cn = cn
             cn = best_cn
+        assert cn is not None
         return cn.cnots # list(reversed(cn.cnots)) 
 
-from .circuit.gates import CNOT
+
 class CNOTMaker:
     def __init__(self):
-        self.cnots = []
-    def row_add(self, r1, r2):
+        self.cnots: List[CNOT] = []
+    def row_add(self, r1:int, r2:int) -> None:
         self.cnots.append(CNOT(r2,r1))
 
 
 
-def xor_rows(l1, l2):
+def xor_rows(l1: List[Z2], l2: List[Z2]) -> List[Z2]:
     return [0 if l1[i]==l2[i] else 1 for i in range(len(l1))]
 
-def find_minimal_sums(m):
+def find_minimal_sums(m: Mat2) -> Optional[Tuple[int,...]]:
     """Returns a list of rows in m that can be added together to reduce one of the rows so that
     it only contains a single 1. Used in :func:`greedy_reduction`"""
     r = m.rows()
     d = m.data
-    if any(sum(r)==1 for r in d): return []
-    combs = {(i,):d[i] for i in range(r)}
-    combs2 = {}
+    if any(sum(r)==1 for r in d): return tuple()
+    combs:  Dict[Tuple[int,...],List[Z2]] = {(i,):d[i] for i in range(r)}
+    combs2: Dict[Tuple[int,...],List[Z2]] = {}
     iterations = 0
     while True:
         combs2 = {}
         for index,l in combs.items():
             for k in range(max(index)+1,r):
                 #Unrolled xor_rows(combs[index],d[k])
-                row = [0 if v1==v2 else 1 for v1,v2 in zip(combs[index],d[k])]
+                row: List[Z2] = [0 if v1==v2 else 1 for v1,v2 in zip(combs[index],d[k])]
                 #row = xor_rows(combs[index],d[k])
                 if sum(row) == 1:
                     return (*index,k)
@@ -323,13 +331,13 @@ def find_minimal_sums(m):
             #raise ValueError("Irreducible input has been given")
         combs = combs2
 
-def greedy_reduction(m):
+def greedy_reduction(m: Mat2) -> Optional[List[Tuple[int,int]]]:
     """Returns a list of tuples (r1,r2) that specify which row should be added to which other row
     in order to reduce one row of m to only contain a single 1. 
     Used in :func:`extract.streaming_extract`"""
-    indices = find_minimal_sums(m)
-    if not isinstance(indices, (list,tuple)): return indices
-    indices = list(indices)
+    indicest = find_minimal_sums(m)
+    if indicest is None: return indicest
+    indices = list(indicest)
     rows = {i:m.data[i] for i in indices}
     weights = {i: sum(r) for i,r in rows.items()}
     result = []
@@ -355,10 +363,10 @@ def greedy_reduction(m):
 
 
 
-def column_optimal_swap(m):
+def column_optimal_swap(m: Mat2) -> Dict[int,int]:
     qubits = min([m.rows(), m.cols()])
-    connections = {i: set() for i in range(qubits)}
-    connectionsr= {j: set() for j in range(qubits)}
+    connections:  Dict[int,Set[int]] = {i: set() for i in range(qubits)}
+    connectionsr: Dict[int,Set[int]] = {j: set() for j in range(qubits)}
 
     for i in range(qubits):
             for j in range(qubits):
@@ -367,6 +375,7 @@ def column_optimal_swap(m):
                     connectionsr[j].add(i)
 
     target = _find_targets(connections, connectionsr)
+    assert target is not None
     target = {v:k for k,v in target.items()}
     left = list(set(range(qubits)).difference(target.keys()))
     right = list(set(range(qubits)).difference(target.values()))
@@ -375,7 +384,10 @@ def column_optimal_swap(m):
     return target
 
 
-def _find_targets(conn, connr, target={}):
+def _find_targets(conn:   Dict[int,Set[int]], 
+				  connr:  Dict[int,Set[int]], 
+				  target: Dict[int,int]={}
+				  ) -> Optional[Dict[int,int]]:
     target = target.copy()
     qubits = len(conn)
     claimedr = set(target.values())
