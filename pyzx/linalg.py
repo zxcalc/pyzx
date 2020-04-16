@@ -284,6 +284,7 @@ class Mat2(object):
             best_cn = None
             for size in range(1,self.rows()):
                 cn = CNOTMaker()
+                assert cn is not None
                 self.copy().gauss(full_reduce=True,x=cn, blocksize=size)
                 if len(cn.cnots) < best:
                     best = len(cn.cnots)
@@ -293,8 +294,8 @@ class Mat2(object):
         return cn.cnots # list(reversed(cn.cnots)) 
 
 
-class CNOTMaker:
-    def __init__(self):
+class CNOTMaker(object):
+    def __init__(self) -> None:
         self.cnots: List[CNOT] = []
     def row_add(self, r1:int, r2:int) -> None:
         self.cnots.append(CNOT(r2,r1))
