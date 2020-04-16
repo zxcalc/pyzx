@@ -51,6 +51,24 @@ class TestCircuit(unittest.TestCase):
         self.assertEqual(self.c.qubits, c2.qubits)
         self.assertListEqual(self.c.gates,c2.gates)
 
+    def test_to_qasm_and_back(self):
+        s = self.c.to_qasm()
+        c2 = Circuit.from_qasm(s)
+        self.assertEqual(self.c.qubits, c2.qubits)
+        self.assertListEqual(self.c.gates,c2.gates)
+
+    def test_to_qc_and_back(self):
+        s = self.c.to_qc()
+        c2 = Circuit.from_qc(s)
+        self.assertEqual(self.c.qubits, c2.qubits)
+        self.assertListEqual(self.c.gates,c2.gates)
+
+    def test_to_quipper_and_back(self):
+        s = self.c.to_quipper()
+        c2 = Circuit.from_quipper(s)
+        self.assertEqual(self.c.qubits, c2.qubits)
+        self.assertListEqual(self.c.gates,c2.gates)
+
     def test_cliffordT_preserves_graph_semantics(self):
         random.seed(SEED)
         g = cliffordT(4,20,0.2)
