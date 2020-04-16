@@ -15,12 +15,13 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+from typing import List
 
 from . import Circuit
 from .gates import *
 from fractions import Fraction
 
-def parse_qsim(data):
+def parse_qsim(data: str) -> Circuit:
     """Produces a :class:`Circuit` based on a .qsim description of a circuit."""
     lines = data.strip().splitlines()
 
@@ -29,7 +30,7 @@ def parse_qsim(data):
     except ValueError:
         raise ValueError('First line should be qubit count')
 
-    gates = []
+    gates: List[Gate] = []
 
     for l in lines:
         l = l.strip()

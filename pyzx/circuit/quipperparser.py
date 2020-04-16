@@ -15,12 +15,14 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+from typing import List
+
 import math
 from fractions import Fraction
 
 from . import Circuit
 
-def parse_quipper_block(lines):
+def parse_quipper_block(lines: List[str]) -> Circuit:
     start = lines[0]
     end = lines[-1]
     gates = lines[1:-1]
@@ -29,10 +31,10 @@ def parse_quipper_block(lines):
     if start.endswith(','): start = start[:-1]
     inputs = start[8:].split(",")
     
-    for i in inputs:
-        n, t = i.split(":")
-        if t.strip() != "Qbit":
-            raise TypeError("Unsupported type " + t)
+    for ip in inputs:
+        n, ty = ip.split(":")
+        if ty.strip() != "Qbit":
+            raise TypeError("Unsupported type " + ty)
 
     c = Circuit(len(inputs))
     for gate in gates:
@@ -50,32 +52,32 @@ def parse_quipper_block(lines):
                 gtype = "XPhase"
             else:
                 raise TypeError("Unsupported expression: " + gate) 
-            f = gate[gate.find(',')+1: gate.find(']')]
+            val = gate[gate.find(',')+1: gate.find(']')]
             try:
-                f = float(f)
+                f = float(val)
             except ValueError:
                 raise TypeError("Unsupported expression: " + gate)
             phase = Fraction(f/math.pi)
             target = gate[gate.rfind('(')+1:gate.rfind(')')]
             try: 
-                target = int(target)
+                t = int(target)
             except ValueError:
                 raise TypeError("Unsupported expression: "+ gate)
-            c.add_gate(gtype, target, 2*phase)
+            c.add_gate(gtype, t, 2*phase)
             continue
         elif not gate.startswith("QGate"):
             raise TypeError("Unsupported expression: " + gate)
         l = gate.split("with")
         g = l[0]
         gname = g[g.find('[')+2:g.find(']')-1]
-        target = int(g[g.find('(')+1:g.find(')')])
+        t = int(g[g.find('(')+1:g.find(')')])
         adjoint = g.find("*")!=-1
         if len(l) == 2 and l[1].find('nocontrol')!=-1: #no controls
-            if gname == "H": c.add_gate("HAD", target)
-            elif gname == "not": c.add_gate("NOT", target)
-            elif gname == "Z": c.add_gate("Z", target)
-            elif gname == "S": c.add_gate("S", target, adjoint=adjoint)
-            elif gname == "T": c.add_gate("T", target, adjoint=adjoint)
+            if gname == "H": c.add_gate("HAD", t)
+            elif gname == "not": c.add_gate("NOT", t)
+            elif gname == "Z": c.add_gate("Z", t)
+            elif gname == "S": c.add_gate("S", t, adjoint=adjoint)
+            elif gname == "T": c.add_gate("T", t, adjoint=adjoint)
             else:
                 raise TypeError("Unsupported gate: " + gname)
             continue
@@ -94,22 +96,22 @@ def parse_quipper_block(lines):
             if c2.find('+') == -1:
                 nots.append(ctrl2)
             #if ctrl1.find('+') == -1 or ctrl2.find('+') == -1: raise TypeError("Unsupported controls: " + ctrls)
-            for t in nots: c.add_gate("NOT", t)
-            if gname == "not": c.add_gate("TOF", ctrl1, ctrl2, target)
-            elif gname == "Z": c.add_gate("CCZ", ctrl1, ctrl2, target)
-            for t in nots: c.add_gate("NOT", t)
+            for ts in nots: c.add_gate("NOT", ts)
+            if gname == "not": c.add_gate("TOF", ctrl1, ctrl2, t)
+            elif gname == "Z": c.add_gate("CCZ", ctrl1, ctrl2, t)
+            for ts in nots: c.add_gate("NOT", ts)
             continue
         elif ctrls.find('+')==-1:
             raise TypeError("Unsupported control: " + ctrls)
         ctrl = int(ctrls[1:])
-        if gname == "not": c.add_gate("CNOT", ctrl, target)
-        elif gname == "Z": c.add_gate("CZ", ctrl, target)
-        elif gname == "X": c.add_gate("CX", ctrl, target)
+        if gname == "not": c.add_gate("CNOT", ctrl, t)
+        elif gname == "Z": c.add_gate("CZ", ctrl, t)
+        elif gname == "X": c.add_gate("CX", ctrl, t)
         else:
             raise TypeError("Unsupported controlled gate: " + gname)
     return c
 
-def quipper_center_block(fname):
+def quipper_center_block(fname: str) -> Circuit:
     """Function to load the PF files of the NRSCM paper."""
     f = open(fname, 'r')
     text = f.read()

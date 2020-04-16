@@ -42,10 +42,14 @@ These rewrite rules are used in the simplification procedures of :mod:`simplify`
 In particular, they are used in combination with :func:`simplify.simp` to create rewrite strategies.
 """
 
+from typing import Tuple, List, Dict, Any
+
 from fractions import Fraction
 import itertools
 
 from .utils import VertexType, EdgeType, toggle_edge
+
+TypeRewriteOutput = Tuple[Dict[Any,Tuple[int,int]], List, List, bool]
 
 def apply_rule(g, rewrite, m, check_isolated_vertices=True):
     etab, rem_verts, rem_edges, check_isolated_vertices = rewrite(g, m)

@@ -16,6 +16,15 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import os
+from typing import List, Union, Optional, Iterator
+
+import numpy as np
+
+from .gates import Gate, gate_types, ZPhase, XPhase, CZ,CX,CNOT, HAD
+
+from ..graph.base import BaseGraph, ET, VT
+
+CircuitLike = Union['Circuit', Gate]
 
 #Note that many of the method of Circuit contain inline imports. These are there to prevent circular imports.
 
@@ -30,34 +39,34 @@ class Circuit(object):
     The methods in this class that convert a specification of a circuit into an instance of this class,
     generally do not check whether the specification is well-defined. If a bad input is given, 
     the behaviour is undefined."""
-    def __init__(self, qubit_amount, name=''):
-        self.qubits = qubit_amount
-        self.gates = []
-        self.name = name
+    def __init__(self, qubit_amount: int, name:str='') -> None:
+        self.qubits: int        = qubit_amount
+        self.gates:  List[Gate] = []
+        self.name:   str        = name
 
 
     ### BASIC FUNCTIONALITY
 
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "Circuit({!s} qubits, {!s} gates)".format(self.qubits,len(self.gates))
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return str(self)
 
-    def copy(self):
+    def copy(self) -> 'Circuit':
         c = Circuit(self.qubits, self.name)
         c.gates = [g.copy() for g in self.gates]
         return c
 
-    def adjoint(self):
+    def adjoint(self) -> 'Circuit':
         c = Circuit(self.qubits, self.name + 'Adjoint')
         for g in reversed(self.gates):
             c.gates.append(g.to_adjoint())
         return c
 
 
-    def verify_equality(self, other):
+    def verify_equality(self, other: 'Circuit') -> bool:
         """Composes the other circuit with the adjoint of this circuit, and tries to reduce
         it to the identity using :func:`simplify.full_reduce``. If successful returns True,
         if not returns None. 
@@ -75,7 +84,7 @@ class Circuit(object):
         else:
             return False
 
-    def add_gate(self, gate, *args, **kwargs):
+    def add_gate(self, gate: Union[Gate,str], *args, **kwargs) -> None:
         """Adds a gate to the circuit. ``gate`` can either be 
         an instance of a :class:`Gate`, or it can be the name of a gate,
         in which case additional arguments should be given.
@@ -85,13 +94,12 @@ class Circuit(object):
             circuit.add_gate("CNOT", 1, 4) # adds a CNOT gate with control 1 and target 4
             circuit.add_gate("ZPhase", 2, phase=Fraction(3,4)) # Adds a ZPhase gate on qubit 2 with phase 3/4
         """
-        from .gates import gate_types
         if isinstance(gate, str):
             gate_class = gate_types[gate]
-            gate = gate_class(*args, **kwargs)
+            gate = gate_class(*args, **kwargs) # type: ignore
         self.gates.append(gate)
 
-    def add_gates(self, gates, qubit):
+    def add_gates(self, gates: str, qubit: int) -> None:
         """Adds a series of single qubit gates on the same qubit.
         ``gates`` should be a space-separated string of gatenames.
 
@@ -102,7 +110,7 @@ class Circuit(object):
         for g in gates.split(" "):
             self.add_gate(g, qubit)
 
-    def add_circuit(self, circ, mask=None):
+    def add_circuit(self, circ: 'Circuit', mask: Optional[List[int]]=None) -> None:
         """Adds the gate of another circuit to this one. If ``mask`` is not given,
         then they must have the same amount of qubits and they are mapped one-to-one.
         If mask is given then it must be a list specifying to which qubits the qubits
@@ -131,10 +139,9 @@ class Circuit(object):
             g = gate.reposition(mask)
             self.add_gate(g)
 
-    def tensor(self, other):
+    def tensor(self, other: CircuitLike) -> 'Circuit':
         """Takes the tensor product of two Circuits. Places the second one below the first.
         Can also be done as an operator: `circuit1 @ circuit2`."""
-        from .gates import Gate
         if isinstance(other,Gate):
             c2 = Circuit(other._max_target()+1)
             c2.add_gate(other)
@@ -147,7 +154,7 @@ class Circuit(object):
         c.gates.extend([g.reposition(mask) for g in other.gates])
         return c
 
-    def to_basic_gates(self):
+    def to_basic_gates(self) -> 'Circuit':
         """Returns a new circuit with every gate expanded in terms of X/Z phases, Hadamards
         and the 2-qubit gates CNOT, CZ, CX."""
         c = Circuit(self.qubits, name=self.name)
@@ -155,8 +162,7 @@ class Circuit(object):
             c.gates.extend(g.to_basic_gates())
         return c
 
-    def split_phase_gates(self):
-        from .gates import ZPhase, XPhase
+    def split_phase_gates(self) -> 'Circuit':
         c = Circuit(self.qubits, name=self.name)
         for g in self.gates:
             if isinstance(g, (ZPhase, XPhase)):
@@ -167,8 +173,7 @@ class Circuit(object):
 
     ### OPERATORS
 
-    def __iadd__(self, other):
-        from .gates import Gate
+    def __iadd__(self, other: CircuitLike) -> 'Circuit':
         if isinstance(other, Circuit):
             self.add_circuit(other)
             if other.qubits > self.qubits:
@@ -181,18 +186,18 @@ class Circuit(object):
             raise Exception("Cannot add object of type", type(other), "to Circuit")
         return self
 
-    def __add__(self, other):
+    def __add__(self, other: CircuitLike) -> 'Circuit':
         c = self.copy()
         c += other
         return c
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.gates)
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[Gate]:
         return iter(self.gates)
 
-    def __matmul__(self, other):
+    def __matmul__(self, other: CircuitLike) -> 'Circuit':
         return self.tensor(other)
 
 
@@ -201,7 +206,7 @@ class Circuit(object):
 
 
     @staticmethod
-    def from_graph(g, split_phases=True):
+    def from_graph(g:BaseGraph, split_phases:bool=True) -> 'Circuit':
         """Produces a :class:`Circuit` containing the gates of the given ZX-graph.
         If the ZX-graph is not circuit-like then the behaviour of this function
         is undefined.
@@ -210,7 +215,7 @@ class Circuit(object):
         from .graphparser import graph_to_circuit
         return graph_to_circuit(g, split_phases=split_phases)
 
-    def to_graph(self, zh=False, compress_rows=True, backend=None):
+    def to_graph(self, zh:bool=False, compress_rows:bool=True, backend:Optional[str]=None) -> BaseGraph:
         """Turns the circuit into a ZX-Graph.
         If ``compress_rows`` is set, it tries to put single qubit gates on different qubits,
         on the same row."""
@@ -219,23 +224,25 @@ class Circuit(object):
         return circuit_to_graph(self if zh else self.to_basic_gates(),
             compress_rows, backend)
 
-    def to_tensor(self, preserve_scalar=True):
+    def to_tensor(self, preserve_scalar:bool=True) -> np.ndarray:
         """Returns a numpy tensor describing the circuit."""
         return self.to_graph().to_tensor(preserve_scalar)
-    def to_matrix(self, preserve_scalar=True):
+    def to_matrix(self, preserve_scalar=True) -> np.ndarray:
         """Returns a numpy matrix describing the circuit."""
         return self.to_graph().to_matrix(preserve_scalar)
 
-    def to_emoji(self):
+    def to_emoji(self) -> str:
     	"""Converts circuit into a representation that can be copy-pasted
     	into the ZX-calculus Discord server."""
     	from .emojiparser import circuit_to_emoji
     	return circuit_to_emoji(self)
 
     @staticmethod
-    def load(circuitfile):
+    def load(circuitfile: str) -> 'Circuit':
         """Tries to detect the circuit description language from the filename and its contents,
         and then tries to load the file into a circuit."""
+        from .quipperparser import quipper_center_block
+
         ext = determine_file_type(circuitfile)
         if ext == 'qc':
             return Circuit.from_qc_file(circuitfile)
@@ -253,41 +260,66 @@ class Circuit(object):
         raise TypeError("Couldn't determine filetype")
 
     @staticmethod
-    def from_qc_file(fname):
+    def from_qc(s: str) -> 'Circuit':
+        from .qcparser import parse_qc
+        return parse_qc(s)
+
+    @staticmethod
+    def from_qc_file(fname: str) -> 'Circuit':
         """Produces a :class:`Circuit` based on a .qc description of a circuit.
         If a Tofolli gate with more than 2 controls is encountered, ancilla qubits are added.
         Currently up to 5 controls are supported."""
         from .qcparser import parse_qc
         with open(fname, 'r') as f:
             data = f.read()
-        return parse_qc(data)
+        c = parse_qc(data)
+        c.name = os.path.basename(fname)
+        return c
 
     @staticmethod
-    def from_qsim_file(fname):
+    def from_qsim_file(fname: str) -> 'Circuit':
         """Produces a :class:`Circuit` based on a .qc description of a circuit.
         If a Tofolli gate with more than 2 controls is encountered, ancilla qubits are added.
         Currently up to 5 controls are supported."""
         from .qsimparser import parse_qsim
         with open(fname, 'r') as f:
             data = f.read()
-        return parse_qsim(data)
+        c = parse_qsim(data)
+        c.name = os.path.basename(fname)
+        return c
 
     @staticmethod
-    def from_quipper_file(fname):
+    def from_quipper(s: str) -> 'Circuit':
         """Produces a :class:`Circuit` based on a Quipper ASCII description of a circuit."""
         from .quipperparser import parse_quipper_block
-        with open(fname, 'r') as f:
-            text = f.read().strip()
-            lines = text.splitlines()
+        text = s.strip()
+        lines = text.splitlines()
         if text.find('Subroutine') == -1:
             c = parse_quipper_block(lines)
-            c.name = os.path.basename(fname)
             return c
         else:
             raise TypeError("Subroutines are not supported")
 
     @staticmethod
-    def from_qasm_file(fname):
+    def from_quipper_file(fname: str) -> 'Circuit':
+        """Produces a :class:`Circuit` based on a Quipper ASCII description of a circuit."""
+        with open(fname, 'r') as f:
+            text = f.read().strip()
+        c = Circuit.from_quipper(text)
+        c.name = os.path.basename(fname)
+        return c
+
+    @staticmethod
+    def from_qasm(s: str) -> 'Circuit':
+        """Produces a :class:`Circuit` based on a QASM input string.
+        It ignores all the non-unitary instructions like measurements in the file. 
+        It currently doesn't support custom gates that have parameters."""
+        from .qasmparser import QASMParser
+        p = QASMParser()
+        return p.parse(s)
+
+    @staticmethod
+    def from_qasm_file(fname: str) -> 'Circuit':
         """Produces a :class:`Circuit` based on a QASM description of a circuit.
         It ignores all the non-unitary instructions like measurements in the file. 
         It currently doesn't support custom gates that have parameters."""
@@ -298,7 +330,7 @@ class Circuit(object):
         c.name = os.path.basename(fname)
         return c
 
-    def to_quipper(self):
+    def to_quipper(self) -> str:
         """Produces a Quipper ASCII description of the circuit."""
         s = "Inputs: " + ", ".join("{!s}:Qbit".format(i) for i in range(self.qubits)) + "\n"
         for g in self.gates:
@@ -306,7 +338,7 @@ class Circuit(object):
         s += "Outputs: " + ", ".join("{!s}:Qbit".format(i) for i in range(self.qubits))
         return s
 
-    def to_qasm(self):
+    def to_qasm(self) -> str:
         """Produces a QASM description of the circuit."""
         s = """OPENQASM 2.0;\ninclude "qelib1.inc";\n"""
         s += "qreg q[{!s}];\n".format(self.qubits)
@@ -314,7 +346,7 @@ class Circuit(object):
             s += g.to_qasm() + "\n"
         return s
 
-    def to_qc(self):
+    def to_qc(self) -> str:
         """Produces a .qc description of the circuit."""
         s = ".v " + " ".join("q{:d}".format(i) for i in range(self.qubits))
         s += "\n\nBEGIN\n"
@@ -329,20 +361,19 @@ class Circuit(object):
     ### STAT FUNCTIONS
 
 
-    def tcount(self):
+    def tcount(self) -> int:
         """Returns the amount of T-gates necessary to implement this circuit."""
         return sum(g.tcount() for g in self.gates)
         #return sum(1 for g in self.gates if isinstance(g, (ZPhase, XPhase, ParityPhase)) and g.phase.denominator >= 4)
     
-    def twoqubitcount(self):
+    def twoqubitcount(self) -> int:
         """Returns the amount of 2-qubit gates necessary to implement this circuit."""
         c = self.to_basic_gates()
         return sum(1 for g in c.gates if g.name in ('CNOT','CZ'))
 
-    def stats(self):
+    def stats(self) -> str:
         """Returns statistics on the amount of gates in the circuit, separated into different classes 
         (such as amount of T-gates, two-qubit gates, Hadamard gates)."""
-        from .gates import ZPhase, XPhase, CZ,CX,CNOT, HAD
         total = 0
         tcount = 0
         twoqubit = 0
@@ -372,7 +403,7 @@ class Circuit(object):
         return s
 
 
-def determine_file_type(circuitfile):
+def determine_file_type(circuitfile: str) -> str:
         """Tries to figure out in which format the file is given (quipper, qasm or qc)"""
         fname = circuitfile
         ext = os.path.splitext(fname)[-1]
@@ -399,5 +430,5 @@ def determine_file_type(circuitfile):
         raise TypeError("Couldn't determine circuit format.")
 
 
-def id(n):
+def id(n: int) -> Circuit:
     return Circuit(n)

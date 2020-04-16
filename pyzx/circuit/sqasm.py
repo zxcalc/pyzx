@@ -18,21 +18,24 @@
 from .qasmparser import QASMParser
 from ..rules import *
 from ..simplify import simp
+from ..graph.base import BaseGraph
 
 __all__ = ['sqasm']
+
+#TODO: Improve the type annotation of these functions
 
 # versions of these rules which instruct the simplifier *not* to remove
 # isolated vertices. n.b. remove_ids already does this, but this might change
 # in the future...
-def spider_nocheck(g, ms):
+def spider_nocheck(g: BaseGraph, ms: List) -> TypeRewriteOutput:
     etab,rem_v,rem_e,check = spider(g, ms)
     return (etab, rem_v, rem_e, False)
 
-def remove_ids_nocheck(g, ms):
+def remove_ids_nocheck(g: BaseGraph, ms: List) -> TypeRewriteOutput:
     etab,rem_v,rem_e,check = remove_ids(g, ms)
     return (etab, rem_v, rem_e, False)
 
-def sqasm(s, simplify=True):
+def sqasm(s: str, simplify=True) -> BaseGraph:
     p = QASMParser()
     c = p.parse(s, strict=False)
     g = c.to_graph(zh=True)

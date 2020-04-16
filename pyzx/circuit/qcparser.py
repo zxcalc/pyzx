@@ -15,15 +15,17 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+from typing import Dict
+
 from . import Circuit
 from .gates import *
 
-def parse_qc(data):
+def parse_qc(data: str) -> Circuit:
     """Produces a :class:`Circuit` based on a .qc description of a circuit.
     If a Tofolli gate with more than 2 controls is encountered, ancilla qubits are added.
     Currently up to 5 controls are supported."""
     preamble = data[:data.find("BEGIN")].strip().splitlines()
-    labels = {}
+    labels: Dict[str,int] = {}
     for l in preamble:
         if l.startswith('#'): continue
         if l.startswith('.'):
@@ -33,19 +35,19 @@ def parse_qc(data):
         else:
             raise TypeError("Unknown Expression: " + l)
 
-    ancillas = {}
-    gates = []
+    ancillas: Dict[int,int] = {}
+    gates: List[Gate] = []
     qcount = len(labels)
 
     for l in data[data.find("BEGIN")+6:data.find("END")].splitlines():
         if l.startswith('#'): continue
         l = l.strip()
         if not l: continue
-        try: gname, targets = l.split(' ',1)
+        try: gname, targetstr = l.split(' ',1)
         except ValueError:
-            raise ValueError("Couldn't parse line {} in file {}".format(l, fname))
+            raise ValueError("Couldn't parse line {}".format(l))
         gname = gname.strip().lower()
-        targets = [labels[v.strip()] for v in targets.replace(',',' ').strip().split(' ') if v.strip()]
+        targets = [labels[v.strip()] for v in targetstr.replace(',',' ').strip().split(' ') if v.strip()]
         if len(targets) == 1:
             t = targets[0]
             if gname in ('tof', 't1', 'not', 'x'): gates.append(NOT(t))
@@ -101,6 +103,6 @@ def parse_qc(data):
                 gates.append(Tofolli(ctrls[2],ctrls[3],ancillas[1]))
             gates.append(Tofolli(ctrls[0],ctrls[1],ancillas[0]))
 
-    c = Circuit(qcount)
-    c.gates = gates
-    return c
+    circ = Circuit(qcount)
+    circ.gates = gates
+    return circ

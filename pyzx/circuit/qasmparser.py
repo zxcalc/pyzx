@@ -18,20 +18,21 @@
 
 import math
 from fractions import Fraction
+from typing import List, Dict, Tuple, Optional
 
 from . import Circuit
-from .gates import qasm_gate_table, ZPhase, XPhase
+from .gates import Gate, qasm_gate_table, ZPhase, XPhase
 
 class QASMParser(object):
     """Class for parsing QASM source files into circuit descriptions."""
-    def __init__(self):
-        self.gates = []
-        self.customgates = {}
-        self.registers = {}
-        self.qubit_count = 0
-        self.circuit = None
+    def __init__(self) -> None:
+        self.gates: List[Gate] = []
+        self.customgates: Dict[str,Circuit] = {}
+        self.registers: Dict[str,Tuple[int,int]] = {}
+        self.qubit_count: int = 0
+        self.circuit: Optional[Circuit] = None
 
-    def parse(self, s, strict=True):
+    def parse(self, s: str, strict:bool=True) -> Circuit:
         lines = s.splitlines()
         r = []
         #strip comments
@@ -61,7 +62,7 @@ class QASMParser(object):
             data = data[:i] + data[j+1:]
         #parse the regular commands
         commands = [s.strip() for s in data.split(";") if s.strip()]
-        gates = []
+        gates: List[Gate] = []
         for c in commands:
             self.gates.extend(self.parse_command(c, self.registers))
 
@@ -70,7 +71,7 @@ class QASMParser(object):
         self.circuit = circ
         return self.circuit
 
-    def parse_custom_gate(self, data):
+    def parse_custom_gate(self, data: str) -> None:
         data = data[5:]
         spec, body = data.split("{",1)
         if "(" in spec:
@@ -105,16 +106,16 @@ class QASMParser(object):
                 circ.add_gate(g)
         self.customgates[name] = circ
 
-    def parse_command(self, c, registers):
-        gates = []
+    def parse_command(self, c: str, registers: Dict[str,Tuple[int,int]]) -> List[Gate]:
+        gates: List[Gate] = []
         name, rest = c.split(" ",1)
         if name in ("barrier","creg","measure", "id"): return gates
         if name in ("opaque", "if"):
             raise TypeError("Unsupported operation {}".format(c))
         args = [s.strip() for s in rest.split(",") if s.strip()]
         if name == "qreg":
-            regname, size = args[0].split("[",1)
-            size = int(size[:-1])
+            regname, sizep = args[0].split("[",1)
+            size = int(sizep[:-1])
             registers[regname] = (self.qubit_count, size)
             self.qubit_count += size
             return gates
@@ -123,8 +124,8 @@ class QASMParser(object):
         dim = 1
         for a in args:
             if "[" in a:
-                regname, val = a.split("[",1)
-                val = int(val[:-1])
+                regname, valp = a.split("[",1)
+                val = int(valp[:-1])
                 if not regname in registers: raise TypeError("Invalid register {}".format(regname))
                 qubit_values.append([registers[regname][0]+val])
             else:
@@ -150,40 +151,42 @@ class QASMParser(object):
                     gates.append(g.reposition(argset))
                 continue
             if name in ("x", "z", "s", "t", "h", "sdg", "tdg"):
-                if name in ("sdg", "tdg"): g = qasm_gate_table[name](argset[0],adjoint=True)
-                else: g = qasm_gate_table[name](argset[0])
+                if name in ("sdg", "tdg"): 
+                    g = qasm_gate_table[name](argset[0],adjoint=True) # type: ignore # mypy can't handle -
+                else: g = qasm_gate_table[name](argset[0]) # type: ignore # - Gate subclasses with different numbers of parameters
                 gates.append(g)
                 continue
             if name.startswith("rx") or name.startswith("rz"):
                 i = name.find('(')
                 j = name.find(')')
                 if i == -1 or j == -1: raise TypeError("Invalid specification {}".format(name))
-                val = name[i+1:j]
+                valp = name[i+1:j]
                 try:
-                    phase = float(val)/math.pi
+                    phasep = float(valp)/math.pi
                 except ValueError:
-                    if val.find('pi') == -1: raise TypeError("Invalid specification {}".format(name))
-                    val = val.replace('pi', '')
-                    val = val.replace('*','')
-                    try: phase = float(val)
+                    if valp.find('pi') == -1: raise TypeError("Invalid specification {}".format(name))
+                    valp = valp.replace('pi', '')
+                    valp = valp.replace('*','')
+                    try: phasep = float(valp)
                     except: raise TypeError("Invalid specification {}".format(name))
-                phase = Fraction(phase).limit_denominator(100000000)
+                phase = Fraction(phasep).limit_denominator(100000000)
                 if name.startswith('rx'): g = XPhase(argset[0],phase=phase)
                 else: g = ZPhase(argset[0],phase=phase)
                 gates.append(g)
                 continue
             if name in ("cx","CX","cz"):
-                g = qasm_gate_table[name](control=argset[0],target=argset[1])
+                g = qasm_gate_table[name](control=argset[0],target=argset[1]) # type: ignore
                 gates.append(g)
                 continue
             if name in ("ccx", "ccz"):
-                g = qasm_gate_table[name](ctrl1=argset[0],ctrl2=argset[1],target=argset[2])
+                g = qasm_gate_table[name](ctrl1=argset[0],ctrl2=argset[1],target=argset[2]) # type: ignore
                 gates.append(g)
                 continue
             raise TypeError("Unknown gate name: {}".format(c))
         return gates
 
-def qasm(s):
+def qasm(s: str) -> Circuit:
+    """Parses a string representing a program in QASM, and outputs a `Circuit`."""
     p = QASMParser()
     return p.parse(s, strict=False)
 
