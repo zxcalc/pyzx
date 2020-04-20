@@ -47,7 +47,7 @@ from typing import Tuple, List, Dict, Any
 from fractions import Fraction
 import itertools
 
-from .utils import VertexType, EdgeType, toggle_edge
+from .utils import VertexType, EdgeType, toggle_edge, vertex_is_zx
 
 TypeRewriteOutput = Tuple[Dict[Any,Tuple[int,int]], List, List, bool]
 
@@ -592,15 +592,15 @@ def match_ids_parallel(g, vertexf=None, num=-1):
 
     while (num == -1 or i < num) and len(candidates) > 0:
         v = candidates.pop()
-        if phases[v] != 0: continue
+        if phases[v] != 0 or not vertex_is_zx(types[v]): continue
         neigh = g.neighbours(v)
         if len(neigh) != 2: continue
         v0, v1 = neigh
         candidates.discard(v0)
         candidates.discard(v1)
         if g.edge_type((v,v0)) != g.edge_type((v,v1)): #exactly one of them is a hadamard edge
-            m.append((v,v0,v1,2))
-        else: m.append((v,v0,v1,1))
+            m.append((v,v0,v1,EdgeType.HADAMARD))
+        else: m.append((v,v0,v1,EdgeType.SIMPLE))
         i += 1
     return m
 
@@ -609,11 +609,12 @@ def remove_ids(g, matches):
     and vertices to remove."""
     etab = dict()
     rem = []
-    for m in matches:
-        rem.append(m[0])
-        e = (m[1],m[2]) if m[1] < m[2] else (m[2],m[1])
+    for v,v0,v1,et in matches:
+        rem.append(v)
+        e = g.edge(v0,v1)
         if not e in etab: etab[e] = [0,0]
-        etab[e][m[3]-1] += 1
+        if et == EdgeType.SIMPLE: etab[e][0] += 1
+        else: etab[e][1] += 1
     return (etab, rem, [], False)
     
 
@@ -780,7 +781,7 @@ def apply_copy(g, matches):
             if types[n] == VertexType.BOUNDARY:
                 r = g.row(n) - 1 if n in g.outputs else g.row(n)+1
                 u = g.add_vertex(VertexType.Z, g.qubit(n), r, a)
-                e = g.edge((w,n))
+                e = g.edge(w,n)
                 et = g.edge_type(e)
                 g.add_edge((n,u), toggle_edge(et))
             g.add_to_phase(n, a)

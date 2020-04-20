@@ -100,6 +100,8 @@ def supplementarity_simp(g, quiet=False):
     return simp(g, 'supplementarity_simp', match_supplementarity, apply_supplementarity, quiet=quiet)
 
 def copy_simp(g, quiet=False):
+    """Copies 1-ary spiders with 0/pi phase through neighbours.
+    WARNING: only use on maximally fused diagrams consisting solely of Z-spiders."""
     return simp(g, 'copy_simp', match_copy, apply_copy, quiet=quiet)
 
 def phase_free_simp(g, quiet=False):

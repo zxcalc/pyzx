@@ -74,7 +74,8 @@ def from_hbox(g):
                 g.remove_vertex(h)
         elif g.vertex_degree(h) == 2 and g.phase(h) == 1:
             s,t = g.neighbours(h)
-            g.add_edge((s,t), EdgeType.HADAMARD)
+            # Need to use add_edge_table here, because there might be parallel connections already present
+            g.add_edge_table({g.edge(s,t): [0,1]})
             g.remove_vertex(h)
 
 # a stripped-down version of "simp", since hrules don't return edge tables etc
