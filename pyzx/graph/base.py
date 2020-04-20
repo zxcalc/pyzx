@@ -541,7 +541,12 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         new vertices added to the graph, namely: range(g.vindex() - amount, g.vindex())"""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
-    def add_vertex(self, ty:VertexType.Type=VertexType.BOUNDARY, qubit:FloatInt=-1, row:FloatInt=-1, phase:Optional[FractionLike]=None) -> VT:
+    def add_vertex(self, 
+                   ty:VertexType.Type=VertexType.BOUNDARY, 
+                   qubit:FloatInt=-1, 
+                   row:FloatInt=-1, 
+                   phase:Optional[FractionLike]=None
+                   ) -> VT:
         """Add a single vertex to the graph and return its index.
         The optional parameters allow you to respectively set
         the type, qubit index, row index and phase of the vertex."""
@@ -573,20 +578,27 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         #edges regular edges must be added between source and target and $h-edges Hadamard edges.
         The method selectively adds or removes edges to produce that ZX diagram which would 
         result from adding (#edges, #h-edges), and then removing all parallel edges using Hopf/spider laws."""
-        add: Dict[EdgeType.Type,List] = {EdgeType.SIMPLE: [], EdgeType.HADAMARD: []} # list of edges and h-edges to add
+        add: Dict[EdgeType.Type,List[ET]] = {EdgeType.SIMPLE: [], EdgeType.HADAMARD: []} # list of edges and h-edges to add
         new_type: Optional[EdgeType.Type]
         remove: List = []   # list of edges to remove
         for e,(n1,n2) in etab.items():
             v1,v2 = self.edge_st(e)
+            t1 = self.type(v1)
+            t2 = self.type(v2)
             conn_type = self.edge_type(e)
             if conn_type == EdgeType.SIMPLE: n1 += 1 #and add to the relevant edge count
             elif conn_type == EdgeType.HADAMARD: n2 += 1
 
-            t1 = self.type(v1)
-            t2 = self.type(v2)
-            if t1 == t2 and vertex_is_zx(t1) and vertex_is_zx(t2): #types are ZX & equal,
-                n1 = bool(n1)           #so normal edges fuse
-                pairs, n2 = divmod(n2,2)#while hadamard edges go modulo 2
+            if n1 + n2 <= 1: # We first deal with simple edges
+                if n1 == 1: new_type = EdgeType.SIMPLE
+                elif n2 == 1: new_type = EdgeType.HADAMARD
+                else: new_type = None
+            # Hence, all the other cases have some kind of parallel edge
+            elif t1 == VertexType.BOUNDARY or t2 == VertexType.BOUNDARY:
+                raise ValueError("Parallel edges to a boundary edge are not supported")
+            elif t1 == t2 and vertex_is_zx(t1): #types are ZX & equal,
+                n1 = bool(n1)            #so normal edges fuse
+                pairs, n2 = divmod(n2,2) #while hadamard edges go modulo 2
                 self.scalar.add_power(-2*pairs)
                 if n1 != 0 and n2 != 0:  #reduction rule for when both edges appear
                     new_type = EdgeType.SIMPLE
@@ -596,8 +608,8 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
                 elif n2 != 0: new_type = EdgeType.HADAMARD
                 else: new_type = None
             elif t1 != t2 and vertex_is_zx(t1) and vertex_is_zx(t2): #types are ZX & different
-                pairs, n1 = divmod(n1,2)#so normal edges go modulo 2
-                n2 = bool(n2)           #while hadamard edges fuse
+                pairs, n1 = divmod(n1,2) #so normal edges go modulo 2
+                n2 = bool(n2)            #while hadamard edges fuse
                 self.scalar.add_power(-2*pairs)
                 if n1 != 0 and n2 != 0:  #reduction rule for when both edges appear
                     new_type = EdgeType.HADAMARD
@@ -606,28 +618,53 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
                 elif n1 != 0: new_type = EdgeType.SIMPLE
                 elif n2 != 0: new_type = EdgeType.HADAMARD
                 else: new_type = None
-            elif ((t1 == VertexType.Z and t2 == VertexType.H_BOX) or 
-                  (t1 == VertexType.H_BOX and t2 == VertexType.Z)):
-                # Z & H-box
-                n1 = bool(n1)
-                if n1 + n2 > 1:
-                    raise ValueError("Unhandled parallel edges between nodes of type (%s,%s)" % (t1,t2))
-                else:
-                    if n1 == 1: new_type = EdgeType.SIMPLE
-                    elif n2 == 1: new_type = EdgeType.HADAMARD
+            elif t1 == VertexType.H_BOX or t2 == VertexType.H_BOX:
+                # TODO: Check scalar accuracy
+                if t1 != VertexType.H_BOX: # Ensure that the first vertex is an H-box
+                    v1,v2 = v2,v1
+                    t1,t2 = t2,t1
+                if t2 == VertexType.H_BOX: # They are both H-boxes
+                    raise ValueError("Parallel edges between H-boxes are not supported")
+                elif t2 == VertexType.Z: # Z & H-box
+                    n1 = bool(n1) # parallel regular edges collapse to single wire
+                    if n2 and (n2-1) % 2 == 1: # parallel H-edges also collapse, but each extra one adds a pi phase
+                        self.add_to_phase(v2, 1)
+                    n2 = bool(n2)
+                    if n1 and n2:
+                        # There is no simple way to deal with a parallel H-edge and regular edge
+                        # So we simply add a 2-ary H-box to the graph
+                        r1,r2 = self.row(v1), self.row(v2)
+                        q1,q2 = self.qubit(v1), self.qubit(v2)
+                        w = self.add_vertex(VertexType.H_BOX,(q1+q2)/2,(r1+r2)/2-0.5)
+                        add[EdgeType.SIMPLE].extend([self.edge(v1,w),self.edge(v2,w)])
+                        new_type = EdgeType.SIMPLE
+                    elif n1: new_type = EdgeType.SIMPLE
+                    elif n2: new_type = EdgeType.HADAMARD
                     else: new_type = None
+                elif t2 == VertexType.X: # X & H-box
+                    n2 = bool(n2) # parallel H-edges collapse to single wire
+                    if (n1-1) % 2 == 1: # parallel regular edges also collapse, but each extra one adds a pi phase
+                        self.add_to_phase(v2, 1)
+                    n1 = bool(n1)
+                    if n1 and n2:
+                        # There is no simple way to deal with a parallel H-edge and regular edge
+                        # So we simply add a 2-ary H-box to the graph
+                        r1,r2 = self.row(v1), self.row(v2)
+                        q1,q2 = self.qubit(v1), self.qubit(v2)
+                        w = self.add_vertex(VertexType.H_BOX,(q1+q2)/2,(r1+r2)/2-0.5)
+                        add[EdgeType.SIMPLE].extend([self.edge(v1,w),self.edge(v2,w)])
+                        new_type = EdgeType.SIMPLE
+                    elif n1: new_type = EdgeType.SIMPLE
+                    elif n2: new_type = EdgeType.HADAMARD
+                    else: new_type = None
+                else:
+                    raise ValueError("Unhandled parallel edges between nodes of type (%s,%s)" % (t1,t2))
             else:
-                if n1 + n2 > 1:
-                    raise ValueError("Unhandled parallel edges between nodes of type (%s,%s)" % (t1,t2))
-                else:
-                    if n1 == 1: new_type = EdgeType.SIMPLE
-                    elif n2 == 1: new_type = EdgeType.HADAMARD
-                    else: new_type = None
+                raise ValueError("Unhandled parallel edges between nodes of type (%s,%s)" % (t1,t2))
 
-
-            if new_type: # They should be connected, so update the graph
+            if new_type: # The vertices should be connected, so update the graph
                 if not conn_type: #new edge added
-                    add[new_type].append((v1,v2))
+                    add[new_type].append(self.edge(v1,v2))
                 elif conn_type != new_type: #type of edge has changed
                     self.set_edge_type(self.edge(v1,v2), new_type)
             elif conn_type: #They were connected, but not anymore, so update the graph
