@@ -22,7 +22,7 @@ import copy
 from fractions import Fraction
 from typing import Union, Optional, Generic, TypeVar, Any
 from typing import List, Dict, Set, Tuple, Mapping, Iterable, Callable
-from typing_extensions import Literal
+from typing_extensions import Literal, GenericMeta 
 
 import numpy as np
 
@@ -139,11 +139,11 @@ class Scalar(object):
         return
 
 
-class DocstringMeta(abc.ABCMeta):
+class DocstringMeta(GenericMeta):
     """Metaclass that allows docstring 'inheritance'."""
 
-    def __new__(mcls, classname, bases, cls_dict):
-        cls = abc.ABCMeta.__new__(mcls, classname, bases, cls_dict)
+    def __new__(mcls, classname, bases, cls_dict, **kwargs):
+        cls = GenericMeta.__new__(mcls, classname, bases, cls_dict, **kwargs)
         mro = cls.__mro__[1:]
         for name, member in cls_dict.items():
             if not getattr(member, '__doc__'):
