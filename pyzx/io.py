@@ -17,11 +17,14 @@
 
 import json
 from fractions import Fraction
+from typing import List, Dict, Any
 
+from .utils import FractionLike
 from .graph import Graph, EdgeType, VertexType
+from .graph.base import BaseGraph, VT, ET
 from .simplify import id_simp
 
-def _quanto_value_to_phase(s):
+def _quanto_value_to_phase(s: str) -> Fraction:
     if not s: return Fraction(0)
     if r'\pi' in s:
         try:
@@ -31,30 +34,26 @@ def _quanto_value_to_phase(s):
             return Fraction(str(r)) if r else Fraction(1)
         except ValueError:
             raise ValueError("Invalid phase '{}'".format(s))
-    return s
+    return Fraction(s)
 
-def _phase_to_quanto_value(p):
+def _phase_to_quanto_value(p: FractionLike) -> str:
     if not p: return ""
-    if isinstance(p, Fraction):
-        if p.numerator == -1: v = "-"
-        elif p.numerator == 1: v = ""
-        else: v = str(p.numerator)
-        d = "/"+str(p.denominator) if p.denominator!=1 else ""
-        return r"{}\pi{}".format(v,d)
-    else: return p
-    # if not n: return ""
-    # s = str(float(n))
-    # return s + r"\pi"
+    p = Fraction(p)
+    if p.numerator == -1: v = "-"
+    elif p.numerator == 1: v = ""
+    else: v = str(p.numerator)
+    d = "/"+str(p.denominator) if p.denominator!=1 else ""
+    return r"{}\pi{}".format(v,d)
 
 
-def json_to_graph(js):
+def json_to_graph(js: str) -> BaseGraph:
     """Converts the json representation of a .qgraph Quantomatic graph into
     a pyzx graph."""
-    j = json.loads(str(js))
+    j = json.loads(js)
     g = Graph()
-    v = 0
-    names = {}
-    hadamards = {}
+
+    names: Dict[str, Any] = {} # TODO: Any = VT
+    hadamards: Dict[str, List[Any]] = {}
     for name,attr in j.get('node_vertices',{}).items():
         if ('data' in attr and 'type' in attr['data'] and attr['data']['type'] == "hadamard" 
             and 'is_edge' in attr['data'] and attr['data']['is_edge'] == 'true'):
@@ -64,7 +63,7 @@ def json_to_graph(js):
         q, r = -c[1], c[0]
         if q == int(q): q = int(q)
         if r == int(r): r = int(r)
-        g.add_vertex(qubit=q, row=r)
+        v = g.add_vertex(qubit=q, row=r)
         g.set_vdata(v,'name',name)
         names[name] = v
         if 'data' in attr:
@@ -83,33 +82,30 @@ def json_to_graph(js):
         
         #g.set_vdata(v, 'x', c[0])
         #g.set_vdata(v, 'y', c[1])
-        v += 1
     for name,attr in j.get('wire_vertices',{}).items():
         ann = attr['annotation']
         c = ann['coord']
         q, r = -c[1], c[0]
         if q == int(q): q = int(q)
         if r == int(r): r = int(r)
-        g.add_vertex(VertexType.BOUNDARY,q,r)
+        v = g.add_vertex(VertexType.BOUNDARY,q,r)
         g.set_vdata(v,'name',name)
         names[name] = v
         if "input" in ann and ann["input"]: g.inputs.append(v)
         if "output" in ann and ann["output"]: g.outputs.append(v)
         #g.set_vdata(v, 'x', c[0])
         #g.set_vdata(v, 'y', c[1])
-        v += 1
 
-    edges = {}
+    edges: Dict[Any, List[int]] = {} # TODO: Any = ET
     for edge in j.get('undir_edges',{}).values():
         n1, n2 = edge['src'], edge['tgt']
         if n1 in hadamards and n2 in hadamards: #Both 
-            g.add_vertex(VertexType.Z)
+            v = g.add_vertex(VertexType.Z)
             name = "v"+str(len(names))
             g.set_vdata(v, 'name',name)
             names[name] = v
             hadamards[n1].append(v)
             hadamards[n2].append(v)
-            v+=1
             continue
         if n1 in hadamards: 
             hadamards[n1].append(names[n2])
@@ -118,25 +114,26 @@ def json_to_graph(js):
             hadamards[n2].append(names[n1])
             continue
 
-        v = edges.get((names[n1],names[n2]),[0,0])
-        v[0] += 1
-        edges[(names[n1],names[n2])] = v
+        amount = edges.get(g.edge(names[n1],names[n2]),[0,0])
+        amount[0] += 1
+        edges[g.edge(names[n1],names[n2])] = amount
 
     for l in hadamards.values():
         if len(l) != 2: raise TypeError("Can't parse graphs with irregular Hadamard nodes")
-        v = edges.get(tuple(l),[0,0])
-        v[1] += 1
-        edges[tuple(l)] = v
+        e = g.edge(*tuple(l))
+        amount = edges.get(e,[0,0])
+        amount[1] += 1
+        edges[e] = amount
     g.add_edge_table(edges)
 
     return g
 
-def graph_to_json(g):
+def graph_to_json(g: BaseGraph[VT,ET]) -> str:
     """Converts a PyZX graph into JSON output compatible with Quantomatic."""
-    node_vs = {}
-    wire_vs = {}
-    edges = {}
-    names = {}
+    node_vs: Dict[str, Dict[str, Any]] = {}
+    wire_vs: Dict[str, Dict[str, Any]] = {}
+    edges: Dict[str, Dict[str, str]] = {}
+    names: Dict[VT, str] = {}
     freenamesv = ["v"+str(i) for i in range(g.num_vertices()+g.num_edges())]
     freenamesb = ["b"+str(i) for i in range(g.num_vertices())]
     for v in g.vertices():
@@ -148,7 +145,7 @@ def graph_to_json(g):
             else: name = freenamesv.pop(0)
         else: 
             try:
-                freenamesb.remove(name) if t==VertexType.BOUNDARY else freenamesv.remove(name)
+                freenamesb.remove(name) if t==VertexType.BOUNDARY else freenamesv.remove(name) # type: ignore
             except:
                 pass
                 #print("couldn't remove name '{}'".format(name))
@@ -174,7 +171,7 @@ def graph_to_json(g):
     i = 0
     for e in g.edges():
         src,tgt = g.edge_st(e)
-        t = g.edge_type((src,tgt))
+        t = g.edge_type(e)
         if t == EdgeType.SIMPLE:
             edges["e"+ str(i)] = {"src": names[src],"tgt": names[tgt]}
             i += 1
@@ -196,7 +193,7 @@ def graph_to_json(g):
             "node_vertices": node_vs, 
             "undir_edges": edges})
 
-def to_graphml(g):
+def to_graphml(g: BaseGraph[VT,ET]) -> str:
     gml = """<?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <graphml xmlns="http://graphml.graphdrawing.org/xmlns">
     <key attr.name="type" attr.type="int" for="node" id="type">
