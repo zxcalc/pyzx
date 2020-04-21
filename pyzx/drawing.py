@@ -17,55 +17,25 @@
 
 __all__ = ['draw', 'pack_circuit_nf']
 
+from fractions import Fraction
+import math
+from typing import Dict, List, Tuple, Optional, Union, Iterable, Any
+from typing_extensions import Literal
+
 try:
     import matplotlib.pyplot as plt
     from matplotlib import patches, lines, path
 except:
     plt = None
-from fractions import Fraction
-import math
-
-from .utils import phase_to_s
-
-from .graph.base import BaseGraph, EdgeType, VertexType
 
 
-def vcol(t):
-    if not t: return 'black'
-    if t == VertexType.Z: return 'green'
-    if t == VertexType.X: return 'red'
-    return 'black'
-    
-def ecol(t):
-    if not t: return 'black'
-    if t == EdgeType.SIMPLE: return 'magenta'
-    return 'black'
+from .utils import phase_to_s, EdgeType, VertexType, FloatInt
+
+from .graph.base import BaseGraph, VT, ET
+from .circuit import Circuit
 
 
-#TODO: Update this to work again
-def simple_layers(g, sort):
-    topo = g.as_directed(mutual=False).topological_sorting() if sort else range(len(g.vs))
-    layers = len(g.vs) * [-1]
-    for i in topo:
-        nlayers = [layers[n.index] for n in g.vs[topo[i]].neighbors()]
-        layers[topo[i]] = max(nlayers)+1 if len(nlayers) > 0 else 0
-    return layers
-
-def dag_layout(g, sort=True):
-    if g.backend != 'igraph':
-        raise NotImplementedError("Drawing not implemented on backend " + g.backend)
-    topo = g.graph.as_directed(mutual=False).topological_sorting() if sort else range(g.num_vertices())
-    layers = g.num_vertices() * [-1]
-    for i in topo:
-        nlayers = [layers[n.index] for n in g.graph.vs[topo[i]].neighbors()]
-        layers[topo[i]] = max(nlayers)+1 if len(nlayers) > 0 else 0
-    layout = g.graph.layout_sugiyama(layers=layers)
-    layout.transform(lambda t: (t[1],-t[0]))
-    layout.fit_into([len(layers)/(max(layers)+1),max(layers)+1])
-    return layout
-
-
-def pack_circuit_nf(g, nf='grg'):
+def pack_circuit_nf(g: BaseGraph[VT,ET], nf:Literal['grg','gslc'] ='grg') -> None:
     x_index = 0
     ty = g.types()
 
@@ -108,18 +78,15 @@ def pack_circuit_nf(g, nf='grg'):
     else:
         raise ValueError("Unknown normal form: " + str(nf))
 
-def circuit_layout(g,keys = ('r','q')):
-    return {v:(g.row(v),-g.qubit(v)) for v in g.vertices()}
-
-def arrange_scalar_diagram(g):
+def arrange_scalar_diagram(g: BaseGraph[VT,ET]) -> None:
     g.normalise()
     rs = g.rows()
     qs = g.qubits()
     ty = g.types()
-    gadgets = dict()
+    gadgets: Dict[Tuple[VT,VT], FloatInt] = {}
     verts = []
     min_row = 1000000
-    rows_used = dict()
+    rows_used: Dict[FloatInt, List[VT]] = dict()
     for v in g.vertices():
         if len(list(g.neighbours(v))) == 1:
             w = list(g.neighbours(v))[0]
@@ -149,27 +116,33 @@ def arrange_scalar_diagram(g):
         g.set_qubit(v,-1)
         g.set_qubit(w,0)
 
-def draw(g, layout=None, labels=False, figsize=(8,2), h_edge_draw='blue', rows=None):
+def draw(
+        g:      Union[BaseGraph[VT,ET], Circuit], 
+        labels: bool                             =False, 
+        figsize:Tuple[FloatInt,FloatInt]         =(8,2), 
+        h_edge_draw: Literal['blue', 'box']      ='blue', 
+        rows: Optional[Tuple[FloatInt,FloatInt]] =None
+        ) -> Any: # TODO: Returns a matplotlib figure
     if plt is None:
         raise ImportError("This function requires matplotlib to be installed. "
             "If you are running in a Jupyter notebook, you can instead use `zx.d3.draw`.")
-    if not isinstance(g, BaseGraph):
+    if isinstance(g, Circuit):
         g = g.to_graph(zh=True)
     fig1 = plt.figure(figsize=figsize)
     ax = fig1.add_axes([0, 0, 1, 1], frameon=False)
     ax.xaxis.set_visible(False)
     ax.yaxis.set_visible(False)
-    vs_on_row = dict()  # count the vertices on each row
+    vs_on_row: Dict[FloatInt, int] = {} # count the vertices on each row
     for v in g.vertices():
         vs_on_row[g.row(v)] = vs_on_row.get(g.row(v), 0) + 1
+    
+    #Dict[VT,Tuple[FloatInt,FloatInt]]
+    layout = {v:(g.row(v),-g.qubit(v)) for v in g.vertices()}
 
-    if not layout:
-        layout = circuit_layout(g)
-
-    if rows:
+    if rows is not None:
         minrow,maxrow = rows
-        vertices = [v for v in g.vertices() if (minrow<=g.row(v) and g.row(v) <=maxrow)]
-        edges = [e for e in g.edges() if g.edge_s(e) in vertices and g.edge_t(e) in vertices]
+        vertices: Iterable[VT] = [v for v in g.vertices() if (minrow<=g.row(v) and g.row(v) <=maxrow)]
+        edges: Iterable[ET] = [e for e in g.edges() if g.edge_s(e) in vertices and g.edge_t(e) in vertices]
     else:
         vertices = g.vertices()
         edges = g.edges()

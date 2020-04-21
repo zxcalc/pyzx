@@ -49,12 +49,15 @@
 # end
 #
 
+from typing import Dict, Set, Tuple, Optional
+
 from .extract import bi_adj
 from .linalg import Mat2
+from .graph.base import BaseGraph, VT, ET
 
-def gflow(g):
-    l = dict()
-    gflow = dict()
+def gflow(g: BaseGraph[VT,ET]) -> Optional[Tuple[Dict[VT,int], Dict[VT,Set[VT]], int]]:
+    l:     Dict[VT,int]      = {}
+    gflow: Dict[VT, Set[VT]] = {}
     for v in g.outputs:
         l[v] = 0
 
