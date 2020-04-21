@@ -24,10 +24,12 @@ import tempfile
 import os
 import subprocess
 import time
+from typing import List, overload, Tuple, Union, Optional
 
-from .graph import EdgeType, VertexType
+from .utils import EdgeType, VertexType, FloatInt, FractionLike
+from .graph.base import BaseGraph, VT, ET
 
-tikzit_location = None
+tikzit_location: Optional[str] = None
 
 TIKZ_BASE = """
 \\begin{{tikzpicture}}
@@ -40,14 +42,15 @@ TIKZ_BASE = """
 \\end{{tikzpicture}}
 """
 
-def to_tikz(g, xoffset=0, yoffset=0, idoffset=0, full_output=True):
+def _to_tikz(g: BaseGraph[VT,ET], 
+    xoffset:FloatInt=0, yoffset:FloatInt=0, idoffset:int=0) -> Tuple[List[str],List[str]]:
     """Converts a ZX-graph ``g`` to a string representing a tikz diagram.
     The optional arguments are used by :func:`to_tikz_sequence`.
     """
     verts = []
     maxindex = idoffset
     for v in g.vertices():
-        phase = g.phase(v)
+        p = g.phase(v)
         ty = g.type(v)
         if ty == VertexType.BOUNDARY:
             style = "none"
@@ -55,20 +58,20 @@ def to_tikz(g, xoffset=0, yoffset=0, idoffset=0, full_output=True):
             style = "hadamard"
         else:
             style = 'Z' if ty==VertexType.Z else 'X'
-            if phase != 0: style += " phase"
+            if p != 0: style += " phase"
             style += " dot"
-        if (ty == VertexType.H_BOX and phase == 1) or (ty != VertexType.H_BOX and phase == 0):
+        if (ty == VertexType.H_BOX and p == 1) or (ty != VertexType.H_BOX and p == 0):
             phase = ""
         else:
-            ns = '' if phase.numerator == 1 else str(phase.numerator)
-            dn = '' if phase.denominator == 1 else str(phase.denominator)
+            ns = '' if p.numerator == 1 else str(p.numerator)
+            dn = '' if p.denominator == 1 else str(p.denominator)
             if dn: phase = r"$\frac{%s\pi}{%s}$" % (ns, dn)
             else: phase = r"$%s\pi$" % ns
         x = g.row(v) + xoffset
         y = - g.qubit(v) - yoffset
-        s = "        \\node [style={}] ({:d}) at ({:.2f}, {:.2f}) {{{:s}}};".format(style,v+idoffset,x,y,phase)
+        s = "        \\node [style={}] ({:d}) at ({:.2f}, {:.2f}) {{{:s}}};".format(style,v+idoffset,x,y,phase) # type: ignore
         verts.append(s)
-        maxindex = max([v+idoffset,maxindex])
+        maxindex = max([v+idoffset,maxindex]) # type: ignore
     edges = []
     for e in g.edges():
         v,w = g.edge_st(e)
@@ -83,12 +86,16 @@ def to_tikz(g, xoffset=0, yoffset=0, idoffset=0, full_output=True):
                 t = "        \\node [style=hadamard] ({:d}) at ({:.2f}, {:.2f}) {{}};".format(maxindex+1, x,y)
                 verts.append(t)
                 maxindex += 1
-        s += "({:d}) to ({:d});".format(v+idoffset,w+idoffset)
+        s += "({:d}) to ({:d});".format(v+idoffset,w+idoffset) # type: ignore
         edges.append(s)
-    if full_output: return TIKZ_BASE.format(vertices="\n".join(verts), edges="\n".join(edges))
-    else: return (verts, edges)
+    
+    return (verts, edges)
 
-def to_tikz_sequence(graphs, maxwidth=10):
+def to_tikz(g: BaseGraph[VT,ET]) -> str:
+    verts, edges = _to_tikz(g)
+    return TIKZ_BASE.format(vertices="\n".join(verts), edges="\n".join(edges))
+
+def to_tikz_sequence(graphs:List[BaseGraph], maxwidth:FloatInt=10) -> str:
     """Given a list of ZX-graphs, outputs a single tikz diagram with the graphs presented in a grid.
     ``maxwidth`` is the maximum width of the diagram, before a graph is put on a new row in the tikz diagram."""
     xoffset = -maxwidth
@@ -97,7 +104,7 @@ def to_tikz_sequence(graphs, maxwidth=10):
     total_verts, total_edges = [],[]
     for g in graphs:
         max_index = max(g.vertices()) + 2*len(g.inputs) + 1
-        verts, edges = to_tikz(g,xoffset,yoffset,idoffset,False)
+        verts, edges = _to_tikz(g,xoffset,yoffset,idoffset)
         total_verts.extend(verts)
         total_edges.extend(edges)
         if xoffset + g.depth() + 2> maxwidth:
@@ -111,15 +118,14 @@ def to_tikz_sequence(graphs, maxwidth=10):
 
 
 
-def tikzit(g):
+def tikzit(g: BaseGraph[VT,ET]) -> None:
     """Opens Tikzit with the graph ``g`` opened as a tikz diagram. 
     For this to work, ``zx.tikz.tikzit_location`` must be pointed towards the Tikzit executable.
     Even though this function is intended to be used with Tikzit, ``zx.tikz.tikzit_location``
     can point towards any executable that takes a tikz file as an input, such as a text processor."""
 
-    if not tikzit_location or not os.path.exists(tikzit_location):
-        print("Please point towards the Tikzit executable with tikz.tikzit_location")
-        return
+    if tikzit_location is None or not os.path.exists(tikzit_location):
+        raise Exception("Please point towards the Tikzit executable with tikz.tikzit_location")
 
     with tempfile.TemporaryDirectory() as tmpdirname:
         tz = to_tikz(g)
