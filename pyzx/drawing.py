@@ -165,6 +165,9 @@ def arrange_scalar_diagram(g):
         g.set_qubit(w,0)
 
 def draw(g, layout=None, labels=False, figsize=(8,2), h_edge_draw='blue', rows=None):
+    if plt is None:
+        raise ImportError("This function requires matplotlib to be installed. "
+            "If you are running in a Jupyter notebook, you can instead use `zx.d3.draw`.")
     if not isinstance(g, BaseGraph):
         g = g.to_graph(zh=True)
     fig1 = plt.figure(figsize=figsize)
