@@ -22,7 +22,7 @@ import copy
 from fractions import Fraction
 from typing import Union, Optional, Generic, TypeVar, Any
 from typing import List, Dict, Set, Tuple, Mapping, Iterable, Callable
-from typing_extensions import Literal, GenericMeta 
+from typing_extensions import Literal, GenericMeta # type: ignore # https://github.com/python/mypy/issues/5753
 
 import numpy as np
 
