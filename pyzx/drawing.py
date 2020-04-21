@@ -25,25 +25,10 @@ except:
 from fractions import Fraction
 import math
 
+from .utils import phase_to_s
+
 from .graph.base import BaseGraph, EdgeType, VertexType
 
-def phase_to_s(a, t=VertexType.Z):
-    if (a == 0 and t != VertexType.H_BOX): return ''
-    if (a == 1 and t == VertexType.H_BOX): return ''
-    if not isinstance(a, Fraction):
-        a = Fraction(a)
-
-    if a == 0: return '0'
-    simstr = ''
-    if a.denominator > 256:
-        a = a.limit_denominator(256)
-        simstr = '~'
-
-    ns = '' if a.numerator == 1 else str(a.numerator)
-    ds = '' if a.denominator == 1 else '/' + str(a.denominator)
-
-    # unicode 0x03c0 = pi
-    return simstr + ns + '\u03c0' + ds
 
 def vcol(t):
     if not t: return 'black'

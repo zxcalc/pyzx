@@ -19,34 +19,24 @@ import json
 import os
 from fractions import Fraction
 
+from .utils import javascript_location, d3_load_string, phase_to_s
+
 __all__ = ['init', 'draw']
 
 try:
     from IPython.display import display, HTML # type: ignore
     in_notebook = True
-    javascript_location = os.path.join(os.path.dirname(__file__), 'js')
-    d3_load_string = 'require.config({paths: {d3: "https://d3js.org/d3.v5.min"} });'
-    relpath = os.path.relpath(javascript_location, os.getcwd())
-    if relpath.count('..') <= 1:
-        javascript_location = os.path.relpath(javascript_location, os.getcwd())
-        d3_load_string = 'require.config({{baseUrl: "{}",paths: {{d3: "d3.v5.min"}} }});'.format(
-                            javascript_location.replace('\\','/'))
 except ImportError:
     in_notebook = False
-    javascript_location = '/js'
-    d3_load_string = 'require.config({paths: {d3: "https://d3js.org/d3.v5.min"} });'
     try:
         from browser import document, html # type: ignore
         in_webpage = True
-        d3_load_string = 'require.config({baseUrl: "/js", paths: {d3: "d3.v5.min"} });'
     except ImportError:
         in_webpage = False
 
 # Provides functions for displaying pyzx graphs in jupyter notebooks using d3
 
 _d3_display_seq = 0
-
-from .drawing import phase_to_s
 
 def draw(g, scale=None, auto_hbox=True, labels=False):
     global _d3_display_seq

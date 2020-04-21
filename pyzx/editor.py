@@ -22,6 +22,7 @@ from fractions import Fraction
 import traceback
 
 from .utils import EdgeType, VertexType, toggle_edge, vertex_is_zx, toggle_vertex
+from .utils import javascript_location, d3_load_string, phase_to_s
 
 try:
 	import ipywidgets as widgets # type: ignore
@@ -44,8 +45,6 @@ except ImportError:
 	class widgets(object): # type: ignore
 		register = lambda x: x
 		DOMWidget = DOMWidget
-
-from .drawing import phase_to_s
 
 from . import rules
 
@@ -92,21 +91,6 @@ If you are running this in a Jupyter notebook, then you probably don't have ipyw
 Run %%pip install ipywidgets in a cell in your notebook to install the correct package.
 """
 
-# We default to importing d3 from a CDN
-d3_load_string = 'require.config({paths: {d3: "https://d3js.org/d3.v5.min"} });'
-# However, if we are working in the pyzx directory itself, we can use the copy of d3
-# local to pyzx, which doesn't require an internet connection
-# We only do this if we believe we are running in the PyZX directory itself.
-
-javascript_location = os.path.join(os.path.dirname(__file__), 'js')
-relpath = os.path.relpath(javascript_location, os.getcwd())
-if relpath.count('..') <= 1: # We are *probably* working in the PyZX directory
-	javascript_location = os.path.relpath(javascript_location, os.getcwd())
-	d3_load_string = 'require.config({{baseUrl: "{}",paths: {{d3: "d3.v5.min"}} }});'.format(
-						javascript_location.replace('\\','/'))
-	# TODO: This will fail if Jupyter is started in the parent directory of pyzx, while
-	# the notebook is not in the pyzx directory
-
 def load_js():
 	if not in_notebook:
 		raise Exception(ERROR_STRING)
@@ -122,18 +106,6 @@ def load_js():
 				{2}
 			</script>""".format(d3_load_string,data1,data2)
 	display(HTML(text))
-
-_d3_editor_id = 0
-
-# def phase_to_s(a):
-#	 if not a: return ''
-#	 if not isinstance(a, Fraction):
-#		 a = Fraction(a)
-#	 ns = '' if a.numerator == 1 else str(a.numerator)
-#	 ds = '' if a.denominator == 1 else '/' + str(a.denominator)
-
-#	 # unicode 0x03c0 = pi
-#	 return ns + '\u03c0' + ds
 
 def s_to_phase(s, t=1):
 	if not s: 
@@ -450,6 +422,7 @@ class ZXEditorWidget(widgets.DOMWidget):
 			
 
 _d3_editor_id = 0
+
 def edit(g, scale=None):
 	load_js()
 	global _d3_editor_id
