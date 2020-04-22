@@ -27,11 +27,11 @@ __all__ = ['sqasm']
 # versions of these rules which instruct the simplifier *not* to remove
 # isolated vertices. n.b. remove_ids already does this, but this might change
 # in the future...
-def spider_nocheck(g: BaseGraph, ms: List) -> TypeRewriteOutput:
+def spider_nocheck(g: BaseGraph, ms: List) -> RewriteOutputType:
     etab,rem_v,rem_e,check = spider(g, ms)
     return (etab, rem_v, rem_e, False)
 
-def remove_ids_nocheck(g: BaseGraph, ms: List) -> TypeRewriteOutput:
+def remove_ids_nocheck(g: BaseGraph, ms: List) -> RewriteOutputType:
     etab,rem_v,rem_e,check = remove_ids(g, ms)
     return (etab, rem_v, rem_e, False)
 

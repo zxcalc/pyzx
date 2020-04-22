@@ -20,7 +20,7 @@ import math
 import cmath
 import copy
 from fractions import Fraction
-from typing import Union, Optional, Generic, TypeVar, Any
+from typing import TYPE_CHECKING, Union, Optional, Generic, TypeVar, Any, Sequence
 from typing import List, Dict, Set, Tuple, Mapping, Iterable, Callable
 from typing_extensions import Literal, GenericMeta # type: ignore # https://github.com/python/mypy/issues/5753
 
@@ -29,7 +29,8 @@ import numpy as np
 from ..utils import EdgeType, VertexType, toggle_edge, vertex_is_zx, toggle_vertex
 from ..utils import FloatInt, FractionLike
 from ..tensor import tensorfy, tensor_to_matrix
-from ..simplify import Simplifier
+if TYPE_CHECKING:
+    from ..simplify import Simplifier
 
 def cexp(val) -> complex:
     return cmath.exp(1j*math.pi*val)
@@ -187,7 +188,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         #Data necessary for phase tracking for phase teleportation
         self.track_phases: bool = False
         self.phase_index : Dict[VT,int] = dict() # {vertex:index tracking its phase for phase teleportation}
-        self.phase_master: Optional[Simplifier] = None
+        self.phase_master: Optional['Simplifier'] = None
         self.phase_mult: Dict[int,Literal[1,-1]] = dict()
         self.max_phase_index: int = -1
 
@@ -674,7 +675,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         self.add_edges(add[EdgeType.SIMPLE],EdgeType.SIMPLE)
         self.add_edges(add[EdgeType.HADAMARD],EdgeType.HADAMARD)
 
-    def set_phase_master(self, m: Simplifier) -> None:
+    def set_phase_master(self, m: 'Simplifier') -> None:
         """Points towards an instance of the class :class:`simplify.Simplifier`.
         Used for phase teleportation."""
         self.phase_master = m
@@ -761,11 +762,11 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         """Returns the amount of edges in the graph"""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
-    def vertices(self) -> Iterable[VT]:
+    def vertices(self) -> Sequence[VT]:
         """Iterator over all the vertices."""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
-    def edges(self) -> Iterable[ET]:
+    def edges(self) -> Sequence[ET]:
         """Iterator that returns all the edges. Output type depends on implementation in backend."""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
@@ -793,7 +794,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         """Returns the target of the given edge."""
         return self.edge_st(edge)[1]
 
-    def neighbours(self, vertex: VT) -> Iterable[VT]:
+    def neighbours(self, vertex: VT) -> Sequence[VT]:
         """Returns all neighbouring vertices of the given vertex."""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
@@ -801,7 +802,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         """Returns the degree of the given vertex."""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
-    def incident_edges(self, vertex: VT) -> Iterable[ET]:
+    def incident_edges(self, vertex: VT) -> Sequence[ET]:
         """Returns all neighbouring edges of the given vertex."""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
@@ -870,7 +871,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         self.set_qubit(vertex, q)
         self.set_row(vertex, r)
 
-    def vdata_keys(self, vertex: VT) -> Iterable[str]:
+    def vdata_keys(self, vertex: VT) -> Sequence[str]:
         """Returns an iterable of the vertex data key names.
         Used e.g. in making a copy of the graph in a backend-independent way."""
         raise NotImplementedError("Not implemented on backend" + type(self).backend)
