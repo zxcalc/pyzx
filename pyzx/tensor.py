@@ -31,7 +31,7 @@ if TYPE_CHECKING:
     from .circuit import Circuit
 TensorConvertible = Union[np.ndarray, 'Circuit', 'BaseGraph']
 
-def Z_to_tensor(arity: int, phase: FractionLike) -> np.ndarray:
+def Z_to_tensor(arity: int, phase: float) -> np.ndarray:
     m = np.zeros([2]*arity, dtype = complex)
     if arity == 0:
         m[()] = 1 + np.exp(1j*phase)
@@ -40,7 +40,7 @@ def Z_to_tensor(arity: int, phase: FractionLike) -> np.ndarray:
     m[(1,)*arity] = np.exp(1j*phase)
     return m
 
-def X_to_tensor(arity: int, phase: FractionLike) -> np.ndarray:
+def X_to_tensor(arity: int, phase: float) -> np.ndarray:
     m = np.ones(2**arity, dtype = complex)
     if arity == 0:
         m[()] = 1 + np.exp(1j*phase)
@@ -52,7 +52,7 @@ def X_to_tensor(arity: int, phase: FractionLike) -> np.ndarray:
             m[i] -= np.exp(1j*phase)
     return np.power(np.sqrt(0.5),arity)*m.reshape([2]*arity)
 
-def H_to_tensor(arity: int, phase: FractionLike) -> np.ndarray:
+def H_to_tensor(arity: int, phase: float) -> np.ndarray:
     m = np.ones(2**arity, dtype = complex)
     if phase != 0: m[-1] = np.exp(1j*phase)
     return m.reshape([2]*arity)
@@ -110,11 +110,11 @@ def tensorfy(g: 'BaseGraph[VT,ET]', preserve_scalar:bool=True) -> np.ndarray:
             else:
                 phase = pi*phases[v]
                 if types[v] == 1:
-                    t = Z_to_tensor(d,phase) # type: ignore # https://stackoverflow.com/questions/61349404/mypy-unionfraction-int-weird-inference-behaviour
+                    t = Z_to_tensor(d,phase)
                 elif types[v] == 2:
-                    t = X_to_tensor(d,phase) # type: ignore
+                    t = X_to_tensor(d,phase)
                 elif types[v] == 3:
-                    t = H_to_tensor(d,phase) # type: ignore
+                    t = H_to_tensor(d,phase)
                 else:
                     raise ValueError("Non-ZXH internal vertex", v)
             nn = list(filter(lambda n: rows[n]<r or (rows[n]==r and n<v), neigh)) # type: ignore # TODO: allow ordering on vertex indices?
