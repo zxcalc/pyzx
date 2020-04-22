@@ -15,10 +15,12 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-__all__ = ['draw', 'pack_circuit_nf']
+__all__ = ['draw', 'pack_circuit_nf', 'arrange_scalar_diagram', 'draw_matplotlib', 'draw_d3']
 
-from fractions import Fraction
+import os
 import math
+import json
+from fractions import Fraction
 from typing import Dict, List, Tuple, Optional, Union, Iterable, Any
 from typing_extensions import Literal
 
@@ -28,12 +30,32 @@ try:
 except:
     plt = None
 
-
-from .utils import phase_to_s, EdgeType, VertexType, FloatInt
-
+from .utils import settings, phase_to_s, EdgeType, VertexType, FloatInt
 from .graph.base import BaseGraph, VT, ET
 from .circuit import Circuit
 
+if settings.mode == "notebook":
+    from IPython.display import display, HTML # type: ignore
+elif settings.mode == "browser":
+    from browser import document, html # type: ignore
+
+
+def draw(g: Union[BaseGraph[VT,ET], Circuit], labels: bool=False, **kwargs) -> Any:
+    """Draws the given Circuit or Graph. Depending on the value of `pyzx.settings.drawing_backend`
+    either uses matplotlib or d3 to draw."""
+    if settings.mode == "shell":
+        if plt is None: 
+            raise ImportError("This function requires matplotlib.")
+        return draw_matplotlib(g, labels, **kwargs)
+    elif settings.mode == "browser":
+        return draw_d3(g, labels, **kwargs)
+    else: # in notebook
+        if settings.drawing_backend == "d3":
+            return draw_d3(g, labels, **kwargs)
+        elif settings.drawing_backend == "matplotlib":
+            return draw_matplotlib(g, labels, **kwargs)
+        else:
+            raise TypeError("Unsupported drawing backend '{}'".format(settings.drawing_backend))
 
 def pack_circuit_nf(g: BaseGraph[VT,ET], nf:Literal['grg','gslc'] ='grg') -> None:
     x_index = 0
@@ -116,7 +138,7 @@ def arrange_scalar_diagram(g: BaseGraph[VT,ET]) -> None:
         g.set_qubit(v,-1)
         g.set_qubit(w,0)
 
-def draw(
+def draw_matplotlib(
         g:      Union[BaseGraph[VT,ET], Circuit], 
         labels: bool                             =False, 
         figsize:Tuple[FloatInt,FloatInt]         =(8,2), 
@@ -207,3 +229,69 @@ def draw(
     return fig1
     #plt.show()
 
+# Provides functions for displaying pyzx graphs in jupyter notebooks using d3
+
+_d3_display_seq = 0
+
+def draw_d3(g: Union[BaseGraph[VT,ET], Circuit],labels:bool=False, scale:Optional[FloatInt]=None, auto_hbox:bool=True) -> Any:
+    global _d3_display_seq
+
+    if settings.mode not in ("notebook", "browser"): 
+        raise Exception("This method only works when loaded in a webpage or Jupyter notebook")
+
+    if isinstance(g, Circuit):
+        g = g.to_graph(zh=True)
+
+    _d3_display_seq += 1
+    graph_id = str(_d3_display_seq)
+
+    if scale is None:
+        scale = 800 / (g.depth() + 2)
+        if scale > 50: scale = 50
+        if scale < 20: scale = 20
+
+    node_size = 0.2 * scale
+    if node_size < 2: node_size = 2
+
+    w = (g.depth() + 2) * scale
+    h = (g.qubit_count() + 3) * scale
+
+    nodes = [{'name': str(v),
+              'x': (g.row(v) + 1) * scale,
+              'y': (g.qubit(v) + 2) * scale,
+              't': g.type(v),
+              'phase': phase_to_s(g.phase(v), g.type(v)) }
+             for v in g.vertices()]
+    links = [{'source': str(g.edge_s(e)),
+              'target': str(g.edge_t(e)),
+              't': g.edge_type(e) } for e in g.edges()]
+    graphj = json.dumps({'nodes': nodes, 'links': links})
+    with open(os.path.join(settings.javascript_location, 'zx_viewer.js'), 'r') as f:
+        viewer_code = f.read()
+    text = """<div style="overflow:auto" id="graph-output-{id}"></div>
+<script type="text/javascript">
+{d3_load}
+{viewer_code}
+</script>
+<script type="text/javascript">
+require(['zx_viewer'], function(zx_viewer) {{
+    zx_viewer.showGraph('#graph-output-{id}',
+    JSON.parse('{graph}'), {width}, {height}, {scale}, {node_size}, {hbox}, {labels});
+}});
+</script>""".format(id = graph_id, d3_load = settings.d3_load_string, viewer_code=viewer_code, 
+                    graph = graphj, 
+                   width=w, height=h, scale=scale, node_size=node_size,
+                   hbox = 'true' if auto_hbox else 'false',
+                   labels='true' if labels else 'false')
+    if settings.mode == "notebook":
+        display(HTML(text))
+    else:
+        d = html.DIV(style={"overflow": "auto"}, id="graph-output-{}".format(graph_id))
+        source = """
+        require(['zx_viewer'], function(zx_viewer) {{
+            zx_viewer.showGraph('#graph-output-{0}',
+            JSON.parse('{1}'), {2}, {3}, {4}, false, false);
+        }});
+        """.format(graph_id, graphj, str(w), str(h), str(node_size))
+        s = html.SCRIPT(source, type="text/javascript")
+        return d,s

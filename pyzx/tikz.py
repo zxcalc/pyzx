@@ -26,10 +26,8 @@ import subprocess
 import time
 from typing import List, overload, Tuple, Union, Optional
 
-from .utils import EdgeType, VertexType, FloatInt, FractionLike
+from .utils import settings, EdgeType, VertexType, FloatInt, FractionLike
 from .graph.base import BaseGraph, VT, ET
-
-tikzit_location: Optional[str] = None
 
 TIKZ_BASE = """
 \\begin{{tikzpicture}}
@@ -124,8 +122,8 @@ def tikzit(g: BaseGraph[VT,ET]) -> None:
     Even though this function is intended to be used with Tikzit, ``zx.tikz.tikzit_location``
     can point towards any executable that takes a tikz file as an input, such as a text processor."""
 
-    if tikzit_location is None or not os.path.exists(tikzit_location):
-        raise Exception("Please point towards the Tikzit executable with tikz.tikzit_location")
+    if not settings.tikzit_location or not os.path.exists(settings.tikzit_location):
+        raise Exception("Please point towards the Tikzit executable with pyzx.settings.tikzit_location")
 
     with tempfile.TemporaryDirectory() as tmpdirname:
         tz = to_tikz(g)
@@ -135,7 +133,7 @@ def tikzit(g: BaseGraph[VT,ET]) -> None:
             f.write(tz)
         print("Opening Tikzit...")
         #print(fname)
-        subprocess.check_call([tikzit_location, fname])
+        subprocess.check_call([settings.tikzit_location, fname])
         print("Done")
         # with open(fname, 'r') as f:
         #     js = f.read()

@@ -56,18 +56,43 @@ def phase_to_s(a: FractionLike, t:VertexType.Type=VertexType.Z):
     return simstr + ns + '\u03c0' + ds
 
 
-javascript_location = os.path.join(os.path.dirname(__file__), 'js')
+class Settings(object): # namespace class
+    mode: Literal["notebook", "browser", "shell"] = "shell"
+    javascript_location: str = ""
+    d3_load_string: str = ""
+    tikzit_location: str = ""
+    quantomatic_location: str = ""
+    drawing_backend: Literal["d3","matplotlib"] = "d3" 
+
+settings = Settings()
+
+
+settings.javascript_location = os.path.join(os.path.dirname(__file__), 'js')
 
 # We default to importing d3 from a CDN
-d3_load_string = 'require.config({paths: {d3: "https://d3js.org/d3.v5.min"} });'
+settings.d3_load_string = 'require.config({paths: {d3: "https://d3js.org/d3.v5.min"} });'
 # However, if we are working in the pyzx directory itself, we can use the copy of d3
 # local to pyzx, which doesn't require an internet connection
 # We only do this if we believe we are running in the PyZX directory itself.
 
-relpath = os.path.relpath(javascript_location, os.getcwd())
+relpath = os.path.relpath(settings.javascript_location, os.getcwd())
 if relpath.count('..') <= 1: # We are *probably* working in the PyZX directory
-    javascript_location = os.path.relpath(javascript_location, os.getcwd())
-    d3_load_string = 'require.config({{baseUrl: "{}",paths: {{d3: "d3.v5.min"}} }});'.format(
-                        javascript_location.replace('\\','/'))
+    settings.javascript_location = os.path.relpath(settings.javascript_location, os.getcwd())
+    settings.d3_load_string = 'require.config({{baseUrl: "{}",paths: {{d3: "d3.v5.min"}} }});'.format(
+                        settings.javascript_location.replace('\\','/'))
     # TODO: This will fail if Jupyter is started in the parent directory of pyzx, while
     # the notebook is not in the pyzx directory
+
+
+try:
+    import IPython # type: ignore
+    ipython_instance = IPython.get_ipython()
+    if ipython_instance is None: raise Exception
+    if 'IPKernelApp' in ipython_instance.config: settings.mode = "notebook"
+    ipython_instance.config.InlineBackend.figure_format = 'svg'
+except:
+    try:
+        import browser # type: ignore
+        settings.mode = "browser"
+    except:
+        settings.mode = "shell"

@@ -29,18 +29,17 @@ import tempfile
 import os
 import subprocess
 
+from .utils import settings
 from .io import json_to_graph, graph_to_json
 from .graph.base import BaseGraph
-
-quantomatic_location = None
 
 def edit_graph(g: BaseGraph) -> BaseGraph:
     """Opens Quantomatic with the graph ``g`` loaded. When you are done editing the graph, 
     you save it in Quantomatic and close the executable. The resulting graph is returned by this function.
     Note that this function blocks until the Quantomatic executable is closed. For this function to work
     you must first set ``zx.quantomatic.quantomatic_location`` to point towards the Quantomatic .jar file."""
-    if not quantomatic_location or not os.path.exists(quantomatic_location):
-        raise Exception("Please point towards the Quantomatic jar file with quantomatic.quantomatic_location")
+    if not settings.quantomatic_location or not os.path.exists(settings.quantomatic_location):
+        raise Exception("Please point towards the Quantomatic jar file with pyzx.settings.quantomatic_location")
 
     with tempfile.TemporaryDirectory() as tmpdirname:
         projectname = os.path.join(tmpdirname, "main.qgraph")
@@ -51,7 +50,7 @@ def edit_graph(g: BaseGraph) -> BaseGraph:
         with open(fname,'w') as f:
             f.write(js)
         print("Opening Quantomatic...")
-        subprocess.check_call(["java", "-jar",quantomatic_location, projectname, fname])
+        subprocess.check_call(["java", "-jar",settings.quantomatic_location, projectname, fname])
         print("Done")
         with open(fname, 'r') as f:
             js = f.read()

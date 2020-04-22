@@ -22,7 +22,7 @@ from fractions import Fraction
 import traceback
 
 from .utils import EdgeType, VertexType, toggle_edge, vertex_is_zx, toggle_vertex
-from .utils import javascript_location, d3_load_string, phase_to_s
+from .utils import settings, phase_to_s
 
 try:
 	import ipywidgets as widgets # type: ignore
@@ -94,9 +94,9 @@ Run %%pip install ipywidgets in a cell in your notebook to install the correct p
 def load_js():
 	if not in_notebook:
 		raise Exception(ERROR_STRING)
-	with open(os.path.join(javascript_location,"zx_editor_widget.js")) as f:
+	with open(os.path.join(settings.javascript_location,"zx_editor_widget.js")) as f:
 		data1 = f.read()
-	with open(os.path.join(javascript_location,"zx_editor_model.js")) as f:
+	with open(os.path.join(settings.javascript_location,"zx_editor_model.js")) as f:
 		data2 = f.read()
 	#"""<div style="overflow:auto">Loading scripts</div>
 	text = """<script type="text/javascript">{0}
@@ -104,7 +104,7 @@ def load_js():
 			</script>
 			<script type="text/javascript">
 				{2}
-			</script>""".format(d3_load_string,data1,data2)
+			</script>""".format(settings.d3_load_string,data1,data2)
 	display(HTML(text))
 
 def s_to_phase(s, t=1):
