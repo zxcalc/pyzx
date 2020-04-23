@@ -708,7 +708,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         return list(self.phase_index.keys())[list(self.phase_index.values()).index(i)]
 
 
-    def remove_vertices(self, vertices: List[VT]) -> None:
+    def remove_vertices(self, vertices: Iterable[VT]) -> None:
         """Removes the list of vertices from the graph."""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
 

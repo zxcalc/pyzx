@@ -15,11 +15,15 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from .simplify import spider_simp, id_simp
-from .graph import EdgeType, VertexType
-from .hrules import *
+from typing import Callable, List
 
-def to_hbox(g):
+from .simplify import spider_simp, id_simp
+from .utils import EdgeType, VertexType
+from .graph.base import BaseGraph, VT,ET
+from .hrules import *
+from .rules import MatchObject
+
+def to_hbox(g: BaseGraph[VT,ET]) -> None:
     """Convert a graph g to hbox-form. First, all X spiders are turned into
     Z-spiders by colour-change, then all interior Hadamard edges are replaced
     by arity-2 hboxes and all Z-phases are replaced by arity-1 hboxes."""
@@ -33,7 +37,7 @@ def to_hbox(g):
     for v in vs:
         if types[v] == VertexType.Z and phases[v] != 0:
             h = g.add_vertex(VertexType.H_BOX)
-            g.add_edge((h,v))
+            g.add_edge(g.edge(h,v))
             g.set_qubit(h, g.qubit(v) - 0.5)
             g.set_row(h, g.row(v) + 0.5)
             g.set_phase(h, phases[v])
@@ -46,8 +50,8 @@ def to_hbox(g):
             qt = g.qubit(t)
             h = g.add_vertex(VertexType.H_BOX)
             del_e.append(e)
-            add_e.append((s, h))
-            add_e.append((h, t))
+            add_e.append(g.edge(s, h))
+            add_e.append(g.edge(h, t))
             if qs == qt:
                 g.set_qubit(h, qs)
             else:
@@ -58,7 +62,7 @@ def to_hbox(g):
     g.remove_edges(del_e)
     g.add_edges(add_e)
 
-def from_hbox(g):
+def from_hbox(g: BaseGraph[VT,ET]) -> None:
     """Convert a graph with hboxes and no interior Hadamard edges back to 'ZX-friendly'
     form. All arity-2 hboxes with phase pi are turned into Hadamard edges and all
     arity-1 hboxes connected to Z-spiders are fused in. Note that more general hboxes
@@ -79,7 +83,14 @@ def from_hbox(g):
             g.remove_vertex(h)
 
 # a stripped-down version of "simp", since hrules don't return edge tables etc
-def hsimp(g, name, match, rule, iterations=-1, quiet=False):
+def hsimp(
+        g: BaseGraph[VT,ET], 
+        name:str, 
+        match: Callable[..., List[MatchObject]],
+        rule: Callable[[BaseGraph[VT,ET],List[MatchObject]],None], 
+        iterations:int=-1, 
+        quiet:bool=False
+        ) -> int:
     i = 0
     while iterations == -1 or i < iterations:
         ms = match(g)
@@ -93,7 +104,7 @@ def hsimp(g, name, match, rule, iterations=-1, quiet=False):
     if not quiet and i>0: print(' {!s} iterations'.format(i))
     return i
 
-def hpivot_simp(g, quiet=False):
+def hpivot_simp(g: BaseGraph[VT,ET], quiet:bool=False) -> None:
     while True:
         i = spider_simp(g, quiet=quiet)
         i += id_simp(g, quiet=quiet)
