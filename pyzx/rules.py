@@ -91,7 +91,8 @@ def match_bialg_parallel(g, matchf=None, num=-1):
         v1t = types[v1]
         v0p = phases[v0]
         v1p = phases[v1]
-        if ((v0t == VertexType.Z and v1t == VertexType.X) or (v0t == VertexType.X and v1t == VertexType.Z)):
+        if (v0p == 0 and v1p == 0 and
+        ((v0t == VertexType.Z and v1t == VertexType.X) or (v0t == VertexType.X and v1t == VertexType.Z))):
             v0n = [n for n in g.neighbours(v0) if not n == v1]
             v1n = [n for n in g.neighbours(v1) if not n == v0]
             if (
