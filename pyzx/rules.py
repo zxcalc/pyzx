@@ -61,19 +61,7 @@ def apply_rule(g, rewrite, m, check_isolated_vertices=True):
 
 def match_bialg(g):
     """Does the same as :func:`match_bialg_parallel` but with ``num=1``."""
-    types = g.types()
-    for e in g.edges():
-        v0, v1 = g.edge_st(e)
-        v0t = types[v0]
-        v1t = types[v1]
-        if (v0t == VertexType.Z and v1t == VertexType.X) or (v0t == VertexType.X and v1t == VertexType.Z):
-            v0n = [n for n in g.neighbours(v0) if not n == v1]
-            v1n = [n for n in g.neighbours(v1) if not n == v0]
-            if (
-                all([types[n] == v1t for n in v0n]) and
-                all([types[n] == v0t for n in v1n])):
-                return [[v0,v1,v0n,v1n]]
-    return []
+    return match_bialg_parallel(g, num=1)
 
 
 #TODO: make it be hadamard edge aware
