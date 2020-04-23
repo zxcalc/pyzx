@@ -67,3 +67,6 @@ If you wish to cite PyZX in an academic work, please cite the [accompanying pape
     year={2019}
   }
 </pre>
+
+Here's a plane that says PYZX:
+![PYZX](https://github.com/Quantomatic/pyzx/raw/master/F-PYZX.jpg)
