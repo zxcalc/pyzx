@@ -95,6 +95,7 @@ def match_bialg_parallel(
     """
     if matchf is not None: candidates = set([e for e in g.edges() if matchf(e)])
     else: candidates = g.edge_set()
+    phases = g.phases()
     types = g.types()
     
     i = 0
@@ -103,12 +104,15 @@ def match_bialg_parallel(
         v0, v1 = g.edge_st(candidates.pop())
         v0t = types[v0]
         v1t = types[v1]
-        if ((v0t == VertexType.Z and v1t == VertexType.X) or (v0t == VertexType.X and v1t == VertexType.Z)):
+        v0p = phases[v0]
+        v1p = phases[v1]
+        if (v0p == 0 and v1p == 0 and
+        ((v0t == VertexType.Z and v1t == VertexType.X) or (v0t == VertexType.X and v1t == VertexType.Z))):
             v0n = [n for n in g.neighbours(v0) if not n == v1]
             v1n = [n for n in g.neighbours(v1) if not n == v0]
             if (
-                all([types[n] == v1t for n in v0n]) and
-                all([types[n] == v0t for n in v1n])):
+                all([types[n] == v1t and phases[n] == 0 for n in v0n]) and
+                all([types[n] == v0t and phases[n] == 0 for n in v1n])):
                 i += 1
                 for v in v0n:
                     for c in g.incident_edges(v): candidates.discard(c)
