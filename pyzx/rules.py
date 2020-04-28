@@ -89,8 +89,6 @@ def match_bialg_parallel(
        consider all edges.
     :param num: Maximal amount of matchings to find. If -1 (the default)
        tries to find as many as possible.
-    :param edgelist: List of edges to consider. If -1 (the default), looks 
-       at all edges.
     :rtype: List of 4-tuples ``(v1, v2, neighbours_of_v1,neighbours_of_v2)``
     """
     if matchf is not None: candidates = set([e for e in g.edges() if matchf(e)])

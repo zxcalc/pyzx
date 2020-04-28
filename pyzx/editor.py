@@ -24,10 +24,11 @@ import traceback
 from typing import Callable, Optional, List, Tuple, Set, Dict, Any, Union
 
 from .utils import EdgeType, VertexType, toggle_edge, vertex_is_zx, toggle_vertex
-from .utils import settings, phase_to_s, FloatInt, FractionLike
-from .graph.base import BaseGraph, VT, ET
+from .utils import settings, phase_to_s, FloatInt
 from .graph.graph import GraphS
 from . import rules
+
+from .editor_actions import MATCHES_VERTICES, MATCHES_EDGES, operations, operations_to_js
 
 if settings.mode == 'notebook':
 	import ipywidgets as widgets # type: ignore
@@ -120,7 +121,7 @@ def s_to_phase(s: str, t:VertexType.Type=VertexType.Z) -> Fraction:
 	if not s: return Fraction(1)
 	return Fraction(int(s))
 
-def graph_to_json(g: BaseGraph[VT,ET], scale:FloatInt) -> str:
+def graph_to_json(g: GraphS, scale:FloatInt) -> str:
 	nodes = [{'name': int(v), # type: ignore
 			  'x': (g.row(v) + 1) * scale,
 			  'y': (g.qubit(v) + 2) * scale,
@@ -131,123 +132,6 @@ def graph_to_json(g: BaseGraph[VT,ET], scale:FloatInt) -> str:
 			  'target': int(g.edge_t(e)), # type: ignore
 			  't': g.edge_type(e) } for e in g.edges()]
 	return json.dumps({'nodes': nodes, 'links': links})
-
-
-
-def colour_change_matcher(
-		g: BaseGraph[VT,ET], 
-		vertexf: Optional[Callable[[VT],bool]] = None
-		) -> List[VT]:
-	if vertexf is not None: candidates = set([v for v in g.vertices() if vertexf(v)])
-	else: candidates = g.vertex_set()
-	types = g.types()
-
-	m = []
-	while len(candidates) > 0:
-		v = candidates.pop()
-		if types[v] == VertexType.X:
-			m.append(v)
-
-	return m
-
-def colour_change(g: BaseGraph[VT,ET], matches: List[VT]) -> rules.RewriteOutputType[ET,VT]:
-	for v in matches:
-		g.set_type(v, VertexType.Z)
-		for e in g.incident_edges(v):
-			et = g.edge_type(e)
-			g.set_edge_type(e, toggle_edge(et))
-	return ({}, [],[],False)
-
-MatchCopyType = Tuple[VT,VT,EdgeType.Type,FractionLike,FractionLike,List[VT]]
-
-def copy_matcher(
-		g: BaseGraph[VT,ET], 
-		vertexf:Optional[Callable[[VT],bool]]=None
-		) -> List[MatchCopyType[VT]]:
-	if vertexf is not None: candidates = set([v for v in g.vertices() if vertexf(v)])
-	else: candidates = g.vertex_set()
-	phases = g.phases()
-	types = g.types()
-	m = []
-
-	while len(candidates) > 0:
-		v = candidates.pop()
-		if phases[v] not in (0,1) or not vertex_is_zx(types[v]) or g.vertex_degree(v) != 1:
-                    continue
-		w = list(g.neighbours(v))[0]
-		e = g.edge(v,w)
-		et = g.edge_type(e)
-		if ((types[w] != types[v] and et==EdgeType.HADAMARD) or
-			(types[w] == types[v] and et==EdgeType.SIMPLE)):
-			continue
-		neigh = [n for n in g.neighbours(w) if n != v]
-		m.append((v,w,et,phases[v],phases[w],neigh))
-		candidates.discard(w)
-		candidates.difference_update(neigh)
-
-	return m
-
-def apply_copy(
-		g: BaseGraph[VT,ET], 
-		matches: List[MatchCopyType[VT]]
-		) -> rules.RewriteOutputType[ET,VT]:
-	rem = []
-	types = g.types()
-	for v,w,t,a,alpha, neigh in matches:
-		rem.append(v)
-		rem.append(w)
-		g.scalar.add_power(1)
-		
-		if a: g.scalar.add_phase(alpha)
-		for n in neigh: 
-			r = g.row(n)
-			vt = types[v] if t == EdgeType.SIMPLE else toggle_vertex(types[v])
-			u = g.add_vertex(vt, g.qubit(n)-0.8, r, a)
-			e = g.edge(n,w)
-			et = g.edge_type(e)
-			g.add_edge(g.edge(n,u), et)
-	return ({}, rem, [], True)
-
-MATCHES_VERTICES = 1
-MATCHES_EDGES = 2
-
-operations = {
-	"spider": {"text": "fuse spiders", 
-			   "tooltip": "Fuses connected spiders of the same colour",
-			   "matcher": rules.match_spider_parallel, 
-			   "rule": rules.spider, 
-			   "type": MATCHES_EDGES},
-	"colour": {"text": "change colour", 
-			   "tooltip": "Changes X spiders into Z spiders by pushing out Hadamards",
-			   "matcher": colour_change_matcher, 
-			   "rule": colour_change, 
-			   "type": MATCHES_VERTICES},
-	"rem_id": {"text": "remove identity", 
-			   "tooltip": "Removes a 2-ary phaseless spider",
-			   "matcher": rules.match_ids_parallel, 
-			   "rule": rules.remove_ids, 
-			   "type": MATCHES_VERTICES},
-	"copy": {"text": "copy 0/pi spider", 
-			   "tooltip": "Copies a single-legged spider with a 0/pi phase through its neighbour",
-			   "matcher": copy_matcher, 
-			   "rule": apply_copy, 
-			   "type": MATCHES_VERTICES},
-	"lcomp": {"text": "local complementation", 
-			   "tooltip": "Deletes a spider with a pi/2 phase by performing a local complementation on its neighbours",
-			   "matcher": rules.match_lcomp_parallel, 
-			   "rule": rules.lcomp, 
-			   "type": MATCHES_VERTICES},
-	"pivot": {"text": "pivot", 
-			   "tooltip": "Deletes a pair of spiders with 0/pi phases by performing a pivot",
-			   "matcher": lambda g, matchf: rules.match_pivot_parallel(g, matchf, check_edge_types=True), 
-			   "rule": rules.pivot, 
-			   "type": MATCHES_EDGES}
-}
-
-
-def operations_to_js() -> str:
-	global operations
-	return json.dumps({k:{"active":False, "text":v["text"], "tooltip":v["tooltip"]} for k,v in operations.items()})
 
 
 @widgets.register
@@ -287,7 +171,7 @@ class ZXEditorWidget(widgets.DOMWidget):
 	def update(self) -> None:
 		self.graph_json = graph_to_json(self.graph, self.graph.scale) # type: ignore
 
-	def _parse_selection(self) -> Tuple[Set[VT],Set[ET]]:
+	def _parse_selection(self) -> Tuple[Set[int],Set[Tuple[int,int]]]:
 		"""Helper function for `_selection_changed` and `_apply_operation`."""
 		selection = json.loads(self.graph_selected)
 		g = self.graph
@@ -303,6 +187,7 @@ class ZXEditorWidget(widgets.DOMWidget):
 			vertex_set, edge_set = self._parse_selection()
 			g = self.graph
 			js = json.loads(self.graph_buttons)
+			with self.output: print(edge_set)
 			for op_id, data in operations.items():
 				if data["type"] == MATCHES_EDGES:
 					matches = data["matcher"](g, lambda e: e in edge_set)
@@ -326,9 +211,10 @@ class ZXEditorWidget(widgets.DOMWidget):
 			else: matches = data["matcher"](g, lambda v: v in vertex_set)
 			# Apply the rule
 			etab, rem_verts, rem_edges, check_isolated_vertices = data["rule"](g, matches)
-			g.add_edge_table(etab)
 			g.remove_vertices(rem_verts)
 			g.remove_edges(rem_edges)
+			g.add_edge_table(etab)
+			
 			#if check_isolated_vertices: g.remove_isolated_vertices()
 			# Remove stuff from the selection
 			selection = json.loads(self.graph_selected)
@@ -340,6 +226,7 @@ class ZXEditorWidget(widgets.DOMWidget):
 			self.graph_selected = json.dumps(selection)
 			self.button_clicked = ''
 			self.update()
+			self._selection_changed(None)
 		except Exception as e:
 			with self.output: print(traceback.format_exc())
 
