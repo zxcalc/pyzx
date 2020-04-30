@@ -56,6 +56,27 @@ def colour_change(g: BaseGraph[VT,ET], matches: List[VT]) -> rules.RewriteOutput
 	return ({}, [],[],False)
 
 
+def match_hadamards(
+		g: BaseGraph[VT,ET], 
+		vertexf: Optional[Callable[[VT],bool]] = None
+		) -> List[VT]:
+	if vertexf is not None: candidates = set([v for v in g.vertices() if vertexf(v)])
+	else: candidates = g.vertex_set()
+	types = g.types()
+
+	return [v for v in candidates if (types[v] == VertexType.H_BOX 
+				and g.vertex_degree(v) == 2 and g.phase(v) == 1)]
+
+def hadamard_to_h_edge(g: BaseGraph[VT,ET], matches: List[VT]) -> rules.RewriteOutputType[ET,VT]:
+	rem_verts = []
+	etab = {}
+	for v in matches:
+		rem_verts.append(v)
+		w1,w2 = list(g.neighbours(v))
+		etab[g.edge(w1,w2)] = [0,1]
+	return (etab, rem_verts, [], True)
+
+
 MatchCopyType = Tuple[VT,VT,EdgeType.Type,FractionLike,FractionLike,List[VT]]
 
 def copy_matcher(
@@ -73,10 +94,16 @@ def copy_matcher(
 		if phases[v] not in (0,1) or not vertex_is_zx(types[v]) or g.vertex_degree(v) != 1:
                     continue
 		w = list(g.neighbours(v))[0]
+		tv = types[v]
+		tw = types[w]
+		if tw == VertexType.BOUNDARY: continue
 		e = g.edge(v,w)
 		et = g.edge_type(e)
-		if ((types[w] != types[v] and et==EdgeType.HADAMARD) or
-			(types[w] == types[v] and et==EdgeType.SIMPLE)):
+		if vertex_is_zx(types[w]) and ((tw != tv and et==EdgeType.HADAMARD) or
+									   (tw == tv and et==EdgeType.SIMPLE)):
+			continue
+		if tw == VertexType.H_BOX and ((et==EdgeType.SIMPLE and tv != VertexType.X) or
+									   (et==EdgeType.HADAMARD and tv != VertexType.Z)):
 			continue
 		neigh = [n for n in g.neighbours(w) if n != v]
 		m.append((v,w,et,phases[v],phases[w],neigh))
@@ -93,18 +120,22 @@ def apply_copy(
 	types = g.types()
 	for v,w,t,a,alpha, neigh in matches:
 		rem.append(v)
+		if (types[w] == VertexType.H_BOX and a == 1): continue # Don't have to do anything more for this case
 		rem.append(w)
 		g.scalar.add_power(1)
-		
-		if a: g.scalar.add_phase(alpha)
+		vt: VertexType.Type = VertexType.Z
+		if vertex_is_zx(types[w]):
+			vt = types[v] if t == EdgeType.SIMPLE else toggle_vertex(types[v])
+			if a: g.scalar.add_phase(alpha)
 		for n in neigh: 
 			r = 0.7*g.row(w) + 0.3*g.row(n)
 			q = 0.7*g.qubit(w) + 0.3*g.qubit(n)
-			vt = types[v] if t == EdgeType.SIMPLE else toggle_vertex(types[v])
+			
 			u = g.add_vertex(vt, q, r, a)
 			e = g.edge(n,w)
 			et = g.edge_type(e)
 			g.add_edge(g.edge(n,u), et)
+
 	return ({}, rem, [], True)
 
 def pauli_matcher(
@@ -259,8 +290,72 @@ def add_Z_identity(g: BaseGraph[VT,ET],
 		q = 0.5*(g.qubit(v1) + g.qubit(v2))
 		w = g.add_vertex(VertexType.Z, q,r, 0)
 		etab[g.edge(v1,w)] = [1,0] if et == EdgeType.SIMPLE else [0,1]
-		etab[g.edge(v2,w)] = [1,0] if et == EdgeType.SIMPLE else [0,1]
+		etab[g.edge(v2,w)] = [1,0]
 	return (etab, [], rem_edges, False)
+
+def match_bialgebra(g: BaseGraph[VT,ET], 
+		edgef: Optional[Callable[[ET],bool]] = None
+		) -> List[Tuple[VT,VT]]:
+	if edgef is not None: candidates = set([e for e in g.edges() if edgef(e)])
+	else: candidates = g.edge_set()
+	m = []
+	types = g.types()
+	phases = g.phases()
+	while len(candidates) > 0:
+		e = candidates.pop()
+		if g.edge_type(e) != EdgeType.SIMPLE: continue
+		v,w = g.edge_st(e)
+		if types[v] != VertexType.X:
+			v,w = w,v
+		if types[v] != VertexType.X: continue
+		if types[w] == VertexType.Z:
+			if phases[v] != 0 or phases[w] != 0: continue
+			m.append((v,w))
+			for n in g.neighbours(v):
+				candidates.difference_update(g.incident_edges(n))
+			for n in g.neighbours(w):
+				candidates.difference_update(g.incident_edges(n))
+		if types[w] == VertexType.H_BOX:
+			if phases[v] != 0 or phases[w] != 1: continue
+			m.append((v,w))
+			for n in g.neighbours(v):
+				candidates.difference_update(g.incident_edges(n))
+			for n in g.neighbours(w):
+				candidates.difference_update(g.incident_edges(n))
+	return m
+
+def bialgebra(g: BaseGraph[VT,ET], 
+		matches: List[Tuple[VT,VT]]
+		) -> rules.RewriteOutputType[ET,VT]:
+	rem_verts = []
+	etab = {}
+	for v,w in matches:
+		rem_verts.append(v)
+		rem_verts.append(w)
+		new_verts = []
+		# v is an X-spider, but w is either a Z-spider or an H-box
+		t = g.type(w)
+		for n in g.neighbours(v):
+			if n == w: continue
+			r = 0.6*g.row(v) + 0.4*g.row(n)
+			q = 0.6*g.qubit(v) + 0.4*g.qubit(n)
+			v2 = g.add_vertex(t,q,r)
+			etab[g.edge(n,v2)] = [1,0] if g.edge_type(g.edge(n,v)) == EdgeType.SIMPLE else [0,1]
+			new_verts.append(v2)
+		if g.type(w) == VertexType.Z:
+			t = VertexType.X
+		else:
+			t = VertexType.Z
+		for n in g.neighbours(w):
+			if n == v: continue
+			r = 0.6*g.row(w) + 0.4*g.row(n)
+			q = 0.6*g.qubit(w) + 0.4*g.qubit(n)
+			w2 = g.add_vertex(t,q,r)
+			etab[g.edge(n,w2)] = [1,0] if g.edge_type(g.edge(n,w)) == EdgeType.SIMPLE else [0,1]
+			for v2 in new_verts:
+				etab[g.edge(w2,v2)] = [1,0]
+	return (etab, rem_verts, [], False)
+			
 
 MATCHES_VERTICES = 1
 MATCHES_EDGES = 2
@@ -291,6 +386,11 @@ operations = {
 			   "matcher": match_edge, 
 			   "rule": add_Z_identity, 
 			   "type": MATCHES_EDGES},
+	"had2edge": {"text": "Convert H-box", 
+			   "tooltip": "Converts an arity 2 H-box into an H-edge.",
+			   "matcher": match_hadamards, 
+			   "rule": hadamard_to_h_edge, 
+			   "type": MATCHES_VERTICES},
 	"copy": {"text": "copy 0/pi spider", 
 			   "tooltip": "Copies a single-legged spider with a 0/pi phase through its neighbour",
 			   "matcher": copy_matcher, 
@@ -301,6 +401,11 @@ operations = {
 			   "matcher": pauli_matcher, 
 			   "rule": pauli_push, 
 			   "type": MATCHES_VERTICES},
+	"bialgebra": {"text": "bialgebra", 
+			   "tooltip": "Applies the bialgebra rule to a connected pair of Z and X spiders",
+			   "matcher": match_bialgebra, 
+			   "rule": bialgebra, 
+			   "type": MATCHES_EDGES},
 	"euler": {"text": "decompose Hadamard", 
 			   "tooltip": "Expands a Hadamard-edge into its component spiders using its Euler decomposition",
 			   "matcher": match_hadamard_edge, 

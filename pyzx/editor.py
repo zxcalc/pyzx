@@ -187,7 +187,6 @@ class ZXEditorWidget(widgets.DOMWidget):
 			vertex_set, edge_set = self._parse_selection()
 			g = self.graph
 			js = json.loads(self.graph_buttons)
-			with self.output: print(edge_set)
 			for op_id, data in operations.items():
 				if data["type"] == MATCHES_EDGES:
 					matches = data["matcher"](g, lambda e: e in edge_set)
@@ -322,7 +321,7 @@ class ZXEditorWidget(widgets.DOMWidget):
 
 _d3_editor_id = 0
 
-def edit(g: GraphS, scale:Optional[FloatInt]=None) -> ZXEditorWidget:
+def edit(g: GraphS, scale:Optional[FloatInt]=None, debug:bool=False) -> ZXEditorWidget:
 	load_js()
 	global _d3_editor_id
 	_d3_editor_id += 1
@@ -348,4 +347,5 @@ def edit(g: GraphS, scale:Optional[FloatInt]=None) -> ZXEditorWidget:
 					  graph_width=w, graph_height=h, graph_node_size=node_size,
 					  graph_buttons = operations_to_js())
 	display(w)
+	if debug: display(w.output)
 	return w
