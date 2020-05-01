@@ -46,11 +46,13 @@ release = '0.5.1'
 # ones.
 extensions = ['sphinx.ext.autodoc',
               'sphinx.ext.mathjax',
+              'sphinx.ext.napoleon',
               'sphinx_rtd_theme',
               'sphinx_autodoc_typehints'
 ]
 
 set_type_checking_flag = True
+napoleon_use_rtype = False
 
 add_module_names = False
 

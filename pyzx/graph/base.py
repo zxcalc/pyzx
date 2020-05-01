@@ -204,6 +204,10 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         return str(self)
 
     def stats(self) -> str:
+        """
+        Returns:
+            Returns a string with some information regarding the degree distribution of the graph.
+        """
         s = str(self) + "\n"
         degrees: Dict[int,int] = {}
         for v in self.vertices():
@@ -221,8 +225,16 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         When ``backend`` is set, a copy of the graph with the given backend is produced. 
         By default the copy will have the same backend.
 
-        `Note`: The copy will have consecutive vertex indices, even if the original
-        graph did not.
+        Args:
+            adjoint: set to True to make the copy be the adjoint of the graph
+            backend: the backend of the output graph
+
+        Returns:
+            A copy of the graph
+
+        Note:
+            The copy will have consecutive vertex indices, even if the original
+            graph did not.
         """
         from .graph import Graph # imported here to prevent circularity
         if (backend is None):
