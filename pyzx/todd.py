@@ -16,9 +16,11 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 
-"""This module implements the Third Order Duplicate and Destroy algorithm
+"""This module implements the Third Order Duplicate and Destroy (TODD) algorithm
 from Luke E Heyfron and Earl T Campbell 2019 Quantum Sci. Technol. 4 015004
-available at http://iopscience.iop.org/article/10.1088/2058-9565/aad604/meta"""
+available at http://iopscience.iop.org/article/10.1088/2058-9565/aad604/meta
+
+The main entry point is :func:`todd_simp`, which is used in :func:`pyzx.optimize.phase_block_optimize`."""
 
 from __future__ import print_function
 
@@ -27,34 +29,36 @@ import subprocess
 import tempfile
 import time
 import random
-try:
-    import numpy as np
-except:
-    np = None
+from typing import Optional, Dict, Tuple, List, Set, Iterable, FrozenSet
+from typing_extensions import Literal
 
-from .circuit.gates import T, S, Z, ZPhase, CZ, CNOT, ParityPhase
-from .graph import EdgeType, VertexType
+import numpy as np
+
+from .circuit.gates import Gate, T, S, Z, ZPhase, CZ, CNOT, ParityPhase
+from .utils import EdgeType, VertexType, FractionLike
+from .graph.base import BaseGraph, VT, ET
 from .linalg import Mat2, column_optimal_swap
 from .extract import permutation_as_swaps
 from .phasepoly import parity_network
 
-TOPT_LOCATION = None
-USE_REED_MULLER = False
+TOPT_LOCATION: Optional[str] = None
+USE_REED_MULLER: bool = False
 
 
-class ParityPolynomial:
+class ParityPolynomial(object):
     """Class used to represent phase polynomials in the standard
     ParityPhase view. For example: x1@x2 + 3x2 + 5x1@x2@x3"""
-    def __init__(self,qubits, poly=None):
+    terms: Dict[Tuple[int,...],int]
+    def __init__(self,qubits:int, poly:Optional['ParityPolynomial']=None) -> None:
         self.qubits = qubits
-        if poly:
+        if poly is not None:
             self.terms = poly.terms.copy()
         else: self.terms = {}
     
-    def copy(self):
+    def copy(self) -> 'ParityPolynomial':
         return type(self)(self.qubits, self)
     
-    def __str__(self):
+    def __str__(self) -> str:
         l = []
         for t in sorted(self.terms.keys()):
             val = self.terms[t]
@@ -64,7 +68,7 @@ class ParityPolynomial:
     def __repr__(self):
         return str(self)
     
-    def add_term(self, term, value):
+    def add_term(self, term: Iterable[int], value: int) -> None:
         term = tuple(sorted(term))
         if term in self.terms:
             self.terms[term] = (self.terms[term] + value) % 8
@@ -72,16 +76,16 @@ class ParityPolynomial:
         if not self.terms[term]:
             del self.terms[term]
     
-    def add_polynomial(self, poly):
+    def add_polynomial(self, poly: 'ParityPolynomial') -> None:
         for term, val in poly.terms.items():
             self.add_term(term, val)
     
-    def __add__(self, other):
+    def __add__(self, other: 'ParityPolynomial') -> 'ParityPolynomial':
         p = self.copy()
         p.add_polynomial(other)
         return p
     
-    def to_par_matrix(self):
+    def to_par_matrix(self) -> Mat2:
         """Converts the phase polynomial into a parity matrix."""
         cols = []
         for par, val in self.terms.items():
@@ -89,31 +93,31 @@ class ParityPolynomial:
             for i in range(val): cols.append(col)
         return Mat2(cols).transpose()
 
-class ParitySingle:
+class ParitySingle(object):
     """Class used for representing a single parity expression
     like x1@x2@x4"""
-    def __init__(self,startval):
-        self.par = {startval}
+    def __init__(self,startval: int) -> None:
+        self.par: Set[int] = {startval}
     
-    def __str__(self):
+    def __str__(self) -> str:
         return "@".join("x{:d}".format(i) for i in sorted(self.par))
     
-    def __repr__(self):
+    def __repr__(self) -> str:
         return str(self)
     
-    def add_par(self, other):
+    def add_par(self, other: 'ParitySingle') -> None:
         self.par.symmetric_difference_update(other.par)
 
 
-class MultiLinearPoly:
+class MultiLinearPoly(object):
     """Class for representing phase polynomials in the multilinear formalism.
     For example: x1 + x2 + 2x1x2 + 4x1x2x3"""
     def __init__(self):
-        self.l = {}
-        self.q = {}
-        self.c = set()
+        self.l: Dict[int,int]            = {}
+        self.q: Dict[Tuple[int,int],int] = {}
+        self.c: Set[Tuple[int,int,int]]  = set()
     
-    def add_parity(self, par, subtract=False):
+    def add_parity(self, par:Iterable[int], subtract:bool=False) -> None:
         p = []
         mult = -1 if subtract else 1
         for i,v in enumerate(par):
@@ -133,14 +137,14 @@ class MultiLinearPoly:
                     if (v1,v2,v3) not in self.c: self.c.add((v1,v2,v3))
                     else: self.c.remove((v1,v2,v3))
     
-    def add_par_matrix(self, a, subtract=False):
+    def add_par_matrix(self, a: Mat2, subtract:bool=False) -> None:
         for col in a.transpose().data:
             self.add_parity(col,subtract=subtract)
     
-    def to_clifford(self):
+    def to_clifford(self) -> List[Gate]:
         """Returns the phase polynomial in terms of Clifford Z-rotations 
         and CZs. If the phase polyomial is not Clifford it raises an ValueError."""
-        gates = []
+        gates: List[Gate] = []
         for t, v in self.l.items():
             if v == 2:
                 gates.append(S(t,adjoint=False))
@@ -160,9 +164,9 @@ class MultiLinearPoly:
         return gates
 
 
-def par_matrix_to_gates(a):
+def par_matrix_to_gates(a: Mat2) -> List[Gate]:
     """Convert a parity matrix into T gates and ParityPhase gates."""
-    gates = []
+    gates: List[Gate] = []
     phase = Fraction(1,4)
     for col in a.transpose().data:
         targets = [i for i,v in enumerate(col) if v]
@@ -172,7 +176,7 @@ def par_matrix_to_gates(a):
             gates.append(ParityPhase(phase, *targets))
     return gates
 
-def phase_gates_to_poly(gates, qubits):
+def phase_gates_to_poly(gates: List[Gate], qubits: int) -> Tuple[ParityPolynomial,List[ParitySingle]]:
     """Convert a CNOT+T+CZ circuit into a phase polynomial representation
     using :class:`ParityPolynomial`."""
     phase_poly = ParityPolynomial(qubits)
@@ -201,7 +205,7 @@ def phase_gates_to_poly(gates, qubits):
 
 
 
-def xi(m, z):
+def xi(m: Mat2, z: List[Literal[0,1]]) -> Mat2:
     """Constructs the \chi matrix from the TOpt paper."""
     arr = np.asarray(m.data)
     rows = m.rows()
@@ -243,13 +247,13 @@ def xi(m, z):
     return Mat2(data)
 
 
-def find_todd_match(m):
+def find_todd_match(m: Mat2) -> Tuple[int,int, Optional[List[Literal[0,1]]],Optional[List[Literal[0,1]]]]:
     """Tries to find a match for the TODD algorithm given a parity matrix."""
     rows = m.rows()
     cols = m.cols()
     for a in range(cols):
         for b in range(a+1, cols):
-            z = [0]*rows
+            z: List[Literal[0,1]] = [0]*rows
             for i in range(rows):
                 r = m.data[i]
                 if r[a]:
@@ -268,7 +272,7 @@ def find_todd_match(m):
     return -1,-1,None,None
 
 
-def remove_trivial_cols(m):
+def remove_trivial_cols(m: Mat2) -> int:
     """Remove duplicate and zero columns in parity matrix.
     NOTE: the transpose of the matrix should be supplied
     so that the columns are actually the rows."""
@@ -290,11 +294,12 @@ def remove_trivial_cols(m):
             break
     return newcols
 
-def do_todd_single(m):
+def do_todd_single(m: Mat2) -> Tuple[Mat2,int]:
     """Find a single TODD match and apply it to the matrix."""
     startcols = m.cols()
     a,b,z,y = find_todd_match(m)
-    if not z: return m, 0
+    if z is None: return m, 0
+    assert y is not None
     m = m.transpose()
     #odd_y = sum(y) % 2
     for i,c in enumerate(m.data):
@@ -310,7 +315,7 @@ def do_todd_single(m):
                 
     return m.transpose(), startcols - newcols
 
-def todd_iter(m, quiet=True):
+def todd_iter(m: Mat2, quiet:bool=True) -> Mat2:
     """Keep finding TODD matches until nothing is found anymore.
     If TOPT_LOCATION is given it uses the TOpt implementation of TODD. """
     m = m.transpose()
@@ -319,17 +324,18 @@ def todd_iter(m, quiet=True):
     m = m.transpose()
     if not m.cols() or not m.rows():
         return m
-    if TOPT_LOCATION:
+    if TOPT_LOCATION is not None:
         return call_topt(m, quiet=quiet)
     while True:
         m, reduced = do_todd_single(m)
-        if not reduced:
+        if reduced == 0:
             if not quiet: print()
             return m
         if not quiet: print(reduced, end='.')
 
-def call_topt(m, quiet=True):
+def call_topt(m: Mat2, quiet:bool=True) -> Mat2:
     """Calls and parses the output of the TOpt implementation of TODD."""
+    assert TOPT_LOCATION is not None
     if not quiet:
         print("TOpt: ", end="")
     t_start = m.cols()
@@ -342,10 +348,10 @@ def call_topt(m, quiet=True):
             fname = "/mnt/c"+f.name.replace("\\", "/")[2:]
         else: fname = f.name
         if USE_REED_MULLER:
-            out = subprocess.check_output([*TOPT_LOCATION, "gsm",fname, "-a", "rm"])
+            output = subprocess.check_output([*TOPT_LOCATION, "gsm",fname, "-a", "rm"])
         else:
-            out = subprocess.check_output([*TOPT_LOCATION, "gsm",fname])
-        out = out.decode()
+            output = subprocess.check_output([*TOPT_LOCATION, "gsm",fname])
+        out = output.decode()
         #print(out)
     rows = out[out.find("Output gate"):out.find("Successful")].strip().splitlines()[2:]
     i = out.find("Total time")
@@ -376,7 +382,7 @@ def call_topt(m, quiet=True):
     return m2
 
 
-def todd_simp(gates, qubits, quiet=True):
+def todd_simp(gates: List[Gate], qubits: int, quiet:bool=True) -> Tuple[List[Gate],Dict[int,int]]:
     """Run the TODD algorithm on a CNOT+CZ+T set of gates and 
     apply the necessary Clifford corrections. Uses the 
     CNOT parity algorithm from https://arxiv.org/pdf/1712.01859.pdf
@@ -387,7 +393,7 @@ def todd_simp(gates, qubits, quiet=True):
     m = phase_poly.to_par_matrix()
     m2 = todd_iter(m,quiet=quiet)
 
-    newgates = []
+    newgates: List[Gate] = []
     parities = []
     for col in m2.transpose().data:
         if sum(col) == 1:
@@ -405,17 +411,17 @@ def todd_simp(gates, qubits, quiet=True):
     for cnot in cnots:
         m.row_add(cnot.control, cnot.target)
     data = []
-    for p in parity_polys:
-        l = [int(i in p.par) for i in range(qubits)]
+    for q in parity_polys:
+        l = [int(i in q.par) for i in range(qubits)]
         data.append(l)
-    target_matrix = Mat2(data) * m.inverse()
+    target_matrix = Mat2(data) * m.inverse() # type: ignore
     #perm = column_optimal_swap(target_matrix.transpose())
     perm = {i:i for i in range(qubits)}
     swaps = permutation_as_swaps(perm)
     for a,b in swaps:
         target_matrix.row_swap(a,b)
-    gates = target_matrix.to_cnots(optimize=True)
-    for gate in reversed(gates):
+    cnot_list = target_matrix.to_cnots(optimize=True)
+    for gate in reversed(cnot_list):
         cnots.append(CNOT(gate.target,gate.control))
 
     m = Mat2.id(qubits)
@@ -434,7 +440,7 @@ def todd_simp(gates, qubits, quiet=True):
     return newgates, {v:k for k,v in perm.items()}
 
 
-def todd_on_graph(g):
+def todd_on_graph(g: BaseGraph[VT,ET]) -> None:
     """Runs the TODD algorithm on a graph. The variables are determined
     by looking at which vertices have phase gadgets attached to them.
     Note that this produces graphs that can only be transformed into circuits
@@ -453,7 +459,7 @@ def todd_on_graph(g):
     if not gadgets:
         print("No phase gadgets found")
         return
-    variables = set()
+    variables: Set[VT] = set()
     for par in gadgets.keys():
         variables.update(par)
     
@@ -462,11 +468,11 @@ def todd_on_graph(g):
             gadgets[frozenset({v})] = (v,v)
     
     targets = list(variables)
-    n = len(targets)
+    nt = len(targets)
 
     cols = []
     for par, (_,v) in gadgets.items():
-        col = [0]*n
+        col: List[Literal[0,1]] = [0]*nt
         for t in par:
             col[targets.index(t)] = 1
         phase = g.phase(v)
@@ -475,7 +481,7 @@ def todd_on_graph(g):
     m2 = todd_iter(parmatrix)
     
     newgadgets = []
-    phases = dict()
+    phases: Dict[VT,FractionLike] = dict()
     for col in m2.transpose().data:
         if sum(col) == 1:
             i = next(i for i,a in enumerate(col) if a)
@@ -503,8 +509,8 @@ def todd_on_graph(g):
                 else:
                     phases[v] = g.phase(v) + clif.phase
         elif clif.name == 'CZ':
-            v1,v2 = targets[clif.control], targets[clif.target]
-            add_czs[(v1,v2)] = (0,1)
+            v1,v2 = targets[clif.control], targets[clif.target] # type: ignore
+            add_czs[g.edge(v1,v2)] = [0,1]
         else:
             raise ValueError("Unknown clifford correction:", str(clif))
     
@@ -533,7 +539,7 @@ def todd_on_graph(g):
         while pos in positions: pos += 0.5
         n = g.add_vertex(VertexType.Z, -1, pos)
         v = g.add_vertex(VertexType.Z, -2, pos, phase=Fraction(1,4))
-        edges.append((n,v))
+        edges.append(g.edge(n,v))
         positions.add(pos)
-        for t in par: edges.append((n,t))
+        for t in par: edges.append(g.edge(n,t))
     g.add_edges(edges, EdgeType.HADAMARD)
