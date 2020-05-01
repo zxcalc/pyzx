@@ -39,7 +39,7 @@ from .utils import EdgeType, VertexType, FractionLike
 from .graph.base import BaseGraph, VT, ET
 from .linalg import Mat2, column_optimal_swap
 from .extract import permutation_as_swaps
-from .phasepoly import parity_network
+from .parity_network import parity_network
 
 TOPT_LOCATION: Optional[str] = None
 USE_REED_MULLER: bool = False
