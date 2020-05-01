@@ -14,7 +14,9 @@
 #
 import os
 import sys
-sys.path.insert(0, os.path.abspath('../pyzx'))
+
+import sphinx_rtd_theme
+
 sys.path.insert(0, os.path.abspath('..'))
 sys.path.insert(0, os.path.abspath('pyzx'))
 
@@ -28,9 +30,9 @@ copyright = '2018, PyZX'
 author = 'Aleks Kissinger and John van de Wetering'
 
 # The short X.Y version
-version = '0.5'
+version = '0.5.1'
 # The full version, including alpha/beta/rc tags
-release = '0.5'
+release = '0.5.1'
 
 
 # -- General configuration ---------------------------------------------------
@@ -42,8 +44,13 @@ release = '0.5'
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
-extensions = ['sphinx.ext.autodoc','sphinx.ext.mathjax'
+extensions = ['sphinx.ext.autodoc',
+              'sphinx.ext.mathjax',
+              'sphinx_rtd_theme',
+              'sphinx_autodoc_typehints'
 ]
+
+set_type_checking_flag = True
 
 add_module_names = False
 
@@ -81,7 +88,7 @@ pygments_style = 'sphinx'
 # a list of builtin themes.
 #
 html_theme = 'sphinx_rtd_theme'
-html_theme_path = ["_themes"]
+#html_theme_path = ["_themes"]
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
 # documentation.

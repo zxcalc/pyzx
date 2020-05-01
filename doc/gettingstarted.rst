@@ -3,27 +3,45 @@ Getting Started
 
 .. _gettingstarted:
 
-The best way to get started if you have cloned the repository is to run the `Getting Started notebook <https://github.com/Quantomatic/pyzx/blob/master/demos/gettingstarted.ipynb>`_ in Jupyter. If you have a Microsoft account, then you can use Azure to run `this notebook <https://notebooks.azure.com/johnie102/libraries/pyzx/html/demos/gettingstarted.ipynb>`_ in your browser without having downloaded PyZX. If you don't want to follow those routes: this document contains the same general information.
+PyZX can be installed as a package using pip::
 
-With PyZX you can create and simplify quantum circuits. Start by importing the library::
+	pip install pyzx
+
+If you wish to use the demo notebooks or benchmark circuits, then the repository can be cloned from `Github <https://github.com/Quantomatic/pyzx>`_.
+
+The best way to get started if you have cloned the repository is to run the `Getting Started notebook <https://github.com/Quantomatic/pyzx/blob/master/demos/gettingstarted.ipynb>`_ in Jupyter. This page contains the same general information as that notebook.
+
+Let's start by importing the library::
 	
 	>>> import pyzx as zx
 
-Then you can get a randomly generated Clifford circuit::
-	
-	>>> circuit = zx.generate.cliffords(5, 15)
+For all the examples in this documentation we will assume you have imported PyZX in this manner.
 
-Here ``5`` is the number of qubits the circuit acts on, and ``15`` is the depth of the generated circuit. We can visualise the circuit::
+Quantum circuits in PyZX are represented by the :class:`~pyzx.circuit.Circuit` class. File in the supported formats (QASM, QC, Quipper) can easily be imported into PyZX::
+
+	circuit = zx.Circuit.load("path/to/circuit.extension")
+
+PyZX tries to automatically figure out in which format the circuit is represented. The :mod:`~pyzx.generate` module supplies several ways to generate random circuits::
+	
+	>>> circuit = zx.generate.CNOT_HAD_PHASE_circuit(qubits=10,depth=20,clifford=True)
+
+If you are running inside a Jupyter notebook, circuits can be easily visualized::
 	
 	>>> zx.draw(circuit)
 
 .. figure::  _static/clifford.png
    :align:   center
 
-We can also reduce the circuit using the rules from ZX-calculus::
+The default drawing method is to use the d3 javascript library. When not running in a Jupyter notebook ``zx.draw`` returns a matplotlib figure instead.
+
+Most of the functionality of PyZX is based on the ZX-diagrams. These are represented by instances of :class:`~pyzx.graph.base.BaseGraph`. To convert a circuit into a ZX-diagram, simply do::
+
+	g = circuit.to_graph()
+
+
+Let us use one of the built-in ZX-diagram simplification routines on this ZX-diagram::
 	
-	>>> g = circuit.copy()
-	>>> zx.simplify.clifford_simp(g)  # simplifies the circuit
+	>>> zx.clifford_simp(g)  # simplifies the diagram
 	>>> g.normalise()  # makes it more presentable
 	>>> zx.draw(g)
 
@@ -32,7 +50,7 @@ We can also reduce the circuit using the rules from ZX-calculus::
 
    The same circuit, but rewritten into a more compact form. The blue lines represent edges which have a Hadamard gate on them.
 
-The circuit is represented internally as a graph::
+A ZX-diagram is represented internally as a graph::
 	
 	>>> print(g)
 	Graph(16 vertices, 21 edges)
@@ -48,17 +66,15 @@ This simplified ZX-graph no longer looks like a circuit. PyZX supplies some meth
 
 To verify that the simplified circuit is still equal to the original we can convert them to numpy tensors and compare equality directly::
 	
-	>>> t1 = c.to_tensor()
-	>>> t2 = g.to_tensor()
-	>>> zx.compare_tensors(t1,t2,preserve_scalar=False)
+	>>> zx.compare_tensors(c,g,preserve_scalar=False)
 		True
 
-We can also inspect `c` as a series of gates::
+Note that a ``Circuit`` is not much more than just a series of gates::
 	
 	>>> print(c.gates)
 		[S(1), S*(2), Z(3), CZ(1,3), CZ(2,3), S(0), CZ(1,0), CZ(3,0), CNOT(1,0), CNOT(2,0), CNOT(3,0), CNOT(2,3), CNOT(0,3), NOT(2), CX(2,3), HAD(3)]
 
-And we can represent this circuit in one of several circuit description languages, such as that of QUIPPER::
+We can convert circuits into one of several circuit description languages, such as that of QUIPPER::
 	
 	>>> print(c.to_quipper())
 	Inputs: 0Qbit, 1Qbit, 2Qbit, 3Qbit

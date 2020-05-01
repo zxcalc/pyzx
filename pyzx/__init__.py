@@ -20,7 +20,7 @@ __version__ = "0.5.1"
 from .graph.graph import Graph
 from .linalg import Mat2
 from .circuit import Circuit, gates, id
-from .utils import settings
+from .utils import settings, VertexType, EdgeType
 from .drawing import *
 from .simplify import *
 from .io import *

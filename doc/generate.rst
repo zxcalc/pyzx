@@ -9,8 +9,6 @@ Methods for generating circuits are in the generate_ file. Most of these methods
 Contents of ``generate``
 ------------------------
 
-.. module:: pyzx.generate
-
 
 .. automodule:: pyzx.generate
    :members:

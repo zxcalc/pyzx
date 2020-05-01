@@ -30,7 +30,7 @@ from ..utils import EdgeType, VertexType, toggle_edge, vertex_is_zx, toggle_vert
 from ..utils import FloatInt, FractionLike
 from ..tensor import tensorfy, tensor_to_matrix
 if TYPE_CHECKING:
-    from ..simplify import Simplifier
+    from .. import simplify
 
 def cexp(val) -> complex:
     return cmath.exp(1j*math.pi*val)
@@ -177,7 +177,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
     """Base class for letting graph backends interact with PyZX.
     For a backend to work with PyZX, there should be a class that implements
     all the methods of this class. For implementations of this class see 
-    :class:`~graph.graph_s.GraphS` or :class `~graph.graph_ig.GraphIG`."""
+    :class:`~graph.graph_s.GraphS` or :class:`~graph.graph_ig.GraphIG`."""
 
     backend: ClassVar[str] = 'None'
 
@@ -188,7 +188,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         #Data necessary for phase tracking for phase teleportation
         self.track_phases: bool = False
         self.phase_index : Dict[VT,int] = dict() # {vertex:index tracking its phase for phase teleportation}
-        self.phase_master: Optional['Simplifier'] = None
+        self.phase_master: Optional['simplify.Simplifier'] = None
         self.phase_mult: Dict[int,Literal[1,-1]] = dict()
         self.max_phase_index: int = -1
 
@@ -340,7 +340,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
 
     def tensor(self, other: 'BaseGraph') -> 'BaseGraph':
         """Take the tensor product of two graphs. Places the second graph below the first one.
-        Can also be called using the operator `graph1 @ graph2`"""
+        Can also be called using the operator ``graph1 @ graph2``"""
         g = self.copy()
         ts = other.types()
         qs = other.qubits()
@@ -434,14 +434,14 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
 
     def to_json(self) -> str:
         """Returns a json representation of the graph that follows the Quantomatic .qgraph format.
-        Convert back into a graph using :classmethod:`BaseGraph.from_json`."""
+        Convert back into a graph using :meth:`from_json`."""
         from .jsonparser import graph_to_json
         return graph_to_json(self)
 
     @classmethod
     def from_json(cls, js) -> 'BaseGraph':
         """Converts the given .qgraph json string into a Graph. 
-        Works with the output of :method:`BaseGraph.to_json`."""
+        Works with the output of :meth:`to_json`."""
         from .jsonparser import json_to_graph
         return json_to_graph(js,cls.backend)
 
@@ -697,8 +697,8 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         self.add_edges(add[EdgeType.SIMPLE],EdgeType.SIMPLE)
         self.add_edges(add[EdgeType.HADAMARD],EdgeType.HADAMARD)
 
-    def set_phase_master(self, m: 'Simplifier') -> None:
-        """Points towards an instance of the class :class:`simplify.Simplifier`.
+    def set_phase_master(self, m: 'simplify.Simplifier') -> None:
+        """Points towards an instance of the class :class:`~pyzx.simplify.Simplifier`.
         Used for phase teleportation."""
         self.phase_master = m
 
@@ -834,7 +834,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
 
     def edge_type(self, e: ET) -> EdgeType.Type:
         """Returns the type of the given edge:
-        EdgeType.SIMPLE_ if it is regular, EdgeType.HADAMARD_ if it is a Hadamard edge,
+        ``EdgeType.SIMPLE`` if it is regular, ``EdgeType.HADAMARD`` if it is a Hadamard edge,
         0 if the edge is not in the graph."""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
     def set_edge_type(self, e: ET, t: EdgeType.Type) -> None:

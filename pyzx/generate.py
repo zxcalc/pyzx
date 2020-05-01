@@ -46,9 +46,9 @@ def identity(qubits: int, depth: FloatInt=1,backend:Optional[str]=None) -> BaseG
 
 def CNOT_HAD_PHASE_circuit(
         qubits: int, 
-        gates: int, 
-        p_had: float, 
-        p_t: float, 
+        depth: int, 
+        p_had: float = 0.2, 
+        p_t: float = 0.2, 
         clifford:bool=False
         ) -> Circuit:
     """Returns a Circuit consisting of CNOT, HAD and phase gates. 
@@ -56,7 +56,7 @@ def CNOT_HAD_PHASE_circuit(
     this is replaced by the S gate."""
     p_cnot = 1-p_had-p_t
     c = Circuit(qubits)
-    for _ in range(gates):
+    for _ in range(depth):
         r = random.random()
         if r > 1-p_had:
             c.add_gate("HAD",random.randrange(qubits))
