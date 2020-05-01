@@ -15,7 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-__all__ = ['draw', 'pack_circuit_nf', 'arrange_scalar_diagram', 'draw_matplotlib', 'draw_d3']
+__all__ = ['draw', 'arrange_scalar_diagram', 'draw_matplotlib', 'draw_d3']
 
 import os
 import math
