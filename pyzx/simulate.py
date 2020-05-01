@@ -25,15 +25,15 @@ sq2 = math.sqrt(2)
 omega = (1+1j)/sq2
 from fractions import Fraction
 import itertools
+from typing import List, Optional, Dict, Tuple, Any
 
-try:
-    import numpy as np
-except:
-    np = None
+import numpy as np
 
+from .utils import EdgeType, VertexType, toggle_edge
 from . import simplify
 from .circuit import Circuit
-from .graph import Graph, EdgeType, VertexType, toggle_edge
+from .graph import Graph
+from .graph.base import BaseGraph,VT,ET
 
 MAGIC_GLOBAL = -(7+5*sq2)/(2+2j)
 MAGIC_B60 = -16 + 12*sq2
@@ -45,27 +45,28 @@ MAGIC_PHI = 10 - 7*sq2
 
 class SumGraph(object):
     """Container class for a sum of ZX-diagrams"""
-    def __init__(self, graphs=None):
-        if graphs:
+    graphs: List[BaseGraph]
+    def __init__(self, graphs:Optional[List[BaseGraph]]=None) -> None:
+        if graphs is not None:
             self.graphs = graphs
         else:
             self.graphs = []
             
-    def to_tensor(self):
+    def to_tensor(self) -> np.ndarray:
         if not self.graphs: return 0
         t = self.graphs[0].to_tensor(True)
         for i in range(len(self.graphs)-1):
             t = t + self.graphs[i+1].to_tensor(True)
         return t
 
-    def to_matrix(self):
+    def to_matrix(self) -> np.ndarray:
         if not self.graphs: return 0
         t = self.graphs[0].to_matrix(True)
         for i in range(len(self.graphs)-1):
             t = t + self.graphs[i+1].to_matrix(True)
         return t
 
-    def full_reduce(self, quiet=True):
+    def full_reduce(self, quiet:bool=True) -> None:
         terms = []
         for i, g in enumerate(self.graphs):
             if not quiet:
@@ -75,7 +76,7 @@ class SumGraph(object):
             elif not quiet: print("Graph {:d} is zero".format(i))
         self.graphs = terms
 
-    def reduce_scalar(self, quiet=True):
+    def reduce_scalar(self, quiet:bool=True) -> None:
         terms = []
         for i, g in enumerate(self.graphs):
             if not quiet:
@@ -85,7 +86,7 @@ class SumGraph(object):
             elif not quiet: print("Graph {:d} is zero".format(i))
         self.graphs = terms
 
-    def inner_product_with_random_state(self):
+    def inner_product_with_random_state(self) -> complex:
         """All the graphs should be Clifford states with same amount of outputs.
         We compose them with a random equatorial Clifford effect,
         and we calculate the resulting inner product. 
@@ -102,7 +103,7 @@ class SumGraph(object):
         phases = [Fraction(random.randint(0,3),2) for _ in range(q)]
         connections = [(i1,i2) for i1 in range(q) for i2 in range(i1+1,q) if random.random() > 0.5]
         
-        val = 0
+        val: complex = 0
         for g in terms:
             g = g.copy()
             vs = g.outputs.copy()
@@ -121,17 +122,17 @@ class SumGraph(object):
             val += g.scalar.to_number()
         return val
 
-    def estimate_norm(self, epsilon=0.05):
+    def estimate_norm(self, epsilon:float=0.05) -> float:
         """Uses the algorithm of https://arxiv.org/pdf/1808.00128.pdf (p.22)
         to estimate the norm squared of this state."""
         count = int(4*(1/epsilon)**2)
-        total = 0
+        total = 0.0
         for _ in range(count):
             val = self.inner_product_with_random_state()
             total += abs(val)**2
         return total/count
 
-    def post_select(self, qubits):
+    def post_select(self, qubits: Dict[int, str]) -> 'SumGraph':
         """Outputs a new GraphSum, where for every term we replace the post-selected
         outputs by an effects. The argument ``qubits`` should be ``{q1:e1, q2:e2,...}``
         where the ``e1,e2,`` etc. are in the set ``{'0', '1', '+', '-'}``."""
@@ -152,22 +153,28 @@ class SumGraph(object):
             terms.append(g)
         return SumGraph(terms)
 
-    def sample(self, qubits, post_selected=None, amount = 10, epsilon=0.05, quiet=True):
+    def sample(self, 
+        qubits: List[int], 
+        post_selected:Optional[Dict[int,str]]=None, 
+        amount:int=10, 
+        epsilon:float=0.05, 
+        quiet:bool=True) -> List[List[Tuple[int,int]]]:
         """Implements the weak simulation algorithm of https://arxiv.org/pdf/1808.00128.pdf.
         ``qubits`` should be a list of qubit numbers from which measurement outcomes in the 
         computational basis are to be sampled. ``post_selected`` should be in the format of
-        :func:`~SumGraph.post_select`. ``amount`` dictates the amount of samples to be taken.
+        :method:`post_select`. ``amount`` dictates the amount of samples to be taken.
         ``epsilon`` is the error used in the norm estimation.
 
         Example: ``gsum.sample([1,2,3], {5:'+', 6:'0'}, 20)``
         """
-        if post_selected: gsum = self.post_select(post_selected)
+        if post_selected is not None: gsum = self.post_select(post_selected)
         else: gsum = self
         gsum.full_reduce()
 
         qubit_map = {q:q for q in qubits}
-        for q in qubits: #If we post-select, this changes which qubit points to which output
-            qubit_map[q] -= sum(1 for v in post_selected if v<q)
+        if post_selected is not None:
+            for q in qubits: #If we post-select, this changes which qubit points to which output
+                qubit_map[q] -= sum(1 for v in post_selected if v<q)
         norm = gsum.estimate_norm(epsilon)
         if not quiet: print("Estimated original norm:", norm)
         if norm < 0.01 and not quiet: 
@@ -196,7 +203,7 @@ class SumGraph(object):
                 path += str(val)
 
                 if val == 0:
-                    if temp != None: current = temp
+                    if temp is not None: current = temp
                     else: current = current.post_select({qubit_map2[q]:'0'})
                     prevprob *= prob
                 else:
@@ -212,14 +219,14 @@ class SumGraph(object):
 
                 
 
-def calculate_path_sum(g):
+def calculate_path_sum(g: BaseGraph[VT,ET]) -> complex:
     """Input should be a fully reduced scalar graph-like Clifford+T ZX-diagram. 
     Calculates the scalar it represents."""
     if g.num_vertices() < 2: return g.to_tensor().flatten()[0]
     phases = g.phases()
     prefactor = 0
     variable_dict = dict()
-    variables = [] # Contains the phases of each of the variables
+    variables: List[int] = [] # Contains the phases of each of the variables
     czs = []
     xors = dict()
     for v in g.vertices():
@@ -253,8 +260,8 @@ def calculate_path_sum(g):
     c = Circuit(n)
     for i in range(n):
         c.add_gate("ZPhase",i,phase=Fraction(variables[i],4))
-    for targets, phase in xors.items():
-        c.add_gate("ParityPhase", Fraction(phase,4), *list(targets))
+    for tgts, phase in xors.items():
+        c.add_gate("ParityPhase", Fraction(phase,4), *list(tgts))
     for i,j in czs:
         c.add_gate("CZ", i,j)
     g2 = c.to_graph()
@@ -278,7 +285,7 @@ def calculate_path_sum(g):
     # r = results
     # return g.scalar.to_number()*sq2**(-prefactor)*(r[0]-r[4]+omega*(r[1]-r[5]) +1j*(r[2]-r[6]) + 1j*omega*(r[3]-r[7]))
 
-def find_stabilizer_decomp(g):
+def find_stabilizer_decomp(g: BaseGraph[VT,ET]) -> List[BaseGraph[VT,ET]]:
     if simplify.tcount(g) == 0: return [g]
     gsum = replace_magic_states(g, True)
     gsum.reduce_scalar()
@@ -288,7 +295,7 @@ def find_stabilizer_decomp(g):
         output.extend(find_stabilizer_decomp(h))
     return output
 
-def max_terms_needed(g):
+def max_terms_needed(g: BaseGraph[VT,ET]) -> int:
     """Returns the maximum amount of stabilizer terms that g could be split in
     by :func:``find_stabilizer_decomp``."""
     v = simplify.tcount(g)
@@ -300,7 +307,7 @@ def max_terms_needed(g):
     return count
 
 
-def replace_magic_states(g, pick_random=False):
+def replace_magic_states(g: BaseGraph[VT,ET], pick_random:Any=False) -> SumGraph:
     """This function takes in a ZX-diagram in graph-like form 
     (all spiders fused, only Z spiders, only H-edges between spiders),
     and splits it into a sum over smaller diagrams by using the magic
@@ -358,14 +365,14 @@ def replace_magic_states(g, pick_random=False):
 
     return SumGraph(graphs)
 
-def replace_B60(g, verts):
+def replace_B60(g: BaseGraph[VT,ET], verts: List[VT]) -> BaseGraph[VT,ET]:
     g.scalar.add_float(MAGIC_B60)
     g.scalar.add_power(-6)
     for v in verts:
         g.add_to_phase(v,Fraction(-1,4))
     return g
 
-def replace_B66(g, verts):
+def replace_B66(g: BaseGraph[VT,ET], verts: List[VT]) -> BaseGraph[VT,ET]:
     g.scalar.add_float(MAGIC_B66)
     g.scalar.add_power(-6)
     g.scalar.add_phase(Fraction(1))
@@ -374,92 +381,92 @@ def replace_B66(g, verts):
         g.add_to_phase(v,Fraction(1))
     return g
 
-def replace_E6(g, verts):
+def replace_E6(g: BaseGraph[VT,ET], verts: List[VT]) -> BaseGraph[VT,ET]:
     g.scalar.add_float(MAGIC_E6)
     g.scalar.add_power(4)
     g.scalar.add_phase(Fraction(1,2))
-    av = 0
+    av = 0.0
     for v in verts:
         g.add_to_phase(v,Fraction(-1,4))
         g.add_to_phase(v, Fraction(1,2))
         av += g.row(v)
     w = g.add_vertex(VertexType.Z,-1,av/6,Fraction(1))
-    g.add_edges([(v,w) for v in verts],EdgeType.HADAMARD)
+    g.add_edges([g.edge(v,w) for v in verts],EdgeType.HADAMARD)
     return g
 
-def replace_O6(g, verts):
+def replace_O6(g: BaseGraph[VT,ET], verts: List[VT]) -> BaseGraph[VT,ET]:
     g.scalar.add_float(MAGIC_O6)
     g.scalar.add_power(4)
     g.scalar.add_phase(Fraction(1,2))
-    av = 0
+    av = 0.0
     for v in verts:
         g.add_to_phase(v,Fraction(-1,4))
         g.add_to_phase(v, Fraction(1,2))
         av += g.row(v)
     w = g.add_vertex(VertexType.Z,-1,av/6,Fraction(0))
-    g.add_edges([(v,w) for v in verts],EdgeType.HADAMARD)
+    g.add_edges([g.edge(v,w) for v in verts],EdgeType.HADAMARD)
     return g
 
-def replace_K6(g, verts):
+def replace_K6(g: BaseGraph[VT,ET], verts: List[VT]) -> BaseGraph[VT,ET]:
     g.scalar.add_float(MAGIC_K6)
     g.scalar.add_power(5)
     g.scalar.add_phase(Fraction(1,4))
-    av = 0
+    av = 0.0
     for v in verts:
         g.add_to_phase(v,Fraction(-1,4))
         av += g.row(v)
     w = g.add_vertex(VertexType.Z,-1,av/6,Fraction(3,2))
-    g.add_edges([(v,w) for v in verts],EdgeType.SIMPLE)
+    g.add_edges([g.edge(v,w) for v in verts],EdgeType.SIMPLE)
     return g
 
-def replace_phi1(g, verts):
+def replace_phi1(g: BaseGraph[VT,ET], verts: List[VT]) -> BaseGraph[VT,ET]:
     g.scalar.add_float(MAGIC_PHI)
     g.scalar.add_power(9)
     g.scalar.add_phase(Fraction(3,2))
     w6 = g.add_vertex(VertexType.Z,-1, g.row(verts[5])+0.5, Fraction(1))
     g.add_to_phase(verts[5],Fraction(-1,4))
-    g.add_edge((verts[5],w6))
+    g.add_edge(g.edge(verts[5],w6))
     ws = []
     for v in verts[:-1]:
         g.add_to_phase(v,Fraction(-1,4))
         w = g.add_vertex(VertexType.Z,-1, g.row(v)+0.5)
-        g.add_edges([(w6,w),(v,w)],EdgeType.HADAMARD)
+        g.add_edges([g.edge(w6,w),g.edge(v,w)],EdgeType.HADAMARD)
         ws.append(w)
     w1,w2,w3,w4,w5 = ws
-    g.add_edges([(w1,w3),(w1,w4),(w2,w4),(w2,w5),(w3,w5)],EdgeType.HADAMARD)
+    g.add_edges([g.edge(*e) for e in [(w1,w3),(w1,w4),(w2,w4),(w2,w5),(w3,w5)]],EdgeType.HADAMARD)
     return g
 
-def replace_phi2(g, verts):
+def replace_phi2(g: BaseGraph[VT,ET], verts: List[VT]) -> BaseGraph[VT,ET]:
     v1,v2,v3,v4,v5,v6 = verts
     verts = [v1,v2,v4,v5,v6,v3]
     return replace_phi1(g,verts)
 
 
-def replace_2_S(g, verts):
+def replace_2_S(g: BaseGraph[VT,ET], verts: List[VT]) -> BaseGraph[VT,ET]:
     w = g.add_vertex(VertexType.Z,g.qubit(verts[0])-0.5, g.row(verts[0])-0.5, Fraction(1,2))
-    g.add_edges([(verts[0],w),(verts[1],w)],EdgeType.SIMPLE)
+    g.add_edges([g.edge(verts[0],w),g.edge(verts[1],w)],EdgeType.SIMPLE)
     for v in verts: g.add_to_phase(v,Fraction(-1,4))
     return g
 
 
-def replace_2_N(g, verts):
+def replace_2_N(g: BaseGraph[VT,ET], verts: List[VT]) -> BaseGraph[VT,ET]:
     g.scalar.add_phase(Fraction(1,4))
     w = g.add_vertex(VertexType.Z,g.qubit(verts[0])-0.5, g.row(verts[0])-0.5, Fraction(1,1))
-    g.add_edges([(verts[0],w),(verts[1],w)],EdgeType.HADAMARD)
+    g.add_edges([g.edge(verts[0],w),g.edge(verts[1],w)],EdgeType.HADAMARD)
     for v in verts: g.add_to_phase(v,Fraction(-1,4))
     return g
 
-def replace_1_0(g, verts):
+def replace_1_0(g: BaseGraph[VT,ET], verts: List[VT]) -> BaseGraph[VT,ET]:
     g.scalar.add_power(-1)
     w = g.add_vertex(VertexType.Z,g.qubit(verts[0])-0.5, g.row(verts[0])-0.5, 0)
-    g.add_edge((verts[0],w),EdgeType.HADAMARD)
+    g.add_edge(g.edge(verts[0],w),EdgeType.HADAMARD)
     for v in verts: g.add_to_phase(v,Fraction(-1,4))
     return g
 
-def replace_1_1(g, verts):
+def replace_1_1(g: BaseGraph[VT,ET], verts: List[VT]) -> BaseGraph[VT,ET]:
     g.scalar.add_phase(Fraction(1,4))
     g.scalar.add_power(-1)
     w = g.add_vertex(VertexType.Z,g.qubit(verts[0])-0.5, g.row(verts[0])-0.5, Fraction(1,1))
-    g.add_edge((verts[0],w),EdgeType.HADAMARD) 
+    g.add_edge(g.edge(verts[0],w),EdgeType.HADAMARD) 
     for v in verts: g.add_to_phase(v,Fraction(-1,4))
     return g
