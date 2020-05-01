@@ -15,6 +15,11 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+"""Implements several optimization methods on `Circuit`s.
+:func:`basic_optimization` runs a set of back-and-forth gate commutation and cancellation routines.
+:func:`phase_block_optimize` does phase polynomial optimization using the TODD algorithm,
+and :func:`full_optimize` combines these two methods."""
+
 from typing import overload, Tuple, List, Union, Dict, Set
 from typing_extensions import Literal
 
@@ -23,14 +28,20 @@ from .circuit.gates import Gate, ZPhase, XPhase, CNOT, CZ, ParityPhase, NOT, HAD
 from .extract import permutation_as_swaps
 from .todd import todd_simp
 
-__all__ = ['basic_optimization', 'phase_block_optimize']
+__all__ = ['full_optimize', 'basic_optimization', 'phase_block_optimize']
 
 def full_optimize(circuit: Circuit, quiet:bool=True) -> Circuit:
+    """Optimizes the circuit using first some basic commutation and cancellation rules,
+    and then a dedicated phase polynomial optimization strategy involving the TODD algorithm."""
     c = basic_optimization(circuit.to_basic_gates())
     c = phase_block_optimize(c, quiet=quiet)
     return basic_optimization(c.to_basic_gates())
 
 def basic_optimization(circuit: Circuit, do_swaps:bool=True, quiet:bool=True) -> Circuit:
+    """Optimizes the circuit using a strategy that involves delayed placement of gates
+    so that more matches for gate cancellations are found. Specifically tries to minimize
+    the number of Hadamard gates to improve the effectiveness 
+    of phase-polynomial optimization techniques."""
     if not isinstance(circuit, Circuit):
         raise TypeError("Input must be a Circuit")
     o = Optimizer(circuit)
@@ -62,6 +73,13 @@ def stats(circ: Circuit) -> Tuple[int,int,int]:
     return had, two_qubit, non_pauli
 
 class Optimizer(object):
+    """Helper class that implements the optimisations of :func:`basic_optimization`.
+    Works by doing alternating forward and backward 'passes' through a circuit.
+    During a pass, we iteratively consume gates, while 
+    keeping track of a stack of mutually commuting gates on each qubit.
+    When the gate can be combined with a gate on the stack, this is done.
+    If it doesn't combine, but commutes with the gates on the stack, it is added to the stack.
+    If it doesn't commute, the stack is reset."""
     def __init__(self, circuit: Circuit) -> None:
         self.circuit: Circuit = circuit
         self.qubits: int = circuit.qubits
@@ -492,7 +510,7 @@ class Optimizer(object):
 
 def greedy_consume_gates(gates: Dict[int, List[Gate]], qubits: int) -> Tuple[List[Gate],List[HAD]]:
     """Tries to consume as many gates as possible into a phase-polynomial block, by pushing gates past hadamards to the beginning
-    as long as that is possible.
+    as long as that is possible. Used by :func:`phase_block_optimize`.
 
     ``gates`` should be a {qubits:[list of gates]} dictionary, while ``qubits`` is the amount of qubits in the circuit.
     Returns a tuple (list of gates, list of hadamards)."""
@@ -627,6 +645,10 @@ def greedy_consume_gates(gates: Dict[int, List[Gate]], qubits: int) -> Tuple[Lis
 
 
 def phase_block_optimize(circuit: Circuit, pre_optimize:bool=True, quiet:bool=True) -> Circuit:
+    """Optimizes the given circuit, by cutting it into phase polynomial pieces, and
+    using the TODD algorithm to optimize each of these phase polynomials.
+    NOTE: only works with Clifford+T circuits. 
+    Will give wrong output when fed smaller rotation gates, or Toffoli-like gates."""
     qubits = circuit.qubits
     o = Optimizer(circuit)
     if pre_optimize:
@@ -653,7 +675,7 @@ def phase_block_optimize(circuit: Circuit, pre_optimize:bool=True, quiet:bool=Tr
 
     for i, g in enumerate(circuit.gates):
         g = g.copy()
-        g.index = i        
+        g.index = i
         if g.name in ('CNOT', 'CZ'):
             gates[g.control].append(g)
             gates[g.target].append(g)
