@@ -37,6 +37,8 @@ def Graph(backend:Optional[str]=None) -> BaseGraph:
 	if backend == 'igraph': return GraphIG()
 	return GraphS()
 
+Graph.from_json = GraphS.from_json # type: ignore
+
 try:
 	import graph_tool.all as gt
 	from .graph_gt import GraphGT

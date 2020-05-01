@@ -21,7 +21,7 @@ import cmath
 import copy
 from fractions import Fraction
 from typing import TYPE_CHECKING, Union, Optional, Generic, TypeVar, Any, Sequence
-from typing import List, Dict, Set, Tuple, Mapping, Iterable, Callable
+from typing import List, Dict, Set, Tuple, Mapping, Iterable, Callable, ClassVar
 from typing_extensions import Literal, GenericMeta # type: ignore # https://github.com/python/mypy/issues/5753
 
 import numpy as np
@@ -179,7 +179,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
     all the methods of this class. For implementations of this class see 
     :class:`~graph.graph_s.GraphS` or :class `~graph.graph_ig.GraphIG`."""
 
-    backend: str = 'None'
+    backend: ClassVar[str] = 'None'
 
     def __init__(self) -> None:
         self.scalar: Scalar = Scalar()
@@ -432,8 +432,28 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         """Returns a representation of the graph as a matrix using :func:`~pyzx.tensor.tensorfy`"""
         return tensor_to_matrix(tensorfy(self, preserve_scalar), len(self.inputs), len(self.outputs))
 
+    def to_json(self) -> str:
+        """Returns a json representation of the graph that follows the Quantomatic .qgraph format.
+        Convert back into a graph using :classmethod:`BaseGraph.from_json`."""
+        from .jsonparser import graph_to_json
+        return graph_to_json(self)
+
+    @classmethod
+    def from_json(cls, js) -> 'BaseGraph':
+        """Converts the given .qgraph json string into a Graph. 
+        Works with the output of :method:`BaseGraph.to_json`."""
+        from .jsonparser import json_to_graph
+        return json_to_graph(js,cls.backend)
+
+    def to_graphml(self) -> str:
+        """Returns a GraphML representation of the graph."""
+        from .jsonparser import to_graphml
+        return to_graphml(self)
 
     def is_id(self) -> bool:
+        """Returns whether the graph is just a set of identity wires,
+        i.e. a graph where all the vertices are either inputs or outputs,
+        and they are connected to each other in a non-permuted manner."""
         for e in self.edges():
             s,t = self.edge_st(e)
             if s in self.inputs and t in self.outputs:

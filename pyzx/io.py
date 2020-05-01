@@ -49,6 +49,7 @@ def _phase_to_quanto_value(p: FractionLike) -> str:
 def json_to_graph(js: str) -> BaseGraph:
     """Converts the json representation of a .qgraph Quantomatic graph into
     a pyzx graph."""
+    print("Deprecated. Please use zx.Graph.from_json() instead.")
     j = json.loads(js)
     g = Graph()
 
@@ -130,6 +131,7 @@ def json_to_graph(js: str) -> BaseGraph:
 
 def graph_to_json(g: BaseGraph[VT,ET]) -> str:
     """Converts a PyZX graph into JSON output compatible with Quantomatic."""
+    print("Deprecated. Please use g.to_json() instead (for a given graph g).")
     node_vs: Dict[str, Dict[str, Any]] = {}
     wire_vs: Dict[str, Dict[str, Any]] = {}
     edges: Dict[str, Dict[str, str]] = {}
@@ -213,6 +215,7 @@ def to_graphml(g: BaseGraph[VT,ET]) -> str:
     </key>
     <graph edgedefault="undirected">
 """
+    print("Deprecated. Please use g.to_graphml() instead (where g is a Graph instance).")
 
     for v in g.vertices():
         gml += (
