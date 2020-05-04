@@ -60,12 +60,18 @@ PyZX can also be run from the commandline. To optimise a circuit you can for ins
 
 If you wish to cite PyZX in an academic work, please cite the [accompanying paper](https://arxiv.org/abs/1904.04735):
 <pre>
-  @article{kissinger2019pyzx,
-    title={Pyzx: Large scale automated diagrammatic reasoning},
-    author={Kissinger, Aleks and van de Wetering, John},
-    journal={arXiv preprint arXiv:1904.04735},
-    year={2019}
-  }
+  @inproceedings{kissinger2020Pyzx,
+    author = {Kissinger, Aleks and van de Wetering, John},
+    title = {{PyZX: Large Scale Automated Diagrammatic Reasoning}},
+    year = {2020},
+    booktitle = {{\rm Proceedings 16th International Conference on} Quantum Physics and Logic, {\rm Chapman University, Orange, CA, USA., 10-14 June 2019}},
+    editor = {Coecke, Bob and Leifer, Matthew},
+    series = {Electronic Proceedings in Theoretical Computer Science},
+    volume = {318},
+    pages = {229-241},
+    publisher = {Open Publishing Association},
+    doi = {10.4204/EPTCS.318.14}
+}
 </pre>
 
 Here's a plane that says PYZX:
