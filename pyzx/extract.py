@@ -17,7 +17,7 @@
 
 from __future__ import print_function
 
-__all__ = ['clifford_extract', 'streaming_extract', 'modified_extract']
+__all__ = ['streaming_extract', 'modified_extract']
 
 from fractions import Fraction
 import itertools
@@ -106,8 +106,19 @@ def connectivity_from_biadj(g, m, left, right, edgetype=EdgeType.HADAMARD):
                 g.remove_edge((right[i],left[j]))
 
 def streaming_extract(g, allow_ancillae=False, quiet=True, stopcount=-1):
-    """Given a graph put into semi-normal form by :func:`simplify.full_reduce`, 
-    it extracts its equivalent set of gates into an instance of :class:`circuit.Circuit`.
+    """Given a graph put into semi-normal form by :func:`pyzx.simplify.full_reduce`, 
+    extracts an equivalent :class:`~pyzx.circuit.Circuit`. 
+    Uses a version of the algorithm in `this paper <https://arxiv.org/abs/2003.01664>`__.
+    For large graphs, this function can take a couple of minutes to finish.
+
+    Args:
+        g: The graph from which a circuit is to be extracted.
+        allow_ancillae: Experimental feature to allow extraction for more types of diagrams. Results in post-selected circuits.
+        quiet: Whether to print some progress indicators.
+        stopcount: If set to a positive integer, stops the extraction after this many gates have been extracted. Useful for debugging or stopping the process when it takes too long.
+
+    Note:
+        The graph ``g`` is modified in-place during extraction. If you wish to preserve it, call this function with a copy of it: ``streaming_extract(g.copy())``.
     """
     g.normalise()
     qs = g.qubits() # We are assuming that these are objects that update...

@@ -18,11 +18,12 @@
 __version__ = "0.5.1"
 
 from .graph.graph import Graph
-from .linalg import Mat2
 from .circuit import Circuit, gates, id
+from .linalg import Mat2
 from .utils import settings, VertexType, EdgeType
 from .drawing import *
 from .simplify import *
+from .optimize import *
 from .io import *
 from .tensor import *
 from .circuit.qasmparser import qasm

@@ -11,9 +11,8 @@ PyZX
    :caption: Contents:
    
    gettingstarted
-   generate
    simplify
-   extract
+   generate
    graph
    representations
 

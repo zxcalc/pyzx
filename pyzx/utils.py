@@ -1,6 +1,6 @@
 import os
 from fractions import Fraction
-from typing import Union
+from typing import Union, Optional, List
 from typing_extensions import Literal, Final
 
 FloatInt = Union[float,int]
@@ -58,11 +58,12 @@ def phase_to_s(a: FractionLike, t:VertexType.Type=VertexType.Z):
 
 class Settings(object): # namespace class
     mode: Literal["notebook", "browser", "shell"] = "shell"
+    drawing_backend: Literal["d3","matplotlib"] = "d3" 
     javascript_location: str = ""
     d3_load_string: str = ""
     tikzit_location: str = ""
     quantomatic_location: str = ""
-    drawing_backend: Literal["d3","matplotlib"] = "d3" 
+    topt_command: Optional[List[str]] = None # Argument-separated command to run TOpt such as ["wsl", "./TOpt"]
 
 settings = Settings()
 

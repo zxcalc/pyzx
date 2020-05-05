@@ -32,7 +32,11 @@ __all__ = ['full_optimize', 'basic_optimization', 'phase_block_optimize']
 
 def full_optimize(circuit: Circuit, quiet:bool=True) -> Circuit:
     """Optimizes the circuit using first some basic commutation and cancellation rules,
-    and then a dedicated phase polynomial optimization strategy involving the TODD algorithm."""
+    and then a dedicated phase polynomial optimization strategy involving the TODD algorithm.
+
+    Args:
+        circuit: Circuit to be optimized.
+        quiet: Whether to print some progress indicators."""
     c = basic_optimization(circuit.to_basic_gates())
     c = phase_block_optimize(c, quiet=quiet)
     return basic_optimization(c.to_basic_gates())
@@ -41,7 +45,13 @@ def basic_optimization(circuit: Circuit, do_swaps:bool=True, quiet:bool=True) ->
     """Optimizes the circuit using a strategy that involves delayed placement of gates
     so that more matches for gate cancellations are found. Specifically tries to minimize
     the number of Hadamard gates to improve the effectiveness 
-    of phase-polynomial optimization techniques."""
+    of phase-polynomial optimization techniques.
+
+    Args:
+        circuit: Circuit to be optimized.
+        do_swaps: When set uses some rules transforming CNOT gates into SWAP gates. Generally leads to better results, but messes up architecture-aware placement of 2-qubit gates.
+        quiet: Whether to print some progress indicators.
+    """
     if not isinstance(circuit, Circuit):
         raise TypeError("Input must be a Circuit")
     o = Optimizer(circuit)
@@ -646,9 +656,23 @@ def greedy_consume_gates(gates: Dict[int, List[Gate]], qubits: int) -> Tuple[Lis
 
 def phase_block_optimize(circuit: Circuit, pre_optimize:bool=True, quiet:bool=True) -> Circuit:
     """Optimizes the given circuit, by cutting it into phase polynomial pieces, and
-    using the TODD algorithm to optimize each of these phase polynomials.
-    NOTE: only works with Clifford+T circuits. 
-    Will give wrong output when fed smaller rotation gates, or Toffoli-like gates."""
+    using the `TODD algorithm <https://iopscience.iop.org/article/10.1088/2058-9565/aad604/meta>`_ 
+    to optimize each of these phase polynomials. 
+    The phase-polynomial circuits are then resynthesized using the 
+    `parity network <https://iopscience.iop.org/article/10.1088/2058-9565/aad8ca/meta>`_ algorithm.
+    
+    Note:
+        Only works with Clifford+T circuits. Will give wrong output when fed smaller rotation gates, or Toffoli-like gates.
+        Depending on the number of qubits and T-gates this function can take a long time to run.
+        It can be sped up somewhat by using the `TOpt implementation of TODD <https://github.com/Luke-Heyfron/TOpt>`_.
+        If this is installed, point towards it using ``zx.settings.topt_command``, such as for instance 
+        ``zx.settings.topt_command = ['wsl', '../TOpt']`` for running it in the Windows Subsystem for Linux.
+
+    Args:
+        circuit: The circuit to be optimized.
+        pre_optimize: Whether to call :func:`basic_optimization` first.
+        quiet: Whether to print some progress indicators. Helpful when execution time is long. 
+    """
     qubits = circuit.qubits
     o = Optimizer(circuit)
     if pre_optimize:

@@ -15,7 +15,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-"""Contains simplification procedures based on the rewrite rules in rules_.
+"""This module contains the ZX-diagram simplification strategies of PyZX.
+Each strategy is based on applying some combination of the rewrite rules in the rules_ module.
 The main procedures of interest are :func:`clifford_simp` for simple reductions, 
 :func:`full_reduce` for the full rewriting power of PyZX, and :func:`teleport_reduce` to 
 use the power of :func:`full_reduce` while not changing the structure of the graph.
@@ -40,17 +41,25 @@ def simp(
     rewrite: Callable[[BaseGraph[VT,ET],List[MatchObject]],RewriteOutputType[ET,VT]], 
     matchf:Optional[Union[Callable[[ET],bool], Callable[[VT],bool]]]=None, 
     quiet:bool=False) -> int:
-    """Helper method for generating simplification strategies based on rules in rules_.
-    It keeps matching and rewriting with the given methods until it can no longer do so.
-    Example usage: ``simp(g, 'spider_simp', rules.match_spider_parallel, rules.spider)``
+    """Helper method for constructing simplification strategies based on the rules present in rules_.
+    It uses the ``match`` function to find matches, and then rewrites ``g`` using ``rewrite``. 
+    If ``matchf`` is supplied, only the vertices or edges for which matchf() returns True are considered for matches.
 
-    :param g: The graph that needs to be simplified.
-    :param str name: The name of this rewrite rule.
-    :param match: One of the ``match_*`` functions of rules_.
-    :param rewrite: One of the rewrite functions of rules_.
-    :param matchf: An optional filtering function on candidate vertices or edges, which
-       is passed as the second argument to the match function.
-    :param quiet: Suppress output on numbers of matches found during simplification."""
+    Example:
+        ``simp(g, 'spider_simp', rules.match_spider_parallel, rules.spider)``
+    
+    Args:
+        g: The graph that needs to be simplified.
+        str name: The name to display if ``quiet`` is set to False.
+        match: One of the ``match_*`` functions of rules_.
+        rewrite: One of the rewrite functions of rules_.
+        matchf: An optional filtering function on candidate vertices or edges, which
+           is passed as the second argument to the match function.
+        quiet: Suppress output on numbers of matches found during simplification.
+
+    Returns:
+        Number of iterations of ``rewrite`` that had to be applied before no more matches were found."""
+
     i = 0
     new_matches = True
     while new_matches:

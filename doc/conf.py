@@ -51,6 +51,7 @@ extensions = ['sphinx.ext.autodoc',
               'sphinx_autodoc_typehints'
 ]
 
+add_function_parentheses = False
 set_type_checking_flag = True
 napoleon_use_rtype = False
 

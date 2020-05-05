@@ -16,30 +16,35 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 """
-This file contains rewrite rules for ZX-graphs based on the ZX-calculus.
+This module contains the implementation of all the rewrite rules on ZX-diagrams in PyZX.
 
-The current rewrites are based on:
+Each rewrite rule consists of two methods: a matcher and a rewriter.
+The matcher finds as many non-overlapping places where the rewrite rule can be applied.
+The rewriter takes in a list of matches, and performs the necessary changes on the graph to implement the rewrite.
 
-- Spider fusion.
-- The bialgebra equation.
-- Local Complementation.
-- A few variations on Pivoting.
-- Removing of identities.
+Each match function takes as input a Graph instance, 
+and an optional "filter function" that tells the matcher to only consider
+the vertices or edges that the filter function accepts.
+It outputs a list of "match" objects. What these objects look like differs
+per rewrite rule.
 
-Each of these rewrite rules consists of three methods:
+The rewrite function takes as input a Graph instance and a list of match objects
+of the appropriate type. It outputs a 4-tuple 
+(edges to add, vertices to remove, edges to remove, isolated vertices check).
+The first of these should be fed to :meth:`~pyzx.graph.base.BaseGraph.add_edge_table`,
+while the second and third should be fed to
+:meth:`~graph.base.BaseGraph.remove_vertices` and :meth:`~pyzx.graph.base.BaseGraph.remove_edges`.
+The last parameter is a Boolean that when true means that the rewrite rule can introduce
+isolated vertices that should be removed by
+:meth:`~pyzx.graph.base.BaseGraph.remove_isolated_vertices`\ .
 
-- ``match_*`` finds a single match of the rule in a graph.
-- ``match_*_parallel`` finds as many non-overlapping matches as possible.
-- The final method takes a list of matches produced by these methods and returns
-  a 4-tuple ``(edge_table, verts_to_remove, edges_to_remove, check_for_isolated_vertices)``.
-  ``edge_table`` should be fed to :meth:`~graph.base.BaseGraph.add_edge_table`, 
-  ``verts_to_remove`` to :meth:`~graph.base.BaseGraph.remove_vertices` (and similarly for ``edges_to_remove``).
-  If ``check_for_isolated_vertices`` is ``True``, then 
-  :meth:`~graph.base.BaseGraph.remove_isolated_vertices`
-  should be called.
+Dealing with this output is done using either :func:`apply_rule` or :func:`pyzx.simplify.simp`.
 
-These rewrite rules are used in the simplification procedures of :mod:`simplify`. 
-In particular, they are used in combination with :func:`simplify.simp` to create rewrite strategies.
+Warning:
+    There is no guarantee that the matcher does not affect the graph, and currently some matchers
+    do in fact change the graph. Similarly, the rewrite function also changes the graph other 
+    than through the output it generates (for instance by adding vertices or changes phases).
+
 """
 
 from typing import Tuple, List, Dict, Set, FrozenSet

@@ -35,13 +35,12 @@ from typing_extensions import Literal
 import numpy as np
 
 from .circuit.gates import Gate, T, S, Z, ZPhase, CZ, CNOT, ParityPhase
-from .utils import EdgeType, VertexType, FractionLike
+from .utils import settings, EdgeType, VertexType, FractionLike
 from .graph.base import BaseGraph, VT, ET
 from .linalg import Mat2, column_optimal_swap
 from .extract import permutation_as_swaps
 from .parity_network import parity_network
 
-TOPT_LOCATION: Optional[str] = None
 USE_REED_MULLER: bool = False
 
 
@@ -317,14 +316,14 @@ def do_todd_single(m: Mat2) -> Tuple[Mat2,int]:
 
 def todd_iter(m: Mat2, quiet:bool=True) -> Mat2:
     """Keep finding TODD matches until nothing is found anymore.
-    If TOPT_LOCATION is given it uses the TOpt implementation of TODD. """
+    If ``zx.settings.topt_command`` is set it uses the TOpt implementation of TODD."""
     m = m.transpose()
     remove_trivial_cols(m)
     random.shuffle(m.data) # Randomly shuffle the columns
     m = m.transpose()
     if not m.cols() or not m.rows():
         return m
-    if TOPT_LOCATION is not None:
+    if settings.topt_command is not None:
         return call_topt(m, quiet=quiet)
     while True:
         m, reduced = do_todd_single(m)
@@ -335,7 +334,7 @@ def todd_iter(m: Mat2, quiet:bool=True) -> Mat2:
 
 def call_topt(m: Mat2, quiet:bool=True) -> Mat2:
     """Calls and parses the output of the TOpt implementation of TODD."""
-    assert TOPT_LOCATION is not None
+    assert settings.topt_command is not None
     if not quiet:
         print("TOpt: ", end="")
     t_start = m.cols()
@@ -344,13 +343,13 @@ def call_topt(m: Mat2, quiet:bool=True) -> Mat2:
         f.write(s.encode('ascii'))
         f.flush()
         time.sleep(0.01)
-        if TOPT_LOCATION[0].find('wsl') != -1:
+        if settings.topt_command[0].find('wsl') != -1:
             fname = "/mnt/c"+f.name.replace("\\", "/")[2:]
         else: fname = f.name
         if USE_REED_MULLER:
-            output = subprocess.check_output([*TOPT_LOCATION, "gsm",fname, "-a", "rm"])
+            output = subprocess.check_output([*settings.topt_command, "gsm",fname, "-a", "rm"])
         else:
-            output = subprocess.check_output([*TOPT_LOCATION, "gsm",fname])
+            output = subprocess.check_output([*settings.topt_command, "gsm",fname])
         out = output.decode()
         #print(out)
     rows = out[out.find("Output gate"):out.find("Successful")].strip().splitlines()[2:]
