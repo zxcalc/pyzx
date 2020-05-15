@@ -1,6 +1,7 @@
 ## PyZX
 
 [![Unitary Fund](https://img.shields.io/badge/Supported%20By-UNITARY%20FUND-brightgreen.svg?style=for-the-badge)](http://unitary.fund)
+[![PyPI version](https://badge.fury.io/py/pyzx.svg)](https://badge.fury.io/py/pyzx)
 
 PyZX (pronounce as *Pisics*) is a **Py**thon tool implementing the theory of **ZX**-calculus for the creation, visualisation, and automated rewriting of large-scale quantum circuits. Please watch [this 2-minute video](https://www.youtube.com/watch?v=iC-KVdB8pf0) for a short introduction.
 
@@ -25,7 +26,9 @@ The ZX-calculus is a set of rewrite rules for ZX-diagrams. There are various ext
 ## Installation
 
 If you wish to use PyZX as a Python module for use in other projects, we recommend installing via pip:
-```pip install pyzx```
+```
+    pip install pyzx
+```
 
 If you want to use the demos or the benchmark circuits you should install PyZX from source by cloning the git repository.
 
