@@ -253,10 +253,7 @@ class Circuit(object):
         if ext == 'qgraph':
             raise TypeError(".qgraph files are not Circuits. Please load them as graphs using json_to_graph")
         if ext == 'quipper':
-            try:
-                return Circuit.from_quipper_file(circuitfile)
-            except:
-                return quipper_center_block(circuitfile)
+            return Circuit.from_quipper_file(circuitfile)
         raise TypeError("Couldn't determine filetype")
 
     @staticmethod
@@ -303,10 +300,19 @@ class Circuit(object):
     @staticmethod
     def from_quipper_file(fname: str) -> 'Circuit':
         """Produces a :class:`Circuit` based on a Quipper ASCII description of a circuit."""
-        with open(fname, 'r') as f:
-            text = f.read().strip()
-        c = Circuit.from_quipper(text)
-        c.name = os.path.basename(fname)
+        from .quipperparser import parse_quipper_block, quipper_center_block
+        try:
+            with open(fname, 'r') as f:
+                text = f.read().strip()
+                lines = text.splitlines()
+            if text.find('Subroutine') == -1:
+                c = parse_quipper_block(lines)
+                c.name = os.path.basename(fname)
+                return c
+            else:
+                raise TypeError("Subroutines are not supported")
+        except:
+            return quipper_center_block(fname)
         return c
 
     @staticmethod
