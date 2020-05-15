@@ -95,12 +95,12 @@ class Scalar(object):
         self.floatfactor *= f
 
     def mult_with_scalar(self, other: 'Scalar') -> None:
-    	self.power2 += other.power2
-    	self.phase = (self.phase +other.phase)%2
-    	self.phasenodes.extend(other.phasenodes)
-    	self.floatfactor *= other.floatfactor
-    	if other.is_zero: self.is_zero = True
-    	if other.is_unknown: self.is_unknown = True
+        self.power2 += other.power2
+        self.phase = (self.phase +other.phase)%2
+        self.phasenodes.extend(other.phasenodes)
+        self.floatfactor *= other.floatfactor
+        if other.is_zero: self.is_zero = True
+        if other.is_unknown: self.is_unknown = True
 
     def add_spider_pair(self, p1: FractionLike,p2: FractionLike) -> None:
         """Add the scalar corresponding to a connected pair of spiders (p1)-H-(p2)."""
@@ -500,29 +500,28 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         return len(self.inputs)
 
     def auto_detect_inputs(self) -> Tuple[List[VT],List[VT]]:
-        if self.inputs or self.outputs: return self.inputs, self.outputs
-        minrow: FloatInt = 100000
-        maxrow: FloatInt = -100000
-        nodes = {}
+        """Adds every vertex that is of boundary-type to the list of inputs or outputs.
+        Whether it is an input or output is determined by looking whether its neighbour
+         is further to the right or further to the left of the input. 
+        Inputs and outputs are sorted by vertical position.
+        Raises an exception if boundary vertex does not have a unique neighbour 
+        or if this neighbour is on the same horizontal position."""
         ty = self.types()
         for v in self.vertices():
-            if ty[v] == VertexType.BOUNDARY:
-                r = self.row(v)
-                nodes[v] = r
-                if r < minrow:
-                    minrow = r
-                if r > maxrow:
-                    maxrow = r
-
-        for v,r in nodes.items():
-            if r == minrow:
+            if ty[v] != VertexType.BOUNDARY: continue
+            if v in self.inputs or v in self.outputs: continue
+            if self.vertex_degree(v) != 1:
+                raise TypeError("Invalid ZX-diagram: Boundary-type vertex does not have unique neighbour")
+            w = list(self.neighbours(v))[0]
+            if self.row(w) > self.row(v):
                 self.inputs.append(v)
-            if r == maxrow:
+            elif self.row(w) < self.row(v):
                 self.outputs.append(v)
+            else:
+                raise TypeError("Boundary-type vertex at same horizontal position as neighbour. Can't determine whether it is an input or output.")
         self.inputs.sort(key=self.qubit)
         self.outputs.sort(key=self.qubit)
         return self.inputs, self.outputs
-
 
     def normalise(self) -> None:
         """Puts every node connecting to an input/output at the correct qubit index and row."""
