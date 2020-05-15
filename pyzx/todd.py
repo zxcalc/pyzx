@@ -37,8 +37,8 @@ import numpy as np
 from .circuit.gates import Gate, T, S, Z, ZPhase, CZ, CNOT, ParityPhase
 from .utils import settings, EdgeType, VertexType, FractionLike
 from .graph.base import BaseGraph, VT, ET
-from .linalg import Mat2, column_optimal_swap
-from .extract import permutation_as_swaps
+from .linalg import Mat2
+from .extract import permutation_as_swaps, column_optimal_swap
 from .parity_network import parity_network
 
 USE_REED_MULLER: bool = False

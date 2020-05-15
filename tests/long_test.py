@@ -25,7 +25,6 @@ from pyzx.tensor import compare_tensors
 from pyzx.generate import cliffordT
 from pyzx.simplify import *
 from pyzx.extract import *
-from pyzx.phasepoly import *
 from pyzx.circuit import Circuit
 from pyzx.optimize import *
 
@@ -59,12 +58,8 @@ def do_tests(qubits, depth, iterations, test_clifford_graph=True):
             steps.append("to_basic_gates")
             compare(t, c, False)
 
-            c2, blocks = circuit_phase_polynomial_blocks(c, optimize=False)
-            steps.append("phase_polynomial")
-            compare(t, c2, False)
-
-            c2, blocks = circuit_phase_polynomial_blocks(c, optimize=True)
-            steps[-1] = "phase_polynomial_optimized"
+            c2 = basic_optimization(c)
+            steps.append("basic_optimization")
             compare(t, c2, False)
 
             steps = []
@@ -84,10 +79,6 @@ def do_tests(qubits, depth, iterations, test_clifford_graph=True):
             c = streaming_extract(g).to_basic_gates()
             steps.append("streaming_extract")
             compare(t, c, False)
-
-            c2, blocks = circuit_phase_polynomial_blocks(c, optimize=True)
-            steps[-1] = "phase_polynomial_optimized"
-            compare(t, c2, False)
 
             steps = []
             g = circ.copy()

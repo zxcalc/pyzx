@@ -22,12 +22,14 @@ __all__ = ['streaming_extract', 'modified_extract']
 from fractions import Fraction
 import itertools
 
-from .linalg import Mat2, greedy_reduction, column_optimal_swap
+from .linalg import Mat2, Z2
 from .graph import Graph, EdgeType, VertexType, toggle_edge
 from .simplify import id_simp, tcount
 from .rules import apply_rule, pivot, match_spider_parallel, spider
 from .circuit import Circuit
 from .circuit.gates import ParityPhase, CNOT, HAD, ZPhase, CZ, InitAncilla
+
+from typing import List, Optional, Tuple, Dict
 
 
 def bi_adj(g, vs, ws):
@@ -602,6 +604,7 @@ def find_ancilla_qubits(g, left, right, gadgets, maxq, quiet=True):
 
 
 
+
 def permutation_as_swaps(perm):
     """Returns a series of swaps the realises the given permutation. 
     Permutation should be a dictionary with both keys and values taking values in 0,1,...,n."""
@@ -621,6 +624,138 @@ def permutation_as_swaps(perm):
     return swaps
 
 
+def column_optimal_swap(m):
+    """Given a matrix m, tries to find a permutation of the columns such that
+    there are as many ones on the diagonal as possible. This improves performance
+    when doing Gaussian elimination."""
+    r, c = m.rows(), m.cols()
+    connections = {i: set() for i in range(r)}
+    connectionsr= {j: set() for j in range(c)}
+
+    for i in range(r):
+            for j in range(c):
+                if m.data[i][j]: 
+                    connections[i].add(j)
+                    connectionsr[j].add(i)
+
+    target = _find_targets(connections, connectionsr)
+    if not target: target = dict()
+    #target = {v:k for k,v in target.items()}
+    left = list(set(range(c)).difference(target.values()))
+    right = list(set(range(c)).difference(target.keys()))
+    for i in range(len(left)):
+        target[right[i]] = left[i]
+    return target
+
+def _find_targets(conn, connr, target={}):
+    target = target.copy()
+    r = len(conn)
+    c = len(connr)
+    
+    claimedcols = set(target.keys())
+    claimedrows = set(target.values())
+    
+    while True:
+        min_index = -1
+        min_options = set(range(1000))
+        for i in range(r):
+            if i in claimedrows: continue
+            s = conn[i] - claimedcols # The free columns
+            if len(s) == 1:
+                j = s.pop()
+                target[j] = i
+                claimedcols.add(j)
+                claimedrows.add(i)
+                break
+            if len(s) == 0: return None # contradiction
+            found_col = False
+            for j in s:
+                t = connr[j] - claimedrows
+                if len(t) == 1: # j can only be connected to i
+                    target[j] = i
+                    claimedcols.add(j)
+                    claimedrows.add(i)
+                    found_col = True
+                    break
+            if found_col: break
+            if len(s) < len(min_options):
+                min_index = i
+                min_options = s
+        else: # Didn't find any forced choices
+            if not (conn.keys() - claimedrows): # we are done
+                return target
+            if min_index == -1: raise ValueError("This shouldn't happen ever")
+            # Start depth-first search
+            tgt = target.copy()
+            #print("backtracking on", min_index)
+            for i2 in min_options:
+                #print("trying option", i2)
+                tgt[i2] = min_index
+                r = _find_targets(conn, connr, tgt)
+                if r: return r
+            #print("Unsuccessful")
+            return target
+
+
+def xor_rows(l1: List[Z2], l2: List[Z2]) -> List[Z2]:
+    return [0 if l1[i]==l2[i] else 1 for i in range(len(l1))]
+
+def find_minimal_sums(m: Mat2) -> Optional[Tuple[int,...]]:
+    """Returns a list of rows in m that can be added together to reduce one of the rows so that
+    it only contains a single 1. Used in :func:`greedy_reduction`"""
+    r = m.rows()
+    d = m.data
+    if any(sum(r)==1 for r in d): return tuple()
+    combs:  Dict[Tuple[int,...],List[Z2]] = {(i,):d[i] for i in range(r)}
+    combs2: Dict[Tuple[int,...],List[Z2]] = {}
+    iterations = 0
+    while True:
+        combs2 = {}
+        for index,l in combs.items():
+            for k in range(max(index)+1,r):
+                #Unrolled xor_rows(combs[index],d[k])
+                row: List[Z2] = [0 if v1==v2 else 1 for v1,v2 in zip(combs[index],d[k])]
+                #row = xor_rows(combs[index],d[k])
+                if sum(row) == 1:
+                    return (*index,k)
+                combs2[(*index,k)] = row
+                iterations += 1
+            if iterations > 100000:
+                return None
+        if not combs2:
+            return None
+            #raise ValueError("Irreducible input has been given")
+        combs = combs2
+
+def greedy_reduction(m: Mat2) -> Optional[List[Tuple[int,int]]]:
+    """Returns a list of tuples (r1,r2) that specify which row should be added to which other row
+    in order to reduce one row of m to only contain a single 1. 
+    Used in :func:`extract.streaming_extract`"""
+    indicest = find_minimal_sums(m)
+    if indicest is None: return indicest
+    indices = list(indicest)
+    rows = {i:m.data[i] for i in indices}
+    weights = {i: sum(r) for i,r in rows.items()}
+    result = []
+    while len(indices)>1:
+        best = (-1,-1)
+        reduction = -10000
+        for i in indices:
+            for j in indices:
+                if j <= i: continue
+                w = sum(xor_rows(rows[i],rows[j]))
+                if weights[i] - w > reduction:
+                    best = (j,i) # "Add row j to i"
+                    reduction = weights[i] - w
+                if weights[j] - w > reduction:
+                    best = (i,j)
+                    reduction = weights[j] - w
+        result.append(best)
+        control, target = best
+        rows[target] = xor_rows(rows[control],rows[target])
+        weights[target] = weights[target] - reduction
+        indices.remove(control)
+    return result
 
 # O(N^3)
 def max_overlap(cz_matrix):
@@ -656,12 +791,24 @@ def max_overlap(cz_matrix):
                 final_common_qbs = common_qbs
     return [overlapping_rows,final_common_qbs]
 
-## Currently broken!!
-def modified_extract(g, optimize_czs=True, quiet=True):
-    """Given a graph put into semi-normal form by :func:`simplify.full_reduce`, 
-    it extracts its equivalent set of gates into an instance of :class:`circuit.Circuit`.
+def filter_duplicate_cnots(cnots):
+    from .optimize import basic_optimization
+    qubits = max([max(cnot.control,cnot.target) for cnot in cnots]) + 1
+    c = Circuit(qubits)
+    c.gates = cnots.copy()
+    c = basic_optimization(c,do_swaps=False)
+    return c.gates
+
+def modified_extract(g, optimize_czs=True, optimize_cnots=2, quiet=True):
+    """Given a graph put into semi-normal form by :func:`~pyzx.simplify.full_reduce`, 
+    it extracts its equivalent set of gates into an instance of :class:`~pyzx.circuit.Circuit`.
+
+    Args:
+        g: The ZX-diagram graph to be extracted into a Circuit.
+        optimize_czs: Whether to try to optimize the CZ-subcircuits by exploiting overlap between the CZ gates
+        optimize_cnots: (0,1,2,3) Level of CNOT optimization to apply.
+        quiet: Whether to print detailed output of the extraction process.
     """
-    #g.normalise()
     qs = g.qubits() # We are assuming that these are objects that update...
     rs = g.rows()   # ...to reflect changes to the graph, so that when...
     ty = g.types()  # ... g.set_row/g.set_qubit is called, these things update directly to reflect that
@@ -681,19 +828,22 @@ def modified_extract(g, optimize_czs=True, quiet=True):
         if v in g.inputs: continue
         frontier.append(v)
         qubit_map[v] = qs[o]
+        
+    czs_saved = 0
     
     while True:
         # preprocessing
-        for v in frontier:
+        for v in frontier: # First removing single qubit gates
             q = qubit_map[v]
             b = [w for w in g.neighbours(v) if w in g.outputs][0]
             e = g.edge(v,b)
-            if g.edge_type(e) == EdgeType.HADAMARD:
+            if g.edge_type(e) == 2: # Hadamard edge
                 c.add_gate("HAD",q)
-                g.set_edge_type(e,EdgeType.SIMPLE)
+                g.set_edge_type(e,1)
             if phases[v]: 
                 c.add_gate("ZPhase", q, phases[v])
                 g.set_phase(v,0)
+        # And now on to CZ gates
         cz_mat = Mat2([[0 for i in range(g.qubit_count())] for j in range(g.qubit_count())])
         for v in frontier:
             for w in list(g.neighbours(v)):
@@ -701,11 +851,12 @@ def modified_extract(g, optimize_czs=True, quiet=True):
                     cz_mat.data[qubit_map[v]][qubit_map[w]] = 1
                     cz_mat.data[qubit_map[w]][qubit_map[v]] = 1
                     g.remove_edge(g.edge(v,w))
-
+        
         if optimize_czs:
             overlap_data = max_overlap(cz_mat)
             while len(overlap_data[1]) > 2: #there are enough common qubits to be worth optimising
                 i,j = overlap_data[0][0], overlap_data[0][1]
+                czs_saved += len(overlap_data[1])-2
                 c.add_gate("CNOT",i,j)
                 for qb in overlap_data[1]:
                     c.add_gate("CZ",j,qb)
@@ -720,12 +871,13 @@ def modified_extract(g, optimize_czs=True, quiet=True):
             for j in range(i+1,g.qubit_count()):
                 if cz_mat.data[i][j]==1:
                     c.add_gate("CZ",i,j)
-
-        # Check for connectivity to inputs
+        
+        # Now we can proceed with the actual extraction
+        # First make sure that frontier is connected in correct way to inputs
         neighbours = set()
         for v in frontier.copy():
             d = [w for w in g.neighbours(v) if w not in g.outputs]
-            if any(w in g.inputs for w in d):
+            if any(w in g.inputs for w in d): #frontier vertex v is connected to an input
                 if len(d) == 1: # Only connected to input, remove from frontier
                     frontier.remove(v)
                     continue
@@ -733,67 +885,144 @@ def modified_extract(g, optimize_czs=True, quiet=True):
                 b = [w for w in d if w in g.inputs][0]
                 q = qs[b]
                 r = rs[b]
-                w = g.add_vertex(VertexType.Z,q,r+1)
+                w = g.add_vertex(1,q,r+1)
                 e = g.edge(v,b)
                 et = g.edge_type(e)
                 g.remove_edge(e)
-                g.add_edge((v,w),EdgeType.SIMPLE)
-                g.add_edge((w,b),toggle_edge(et))
+                g.add_edge((v,w),2)
+                g.add_edge((w,b),3-et)
                 d.remove(b)
                 d.append(w)
             neighbours.update(d)
-        if not frontier: break # We are done
+        
+        if not frontier: break # No more vertices to be processed. We are done.
+        
+        # First we check if there is a phase gadget in the way
+        removed_gadget = False
+        for w in neighbours:
+            if w not in gadgets: continue
+            for v in g.neighbours(w):
+                if v in frontier:
+                    apply_rule(g,pivot,[(w,v,[],[o for o in g.neighbours(v) if o in g.outputs])])
+                    frontier.remove(v)
+                    del gadgets[w]
+                    frontier.append(w)
+                    qubit_map[w] = qubit_map[v]
+                    removed_gadget = True
+                    break
+        if removed_gadget: # There was indeed a gadget in the way. Go back to the top
+            continue
             
         neighbours = list(neighbours)
         m = bi_adj(g,neighbours,frontier)
-        m.gauss(full_reduce=True)
-        max_vertices = []
-        for l in m.data:
-            if sum(l) == 1: 
-                i = [i for i,j in enumerate(l) if j == 1][0]
-                max_vertices.append(neighbours[i])
-        if max_vertices:
-            if not quiet: print("Reducing", len(max_vertices), "vertices")
-            for v in max_vertices: neighbours.remove(v)
-            neighbours = max_vertices + neighbours
-            m = bi_adj(g,neighbours,frontier)
-            cnots = m.to_cnots()
+        if all(sum(row)!=1 for row in m.data): # No easy vertex
+            if optimize_cnots>1:
+                 greedy = greedy_reduction(m)
+            else: greedy = None
+            if greedy:
+                greedy = [CNOT(target,control) for control,target in greedy]
+                if (len(greedy)==1 or optimize_cnots<3) and not quiet: print("Found greedy reduction with", len(greedy), "CNOT")
+                cnots = greedy
+            if not greedy or (optimize_cnots == 3 and len(greedy)>1):
+                perm = column_optimal_swap(m)
+                perm = {v:k for k,v in perm.items()}
+                neighbours2 = [neighbours[perm[i]] for i in range(len(neighbours))]
+                m2 = bi_adj(g, neighbours2, frontier)
+                if optimize_cnots > 0:
+                    cnots = m2.to_cnots(optimize=True)
+                else:
+                    cnots = m2.to_cnots(optimize=False)
+                cnots = filter_duplicate_cnots(cnots) # Since the matrix is not square, the algorithm sometimes introduces duplicates
+                if greedy:
+                    m3 = m2.copy()
+                    for cnot in cnots:
+                        m3.row_add(cnot.target,cnot.control)
+                    reductions = sum(1 for row in m3.data if sum(row)==1)
+                    if greedy and (len(cnots)/reductions > len(greedy)-0.1):
+                        if not quiet: print("Found greedy reduction with", len(greedy), "CNOTs")
+                        cnots = greedy
+                    else:
+                        neighbours = neighbours2
+                        m = m2
+                        if not quiet: print("Gaussian elimination with", len(cnots), "CNOTs")
+            # We now have a set of CNOTs that suffice to extract at least one vertex.
+            m2 = m.copy()
             for cnot in cnots:
-                m.row_add(cnot.target,cnot.control)
-                c.add_gate("CNOT",qubit_map[frontier[cnot.control]],qubit_map[frontier[cnot.target]])
-            connectivity_from_biadj(g,m,neighbours,frontier)
-            good_verts = dict()
-            for i, row in enumerate(m.data):
+                m2.row_add(cnot.target,cnot.control)
+            extractable = set()
+            for i, row in enumerate(m2.data):
                 if sum(row) == 1:
-                    v = frontier[i]
-                    w = neighbours[[j for j in range(len(row)) if row[j]][0]]
-                    good_verts[v] = w
-            for v,w in good_verts.items():
-                c.add_gate("HAD",qubit_map[v])
-                qubit_map[w] = qubit_map[v]
-                b = [o for o in g.neighbours(v) if o in g.outputs][0]
-                g.remove_vertex(v)
-                g.add_edge((w,b))
-                frontier.remove(v)
-                frontier.append(w)
-            if not quiet: print("Vertices extracted:", len(good_verts))
-            continue
+                    extractable.add(i)
+            # We now know which vertices are extractable, and hence the CNOTs on qubits that do not involved
+            # these vertices aren't necessary.
+            # So first, we get rid of all the CNOTs that happen in the Gaussian elimination after 
+            # all the extractable vertices have become extractable
+            m2 = m.copy()
+            for count, cnot in enumerate(cnots):
+                if sum(1 for row in m2.data if sum(row)==1) == len(extractable): #extractable rows equal to maximum
+                    cnots = cnots[:count] # So we do not need the remainder of the CNOTs
+                    break
+                m2.row_add(cnot.target, cnot.control)
+            # We now recalculate which vertices were extractable, because the deleted cnots
+            # might have acted to swap this vertex around some.
+            extractable = set()
+            for i, row in enumerate(m2.data):
+                if sum(row) == 1:
+                    extractable.add(i)
+            # And now we try to get rid of some more CNOTs, that can be commuted to the end of the CNOT circuit
+            # without changing extractability.
+            necessary_cnots = []
+            blocked = {i:'A' for i in extractable} # 'A' stands for "blocked for All". 'R' for "blocked for Red", 'G' for "blocked for Green".
+            for cnot in reversed(cnots):
+                if cnot.target not in blocked and cnot.control not in blocked: continue #CNOT not needed
+                should_add = False
+                if cnot.target in blocked and blocked[cnot.target] != 'R': 
+                    should_add = True
+                    blocked[cnot.target] = 'A'
+                if cnot.control in blocked and blocked[cnot.control] != 'G':
+                    should_add = True
+                    blocked[cnot.control] = 'A'
+                if cnot.control in extractable: should_add = True
+                if cnot.target in extractable: should_add = True
+                if not should_add: continue
+                necessary_cnots.append(cnot)
+                if cnot.control not in blocked: blocked[cnot.control] = 'G' # 'G' stands for Green
+                if cnot.target not in blocked: blocked[cnot.target] = 'R' # 'R' stands for Red
+            if not quiet: print("Actual realization required", len(necessary_cnots), "CNOTs")
+            cnots = []
+            for cnot in reversed(necessary_cnots):
+                m.row_add(cnot.target,cnot.control)
+                cnots.append(CNOT(qubit_map[frontier[cnot.control]],qubit_map[frontier[cnot.target]]))
+            #for cnot in cnots:
+            #    m.row_add(cnot.target,cnot.control)
+            #    c.add_gate("CNOT",qubit_map[frontier[cnot.control]],qubit_map[frontier[cnot.target]])
+            connectivity_from_biadj(g,m,neighbours,frontier)
         else:
-            if not quiet: print("No maximal vertex found. Pivoting on gadgets")
-            if not quiet: print("Gadgets before:", len(gadgets))
-            for w in neighbours:
-                if w not in gadgets: continue
-                for v in g.neighbours(w):
-                    if v in frontier:
-                        apply_rule(g,pivot,[(w,v,[],[o for o in g.neighbours(v) if o in g.outputs])])
-                        frontier.remove(v)
-                        del gadgets[w]
-                        frontier.append(w)
-                        qubit_map[w] = qubit_map[v]
-                        break
-            if not quiet: print("Gadgets after:", len(gadgets))
-            continue
+            if not quiet: print("Simple vertex")
+            cnots = []
+        good_verts = dict()
+        for i, row in enumerate(m.data):
+            if sum(row) == 1:
+                v = frontier[i]
+                w = neighbours[[j for j in range(len(row)) if row[j]][0]]
+                good_verts[v] = w
+        if not good_verts: raise Exception("No extractable vertex found. Something went wrong")
+        hads = []
+        for v,w in good_verts.items(): # Update frontier vertices
+            hads.append(qubit_map[v])
+            #c.add_gate("HAD",qubit_map[v])
+            qubit_map[w] = qubit_map[v]
+            b = [o for o in g.neighbours(v) if o in g.outputs][0]
+            g.remove_vertex(v)
+            g.add_edge((w,b))
+            frontier.remove(v)
+            frontier.append(w)
+        if not quiet: print("Vertices extracted:", len(good_verts))
+        for cnot in cnots: c.add_gate(cnot)
+        for h in hads: c.add_gate("HAD",h)
             
+    if optimize_czs:
+        if not quiet: print("CZ gates saved:", czs_saved)
     # Outside of loop. Finish up the permutation
     id_simp(g,quiet=True) # Now the graph should only contain inputs and outputs
     swap_map = {}
@@ -804,9 +1033,9 @@ def modified_extract(g, optimize_czs=True, quiet=True):
         if i not in g.inputs: 
             raise TypeError("Algorithm failed: Not fully reducable")
             return c
-        if g.edge_type(g.edge(v,i)) == EdgeType.HADAMARD:
+        if g.edge_type(g.edge(v,i)) == 2:
             c.add_gate("HAD", q)
-            g.set_edge_type(g.edge(v,i),EdgeType.SIMPLE)
+            g.set_edge_type(g.edge(v,i),1)
         if qs[i] != q: leftover_swaps = True
         swap_map[q] = qs[i]
     if leftover_swaps: 
