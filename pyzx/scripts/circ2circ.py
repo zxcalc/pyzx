@@ -82,7 +82,7 @@ def main(args):
         if options.simp == 'cliff':
             simplify.clifford_simp(g,quiet=(not options.verbose))
         if options.verbose: print("Extracting circuit...")
-        c2 = extract.streaming_extract(g)
+        c2 = extract.extract_circuit(g)
     if options.verbose: print("Optimizing...")
     if options.phasepoly:
         c3 = optimize.full_optimize(c2.to_basic_gates())

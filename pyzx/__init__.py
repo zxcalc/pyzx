@@ -24,6 +24,7 @@ from .utils import settings, VertexType, EdgeType
 from .drawing import *
 from .simplify import *
 from .optimize import *
+from .extract import *
 from .io import *
 from .tensor import *
 from .circuit.qasmparser import qasm

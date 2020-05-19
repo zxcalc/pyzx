@@ -32,7 +32,7 @@ from pyzx.circuit import Circuit
 from pyzx.circuit.gates import CNOT
 from pyzx.generate import cliffordT, cliffords
 from pyzx.simplify import clifford_simp
-from pyzx.extract import streaming_extract, modified_extract
+from pyzx.extract import extract_circuit
 
 SEED = 1337
 
@@ -40,55 +40,14 @@ SEED = 1337
 @unittest.skipUnless(np, "numpy needs to be installed for this to run")
 class TestExtract(unittest.TestCase):
 
-    # def test_clifford_extract(self):
-    #     random.seed(SEED)
-    #     tests = 0
-    #     tries = 0
-    #     while True:
-    #         tries += 1
-    #         circ = cliffords(5,70)
-    #         clifford_simp(circ,quiet=True)
-    #         circ.normalise()
-    #         if circ.depth()>3: continue # It is not in normal form, so skip this one
-    #         tests += 1
-    #         with self.subTest(test=tests,tries=tries):
-    #             t = tensorfy(circ)
-    #             clifford_extract(circ,1,2)
-    #             t2 = tensorfy(circ)
-    #             self.assertTrue(compare_tensors(t,t2))
-    #         if tests>5: break
-
-    # def test_greedy_cut_extract(self):
-    #     random.seed(SEED)
-    #     for i in range(5):
-    #         circ = cliffordT(4,50,0.1)
-    #         clifford_simp(circ,quiet=True)
-    #         circ.normalise()
-    #         with self.subTest(i=i):
-    #             t = tensorfy(circ)
-    #             greedy_cut_extract(circ)
-    #             t2 = tensorfy(circ)
-    #             self.assertTrue(compare_tensors(t,t2))
-
-    # def test_circuit_extract(self):
-    #     random.seed(SEED)
-    #     for i in range(5):
-    #         circ = cliffordT(4,50,0.1)
-    #         clifford_simp(circ,quiet=True)
-    #         with self.subTest(i=i):
-    #             t = tensorfy(circ)
-    #             circuit_extract(circ)
-    #             t2 = tensorfy(circ)
-    #             self.assertTrue(compare_tensors(t,t2))
-
-    def test_streaming_extract(self):
+    def test_extract_circuit(self):
         random.seed(SEED)
         for i in range(5):
             circ = cliffordT(4,50,0.1)
             t = tensorfy(circ,False)
             clifford_simp(circ,quiet=True)
             with self.subTest(i=i):
-                c = streaming_extract(circ)
+                c = extract_circuit(circ)
                 t2 = c.to_tensor(False)
                 self.assertTrue(compare_tensors(t,t2,False))
 
@@ -101,7 +60,7 @@ class TestExtract(unittest.TestCase):
 
         g = c.to_graph()
         clifford_simp(g,quiet=True)
-        c2 = modified_extract(g)
+        c2 = extract_circuit(g)
         cnot_count = 0
         for gate in c2.gates:
             if isinstance(gate, CNOT):

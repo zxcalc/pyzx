@@ -24,7 +24,7 @@ if __name__ == '__main__':
 from pyzx.tensor import compare_tensors
 from pyzx.generate import cliffordT
 from pyzx.simplify import *
-from pyzx.extract import *
+from pyzx.extract import extract_circuit
 from pyzx.circuit import Circuit
 from pyzx.optimize import *
 
@@ -50,8 +50,8 @@ def do_tests(qubits, depth, iterations, test_clifford_graph=True):
             steps.append("clifford_simp")
             if test_clifford_graph: compare(t, g)
             
-            c = streaming_extract(g)
-            steps.append("streaming_extract")
+            c = extract_circuit(g)
+            steps.append("extract_circuit")
             compare(t, c, False)
 
             c = c.to_basic_gates()
@@ -68,17 +68,9 @@ def do_tests(qubits, depth, iterations, test_clifford_graph=True):
             steps.append("full_reduce")
             if test_clifford_graph: compare(t, g)
 
-            c = modified_extract(g)
-            steps.append("modified_extract")
+            c = extract_circuit(g)
+            steps.append("extract_circuit")
             compare(t,c,False)
-
-            steps = []
-            g = circ.copy()
-            full_reduce(g, quiet=True)
-            steps.append("full_reduce")
-            c = streaming_extract(g).to_basic_gates()
-            steps.append("streaming_extract")
-            compare(t, c, False)
 
             steps = []
             g = circ.copy()

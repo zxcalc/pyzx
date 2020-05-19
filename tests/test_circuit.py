@@ -30,7 +30,7 @@ except ImportError:
 
 from pyzx.generate import cliffordT, cliffords
 from pyzx.simplify import clifford_simp
-from pyzx.extract import streaming_extract
+from pyzx.extract import extract_circuit
 from pyzx.circuit import Circuit
 
 SEED = 1337
@@ -92,7 +92,7 @@ class TestCircuit(unittest.TestCase):
         g = cliffordT(5, 70, 0.15)
         t = g.to_tensor(False)
         clifford_simp(g, quiet=True)
-        c = streaming_extract(g)
+        c = extract_circuit(g)
         t2 = c.to_tensor(False)
         self.assertTrue(compare_tensors(t,t2,False))
 
