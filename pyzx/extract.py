@@ -15,8 +15,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from __future__ import print_function
-
 __all__ = ['extract_circuit']
 
 from fractions import Fraction
@@ -35,6 +33,8 @@ from typing import List, Optional, Tuple, Dict, Set, Union
 
 
 def bi_adj(g: BaseGraph[VT,ET], vs:List[VT], ws:List[VT]) -> Mat2:
+	"""Construct a biadjacency matrix between the supplied list of vertices
+	``vs`` and ``ws``."""
     return Mat2([[1 if g.connected(v,w) else 0 for v in vs] for w in ws])
 
 def connectivity_from_biadj(
@@ -43,6 +43,8 @@ def connectivity_from_biadj(
 		left:List[VT], 
 		right: List[VT], 
 		edgetype:EdgeType.Type=EdgeType.HADAMARD):
+	"""Replace the connectivity in ``g`` between the vertices in ``left`` and ``right``
+	by the biadjacency matrix ``m``. The edges will be of type ``edgetype``."""
     for i in range(len(right)):
         for j in range(len(left)):
             if m.data[i][j] and not g.connected(right[i],left[j]):
@@ -60,8 +62,10 @@ def streaming_extract(
     return extract_circuit(g, optimize_czs, optimize_cnots, quiet)
 
 def permutation_as_swaps(perm:Dict[int,int]) -> List[Tuple[int,int]]:
-    """Returns a series of swaps the realises the given permutation. 
-    Permutation should be a dictionary with both keys and values taking values in 0,1,...,n."""
+    """Returns a series of swaps that realises the given permutation. 
+
+    Args:
+    	perm: A dictionary where both keys and values take values in 0,1,...,n."""
     swaps = []
     l = [perm[i] for i in range(len(perm))]
     pinv = {v:k for k,v in perm.items()}
@@ -107,6 +111,9 @@ def _find_targets(
 		connr: Dict[int,Set[int]], 
 		target:Dict[int,int]={}
 		) -> Optional[Dict[int,int]]:
+	"""Helper function for :func:`column_optimal_swap`.
+	Recursively makes a choice for a permutation that places additional ones on the diagonal.
+	Backtracks when it gets stuck in an unfavorable configuration."""
     target = target.copy()
     r = len(conn)
     c = len(connr)
@@ -189,7 +196,7 @@ def find_minimal_sums(m: Mat2) -> Optional[Tuple[int,...]]:
 def greedy_reduction(m: Mat2) -> Optional[List[Tuple[int,int]]]:
     """Returns a list of tuples (r1,r2) that specify which row should be added to which other row
     in order to reduce one row of m to only contain a single 1. 
-    Used in :func:`extract.streaming_extract`"""
+    Used in :func:`extract_circuit`"""
     indicest = find_minimal_sums(m)
     if indicest is None: return indicest
     indices = list(indicest)
@@ -220,7 +227,8 @@ def greedy_reduction(m: Mat2) -> Optional[List[Tuple[int,int]]]:
 def max_overlap(cz_matrix: Mat2) -> Tuple[Tuple[int,int],List[int]]:
     """Given an adjacency matrix of qubit connectivity of a CZ circuit, returns:
     a) the rows which have the maximum inner product
-    b) the list of common qubits between these rows
+    b) the list of common qubits between these rows.
+    Used in :func:`extract_circuit` to more optimally place CZ gates. 
     """
     N = len(cz_matrix.data[0])
 
@@ -251,6 +259,7 @@ def max_overlap(cz_matrix: Mat2) -> Tuple[Tuple[int,int],List[int]]:
     return (overlapping_rows,final_common_qbs)
 
 def filter_duplicate_cnots(cnots: List[CNOT]) -> List[CNOT]:
+	"""Cancels adjacent CNOT gates in a list of CNOT gates."""
     from .optimize import basic_optimization
     qubits = max([max(cnot.control,cnot.target) for cnot in cnots]) + 1
     c = Circuit(qubits)
