@@ -22,32 +22,44 @@ __all__ = ['extract_circuit']
 from fractions import Fraction
 import itertools
 
+from .utils import EdgeType, VertexType, toggle_edge
 from .linalg import Mat2, Z2
-from .graph import Graph, EdgeType, VertexType, toggle_edge
 from .simplify import id_simp, tcount
 from .rules import apply_rule, pivot, match_spider_parallel, spider
 from .circuit import Circuit
-from .circuit.gates import ParityPhase, CNOT, HAD, ZPhase, CZ, InitAncilla
+from .circuit.gates import Gate, ParityPhase, CNOT, HAD, ZPhase, CZ, InitAncilla
 
-from typing import List, Optional, Tuple, Dict
+from .graph.base import BaseGraph, VT, ET
+
+from typing import List, Optional, Tuple, Dict, Set, Union
 
 
-def bi_adj(g, vs, ws):
+def bi_adj(g: BaseGraph[VT,ET], vs:List[VT], ws:List[VT]) -> Mat2:
     return Mat2([[1 if g.connected(v,w) else 0 for v in vs] for w in ws])
 
-def connectivity_from_biadj(g, m, left, right, edgetype=EdgeType.HADAMARD):
+def connectivity_from_biadj(
+		g: BaseGraph[VT,ET], 
+		m: Mat2, 
+		left:List[VT], 
+		right: List[VT], 
+		edgetype:EdgeType.Type=EdgeType.HADAMARD):
     for i in range(len(right)):
         for j in range(len(left)):
             if m.data[i][j] and not g.connected(right[i],left[j]):
-                g.add_edge((right[i],left[j]),edgetype)
+                g.add_edge(g.edge(right[i],left[j]),edgetype)
             elif not m.data[i][j] and g.connected(right[i],left[j]):
-                g.remove_edge((right[i],left[j]))
+                g.remove_edge(g.edge(right[i],left[j]))
 
-def streaming_extract(g, optimize_czs=True, optimize_cnots=2, quiet=True):
+def streaming_extract(
+		g:BaseGraph[VT,ET], 
+		optimize_czs:bool=True, 
+		optimize_cnots:int=2, 
+		quiet:bool=True
+		) -> Circuit:
     print("This function is deprecated. Call extract_circuit() instead.")
     return extract_circuit(g, optimize_czs, optimize_cnots, quiet)
 
-def permutation_as_swaps(perm):
+def permutation_as_swaps(perm:Dict[int,int]) -> List[Tuple[int,int]]:
     """Returns a series of swaps the realises the given permutation. 
     Permutation should be a dictionary with both keys and values taking values in 0,1,...,n."""
     swaps = []
@@ -66,13 +78,14 @@ def permutation_as_swaps(perm):
     return swaps
 
 
-def column_optimal_swap(m):
+def column_optimal_swap(m: Mat2) -> Dict[int,int]:
     """Given a matrix m, tries to find a permutation of the columns such that
-    there are as many ones on the diagonal as possible. This improves performance
-    when doing Gaussian elimination."""
+    there are as many ones on the diagonal as possible. 
+    This reduces the number of row operations needed to do Gaussian elimination.
+    """
     r, c = m.rows(), m.cols()
-    connections = {i: set() for i in range(r)}
-    connectionsr= {j: set() for j in range(c)}
+    connections:  Dict[int,Set[int]] = {i: set() for i in range(r)}
+    connectionsr: Dict[int,Set[int]] = {j: set() for j in range(c)}
 
     for i in range(r):
             for j in range(c):
@@ -81,7 +94,7 @@ def column_optimal_swap(m):
                     connectionsr[j].add(i)
 
     target = _find_targets(connections, connectionsr)
-    if not target: target = dict()
+    if target is None: target = dict()
     #target = {v:k for k,v in target.items()}
     left = list(set(range(c)).difference(target.values()))
     right = list(set(range(c)).difference(target.keys()))
@@ -89,7 +102,11 @@ def column_optimal_swap(m):
         target[right[i]] = left[i]
     return target
 
-def _find_targets(conn, connr, target={}):
+def _find_targets(
+		conn: Dict[int,Set[int]], 
+		connr: Dict[int,Set[int]], 
+		target:Dict[int,int]={}
+		) -> Optional[Dict[int,int]]:
     target = target.copy()
     r = len(conn)
     c = len(connr)
@@ -133,8 +150,8 @@ def _find_targets(conn, connr, target={}):
             for i2 in min_options:
                 #print("trying option", i2)
                 tgt[i2] = min_index
-                r = _find_targets(conn, connr, tgt)
-                if r: return r
+                new_target = _find_targets(conn, connr, tgt)
+                if new_target: return new_target
             #print("Unsuccessful")
             return target
 
@@ -200,7 +217,7 @@ def greedy_reduction(m: Mat2) -> Optional[List[Tuple[int,int]]]:
     return result
 
 # O(N^3)
-def max_overlap(cz_matrix):
+def max_overlap(cz_matrix: Mat2) -> Tuple[Tuple[int,int],List[int]]:
     """Given an adjacency matrix of qubit connectivity of a CZ circuit, returns:
     a) the rows which have the maximum inner product
     b) the list of common qubits between these rows
@@ -209,7 +226,7 @@ def max_overlap(cz_matrix):
 
     max_inner_product = 0
     final_common_qbs = list()
-    overlapping_rows = tuple()
+    overlapping_rows = (-1,-1)
     for i in range(N):
         for j in range(i+1,N):
             inner_product = 0
@@ -227,21 +244,26 @@ def max_overlap(cz_matrix):
             if inner_product > max_inner_product:
                 max_inner_product = inner_product
                 if i_czs < j_czs:
-                    overlapping_rows = [j,i]
+                    overlapping_rows = (j,i)
                 else:
-                    overlapping_rows = [i,j]
+                    overlapping_rows = (i,j)
                 final_common_qbs = common_qbs
-    return [overlapping_rows,final_common_qbs]
+    return (overlapping_rows,final_common_qbs)
 
-def filter_duplicate_cnots(cnots):
+def filter_duplicate_cnots(cnots: List[CNOT]) -> List[CNOT]:
     from .optimize import basic_optimization
     qubits = max([max(cnot.control,cnot.target) for cnot in cnots]) + 1
     c = Circuit(qubits)
-    c.gates = cnots.copy()
+    c.gates = cnots.copy() # type: ignore
     c = basic_optimization(c,do_swaps=False)
-    return c.gates
+    return c.gates # type: ignore
 
-def extract_circuit(g, optimize_czs=True, optimize_cnots=2, quiet=True):
+def extract_circuit(
+		g:BaseGraph[VT,ET], 
+		optimize_czs:bool=True, 
+		optimize_cnots:int=2, 
+		quiet:bool=True
+		) -> Circuit:
     """Given a graph put into semi-normal form by :func:`~pyzx.simplify.full_reduce`, 
     it extracts its equivalent set of gates into an instance of :class:`~pyzx.circuit.Circuit`.
     This function implements a more optimized version of the algorithm described in
@@ -265,15 +287,16 @@ def extract_circuit(g, optimize_czs=True, optimize_cnots=2, quiet=True):
             n = list(g.neighbours(v))[0]
             gadgets[n] = v
     
-    qubit_map = dict()
+    qubit_map: Dict[VT,int] = dict()
     frontier = []
-    for o in g.outputs:
+    for i,o in enumerate(g.outputs):
         v = list(g.neighbours(o))[0]
         if v in g.inputs: continue
         frontier.append(v)
-        qubit_map[v] = qs[o]
+        qubit_map[v] = i
         
     czs_saved = 0
+    q: Union[float,int]
     
     while True:
         # preprocessing
@@ -318,7 +341,7 @@ def extract_circuit(g, optimize_czs=True, optimize_cnots=2, quiet=True):
         
         # Now we can proceed with the actual extraction
         # First make sure that frontier is connected in correct way to inputs
-        neighbours = set()
+        neighbour_set = set()
         for v in frontier.copy():
             d = [w for w in g.neighbours(v) if w not in g.outputs]
             if any(w in g.inputs for w in d): #frontier vertex v is connected to an input
@@ -333,21 +356,21 @@ def extract_circuit(g, optimize_czs=True, optimize_cnots=2, quiet=True):
                 e = g.edge(v,b)
                 et = g.edge_type(e)
                 g.remove_edge(e)
-                g.add_edge((v,w),2)
-                g.add_edge((w,b),3-et)
+                g.add_edge(g.edge(v,w),2)
+                g.add_edge(g.edge(w,b),toggle_edge(et))
                 d.remove(b)
                 d.append(w)
-            neighbours.update(d)
+            neighbour_set.update(d)
         
         if not frontier: break # No more vertices to be processed. We are done.
         
         # First we check if there is a phase gadget in the way
         removed_gadget = False
-        for w in neighbours:
+        for w in neighbour_set:
             if w not in gadgets: continue
             for v in g.neighbours(w):
                 if v in frontier:
-                    apply_rule(g,pivot,[(w,v,[],[o for o in g.neighbours(v) if o in g.outputs])])
+                    apply_rule(g,pivot,[(w,v,[],[o for o in g.neighbours(v) if o in g.outputs])]) # type: ignore
                     frontier.remove(v)
                     del gadgets[w]
                     frontier.append(w)
@@ -357,14 +380,14 @@ def extract_circuit(g, optimize_czs=True, optimize_cnots=2, quiet=True):
         if removed_gadget: # There was indeed a gadget in the way. Go back to the top
             continue
             
-        neighbours = list(neighbours)
+        neighbours = list(neighbour_set)
         m = bi_adj(g,neighbours,frontier)
         if all(sum(row)!=1 for row in m.data): # No easy vertex
             if optimize_cnots>1:
-                 greedy = greedy_reduction(m)
-            else: greedy = None
-            if greedy:
-                greedy = [CNOT(target,control) for control,target in greedy]
+                 greedy_operations = greedy_reduction(m)
+            else: greedy_operations = None
+            if greedy_operations is not None:
+                greedy = [CNOT(target,control) for control,target in greedy_operations]
                 if (len(greedy)==1 or optimize_cnots<3) and not quiet: print("Found greedy reduction with", len(greedy), "CNOT")
                 cnots = greedy
             if not greedy or (optimize_cnots == 3 and len(greedy)>1):
@@ -458,7 +481,7 @@ def extract_circuit(g, optimize_czs=True, optimize_cnots=2, quiet=True):
             qubit_map[w] = qubit_map[v]
             b = [o for o in g.neighbours(v) if o in g.outputs][0]
             g.remove_vertex(v)
-            g.add_edge((w,b))
+            g.add_edge(g.edge(w,b))
             frontier.remove(v)
             frontier.append(w)
         if not quiet: print("Vertices extracted:", len(good_verts))
@@ -471,17 +494,17 @@ def extract_circuit(g, optimize_czs=True, optimize_cnots=2, quiet=True):
     id_simp(g,quiet=True) # Now the graph should only contain inputs and outputs
     swap_map = {}
     leftover_swaps = False
-    for v in g.outputs: # Finally, check for the last layer of Hadamards, and see if swap gates need to be applied.
-        q = qs[v]
-        i = list(g.neighbours(v))[0]
-        if i not in g.inputs: 
+    for q,v in enumerate(g.outputs): # Finally, check for the last layer of Hadamards, and see if swap gates need to be applied.
+        inp = list(g.neighbours(v))[0]
+        if inp not in g.inputs: 
             raise TypeError("Algorithm failed: Not fully reducable")
             return c
-        if g.edge_type(g.edge(v,i)) == 2:
+        if g.edge_type(g.edge(v,inp)) == 2:
             c.add_gate("HAD", q)
-            g.set_edge_type(g.edge(v,i),1)
-        if qs[i] != q: leftover_swaps = True
-        swap_map[q] = qs[i]
+            g.set_edge_type(g.edge(v,inp),EdgeType.SIMPLE)
+        q2 = g.inputs.index(inp)
+        if q2 != q: leftover_swaps = True
+        swap_map[q] = q2
     if leftover_swaps: 
         for t1, t2 in permutation_as_swaps(swap_map):
             c.add_gate("SWAP", t1, t2)
