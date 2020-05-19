@@ -33,18 +33,18 @@ from typing import List, Optional, Tuple, Dict, Set, Union
 
 
 def bi_adj(g: BaseGraph[VT,ET], vs:List[VT], ws:List[VT]) -> Mat2:
-	"""Construct a biadjacency matrix between the supplied list of vertices
-	``vs`` and ``ws``."""
+    """Construct a biadjacency matrix between the supplied list of vertices
+    ``vs`` and ``ws``."""
     return Mat2([[1 if g.connected(v,w) else 0 for v in vs] for w in ws])
 
 def connectivity_from_biadj(
-		g: BaseGraph[VT,ET], 
-		m: Mat2, 
-		left:List[VT], 
-		right: List[VT], 
-		edgetype:EdgeType.Type=EdgeType.HADAMARD):
-	"""Replace the connectivity in ``g`` between the vertices in ``left`` and ``right``
-	by the biadjacency matrix ``m``. The edges will be of type ``edgetype``."""
+        g: BaseGraph[VT,ET], 
+        m: Mat2, 
+        left:List[VT], 
+        right: List[VT], 
+        edgetype:EdgeType.Type=EdgeType.HADAMARD):
+    """Replace the connectivity in ``g`` between the vertices in ``left`` and ``right``
+    by the biadjacency matrix ``m``. The edges will be of type ``edgetype``."""
     for i in range(len(right)):
         for j in range(len(left)):
             if m.data[i][j] and not g.connected(right[i],left[j]):
@@ -53,11 +53,11 @@ def connectivity_from_biadj(
                 g.remove_edge(g.edge(right[i],left[j]))
 
 def streaming_extract(
-		g:BaseGraph[VT,ET], 
-		optimize_czs:bool=True, 
-		optimize_cnots:int=2, 
-		quiet:bool=True
-		) -> Circuit:
+        g:BaseGraph[VT,ET], 
+        optimize_czs:bool=True, 
+        optimize_cnots:int=2, 
+        quiet:bool=True
+        ) -> Circuit:
     print("This function is deprecated. Call extract_circuit() instead.")
     return extract_circuit(g, optimize_czs, optimize_cnots, quiet)
 
@@ -65,7 +65,7 @@ def permutation_as_swaps(perm:Dict[int,int]) -> List[Tuple[int,int]]:
     """Returns a series of swaps that realises the given permutation. 
 
     Args:
-    	perm: A dictionary where both keys and values take values in 0,1,...,n."""
+        perm: A dictionary where both keys and values take values in 0,1,...,n."""
     swaps = []
     l = [perm[i] for i in range(len(perm))]
     pinv = {v:k for k,v in perm.items()}
@@ -107,13 +107,13 @@ def column_optimal_swap(m: Mat2) -> Dict[int,int]:
     return target
 
 def _find_targets(
-		conn: Dict[int,Set[int]], 
-		connr: Dict[int,Set[int]], 
-		target:Dict[int,int]={}
-		) -> Optional[Dict[int,int]]:
-	"""Helper function for :func:`column_optimal_swap`.
-	Recursively makes a choice for a permutation that places additional ones on the diagonal.
-	Backtracks when it gets stuck in an unfavorable configuration."""
+        conn: Dict[int,Set[int]], 
+        connr: Dict[int,Set[int]], 
+        target:Dict[int,int]={}
+        ) -> Optional[Dict[int,int]]:
+    """Helper function for :func:`column_optimal_swap`.
+    Recursively makes a choice for a permutation that places additional ones on the diagonal.
+    Backtracks when it gets stuck in an unfavorable configuration."""
     target = target.copy()
     r = len(conn)
     c = len(connr)
@@ -259,7 +259,7 @@ def max_overlap(cz_matrix: Mat2) -> Tuple[Tuple[int,int],List[int]]:
     return (overlapping_rows,final_common_qbs)
 
 def filter_duplicate_cnots(cnots: List[CNOT]) -> List[CNOT]:
-	"""Cancels adjacent CNOT gates in a list of CNOT gates."""
+    """Cancels adjacent CNOT gates in a list of CNOT gates."""
     from .optimize import basic_optimization
     qubits = max([max(cnot.control,cnot.target) for cnot in cnots]) + 1
     c = Circuit(qubits)
@@ -268,11 +268,11 @@ def filter_duplicate_cnots(cnots: List[CNOT]) -> List[CNOT]:
     return c.gates # type: ignore
 
 def extract_circuit(
-		g:BaseGraph[VT,ET], 
-		optimize_czs:bool=True, 
-		optimize_cnots:int=2, 
-		quiet:bool=True
-		) -> Circuit:
+        g:BaseGraph[VT,ET], 
+        optimize_czs:bool=True, 
+        optimize_cnots:int=2, 
+        quiet:bool=True
+        ) -> Circuit:
     """Given a graph put into semi-normal form by :func:`~pyzx.simplify.full_reduce`, 
     it extracts its equivalent set of gates into an instance of :class:`~pyzx.circuit.Circuit`.
     This function implements a more optimized version of the algorithm described in
