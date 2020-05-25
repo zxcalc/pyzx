@@ -399,7 +399,7 @@ def extract_circuit(
                 greedy = [CNOT(target,control) for control,target in greedy_operations]
                 if (len(greedy)==1 or optimize_cnots<3) and not quiet: print("Found greedy reduction with", len(greedy), "CNOT")
                 cnots = greedy
-            if not greedy or (optimize_cnots == 3 and len(greedy)>1):
+            if greedy_operations is None or (optimize_cnots == 3 and len(greedy)>1):
                 perm = column_optimal_swap(m)
                 perm = {v:k for k,v in perm.items()}
                 neighbours2 = [neighbours[perm[i]] for i in range(len(neighbours))]
@@ -409,7 +409,7 @@ def extract_circuit(
                 else:
                     cnots = m2.to_cnots(optimize=False)
                 cnots = filter_duplicate_cnots(cnots) # Since the matrix is not square, the algorithm sometimes introduces duplicates
-                if greedy:
+                if greedy_operations is not None:
                     m3 = m2.copy()
                     for cnot in cnots:
                         m3.row_add(cnot.target,cnot.control)
