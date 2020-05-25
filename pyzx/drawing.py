@@ -15,10 +15,11 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-__all__ = ['draw', 'arrange_scalar_diagram', 'draw_matplotlib', 'draw_d3']
+__all__ = ['draw', 'arrange_scalar_diagram', 'draw_matplotlib', 'draw_d3', 'matrix_to_latex']
 
 import os
 import math
+import cmath
 import json
 from fractions import Fraction
 from typing import Dict, List, Tuple, Optional, Union, Iterable, Any
@@ -295,3 +296,133 @@ require(['zx_viewer'], function(zx_viewer) {{
         """.format(graph_id, graphj, str(w), str(h), str(node_size))
         s = html.SCRIPT(source, type="text/javascript")
         return d,s
+
+
+
+special_vals = {
+    1: "1",
+    -1: "-1",
+    math.sqrt(2) - 1: r"(\sqrt{2}-1)",
+    1-math.sqrt(2): r"(1-\sqrt{2})",
+    1+math.sqrt(2): r"(\sqrt{2}+1)"
+}
+
+def strip_brackets(s):
+    if s.startswith("(") and s.endswith(")"):
+        return s[1:-1]
+    return s
+
+def pretty_complex(z):
+    """Pretty print a complex number. Suitable for including in a
+    Jupyter widgets Label()."""
+    if abs(z) < 0.0000001:
+        return "0"
+    for v, s in special_vals.items():
+        if abs(z-v) < 0.0001:
+            return strip_brackets(s)
+    out = ""
+    r, arg = cmath.polar(z)
+    farg = Fraction(arg/math.pi).limit_denominator(128) # this is now a fraction between -1 and 1
+    if abs(farg*math.pi - arg) > 0.0001: # Polar decomp is not a good choice
+        f = int(math.log10(1/abs(z)))
+        if abs(f) > 1:
+            z *= 10**f
+        a,b = z.real, z.imag
+        for v,s in special_vals.items():
+            if abs(a-v) < 0.0001:
+                out += s
+                break
+        else:
+            if abs(a) > 0.001:
+                out += f"{a:.2f}".strip("0").strip(".")
+
+        if abs(b+1) < 0.0001:
+            out += "-i"
+        else:
+            for v,s in special_vals.items():
+                if abs(b-v) < 0.0001:
+                    out += s + "i"
+                    break
+            else:
+                if abs(b) > 0.001:
+                    if b > 0.0:
+                        if abs(a) > 0.001: out += "+"
+                        if abs(b-1) < 0.001:
+                            out += ""
+                        else:
+                            out += f"{b:.2f}".strip("0").strip(".")
+                    else:
+                        out += f"-{-b:.2f}".strip("0").strip(".")
+                    out += "i"
+        if abs(f) > 1:
+            out = f"({out})10^{{{-f}}}"
+        return strip_brackets(out)
+    arg = farg
+    if abs(r-1) > 0.0001: # not close to 1
+        for v,s in special_vals.items():
+            if abs(r-v) < 0.0001:
+                out += s
+                break
+        else:
+            v = math.log(r,2)
+            vfrac = Fraction(v).limit_denominator(64)
+            if abs(v-vfrac) < 0.0001:
+                if vfrac.denominator == 1:
+                    if vfrac == 1:
+                        out += "2"
+                    else:
+                        out += r"2^{%d}" % vfrac.numerator
+                else:
+                    vfrac *= 2
+                    if vfrac.denominator == 1:
+                        if vfrac == 1:
+                            out += r"\sqrt{2}"
+                        else:
+                            out += r"\sqrt{2}^{%d}" % vfrac.numerator
+                    else:
+                        out += r"\sqrt{2}^{\frac{%d}{%d}}" % (vfrac.numerator,vfrac.denominator)
+            else:
+                f = int(math.log10(1/abs(r)))
+                if abs(f) > 1:
+                    r *= 10**f
+                    out += f"{r:.2f}\cdot 10^{{{-f}}}"
+                else:
+                    out += f"{r:.2f}"
+    
+    minus = ""
+    if arg < 0:
+        minus = "-"
+        arg += 1
+    if arg == 1:
+        minus = "-"
+    elif arg == Fraction(1,2):
+        out += "i"
+    elif arg != 0:
+        out += r"e^{i\frac{%d}{%d}\pi}" % (arg.numerator, arg.denominator)
+    out = minus + out
+    
+    return strip_brackets(out)
+
+def matrix_to_latex(m):
+    """Converts a matrix into latex code.
+    Useful for pretty printing the matrix of a Circuit/Graph.
+
+    Example:
+        # Run this in a Jupyter notebook
+        from ipywidgets import Label
+        c = zx.Circuit(3)
+        display(Label(matrix_to_latex(c.to_matrix())))
+    """
+    epsilon = 10**-14
+    for v in m.flat:
+        if abs(v) > epsilon:
+            break
+    else:
+        raise Exception("matrix too close to zero")
+    m = m/v
+    out = "\\begin{equation}\n"
+    out += pretty_complex(v) + "\n\\begin{pmatrix}\n"
+    out += " \\\\ \n".join([" & ".join(pretty_complex(a) for a in row) for row in m])
+    out += "\n\\end{pmatrix}\n\\end{equation}"
+    return out
+    
