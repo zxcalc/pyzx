@@ -24,6 +24,7 @@ from typing import Callable, Optional, List, Tuple, Set, Dict, Any, Union
 
 from .utils import EdgeType, VertexType, toggle_edge, vertex_is_zx, toggle_vertex
 from .utils import settings, phase_to_s, FloatInt
+from .drawing import matrix_to_latex
 from .graph.graph import GraphS
 from . import rules
 
@@ -154,21 +155,39 @@ class ZXEditorWidget(widgets.DOMWidget):
 	last_operation = Unicode('').tag(sync=True)
 	action 		   = Unicode('').tag(sync=True)
 	
-	def __init__(self, graph: GraphS, *args, **kwargs) -> None:
+	def __init__(self, graph: GraphS, show_matrix:bool=False, *args, **kwargs) -> None:
 		super().__init__(*args,**kwargs)
 		self.observe(self._handle_graph_change, 'graph_json')
 		self.observe(self._selection_changed, 'graph_selected')
 		self.observe(self._apply_operation, 'button_clicked')
 		self.observe(self._perform_action, 'action')
 		self.graph = graph
+		self.show_matrix = show_matrix
 		self.undo_stack: List[Tuple[str,str]] = [('initial',str(self.graph_json))]
 		self.undo_position: int = 1
 		self.halt_callbacks: bool = False
 		self.msg: List[str] = []
 		self.output = widgets.Output()
+		self.matrix_view = widgets.Label()
+		self.update_matrix()
 	
 	def update(self) -> None:
 		self.graph_json = graph_to_json(self.graph, self.graph.scale) # type: ignore
+
+	def update_matrix(self):
+		if not self.show_matrix: return
+		try:
+			self.graph.auto_detect_inputs()
+		except TypeError:
+			return
+		if len(self.graph.inputs) > 4 or len(self.graph.outputs) > 4:
+			self.matrix_view.value = "Matrix too large to show"
+			return
+		try:
+			m = self.graph.to_matrix()
+		except ValueError:
+			return
+		self.matrix_view.value = matrix_to_latex(m)
 
 	def _parse_selection(self) -> Tuple[Set[int],Set[Tuple[int,int]]]:
 		"""Helper function for `_selection_changed` and `_apply_operation`."""
@@ -209,8 +228,8 @@ class ZXEditorWidget(widgets.DOMWidget):
 			else: matches = data["matcher"](g, lambda v: v in vertex_set)
 			# Apply the rule
 			etab, rem_verts, rem_edges, check_isolated_vertices = data["rule"](g, matches)
-			g.remove_vertices(rem_verts)
 			g.remove_edges(rem_edges)
+			g.remove_vertices(rem_verts)
 			g.add_edge_table(etab)
 			
 			#if check_isolated_vertices: g.remove_isolated_vertices()
@@ -298,6 +317,7 @@ class ZXEditorWidget(widgets.DOMWidget):
 				else:
 					self.graph.add_edge((s,t),et) # type: ignore
 			self.graph.remove_edges(marked)
+			self.update_matrix()
 		except Exception as e:
 			with self.output: print(traceback.format_exc())
 	
@@ -320,7 +340,11 @@ class ZXEditorWidget(widgets.DOMWidget):
 
 _d3_editor_id = 0
 
-def edit(g: GraphS, scale:Optional[FloatInt]=None, debug:bool=False) -> ZXEditorWidget:
+def edit(
+		g: GraphS, 
+		scale:Optional[FloatInt]=None, 
+		show_matrix:bool=False,
+		debug:bool=False) -> ZXEditorWidget:
 	load_js()
 	global _d3_editor_id
 	_d3_editor_id += 1
@@ -342,9 +366,15 @@ def edit(g: GraphS, scale:Optional[FloatInt]=None, debug:bool=False) -> ZXEditor
 	js = graph_to_json(g, scale)
 
 
-	w = ZXEditorWidget(g, graph_json = js, graph_id = str(seq), 
-					  graph_width=w, graph_height=h, graph_node_size=node_size,
-					  graph_buttons = operations_to_js())
+	w = ZXEditorWidget(
+					g, show_matrix, 
+					graph_json = js, graph_id = str(seq), 
+					graph_width=w, graph_height=h, 
+					graph_node_size=node_size,
+					graph_buttons = operations_to_js()
+					)
 	display(w)
+	if show_matrix:
+		display(w.matrix_view)
 	if debug: display(w.output)
 	return w
