@@ -14,7 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__all__ = ['draw', 'arrange_scalar_diagram', 'draw_matplotlib', 'draw_d3', 'matrix_to_latex']
+__all__ = ['draw', 'arrange_scalar_diagram', 'draw_matplotlib', 'draw_d3', 
+            'matrix_to_latex', 'print_matrix']
 
 import os
 import math
@@ -298,17 +299,49 @@ require(['zx_viewer'], function(zx_viewer) {{
 
 
 
+
 special_vals = {
     1: "1",
     -1: "-1",
-    math.sqrt(2) - 1: r"(\sqrt{2}-1)",
-    1-math.sqrt(2): r"(1-\sqrt{2})",
-    1+math.sqrt(2): r"(\sqrt{2}+1)"
+    math.sqrt(2): r"\sqrt{2}",
+    -math.sqrt(2): r"-\sqrt{2}",
+    math.sqrt(1/2): r"\frac{1}{\sqrt{2}}",
+    -math.sqrt(1/2): r"-\frac{1}{\sqrt{2}}",
+    # math.sqrt(2) - 1:                 r"(\sqrt{2}-1)",
+    # 1-math.sqrt(2):                 r"(1-\sqrt{2})",
+    # 1+math.sqrt(2):                 r"(\sqrt{2}+1)",
+    # 1+math.sqrt(1/2):                 r"(1+\frac{1}{\sqrt{2}})",
+    # 1-math.sqrt(1/2):                 r"(1-\frac{1}{\sqrt{2}})",
+    0.5*math.sqrt(1+math.sqrt(1/2)):r"\frac12\sqrt{1+\frac{1}{\sqrt{2}}}"
 }
+
+simple_vals = {
+	1: "1",
+	1/2: r"\frac12",
+	1/4: r"\frac14",
+	2: "2",
+	3: "3"
+}
+sqrt_vals = {
+	math.sqrt(2): r"\sqrt{2}",
+	math.sqrt(1/2): r"\frac{1}{\sqrt{2}}",
+	2*math.sqrt(2): r"2\sqrt{2}",
+	math.sqrt(1/2)/2: r"\frac{1}{2\sqrt{2}}",
+	math.sqrt(1/2)/4: r"\frac{1}{2\sqrt{4}}"
+}
+
+for v,s in simple_vals.items():
+	for w,t in sqrt_vals.items():
+		special_vals[v+w] = f"\\left({s}+{t}\\right)"
+		special_vals[v-w] = f"\\left({s}-{t}\\right)"
+		special_vals[-v+w] = f"\\left({t}-{s}\\right)"
+		special_vals[-v-w] = f"-\\left({t}+{s}\\right)"
 
 def strip_brackets(s):
     if s.startswith("(") and s.endswith(")"):
         return s[1:-1]
+    if s.startswith("\\left(") and s.endswith("\\right)"):
+    	return s[6:-7]
     return s
 
 def pretty_complex(z):
@@ -318,29 +351,36 @@ def pretty_complex(z):
         return "0"
     for v, s in special_vals.items():
         if abs(z-v) < 0.0001:
-            return strip_brackets(s)
+            return s
     out = ""
     r, arg = cmath.polar(z)
-    farg = Fraction(arg/math.pi).limit_denominator(128) # this is now a fraction between -1 and 1
-    if abs(farg*math.pi - arg) > 0.0001: # Polar decomp is not a good choice
+    farg = Fraction(arg/math.pi).limit_denominator(64) # this is now a fraction between -1 and 1
+    if abs(farg*math.pi - arg) > 0.00001: # Polar decomp is not a good choice
         f = int(math.log10(1/abs(z)))
         if abs(f) > 1:
             z *= 10**f
         a,b = z.real, z.imag
+        real_part, imag_part = False, False
         for v,s in special_vals.items():
             if abs(a-v) < 0.0001:
                 out += s
+                real_part = True
                 break
         else:
             if abs(a) > 0.001:
-                out += f"{a:.2f}".strip("0").strip(".")
+                out += f"{a:.2f}".rstrip("0").rstrip(".")
+                real_part = True
 
         if abs(b+1) < 0.0001:
             out += "-i"
+            imag_part = True
         else:
             for v,s in special_vals.items():
                 if abs(b-v) < 0.0001:
+                    if b > 0:
+                        out += "+"
                     out += s + "i"
+                    real_part = True
                     break
             else:
                 if abs(b) > 0.001:
@@ -349,23 +389,26 @@ def pretty_complex(z):
                         if abs(b-1) < 0.001:
                             out += ""
                         else:
-                            out += f"{b:.2f}".strip("0").strip(".")
+                            out += f"{b:.2f}".rstrip("0").rstrip(".")
                     else:
-                        out += f"-{-b:.2f}".strip("0").strip(".")
+                        out += f"-{-b:.2f}".rstrip("0").rstrip(".")
                     out += "i"
+                    imag_part = True
         if abs(f) > 1:
             out = f"({out})10^{{{-f}}}"
-        return strip_brackets(out)
+        elif real_part and imag_part:
+            out = f"({out})"
+        return out
     arg = farg
-    if abs(r-1) > 0.0001: # not close to 1
+    if abs(r-1) > 0.00001: # not close to 1
         for v,s in special_vals.items():
-            if abs(r-v) < 0.0001:
+            if abs(r-v) < 0.00001:
                 out += s
                 break
         else:
             v = math.log(r,2)
             vfrac = Fraction(v).limit_denominator(64)
-            if abs(v-vfrac) < 0.0001:
+            if abs(v-vfrac) < 0.00001:
                 if vfrac.denominator == 1:
                     if vfrac == 1:
                         out += "2"
@@ -400,7 +443,7 @@ def pretty_complex(z):
         out += r"e^{i\frac{%d}{%d}\pi}" % (arg.numerator, arg.denominator)
     out = minus + out
     
-    return strip_brackets(out)
+    return out
 
 def matrix_to_latex(m):
     """Converts a matrix into latex code.
@@ -412,16 +455,42 @@ def matrix_to_latex(m):
         c = zx.Circuit(3)
         display(Label(matrix_to_latex(c.to_matrix())))
     """
+    out = "\\begin{equation}\n"
+
     epsilon = 10**-14
+    best_val = None
+    denom = None
     for v in m.flat:
         if abs(v) > epsilon:
-            break
-    else:
-        raise Exception("matrix too close to zero")
+            if best_val is None: 
+                best_val = v
+                denom = Fraction(cmath.phase(v)/math.pi).limit_denominator(512).denominator
+            else:
+                p = Fraction(cmath.phase(v)/math.pi).limit_denominator(512)
+                if p.denominator < denom:
+                    best_val = v
+                    denom = p.denominator
+    if best_val is None:
+        # matrix is zero
+        out += "\\begin{pmatrix}\n"
+        out += " \\\\ \n".join([" & ".join("0" for a in row) for row in m])
+        out += "\n\\end{pmatrix}\n\\end{equation}"
+        return out
+    
+    v = best_val
     m = m/v
-    out = "\\begin{equation}\n"
-    out += pretty_complex(v) + "\n\\begin{pmatrix}\n"
-    out += " \\\\ \n".join([" & ".join(pretty_complex(a) for a in row) for row in m])
+    
+    s = pretty_complex(v)
+    if s == "1": s = ""
+    if s == "-1": s= "-"
+    out += s + "\n\\begin{pmatrix}\n"
+    out += " \\\\ \n".join([" & ".join(strip_brackets(pretty_complex(a)) for a in row) for row in m])
     out += "\n\\end{pmatrix}\n\\end{equation}"
     return out
-    
+
+def print_matrix(m):
+    from ipywidgets import Label
+    if isinstance(m,BaseGraph) or isinstance(m,Circuit):
+        m = m.to_matrix()
+
+    return Label(matrix_to_latex(m))
