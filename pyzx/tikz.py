@@ -22,11 +22,13 @@ These tikz files are designed to be easily readable by the program `Tikzit <http
 import tempfile
 import os
 import subprocess
+import shutil
 import time
 from typing import List, overload, Tuple, Union, Optional
 
 from .utils import settings, EdgeType, VertexType, FloatInt, FractionLike
 from .graph.base import BaseGraph, VT, ET
+from .circuit import Circuit
 
 TIKZ_BASE = """
 \\begin{{tikzpicture}}
@@ -115,17 +117,24 @@ def to_tikz_sequence(graphs:List[BaseGraph], maxwidth:FloatInt=10) -> str:
 
 
 
-def tikzit(g: BaseGraph[VT,ET]) -> None:
+def tikzit(g: Union[BaseGraph[VT,ET],Circuit,str]) -> None:
     """Opens Tikzit with the graph ``g`` opened as a tikz diagram. 
     For this to work, ``zx.tikz.tikzit_location`` must be pointed towards the Tikzit executable.
     Even though this function is intended to be used with Tikzit, ``zx.tikz.tikzit_location``
     can point towards any executable that takes a tikz file as an input, such as a text processor."""
 
-    if not settings.tikzit_location or not os.path.exists(settings.tikzit_location):
-        raise Exception("Please point towards the Tikzit executable with pyzx.settings.tikzit_location")
+    if not settings.tikzit_location or shutil.which(settings.tikzit_location) is None:
+        raise Exception("Please point towards the Tikzit executable"
+                        " (or some other executable that accepts a text file as an argument)"
+                        " with pyzx.settings.tikzit_location")
 
-    with tempfile.TemporaryDirectory() as tmpdirname:
+    if isinstance(g, Circuit):
+        g = g.to_graph(zh=True)
+    if isinstance(g, BaseGraph):
         tz = to_tikz(g)
+    else:
+        tz = g
+    with tempfile.TemporaryDirectory() as tmpdirname:
         #print(tz)
         fname = os.path.join(tmpdirname, "graph.tikz")
         with open(fname,'w') as f:

@@ -27,6 +27,7 @@ from .utils import settings, phase_to_s, FloatInt
 from .drawing import matrix_to_latex
 from .graph.graph import GraphS
 from . import rules
+from . import tikz
 
 from .editor_actions import MATCHES_VERTICES, MATCHES_EDGES, operations, operations_to_js
 
@@ -166,15 +167,16 @@ class ZXEditorWidget(widgets.DOMWidget):
 		self.undo_stack: List[Tuple[str,str]] = [('initial',str(self.graph_json))]
 		self.undo_position: int = 1
 		self.halt_callbacks: bool = False
+		self.snapshots: List[GraphS] = []
 		self.msg: List[str] = []
 		self.output = widgets.Output()
 		self.matrix_view = widgets.Label()
-		self.update_matrix()
+		self._update_matrix()
 	
 	def update(self) -> None:
 		self.graph_json = graph_to_json(self.graph, self.graph.scale) # type: ignore
 
-	def update_matrix(self):
+	def _update_matrix(self):
 		if not self.show_matrix: return
 		try:
 			self.graph.auto_detect_inputs()
@@ -253,13 +255,15 @@ class ZXEditorWidget(widgets.DOMWidget):
 			if action == '': return
 			elif action == 'undo': self.undo()
 			elif action == 'redo': self.redo()
+			elif action == 'snapshot': self.make_snapshot()
+			elif action == 'tikzit': self.open_tikzit()
 			else: raise ValueError("Unknown action '{}'".format(action))
 			self.action = ''
 		except Exception as e:
 			with self.output: print(traceback.format_exc())
 
 
-	def undo_stack_add(self, description: str, js: str) -> None:
+	def _undo_stack_add(self, description: str, js: str) -> None:
 		self.undo_stack = self.undo_stack[:len(self.undo_stack)-self.undo_position+1]
 		self.undo_position = 1
 		self.undo_stack.append((description,js))
@@ -286,6 +290,17 @@ class ZXEditorWidget(widgets.DOMWidget):
 		self.graph_from_json(json.loads(js))
 		self.update()
 		self.halt_callbacks = False
+
+	def make_snapshot(self) -> None:
+		self.snapshots.append(self.graph.copy()) # type: ignore
+
+	def open_tikzit(self) -> None:
+		seq = self.snapshots + [self.graph]
+		tz = tikz.to_tikz_sequence(seq) # type: ignore
+		try:
+			tikz.tikzit(tz)
+		except Exception as e:
+			with self.output: print(e)
 
 	def graph_from_json(self, js: Dict[str,Any]) -> None:
 		try:
@@ -317,7 +332,7 @@ class ZXEditorWidget(widgets.DOMWidget):
 				else:
 					self.graph.add_edge((s,t),et) # type: ignore
 			self.graph.remove_edges(marked)
-			self.update_matrix()
+			self._update_matrix()
 		except Exception as e:
 			with self.output: print(traceback.format_exc())
 	
@@ -328,7 +343,7 @@ class ZXEditorWidget(widgets.DOMWidget):
 		try:
 			js = json.loads(change['new'])
 			self.graph_from_json(js)
-			self.undo_stack_add(self.last_operation, change['new'])
+			self._undo_stack_add(self.last_operation, change['new'])
 		except Exception as e:
 			with self.output: print(traceback.format_exc())
 		
@@ -344,7 +359,37 @@ def edit(
 		g: GraphS, 
 		scale:Optional[FloatInt]=None, 
 		show_matrix:bool=False,
-		debug:bool=False) -> ZXEditorWidget:
+		show_errors:bool=True) -> ZXEditorWidget:
+	"""Start an instance of an ZX-diagram editor on a given graph ``g``.
+	Only usable in a Jupyter Notebook. 
+	When this function is called it displays a Jupyter Widget that allows
+	you to modify a pyzx Graph instance in the Notebook itself.
+	This function returns an instance of the editor widget, so it should be called like::
+
+		e = zx.editor.edit(g)
+
+	Usage:
+		Ctrl-click on empty space to add vertices.
+		Ctrl-drag between vertices to add edges.
+		Use the "Vertex type" and "Edge type" buttons to toggle which type of
+		vertex or edge to add.
+		Drag with left-mouse to make a selection.
+		Left-drag on a vertex to move it.
+		Delete or backspace removes the selection.
+		Ctrl-Z and Ctrl-Shift-Z undoes and redoes the last action.
+		With a part of the graph selected, click one of the action buttons
+		beneath the graph to perform a ZX-calculus rewrite.
+		Click "Save snapshot" to store the current graph into ``e.snapshots``.
+		Click "Load in tikzit" to open all snapshots in Tikzit.
+		Point ``zx.settings.tikzit_location`` to a Tikzit executable to use this function.
+
+	Args:
+		g: The Graph instance to edit
+		scale: What size the vertices should have (ideally somewhere between 20 and 50)
+		show_matrix: When True, displays the linear map the Graph implements beneath the editor
+		show_errors: When True, prints Exceptions beneath the editor
+	
+	"""
 	load_js()
 	global _d3_editor_id
 	_d3_editor_id += 1
@@ -376,5 +421,5 @@ def edit(
 	display(w)
 	if show_matrix:
 		display(w.matrix_view)
-	if debug: display(w.output)
+	if show_errors: display(w.output)
 	return w
