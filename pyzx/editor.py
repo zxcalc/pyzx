@@ -31,9 +31,9 @@ from . import rules
 from .editor_actions import MATCHES_VERTICES, MATCHES_EDGES, operations, operations_to_js
 
 if settings.mode == 'notebook':
-	import ipywidgets as widgets # type: ignore
-	from traitlets import Unicode, validate, Bool, Int, Float # type: ignore
-	from IPython.display import display, HTML # type: ignore
+	import ipywidgets as widgets
+	from traitlets import Unicode, validate, Bool, Int, Float
+	from IPython.display import display, HTML
 else:
 	# Make some dummy classes to prevent errors with the definition
 	# of ZXEditorWidget
