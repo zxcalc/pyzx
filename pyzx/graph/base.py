@@ -518,6 +518,8 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
                 self.outputs.append(v)
             else:
                 raise TypeError("Boundary-type vertex at same horizontal position as neighbour. Can't determine whether it is an input or output.")
+        self.inputs = list(filter(lambda v: v in self.vertices(), self.inputs))
+        self.outputs = list(filter(lambda v: v in self.vertices(), self.outputs))
         self.inputs.sort(key=self.qubit)
         self.outputs.sort(key=self.qubit)
         return self.inputs, self.outputs
