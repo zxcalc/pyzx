@@ -12,9 +12,9 @@ PyZX
    
    gettingstarted
    simplify
-   generate
    graph
    representations
+   api
 
 
 Indices and tables

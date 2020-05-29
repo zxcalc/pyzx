@@ -1,5 +1,3 @@
-.. _graph:
-
 ZX-Graphs
 =============
 
@@ -28,28 +26,9 @@ To get the type of all the vertices at once you call ``g.types()``. This returns
 
 Similarly, the type of an edge is stored as one of the integers ``EdgeType.SIMPLE`` or ``EdgeType.HADAMARD``, where ``EdgeType`` can be found as :class:`pyzx.utils.EdgeType`. The edge type of a given edge can be retrieved by ``g.edge_type(edge)``.
 
+.. _graph_api:
+
 Backends
 --------
 
 ZX-graphs can be represented internally in different ways. The only fully functioning backend right now is :class:`pyzx.graph.graph_s.GraphS`, which is written entirely in Python. A partial implementation using the ``python-igraph`` package is also available as :class:`pyzx.graph.graph_ig.GraphIG`. A new backend can be constructed by subclassing :class:`pyzx.graph.base.BaseGraph`.
-
-.. _graph_api:
-
-Graph API
----------
-ZX-graphs are internally represented by instances of classes that implement the methods of :class:`pyzx.graph.base.BaseGraph`. These methods are listed below. The only complete implementation currently is :class:`pyzx.graph.graph_s.GraphS`.
-
-.. module:: graph
-
-.. autoclass:: pyzx.graph.graph_s.GraphS
-
-To create a graph of a specific backend a convenience method ``Graph`` is supplied:
-
-.. function:: Graph(backend=None)
-   
-   If backend is given it should be a string. If it is ``'simple'`` an instance of :class:`pyzx.graph.graph_s.GraphS` is returned (this is the default). If it is ``'igraph'`` an instance of :class:`pyzx.graph.graph_ig.GraphIG` is returned.
-
-Both these implementations implement the following methods of BaseGraph:
-
-.. autoclass:: pyzx.graph.base.BaseGraph
-   :members:

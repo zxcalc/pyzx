@@ -176,7 +176,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
     """Base class for letting graph backends interact with PyZX.
     For a backend to work with PyZX, there should be a class that implements
     all the methods of this class. For implementations of this class see 
-    :class:`~graph.graph_s.GraphS` or :class:`~graph.graph_ig.GraphIG`."""
+    :class:`~pyzx.graph.graph_s.GraphS` or :class:`~pyzx.graph.graph_ig.GraphIG`."""
 
     backend: ClassVar[str] = 'None'
 
@@ -501,10 +501,11 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
     def auto_detect_inputs(self) -> Tuple[List[VT],List[VT]]:
         """Adds every vertex that is of boundary-type to the list of inputs or outputs.
         Whether it is an input or output is determined by looking whether its neighbour
-         is further to the right or further to the left of the input. 
+        is further to the right or further to the left of the input. 
         Inputs and outputs are sorted by vertical position.
         Raises an exception if boundary vertex does not have a unique neighbour 
-        or if this neighbour is on the same horizontal position."""
+        or if this neighbour is on the same horizontal position.
+        """
         ty = self.types()
         for v in self.vertices():
             if ty[v] != VertexType.BOUNDARY: continue

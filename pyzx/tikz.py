@@ -91,6 +91,7 @@ def _to_tikz(g: BaseGraph[VT,ET],
     return (verts, edges)
 
 def to_tikz(g: BaseGraph[VT,ET]) -> str:
+    """Converts a ZX-graph ``g`` to a string representing a tikz diagram."""
     verts, edges = _to_tikz(g)
     return TIKZ_BASE.format(vertices="\n".join(verts), edges="\n".join(edges))
 
@@ -119,7 +120,7 @@ def to_tikz_sequence(graphs:List[BaseGraph], maxwidth:FloatInt=10) -> str:
 
 def tikzit(g: Union[BaseGraph[VT,ET],Circuit,str]) -> None:
     """Opens Tikzit with the graph ``g`` opened as a tikz diagram. 
-    For this to work, ``zx.tikz.tikzit_location`` must be pointed towards the Tikzit executable.
+    For this to work, ``zx.settings.tikzit_location`` must be pointed towards the Tikzit executable.
     Even though this function is intended to be used with Tikzit, ``zx.tikz.tikzit_location``
     can point towards any executable that takes a tikz file as an input, such as a text processor."""
 

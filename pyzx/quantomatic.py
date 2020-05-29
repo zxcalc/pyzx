@@ -37,7 +37,7 @@ def edit_graph(g: BaseGraph) -> BaseGraph:
 	"""Opens Quantomatic with the graph ``g`` loaded. When you are done editing the graph, 
 	you save it in Quantomatic and close the executable. The resulting graph is returned by this function.
 	Note that this function blocks until the Quantomatic executable is closed. For this function to work
-	you must first set ``zx.quantomatic.quantomatic_location`` to point towards the Quantomatic .jar file."""
+	you must first set ``zx.settings.quantomatic_location`` to point towards the Quantomatic .jar file."""
 	if not settings.quantomatic_location or not os.path.exists(settings.quantomatic_location):
 		raise Exception("Please point towards the Quantomatic jar file with pyzx.settings.quantomatic_location")
 

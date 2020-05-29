@@ -22,11 +22,18 @@ from .graph_s import GraphS
 backends = {'simple': True}
 
 def Graph(backend:Optional[str]=None) -> BaseGraph:
-	"""Returns an instance of an implementation of :class:`~graph.base.BaseGraph`. 
-	By default :class:`~graph.graph_s.GraphS` is used. 
+	"""Returns an instance of an implementation of :class:`~pyzx.graph.base.BaseGraph`. 
+	By default :class:`~pyzx.graph.graph_s.GraphS` is used. 
 	Currently ``backend`` is allowed to be `simple` (for the default),
 	or 'graph_tool' and 'igraph'.
-	**Note**: graph_tool is currently not fully supported."""
+	This method is the preferred way to instantiate a ZX-diagram in PyZX.
+
+	Example:
+		To construct an empty ZX-diagram, just write::
+
+			g = zx.Graph()
+		
+	"""
 	if backend is None: backend = 'simple'
 	if backend not in backends:
 		raise KeyError("Unavailable backend '{}'".format(backend))

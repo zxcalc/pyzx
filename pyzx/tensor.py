@@ -14,7 +14,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__all__ = ['tensorfy', 'compare_tensors', 'compose_tensors', 'adjoint', 'is_unitary']
+"""This module provides methods for converting ZX-graphs into numpy tensors 
+and using these tensors to test semantic equality of ZX-graphs. 
+This module is not meant as an efficient quantum simulator. 
+Due to the way the tensor is calculated it can only handle 
+circuits of small size before running out of memory on a regular machine. 
+Currently, it can reliably transform 9 qubit circuits into tensors. 
+If the ZX-diagram is not circuit-like, but instead has nodes with high degree, 
+it will run out of memory even sooner."""
+
+__all__ = ['tensorfy', 'compare_tensors', 'compose_tensors', 
+            'adjoint', 'is_unitary','tensor_to_matrix']
 
 from math import pi, sqrt
 

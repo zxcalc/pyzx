@@ -56,7 +56,7 @@ def CNOT_HAD_PHASE_circuit(
         clifford:bool=False
         ) -> Circuit:
     """Construct a Circuit consisting of CNOT, HAD and phase gates. 
-    The default phase gate is the T gate, but if ``clifford=True``, then
+    The default phase gate is the T gate, but if ``clifford=True``\ , then
     this is replaced by the S gate.
 
     Args:
@@ -67,7 +67,9 @@ def CNOT_HAD_PHASE_circuit(
         clifford: when set to True, the phase gates are S gates instead of T gates.
 
     Returns:
-        A random circuit consisting of Hadamards, CNOT gates and phase gates."""
+        A random circuit consisting of Hadamards, CNOT gates and phase gates.
+
+    """
     p_cnot = 1-p_had-p_t
     c = Circuit(qubits)
     for _ in range(depth):
@@ -88,11 +90,14 @@ def CNOT_HAD_PHASE_circuit(
 
 def cnots(qubits: int, depth: int, backend:Optional[str]=None) -> BaseGraph:
     """Generates a circuit consisting of randomly placed CNOT gates.
-
-    :param qubits: Amount of qubits in circuit
-    :param depth: Depth of circuit
-    :param backend: When given, should be one of the possible :ref:`graph_api` backends.
-    :rtype: Instance of graph of the given backend
+    
+    Args:
+    qubits: Amount of qubits in circuit
+    depth: Depth of circuit
+    backend: When given, should be one of the possible :ref:`graph_api` backends.
+    
+    Returns:
+        Instance of graph of the given backend
     """
     # initialise and add input row
 

@@ -1,60 +1,41 @@
 .. _representations:
 
-Representations of quantum circuits and ZX-Graphs
-=================================================
+Importing and exporting quantum circuits and ZX-diagrams
+========================================================
 
-There are a few standards being used for representing quantum circuits. The ones currently supported by PyZX are `QASM <https://en.wikipedia.org/wiki/OpenQASM>`_, the ASCII format of `Quipper <https://www.mathstat.dal.ca/~selinger/quipper/>`_ and the simple *.qc* format used for representing quantum circuits in LaTex. Using the class :class:`~pyzx.circuit.Circuit`, files from these formats can be imported and converted into ZX-graphs. Vice versa, circuit-like ZX-graphs can be converted into circuits which can then be saved in these formats. An additional format that is supported for export is *tikz*, which also allows for easy embedding into LaTex documents. ZX-graphs can also be converted into the json format of `Quantomatic <https://quantomatic.github.io/>`_ using functions supplied in io_. This allows PyZX to interface with Quantomatic; see the section on methods in quanto_ for more details. Finally, ZX-graphs can be converted into NumPy tensors with the functions supplied in tensor_ to allow easy verification of equality between two ZX-graphs.
+There are several ways to import and export circuits and ZX-diagrams in PyZX.
 
+Importing and exporting quantum circuits
+----------------------------------------
 
-.. module:: circuit
+There are a number of standards for representing quantum circuits that are supported in PyZX. To see if PyZX supports a certain file format, just call :meth:`~pyzx.circuit.Circuit.load`::
 
-.. _circuit:
+	circuit = zx.Circuit.load("path/to/circuit.extension")
 
-Contents of ``circuit``
--------------------------
+The currently supported formats are 
 
-.. autoclass:: pyzx.circuit.Circuit
-   :members:
+- `QASM <https://en.wikipedia.org/wiki/OpenQASM>`_,
+- the ASCII format of `Quipper <https://www.mathstat.dal.ca/~selinger/quipper/>`_,
+- the simple *.qc* format used for representing quantum circuits in LaTex,
+- and the qsim format used by Google.
 
+To convert a PyZX circuit to these formats, use :meth:`~pyzx.circuit.Circuit.to_qasm`, :meth:`~pyzx.circuit.Circuit.to_quipper`, :meth:`~pyzx.circuit.Circuit.to_qc`.
 
-.. module:: io
+PyZX also offers a convenience function to construct a circuit out of a string containing QASM code using either :meth:`~pyzx.circuit.Circuit.from_qasm` or :func:`~pyzx.circuit.qasmparser.qasm`.
 
-.. _io:
-
-Contents of ``io``
-------------------------
-
-.. automodule:: pyzx.io
-   :members:
+To convert a Circuit into a PyZX Graph (i.e. a ZX-diagram), call the method :meth:`~pyzx.circuit.Circuit.to_graph`.
 
 
-.. module:: tikz
+Importing and exporting ZX-diagrams
+-----------------------------------
 
-.. _tikz:
+A ZX-diagram in PyZX is represented as an instance of :func:`~pyzx.graph.graph.Graph`. A ZX-diagram can be loaded using the ``.qgraph`` format that Quantomatic uses, via :meth:`~pyzx.graph.base.BaseGraph.from_json`. It can be converted into that format using :meth:`~pyzx.graph.base.BaseGraph.to_json`. 
 
-Contents of ``tikz``
-------------------------
+Apart from this reversible representation, there are also several one-way translations for exporting ZX-diagrams from PyZX. A graph can be exported to GraphML format using :meth:`~pyzx.graph.base.BaseGraph.to_graphml`.
+To export a ZX-diagram to tikz for easy importing to Latex, use :func:`~pyzx.tikz.to_tikz`.
 
-.. automodule:: pyzx.tikz
-   :members:
+Additionally, PyZX diagrams can be directly exported into the applications `Tikzit <https://tikzit.github.io/>`_ using the :func:`~pyzx.tikz.tikzit` function or edited in `Quantomatic <https://quantomatic.github.io/>`_ using the function :func:`~pyzx.quantomatic.edit_graph`.
 
-.. _quanto:
+Finally, to display a ZX-diagram in Jupyter call :func:`~pyzx.drawing.draw` and to create a matplotlib picture of the ZX-diagram use :func:`~pyzx.drawing.draw_matplotlib`.
 
-.. module:: quantomatic
-
-Contents of ``quantomatic``
----------------------------
-
-.. automodule:: pyzx.quantomatic
-   :members:
-
-
-.. _tensor:
-
-Contents of ``tensor``
-----------------------
-
-This module provides methods for converting ZX-graphs into numpy tensors and using these tensors to test semantic equality of ZX-graphs. This module is not meant as an efficient quantum simulator. Due to the way the tensor is calculated it can only handle circuits of small size before running out of memory on a regular machine. Currently, it can reliably transform 7 qubit circuits into tensors. If the ZX-diagram is not circuit-like, but instead has nodes with high degree, it will run out of memory even sooner.
-
-.. automodule:: pyzx.tensor
-   :members:
+Some ZX-diagrams can be converted into an equivalent circuit. For complicated ZX-diagrams, the function :func:`~pyzx.extract.extract_circuit` is supplied. For ZX-diagrams that come directly from Circuits, e.g. those produced by calling ``c.to_graph`` for a Circuit ``c``, one can also use the static method :meth:`~pyzx.circuit.Circuit.from_graph`, which is more lightweight.

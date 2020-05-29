@@ -1,5 +1,3 @@
-.. _simplify:
-
 Optimising and simplifying circuits
 ===================================
 
@@ -7,8 +5,6 @@ The main functionality of PyZX is the ability to optimise quantum circuits. The 
 
 Optimising circuits using the ZX-calculus
 -----------------------------------------
-
-.. module:: simplify
 
 PyZX allows the simplification of quantum circuits via a translation to the ZX-calculus. To demonstrate this functionality, let us generate a random circuit using :func:`~pyzx.generate.CNOT_HAD_PHASE_circuit`::
 
@@ -26,15 +22,13 @@ We can now use any of the built-in simplification strategies for ZX-diagrams. Th
 	zx.draw(g) # Display the resulting diagram
 
 This rewrite strategy implements a variant of the algorithm described in `this paper <https://arxiv.org/abs/1903.10477>`__.
-The resulting diagram most-likely does not resemble the structure of a circuit. In order to extract an equivalent circuit from the diagram, use the following function:
-
-.. autofunction:: pyzx.extract.streaming_extract
+The resulting diagram most-likely does not resemble the structure of a circuit. In order to extract an equivalent circuit from the diagram, we use the function :func:`~pyzx.extract.extract_circuit`.
 
 Simply use it like so::
 
-	c_opt = zx.streaming_extract(g.copy())
+	c_opt = zx.extract_circuit(g.copy())
 
-For some circuits, :func:`~pyzx.extract.streaming_extract` can result in quite large circuits involving many CNOT gates. If one is only interested in optimising the T-count of a circuit, the extraction stage can be skipped by using the *phase-teleportation* method of `this paper <https://arxiv.org/abs/1903.10477>`__. This applies ``full_reduce`` in such a way that only phases are moved around the circuit, and all other structure remains intact::
+For some circuits, :func:`~pyzx.extract.extract_circuit` can result in quite large circuits involving many CNOT gates. If one is only interested in optimising the T-count of a circuit, the extraction stage can be skipped by using the *phase-teleportation* method of `this paper <https://arxiv.org/abs/1903.10477>`__. This applies ``full_reduce`` in such a way that only phases are moved around the circuit, and all other structure remains intact::
 
 	g = c.to_graph()
 	zx.teleport_reduce(g)
@@ -61,40 +55,8 @@ If this is reducable to the identity, this is strong evidence that the circuits 
 Gate-level optimisation
 -----------------------
 
-.. module:: optimize
+Besides the advanced simplification strategies based on the ZX-calculus, PyZX also supplies some optimisation methods that work directly on :class:`~pyzx.circuit.Circuit`\ s. The most straightforward of these is :func:`~pyzx.optimize.basic_optimization`.
 
-Besides the advanced simplification strategies based on the ZX-calculus, PyZX also supplies some optimisation methods that work directly on :class:`~pyzx.circuit.Circuit`\ s. The most straightforward of these is the following method:
+A more advanced optimisation technique involves splitting up the circuit into `phase polynomial <https://arxiv.org/abs/1303.2042>`_ subcircuits, optimising each of these, and then resynthesising the circuit, which can be done using :func:`~pyzx.optimize.phase_block_optimize`.
 
-.. autofunction:: pyzx.optimize.basic_optimization
-
-A more advanced optimisation technique involves splitting up the circuit into `phase polynomial <https://arxiv.org/abs/1303.2042>`_ subcircuits, optimising each of these, and then resynthesising the circuit:
-
-.. autofunction:: pyzx.optimize.phase_block_optimize
-
-The :func:`~pyzx.optimize.basic_optimization` and :func:`~pyzx.optimize.phase_block_optimize` functions are also combined into a single function:
-
-.. autofunction:: pyzx.optimize.full_optimize
-
-
-
-Full documentation of ``simplify`` submodule
---------------------------------------------
-
-.. automodule:: pyzx.simplify
-   :members:
-   :undoc-members:
-
-   .. autofunction:: simp
-
-
-.. _rules:
-
-Full documentation of ``rules`` submodule
------------------------------------------
-
-.. module:: rules
-
-.. automodule:: pyzx.rules
-   :members:
-   :undoc-members:
-
+The :func:`~pyzx.optimize.basic_optimization` and :func:`~pyzx.optimize.phase_block_optimize` functions are also combined into a single function :func:`~pyzx.optimize.full_optimize`.
