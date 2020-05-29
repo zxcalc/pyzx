@@ -15,7 +15,7 @@ setup(
     description="Library for quantum circuit rewriting and optimisation using the ZX-calculus",
     long_description=README,
     long_description_content_type="text/markdown",
-    license="GNUv3",
+    license="Apache2",
     classifiers=[
         "License :: OSI Approved :: GNU Affero General Public License v3",
         "Programming Language :: Python :: 3",
