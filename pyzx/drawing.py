@@ -22,8 +22,10 @@ import math
 import cmath
 import json
 from fractions import Fraction
-from typing import Dict, List, Tuple, Optional, Union, Iterable, Any
+from typing import Dict, List, Tuple, Optional, Union, Iterable, Any, TYPE_CHECKING
 from typing_extensions import Literal
+
+import numpy as np
 
 try:
     import matplotlib.pyplot as plt
@@ -40,9 +42,13 @@ if settings.mode == "notebook":
 elif settings.mode == "browser":
     from browser import document, html # type: ignore
 
+if TYPE_CHECKING:
+    from ipywidgets import Label
+
 
 def draw(g: Union[BaseGraph[VT,ET], Circuit], labels: bool=False, **kwargs) -> Any:
-    """Draws the given Circuit or Graph. Depending on the value of `pyzx.settings.drawing_backend`
+    """Draws the given Circuit or Graph. 
+    Depending on the value of ``pyzx.settings.drawing_backend``
     either uses matplotlib or d3 to draw."""
     if settings.mode == "shell":
         if plt is None: 
@@ -299,6 +305,8 @@ require(['zx_viewer'], function(zx_viewer) {{
 
 
 
+# The dictionaries below are needed to
+# pretty-print complex numbers in pretty_complex() and matrix_to_latex()
 
 special_vals = {
     1: "1",
@@ -337,14 +345,14 @@ for v,s in simple_vals.items():
 		special_vals[-v+w] = f"\\left({t}-{s}\\right)"
 		special_vals[-v-w] = f"-\\left({t}+{s}\\right)"
 
-def strip_brackets(s):
+def strip_brackets(s:str) -> str:
     if s.startswith("(") and s.endswith(")"):
         return s[1:-1]
     if s.startswith("\\left(") and s.endswith("\\right)"):
     	return s[6:-7]
     return s
 
-def pretty_complex(z):
+def pretty_complex(z: complex) -> str:
     """Pretty print a complex number. Suitable for including in a
     Jupyter widgets Label()."""
     if abs(z) < 0.0000001:
@@ -399,7 +407,7 @@ def pretty_complex(z):
         elif real_part and imag_part:
             out = f"({out})"
         return out
-    arg = farg
+    arg = farg # type: ignore
     if abs(r-1) > 0.00001: # not close to 1
         for v,s in special_vals.items():
             if abs(r-v) < 0.00001:
@@ -440,12 +448,12 @@ def pretty_complex(z):
     elif arg == Fraction(1,2):
         out += "i"
     elif arg != 0:
-        out += r"e^{i\frac{%d}{%d}\pi}" % (arg.numerator, arg.denominator)
+        out += r"e^{i\frac{%d}{%d}\pi}" % (arg.numerator, arg.denominator) # type: ignore
     out = minus + out
     
     return out
 
-def matrix_to_latex(m):
+def matrix_to_latex(m: np.ndarray) -> str:
     """Converts a matrix into latex code.
     Useful for pretty printing the matrix of a Circuit/Graph.
 
@@ -488,7 +496,11 @@ def matrix_to_latex(m):
     out += "\n\\end{pmatrix}\n\\end{equation}"
     return out
 
-def print_matrix(m):
+def print_matrix(m: Union[np.ndarray,BaseGraph,Circuit]) -> 'Label':
+    """Returns a Label() Jupyter widget
+    that displays a pretty latex representation of the given matrix.
+    Instead of a matrix, can also give a Circuit or Graph.
+    """
     from ipywidgets import Label
     if isinstance(m,BaseGraph) or isinstance(m,Circuit):
         m = m.to_matrix()
