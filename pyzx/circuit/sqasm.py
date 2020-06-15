@@ -1,5 +1,5 @@
 # PyZX - Python library for quantum circuit rewriting 
-#        and optimisation using the ZX-calculus
+#        and optimization using the ZX-calculus
 # Copyright (C) 2018 - Aleks Kissinger and John van de Wetering
 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -43,7 +43,7 @@ def sqasm(s: str, simplify=True) -> BaseGraph:
             for q in range(sp[0],sp[0]+sp[1]):
                 if r[0] != 'Z':
                     v = g.inputs[q]
-                    v1 = list(g.neighbours(v))
+                    v1 = list(g.neighbors(v))
                     if len(v1) > 0 and g.type(v1[0]) != VertexType.BOUNDARY:
                         g.set_type(v, g.type(v1[0]))
                     else:
@@ -53,7 +53,7 @@ def sqasm(s: str, simplify=True) -> BaseGraph:
 
                 if r[0] != 'A':
                     v = g.outputs[q]
-                    v1 = list(g.neighbours(v))
+                    v1 = list(g.neighbors(v))
                     if len(v1) > 0 and g.type(v1[0]) != VertexType.BOUNDARY:
                         g.set_type(v, g.type(v1[0]))
                     else:

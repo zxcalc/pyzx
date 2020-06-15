@@ -1,5 +1,5 @@
 # PyZX - Python library for quantum circuit rewriting 
-#        and optimisation using the ZX-calculus
+#        and optimization using the ZX-calculus
 # Copyright (C) 2018 - Aleks Kissinger and John van de Wetering
 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -46,7 +46,7 @@ def match_Z_spiders(
 
 	return [v for v in candidates if types[v] == VertexType.Z]
 
-def colour_change(g: BaseGraph[VT,ET], matches: List[VT]) -> rules.RewriteOutputType[ET,VT]:
+def color_change(g: BaseGraph[VT,ET], matches: List[VT]) -> rules.RewriteOutputType[ET,VT]:
 	for v in matches:
 		g.set_type(v, toggle_vertex(g.type(v)))
 		for e in g.incident_edges(v):
@@ -71,7 +71,7 @@ def hadamard_to_h_edge(g: BaseGraph[VT,ET], matches: List[VT]) -> rules.RewriteO
 	etab = {}
 	for v in matches:
 		rem_verts.append(v)
-		w1,w2 = list(g.neighbours(v))
+		w1,w2 = list(g.neighbors(v))
 		etab[g.edge(w1,w2)] = [0,1]
 	return (etab, rem_verts, [], True)
 
@@ -92,7 +92,7 @@ def copy_matcher(
 		v = candidates.pop()
 		if phases[v] not in (0,1) or not vertex_is_zx(types[v]) or g.vertex_degree(v) != 1:
                     continue
-		w = list(g.neighbours(v))[0]
+		w = list(g.neighbors(v))[0]
 		tv = types[v]
 		tw = types[w]
 		if tw == VertexType.BOUNDARY: continue
@@ -104,7 +104,7 @@ def copy_matcher(
 		if tw == VertexType.H_BOX and ((et==EdgeType.SIMPLE and tv != VertexType.X) or
 									   (et==EdgeType.HADAMARD and tv != VertexType.Z)):
 			continue
-		neigh = [n for n in g.neighbours(w) if n != v]
+		neigh = [n for n in g.neighbors(w) if n != v]
 		m.append((v,w,et,phases[v],phases[w],neigh))
 		candidates.discard(w)
 		candidates.difference_update(neigh)
@@ -153,7 +153,7 @@ def pauli_matcher(
 		v = candidates.pop()
 		if v in paulis and g.vertex_degree(v) == 2: continue
 		#if not vertex_is_zx(types[v]): continue
-		for w in g.neighbours(v):
+		for w in g.neighbors(v):
 			if w in paulis: break
 		else:
 			continue
@@ -165,8 +165,8 @@ def pauli_matcher(
 						 (et == EdgeType.HADAMARD and types[w] == VertexType.Z)))
 			):
 			m.append((w,v))
-			candidates.difference_update(g.neighbours(v))
-			candidates.difference_update(g.neighbours(w))
+			candidates.difference_update(g.neighbors(v))
+			candidates.difference_update(g.neighbors(w))
 	return m
 
 def pauli_push(g: BaseGraph[VT,ET], 
@@ -179,7 +179,7 @@ def pauli_push(g: BaseGraph[VT,ET],
 	for w,v in matches: # w is a Pauli and v is the spider we are gonna push it through
 		if g.vertex_degree(w) == 2:
 			rem_verts.append(w)
-			l = list(g.neighbours(w))
+			l = list(g.neighbors(w))
 			l.remove(v)
 			v2 = l[0]
 			et1 = g.edge_type(g.edge(v,w))
@@ -196,7 +196,7 @@ def pauli_push(g: BaseGraph[VT,ET],
 		else: 
 			t = VertexType.Z
 			p = 0
-		for n in g.neighbours(v):
+		for n in g.neighbors(v):
 			if n == w: continue
 			r = 0.5*(g.row(n) + g.row(v))
 			q = 0.5*(g.qubit(n) + g.qubit(v))
@@ -310,16 +310,16 @@ def match_bialgebra(g: BaseGraph[VT,ET],
 		if types[w] == VertexType.Z:
 			if phases[v] != 0 or phases[w] != 0: continue
 			m.append((v,w))
-			for n in g.neighbours(v):
+			for n in g.neighbors(v):
 				candidates.difference_update(g.incident_edges(n))
-			for n in g.neighbours(w):
+			for n in g.neighbors(w):
 				candidates.difference_update(g.incident_edges(n))
 		if types[w] == VertexType.H_BOX:
 			if phases[v] != 0 or phases[w] != 1: continue
 			m.append((v,w))
-			for n in g.neighbours(v):
+			for n in g.neighbors(v):
 				candidates.difference_update(g.incident_edges(n))
-			for n in g.neighbours(w):
+			for n in g.neighbors(w):
 				candidates.difference_update(g.incident_edges(n))
 	return m
 
@@ -334,7 +334,7 @@ def bialgebra(g: BaseGraph[VT,ET],
 		new_verts = []
 		# v is an X-spider, but w is either a Z-spider or an H-box
 		t = g.type(w)
-		for n in g.neighbours(v):
+		for n in g.neighbors(v):
 			if n == w: continue
 			r = 0.6*g.row(v) + 0.4*g.row(n)
 			q = 0.6*g.qubit(v) + 0.4*g.qubit(n)
@@ -345,7 +345,7 @@ def bialgebra(g: BaseGraph[VT,ET],
 			t = VertexType.X
 		else:
 			t = VertexType.Z
-		for n in g.neighbours(w):
+		for n in g.neighbors(w):
 			if n == v: continue
 			r = 0.6*g.row(w) + 0.4*g.row(n)
 			q = 0.6*g.qubit(w) + 0.4*g.qubit(n)
@@ -361,19 +361,19 @@ MATCHES_EDGES = 2
 
 operations = {
 	"spider": {"text": "fuse spiders", 
-			   "tooltip": "Fuses connected spiders of the same colour",
+			   "tooltip": "Fuses connected spiders of the same color",
 			   "matcher": rules.match_spider_parallel, 
 			   "rule": rules.spider, 
 			   "type": MATCHES_EDGES},
-	"to_z": {"text": "change colour to Z", 
+	"to_z": {"text": "change color to Z", 
 			   "tooltip": "Changes X spiders into Z spiders by pushing out Hadamards",
 			   "matcher": match_X_spiders, 
-			   "rule": colour_change, 
+			   "rule": color_change, 
 			   "type": MATCHES_VERTICES},
-	"to_x": {"text": "change colour to X", 
+	"to_x": {"text": "change color to X", 
 			   "tooltip": "Changes Z spiders into X spiders by pushing out Hadamards",
 			   "matcher": match_Z_spiders, 
-			   "rule": colour_change, 
+			   "rule": color_change, 
 			   "type": MATCHES_VERTICES},
 	"rem_id": {"text": "remove identity", 
 			   "tooltip": "Removes a 2-ary phaseless spider",
@@ -391,12 +391,12 @@ operations = {
 			   "rule": hadamard_to_h_edge, 
 			   "type": MATCHES_VERTICES},
 	"copy": {"text": "copy 0/pi spider", 
-			   "tooltip": "Copies a single-legged spider with a 0/pi phase through its neighbour",
+			   "tooltip": "Copies a single-legged spider with a 0/pi phase through its neighbor",
 			   "matcher": copy_matcher, 
 			   "rule": apply_copy, 
 			   "type": MATCHES_VERTICES},
 	"pauli": {"text": "push Pauli", 
-			   "tooltip": "Pushes an arity 2 pi-phase through a selected neighbour",
+			   "tooltip": "Pushes an arity 2 pi-phase through a selected neighbor",
 			   "matcher": pauli_matcher, 
 			   "rule": pauli_push, 
 			   "type": MATCHES_VERTICES},
@@ -411,7 +411,7 @@ operations = {
 			   "rule": euler_expansion, 
 			   "type": MATCHES_EDGES},
 	"lcomp": {"text": "local complementation", 
-			   "tooltip": "Deletes a spider with a pi/2 phase by performing a local complementation on its neighbours",
+			   "tooltip": "Deletes a spider with a pi/2 phase by performing a local complementation on its neighbors",
 			   "matcher": rules.match_lcomp_parallel, 
 			   "rule": rules.lcomp, 
 			   "type": MATCHES_VERTICES},

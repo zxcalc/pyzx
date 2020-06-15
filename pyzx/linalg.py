@@ -1,5 +1,5 @@
 # PyZX - Python library for quantum circuit rewriting 
-#        and optimisation using the ZX-calculus
+#        and optimization using the ZX-calculus
 # Copyright (C) 2018 - Aleks Kissinger and John van de Wetering
 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -97,7 +97,7 @@ class Mat2(object):
         useful e.g. for matrix inversion and CNOT circuit synthesis.
 
         The parameter 'blocksize' gives the size of the blocks in a block matrix for
-        performing Patel/Markov/Hayes optimisation, see:
+        performing Patel/Markov/Hayes optimization, see:
 
         K. Patel, I. Markov, J. Hayes. Optimal Synthesis of Linear Reversible
         Circuits. QIC 2008

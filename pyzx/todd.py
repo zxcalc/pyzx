@@ -1,5 +1,5 @@
 # PyZX - Python library for quantum circuit rewriting 
-#        and optimisation using the ZX-calculus
+#        and optimization using the ZX-calculus
 # Copyright (C) 2018 - Aleks Kissinger and John van de Wetering
 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -446,10 +446,10 @@ def todd_on_graph(g: BaseGraph[VT,ET]) -> None:
     gadgets = {}
     t_nodes = []
     for v in g.vertices():
-        if v not in g.inputs and v not in g.outputs and len(list(g.neighbours(v)))==1:
+        if v not in g.inputs and v not in g.outputs and len(list(g.neighbors(v)))==1:
             if g.phase(v) != 0 and g.phase(v).denominator != 4: continue
-            n = list(g.neighbours(v))[0]
-            tgts = frozenset(set(g.neighbours(n)).difference({v}))
+            n = list(g.neighbors(v))[0]
+            tgts = frozenset(set(g.neighbors(n)).difference({v}))
             gadgets[tgts] = (n,v)
         if g.phase(v) != 0 and g.phase(v).denominator == 4:
             t_nodes.append(v)

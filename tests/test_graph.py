@@ -1,5 +1,5 @@
 # PyZX - Python library for quantum circuit rewriting 
-#        and optimisation using the ZX-calculus
+#        and optimization using the ZX-calculus
 # Copyright (C) 2018 - Aleks Kissinger and John van de Wetering
 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -54,7 +54,7 @@ class TestGraphBasicMethods(unittest.TestCase):
         g.add_edge((v1,v2))
         self.assertEqual(g.num_edges(),1)
         self.assertTrue(g.connected(v1,v2))
-        self.assertTrue(v2 in g.neighbours(v1))
+        self.assertTrue(v2 in g.neighbors(v1))
         self.assertEqual(g.vertex_degree(v1), 1)
         self.assertFalse(g.connected(v1,v3))
         e = g.edge(v1,v2)

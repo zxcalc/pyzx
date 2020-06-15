@@ -1,5 +1,5 @@
 # PyZX - Python library for quantum circuit rewriting 
-#        and optimisation using the ZX-calculus
+#        and optimization using the ZX-calculus
 # Copyright (C) 2018 - Aleks Kissinger and John van de Wetering
 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -93,7 +93,7 @@ def match_bialg_parallel(
        consider all edges.
     :param num: Maximal amount of matchings to find. If -1 (the default)
        tries to find as many as possible.
-    :rtype: List of 4-tuples ``(v1, v2, neighbours_of_v1,neighbours_of_v2)``
+    :rtype: List of 4-tuples ``(v1, v2, neighbors_of_v1,neighbors_of_v2)``
     """
     if matchf is not None: candidates = set([e for e in g.edges() if matchf(e)])
     else: candidates = g.edge_set()
@@ -110,8 +110,8 @@ def match_bialg_parallel(
         v1p = phases[v1]
         if (v0p == 0 and v1p == 0 and
         ((v0t == VertexType.Z and v1t == VertexType.X) or (v0t == VertexType.X and v1t == VertexType.Z))):
-            v0n = [n for n in g.neighbours(v0) if not n == v1]
-            v1n = [n for n in g.neighbours(v1) if not n == v0]
+            v0n = [n for n in g.neighbors(v0) if not n == v1]
+            v1n = [n for n in g.neighbors(v1) if not n == v0]
             if (
                 all([types[n] == v1t and phases[n] == 0 for n in v0n]) and
                 all([types[n] == v0t and phases[n] == 0 for n in v1n])):
@@ -174,9 +174,9 @@ def match_spider_parallel(
         v1t = types[v1]
         if (v0t == v1t and v0t!=VertexType.BOUNDARY and v0t!=VertexType.H_BOX):
                 i += 1
-                for v in g.neighbours(v0):
+                for v in g.neighbors(v0):
                     for c in g.incident_edges(v): candidates.discard(c)
-                for v in g.neighbours(v1):
+                for v in g.neighbors(v1):
                     for c in g.incident_edges(v): candidates.discard(c)
                 m.append((v0,v1))
     return m
@@ -204,7 +204,7 @@ def spider(g: BaseGraph[VT,ET], matches: List[MatchSpiderType[VT]]) -> RewriteOu
         rem_verts.append(v1)
 
         # edges from the second vertex are transferred to the first
-        for w in g.neighbours(v1):
+        for w in g.neighbors(v1):
             if v0 == w: continue
             e = g.edge(v0,w)
             if e not in etab: etab[e] = [0,0]
@@ -216,8 +216,8 @@ def unspider(g: BaseGraph[VT,ET], m: List[Any], qubit:FloatInt=-1, row:FloatInt=
     elements given by::
 
       m[0] : a vertex to unspider
-      m[1] : the neighbours of the new node, which should be a subset of the
-             neighbours of m[0]
+      m[1] : the neighbors of the new node, which should be a subset of the
+             neighbors of m[0]
       m[2] : the phase of the new node. If omitted, the new node gets all of the phase of m[0]
 
     Returns the index of the new node. Optional parameters ``qubit`` and ``row`` can be used
@@ -285,7 +285,7 @@ def match_pivot_parallel(
 
         invalid_edge = False
 
-        v0n = list(g.neighbours(v0))
+        v0n = list(g.neighbors(v0))
         v0b = []
         for n in v0n:
             et = g.edge_type(g.edge(v0,n))
@@ -297,7 +297,7 @@ def match_pivot_parallel(
 
         if invalid_edge: continue
 
-        v1n = list(g.neighbours(v1))
+        v1n = list(g.neighbors(v1))
         v1b = []
         for n in v1n:
             et = g.edge_type(g.edge(v1,n))
@@ -353,8 +353,8 @@ def match_pivot_gadget(
         elif v1a in (0,1): continue
         # Now v0 has a Pauli phase and v1 has a non-Pauli phase
         
-        v0n = list(g.neighbours(v0))
-        v1n = list(g.neighbours(v1))
+        v0n = list(g.neighbors(v0))
+        v1n = list(g.neighbors(v1))
         if len(v1n) == 1: continue # It is a phase gadget
         bad_match = False
         discard_edges = []
@@ -412,17 +412,17 @@ def match_pivot_boundary(
         good_vert = True
         w = None
         bound = None
-        for n in g.neighbours(v):
+        for n in g.neighbors(v):
             if types[n] == VertexType.BOUNDARY:
                 good_vert = False
                 break
-            if len(g.neighbours(n)) == 1: # v is a phase gadget
+            if len(g.neighbors(n)) == 1: # v is a phase gadget
                 good_vert = False
                 break
             if n in consumed_vertices:
                 good_vert = False
                 break
-            boundaries = [b for b in g.neighbours(n) if types[b]==VertexType.BOUNDARY]
+            boundaries = [b for b in g.neighbors(n) if types[b]==VertexType.BOUNDARY]
             if len(boundaries) != 1: # n is not on the boundary,
                 continue             # or it is connected to both an input and an output
             if phases[n] and phases[n].denominator == 2:
@@ -440,13 +440,13 @@ def match_pivot_boundary(
         g.update_phase_index(w,v1)
         edge_list.append(g.edge(w,v2))
         edge_list.append(g.edge(v1,v2))
-        for n in g.neighbours(v): consumed_vertices.add(n)
-        for n in g.neighbours(w): consumed_vertices.add(n)
+        for n in g.neighbors(v): consumed_vertices.add(n)
+        for n in g.neighbors(w): consumed_vertices.add(n)
         assert bound is not None
         m.append((v,w,[],[bound]))
         i += 1
-        for n in g.neighbours(v): candidates.discard(n)
-        for n in g.neighbours(w): candidates.discard(n)
+        for n in g.neighbors(v): candidates.discard(n)
+        for n in g.neighbors(w): candidates.discard(n)
 
     g.add_edges(edge_list, EdgeType.HADAMARD)
     return m
@@ -467,11 +467,11 @@ def pivot(g: BaseGraph[VT,ET], matches: List[MatchPivotType[VT]]) -> RewriteOutp
 
     for m in matches:
         # compute:
-        #  n[0] <- non-boundary neighbours of m[0] only
-        #  n[1] <- non-boundary neighbours of m[1] only
-        #  n[2] <- non-boundary neighbours of m[0] and m[1]
+        #  n[0] <- non-boundary neighbors of m[0] only
+        #  n[1] <- non-boundary neighbors of m[1] only
+        #  n[2] <- non-boundary neighbors of m[0] and m[1]
         g.update_phase_index(m[0],m[1])
-        n = [set(g.neighbours(m[0])), set(g.neighbours(m[1]))]
+        n = [set(g.neighbors(m[0])), set(g.neighbors(m[1]))]
         for i in range(2):
             n[i].remove(m[1-i]) # type: ignore # Really complex typing situation
             if len(m[i+2]) == 1: n[i].remove(m[i+2][0]) # type: ignore
@@ -494,7 +494,7 @@ def pivot(g: BaseGraph[VT,ET], matches: List[MatchPivotType[VT]]) -> RewriteOutp
         else: g.scalar.add_power(-(k0+k2))
 
         for i in range(2):
-            # if m[i] has a phase, it will get copied on to the neighbours of m[1-i]:
+            # if m[i] has a phase, it will get copied on to the neighbors of m[1-i]:
             a = g.phase(m[i]) # type: ignore
             for v in n[1-i]: g.add_to_phase(v, a)
             for v in n[2]: g.add_to_phase(v, a)
@@ -542,7 +542,7 @@ def match_lcomp_parallel(
     :param vertexf: An optional filtering function for candidate vertices, should
        return True if a vertex should be considered as a match. Passing None will
        consider all vertices.
-    :rtype: List of 2-tuples ``(vertex, neighbours)``.
+    :rtype: List of 2-tuples ``(vertex, neighbors)``.
     """
     if vertexf is not None: candidates = set([v for v in g.vertices() if vertexf(v)])
     else: candidates = g.vertex_set()
@@ -562,7 +562,7 @@ def match_lcomp_parallel(
             all(g.edge_type(e) == EdgeType.HADAMARD for e in g.incident_edges(v))
             ): continue
                 
-        vn = list(g.neighbours(v))
+        vn = list(g.neighbors(v))
 
         if not all(types[n] == vt for n in vn): continue # and phases[n].denominator <= 2
 
@@ -611,7 +611,7 @@ def match_ids_parallel(
     :param vertexf: An optional filtering function for candidate vertices, should
        return True if a vertex should be considered as a match. Passing None will
        consider all vertices.
-    :rtype: List of 4-tuples ``(identity_vertex, neighbour1, neighbour2, edge_type)``.
+    :rtype: List of 4-tuples ``(identity_vertex, neighbor1, neighbor2, edge_type)``.
     """
     if vertexf is not None: candidates = set([v for v in g.vertices() if vertexf(v)])
     else: candidates = g.vertex_set()
@@ -624,7 +624,7 @@ def match_ids_parallel(
     while (num == -1 or i < num) and len(candidates) > 0:
         v = candidates.pop()
         if phases[v] != 0 or not vertex_is_zx(types[v]): continue
-        neigh = g.neighbours(v)
+        neigh = g.neighbors(v)
         if len(neigh) != 2: continue
         v0, v1 = neigh
         candidates.discard(v0)
@@ -662,13 +662,13 @@ def match_phase_gadgets(g: BaseGraph[VT,ET]) -> List[MatchGadgetType[VT]]:
     gadgets: Dict[VT,VT] = dict()
     # First we find all the phase-gadgets, and the list of vertices they act on
     for v in g.vertices():
-        if phases[v] != 0 and phases[v].denominator > 2 and len(list(g.neighbours(v)))==1:
-            n = list(g.neighbours(v))[0]
+        if phases[v] != 0 and phases[v].denominator > 2 and len(list(g.neighbors(v)))==1:
+            n = list(g.neighbors(v))[0]
             if phases[n] not in (0,1): continue # Not a real phase gadget (happens for scalar diagrams)
             if n in gadgets: continue # Not a real phase gadget (happens for scalar diagrams)
             if n in g.inputs or n in g.outputs: continue # Not a real phase gadget (happens for non-unitary diagrams)
             gadgets[n] = v
-            par = frozenset(set(g.neighbours(n)).difference({v}))
+            par = frozenset(set(g.neighbors(n)).difference({v}))
             if par in parities: parities[par].append(n)
             else: parities[par] = [n]
 
@@ -713,7 +713,7 @@ def match_supplementarity(g: BaseGraph[VT,ET]) -> List[MatchSupplementarityType[
     """Finds pairs of non-Clifford spiders that are connected to exactly the same set of vertices.
     
     :param g: An instance of a ZX-graph.
-    :rtype: List of 4-tuples ``(vertex1, vertex2, type of supplementarity, neighbours)``.
+    :rtype: List of 4-tuples ``(vertex1, vertex2, type of supplementarity, neighbors)``.
     """
     candidates = g.vertex_set()
     phases = g.phases()
@@ -721,11 +721,11 @@ def match_supplementarity(g: BaseGraph[VT,ET]) -> List[MatchSupplementarityType[
     parities: Dict[FrozenSet[VT],List[VT]] = dict()
     m: List[MatchSupplementarityType[VT]] = []
     taken: Set[VT] = set()
-    # First we find all the non-Clifford vertices and their list of neighbours
+    # First we find all the non-Clifford vertices and their list of neighbors
     while len(candidates) > 0:
         v = candidates.pop()
         if phases[v] == 0 or phases[v].denominator <= 2: continue # Skip Clifford vertices
-        neigh = set(g.neighbours(v))
+        neigh = set(g.neighbors(v))
         if not neigh.isdisjoint(taken): continue
         par = frozenset(neigh)
         if par in parities: 
@@ -741,7 +741,7 @@ def match_supplementarity(g: BaseGraph[VT,ET]) -> List[MatchSupplementarityType[
         else: parities[par] = [v]
         for w in neigh:
             if phases[w] == 0 or phases[w].denominator <= 2 or w in taken: continue
-            diff = neigh.symmetric_difference(g.neighbours(w))
+            diff = neigh.symmetric_difference(g.neighbors(w))
             if len(diff) == 2: # Perfect overlap
                 if (phases[v] + phases[w]) % 2 == 0 or (phases[v] - phases[w]) % 2 == 1:
                     m.append((v,w,2,frozenset(neigh.difference({w}))))
@@ -787,7 +787,7 @@ def match_copy(
     g: BaseGraph[VT,ET], 
     vertexf:Optional[Callable[[VT],bool]]=None
     ) -> List[MatchCopyType[VT]]:
-    """Finds spiders with a 0 or pi phase that have a single neighbour,
+    """Finds spiders with a 0 or pi phase that have a single neighbor,
     and copies them through. Assumes that all the spiders are green and maximally fused."""
     if vertexf is not None: candidates = set([v for v in g.vertices() if vertexf(v)])
     else: candidates = g.vertex_set()
@@ -798,9 +798,9 @@ def match_copy(
     while len(candidates) > 0:
         v = candidates.pop()
         if phases[v] not in (0,1) or types[v] != VertexType.Z or g.vertex_degree(v) != 1: continue
-        w = list(g.neighbours(v))[0]
+        w = list(g.neighbors(v))[0]
         if types[w] != VertexType.Z: continue
-        neigh = [n for n in g.neighbours(w) if n != v]
+        neigh = [n for n in g.neighbors(w) if n != v]
         m.append((v,w,phases[v],phases[w],neigh))
         candidates.discard(w)
         candidates.difference_update(neigh)
@@ -834,10 +834,10 @@ def match_gadgets_phasepoly(g: BaseGraph[VT,ET]) -> List[MatchPhasePolyType[VT]]
     targets: Dict[VT,Set[FrozenSet[VT]]] = {}
     gadgets: Dict[FrozenSet[VT], Tuple[VT,VT]] = {}
     for v in g.vertices():
-        if v not in g.inputs and v not in g.outputs and len(list(g.neighbours(v)))==1:
+        if v not in g.inputs and v not in g.outputs and len(list(g.neighbors(v)))==1:
             if g.phase(v) != 0 and g.phase(v).denominator != 4: continue
-            n = list(g.neighbours(v))[0]
-            tgts = frozenset(set(g.neighbours(n)).difference({v}))
+            n = list(g.neighbors(v))[0]
+            tgts = frozenset(set(g.neighbors(n)).difference({v}))
             if len(tgts)>4: continue
             gadgets[tgts] = (n,v)
             for t in tgts:

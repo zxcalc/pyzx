@@ -1,5 +1,5 @@
 # PyZX - Python library for quantum circuit rewriting 
-#        and optimisation using the ZX-calculus
+#        and optimization using the ZX-calculus
 # Copyright (C) 2018 - Aleks Kissinger and John van de Wetering
 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -159,7 +159,7 @@ class GraphS(BaseGraph[int,Tuple[int,int]]):
 	def edge_st(self, edge):
 		return edge
 
-	def neighbours(self, vertex):
+	def neighbors(self, vertex):
 		return self.graph[vertex].keys()
 
 	def vertex_degree(self, vertex):

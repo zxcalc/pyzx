@@ -1,5 +1,5 @@
 # PyZX - Python library for quantum circuit rewriting 
-#        and optimisation using the ZX-calculus
+#        and optimization using the ZX-calculus
 # Copyright (C) 2018 - Aleks Kissinger and John van de Wetering
 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -79,12 +79,12 @@ class GraphGT(BaseGraph):
 		e = gt.find_edge(self.graph,self.graph.edge_index,edge)[0]
 		return (e.source(), e.target())
 
-	def get_neighbours(self, vertex):
+	def get_neighbors(self, vertex):
 		'''Returns a tuple of source/target of the given edge'''
 		return vertex.all_neighbors()
 
 	def get_vertex_degree(self, vertex):
-		'''Returns all neighbouring vertices of the given vertex'''
+		'''Returns all neighboring vertices of the given vertex'''
 		return vertex.in_degree() + vertex.out_degree()
 
 	def get_incident_edges(self, vertex):

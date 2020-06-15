@@ -1,5 +1,5 @@
 # PyZX - Python library for quantum circuit rewriting 
-#        and optimisation using the ZX-calculus
+#        and optimization using the ZX-calculus
 # Copyright (C) 2018 - Aleks Kissinger and John van de Wetering
 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -51,7 +51,7 @@ class GeneticAlgorithm():
         self._sort(self.population)
         self.negative_population = self.population[-self.negative_population_size:]
 
-    def find_optimimum(self, n_qubits, n_generations, initial_order=None, n_child=None, continued=False):
+    def find_optimum(self, n_qubits, n_generations, initial_order=None, n_child=None, continued=False):
         self.n_qubits = n_qubits
         partial_solution = False
         if not continued or self.population is None:
@@ -134,6 +134,6 @@ if __name__ == '__main__':
 
 
     optimizer = GeneticAlgorithm(1000, 0.8, 0.2, fitness_func)
-    optimizer.find_optimimum(8, 300)
+    optimizer.find_optimum(8, 300)
     print(optimizer.population)
 

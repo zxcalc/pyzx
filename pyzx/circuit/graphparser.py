@@ -1,5 +1,5 @@
 # PyZX - Python library for quantum circuit rewriting 
-#        and optimisation using the ZX-calculus
+#        and optimization using the ZX-calculus
 # Copyright (C) 2018 - Aleks Kissinger and John van de Wetering
 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -38,7 +38,7 @@ def graph_to_circuit(g:BaseGraph[VT,ET], split_phases:bool=True) -> Circuit:
             q = qs[v]
             phase = phases[v]
             t = ty[v]
-            neigh = [w for w in g.neighbours(v) if rs[w]<r]
+            neigh = [w for w in g.neighbors(v) if rs[w]<r]
             if len(neigh) != 1:
                 raise TypeError("Graph doesn't seem circuit like: multiple parents")
             n = neigh[0]
@@ -65,7 +65,7 @@ def graph_to_circuit(g:BaseGraph[VT,ET], split_phases:bool=True) -> Circuit:
                 if t == VertexType.Z: c.add_gate("ZPhase", q, phase=phase)
                 else: c.add_gate("XPhase", q, phase=phase)
 
-            neigh = [w for w in g.neighbours(v) if rs[w]==r and w<v] # type: ignore # TODO: find a different way to do comparison of vertices
+            neigh = [w for w in g.neighbors(v) if rs[w]==r and w<v] # type: ignore # TODO: find a different way to do comparison of vertices
             for n in neigh:
                 t2 = ty[n]
                 q2 = qs[n]

@@ -1,5 +1,5 @@
 # PyZX - Python library for quantum circuit rewriting 
-#        and optimisation using the ZX-calculus
+#        and optimization using the ZX-calculus
 # Copyright (C) 2018 - Aleks Kissinger and John van de Wetering
 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -31,7 +31,7 @@ def match_h2(g: BaseGraph[VT,ET]) -> List[VT]:
     ty = g.types()
     for v in g.vertices():
         if ty[v] == VertexType.H_BOX and g.vertex_degree(v) == 2:
-            n1,n2 = g.neighbours(v)
+            n1,n2 = g.neighbors(v)
             if n1 not in m and n2 not in m: m.add(v)
 
     return list(m)
@@ -40,7 +40,7 @@ def h2(g: BaseGraph[VT,ET], m: List[VT]):
     del_e = []
     etab: Dict[ET,List[int]] = dict()
     for h in m:
-        n1,n2 = g.neighbours(h)
+        n1,n2 = g.neighbors(h)
         new_e = g.edge(n1,n2)
         e1, e2 = g.incident_edges(h)
         if g.edge_type(e1) != g.edge_type(e2):
@@ -93,10 +93,10 @@ def match_hpivot(
             phases[h] == 1
         ): continue
 
-        v0, v1 = g.neighbours(h)
+        v0, v1 = g.neighbors(h)
 
-        v0n = set(g.neighbours(v0))
-        v1n = set(g.neighbours(v1))
+        v0n = set(g.neighbors(v0))
+        v1n = set(g.neighbors(v1))
 
         if (len(v0n.intersection(v1n)) > 1): continue
 
@@ -117,10 +117,10 @@ def match_hpivot(
                 v0b,v1b = v1b,v0b
                 v0h,v1h = v1h,v0h
 
-        v0nn = [list(filter(lambda w : w != v0, g.neighbours(v))) for v in v0h]
+        v0nn = [list(filter(lambda w : w != v0, g.neighbors(v))) for v in v0h]
         v1nn = [
           (phases[v],
-           list(filter(lambda w : w != v1, g.neighbours(v))))
+           list(filter(lambda w : w != v1, g.neighbors(v))))
           for v in v1h]
 
 
@@ -149,13 +149,13 @@ def hpivot(g: BaseGraph[VT,ET], m: hpivot_match_output) -> None:
     # hboxes = dict()
     # for h in g.vertices():
     #     if types[h] != VertexType.H_BOX: continue
-    #     nhd = tuple(sorted(g.neighbours(h)))
+    #     nhd = tuple(sorted(g.neighbors(h)))
     #     hboxes[nhd] = h
 
 
     h, v0, v1, v0b, v1b, v0nn, v1nn = m[0]
-    g.remove_vertices([v for v in g.neighbours(v0) if types[v] == VertexType.H_BOX])
-    g.remove_vertices([v for v in g.neighbours(v1) if types[v] == VertexType.H_BOX])
+    g.remove_vertices([v for v in g.neighbors(v0) if types[v] == VertexType.H_BOX])
+    g.remove_vertices([v for v in g.neighbors(v1) if types[v] == VertexType.H_BOX])
     
     if len(v0b) == 0:
         g.remove_vertex(v0)
@@ -203,7 +203,7 @@ def match_par_hbox(g: BaseGraph[VT,ET]) -> List[List[VT]]:
     types = g.types()
     for h in g.vertices():
         if types[h] != VertexType.H_BOX: continue
-        nhd = tuple(sorted(g.neighbours(h)))
+        nhd = tuple(sorted(g.neighbors(h)))
         if nhd in hs:
             hs[nhd].append(h)
         else:

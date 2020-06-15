@@ -1,5 +1,5 @@
 # PyZX - Python library for quantum circuit rewriting 
-#        and optimisation using the ZX-calculus
+#        and optimization using the ZX-calculus
 # Copyright (C) 2018 - Aleks Kissinger and John van de Wetering
 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -69,8 +69,8 @@ def gflow(g: BaseGraph[VT,ET]) -> Optional[Tuple[Dict[VT,int], Dict[VT,Set[VT]],
     while True:
         correct = set()
         #unprocessed = list()
-        processed_prime = [v for v in processed.difference(inputs) if any(w not in processed for w in g.neighbours(v))]
-        candidates = [v for v in vertices.difference(processed) if any(w in processed_prime for w in g.neighbours(v))]
+        processed_prime = [v for v in processed.difference(inputs) if any(w not in processed for w in g.neighbors(v))]
+        candidates = [v for v in vertices.difference(processed) if any(w in processed_prime for w in g.neighbors(v))]
         
         zerovec = Mat2([[0] for i in range(len(candidates))])
         #print(unprocessed, processed_prime, zerovec)

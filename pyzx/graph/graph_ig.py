@@ -93,7 +93,7 @@ class GraphIG(BaseGraph):
 		edge = self.graph.es[edge]
 		return edge.target
 
-	def neighbours(self, vertex):
+	def neighbors(self, vertex):
 		return self.graph.neighbors(vertex)
 
 	def vertex_degree(self, vertex):

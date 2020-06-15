@@ -1,5 +1,5 @@
 # PyZX - Python library for quantum circuit rewriting 
-#        and optimisation using the ZX-calculus
+#        and optimization using the ZX-calculus
 # Copyright (C) 2018 - Aleks Kissinger and John van de Wetering
 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -82,7 +82,7 @@ def stats(circ: Circuit) -> Tuple[int,int,int]:
     return had, two_qubit, non_pauli
 
 class Optimizer(object):
-    """Helper class that implements the optimisations of :func:`basic_optimization`.
+    """Helper class that implements the optimizations of :func:`basic_optimization`.
     Works by doing alternating forward and backward 'passes' through a circuit.
     During a pass, we iteratively consume gates, while 
     keeping track of a stack of mutually commuting gates on each qubit.

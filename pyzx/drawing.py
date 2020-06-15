@@ -1,5 +1,5 @@
 # PyZX - Python library for quantum circuit rewriting 
-#        and optimisation using the ZX-calculus
+#        and optimization using the ZX-calculus
 # Copyright (C) 2018 - Aleks Kissinger and John van de Wetering
 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -79,7 +79,7 @@ def pack_circuit_nf(g: BaseGraph[VT,ET], nf:Literal['grg','gslc'] ='grg') -> Non
                 g.set_qubit(v, x_index)
                 x_index += 1
             elif ty[v] == VertexType.Z:
-                for w in g.neighbours(v):
+                for w in g.neighbors(v):
                     if w in g.inputs:
                         g.set_row(v,1)
                         g.set_qubit(v, g.qubit(w))
@@ -95,7 +95,7 @@ def pack_circuit_nf(g: BaseGraph[VT,ET], nf:Literal['grg','gslc'] ='grg') -> Non
             elif v in g.outputs:
                 g.set_row(v, 4)
             elif ty[v] == VertexType.Z:
-                for w in g.neighbours(v):
+                for w in g.neighbors(v):
                     if w in g.inputs:
                         g.set_row(v,1)
                         #g.set_vdata(v, 'q', g.get_vdata(w, 'q'))
@@ -108,7 +108,7 @@ def pack_circuit_nf(g: BaseGraph[VT,ET], nf:Literal['grg','gslc'] ='grg') -> Non
         raise ValueError("Unknown normal form: " + str(nf))
 
 def arrange_scalar_diagram(g: BaseGraph[VT,ET]) -> None:
-    g.normalise()
+    g.normalize()
     rs = g.rows()
     qs = g.qubits()
     ty = g.types()
@@ -117,10 +117,10 @@ def arrange_scalar_diagram(g: BaseGraph[VT,ET]) -> None:
     min_row = 1000000
     rows_used: Dict[FloatInt, List[VT]] = dict()
     for v in g.vertices():
-        if len(list(g.neighbours(v))) == 1:
-            w = list(g.neighbours(v))[0]
+        if len(list(g.neighbors(v))) == 1:
+            w = list(g.neighbors(v))[0]
             gadgets[(v,w)] = 0
-        elif all(g.vertex_degree(w) > 1 for w in g.neighbours(v)): # Not part of a phase gadget
+        elif all(g.vertex_degree(w) > 1 for w in g.neighbors(v)): # Not part of a phase gadget
             verts.append(v)
             #if rs[v] < min_row: min_row = rs[v]
             if rs[v] in rows_used: rows_used[rs[v]].append(v)
@@ -133,7 +133,7 @@ def arrange_scalar_diagram(g: BaseGraph[VT,ET]) -> None:
             else: g.set_qubit(v,qs[v]+1)
     
     for v,w in gadgets.keys():
-        score = sum(rs[n] for n in g.neighbours(w))/len(list(g.neighbours(w)))
+        score = sum(rs[n] for n in g.neighbors(w))/len(list(g.neighbors(w)))
         gadgets[(v,w)] = score
     
     l = list(gadgets.items())

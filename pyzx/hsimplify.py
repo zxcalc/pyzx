@@ -1,5 +1,5 @@
 # PyZX - Python library for quantum circuit rewriting 
-#        and optimisation using the ZX-calculus
+#        and optimization using the ZX-calculus
 # Copyright (C) 2018 - Aleks Kissinger and John van de Wetering
 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,7 +24,7 @@ from .rules import MatchObject
 
 def to_hbox(g: BaseGraph[VT,ET]) -> None:
     """Convert a graph g to hbox-form. First, all X spiders are turned into
-    Z-spiders by colour-change, then all interior Hadamard edges are replaced
+    Z-spiders by color-change, then all interior Hadamard edges are replaced
     by arity-2 hboxes and all Z-phases are replaced by arity-1 hboxes."""
     to_gh(g)
     del_e = []
@@ -71,12 +71,12 @@ def from_hbox(g: BaseGraph[VT,ET]) -> None:
     hs = [h for h in g.vertices() if types[h] == VertexType.H_BOX]
     for h in hs:
         if g.vertex_degree(h) == 1:
-            n = next(iter(g.neighbours(h)))
+            n = next(iter(g.neighbors(h)))
             if types[n] == VertexType.Z:
                 g.set_phase(n, phases[n] + phases[h])
                 g.remove_vertex(h)
         elif g.vertex_degree(h) == 2 and g.phase(h) == 1:
-            s,t = g.neighbours(h)
+            s,t = g.neighbors(h)
             # Need to use add_edge_table here, because there might be parallel connections already present
             g.add_edge_table({g.edge(s,t): [0,1]})
             g.remove_vertex(h)

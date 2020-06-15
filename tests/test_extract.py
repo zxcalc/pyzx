@@ -1,5 +1,5 @@
 # PyZX - Python library for quantum circuit rewriting 
-#        and optimisation using the ZX-calculus
+#        and optimization using the ZX-calculus
 # Copyright (C) 2018 - Aleks Kissinger and John van de Wetering
 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -51,7 +51,7 @@ class TestExtract(unittest.TestCase):
                 t2 = c.to_tensor(False)
                 self.assertTrue(compare_tensors(t,t2,False))
 
-    def test_cz_optimise_extract(self):
+    def test_cz_optimize_extract(self):
         qb_no = 8
         c = Circuit(qb_no)
         for i in range(qb_no):

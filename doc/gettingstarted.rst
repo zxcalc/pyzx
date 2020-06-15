@@ -42,7 +42,7 @@ Most of the functionality of PyZX is based on the ZX-diagrams. These are represe
 Let us use one of the built-in ZX-diagram simplification routines on this ZX-diagram::
 	
 	>>> zx.clifford_simp(g)  # simplifies the diagram
-	>>> g.normalise()  # makes it more presentable
+	>>> g.normalize()  # makes it more presentable
 	>>> zx.draw(g)
 
 .. figure::  _static/clifford_simp.png
@@ -96,7 +96,7 @@ We can convert circuits into one of several circuit description languages, such 
 	QGate["H"](3) with nocontrol
 	Outputs: 0Qbit, 1Qbit, 2Qbit, 3Qbit
 
-Optimising random circuits is of course not very useful, so let us do some optimisation on a predefined circuit::
+Optimizing random circuits is of course not very useful, so let us do some optimization on a predefined circuit::
 
 	>>> c = zx.Circuit.load('circuits/Fast/mod5_4_before')  # Circuit.load auto-detects the file format
 	>>> print(c.gates)  #  This circuit is built out of CCZ gates.
@@ -129,7 +129,7 @@ Optimising random circuits is of course not very useful, so let us do some optim
 		14 2-qubit gates and 2 Hadamard gates.
 
 The circuit file-formats supported by ``Circuit.load`` are curently *qasm*, *qc* or *quipper*. 
-PyZX can also be run from the command-line for some easy circuit-to-circuit manipulation. In order to optimise a circuit you can run the command::
+PyZX can also be run from the command-line for some easy circuit-to-circuit manipulation. In order to optimize a circuit you can run the command::
 	
 	python -m pyzx opt input_circuit.qasm
 

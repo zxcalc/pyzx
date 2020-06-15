@@ -1,5 +1,5 @@
 # PyZX - Python library for quantum circuit rewriting 
-#        and optimisation using the ZX-calculus
+#        and optimization using the ZX-calculus
 # Copyright (C) 2018 - Aleks Kissinger and John van de Wetering
 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -263,7 +263,7 @@ class Circuit(object):
     @staticmethod
     def from_qc_file(fname: str) -> 'Circuit':
         """Produces a :class:`Circuit` based on a .qc description of a circuit.
-        If a Tofolli gate with more than 2 controls is encountered, ancilla qubits are added.
+        If a Toffoli gate with more than 2 controls is encountered, ancilla qubits are added.
         Currently up to 5 controls are supported."""
         from .qcparser import parse_qc
         with open(fname, 'r') as f:
@@ -275,7 +275,7 @@ class Circuit(object):
     @staticmethod
     def from_qsim_file(fname: str) -> 'Circuit':
         """Produces a :class:`Circuit` based on a .qc description of a circuit.
-        If a Tofolli gate with more than 2 controls is encountered, ancilla qubits are added.
+        If a Toffoli gate with more than 2 controls is encountered, ancilla qubits are added.
         Currently up to 5 controls are supported."""
         from .qsimparser import parse_qsim
         with open(fname, 'r') as f:

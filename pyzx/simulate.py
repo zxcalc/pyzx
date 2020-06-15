@@ -1,5 +1,5 @@
 # PyZX - Python library for quantum circuit rewriting 
-#        and optimisation using the ZX-calculus
+#        and optimization using the ZX-calculus
 # Copyright (C) 2018 - Aleks Kissinger and John van de Wetering
 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -233,10 +233,10 @@ def calculate_path_sum(g: BaseGraph[VT,ET]) -> complex:
         if v in variable_dict: continue
         if not phases[v]: continue #It is the axle of a phase gadget, ignore it
         if g.vertex_degree(v) == 1: # Probably phase gadget
-            w = list(g.neighbours(v))[0]
+            w = list(g.neighbors(v))[0]
             if not phases[w]: # It is indeed a phase gadget
                 targets = set()
-                for t in g.neighbours(w):
+                for t in g.neighbors(w):
                     if t == v: continue
                     if t not in variable_dict:
                         variable_dict[t] = len(variables)
@@ -327,12 +327,12 @@ def replace_magic_states(g: BaseGraph[VT,ET], pick_random:Any=False) -> SumGraph
         ### begin AK changes ....
         deg = g.vertex_degree(v)
         if g.vertex_degree(v) == 1:
-            w = list(g.neighbours(v))[0]
+            w = list(g.neighbors(v))[0]
             if g.type(w) == VertexType.Z:
                 gadgets.append(v)
                 deg = g.vertex_degree(w)-1
 
-        if any(w in g.inputs or w in g.outputs for w in g.neighbours(v)):
+        if any(w in g.inputs or w in g.outputs for w in g.neighbors(v)):
             boundary.append(v)
         else:
             internal.append(v)

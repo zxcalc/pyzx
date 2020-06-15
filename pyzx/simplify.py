@@ -1,5 +1,5 @@
 # PyZX - Python library for quantum circuit rewriting 
-#        and optimisation using the ZX-calculus
+#        and optimization using the ZX-calculus
 # Copyright (C) 2018 - Aleks Kissinger and John van de Wetering
 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -111,7 +111,7 @@ def supplementarity_simp(g: BaseGraph[VT,ET], quiet:bool=False) -> int:
     return simp(g, 'supplementarity_simp', match_supplementarity, apply_supplementarity, quiet=quiet)
 
 def copy_simp(g: BaseGraph[VT,ET], quiet:bool=False) -> int:
-    """Copies 1-ary spiders with 0/pi phase through neighbours.
+    """Copies 1-ary spiders with 0/pi phase through neighbors.
     WARNING: only use on maximally fused diagrams consisting solely of Z-spiders."""
     return simp(g, 'copy_simp', match_copy, apply_copy, quiet=quiet)
 
@@ -260,7 +260,7 @@ def to_gh(g: BaseGraph[VT,ET],quiet:bool=True) -> None:
                 g.set_edge_type(e, toggle_edge(et))
 
 def to_rg(g: BaseGraph[VT,ET], select:Optional[Callable[[VT],bool]]=None) -> None:
-    """Turn green nodes into red nodes by colour-changing vertices which satisfy the predicate ``select``.
+    """Turn green nodes into red nodes by color-changing vertices which satisfy the predicate ``select``.
     By default, the predicate is set to greedily reducing the number of Hadamard-edges.
     :param g: A ZX-graph.
     :param select: A function taking in vertices and returning ``True`` or ``False``."""

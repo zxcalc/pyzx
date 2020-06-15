@@ -1,5 +1,5 @@
 # PyZX - Python library for quantum circuit rewriting 
-#        and optimisation using the ZX-calculus
+#        and optimization using the ZX-calculus
 # Copyright (C) 2018 - Aleks Kissinger and John van de Wetering
 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -105,7 +105,7 @@ def tensorfy(g: 'BaseGraph[VT,ET]', preserve_scalar:bool=True) -> np.ndarray:
     
     for i,r in enumerate(sorted(verts_row.keys())):
         for v in sorted(verts_row[r]):
-            neigh = list(g.neighbours(v))
+            neigh = list(g.neighbors(v))
             d = len(neigh)
             if v in g.inputs:
                 if types[v] != 0: raise ValueError("Wrong type for input:", v, types[v])

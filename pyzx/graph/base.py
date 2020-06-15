@@ -1,5 +1,5 @@
 # PyZX - Python library for quantum circuit rewriting 
-#        and optimisation using the ZX-calculus
+#        and optimization using the ZX-calculus
 # Copyright (C) 2018 - Aleks Kissinger and John van de Wetering
 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -103,8 +103,8 @@ class Scalar(object):
 
     def add_spider_pair(self, p1: FractionLike,p2: FractionLike) -> None:
         """Add the scalar corresponding to a connected pair of spiders (p1)-H-(p2)."""
-        # These if statements look quite arbitary, but they are just calculations of the scalar
-        # of a pair of connected single wire spiders of opposite colours.
+        # These if statements look quite arbitrary, but they are just calculations of the scalar
+        # of a pair of connected single wire spiders of opposite colors.
         # We make special cases for Clifford phases and pi/4 phases.
         if p2 in (0,1):
             p1,p2 = p2, p1
@@ -335,9 +335,9 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         Also available by the operator `graph1 + graph2`"""
         if self.qubit_count() != other.qubit_count():
             raise TypeError("Circuits work on different qubit amounts")
-        self.normalise()
+        self.normalize()
         other = other.copy()
-        other.normalise()
+        other.normalize()
         self.scalar.mult_with_scalar(other.scalar)
         for o in self.outputs:
             q = self.qubit(o)
@@ -500,32 +500,32 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
 
     def auto_detect_inputs(self) -> Tuple[List[VT],List[VT]]:
         """Adds every vertex that is of boundary-type to the list of inputs or outputs.
-        Whether it is an input or output is determined by looking whether its neighbour
+        Whether it is an input or output is determined by looking whether its neighbor
         is further to the right or further to the left of the input. 
         Inputs and outputs are sorted by vertical position.
-        Raises an exception if boundary vertex does not have a unique neighbour 
-        or if this neighbour is on the same horizontal position.
+        Raises an exception if boundary vertex does not have a unique neighbor 
+        or if this neighbor is on the same horizontal position.
         """
         ty = self.types()
         for v in self.vertices():
             if ty[v] != VertexType.BOUNDARY: continue
             if v in self.inputs or v in self.outputs: continue
             if self.vertex_degree(v) != 1:
-                raise TypeError("Invalid ZX-diagram: Boundary-type vertex does not have unique neighbour")
-            w = list(self.neighbours(v))[0]
+                raise TypeError("Invalid ZX-diagram: Boundary-type vertex does not have unique neighbor")
+            w = list(self.neighbors(v))[0]
             if self.row(w) > self.row(v):
                 self.inputs.append(v)
             elif self.row(w) < self.row(v):
                 self.outputs.append(v)
             else:
-                raise TypeError("Boundary-type vertex at same horizontal position as neighbour. Can't determine whether it is an input or output.")
+                raise TypeError("Boundary-type vertex at same horizontal position as neighbor. Can't determine whether it is an input or output.")
         self.inputs = list(filter(lambda v: v in self.vertices(), self.inputs))
         self.outputs = list(filter(lambda v: v in self.vertices(), self.outputs))
         self.inputs.sort(key=self.qubit)
         self.outputs.sort(key=self.qubit)
         return self.inputs, self.outputs
 
-    def normalise(self) -> None:
+    def normalize(self) -> None:
         """Puts every node connecting to an input/output at the correct qubit index and row."""
         if not self.inputs:
             self.auto_detect_inputs()
@@ -539,7 +539,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
             self.set_row(i,0)
             self.set_qubit(i,q)
             #q = self.qubit(i)
-            n = list(self.neighbours(i))[0]
+            n = list(self.neighbors(i))[0]
             if self.type(n) in (VertexType.Z, VertexType.X):
                 claimed.append(n)
                 self.set_row(n,1)
@@ -556,7 +556,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
             #q = self.qubit(o)
             self.set_row(o,max_r+1)
             self.set_qubit(o,q)
-            n = list(self.neighbours(o))[0]
+            n = list(self.neighbors(o))[0]
             if n not in claimed:
                 self.set_row(n,max_r)
                 self.set_qubit(n, q)
@@ -759,11 +759,11 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
             if d == 0:
                 rem.append(v)
                 self.scalar.add_node(self.phase(v))
-            if d == 1: # It has a unique neighbour
+            if d == 1: # It has a unique neighbor
                 if v in rem: continue # Already taken care of
                 if self.type(v) == VertexType.BOUNDARY: continue # Ignore in/outputs
-                w = list(self.neighbours(v))[0]
-                if len(list(self.neighbours(w))) > 1: continue # But this neighbour has other neighbours
+                w = list(self.neighbors(v))[0]
+                if len(list(self.neighbors(w))) > 1: continue # But this neighbor has other neighbors
                 if self.type(w) == VertexType.BOUNDARY: continue # It's a state/effect
                 # At this point w and v are only connected to each other
                 rem.append(v)
@@ -829,8 +829,8 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         """Returns the target of the given edge."""
         return self.edge_st(edge)[1]
 
-    def neighbours(self, vertex: VT) -> Sequence[VT]:
-        """Returns all neighbouring vertices of the given vertex."""
+    def neighbors(self, vertex: VT) -> Sequence[VT]:
+        """Returns all neighboring vertices of the given vertex."""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
     def vertex_degree(self, vertex: VT) -> int:
@@ -838,7 +838,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
     def incident_edges(self, vertex: VT) -> Sequence[ET]:
-        """Returns all neighbouring edges of the given vertex."""
+        """Returns all neighboring edges of the given vertex."""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
     def connected(self,v1: VT,v2: VT) -> bool:

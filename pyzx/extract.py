@@ -1,5 +1,5 @@
 # PyZX - Python library for quantum circuit rewriting 
-#        and optimisation using the ZX-calculus
+#        and optimization using the ZX-calculus
 # Copyright (C) 2018 - Aleks Kissinger and John van de Wetering
 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -292,13 +292,13 @@ def extract_circuit(
     gadgets = {}
     for v in g.vertices():
         if g.vertex_degree(v) == 1 and v not in g.inputs and v not in g.outputs:
-            n = list(g.neighbours(v))[0]
+            n = list(g.neighbors(v))[0]
             gadgets[n] = v
     
     qubit_map: Dict[VT,int] = dict()
     frontier = []
     for i,o in enumerate(g.outputs):
-        v = list(g.neighbours(o))[0]
+        v = list(g.neighbors(o))[0]
         if v in g.inputs: continue
         frontier.append(v)
         qubit_map[v] = i
@@ -310,7 +310,7 @@ def extract_circuit(
         # preprocessing
         for v in frontier: # First removing single qubit gates
             q = qubit_map[v]
-            b = [w for w in g.neighbours(v) if w in g.outputs][0]
+            b = [w for w in g.neighbors(v) if w in g.outputs][0]
             e = g.edge(v,b)
             if g.edge_type(e) == 2: # Hadamard edge
                 c.add_gate("HAD",q)
@@ -321,7 +321,7 @@ def extract_circuit(
         # And now on to CZ gates
         cz_mat = Mat2([[0 for i in range(g.qubit_count())] for j in range(g.qubit_count())])
         for v in frontier:
-            for w in list(g.neighbours(v)):
+            for w in list(g.neighbors(v)):
                 if w in frontier:
                     cz_mat.data[qubit_map[v]][qubit_map[w]] = 1
                     cz_mat.data[qubit_map[w]][qubit_map[v]] = 1
@@ -329,7 +329,7 @@ def extract_circuit(
         
         if optimize_czs:
             overlap_data = max_overlap(cz_mat)
-            while len(overlap_data[1]) > 2: #there are enough common qubits to be worth optimising
+            while len(overlap_data[1]) > 2: #there are enough common qubits to be worth optimizing
                 i,j = overlap_data[0][0], overlap_data[0][1]
                 czs_saved += len(overlap_data[1])-2
                 c.add_gate("CNOT",i,j)
@@ -349,9 +349,9 @@ def extract_circuit(
         
         # Now we can proceed with the actual extraction
         # First make sure that frontier is connected in correct way to inputs
-        neighbour_set = set()
+        neighbor_set = set()
         for v in frontier.copy():
-            d = [w for w in g.neighbours(v) if w not in g.outputs]
+            d = [w for w in g.neighbors(v) if w not in g.outputs]
             if any(w in g.inputs for w in d): #frontier vertex v is connected to an input
                 if len(d) == 1: # Only connected to input, remove from frontier
                     frontier.remove(v)
@@ -368,17 +368,17 @@ def extract_circuit(
                 g.add_edge(g.edge(w,b),toggle_edge(et))
                 d.remove(b)
                 d.append(w)
-            neighbour_set.update(d)
+            neighbor_set.update(d)
         
         if not frontier: break # No more vertices to be processed. We are done.
         
         # First we check if there is a phase gadget in the way
         removed_gadget = False
-        for w in neighbour_set:
+        for w in neighbor_set:
             if w not in gadgets: continue
-            for v in g.neighbours(w):
+            for v in g.neighbors(w):
                 if v in frontier:
-                    apply_rule(g,pivot,[(w,v,[],[o for o in g.neighbours(v) if o in g.outputs])]) # type: ignore
+                    apply_rule(g,pivot,[(w,v,[],[o for o in g.neighbors(v) if o in g.outputs])]) # type: ignore
                     frontier.remove(v)
                     del gadgets[w]
                     frontier.append(w)
@@ -388,8 +388,8 @@ def extract_circuit(
         if removed_gadget: # There was indeed a gadget in the way. Go back to the top
             continue
             
-        neighbours = list(neighbour_set)
-        m = bi_adj(g,neighbours,frontier)
+        neighbors = list(neighbor_set)
+        m = bi_adj(g,neighbors,frontier)
         if all(sum(row)!=1 for row in m.data): # No easy vertex
             if optimize_cnots>1:
                  greedy_operations = greedy_reduction(m)
@@ -401,8 +401,8 @@ def extract_circuit(
             if greedy_operations is None or (optimize_cnots == 3 and len(greedy)>1):
                 perm = column_optimal_swap(m)
                 perm = {v:k for k,v in perm.items()}
-                neighbours2 = [neighbours[perm[i]] for i in range(len(neighbours))]
-                m2 = bi_adj(g, neighbours2, frontier)
+                neighbors2 = [neighbors[perm[i]] for i in range(len(neighbors))]
+                m2 = bi_adj(g, neighbors2, frontier)
                 if optimize_cnots > 0:
                     cnots = m2.to_cnots(optimize=True)
                 else:
@@ -417,7 +417,7 @@ def extract_circuit(
                         if not quiet: print("Found greedy reduction with", len(greedy), "CNOTs")
                         cnots = greedy
                     else:
-                        neighbours = neighbours2
+                        neighbors = neighbors2
                         m = m2
                         if not quiet: print("Gaussian elimination with", len(cnots), "CNOTs")
             # We now have a set of CNOTs that suffice to extract at least one vertex.
@@ -471,7 +471,7 @@ def extract_circuit(
             #for cnot in cnots:
             #    m.row_add(cnot.target,cnot.control)
             #    c.add_gate("CNOT",qubit_map[frontier[cnot.control]],qubit_map[frontier[cnot.target]])
-            connectivity_from_biadj(g,m,neighbours,frontier)
+            connectivity_from_biadj(g,m,neighbors,frontier)
         else:
             if not quiet: print("Simple vertex")
             cnots = []
@@ -479,7 +479,7 @@ def extract_circuit(
         for i, row in enumerate(m.data):
             if sum(row) == 1:
                 v = frontier[i]
-                w = neighbours[[j for j in range(len(row)) if row[j]][0]]
+                w = neighbors[[j for j in range(len(row)) if row[j]][0]]
                 good_verts[v] = w
         if not good_verts: raise Exception("No extractable vertex found. Something went wrong")
         hads = []
@@ -487,7 +487,7 @@ def extract_circuit(
             hads.append(qubit_map[v])
             #c.add_gate("HAD",qubit_map[v])
             qubit_map[w] = qubit_map[v]
-            b = [o for o in g.neighbours(v) if o in g.outputs][0]
+            b = [o for o in g.neighbors(v) if o in g.outputs][0]
             g.remove_vertex(v)
             g.add_edge(g.edge(w,b))
             frontier.remove(v)
@@ -503,7 +503,7 @@ def extract_circuit(
     swap_map = {}
     leftover_swaps = False
     for q,v in enumerate(g.outputs): # Finally, check for the last layer of Hadamards, and see if swap gates need to be applied.
-        inp = list(g.neighbours(v))[0]
+        inp = list(g.neighbors(v))[0]
         if inp not in g.inputs: 
             raise TypeError("Algorithm failed: Not fully reducable")
             return c
