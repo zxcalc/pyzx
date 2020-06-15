@@ -17,7 +17,7 @@ setup(
     long_description_content_type="text/markdown",
     license="Apache2",
     classifiers=[
-        "License :: OSI Approved :: GNU Affero General Public License v3",
+        "License :: OSI Approved :: Apache Software License",
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.6",
         "Topic :: Software Development :: Libraries :: Python Modules",
