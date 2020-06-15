@@ -181,6 +181,7 @@ class ZXEditorWidget(widgets.DOMWidget):
 		try:
 			self.graph.auto_detect_inputs()
 		except TypeError:
+			self.matrix_view.value = "Couldn't parse inputs or outputs"
 			return
 		if len(self.graph.inputs) > 4 or len(self.graph.outputs) > 4:
 			self.matrix_view.value = "Matrix too large to show"

@@ -1,12 +1,12 @@
-ZX-Graphs
-=============
+ZX-diagrams in PyZX and how to modify them
+==========================================
 
 
-PyZX represents quantum circuits as ZX-graphs. These graphs have 4 different types of vertices: boundaries, Z-spiders, X-spiders and H-boxes. Boundary vertices represent an input or an output to the circuit and carry no further information. Z- and X-spider are the usual bread and butter of ZX-diagrams. H-boxes are used in ZH-diagrams as a generalisation of the Hadamard gate. Non-boundary vertices carry additional information in the form of a `phase`. This is a fraction ``q`` representing a phase ``pi*q``.
+ZX-diagrams are represented in PyZX by instances of the ``BaseGraph`` class, and are stored as simple graphs with some additional data on the vertices and edges. There are 4 different types of vertices: boundaries, Z-spiders, X-spiders and H-boxes. Boundary vertices represent an input or an output to the circuit and carry no further information. Z- and X-spider are the usual bread and butter of ZX-diagrams. H-boxes are used in ZH-diagrams as a generalisation of the Hadamard gate. Non-boundary vertices carry additional information in the form of a `phase`. This is a fraction ``q`` representing a phase ``pi*q``.
 
-As a simple example, we could have a ZX-gaph with 3 vertices. The first being a boundary acting as input, the last being a boundary acting as output. If the middle one is a Z-node with phase ``a`` that is connected to both the input and output, then this graph represents a Z[``pi*a``]-phase gate.
+As a simple example, we could have a graph with 3 vertices. The first being a boundary acting as input, the last being a boundary acting as output. If the middle one is a Z-vertex with phase ``a`` that is connected to both the input and output, then this graph represents a Z[``pi*a``]-phase gate.
 
-Edges in a PyZX graph come in two flavors. The first is the default edge type which represents a regular connection. The second is a `Hadamard-edge`. This represents a connection between nodes with a Hadamard gate applied between them, and in the drawing functions of PyZX is represented by a blue edge.
+Edges in a PyZX graph come in two flavors. The first is the default edge type which represents a regular connection. The second is a `Hadamard-edge`. This represents a connection between vertices with a Hadamard gate applied between them, and in the drawing functions of PyZX is represented by a blue edge.
 
 Accessing and setting vertex and edge type
 ------------------------------------------
@@ -32,3 +32,37 @@ Backends
 --------
 
 ZX-graphs can be represented internally in different ways. The only fully functioning backend right now is :class:`pyzx.graph.graph_s.GraphS`, which is written entirely in Python. A partial implementation using the ``python-igraph`` package is also available as :class:`pyzx.graph.graph_ig.GraphIG`. A new backend can be constructed by subclassing :class:`pyzx.graph.base.BaseGraph`.
+
+Creating and modifying ZX-diagrams
+----------------------------------
+
+To create an empty ZX-diagram call ``g=zx.Graph()``. 
+You can then add a vertex and set its data by calling for example ``v = g.add_vertex(zx.VertexType.Z, qubit=0, row=1, phase=1)``. To add an edge between vertices ``v`` and ``w`` you call ``g.add_edge(g.edge(v,w),edgetype=zx.EdgeType.SIMPLE)``.
+
+These functions are probably best used in some type of loop or function so that you don't have to set everything by hand. If you wish to create a ZX-diagram in the shape of a circuit it is probably better to use the :class:`~pyzx.circuit.Circuit`, or if you don't care about the exact structure of the circuit, one of the functions in :mod:`~pyzx.generate`.
+
+The ZX-diagram editor
+---------------------
+
+If you are using a Jupyter notebook, probably the best way to build an arbitrarily shaped ZX-diagram is to use the built-in graphical editor. If you have a ZX-diagram ``g``, call ``e = zx.editor.edit(g)`` to start a new editor instance. The output of the cell should be the editor, and should look something like this:
+
+.. figure::  _static/editor_example.png
+   :align:   center
+
+Ctrl-clicking on the view of the graph will add a new vertex of the type specified by 'Vertex type' (so a Z-vertex in the above example). Click 'Vertex type' to change the type of vertex to be added, or with the editor window selected, use the hotkey 'X'.
+
+Ctrl-drag between two vertices to add a new edge of the type 'Edge type' (either Regular or Hadamard), or use the hotkey 'E' to switch. Adding an edge between vertices where there is already one present replaces the edge with the new one.
+
+Drag a box around vertices to select them. With a set selected, drag your mouse on one of the vertices to move them. Press delete or backspace to delete your selection. You can also directly select an edge by clicking it.
+
+Double-click a vertex to change its phase. You should enter a fraction possibly followed by pi. Example inputs: '1', '-1/2', '3/2pi'. An empty input gives the default value ('0' for Z/X spiders, '1' for H-boxes).
+
+Any change can be undone by pressing Ctrl-Z, and redone by pressing Ctrl-Shift-Z.
+
+Changes in the editor are automatically pushed to the underlying graph. So if we made the editor using the command ``e = zx.editor.edit(g)`` than any changes we make are automatically done to ``g``. Alternatively, we can access the graph by ``e.graph``. Outside of the editor we can also make changes to ``g``. For instance, we can call ``zx.spider_simp(g)`` to fuse all the spiders in ``g``. To view these changes in the editor, call ``e.update()``.
+
+With a set of vertices selected, you will see some of the buttons beneath the editor light up. Clicking these buttons will do the action it says on the graph. Each of these actions will preserve the semantics of your ZX-diagram (i.e. the linear map it implements).
+
+Sometimes it is useful to see which linear map your ZX-diagram implements. If you create the editor with the command ``e = zx.editor.edit(g,show_matrix=True)``, this will show a Latex-styled matrix beneath the editor with the linear map your ZX-diagram implements. This matrix is automatically updated after every change you make to the graph. Note that this only works if your ZX-diagram does not have too many inputs and outputs (at most 4). It automatically regards boundary vertices 'pointing right' as inputs, and boundary vertices 'pointing left' as outputs. You can change this manually by changing ``g.inputs`` and ``g.outputs``.
+
+If you click 'Save snapshot', a copy of the graph is saved in the list ``e.snapshots``. When you press 'Load in Tikzit', all snapshots are loaded into a Tikz format parseable by `Tikzit <https://tikzit.github.io>`_. In order to use this functionality you have to point ``zx.settings.tikzit_location`` to a valid executable.
