@@ -1,3 +1,5 @@
+.. _graphs:
+
 ZX-diagrams in PyZX and how to modify them
 ==========================================
 

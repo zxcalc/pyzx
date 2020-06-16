@@ -11,6 +11,9 @@ If you wish to use the demo notebooks or benchmark circuits, then the repository
 
 The best way to get started if you have cloned the repository is to run the `Getting Started notebook <https://github.com/Quantomatic/pyzx/blob/master/demos/gettingstarted.ipynb>`_ in Jupyter. This page contains the same general information as that notebook.
 
+.. warning::
+	If you are using the pip installed version, please make sure it is version 0.6.0, and not 0.5.x as the api has changed considerably in between.
+
 Let's start by importing the library::
 	
 	>>> import pyzx as zx
@@ -58,7 +61,7 @@ A ZX-diagram is represented internally as a graph::
 
 This simplified ZX-graph no longer looks like a circuit. PyZX supplies some methods for turning a ZX-graph back into a circuit::
 	
-	>>> c = zx.extract.streaming_extract(g.copy())
+	>>> c = zx.extract_circuit(g.copy())
 	>>> zx.draw(c)
 
 .. figure::  _static/clifford_extracted.png
@@ -115,7 +118,7 @@ Optimizing random circuits is of course not very useful, so let us do some optim
 	>>> zx.simplify.full_reduce(g)  # Simplify the ZX-graph
 	>>> print(g)
 	Graph(31 vertices, 38 edges)
-	>>> c2 = zx.extract.streaming_extract(g).to_basic_gates()  # Turn graph back into circuit
+	>>> c2 = zx.extract_circuit(g).to_basic_gates()  # Turn graph back into circuit
 	>>> print(c2.stats())
 	Circuit  on 5 qubits with 42 gates.
 		8 is the T-count
@@ -135,4 +138,5 @@ PyZX can also be run from the command-line for some easy circuit-to-circuit mani
 
 For more information regarding the command-line tools, run ``python -m pyzx --help``.
 
-This concludes this tutorial. For more information about the simplification procedures see :ref:`simplify`. Information regarding the circuit extraction can be found in :ref:`extract`. The different representations of the graphs and circuits is detailed in :ref:`representations`. The low level graph api is explained in :ref:`graph`.
+This concludes this tutorial. For more information about the simplification procedures see :ref:`simplify`. 
+The different representations of the graphs and circuits is detailed in :ref:`representations`. How to create and modify ZX-diagrams is explained in :ref:`graphs`.
