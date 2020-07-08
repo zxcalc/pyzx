@@ -65,21 +65,31 @@ class Circuit(object):
         return c
 
 
-    def verify_equality(self, other: 'Circuit') -> bool:
+    def verify_equality(self, other: 'Circuit', up_to_swaps: bool = False) -> bool:
         """Composes the other circuit with the adjoint of this circuit, and tries to reduce
         it to the identity using :func:`simplify.full_reduce``. If successful returns True,
         if not returns None. 
 
-        Note that while a successful reduction to the identity is strong evidence that the two
-        circuits are equal, if this function is not able to reduce the graph to the identity
-        this does not prove anything. """
+        Note:
+            A successful reduction to the identity is strong evidence that the two
+            circuits are equal, if this function is not able to reduce the graph to the identity
+            this does not prove anything. 
+
+        Args:
+            other: the circuit to compare equality to.
+            up_to_swaps: if set to True, only checks equality up to a permutation of the qubits.
+
+        """
         from ..simplify import full_reduce
         c = self.adjoint()
         c.add_circuit(other)
         g = c.to_graph()
         full_reduce(g)
         if g.num_vertices() == self.qubits*2:
-            return True
+            if up_to_swaps:
+                return True
+            else:
+                return all(g.connected(v,w) for v,w in zip(g.inputs,g.outputs))
         else:
             return False
 

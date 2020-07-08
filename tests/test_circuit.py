@@ -106,5 +106,12 @@ class TestCircuit(unittest.TestCase):
         cz_matrix = np.array([[1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,-1]])
         self.assertTrue(compare_tensors(c.to_matrix(),cz_matrix))
 
+    def test_verify_equality_permutation_option(self):
+        c1 = Circuit(2)
+        c2 = Circuit(2)
+        c2.add_gate("SWAP",0,1)
+        self.assertTrue(c1.verify_equality(c2,up_to_swaps=True))
+        self.assertFalse(c1.verify_equality(c2,up_to_swaps=False))
+
 if __name__ == '__main__':
     unittest.main()
