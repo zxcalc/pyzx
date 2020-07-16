@@ -39,6 +39,11 @@ class Mat2(object):
         return Mat2([[1 if i == j else 0
             for j in range(n)] 
               for i in range(n)])
+    @staticmethod
+    def zeros(m:int, n: int) -> 'Mat2':
+        return Mat2([[0
+            for j in range(n)] 
+              for i in range(m)])
 
     def __init__(self, data: MatLike):
         self.data: MatLike = data
@@ -55,6 +60,8 @@ class Mat2(object):
             " ]" for row in self.data)
     def __repr__(self) -> str:
         return str(self)
+    def slice(self, rs: (int,int), cs: (int,int)) -> 'Mat2':
+        return Mat2([row[cs[0]:cs[1]] for row in self.data[rs[0]:rs[1]]])
     def copy(self) -> 'Mat2':
         return Mat2([list(row) for row in self.data])
     def transpose(self) -> 'Mat2':
@@ -227,20 +234,34 @@ class Mat2(object):
     def solve(self, b: 'Mat2') -> Optional['Mat2']:
         """Return a vector x such that M * x = b, or None if there is no solution."""
         m = self.copy()
-        x = b.copy()
-        rank = m.gauss(x=x, full_reduce=True)
+        b1 = b.copy()
+        rank = m.gauss(x=b1, full_reduce=True)
 
-        # check for inconsistencies, i.e. zero LHS with non-zero RHS
-        i = x.rows() - 1
-        while i > rank - 1:
-            if x.data[i][0] != 0:
+        # check for inconsistencies and set x to a
+        #  particular solution
+        x = Mat2.zeros(m.cols(),1)
+        for i,row in enumerate(m.data):
+            got_pivot = False
+            for j,v in enumerate(row):
+                if v != 0:
+                    got_pivot = True
+                    x.data[j][0] = b1.data[i][0]
+                    break
+            # zero LHS with non-zero RHS = no solutions
+            if not got_pivot and b1.data[i][0] != 0:
                 return None
-            i -= 1
-        if x.rows() > m.cols():
-            x.data = x.data[:m.cols()]
-        else:
-            x.data = x.data + [[0]]*(m.cols()-x.rows())
         return x
+
+        # i = b1.rows() - 1
+        # while i > rank - 1:
+        #     if b1.data[i][0] != 0:
+        #         return None
+        #     i -= 1
+        # if x.rows() > m.cols():
+        #     x.data = x.data[:m.cols()]
+        # else:
+        #     x.data = x.data + [[0]]*(m.cols()-x.rows())
+        # return x
 
     def nullspace(self, should_copy:bool=True) -> List[List[Z2]]:
         """Returns a list of non-zero vectors that span the nullspace
