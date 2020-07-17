@@ -60,8 +60,46 @@ class Mat2(object):
             " ]" for row in self.data)
     def __repr__(self) -> str:
         return str(self)
-    def slice(self, rs: (int,int), cs: (int,int)) -> 'Mat2':
-        return Mat2([row[cs[0]:cs[1]] for row in self.data[rs[0]:rs[1]]])
+    def __getitem__(self, key) -> Union['Mat2',Z2]:
+        # For a pair of indices: if either is a slice, return the
+        # selected sub-matrix. Otherwise, return the selected element.
+        if isinstance(key,tuple):
+            rs,cs = key
+            if isinstance(rs,slice) or isinstance(cs,slice):
+                if not isinstance(rs,slice): rs = slice(rs,rs+1)
+                if not isinstance(cs,slice): cs = slice(cs,cs+1)
+                return Mat2([row[cs] for row in self.data[rs]])
+            else:
+                return self.data[rs][cs]
+        else:
+            raise IndexError("Expected a pair of indices/slices.")
+    def __setitem__(self, key, val):
+        # For a pair of indices: if either is a slice, expect a Mat2
+        # and overwrite the selected sub-matrix. Otherwise, expect
+        # Z2 and overwrite the selected element.
+        if isinstance(key,tuple):
+            rs,cs = key
+
+            if isinstance(rs,slice) or isinstance(cs,slice):
+                if isinstance(rs,slice):
+                    rr = range(*rs.indices(self.rows()))
+                else:
+                    rr = range(rs,rs+1)
+
+                if isinstance(cs,slice):
+                    cr = range(*cs.indices(self.cols()))
+                else:
+                    cr = range(cs,cs+1)
+
+                for i,iin in enumerate(rr):
+                    for j,jin in enumerate(cr):
+                        self.data[iin][jin] = val.data[i][j]
+            else:
+                self.data[rs][cs] = val
+        else:
+            raise IndexError("Expected a pair of indices/slices.")
+            
+
     def copy(self) -> 'Mat2':
         return Mat2([list(row) for row in self.data])
     def transpose(self) -> 'Mat2':
