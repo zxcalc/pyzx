@@ -60,7 +60,7 @@ class Mat2(object):
             " ]" for row in self.data)
     def __repr__(self) -> str:
         return str(self)
-    def __getitem__(self, key) -> Union['Mat2',Z2]:
+    def __getitem__(self, key: Tuple[Union[int,slice],Union[int,slice]]) -> Union['Mat2',Z2]:
         # For a pair of indices: if either is a slice, return the
         # selected sub-matrix. Otherwise, return the selected element.
         if isinstance(key,tuple):
