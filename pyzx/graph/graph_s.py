@@ -113,7 +113,7 @@ class GraphS(BaseGraph[int,Tuple[int,int]]):
 
 	def num_edges(self):
 		#return self.nedges
-		return sum(len(adj) for adj in self.graph.values())
+		return len(self.edge_set())
 
 	def vertices(self):
 		return self.graph.keys()
