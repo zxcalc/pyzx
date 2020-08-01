@@ -72,7 +72,12 @@ def hadamard_to_h_edge(g: BaseGraph[VT,ET], matches: List[VT]) -> rules.RewriteO
 	for v in matches:
 		rem_verts.append(v)
 		w1,w2 = list(g.neighbors(v))
-		etab[g.edge(w1,w2)] = [0,1]
+		et1 = g.edge_type(g.edge(w1,v))
+		et2 = g.edge_type(g.edge(w2,v))
+		if et1 == et2:
+			etab[g.edge(w1,w2)] = [0,1]
+		else:
+			etab[g.edge(w1,w2)] = [1,0]
 	return (etab, rem_verts, [], True)
 
 
@@ -87,12 +92,14 @@ def copy_matcher(
 	phases = g.phases()
 	types = g.types()
 	m = []
+	taken: Set[VT] = set()
 
 	while len(candidates) > 0:
 		v = candidates.pop()
 		if phases[v] not in (0,1) or not vertex_is_zx(types[v]) or g.vertex_degree(v) != 1:
                     continue
 		w = list(g.neighbors(v))[0]
+		if w in taken: continue
 		tv = types[v]
 		tw = types[w]
 		if tw == VertexType.BOUNDARY: continue
@@ -108,6 +115,8 @@ def copy_matcher(
 		m.append((v,w,et,phases[v],phases[w],neigh))
 		candidates.discard(w)
 		candidates.difference_update(neigh)
+		taken.add(w)
+		taken.update(neigh)
 
 	return m
 
