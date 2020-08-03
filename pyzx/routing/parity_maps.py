@@ -21,15 +21,19 @@ if __name__ == '__main__':
 from pyzx.generate import cnots as generate_cnots
 from pyzx.circuit import Circuit, gates
 from pyzx.linalg import Mat2
-try:
-    import numpy as np
-except:
-    np = None
+
+# try:
+#     import numpy as np
+# except:
+#     np = None
+# NOTE: numpy is not used optionally in code below.
+
+import numpy as np
 
 class CNOT_tracker(Circuit):
     def __init__(self, n_qubits, **kwargs):
         super().__init__(n_qubits, **kwargs)
-        self.matrix = Mat2(np.identity(n_qubits))
+        self.matrix = Mat2.id(n_qubits)
         self.row_perm = np.arange(n_qubits)
         self.col_perm = np.arange(n_qubits)
         self.n_qubits = n_qubits
@@ -71,8 +75,8 @@ class CNOT_tracker(Circuit):
 
     def to_qasm(self):
         qasm = super().to_qasm()
-        initial_perm = "// Initial wiring: " + str(self.row_perm.tolist())
-        end_perm = "// Resulting wiring: " + str(self.col_perm.tolist())
+        initial_perm = "// Initial wiring: " + str(self.row_perm)
+        end_perm = "// Resulting wiring: " + str(self.col_perm)
         return '\n'.join([initial_perm, end_perm, qasm])
 
     @staticmethod
@@ -83,7 +87,7 @@ class CNOT_tracker(Circuit):
         return new_circuit
 
     def update_matrix(self):
-        self.matrix = Mat2(np.identity(self.n_qubits))
+        self.matrix = Mat2.id(self.n_qubits)
         for gate in self.gates:
             if hasattr(gate, "name") and gate.name == "CNOT":
                 self.matrix.row_add(gate.control, gate.target)
@@ -110,7 +114,7 @@ def build_random_parity_map(qubits, n_cnots, circuit=None):
         circuit = [circuit]
     g = generate_cnots(qubits=qubits, depth=n_cnots)
     c = Circuit.from_graph(g)
-    matrix = Mat2(np.identity(qubits))
+    matrix = Mat2.id(qubits)
     for gate in c.gates:
         matrix.row_add(gate.control, gate.target)
         for c in circuit:

@@ -80,22 +80,24 @@ class Mat2(object):
         if isinstance(key,tuple):
             rs,cs = key
 
-            if isinstance(rs,slice) or isinstance(cs,slice):
-                if isinstance(rs,slice):
-                    rr = range(*rs.indices(self.rows()))
-                else:
-                    rr = range(rs,rs+1)
-
-                if isinstance(cs,slice):
-                    cr = range(*cs.indices(self.cols()))
-                else:
-                    cr = range(cs,cs+1)
-
-                for i,iin in enumerate(rr):
-                    for j,jin in enumerate(cr):
-                        self.data[iin][jin] = val.data[i][j]
+            if isinstance(val,Mat2):
+                d = val.data
             else:
-                self.data[rs][cs] = val
+                d = [[val]]
+
+            if isinstance(rs,slice):
+                rr = range(*rs.indices(self.rows()))
+            else:
+                rr = range(rs,rs+1)
+
+            if isinstance(cs,slice):
+                cr = range(*cs.indices(self.cols()))
+            else:
+                cr = range(cs,cs+1)
+
+            for i,iin in enumerate(rr):
+                for j,jin in enumerate(cr):
+                    self.data[iin][jin] = d[i][j]
         else:
             raise IndexError("Expected a pair of indices/slices.")
             

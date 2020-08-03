@@ -42,6 +42,8 @@ from . import d3
 from . import tikz
 from . import simulate
 from . import editor
+from . import routing
+from .routing.parity_maps import CNOT_tracker
 
 
 if __name__ == '__main__':
