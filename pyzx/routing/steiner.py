@@ -44,22 +44,22 @@ def steiner_gauss(matrix, architecture, full_reduce=False, x=None, y=None):
             zeros = []
             while next_check is not None:
                 s0, s1 = next_check
-                if matrix.data[s0, col] == 0:  # s1 is a new steiner point or root = 0
+                if matrix[s0, col] == 0:  # s1 is a new steiner point or root = 0
                     zeros.append(next_check)
                 next_check = next(steiner_tree)
             while len(zeros) > 0:
                 s0, s1 = zeros.pop(-1)
-                if matrix.data[s0, col] == 0:
+                if matrix[s0, col] == 0:
                     row_add(s1, s0)
-                    debug and print(matrix.data[s0, col], matrix.data[s1, col])
+                    debug and print(matrix[s0, col], matrix[s1, col])
         else:
             debug and print("deal with zero root")
-            if next_check is not None and matrix.data[next_check[0], col] == 0:  # root is zero
+            if next_check is not None and matrix[next_check[0], col] == 0:  # root is zero
                 print("WARNING : Root is 0 => reducing non-pivot column", matrix.data)
-            debug and print("Step 1: remove zeros", matrix.data[:, c])
+            debug and print("Step 1: remove zeros", matrix[:, c])
             while next_check is not None:
                 s0, s1 = next_check
-                if matrix.data[s1, col] == 0:  # s1 is a new steiner point
+                if matrix[s1, col] == 0:  # s1 is a new steiner point
                     row_add(s0, s1)
                 next_check = next(steiner_tree)
         # Reduce stuff
@@ -79,17 +79,17 @@ def steiner_gauss(matrix, architecture, full_reduce=False, x=None, y=None):
     for c in range(cols):
         nodes = [r for r in range(pivot, rows) if pivot==r or matrix.data[r][c] == 1]
         steiner_reduce(c, pivot, nodes, True)
-        if matrix.data[pivot][c] == 1:
+        if matrix[pivot,c] == 1:
             p_cols.append(c)
             pivot += 1
-    debug and print("Upper triangle form", matrix.data)
+    debug and print("Upper triangle form", matrix)
     rank = pivot
     debug and print(p_cols)
     if full_reduce:
         pivot -= 1
         for c in reversed(p_cols):
-            debug and print(pivot, matrix.data[:,c])
-            nodes = [r for r in range(0, pivot+1) if r==pivot or matrix.data[r][c] == 1]
+            debug and print(pivot, matrix[:,c])
+            nodes = [r for r in range(0, pivot+1) if r==pivot or matrix[r,c] == 1]
             if len(nodes) > 1:
                 steiner_reduce(c, pivot, nodes, False)
             pivot -= 1
