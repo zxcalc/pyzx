@@ -44,6 +44,9 @@ class Mat2(object):
         return Mat2([[0
             for j in range(n)] 
               for i in range(m)])
+    @staticmethod
+    def unit_vector(d: int, i: int) -> 'Mat2':
+        return Mat2([[1 if j == i else 0] for j in range(d)])
 
     def __init__(self, data: MatLike):
         self.data: MatLike = data
@@ -136,7 +139,7 @@ class Mat2(object):
             self.data[r][c1] = v
 
     
-    def gauss(self, full_reduce:bool=False, x:Any=None, y:Any=None, blocksize:int=6) -> int:
+    def gauss(self, full_reduce:bool=False, x:Any=None, y:Any=None, blocksize:int=6, pivot_cols:List[int]=[]) -> int:
         """Compute the echelon form. Returns the number of non-zero rows in the result, i.e.
         the rank of the matrix.
 
@@ -166,7 +169,7 @@ class Mat2(object):
 
         rows = self.rows()
         cols = self.cols()
-        pcols = []
+        #pivot_cols = []
         pivot_row = 0
         for sec in range(math.ceil(cols / blocksize)):
             i0 = sec * blocksize
@@ -199,7 +202,8 @@ class Mat2(object):
                                 self.row_add(pivot_row, r1)
                                 if x is not None: x.row_add(pivot_row, r1)
                                 if y is not None: y.col_add(r1, pivot_row)
-                        if full_reduce: pcols.append(p)
+                        #if full_reduce:
+                        pivot_cols.append(p)
                         pivot_row += 1
                         break
                 p += 1
@@ -208,6 +212,7 @@ class Mat2(object):
 
         if full_reduce:
             pivot_row -= 1
+            pivot_cols1 = pivot_cols.copy()
 
             for sec in range(math.ceil(cols / blocksize) - 1, -1, -1):
                 i0 = sec * blocksize
@@ -226,8 +231,8 @@ class Mat2(object):
                     else:
                         chunks[t] = r
 
-                while len(pcols) != 0 and i0 <= pcols[-1] < i1:
-                    pcol = pcols.pop()
+                while len(pivot_cols1) != 0 and i0 <= pivot_cols1[-1] < i1:
+                    pcol = pivot_cols1.pop()
                     for r in range(0, pivot_row):
                         if self.data[r][pcol] != 0:
                             self.row_add(pivot_row, r)

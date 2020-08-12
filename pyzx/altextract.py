@@ -15,6 +15,67 @@ from typing import List, Optional, Tuple, Dict, Set, Union
 
 from .extract import bi_adj, connectivity_from_biadj, max_overlap, greedy_reduction, find_minimal_sums, xor_rows, column_optimal_swap
 
+
+# permute the rows of "m" such that as many rows as possible have
+# 1s in position given by "pos"
+# TODO: this can be done in poly-time with graph matching algo
+# (e.g. Hopcroft-Karp)
+def ones_in_pos(m, pos):
+    winner = -1
+
+    perm = None
+    for p in itertools.permutations(range(m.rows())):
+        score = sum(m[p[i],pos[i]] for i in range(m.rows()))
+        if score > winner:
+            winner = score
+            perm = p
+        if score == m.rows():
+            break
+    m1 = m.copy()
+
+    for i in range(m.rows()):
+        m[perm[i],:] = m1[i,:]
+
+# produce a parity matrix that extracts all of the extractable
+# vertices in convenient places and ignores the rest
+def compute_row_ops(m):
+    ops = Mat2.id(m.rows())
+    m1 = m.copy()
+    m1.gauss(full_reduce=True,x=ops)
+    #extr_rows = [r for r,row in enumerate(m1.data) if sum(row)==1]
+
+    # keep only the rows corresponding to extractable verts
+    #ops_rows = []
+    ops_rows = [ops.data[r]
+                   for r,row in enumerate(m1.data)
+                   if sum(row)==1]
+    #ops_rows.sort(key=lambda row: sum(row), reverse=False)
+    ops_rows.sort(reverse=True)
+    #ops_rows = ops_rows[0:2]
+    ops = Mat2(ops_rows)
+
+
+    # for r,row in enumerate(m1.data):
+    #     if sum(row)==1:
+    #         ops_rows.append(ops.data[r])
+    # ops = Mat2(ops_rows)
+    # ops = Mat2([ops.data[r]
+    #               for r,row in enumerate(m1.data)
+    #               if sum(row)==1])
+    # list.sort(ops.data, reverse=True)
+    
+    # find pivot columns
+    pivot_cols = []
+    ops.copy().gauss(pivot_cols=pivot_cols)
+    #ones_in_pos(ops,pivot_cols)
+
+    # augment ops by adding unit vectors for all non-pivot columns
+    ops2 = Mat2.id(m.rows())
+    for r in range(ops.rows()):
+        ops2[pivot_cols[r],:] = ops[r,:]
+    return ops2
+
+
 def alt_extract_circuit(
         g:BaseGraph[VT,ET], 
         optimize_czs:bool=True, 
@@ -68,13 +129,34 @@ def alt_extract_circuit(
                 c.add_gate("ZPhase", q, phases[v])
                 g.set_phase(v,0)
 
+        # And now on to CZ gates
+        cz_mat = Mat2([[0 for i in range(g.qubit_count())] for j in range(g.qubit_count())])
         for v in frontier:
             for w in list(g.neighbors(v)):
                 if w in frontier:
-                    g.add_to_phase(v, Fraction(1,2))
-                    g.add_to_phase(w, Fraction(1,2))
+                    cz_mat.data[qubit_map[v]][qubit_map[w]] = 1
+                    cz_mat.data[qubit_map[w]][qubit_map[v]] = 1
                     g.remove_edge(g.edge(v,w))
-                    c.add_gate("CZ",g.qubit(v),g.qubit(w))
+
+        if optimize_czs:
+            overlap_data = max_overlap(cz_mat)
+            while len(overlap_data[1]) > 2: #there are enough common qubits to be worth optimizing
+                i,j = overlap_data[0][0], overlap_data[0][1]
+                czs_saved += len(overlap_data[1])-2
+                c.add_gate("CNOT",i,j)
+                for qb in overlap_data[1]:
+                    c.add_gate("CZ",j,qb)
+                    cz_mat.data[i][qb]=0
+                    cz_mat.data[j][qb]=0
+                    cz_mat.data[qb][i]=0
+                    cz_mat.data[qb][j]=0
+                c.add_gate("CNOT",i,j)
+                overlap_data = max_overlap(cz_mat)
+
+        for i in range(g.qubit_count()):
+            for j in range(i+1,g.qubit_count()):
+                if cz_mat.data[i][j]==1:
+                    c.add_gate("CZ",i,j)
         
         # Now we can proceed with the actual extraction
         # First make sure that frontier is connected in correct way to inputs
@@ -119,11 +201,23 @@ def alt_extract_circuit(
             
         neighbors = list(neighbor_set)
         m = bi_adj(g,neighbors,frontier)
-        cnots = CNOT_tracker(g.qubit_count())
-        m1 = m.copy()
-        blocksize = max(math.floor(math.log(g.qubit_count(),2))-1, 1)
-        m1.gauss(full_reduce=True, y=cnots, blocksize=blocksize)
-        connectivity_from_biadj(g,m,neighbors,frontier)
+        ops = compute_row_ops(m)
+        m1 = ops * m
+
+
+        cnots = None
+        blocksize = math.ceil(math.log(g.qubit_count(),2)) * 2
+        winner = -1
+        for bs in range(1,blocksize):
+            cnots1 = CNOT_tracker(g.qubit_count())
+            ops.copy().gauss(full_reduce=True,
+                y=cnots1, blocksize=bs)
+            if winner == -1 or len(cnots1.gates) < winner:
+                cnots = cnots1
+
+        #return m, ops
+
+        connectivity_from_biadj(g,m1,neighbors,frontier)
 
         good_verts = dict()
         for i, row in enumerate(m1.data):
@@ -134,6 +228,7 @@ def alt_extract_circuit(
         
         #if not quiet: print("good_verts:", good_verts)
         if not good_verts: #raise Exception("No extractable vertex found. Something went wrong")
+            print("No extractable vertex found. Something went wrong")
             break
         hads = []
         for v,w in good_verts.items(): # Update frontier vertices

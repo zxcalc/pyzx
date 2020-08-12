@@ -43,6 +43,7 @@ from . import tikz
 from . import simulate
 from . import editor
 from . import routing
+from . import sparsify
 from .routing.parity_maps import CNOT_tracker
 
 

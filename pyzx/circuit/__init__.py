@@ -395,6 +395,7 @@ class Circuit(object):
         hadamard = 0
         clifford = 0
         other = 0
+        cnot = 0
         for g in self.gates:
             total += 1
             tcount += g.tcount()
@@ -406,13 +407,15 @@ class Circuit(object):
             elif isinstance(g, (CZ,CX, CNOT)):
                 twoqubit += 1
                 clifford += 1
+                if isinstance(g, CNOT): cnot += 1
             else:
                 other += 1
         s = """Circuit {} on {} qubits with {} gates.
         {} is the T-count
         {} Cliffords among which 
-        {} 2-qubit gates and {} Hadamard gates.""".format(self.name, self.qubits, total, 
-                tcount, clifford, twoqubit, hadamard)
+        {} 2-qubit gates ({} CNOT, {} other) and
+        {} Hadamard gates.""".format(self.name, self.qubits, total, 
+                tcount, clifford, twoqubit, cnot, twoqubit - cnot, hadamard)
         if other > 0:
             s += "\nThere are {} gates of a different type".format(other)
         return s
