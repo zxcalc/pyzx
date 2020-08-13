@@ -95,7 +95,7 @@ def size(g):
     )
 
 # simulated annealing with random pivots
-def pivot_anneal(g, iters=1000, temp=5, cool=0.005, score=None, quiet=False):
+def pivot_anneal(g, iters=1000, temp=5, cool=0.005, score=None, logger=None):
     g = g.copy()
     if score == None: score = size
     sz = score(g)
@@ -106,7 +106,7 @@ def pivot_anneal(g, iters=1000, temp=5, cool=0.005, score=None, quiet=False):
     for i in range(iters):
         candidates = [e for e in g.edges() if is_pivot_edge(g, e)]
         if len(candidates) == 0:
-            if not quiet: print("no more pivot candidates")
+            if logger: logger.info("no more pivot candidates")
             return g
 
         e = candidates[random.randint(0, len(candidates)-1)]
@@ -118,8 +118,9 @@ def pivot_anneal(g, iters=1000, temp=5, cool=0.005, score=None, quiet=False):
         
         if (sz1 < sz or
             temp != 0 and random.random() < math.exp((sz - sz1)/temp)):
-            if not quiet:
-                print(sz1, "at iteration", i, "v" if sz1 < sz else "^")
+            if logger:
+                logger.info("%d at iteration %d %s" %
+                    (sz1, i, "v" if sz1 < sz else "^"))
             if temp != 0: temp *= 1.0 - cool
             sz = sz1
             g = g1.copy()
