@@ -204,7 +204,7 @@ def alt_extract_circuit(
         ops = compute_row_ops(m)
         m1 = ops * m
 
-        cnots = None
+        cnots = Circuit(g.qubit_count())
         blocksize = math.ceil(math.log(g.qubit_count(),2)) * 2
         winner = -1
         for bs in range(1,blocksize):
