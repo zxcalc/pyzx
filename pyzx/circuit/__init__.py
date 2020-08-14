@@ -108,6 +108,14 @@ class Circuit(object):
             gate = gate_class(*args, **kwargs) # type: ignore
         self.gates.append(gate)
 
+    def prepend_gate(self, gate, *args, **kwargs):
+        """The same as add_gate, but adds the gate to the start of the circuit, not the end.
+        """
+        if isinstance(gate, str):
+            gate_class = gates.gate_types[gate]
+            gate = gate_class(*args, **kwargs)
+        self.gates.insert(0, gate)
+
     def add_gates(self, gates: str, qubit: int) -> None:
         """Adds a series of single qubit gates on the same qubit.
         ``gates`` should be a space-separated string of gatenames.
@@ -214,11 +222,9 @@ class Circuit(object):
 
     def row_add(self, q0: int, q1: int):
         self.add_gate("CNOT", q0, q1)
-        self.matrix.row_add(q0, q1)
 
     def col_add(self, q0: int, q1: int):
         self.prepend_gate("CNOT", q1, q0)
-        self.matrix.col_add(q0, q1)
 
 
     ### CONVERSION METHODS
@@ -251,10 +257,10 @@ class Circuit(object):
         return self.to_graph().to_matrix(preserve_scalar)
 
     def to_emoji(self) -> str:
-    	"""Converts circuit into a representation that can be copy-pasted
+        """Converts circuit into a representation that can be copy-pasted
     	into the ZX-calculus Discord server."""
-    	from .emojiparser import circuit_to_emoji
-    	return circuit_to_emoji(self)
+        from .emojiparser import circuit_to_emoji
+        return circuit_to_emoji(self)
 
     @staticmethod
     def load(circuitfile: str) -> 'Circuit':
@@ -332,7 +338,6 @@ class Circuit(object):
                 raise TypeError("Subroutines are not supported")
         except:
             return quipper_center_block(fname)
-        return c
 
     @staticmethod
     def from_qasm(s: str) -> 'Circuit':
