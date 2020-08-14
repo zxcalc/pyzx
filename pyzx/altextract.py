@@ -8,12 +8,12 @@ from .simplify import id_simp, tcount
 from .rules import apply_rule, pivot, match_spider_parallel, spider
 from .circuit import Circuit
 from .circuit.gates import Gate, ParityPhase, CNOT, HAD, ZPhase, CZ, InitAncilla
-from .routing.parity_maps import CNOT_tracker
 from .graph.base import BaseGraph, VT, ET
 
 from typing import List, Optional, Tuple, Dict, Set, Union
 
-from .extract import bi_adj, connectivity_from_biadj, max_overlap, greedy_reduction, find_minimal_sums, xor_rows, column_optimal_swap
+from .extract import bi_adj, connectivity_from_biadj, max_overlap
+# , greedy_reduction, find_minimal_sums, xor_rows, column_optimal_swap
 
 
 # permute the rows of "m" such that as many rows as possible have
@@ -204,12 +204,11 @@ def alt_extract_circuit(
         ops = compute_row_ops(m)
         m1 = ops * m
 
-
         cnots = None
         blocksize = math.ceil(math.log(g.qubit_count(),2)) * 2
         winner = -1
         for bs in range(1,blocksize):
-            cnots1 = CNOT_tracker(g.qubit_count())
+            cnots1 = Circuit(g.qubit_count())
             ops.copy().gauss(full_reduce=True,
                 y=cnots1, blocksize=bs)
             if winner == -1 or len(cnots1.gates) < winner:
@@ -226,7 +225,7 @@ def alt_extract_circuit(
                 w = neighbors[[j for j in range(len(row)) if row[j]][0]]
                 good_verts[v] = w
         
-        #if not quiet: print("good_verts:", good_verts)
+        # if not quiet: print("good_verts:", good_verts)
         if not good_verts: #raise Exception("No extractable vertex found. Something went wrong")
             print("No extractable vertex found. Something went wrong")
             break

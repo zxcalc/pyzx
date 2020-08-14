@@ -210,6 +210,16 @@ class Circuit(object):
         return self.tensor(other)
 
 
+    ### MATRIX EMULATION (FOR E.G. Mat2.guass)
+
+    def row_add(self, q0: int, q1: int):
+        self.add_gate("CNOT", q0, q1)
+        self.matrix.row_add(q0, q1)
+
+    def col_add(self, q0: int, q1: int):
+        self.prepend_gate("CNOT", q1, q0)
+        self.matrix.col_add(q0, q1)
+
 
     ### CONVERSION METHODS
 
