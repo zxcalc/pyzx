@@ -21,7 +21,7 @@ import numpy as np
 
 from .gates import Gate, gate_types, ZPhase, XPhase, CZ,CX,CNOT, HAD
 
-from ..graph.base import BaseGraph, ET, VT
+from ..graph.base import BaseGraph
 
 CircuitLike = Union['Circuit', Gate]
 
