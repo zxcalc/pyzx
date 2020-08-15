@@ -92,13 +92,16 @@ settings.d3_load_string = 'require.config({paths: {d3: "https://d3js.org/d3.v5.m
 # local to pyzx, which doesn't require an internet connection
 # We only do this if we believe we are running in the PyZX directory itself.
 
-relpath = os.path.relpath(settings.javascript_location, os.getcwd())
-if relpath.count('..') <= 1: # We are *probably* working in the PyZX directory
-    settings.javascript_location = os.path.relpath(settings.javascript_location, os.getcwd())
-    settings.d3_load_string = 'require.config({{baseUrl: "{}",paths: {{d3: "d3.v5.min"}} }});'.format(
-                        settings.javascript_location.replace('\\','/'))
-    # TODO: This will fail if Jupyter is started in the parent directory of pyzx, while
-    # the notebook is not in the pyzx directory
+try:
+    relpath = os.path.relpath(settings.javascript_location, os.getcwd())
+    if relpath.count('..') <= 1: # We are *probably* working in the PyZX directory
+        settings.javascript_location = os.path.relpath(settings.javascript_location, os.getcwd())
+        settings.d3_load_string = 'require.config({{baseUrl: "{}",paths: {{d3: "d3.v5.min"}} }});'.format(
+                            settings.javascript_location.replace('\\','/'))
+        # TODO: This will fail if Jupyter is started in the parent directory of pyzx, while
+        # the notebook is not in the pyzx directory
+except ValueError: # relpath raises this Exception when the drive letters don't match
+    pass
 
 
 try:
