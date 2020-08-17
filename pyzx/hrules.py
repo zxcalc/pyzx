@@ -16,45 +16,41 @@
 
 from fractions import Fraction
 from itertools import combinations
-from typing import Dict, List, Tuple
-
+from typing import Dict, List, Tuple, Callable, Optional
 
 from .utils import EdgeType, VertexType, toggle_edge, FractionLike, FloatInt
 from .simplify import *
 from .graph.base import BaseGraph, ET, VT
+from . import rules
 
 
-
-
-def match_h2(g: BaseGraph[VT,ET]) -> List[VT]:
+def match_hadamards(g: BaseGraph[VT,ET], 
+        vertexf: Optional[Callable[[VT],bool]] = None
+        ) -> List[VT]:
+    if vertexf is not None: candidates = set([v for v in g.vertices() if vertexf(v)])
+    else: candidates = g.vertex_set()
     m = set()
     ty = g.types()
-    for v in g.vertices():
-        if ty[v] == VertexType.H_BOX and g.vertex_degree(v) == 2:
+    for v in candidates:
+        if ty[v] == VertexType.H_BOX and g.vertex_degree(v) == 2 and g.phase(v) == 1:
             n1,n2 = g.neighbors(v)
             if n1 not in m and n2 not in m: m.add(v)
 
     return list(m)
 
-def h2(g: BaseGraph[VT,ET], m: List[VT]):
-    del_e = []
-    etab: Dict[ET,List[int]] = dict()
-    for h in m:
-        n1,n2 = g.neighbors(h)
-        new_e = g.edge(n1,n2)
-        e1, e2 = g.incident_edges(h)
-        if g.edge_type(e1) != g.edge_type(e2):
-            if new_e in etab: etab[new_e][0] += 1
-            else: etab[new_e] = [1,0]
+def hadamard_to_h_edge(g: BaseGraph[VT,ET], matches: List[VT]) -> rules.RewriteOutputType[ET,VT]:
+    rem_verts = []
+    etab = {}
+    for v in matches:
+        rem_verts.append(v)
+        w1,w2 = list(g.neighbors(v))
+        et1 = g.edge_type(g.edge(w1,v))
+        et2 = g.edge_type(g.edge(w2,v))
+        if et1 == et2:
+            etab[g.edge(w1,w2)] = [0,1]
         else:
-            if new_e in etab: etab[new_e][1] += 1
-            else: etab[new_e] = [0,1]
-        del_e.append(e1)
-        del_e.append(e2)
-
-    g.remove_edges(del_e)
-    g.remove_vertices(m)
-    g.add_edge_table(etab)
+            etab[g.edge(w1,w2)] = [1,0]
+    return (etab, rem_verts, [], True)
 
 hpivot_match_output = List[Tuple[
             VT,

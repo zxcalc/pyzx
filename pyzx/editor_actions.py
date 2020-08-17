@@ -24,6 +24,7 @@ from .utils import EdgeType, VertexType, toggle_edge, vertex_is_zx, toggle_verte
 from .utils import settings, phase_to_s, FractionLike
 from .graph.base import BaseGraph, VT, ET
 from . import rules
+from . import hrules
 
 
 def match_X_spiders(
@@ -53,32 +54,6 @@ def color_change(g: BaseGraph[VT,ET], matches: List[VT]) -> rules.RewriteOutputT
 			et = g.edge_type(e)
 			g.set_edge_type(e, toggle_edge(et))
 	return ({}, [],[],False)
-
-
-def match_hadamards(
-		g: BaseGraph[VT,ET], 
-		vertexf: Optional[Callable[[VT],bool]] = None
-		) -> List[VT]:
-	if vertexf is not None: candidates = set([v for v in g.vertices() if vertexf(v)])
-	else: candidates = g.vertex_set()
-	types = g.types()
-
-	return [v for v in candidates if (types[v] == VertexType.H_BOX 
-				and g.vertex_degree(v) == 2 and g.phase(v) == 1)]
-
-def hadamard_to_h_edge(g: BaseGraph[VT,ET], matches: List[VT]) -> rules.RewriteOutputType[ET,VT]:
-	rem_verts = []
-	etab = {}
-	for v in matches:
-		rem_verts.append(v)
-		w1,w2 = list(g.neighbors(v))
-		et1 = g.edge_type(g.edge(w1,v))
-		et2 = g.edge_type(g.edge(w2,v))
-		if et1 == et2:
-			etab[g.edge(w1,w2)] = [0,1]
-		else:
-			etab[g.edge(w1,w2)] = [1,0]
-	return (etab, rem_verts, [], True)
 
 
 MatchCopyType = Tuple[VT,VT,EdgeType.Type,FractionLike,FractionLike,List[VT]]
@@ -396,8 +371,8 @@ operations = {
 			   "type": MATCHES_EDGES},
 	"had2edge": {"text": "Convert H-box", 
 			   "tooltip": "Converts an arity 2 H-box into an H-edge.",
-			   "matcher": match_hadamards, 
-			   "rule": hadamard_to_h_edge, 
+			   "matcher": hrules.match_hadamards, 
+			   "rule": hrules.hadamard_to_h_edge, 
 			   "type": MATCHES_VERTICES},
 	"copy": {"text": "copy 0/pi spider", 
 			   "tooltip": "Copies a single-legged spider with a 0/pi phase through its neighbor",

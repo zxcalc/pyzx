@@ -22,6 +22,28 @@ from .graph.base import BaseGraph, VT,ET
 from .hrules import *
 from .rules import MatchObject
 
+
+def hadamard_simp(g: BaseGraph[VT,ET], matchf:Optional[Callable[[VT],bool]]=None, quiet:bool=False) -> int:
+    """Converts as many Hadamards represented by H-boxes to Hadamard-edges."""
+    # We can't use the regular simp function, because removing H-nodes could lead to an infinite loop.
+    i = 0
+    while True:
+        vcount = g.num_vertices()
+        m = match_hadamards(g, matchf)
+        if len(m) == 0: break
+        i += 1
+        if i == 1 and not quiet: print("hadamard_simp: ",end='')
+        if not quiet: print(len(m), end='')
+        etab, rem_verts, rem_edges, check_isolated_vertices = hadamard_to_h_edge(g, m)
+        g.add_edge_table(etab)
+        g.remove_edges(rem_edges)
+        g.remove_vertices(rem_verts)
+        if check_isolated_vertices: g.remove_isolated_vertices()
+        if not quiet: print('. ', end='')
+        if g.num_vertices() >= vcount: break # To make sure we don't get in an infinite loop
+    if not quiet and i>0: print(' {!s} iterations'.format(i))
+    return i
+
 def to_hbox(g: BaseGraph[VT,ET]) -> None:
     """Convert a graph g to hbox-form. First, all X spiders are turned into
     Z-spiders by color-change, then all interior Hadamard edges are replaced
@@ -42,7 +64,7 @@ def to_hbox(g: BaseGraph[VT,ET]) -> None:
             g.set_phase(h, phases[v])
             g.set_phase(v, 0)
     for e in es:
-        if g.edge_type(e) == VertexType.X:
+        if g.edge_type(e) == EdgeType.HADAMARD:
             s,t = g.edge_st(e)
             if types[s] == VertexType.BOUNDARY or types[t] == VertexType.BOUNDARY: continue
             qs = g.qubit(s)
@@ -75,11 +97,7 @@ def from_hbox(g: BaseGraph[VT,ET]) -> None:
             if types[n] == VertexType.Z:
                 g.set_phase(n, phases[n] + phases[h])
                 g.remove_vertex(h)
-        elif g.vertex_degree(h) == 2 and g.phase(h) == 1:
-            s,t = g.neighbors(h)
-            # Need to use add_edge_table here, because there might be parallel connections already present
-            g.add_edge_table({g.edge(s,t): [0,1]})
-            g.remove_vertex(h)
+    hadamard_simp(g)
 
 # a stripped-down version of "simp", since hrules don't return edge tables etc
 def hsimp(
@@ -103,7 +121,7 @@ def hsimp(
     if not quiet and i>0: print(' {!s} iterations'.format(i))
     return i
 
-def hpivot_simp(g: BaseGraph[VT,ET], quiet:bool=False) -> None:
+def hpivot_simp(g: BaseGraph[VT,ET], quiet:bool=False) -> int:
     while True:
         i = spider_simp(g, quiet=quiet)
         i += id_simp(g, quiet=quiet)
@@ -115,4 +133,5 @@ def hpivot_simp(g: BaseGraph[VT,ET], quiet:bool=False) -> None:
         from_hbox(g)
 
         if i == 0: break
+    return i
     
