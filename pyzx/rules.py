@@ -402,7 +402,7 @@ def match_pivot_boundary(
     rs = g.rows()
     
     edge_list = []
-    consumed_vertices = set()
+    consumed_vertices : Set[VT] = set()
     i = 0
     m: List[MatchPivotType[VT]] = []
     while (num == -1 or i < num) and len(candidates) > 0:
@@ -638,7 +638,7 @@ def match_ids_parallel(
 def remove_ids(g: BaseGraph[VT,ET], matches: List[MatchIdType[VT]]) -> RewriteOutputType[ET,VT]:
     """Given the output of ``match_ids(_parallel)``, returns a list of edges to add,
     and vertices to remove."""
-    etab = dict()
+    etab : Dict[ET,List[int]] = dict()
     rem = []
     for v,v0,v1,et in matches:
         rem.append(v)

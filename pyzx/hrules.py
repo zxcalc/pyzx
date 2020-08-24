@@ -16,20 +16,19 @@
 
 from fractions import Fraction
 from itertools import combinations
-from typing import Dict, List, Tuple, Callable, Optional
-
+from typing import Dict, List, Tuple, Callable, Optional, Set
 from .utils import EdgeType, VertexType, toggle_edge, FractionLike, FloatInt
 from .simplify import *
 from .graph.base import BaseGraph, ET, VT
 from . import rules
 
 
-def match_hadamards(g: BaseGraph[VT,ET], 
+def match_hadamards(g: BaseGraph[VT,ET],
         vertexf: Optional[Callable[[VT],bool]] = None
         ) -> List[VT]:
     if vertexf is not None: candidates = set([v for v in g.vertices() if vertexf(v)])
     else: candidates = g.vertex_set()
-    m = set()
+    m : Set[VT] = set()
     ty = g.types()
     for v in candidates:
         if ty[v] == VertexType.H_BOX and g.vertex_degree(v) == 2 and g.phase(v) == 1:

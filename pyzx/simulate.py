@@ -179,7 +179,7 @@ class SumGraph(object):
         if not quiet: print("Estimated original norm:", norm)
         if norm < 0.01 and not quiet: 
             print("Norm very close to zero. Possibly post-selected to zero probability event?")
-        probs = {}
+        probs : Dict[str,float] = {}
         outputs = []
         for i in range(amount):
             if not quiet: print("Sample", i)
@@ -225,7 +225,7 @@ def calculate_path_sum(g: BaseGraph[VT,ET]) -> complex:
     if g.num_vertices() < 2: return g.to_tensor().flatten()[0]
     phases = g.phases()
     prefactor = 0
-    variable_dict = dict()
+    variable_dict : Dict[VT,int] = dict()
     variables: List[int] = [] # Contains the phases of each of the variables
     czs = []
     xors = dict()

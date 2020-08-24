@@ -1,3 +1,6 @@
+.mypy_cache
+venv
+.idea
 notebooks/.ipynb_checkpoints
 doc/_build
 build
