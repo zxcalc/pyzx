@@ -18,10 +18,10 @@ import json
 from fractions import Fraction
 from typing import List, Dict, Any
 
-from .utils import FractionLike
-from .graph import Graph, EdgeType, VertexType
-from .graph.base import BaseGraph, VT, ET
-from .simplify import id_simp
+from .utils import FractionLike # type: ignore
+from .graph import Graph, EdgeType, VertexType # type: ignore
+from .graph.base import BaseGraph, VT, ET # type: ignore
+from .simplify import id_simp # type: ignore
 
 __all__ = ['json_to_graph', 'graph_to_json', 'to_graphml']
 

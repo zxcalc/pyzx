@@ -88,7 +88,7 @@ class QASMParser(object):
         else:
             raise TypeError("Custom gate specification doesn't have any "
                             "arguments: {}".format(data))
-        registers = {}
+        registers : Dict[str,Tuple[int,int]] = {}
         qubit_count = 0
         for a in args.split(","):
             a = a.strip()
