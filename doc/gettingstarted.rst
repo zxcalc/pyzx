@@ -14,6 +14,9 @@ The best way to get started if you have cloned the repository is to run the `Get
 .. warning::
 	If you are using the pip installed version, please make sure it is version 0.6.0, and not 0.5.x as the api has changed considerably in between.
 
+.. warning::
+	The newer JupyterLab as opposed to the older Jupyter Notebook uses a different framework for widgets which is currently not compatible with the widgets used in PyZX. It is therefore recommended that you use the classic notebook interface. If you are using JupyterLab you can find this interface by going to 'Help -> Launch Classic Notebook'.
+
 Let's start by importing the library::
 	
 	>>> import pyzx as zx

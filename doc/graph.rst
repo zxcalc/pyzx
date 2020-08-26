@@ -51,6 +51,9 @@ If you are using a Jupyter notebook, probably the best way to build an arbitrari
 .. figure::  _static/editor_example.png
    :align:   center
 
+.. warning::
+	The newer JupyterLab as opposed to the older Jupyter Notebook uses a different framework for widgets which is currently not compatible with the widgets used in PyZX. For the editor to work you therefore must use the classic notebook interface. If you are using JupyterLab you can find this interface by going to 'Help -> Launch Classic Notebook'.
+
 Ctrl-clicking on the view of the graph will add a new vertex of the type specified by 'Vertex type' (so a Z-vertex in the above example). Click 'Vertex type' to change the type of vertex to be added, or with the editor window selected, use the hotkey 'X'.
 
 Ctrl-drag between two vertices to add a new edge of the type 'Edge type' (either Regular or Hadamard), or use the hotkey 'E' to switch. Adding an edge between vertices where there is already one present replaces the edge with the new one.
