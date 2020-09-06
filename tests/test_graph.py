@@ -473,5 +473,11 @@ class TestGraphIO(unittest.TestCase):
         g = Graph.from_json(js)
         js2 = g.to_json()
 
+    def test_load_tikz(self):
+        js = json.dumps(test_graph)
+        g = Graph.from_json(js)
+        tikz = g.to_tikz()
+        g2 = Graph.from_tikz(tikz, warn_overlap=False)
+
 if __name__ == '__main__':
     unittest.main()

@@ -44,6 +44,7 @@ def Graph(backend:Optional[str]=None) -> BaseGraph:
 	return GraphS()
 
 Graph.from_json = GraphS.from_json # type: ignore
+Graph.from_tikz = GraphS.from_tikz # type: ignore
 
 try:
 	import graph_tool.all as gt
