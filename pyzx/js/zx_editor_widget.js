@@ -78,10 +78,10 @@ define('make_editor', ['d3'], function(d3) {
 
         var svg = d3.select(tag)
             .attr("tabindex", 1)
-            .on("keydown.brush", function() {shiftKey = d3.event.shiftKey || d3.event.metaKey;
-            								 ctrlKey  = d3.event.ctrlKey;})
-            .on("keyup.brush", function() {shiftKey = d3.event.shiftKey || d3.event.metaKey;
-            							   ctrlKey  = d3.event.ctrlKey;})
+            .on("keydown.brush", function() {shiftKey = d3.event.shiftKey;
+            								 ctrlKey  = d3.event.ctrlKey || d3.event.metaKey;})
+            .on("keyup.brush", function() {shiftKey = d3.event.shiftKey;
+            							   ctrlKey  = d3.event.ctrlKey || d3.event.metaKey;})
             .each(function() { this.focus(); })
             .append("svg")
             .attr("style", "max-width: none; max-height: none")
@@ -227,7 +227,7 @@ define('make_editor', ['d3'], function(d3) {
             //All the keyboard events of the nodes
 
             newnodes.on("mousedown", function(d) {
-                if (d3.event.ctrlKey) { // Start the adding of an edge
+                if (ctrlKey) { // Start the adding of an edge
                     mousedownNode = d;
                     d3.event.stopImmediatePropagation();
                     dragLine.classed('hidden', false)
@@ -251,7 +251,7 @@ define('make_editor', ['d3'], function(d3) {
                 }
             })
             .on("mouseup", function(d) { //Check if we need to add an edge
-                if (d3.event.ctrlKey && mousedownNode) {
+                if (ctrlKey && mousedownNode) {
                     d3.event.stopImmediatePropagation();
                     dragLine.classed('hidden', true);
                     if (mousedownNode === d) {//released on self
@@ -372,7 +372,7 @@ define('make_editor', ['d3'], function(d3) {
             
             var newlinks = link.enter().append("line")
                 .on("click", function(d) {
-                    if (d3.event.ctrlKey) {return;}
+                    if (ctrlKey) {return;}
                     if (!shiftKey) {
                         deselectEdges();
                         node.select(":first-child").attr("style", function(n) {nodeStyle(n.selected=false)});
@@ -396,7 +396,7 @@ define('make_editor', ['d3'], function(d3) {
         
         // EVENTS FOR ADDING VERTICES AND EDGES
         svg.on("mousedown", function(d) {
-            if (!d3.event.ctrlKey) return;
+            if (!ctrlKey) return;
             console.log("Adding vertex");
             const point = d3.mouse(this);
             model.max_name += 1
@@ -423,7 +423,8 @@ define('make_editor', ['d3'], function(d3) {
         var lastKeyDown = -1;
         
         d3.select(tag).on("keydown", function() {
-            if (lastKeyDown !== -1 && lastKeyDown != 16 && lastKeyDown != 17) return; // 16 == shiftKey, 17 == ctrlKey
+            if (lastKeyDown !== -1 && lastKeyDown != 16 && lastKeyDown != 17 // 16 == shiftKey, 17 == ctrlKey
+                && lastKeyDown != 91 && lastKeyDown != 93 && lastKeyDown != 224) return; // 91,93,224 = metaKey in different browsers
             lastKeyDown = d3.event.keyCode;
             switch (d3.event.keyCode) {
                 case 46: //delete
@@ -460,7 +461,7 @@ define('make_editor', ['d3'], function(d3) {
                     switchAddEdgeType(); break
                 case 90: // Z
                 	console.log("fired");
-                	if (!d3.event.ctrlKey) return;
+                	if (!ctrlKey) return;
                 	d3.event.preventDefault();
                 	if (!shiftKey) {model.perform_action("undo");}
                 	else {model.perform_action("redo");}
@@ -473,7 +474,7 @@ define('make_editor', ['d3'], function(d3) {
 
         // EVENTS FOR DRAGGING AND SELECTION
         
-        brush.call(d3.brush().keyModifiers(false).filter(() => !d3.event.ctrlKey)
+        brush.call(d3.brush().keyModifiers(false).filter(() => !ctrlKey)
             //.extent([[0, 0], [model.width, model.height]])
             .on("start", function() {
                 if (d3.event.sourceEvent.type !== "end") {

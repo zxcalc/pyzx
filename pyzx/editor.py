@@ -62,7 +62,7 @@ Click on edges or vertices to select them.
 Drag a box or hold shift to select multiple vertices or edges.
 Press delete or backspace to delete the current selection.
 Double-click a vertex to choose its phase.
-Ctrl-click on empty space to add a new vertex. 
+Ctrl-click (Command-click for mac users) on empty space to add a new vertex. 
 The type of the vertex is determined by the box "Vertex type".
 Click this box (or press the hotkey 'x') to change the adding type. 
 Ctrl-drag between two vertices to add an edge between them. 
