@@ -45,10 +45,13 @@ def hadamard_simp(g: BaseGraph[VT,ET], matchf:Optional[Callable[[VT],bool]]=None
     if not quiet and i>0: print(' {!s} iterations'.format(i))
     return i
 
-def to_hbox(g: BaseGraph[VT,ET]) -> None:
-    """Convert a graph g to hbox-form. First, all X spiders are turned into
-    Z-spiders by color-change, then all interior Hadamard edges are replaced
-    by arity-2 hboxes and all Z-phases are replaced by arity-1 hboxes."""
+def to_hypergraph_form(g: BaseGraph[VT,ET]) -> None:
+    """Convert a Graph g to hypergraph form (see https://arxiv.org/abs/2003.13564)
+    First, all X spiders are turned into Z-spiders by color-change, 
+    then all interior Hadamard edges are replaced by arity-2 hboxes 
+    and all Z-phases are replaced by arity-1 hboxes.
+    Finally, to ensure H-boxes are only connected to white spiders, 
+    additional identities are introduced"""
     to_gh(g)
     del_e = []
     add_e = []
@@ -67,9 +70,11 @@ def to_hbox(g: BaseGraph[VT,ET]) -> None:
     for e in es:
         if g.edge_type(e) == EdgeType.HADAMARD:
             s,t = g.edge_st(e)
-            if types[s] == VertexType.BOUNDARY or types[t] == VertexType.BOUNDARY: continue
+            rs = g.row(s)
+            rt = g.row(t)
             qs = g.qubit(s)
             qt = g.qubit(t)
+            if types[s] == VertexType.BOUNDARY or types[t] == VertexType.BOUNDARY: continue
             h = g.add_vertex(VertexType.H_BOX)
             del_e.append(e)
             add_e.append(g.edge(s, h))
@@ -81,11 +86,27 @@ def to_hbox(g: BaseGraph[VT,ET]) -> None:
                 q = (qs + qt) / 2
                 if round(q) == q: q += 0.5
                 g.set_qubit(h, q)
-            g.set_row(h, (g.row(s) + g.row(t)) / 2)
+            g.set_row(h, (rs + rt) / 2)
     g.remove_edges(del_e)
     g.add_edges(add_e)
+    # At this point, all interior Hadamard edges and phases are converted to H-boxes
+    # It remains to add missing identities between connected H-boxes
+    for v in list(g.vertices()):
+        if types[v] != VertexType.H_BOX: continue
+        del_e = []
+        add_e = []
+        for n in g.neighbors(v):
+            if types[n] != VertexType.H_BOX: continue
+            w = g.add_vertex(VertexType.Z)
+            g.set_row(w, (g.row(v)+g.row(n))/2)
+            g.set_qubit(w,(g.qubit(v)+g.qubit(n))/2)
+            del_e.append(g.edge(v,n))
+            add_e.append(g.edge(v,w))
+            add_e.append(g.edge(w,n))
+        g.remove_edges(del_e)
+        g.add_edges(add_e)
 
-def from_hbox(g: BaseGraph[VT,ET]) -> None:
+def from_hypergraph_form(g: BaseGraph[VT,ET]) -> None:
     """Convert a graph with hboxes and no interior Hadamard edges back to 'ZX-friendly'
     form. All arity-2 hboxes with phase pi are turned into Hadamard edges and all
     arity-1 hboxes connected to Z-spiders are fused in. Note that more general hboxes
@@ -99,7 +120,7 @@ def from_hbox(g: BaseGraph[VT,ET]) -> None:
             if types[n] == VertexType.Z:
                 g.set_phase(n, phases[n] + phases[h])
                 g.remove_vertex(h)
-    hadamard_simp(g)
+    hadamard_simp(g,quiet=True)
 
 # a stripped-down version of "simp", since hrules don't return edge tables etc
 def hsimp(
@@ -124,16 +145,20 @@ def hsimp(
     return i
 
 def hpivot_simp(g: BaseGraph[VT,ET], quiet:bool=False) -> int:
+    spider_simp(g, quiet=quiet)
+    id_simp(g, quiet=quiet)
+    from_hypergraph_form(g)
+    spider_simp(g, quiet=quiet)
+    id_simp(g, quiet=quiet)
+    count = 0
     while True:
-        i = spider_simp(g, quiet=quiet)
-        i += id_simp(g, quiet=quiet)
-
-        to_hbox(g)
-        i += hsimp(g, 'hpivot', match_hpivot, hpivot, iterations=1, quiet=quiet)
+        to_hypergraph_form(g)
+        i = hsimp(g, 'hpivot', match_hpivot, hpivot, iterations=1, quiet=quiet)
         #i += hsimp(g, 'zero_hbox', match_zero_hbox, zero_hbox, quiet=quiet)
         i += hsimp(g, 'par_hbox', match_par_hbox, par_hbox, quiet=quiet)
-        from_hbox(g)
-
+        from_hypergraph_form(g)
+        spider_simp(g, quiet=quiet)
+        id_simp(g, quiet=quiet)
         if i == 0: break
-    return i
-    
+        count += 1
+    return count

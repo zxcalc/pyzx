@@ -152,6 +152,7 @@ def hpivot(g: BaseGraph[VT,ET], m: hpivot_match_output) -> None:
     h, v0, v1, v0b, v1b, v0nn, v1nn = m[0]
     g.remove_vertices([v for v in g.neighbors(v0) if types[v] == VertexType.H_BOX])
     g.remove_vertices([v for v in g.neighbors(v1) if types[v] == VertexType.H_BOX])
+    g.scalar.add_power(2) # Applying a Fourier Hyperpivot adds a scalar of 2
     
     if len(v0b) == 0:
         g.remove_vertex(v0)
