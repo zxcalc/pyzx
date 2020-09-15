@@ -252,20 +252,25 @@ def draw_d3(g: Union[BaseGraph[VT,ET], Circuit],labels:bool=False, scale:Optiona
     _d3_display_seq += 1
     graph_id = str(_d3_display_seq)
 
+    minrow = min([g.row(v) for v in g.vertices()])
+    maxrow = max([g.row(v) for v in g.vertices()])
+    minqub = min([g.qubit(v) for v in g.vertices()])
+    maxqub = max([g.qubit(v) for v in g.vertices()])
+
     if scale is None:
-        scale = 800 / (g.depth() + 2)
+        scale = 800 / (maxrow-minrow + 2)
         if scale > 50: scale = 50
         if scale < 20: scale = 20
 
     node_size = 0.2 * scale
     if node_size < 2: node_size = 2
 
-    w = (g.depth() + 2) * scale
-    h = (g.qubit_count() + 3) * scale
+    w = (maxrow-minrow + 2) * scale
+    h = (maxqub-minqub + 3) * scale
 
     nodes = [{'name': str(v),
-              'x': (g.row(v) + 1) * scale,
-              'y': (g.qubit(v) + 2) * scale,
+              'x': (g.row(v)-minrow + 1) * scale,
+              'y': (g.qubit(v)-minqub + 2) * scale,
               't': g.type(v),
               'phase': phase_to_s(g.phase(v), g.type(v)) }
              for v in g.vertices()]
@@ -312,7 +317,9 @@ special_vals = {
     1: "1",
     -1: "-1",
     math.sqrt(2): r"\sqrt{2}",
+    math.sqrt(3): r"\sqrt{3}",
     -math.sqrt(2): r"-\sqrt{2}",
+    -math.sqrt(3): r"-\sqrt{3}",
     math.sqrt(1/2): r"\frac{1}{\sqrt{2}}",
     -math.sqrt(1/2): r"-\frac{1}{\sqrt{2}}",
     # math.sqrt(2) - 1:                 r"(\sqrt{2}-1)",
@@ -326,12 +333,14 @@ special_vals = {
 simple_vals = {
 	1: "1",
 	1/2: r"\frac12",
+	1/3: r"\frac13",
 	1/4: r"\frac14",
 	2: "2",
 	3: "3"
 }
 sqrt_vals = {
 	math.sqrt(2): r"\sqrt{2}",
+	math.sqrt(3): r"\sqrt{3}",
 	math.sqrt(1/2): r"\frac{1}{\sqrt{2}}",
 	2*math.sqrt(2): r"2\sqrt{2}",
 	math.sqrt(1/2)/2: r"\frac{1}{2\sqrt{2}}",
