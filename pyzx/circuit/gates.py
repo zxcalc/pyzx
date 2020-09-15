@@ -644,7 +644,7 @@ class CCZ(Gate):
         t = self.graph_add_node(g,labels, qs,VertexType.Z,self.target,r)
         c1 = self.graph_add_node(g,labels, qs,VertexType.Z,self.ctrl1,r)
         c2 = self.graph_add_node(g,labels, qs,VertexType.Z,self.ctrl2,r)
-        h = g.add_vertex(3, qmin + 0.5, r + 0.5)
+        h = g.add_vertex(VertexType.H_BOX, qmin + 0.5, r + 0.5)
         g.add_edge((t,h),EdgeType.SIMPLE)
         g.add_edge((c1,h),EdgeType.SIMPLE)
         g.add_edge((c2,h),EdgeType.SIMPLE)

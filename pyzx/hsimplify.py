@@ -25,7 +25,8 @@ from .rules import MatchObject
 
 def hadamard_simp(g: BaseGraph[VT,ET], matchf:Optional[Callable[[VT],bool]]=None, quiet:bool=False) -> int:
     """Converts as many Hadamards represented by H-boxes to Hadamard-edges."""
-    # We can't use the regular simp function, because removing H-nodes could lead to an infinite loop.
+    # We can't use the regular simp function, because removing H-nodes could lead to an infinite loop,
+    # since sometimes g.add_edge_table() decides that we can't change an H-box into an H-edge.
     i = 0
     while True:
         vcount = g.num_vertices()
@@ -73,6 +74,7 @@ def to_hbox(g: BaseGraph[VT,ET]) -> None:
             del_e.append(e)
             add_e.append(g.edge(s, h))
             add_e.append(g.edge(h, t))
+            g.scalar.add_power(-1) # Correct for sqrt(2) scalar difference in H-edge and H-box.
             if qs == qt:
                 g.set_qubit(h, qs)
             else:

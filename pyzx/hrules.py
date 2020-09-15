@@ -49,6 +49,7 @@ def hadamard_to_h_edge(g: BaseGraph[VT,ET], matches: List[VT]) -> rules.RewriteO
             etab[g.edge(w1,w2)] = [0,1]
         else:
             etab[g.edge(w1,w2)] = [1,0]
+    g.scalar.add_power(len(matches)) # Correct for the sqrt(2) difference in H-boxes and H-edges
     return (etab, rem_verts, [], True)
 
 hpivot_match_output = List[Tuple[
@@ -194,6 +195,8 @@ def hpivot(g: BaseGraph[VT,ET], m: hpivot_match_output) -> None:
                 g.set_row(h0, r / len(us) + 0.4)
 
 def match_par_hbox(g: BaseGraph[VT,ET]) -> List[List[VT]]:
+    """Matches pairs of H-boxes that have exactly the same set of neighbours.
+    Assumes the Graph is in hypergraph form, and hence all H-boxes are only connected to white spiders."""
     hs: Dict[Tuple[VT,...],List[VT]] = dict()
     types = g.types()
     for h in g.vertices():
@@ -213,9 +216,12 @@ def par_hbox(g: BaseGraph[VT,ET], ms: List[List[VT]]) -> None:
         else: g.set_phase(m[0], p)
 
 def match_zero_hbox(g: BaseGraph[VT,ET]) -> List[VT]:
+    """Matches H-boxes that have a phase of 2pi==0."""
     types = g.types()
     phases = g.phases()
     return [v for v in g.vertices() if types[v] == VertexType.H_BOX and phases[v] == 0]
 
 def zero_hbox(g: BaseGraph[VT,ET], m: List[VT]) -> None:
+    """Removes H-boxes with a phase of 2pi=0.
+    Note that this rule is only semantically correct when all its neighbours are white spiders."""
     g.remove_vertices(m)
