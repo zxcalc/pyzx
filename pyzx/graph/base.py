@@ -784,7 +784,12 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
             d = self.vertex_degree(v)
             if d == 0:
                 rem.append(v)
-                self.scalar.add_node(self.phase(v))
+                ty = self.type(v)
+                if ty == VertexType.BOUNDARY:
+                    raise TypeError("Diagram is not a well-typed ZX-diagram: contains isolated boundary vertex.")
+                elif ty == VertexType.H_BOX:
+                    self.scalar.add_phase(self.phase(v))
+                else: self.scalar.add_node(self.phase(v))
             if d == 1: # It has a unique neighbor
                 if v in rem: continue # Already taken care of
                 if self.type(v) == VertexType.BOUNDARY: continue # Ignore in/outputs
@@ -795,7 +800,11 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
                 rem.append(v)
                 rem.append(w)
                 et = self.edge_type(self.edge(v,w))
-                if self.type(v) == self.type(w):
+                t1 = self.type(v)
+                t2 = self.type(w)
+                if t1 == VertexType.H_BOX: t1 = VertexType.Z # 1-ary H-box is just a Z spider
+                if t2 == VertexType.H_BOX: t2 = VertexType.Z
+                if t1==t2:
                     if et == EdgeType.SIMPLE:
                         self.scalar.add_node(self.phase(v)+self.phase(w))
                     else:
