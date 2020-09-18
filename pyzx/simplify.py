@@ -33,15 +33,15 @@ from .rules import *
 from .graph.base import BaseGraph, VT, ET
 from .circuit import Circuit
 
-class Stats:
-    def __init__(self):
-        self.num_rewrites = {}
-    def count_rewrites(self, rule: str, n: int):
+class Stats(object):
+    def __init__(self) -> None:
+        self.num_rewrites: Dict[str,int] = {}
+    def count_rewrites(self, rule: str, n: int) -> None:
         if rule in self.num_rewrites:
             self.num_rewrites[rule] += n
         else:
             self.num_rewrites[rule] = n
-    def __str__(self):
+    def __str__(self) -> str:
         s = "REWRITES\n"
         nt = 0
         for r,n in self.num_rewrites.items():
@@ -57,7 +57,7 @@ def simp(
     rewrite: Callable[[BaseGraph[VT,ET],List[MatchObject]],RewriteOutputType[ET,VT]], 
     matchf:Optional[Union[Callable[[ET],bool], Callable[[VT],bool]]]=None, 
     quiet:bool=False,
-    stats: Stats=None) -> int:
+    stats:Optional[Stats]=None) -> int:
     """Helper method for constructing simplification strategies based on the rules present in rules_.
     It uses the ``match`` function to find matches, and then rewrites ``g`` using ``rewrite``. 
     If ``matchf`` is supplied, only the vertices or edges for which matchf() returns True are considered for matches.
@@ -98,50 +98,50 @@ def simp(
             if not quiet: print('. ', end='')
             #print('. ', end='', flush=True)
             new_matches = True
-            if stats: stats.count_rewrites(name, len(m))
+            if stats is not None: stats.count_rewrites(name, len(m))
     if not quiet and i>0: print(' {!s} iterations'.format(i))
     return i
 
-def pivot_simp(g: BaseGraph[VT,ET], matchf:Optional[Callable[[ET],bool]]=None, quiet:bool=False, stats: Stats=None) -> int:
+def pivot_simp(g: BaseGraph[VT,ET], matchf:Optional[Callable[[ET],bool]]=None, quiet:bool=False, stats:Optional[Stats]=None) -> int:
     return simp(g, 'pivot_simp', match_pivot_parallel, pivot, matchf=matchf, quiet=quiet, stats=stats)
 
-def pivot_gadget_simp(g: BaseGraph[VT,ET], matchf:Optional[Callable[[ET],bool]]=None, quiet:bool=False, stats: Stats=None) -> int:
+def pivot_gadget_simp(g: BaseGraph[VT,ET], matchf:Optional[Callable[[ET],bool]]=None, quiet:bool=False, stats:Optional[Stats]=None) -> int:
     return simp(g, 'pivot_gadget_simp', match_pivot_gadget, pivot, matchf=matchf, quiet=quiet, stats=stats)
 
-def pivot_boundary_simp(g: BaseGraph[VT,ET], matchf:Optional[Callable[[ET],bool]]=None, quiet:bool=False, stats: Stats=None) -> int:
+def pivot_boundary_simp(g: BaseGraph[VT,ET], matchf:Optional[Callable[[ET],bool]]=None, quiet:bool=False, stats:Optional[Stats]=None) -> int:
     return simp(g, 'pivot_boundary_simp', match_pivot_boundary, pivot, matchf=matchf, quiet=quiet, stats=stats)
 
-def lcomp_simp(g: BaseGraph[VT,ET], matchf:Optional[Callable[[VT],bool]]=None, quiet:bool=False, stats: Stats=None) -> int:
+def lcomp_simp(g: BaseGraph[VT,ET], matchf:Optional[Callable[[VT],bool]]=None, quiet:bool=False, stats:Optional[Stats]=None) -> int:
     return simp(g, 'lcomp_simp', match_lcomp_parallel, lcomp, matchf=matchf, quiet=quiet, stats=stats)
 
 def bialg_simp(g: BaseGraph[VT,ET], quiet:bool=False, stats: Stats=None) -> int:
     return simp(g, 'bialg_simp', match_bialg_parallel, bialg, quiet=quiet, stats=stats)
 
-def spider_simp(g: BaseGraph[VT,ET], matchf:Optional[Callable[[VT],bool]]=None, quiet:bool=False, stats: Stats=None) -> int:
+def spider_simp(g: BaseGraph[VT,ET], matchf:Optional[Callable[[VT],bool]]=None, quiet:bool=False, stats:Optional[Stats]=None) -> int:
     return simp(g, 'spider_simp', match_spider_parallel, spider, matchf=matchf, quiet=quiet, stats=stats)
 
-def id_simp(g: BaseGraph[VT,ET], matchf:Optional[Callable[[VT],bool]]=None, quiet:bool=False, stats: Stats=None) -> int:
+def id_simp(g: BaseGraph[VT,ET], matchf:Optional[Callable[[VT],bool]]=None, quiet:bool=False, stats:Optional[Stats]=None) -> int:
     return simp(g, 'id_simp', match_ids_parallel, remove_ids, matchf=matchf, quiet=quiet, stats=stats)
 
-def gadget_simp(g: BaseGraph[VT,ET], quiet:bool=False, stats: Stats=None) -> int:
+def gadget_simp(g: BaseGraph[VT,ET], quiet:bool=False, stats:Optional[Stats]=None) -> int:
     return simp(g, 'gadget_simp', match_phase_gadgets, merge_phase_gadgets, quiet=quiet, stats=stats)
 
-def supplementarity_simp(g: BaseGraph[VT,ET], quiet:bool=False, stats: Stats=None) -> int:
+def supplementarity_simp(g: BaseGraph[VT,ET], quiet:bool=False, stats:Optional[Stats]=None) -> int:
     return simp(g, 'supplementarity_simp', match_supplementarity, apply_supplementarity, quiet=quiet, stats=stats)
 
-def copy_simp(g: BaseGraph[VT,ET], quiet:bool=False, stats: Stats=None) -> int:
+def copy_simp(g: BaseGraph[VT,ET], quiet:bool=False, stats:Optional[Stats]=None) -> int:
     """Copies 1-ary spiders with 0/pi phase through neighbors.
     WARNING: only use on maximally fused diagrams consisting solely of Z-spiders."""
     return simp(g, 'copy_simp', match_copy, apply_copy, quiet=quiet, stats=stats)
 
-def phase_free_simp(g: BaseGraph[VT,ET], quiet:bool=False, stats: Stats=None) -> int:
+def phase_free_simp(g: BaseGraph[VT,ET], quiet:bool=False, stats:Optional[Stats]=None) -> int:
     '''Performs the following set of simplifications on the graph:
     spider -> bialg'''
     i1 = spider_simp(g, quiet=quiet, stats=stats)
     i2 = bialg_simp(g, quiet=quiet, stats=stats)
     return i1+i2
 
-def interior_clifford_simp(g: BaseGraph[VT,ET], quiet:bool=False, stats: Stats=None) -> int:
+def interior_clifford_simp(g: BaseGraph[VT,ET], quiet:bool=False, stats:Optional[Stats]=None) -> int:
     """Keeps doing the simplifications ``id_simp``, ``spider_simp``, 
     ``pivot_simp`` and ``lcomp_simp`` until none of them can be applied anymore."""
     spider_simp(g, quiet=quiet, stats=stats)
@@ -156,7 +156,7 @@ def interior_clifford_simp(g: BaseGraph[VT,ET], quiet:bool=False, stats: Stats=N
         i += 1
     return i
 
-def clifford_simp(g: BaseGraph[VT,ET], quiet:bool=True, stats: Stats=None) -> int:
+def clifford_simp(g: BaseGraph[VT,ET], quiet:bool=True, stats:Optional[Stats]=None) -> int:
     """Keeps doing rounds of :func:`interior_clifford_simp` and
     :func:`pivot_boundary_simp` until they can't be applied anymore."""
     i = 0
@@ -167,7 +167,7 @@ def clifford_simp(g: BaseGraph[VT,ET], quiet:bool=True, stats: Stats=None) -> in
             break
     return i
 
-def reduce_scalar(g: BaseGraph[VT,ET], quiet:bool=True, stats: Stats=None) -> int:
+def reduce_scalar(g: BaseGraph[VT,ET], quiet:bool=True, stats:Optional[Stats]=None) -> int:
     """Modification of ``full_reduce`` that is tailered for scalar ZX-diagrams.
     It skips the boundary pivots, and it additionally does ``supplementarity_simp``."""
     i = 0
@@ -191,7 +191,7 @@ def reduce_scalar(g: BaseGraph[VT,ET], quiet:bool=True, stats: Stats=None) -> in
 
 
 
-def full_reduce(g: BaseGraph[VT,ET], quiet:bool=True, stats: Stats=None) -> None:
+def full_reduce(g: BaseGraph[VT,ET], quiet:bool=True, stats:Optional[Stats]=None) -> None:
     """The main simplification routine of PyZX. It uses a combination of :func:`clifford_simp` and
     the gadgetization strategies :func:`pivot_gadget_simp` and :func:`gadget_simp`."""
     interior_clifford_simp(g, quiet=quiet, stats=stats)
@@ -204,7 +204,7 @@ def full_reduce(g: BaseGraph[VT,ET], quiet:bool=True, stats: Stats=None) -> None
         if i+j == 0:
             break
 
-def teleport_reduce(g: BaseGraph[VT,ET], quiet:bool=True, stats: Stats=None) -> BaseGraph[VT,ET]:
+def teleport_reduce(g: BaseGraph[VT,ET], quiet:bool=True, stats:Optional[Stats]=None) -> BaseGraph[VT,ET]:
     """This simplification procedure runs :func:`full_reduce` in a way 
     that does not change the graph structure of the resulting diagram.
     The only thing that is different in the output graph are the location and value of the phases.""" 
