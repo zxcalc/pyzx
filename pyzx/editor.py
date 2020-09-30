@@ -118,6 +118,7 @@ def s_to_phase(s: str, t:VertexType.Type=VertexType.Z) -> Fraction:
 	if s.find('/') != -1:
 		a,b = s.split("/", 2)
 		if not a: return Fraction(1,int(b))
+		if a == '-': a = '-1'
 		return Fraction(int(a),int(b))
 	if not s: return Fraction(1)
 	return Fraction(int(s))
