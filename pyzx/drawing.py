@@ -252,10 +252,10 @@ def draw_d3(g: Union[BaseGraph[VT,ET], Circuit],labels:bool=False, scale:Optiona
     _d3_display_seq += 1
     graph_id = str(_d3_display_seq)
 
-    minrow = min([g.row(v) for v in g.vertices()])
-    maxrow = max([g.row(v) for v in g.vertices()])
-    minqub = min([g.qubit(v) for v in g.vertices()])
-    maxqub = max([g.qubit(v) for v in g.vertices()])
+    minrow = min([g.row(v) for v in g.vertices()], default=0)
+    maxrow = max([g.row(v) for v in g.vertices()], default=0)
+    minqub = min([g.qubit(v) for v in g.vertices()], default=0)
+    maxqub = max([g.qubit(v) for v in g.vertices()], default=0)
 
     if scale is None:
         scale = 800 / (maxrow-minrow + 2)
