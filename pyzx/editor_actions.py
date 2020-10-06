@@ -174,6 +174,7 @@ def pauli_push(g: BaseGraph[VT,ET],
 
 		new_verts = []
 		if vertex_is_zx(g.type(v)): 
+			g.scalar.add_phase(g.phase(v))
 			g.set_phase(v,(-g.phase(v))%2)
 			t = toggle_vertex(g.type(v))
 			p: FractionLike = Fraction(1)
