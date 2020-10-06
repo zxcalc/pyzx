@@ -341,6 +341,7 @@ simple_vals = {
 sqrt_vals = {
 	math.sqrt(2): r"\sqrt{2}",
 	math.sqrt(3): r"\sqrt{3}",
+    math.sqrt(3)/2: r"\frac12\sqrt{3}",
 	math.sqrt(1/2): r"\frac{1}{\sqrt{2}}",
 	2*math.sqrt(2): r"2\sqrt{2}",
 	math.sqrt(1/2)/2: r"\frac{1}{2\sqrt{2}}",
