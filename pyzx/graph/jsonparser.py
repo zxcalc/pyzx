@@ -137,7 +137,7 @@ def graph_to_json(g: BaseGraph[VT,ET]) -> str:
     freenamesb = ["b"+str(i) for i in range(g.num_vertices())]
     for v in g.vertices():
         t = g.type(v)
-        coord = [g.row(v),-g.qubit(v)]
+        coord = [round(g.row(v),3),round(-g.qubit(v),3)]
         name = g.vdata(v, 'name')
         if not name:
             if t == VertexType.BOUNDARY: name = freenamesb.pop(0)
@@ -178,7 +178,7 @@ def graph_to_json(g: BaseGraph[VT,ET]) -> str:
             x1,y1 = g.row(src), -g.qubit(src)
             x2,y2 = g.row(tgt), -g.qubit(tgt)
             hadname = freenamesv.pop(0)
-            node_vs[hadname] = {"annotation": {"coord":[(x1+x2)/2.0,(y1+y2)/2.0]},
+            node_vs[hadname] = {"annotation": {"coord":[round((x1+x2)/2.0,3),round((y1+y2)/2.0,3)]},
                              "data": {"type": "hadamard","is_edge": "true"}}
             edges["e"+str(i)] = {"src": names[src],"tgt": hadname}
             i += 1
