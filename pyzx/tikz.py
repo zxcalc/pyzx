@@ -269,9 +269,22 @@ def tikz_to_graph(
                     except:
                         raise ValueError("Node definition %s has invalid phase label" % l)
                     g.set_phase(v, Fraction(n,m))
+                elif label.find('/') != -1:
+                    num, denom = label.split('/',1)
+                    if num == '': n = 1
+                    elif num == '-': n = -1
+                    else:
+                        try:
+                            n = int(num)
+                        except:
+                            raise ValueError("Node definition %s has invalid phase label" % l)
+                    try:
+                        m = int(denom)
+                    except:
+                        raise ValueError("Node definition %s has invalid phase label" % l)
+                    g.set_phase(v, Fraction(n,m))
                 else:
                     try:
-                        print(label)
                         phase = int(label)
                     except:
                         raise ValueError("Node definition %s has invalid phase label '%s'" % (l,label))
