@@ -19,13 +19,14 @@ from typing import List, Union, Optional, Iterator
 
 import numpy as np
 
-from .gates import Gate, gate_types, ZPhase, XPhase, CZ,CX,CNOT, HAD
+from .gates import Gate, gate_types, ZPhase, XPhase, CZ, CX, CNOT, HAD
 
 from ..graph.base import BaseGraph
 
 CircuitLike = Union['Circuit', Gate]
 
-#Note that many of the method of Circuit contain inline imports. These are there to prevent circular imports.
+# Note that many of the method of Circuit contain inline imports. These are
+# there to prevent circular imports.
 
 __all__ = ['Circuit', 'id']
 
@@ -38,7 +39,7 @@ class Circuit(object):
     The methods in this class that convert a specification of a circuit into an instance of this class,
     generally do not check whether the specification is well-defined. If a bad input is given, 
     the behaviour is undefined."""
-    def __init__(self, qubit_amount: int, name:str='') -> None:
+    def __init__(self, qubit_amount: int, name: str = '') -> None:
         self.qubits: int        = qubit_amount
         self.gates:  List[Gate] = []
         self.name:   str        = name
