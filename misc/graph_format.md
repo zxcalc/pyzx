@@ -27,7 +27,7 @@ d0 -> y0 : b 0
 d1 -> y1 : b 2
 ```
 
-Every vertex needs a coordinate, which in PyZX consists of a row and qubit index. The `row` is kept implicitly as a global variable, where initially `row := 1`. When a `===` is encountered, the value of `row` is incremented. Optionally, an explicit row number can be provided after the separator, in which case `=== r` sets `row := r`. Note this is allowed to be a non-integer. For this reason, we actually define the default `===` to increment the row as follows: `row := floor(row + 1)`.
+Every vertex needs a coordinate, which in PyZX consists of a row and qubit index. The `row` is kept implicitly as a global variable, where initially `row := 1`. When a `===` is encountered, the value of `row` is set to the next integer value `row := floor(row + 1)`. Optionally, an amount to increment the row can be provided, which is allowed to be a non-integer, in which case `=== r` sets `row := row + r`.
 
 Vertices are declared by giving them a name, followed by a colon then a type, qubit index, and optional phase, given as a rational multiple of pi. For example: `a : z 1 1/2` places a `Z` vertex on the current row, at qubit 1, with phase pi/2.
 
@@ -103,4 +103,23 @@ b2 : z 2 -1/4
 a0 h> b0 ; a1 h> b0 ; a2 h> b0
 a0 h> b1 ; a1 h> b1 ; a2 h> b1
 a0 h> b2 ; a1 h> b2 ; a2 h> b2
+```
+
+A phase gadget, between 2 rows:
+
+```
+i0 : b 0
+i1 : b 1
+i2 : b 2
+===
+i0 -> a0 : z 0
+i1 -> a1 : z 1
+i2 -> a2 : z 2
+=== 0.5
+g0 : x -1 -> g1 : z -2 1/4
+a0 -> g0 ; a1 -> g0 ; a2 -> g0
+===
+a0 -> o0 : b0
+a1 -> o1 : b1
+a2 -> o2 : b2
 ```
