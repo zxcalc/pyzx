@@ -27,7 +27,7 @@ d0 -> y0 : b 0
 d1 -> y1 : b 2
 ```
 
-Every vertex needs a coordinate, which in PyZX consists of a row and qubit index. The `row` is kept implicitly as a global variable, where initially `row := 1`. When a `===` is encountered, the value of `row` is set to the next integer value `row := floor(row + 1)`. Optionally, an amount to increment the row can be provided, which is allowed to be a non-integer, in which case `=== r` sets `row := row + r`.
+Every vertex needs a coordinate, which in PyZX consists of a row and qubit index. The `row` is kept implicitly as a global variable, where initially `row := 1`. When a `===` is encountered, the value of `row` is incremented.
 
 Vertices are declared by giving them a name, followed by a colon then a type, qubit index, and optional phase, given as a rational multiple of pi. For example: `a : z 1 1/2` places a `Z` vertex on the current row, at qubit 1, with phase pi/2.
 
@@ -48,6 +48,9 @@ b -> c
 Once all vertices in an edge expression are declared, it doesn't matter when the expression appears, since the edge itself doesn't care about the value of `row`. For example, all edges could be placed at end of the file.
 
 Boundary vertices appearing on the first row are assumed to be inputs, and boundaries on last row are assumed to be outputs.
+
+Optionally, the row separator can be provided with a (possibly non-integer) number to skip some space or place vertices between rows, in which case `=== r` sets `row := row + r`. To account for non-integers, the default `===` operation actually sets `row := floor(row + 1)`.
+
 
 ## Grammar
 
