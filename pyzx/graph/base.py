@@ -414,6 +414,15 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         g += other
         return g
 
+    def __imul__(self, other: 'BaseGraph') -> 'BaseGraph':
+        self.compose(other)
+        return self
+
+    def __mul__(self, other: 'BaseGraph') -> 'BaseGraph':
+        g = self.copy()
+        g *= other
+        return g
+
     def __matmul__(self, other: 'BaseGraph') -> 'BaseGraph':
         return self.tensor(other)
 
