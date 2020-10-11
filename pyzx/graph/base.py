@@ -333,21 +333,45 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
     def compose(self, other: 'BaseGraph') -> None:
         """Inserts a graph after this one. The amount of qubits of the graphs must match.
         Also available by the operator `graph1 + graph2`"""
-        if self.qubit_count() != other.qubit_count():
-            raise TypeError("Circuits work on different qubit amounts")
-        self.normalize()
-        other = other.copy()
-        other.normalize()
+        if len(self.outputs) != len(other.inputs):
+            raise TypeError("Outputs of first graph must match inputs of second.")
+
         self.scalar.mult_with_scalar(other.scalar)
-        for o in self.outputs:
-            q = self.qubit(o)
-            e = list(self.incident_edges(o))[0]
-            if self.edge_type(e) == EdgeType.HADAMARD:
-                i = [v for v in other.inputs if other.qubit(v)==q][0]
-                e = list(other.incident_edges(i))[0]
-                other.set_edge_type(e, toggle_edge(other.edge_type(e)))
-        d = self.depth()
-        self.replace_subgraph(d-1,d,other)
+        maxr = max((self.row(v) for v in self.vertices()
+                    if self.type(v) != VertexType.BOUNDARY), default=0)
+        minr = min((other.row(v) for v in other.vertices()
+                    if other.type(v) != VertexType.BOUNDARY), default=0)
+        offset = maxr - minr + 1
+
+        vtab : Dict[VT,VT] = dict()
+        for v in other.vertices():
+            vtab[v] = self.add_vertex(other.type(v),
+                    phase=other.phase(v),
+                    qubit=other.qubit(v),
+                    row=offset + other.row(v))
+        for e in other.edges():
+            self.add_edge(self.edge(vtab[other.edge_s(e)],vtab[other.edge_t(e)]),
+                          edgetype=other.edge_type(e))
+
+        for k in range(len(self.outputs)):
+            o = self.outputs[k]
+            i = vtab[other.inputs[k]]
+            if len(self.neighbors(o)) != 1:
+                raise ValueError("Bad output vertex: " + str(o))
+            if len(self.neighbors(i)) != 1:
+                raise ValueError("Bad input vertex: %s (%s)" %  (str(i), str(other.inputs[k])))
+
+            no = next(iter(self.neighbors(o)))
+            ni = next(iter(self.neighbors(i)))
+            self.add_edge(self.edge(no,ni), edgetype=EdgeType.HADAMARD
+                    if self.edge_type(self.edge(no,o)) != self.edge_type(self.edge(i,ni))
+                    else EdgeType.SIMPLE)
+            self.remove_vertex(o)
+            self.remove_vertex(i)
+
+        self.outputs = [vtab[v] for v in other.outputs]
+
+
 
     def tensor(self, other: 'BaseGraph') -> 'BaseGraph':
         """Take the tensor product of two graphs. Places the second graph below the first one.
@@ -355,7 +379,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         g = self.copy()
         ts = other.types()
         qs = other.qubits()
-        height = max(qs.values()) + 1
+        height = max((self.qubits().values()), default=0) + 1
         rs = other.rows()
         phases = other.phases()
         vertex_map = dict()
@@ -369,6 +393,15 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
             g.inputs.append(vertex_map[v])
         for v in other.outputs:
             g.outputs.append(vertex_map[v])
+
+        minr = min((g.row(v) for v in g.inputs), default=1)
+        for v in g.inputs:
+            g.set_row(v, minr)
+
+        maxr = max((g.row(v) for v in g.outputs), default=1)
+        for v in g.outputs:
+            g.set_row(v, maxr)
+
         return g
 
 
