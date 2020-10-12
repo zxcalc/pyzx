@@ -169,7 +169,7 @@ def pack_indices(lst: List[FloatInt]) -> Mapping[FloatInt,int]:
             i += 1
     return d
 
-VT = TypeVar('VT') # The type that is used for representing vertices (e.g. an integer)
+VT = TypeVar('VT', int) # The type that is used for representing vertices (e.g. an integer, needs to be sortable)
 ET = TypeVar('ET') # The type used for representing edges (e.g. a pair of integers)
 
 class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
