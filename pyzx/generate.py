@@ -392,7 +392,8 @@ def cliffords(
 
     for i in range(qubits):
         g.inputs.append(i)
-        g.outputs.append(v-i-1)
+        #g.outputs.append(v-i-1)
+        g.outputs.append(v-qubits+i)
     return g
 
 
