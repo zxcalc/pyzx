@@ -240,13 +240,13 @@ def calculate_path_sum(g: BaseGraph[VT,ET]) -> complex:
                     if t == v: continue
                     if t not in variable_dict:
                         variable_dict[t] = len(variables)
-                        variables.append(int(phases[t]*4))
+                        variables.append(int(float(phases[t]*4)))
                     targets.add(variable_dict[t])
                 prefactor += len(targets)-1
-                xors[frozenset(targets)] = int(phases[v]*4)
+                xors[frozenset(targets)] = int(float(phases[v]*4))
                 continue
         variable_dict[v] = len(variables)
-        variables.append(int(phases[v]*4))
+        variables.append(int(float(phases[v]*4)))
     verts = sorted(list(variable_dict.keys()), key=lambda x: variable_dict[x])
     n = len(verts)
     for i in range(n):

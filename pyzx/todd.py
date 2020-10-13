@@ -185,7 +185,7 @@ def phase_gates_to_poly(gates: List[Gate], qubits: int) -> Tuple[ParityPolynomia
     for g in gates:
         if isinstance(g, ZPhase):
             par = expression_polys[g.target].par
-            phase_poly.add_term(par, int(g.phase*4))
+            phase_poly.add_term(par, int(float(g.phase*4)))
         elif isinstance(g, CZ):
             tgt, ctrl = g.target, g.control
             par1 = expression_polys[tgt].par
