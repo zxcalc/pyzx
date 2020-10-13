@@ -335,6 +335,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         Also available by the operator `graph1 + graph2`"""
         if len(self.outputs) != len(other.inputs):
             raise TypeError("Outputs of first graph must match inputs of second.")
+        other = other.copy()
 
         self.scalar.mult_with_scalar(other.scalar)
         maxr = max((self.row(v) for v in self.vertices()
