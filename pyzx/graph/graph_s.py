@@ -38,7 +38,7 @@ class GraphS(BaseGraph[int,Tuple[int,int]]):
         self._maxq: FloatInt                            = -1
         self._rindex: Dict[int, FloatInt]               = dict()
         self._maxr: FloatInt                            = -1
-        
+
         self._vdata: Dict[int,Any]                      = dict()
         
 

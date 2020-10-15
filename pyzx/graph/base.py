@@ -668,7 +668,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         """Adds a list of edges to the graph."""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
-    def add_edge(self, edge: ET, edgetype:EdgeType.Type=EdgeType.SIMPLE, smart:bool=False) -> None:
+    def add_edge(self, edge: ET, edgetype:EdgeType.Type=EdgeType.SIMPLE) -> None:
         """Adds a single edge of the given type"""
         self.add_edges([edge], edgetype)
 
@@ -774,6 +774,10 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         self.remove_edges(remove)
         self.add_edges(add[EdgeType.SIMPLE],EdgeType.SIMPLE)
         self.add_edges(add[EdgeType.HADAMARD],EdgeType.HADAMARD)
+
+    def add_edge_smart(self, e: ET, edgetype: EdgeType.Type):
+        """Like add_edge, but does the right thing if there is an existing edge."""
+        self.add_edge_table({e : [1,0] if edgetype == EdgeType.SIMPLE else [0,1]})
 
     def set_phase_master(self, m: 'simplify.Simplifier') -> None:
         """Points towards an instance of the class :class:`~pyzx.simplify.Simplifier`.
