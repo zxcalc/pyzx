@@ -405,7 +405,6 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
 
         return g
 
-
     def __iadd__(self, other: 'BaseGraph') -> 'BaseGraph':
         self.compose(other)
         return self
@@ -415,13 +414,10 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         g += other
         return g
 
-    def __imul__(self, other: 'BaseGraph') -> 'BaseGraph':
-        self.compose(other)
-        return self
-
     def __mul__(self, other: 'BaseGraph') -> 'BaseGraph':
-        g = self.copy()
-        g *= other
+        """Compose two diagrams, in formula order. That is, g * h produces 'g AFTER h'."""
+        g = other.copy()
+        g.compose(self)
         return g
 
     def __matmul__(self, other: 'BaseGraph') -> 'BaseGraph':
@@ -672,7 +668,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         """Adds a list of edges to the graph."""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
-    def add_edge(self, edge: ET, edgetype:EdgeType.Type=EdgeType.SIMPLE) -> None:
+    def add_edge(self, edge: ET, edgetype:EdgeType.Type=EdgeType.SIMPLE, smart:bool=False) -> None:
         """Adds a single edge of the given type"""
         self.add_edges([edge], edgetype)
 
