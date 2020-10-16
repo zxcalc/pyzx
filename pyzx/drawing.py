@@ -21,6 +21,8 @@ import os
 import math
 import cmath
 import json
+import string
+import random
 from fractions import Fraction
 from typing import Dict, List, Tuple, Optional, Union, Iterable, Any, TYPE_CHECKING
 from typing_extensions import Literal
@@ -238,7 +240,7 @@ def draw_matplotlib(
 
 # Provides functions for displaying pyzx graphs in jupyter notebooks using d3
 
-_d3_display_seq = 0
+# _d3_display_seq = 0
 
 def draw_d3(g: Union[BaseGraph[VT,ET], Circuit],labels:bool=False, scale:Optional[FloatInt]=None, auto_hbox:bool=True) -> Any:
     global _d3_display_seq
@@ -249,8 +251,12 @@ def draw_d3(g: Union[BaseGraph[VT,ET], Circuit],labels:bool=False, scale:Optiona
     if isinstance(g, Circuit):
         g = g.to_graph(zh=True)
 
-    _d3_display_seq += 1
-    graph_id = str(_d3_display_seq)
+    # _d3_display_seq += 1
+    # graph_id = str(_d3_display_seq)
+
+    # tracking global sequence can cause clashes if you restart the kernel without clearing ouput, so
+    # use an 8-digit random alphanum instead.
+    graph_id = ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(8))
 
     minrow = min([g.row(v) for v in g.vertices()], default=0)
     maxrow = max([g.row(v) for v in g.vertices()], default=0)
