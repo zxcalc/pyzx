@@ -80,6 +80,7 @@ class Settings(object): # namespace class
     tikzit_location: str = ""
     quantomatic_location: str = ""
     topt_command: Optional[List[str]] = None # Argument-separated command to run TOpt such as ["wsl", "./TOpt"]
+    show_labels: bool = False
 
 settings = Settings()
 

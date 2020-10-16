@@ -26,7 +26,6 @@ import random
 from fractions import Fraction
 from typing import Dict, List, Tuple, Optional, Union, Iterable, Any, TYPE_CHECKING
 from typing_extensions import Literal
-
 import numpy as np
 
 try:
@@ -47,11 +46,15 @@ elif settings.mode == "browser":
 if TYPE_CHECKING:
     from ipywidgets import Label
 
-
 def draw(g: Union[BaseGraph[VT,ET], Circuit], labels: bool=False, **kwargs) -> Any:
     """Draws the given Circuit or Graph. 
     Depending on the value of ``pyzx.settings.drawing_backend``
     either uses matplotlib or d3 to draw."""
+
+    # allow global setting to labels=False
+    # TODO: probably better to make labels Optional[bool]
+    labels = labels or settings.show_labels
+
     if settings.mode == "shell":
         if plt is None: 
             raise ImportError("This function requires matplotlib.")

@@ -46,6 +46,5 @@ from . import routing
 from . import sparsify
 from .routing.parity_maps import CNOT_tracker
 
-
 if __name__ == '__main__':
     print("Please execute this as a module by running 'python -m pyzx'")

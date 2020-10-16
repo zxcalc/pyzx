@@ -122,12 +122,12 @@ define('zx_viewer', ['d3'], function(d3) {
 
         if (show_labels) {
             node.append("text")
-                .attr("y", -0.7 * node_size - 5)
+                .attr("y", -0.7 * node_size - 8)
                 .text(function (d) { return d.name; })
                 .attr("text-anchor", "middle")
-                .attr("font-size", "8px")
+                .attr("font-size", "10px")
                 .attr("font-family", "monospace")
-                .attr("fill", "#ccc")
+                .attr("fill", "#999")
                 .attr('style', 'pointer-events: none; user-select: none;');
         }
 
