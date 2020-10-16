@@ -242,6 +242,9 @@ def draw_matplotlib(
 
 # _d3_display_seq = 0
 
+# make sure we get a fresh random seed
+random_graphid = random.Random()
+
 def draw_d3(g: Union[BaseGraph[VT,ET], Circuit],labels:bool=False, scale:Optional[FloatInt]=None, auto_hbox:bool=True) -> Any:
     global _d3_display_seq
 
@@ -256,7 +259,7 @@ def draw_d3(g: Union[BaseGraph[VT,ET], Circuit],labels:bool=False, scale:Optiona
 
     # tracking global sequence can cause clashes if you restart the kernel without clearing ouput, so
     # use an 8-digit random alphanum instead.
-    graph_id = ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(8))
+    graph_id = ''.join(random_graphid.choice(string.ascii_letters + string.digits) for _ in range(8))
 
     minrow = min([g.row(v) for v in g.vertices()], default=0)
     maxrow = max([g.row(v) for v in g.vertices()], default=0)
