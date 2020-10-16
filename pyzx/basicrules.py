@@ -14,15 +14,38 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# A collection of rules more easily applied interactively to ZX diagrams.
+"""
+This module contains several rules more easily applied interactively to ZX
+diagrams. The emphasis is more on ease of use and simplicity than performance.
+
+Rules are given as functions that take as input a vertex or a pair of vertices
+to fix the location the rule is applied. They then apply the rule and return
+True if the rule indeed applies at this location, otherwise they return false.
+
+Most rules also have a companion function check_RULENAME, which only checks
+whether the rule applies at the given location and doesn't actually apply
+the rule.
+"""
+
+__all__ = ['color_change_diagram',
+        'check_copy_X',
+        'copy_X',
+        'check_copy_Z',
+        'copy_Z',
+        'check_fuse',
+        'fuse',
+        'check_remove_id',
+        'remove_id']
 
 from .graph.base import BaseGraph, VT
 from .utils import VertexType, EdgeType
 
 def color_change_diagram(g: BaseGraph):
+    """Color-change an entire diagram by applying Hadamards to the inputs and ouputs."""
     for v in g.vertices():
         if g.type(v) == VertexType.BOUNDARY:
-            if g.vertex_degree(v) != 0: raise ValueError("Boundary should only have 1 neighbor.")
+            if g.vertex_degree(v) != 0:
+                raise ValueError("Boundary should only have 1 neighbor.")
             v1 = next(iter(g.neighbors(v)))
             e = g.edge(v,v1)
             g.set_edge_type(e, EdgeType.SIMPLE
@@ -32,6 +55,25 @@ def color_change_diagram(g: BaseGraph):
             g.set_type(v, VertexType.X)
         elif g.type(v) == VertexType.X:
             g.set_type(v, VertexType.Z)
+
+def check_color_change(g: BaseGraph, v: VT) -> bool:
+    if not (g.type(v) == VertexType.Z or g.type(v) == VertexType.X):
+        return False
+    else:
+        return True
+
+def color_change(g: BaseGraph, v: VT) -> bool:
+    if not (g.type(v) == VertexType.Z or g.type(v) == VertexType.X):
+        return False
+
+    g.set_type(v, VertexType.Z if g.type(v) == VertexType.X else VertexType.X)
+    for v1 in g.neighbors(v):
+        e = g.edge(v,v1)
+        g.set_edge_type(e, EdgeType.SIMPLE
+                if g.edge_type(e) == EdgeType.HADAMARD
+                else EdgeType.HADAMARD)
+
+    return True
 
 def check_copy_X(g: BaseGraph, v: VT) -> bool:
     if not (g.vertex_degree(v) == 1 and
@@ -93,8 +135,14 @@ def fuse(g: BaseGraph, v1: VT, v2: VT) -> bool:
     g.remove_vertex(v2)
     return True
 
-def remove_id(g: BaseGraph, v: VT) -> bool:
+def check_remove_id(g: BaseGraph, v: VT) -> bool:
     if not (g.vertex_degree(v) == 2 and g.phase(v) == 0):
+        return False
+    else:
+        return True
+
+def remove_id(g: BaseGraph, v: VT) -> bool:
+    if not check_remove_id(g, v):
         return False
     
     v1, v2 = tuple(g.neighbors(v))
@@ -104,6 +152,5 @@ def remove_id(g: BaseGraph, v: VT) -> bool:
     g.remove_vertex(v)
     
     return True
-
 
 
