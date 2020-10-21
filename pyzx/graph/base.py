@@ -564,6 +564,11 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         return len(self.inputs)
 
     def auto_detect_inputs(self) -> Tuple[List[VT],List[VT]]:
+        """DEPRECATED: alias for auto_detect_io"""
+        print("WARNING: this method is deprecated. Use auto_detect_io instead.")
+        return self.auto_detect_io()
+
+    def auto_detect_io(self) -> Tuple[List[VT],List[VT]]:
         """Adds every vertex that is of boundary-type to the list of inputs or outputs.
         Whether it is an input or output is determined by looking whether its neighbor
         is further to the right or further to the left of the input. 
