@@ -28,6 +28,8 @@ __all__ = ['tensorfy', 'compare_tensors', 'compose_tensors',
 
 from math import pi, sqrt
 
+from typing import Optional
+
 
 import numpy as np
 np.set_printoptions(suppress=True)
@@ -172,21 +174,23 @@ def tensor_to_matrix(t: np.ndarray, inputs: int, outputs: int) -> np.ndarray:
         rows.append(row)
     return np.array(rows)
 
-def compare_tensors(t1: TensorConvertible,t2: TensorConvertible, preserve_scalar: bool=True) -> bool:
-    """Returns true if ``t1`` and ``t2`` are tensors equal up to a nonzero number.
-    If `preserve_scalar` is False, then equality is checked up to a nonzero number.
-    If one of t1 or t2 is a ``Circuit``, then equality is always checked up to a nonzero number.
+def compare_tensors(t1: TensorConvertible,t2: TensorConvertible, preserve_scalar: Optional[bool]=True) -> bool:
+    """Returns true if ``t1`` and ``t2`` represent equal tensors.
+    When `preserve_scalar` is False, equality is checked up to nonzero rescaling.
+    If one of t1 or t2 is a ``Circuit`` this defaults to False, otherwise it defaults to True.
 
-    Example: To check whether two ZX-graphs are semantically the same you would do::
+    Example: To check whether two ZX-graphs `g1` and `g2` are semantically the same you would do::
 
-        t1 = tensorfy(g1)
-        t2 = tensorfy(g2)
-        compare_tensors(t1,t2) # True if g1 and g2 represent the same circuit
+        compare_tensors(g1,g2, False) # True if g1 and g2 represent the same linear map up to nonzero scalar
+
     """
     from .circuit import Circuit
 
     if isinstance(t1, Circuit) or isinstance(t2, Circuit):
-        preserve_scalar = False
+    	if preserve_scalar is None:
+        	preserve_scalar = False
+    elif preserve_scalar is None:
+    	preserve_scalar = True
 
     if not isinstance(t1, np.ndarray):
         t1 = t1.to_tensor(preserve_scalar)
