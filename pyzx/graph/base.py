@@ -364,7 +364,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
 
             no = next(iter(self.neighbors(o)))
             ni = next(iter(self.neighbors(i)))
-            self.add_edge(self.edge(no,ni), edgetype=EdgeType.HADAMARD
+            self.add_edge_smart(self.edge(no,ni), edgetype=EdgeType.HADAMARD
                     if self.edge_type(self.edge(no,o)) != self.edge_type(self.edge(i,ni))
                     else EdgeType.SIMPLE)
             self.remove_vertex(o)
