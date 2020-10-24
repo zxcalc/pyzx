@@ -46,5 +46,17 @@ from . import routing
 from . import sparsify
 from .routing.parity_maps import CNOT_tracker
 
+# some common scalars
+from .graph.base import Scalar
+ONE = Scalar()
+SQRT_TWO = Scalar()
+SQRT_TWO.add_power(1)
+TWO = Scalar()
+TWO.add_power(2)
+SQRT_TWO_INV = Scalar()
+SQRT_TWO_INV.add_power(-1)
+TWO_INV = Scalar()
+TWO_INV.add_power(-2)
+
 if __name__ == '__main__':
     print("Please execute this as a module by running 'python -m pyzx'")
