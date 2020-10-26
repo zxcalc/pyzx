@@ -28,6 +28,8 @@ the rule.
 """
 
 __all__ = ['color_change_diagram',
+        'check_color_change',
+        'color_change',
         'check_copy_X',
         'copy_X',
         'check_copy_Z',
@@ -97,8 +99,8 @@ def strong_comp(g: BaseGraph, v1: VT, v2: VT) -> bool:
         j = (i + 1) % 2
         for vn in g.neighbors(v[i]):
             if vn != v[j]:
-                q = (2*g.qubit(vn) + g.qubit(v[i]))/3
-                r = (2*g.row(vn) + g.row(v[i]))/3
+                q = 0.6*g.qubit(vn) + 0.4*g.qubit(v[i])
+                r = 0.6*g.row(vn) + 0.4*g.row(v[i])
                 newv = g.add_vertex(g.type(v[j]), qubit=q, row=r)
                 g.add_edge((newv,vn), edgetype=g.edge_type(g.edge(v[i],vn)))
                 g.set_phase(newv, g.phase(v[j]))
