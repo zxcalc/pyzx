@@ -95,6 +95,7 @@ class GraphS(BaseGraph[int,Tuple[int,int]]):
             try: del self.phase_index[v]
             except: pass
             self._vdata.pop(v,None)
+        self._vindex = max(self.vertices()) + 1
 
     def remove_vertex(self, vertex):
         self.remove_vertices([vertex])

@@ -337,6 +337,20 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
             raise TypeError("Outputs of first graph must match inputs of second.")
         other = other.copy()
 
+        plugs = []
+        for k in range(len(self.outputs)):
+            o = self.outputs[k]
+            i = other.inputs[k]
+            if len(self.neighbors(o)) != 1:
+                raise ValueError("Bad output vertex: " + str(o))
+            if len(other.neighbors(i)) != 1:
+                raise ValueError("Bad input vertex: " + str(i))
+            no = next(iter(self.neighbors(o)))
+            ni = next(iter(other.neighbors(i)))
+            plugs.append((no, ni, EdgeType.HADAMARD
+                if self.edge_type(self.edge(no,o)) != other.edge_type(other.edge(i,ni))
+                else EdgeType.SIMPLE))
+
         self.scalar.mult_with_scalar(other.scalar)
         maxr = max((self.row(v) for v in self.vertices()
                     if self.type(v) != VertexType.BOUNDARY), default=0)
@@ -344,31 +358,24 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
                     if other.type(v) != VertexType.BOUNDARY), default=0)
         offset = maxr - minr + 1
 
+        for v in self.outputs:
+            self.remove_vertex(v)
+
         vtab : Dict[VT,VT] = dict()
         for v in other.vertices():
-            vtab[v] = self.add_vertex(other.type(v),
-                    phase=other.phase(v),
-                    qubit=other.qubit(v),
-                    row=offset + other.row(v))
+            if not v in other.inputs:
+                vtab[v] = self.add_vertex(other.type(v),
+                        phase=other.phase(v),
+                        qubit=other.qubit(v),
+                        row=offset + other.row(v))
         for e in other.edges():
-            self.add_edge(self.edge(vtab[other.edge_s(e)],vtab[other.edge_t(e)]),
-                          edgetype=other.edge_type(e))
+            s,t = other.edge_st(e)
+            if not s in other.inputs and not t in other.inputs:
+                self.add_edge(self.edge(vtab[s],vtab[t]),
+                        edgetype=other.edge_type(e))
 
-        for k in range(len(self.outputs)):
-            o = self.outputs[k]
-            i = vtab[other.inputs[k]]
-            if len(self.neighbors(o)) != 1:
-                raise ValueError("Bad output vertex: " + str(o))
-            if len(self.neighbors(i)) != 1:
-                raise ValueError("Bad input vertex: %s (%s)" %  (str(i), str(other.inputs[k])))
-
-            no = next(iter(self.neighbors(o)))
-            ni = next(iter(self.neighbors(i)))
-            self.add_edge_smart(self.edge(no,ni), edgetype=EdgeType.HADAMARD
-                    if self.edge_type(self.edge(no,o)) != self.edge_type(self.edge(i,ni))
-                    else EdgeType.SIMPLE)
-            self.remove_vertex(o)
-            self.remove_vertex(i)
+        for (no,ni,et) in plugs:
+            self.add_edge_smart(self.edge(no,vtab[ni]), edgetype=et)
 
         self.outputs = [vtab[v] for v in other.outputs]
 
