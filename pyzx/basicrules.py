@@ -32,6 +32,8 @@ __all__ = ['color_change_diagram',
         'copy_X',
         'check_copy_Z',
         'copy_Z',
+        'check_strong_comp',
+        'strong_comp',
         'check_fuse',
         'fuse',
         'check_remove_id',
@@ -75,6 +77,42 @@ def color_change(g: BaseGraph, v: VT) -> bool:
 
     return True
 
+def check_strong_comp(g: BaseGraph, v1: VT, v2: VT) -> bool:
+    if not (((g.type(v1) == VertexType.X and g.type(v2) == VertexType.Z) or
+             (g.type(v1) == VertexType.Z and g.type(v2) == VertexType.X)) and
+            (g.phase(v1) == 0 or g.phase(v1) == 1) and
+            (g.phase(v2) == 0 or g.phase(v2) == 1) and
+            g.connected(v1,v2) and
+            g.edge_type(g.edge(v1,v2)) == EdgeType.SIMPLE):
+        return False
+    return True
+
+def strong_comp(g: BaseGraph, v1: VT, v2: VT) -> bool:
+    if not check_strong_comp(g, v1, v2): return False    
+    
+    nhd = ([],[])
+    v = (v1,v2)
+
+    for i in range(2):
+        j = (i + 1) % 2
+        for vn in g.neighbors(v[i]):
+            if vn != v[j]:
+                q = (2*g.qubit(vn) + g.qubit(v[i]))/3
+                r = (2*g.row(vn) + g.row(v[i]))/3
+                newv = g.add_vertex(g.type(v[j]), qubit=q, row=r)
+                g.add_edge((newv,vn), edgetype=g.edge_type(g.edge(v[i],vn)))
+                g.set_phase(newv, g.phase(v[j]))
+                nhd[i].append(newv)
+
+    for n1 in nhd[0]:
+        for n2 in nhd[1]:
+            g.add_edge(g.edge(n1,n2))
+
+    g.remove_vertex(v1)
+    g.remove_vertex(v2)
+    
+    return True
+
 def check_copy_X(g: BaseGraph, v: VT) -> bool:
     if not (g.vertex_degree(v) == 1 and
             g.type(v) == VertexType.X and
@@ -89,18 +127,7 @@ def check_copy_X(g: BaseGraph, v: VT) -> bool:
 def copy_X(g: BaseGraph, v: VT) -> bool:
     if not check_copy_X(g, v): return False    
     nv = next(iter(g.neighbors(v)))
-    
-    for v1 in g.neighbors(nv):
-        if v1 != v:
-            q = (2*g.qubit(nv) + g.qubit(v1))/3
-            r = (2*g.row(nv) + g.row(v1))/3
-            v2 = g.add_vertex(VertexType.Z
-                    if g.edge_type(g.edge(nv,v1)) == EdgeType.HADAMARD
-                    else VertexType.X, qubit=q, row=r)
-            g.add_edge((v2,v1))
-
-    g.remove_vertex(v)
-    g.remove_vertex(nv)
+    strong_comp(g, v, nv)
     
     return True
 
