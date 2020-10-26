@@ -1,4 +1,5 @@
 .mypy_cache
+local-scratchpads
 venv
 .idea
 notebooks/.ipynb_checkpoints
