@@ -99,8 +99,8 @@ def strong_comp(g: BaseGraph, v1: VT, v2: VT) -> bool:
         j = (i + 1) % 2
         for vn in g.neighbors(v[i]):
             if vn != v[j]:
-                q = 0.6*g.qubit(vn) + 0.4*g.qubit(v[i])
-                r = 0.6*g.row(vn) + 0.4*g.row(v[i])
+                q = 0.4*g.qubit(vn) + 0.6*g.qubit(v[i])
+                r = 0.4*g.row(vn) + 0.6*g.row(v[i])
                 newv = g.add_vertex(g.type(v[j]), qubit=q, row=r)
                 g.add_edge((newv,vn), edgetype=g.edge_type(g.edge(v[i],vn)))
                 g.set_phase(newv, g.phase(v[j]))
