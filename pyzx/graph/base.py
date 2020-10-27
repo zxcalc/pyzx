@@ -385,6 +385,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         """Take the tensor product of two graphs. Places the second graph below the first one.
         Can also be called using the operator ``graph1 @ graph2``"""
         g = self.copy()
+        g.scalar.mult_with_scalar(other.scalar)
         ts = other.types()
         qs = other.qubits()
         height = max((self.qubits().values()), default=0) + 1
