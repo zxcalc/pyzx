@@ -112,6 +112,10 @@ def strong_comp(g: BaseGraph[VT,ET], v1: VT, v2: VT) -> bool:
         for n2 in nhd[1]:
             g.add_edge(g.edge(n1,n2))
 
+    g.scalar.add_power((len(nhd[0]) - 1) * (len(nhd[1]) - 1))
+    if g.phase(v1) == 1 and g.phase(v2) == 1:
+        g.scalar.add_phase(1)
+
     g.remove_vertex(v1)
     g.remove_vertex(v2)
     
