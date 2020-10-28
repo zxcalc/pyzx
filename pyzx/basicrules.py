@@ -41,10 +41,12 @@ __all__ = ['color_change_diagram',
         'check_remove_id',
         'remove_id']
 
-from .graph.base import BaseGraph, VT
+from typing import Tuple, List
+
+from .graph.base import BaseGraph, VT, ET
 from .utils import VertexType, EdgeType
 
-def color_change_diagram(g: BaseGraph):
+def color_change_diagram(g: BaseGraph[VT,ET]):
     """Color-change an entire diagram by applying Hadamards to the inputs and ouputs."""
     for v in g.vertices():
         if g.type(v) == VertexType.BOUNDARY:
@@ -60,13 +62,13 @@ def color_change_diagram(g: BaseGraph):
         elif g.type(v) == VertexType.X:
             g.set_type(v, VertexType.Z)
 
-def check_color_change(g: BaseGraph, v: VT) -> bool:
+def check_color_change(g: BaseGraph[VT,ET], v: VT) -> bool:
     if not (g.type(v) == VertexType.Z or g.type(v) == VertexType.X):
         return False
     else:
         return True
 
-def color_change(g: BaseGraph, v: VT) -> bool:
+def color_change(g: BaseGraph[VT,ET], v: VT) -> bool:
     if not (g.type(v) == VertexType.Z or g.type(v) == VertexType.X):
         return False
 
@@ -79,7 +81,7 @@ def color_change(g: BaseGraph, v: VT) -> bool:
 
     return True
 
-def check_strong_comp(g: BaseGraph, v1: VT, v2: VT) -> bool:
+def check_strong_comp(g: BaseGraph[VT,ET], v1: VT, v2: VT) -> bool:
     if not (((g.type(v1) == VertexType.X and g.type(v2) == VertexType.Z) or
              (g.type(v1) == VertexType.Z and g.type(v2) == VertexType.X)) and
             (g.phase(v1) == 0 or g.phase(v1) == 1) and
@@ -89,10 +91,10 @@ def check_strong_comp(g: BaseGraph, v1: VT, v2: VT) -> bool:
         return False
     return True
 
-def strong_comp(g: BaseGraph, v1: VT, v2: VT) -> bool:
+def strong_comp(g: BaseGraph[VT,ET], v1: VT, v2: VT) -> bool:
     if not check_strong_comp(g, v1, v2): return False    
     
-    nhd = ([],[])
+    nhd: Tuple[List[VT],List[VT]] = ([],[])
     v = (v1,v2)
 
     for i in range(2):
@@ -102,7 +104,7 @@ def strong_comp(g: BaseGraph, v1: VT, v2: VT) -> bool:
                 q = 0.4*g.qubit(vn) + 0.6*g.qubit(v[i])
                 r = 0.4*g.row(vn) + 0.6*g.row(v[i])
                 newv = g.add_vertex(g.type(v[j]), qubit=q, row=r)
-                g.add_edge((newv,vn), edgetype=g.edge_type(g.edge(v[i],vn)))
+                g.add_edge(g.edge(newv,vn), edgetype=g.edge_type(g.edge(v[i],vn)))
                 g.set_phase(newv, g.phase(v[j]))
                 nhd[i].append(newv)
 
@@ -115,7 +117,7 @@ def strong_comp(g: BaseGraph, v1: VT, v2: VT) -> bool:
     
     return True
 
-def check_copy_X(g: BaseGraph, v: VT) -> bool:
+def check_copy_X(g: BaseGraph[VT,ET], v: VT) -> bool:
     if not (g.vertex_degree(v) == 1 and
             g.type(v) == VertexType.X and
             (g.phase(v) == 0 or g.phase(v) == 1)):
@@ -126,14 +128,14 @@ def check_copy_X(g: BaseGraph, v: VT) -> bool:
         return False
     return True
 
-def copy_X(g: BaseGraph, v: VT) -> bool:
+def copy_X(g: BaseGraph[VT,ET], v: VT) -> bool:
     if not check_copy_X(g, v): return False    
     nv = next(iter(g.neighbors(v)))
     strong_comp(g, v, nv)
     
     return True
 
-def check_copy_Z(g: BaseGraph, v: VT) -> bool:
+def check_copy_Z(g: BaseGraph[VT,ET], v: VT) -> bool:
     color_change_diagram(g)
     b = check_copy_X(g, v)
     color_change_diagram(g)
@@ -145,7 +147,7 @@ def copy_Z(g: BaseGraph, v: VT) -> bool:
     color_change_diagram(g)
     return b
 
-def check_fuse(g: BaseGraph, v1: VT, v2: VT) -> bool:
+def check_fuse(g: BaseGraph[VT,ET], v1: VT, v2: VT) -> bool:
     if not (g.connected(v1,v2) and
             ((g.type(v1) == VertexType.Z and g.type(v2) == VertexType.Z) or
              (g.type(v1) == VertexType.X and g.type(v2) == VertexType.X)) and
@@ -154,28 +156,28 @@ def check_fuse(g: BaseGraph, v1: VT, v2: VT) -> bool:
     else:
         return True
 
-def fuse(g: BaseGraph, v1: VT, v2: VT) -> bool:
+def fuse(g: BaseGraph[VT,ET], v1: VT, v2: VT) -> bool:
     if not check_fuse(g, v1, v2): return False
     g.add_to_phase(v1, g.phase(v2))
     for v3 in g.neighbors(v2):
         if v3 != v1:
-            g.add_edge_smart((v1,v3), edgetype=g.edge_type(g.edge(v2,v3)))
+            g.add_edge_smart(g.edge(v1,v3), edgetype=g.edge_type(g.edge(v2,v3)))
     
     g.remove_vertex(v2)
     return True
 
-def check_remove_id(g: BaseGraph, v: VT) -> bool:
+def check_remove_id(g: BaseGraph[VT,ET], v: VT) -> bool:
     if not (g.vertex_degree(v) == 2 and g.phase(v) == 0):
         return False
     else:
         return True
 
-def remove_id(g: BaseGraph, v: VT) -> bool:
+def remove_id(g: BaseGraph[VT,ET], v: VT) -> bool:
     if not check_remove_id(g, v):
         return False
     
     v1, v2 = tuple(g.neighbors(v))
-    g.add_edge_smart((v1,v2), edgetype=EdgeType.SIMPLE
+    g.add_edge_smart(g.edge(v1,v2), edgetype=EdgeType.SIMPLE
             if g.edge_type(g.edge(v,v1)) == g.edge_type(g.edge(v,v2))
             else EdgeType.HADAMARD)
     g.remove_vertex(v)

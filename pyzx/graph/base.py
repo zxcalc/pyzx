@@ -337,7 +337,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
             raise TypeError("Outputs of first graph must match inputs of second.")
         other = other.copy()
 
-        plugs = []
+        plugs: List[Tuple[VT,VT,EdgeType.Type]] = []
         for k in range(len(self.outputs)):
             o = self.outputs[k]
             i = other.inputs[k]
