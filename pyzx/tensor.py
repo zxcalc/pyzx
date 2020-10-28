@@ -36,7 +36,7 @@ np.set_printoptions(suppress=True)
 
 # typing imports
 from typing import TYPE_CHECKING, List, Dict, Union
-from .utils import FractionLike, FloatInt
+from .utils import FractionLike, FloatInt, VertexType, EdgeType
 if TYPE_CHECKING:
     from .graph.base import BaseGraph, VT, ET
     from .circuit import Circuit
@@ -94,6 +94,10 @@ def tensorfy(g: 'BaseGraph[VT,ET]', preserve_scalar:bool=True) -> np.ndarray:
         r = rows[v]
         if r in verts_row: verts_row[r].append(v)
         else: verts_row[r] = [v]
+
+    if not g.inputs and not g.outputs:
+    	if any(g.type(v)==VertexType.BOUNDARY for v in g.vertices()):
+    		raise ValueError("Diagram contains BOUNDARY-type vertices, but has no inputs or outputs set. Perhaps call g.auto_detect_inputs() first?")
     
     had = 1/sqrt(2)*np.array([[1,1],[1,-1]])
     id2 = np.identity(2)
@@ -127,12 +131,12 @@ def tensorfy(g: 'BaseGraph[VT,ET]', preserve_scalar:bool=True) -> np.ndarray:
                 elif types[v] == 3:
                     t = H_to_tensor(d,phase)
                 else:
-                    raise ValueError("Non-ZXH internal vertex", v)
+                    raise ValueError("Vertex %s has non-ZXH type but is not an input or output" % str(v))
             nn = list(filter(lambda n: rows[n]<r or (rows[n]==r and n<v), neigh)) # type: ignore # TODO: allow ordering on vertex indices?
             ety = {n:g.edge_type(g.edge(v,n)) for n in nn}
             nn.sort(key=lambda n: ety[n]) 
             for n in nn:
-                if ety[n] == 2: #Hadamard edge
+                if ety[n] == EdgeType.HADAMARD:
                     t = np.tensordot(t,had,(0,0)) # Hadamard edges are moved to the last index of t
             contr = pop_and_shift(nn,indices) #the last indices in contr correspond to hadamard contractions
             tensor = np.tensordot(tensor,t,axes=(contr,list(range(len(t.shape)-len(contr),len(t.shape)))))
