@@ -174,23 +174,16 @@ def tensor_to_matrix(t: np.ndarray, inputs: int, outputs: int) -> np.ndarray:
         rows.append(row)
     return np.array(rows)
 
-def compare_tensors(t1: TensorConvertible,t2: TensorConvertible, preserve_scalar: Optional[bool]=True) -> bool:
+def compare_tensors(t1: TensorConvertible,t2: TensorConvertible, preserve_scalar: bool=False) -> bool:
     """Returns true if ``t1`` and ``t2`` represent equal tensors.
-    When `preserve_scalar` is False, equality is checked up to nonzero rescaling.
-    If one of t1 or t2 is a ``Circuit`` this defaults to False, otherwise it defaults to True.
+    When `preserve_scalar` is False (the default), equality is checked up to nonzero rescaling.
 
     Example: To check whether two ZX-graphs `g1` and `g2` are semantically the same you would do::
 
-        compare_tensors(g1,g2, False) # True if g1 and g2 represent the same linear map up to nonzero scalar
+        compare_tensors(g1,g2) # True if g1 and g2 represent the same linear map up to nonzero scalar
 
     """
     from .circuit import Circuit
-
-    if isinstance(t1, Circuit) or isinstance(t2, Circuit):
-    	if preserve_scalar is None:
-        	preserve_scalar = False
-    elif preserve_scalar is None:
-    	preserve_scalar = True
 
     if not isinstance(t1, np.ndarray):
         t1 = t1.to_tensor(preserve_scalar)
