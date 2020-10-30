@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 Right now this project is in Beta and does not yet follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.1] - 2020-10-30
+
+### Added
+- Mac users can now Command-click instead of Ctrl-click in the editor.
+- Added ``Graph.to_tikz`` and ``Graph.from_tikz`` functions in order to convert ZX-diagrams to and from a tikz file.
+- Can now compose ``Graph`` instances using the ``*`` operator.
+- Added function ``Graph.add_edge_smart`` as a convenience wrapper for ``Graph.add_edge_table``.
+- Added ``Graph.auto_detect_io`` as an alias of ``Graph.auto_detect_inputs``, perhaps deprecating the old function at some point.
+- Added top-level scalar magic constants ``ONE, SQRT_TWO, TWO, SQRT_TWO_INV, TWO_INV`` in order to more easily set the value of ``g.scalar`` for ``Graph`` instances.
+
+### Changed
+- Changed default behaviour of ``preserve_scalar`` argument in ``compare_tensors``: now always defaults to ``False``.
+- ``Circuit.verify_equality`` now doesn't say SWAP is equal to the identity. Added an argument to get back the original behaviour.
+- Changed the output of ``zx.draw`` slightly: more visible labels, more colourblind friendly colours.
+
+### Fixed
+- Fixed several bugs in the rewriting with functions in ``editor_actions.py``
+- Fixed bug where Graph.num_edges() wouldn't return correct number of edges.
+- Fixed error that occurred when running pyzx from a different drive than the install drive on Windows.
+- Fixed several bugs in ``hsimplify.hpivot_simp``.
+- Fixed exception when entering negative phase in editor.
+
 ## [0.6.0] - 2020-06-16
 This release has made many backwards incompatible changes to the API in order to remove some old functions and rename other functions to more logical or consistent names. In particular, all British spelling names have been renamed to American spelling names. After this release the API should be significantly more stable.
 
