@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__all__ = ['extract_circuit']
+__all__ = ['extract_circuit', 'graph_to_swaps']
 
 from fractions import Fraction
 import itertools
@@ -24,7 +24,7 @@ from .linalg import Mat2, Z2
 from .simplify import id_simp, tcount
 from .rules import apply_rule, pivot, match_spider_parallel, spider
 from .circuit import Circuit
-from .circuit.gates import Gate, ParityPhase, CNOT, HAD, ZPhase, CZ, InitAncilla
+from .circuit.gates import Gate, ParityPhase, CNOT, HAD, ZPhase, CZ, SWAP, InitAncilla
 
 from .graph.base import BaseGraph, VT, ET
 
@@ -500,22 +500,29 @@ def extract_circuit(
         if not quiet: print("CZ gates saved:", czs_saved)
     # Outside of loop. Finish up the permutation
     id_simp(g,quiet=True) # Now the graph should only contain inputs and outputs
+    # Since we were extracting from right to left, we reverse the order of the gates
+    c.gates = list(reversed(c.gates))
+    return graph_to_swaps(g) + c
+
+def graph_to_swaps(g:BaseGraph[VT,ET]) -> Circuit:
+    """Converts a graph containing only normal and Hadamard edges into a circuit of Hadamard
+    and SWAP gates."""
+    c = Circuit(g.qubit_count())
     swap_map = {}
     leftover_swaps = False
-    for q,v in enumerate(g.outputs): # Finally, check for the last layer of Hadamards, and see if swap gates need to be applied.
+    for q,v in enumerate(g.outputs): # check for a last layer of Hadamards, and see if swap gates need to be applied.
         inp = list(g.neighbors(v))[0]
         if inp not in g.inputs: 
             raise TypeError("Algorithm failed: Not fully reducable")
             return c
         if g.edge_type(g.edge(v,inp)) == 2:
-            c.add_gate("HAD", q)
+            c.prepend_gate(HAD(q))
             g.set_edge_type(g.edge(v,inp),EdgeType.SIMPLE)
         q2 = g.inputs.index(inp)
         if q2 != q: leftover_swaps = True
         swap_map[q] = q2
     if leftover_swaps: 
         for t1, t2 in permutation_as_swaps(swap_map):
-            c.add_gate("SWAP", t1, t2)
-    # Since we were extracting from right to left, we reverse the order of the gates
-    c.gates = list(reversed(c.gates))
+            c.prepend_gate(SWAP(t1, t2))
+    #c.gates = list(reversed(c.gates))
     return c
