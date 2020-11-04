@@ -45,6 +45,7 @@ from typing import Tuple, List
 
 from .graph.base import BaseGraph, VT, ET
 from .utils import VertexType, EdgeType
+from typing import List, Tuple
 
 def color_change_diagram(g: BaseGraph[VT,ET]):
     """Color-change an entire diagram by applying Hadamards to the inputs and ouputs."""

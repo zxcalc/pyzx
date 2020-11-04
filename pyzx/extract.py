@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__all__ = ['extract_circuit', 'graph_to_swaps']
+__all__ = ['extract_circuit', 'extract_simple', 'graph_to_swaps']
 
 from fractions import Fraction
 import itertools
@@ -24,7 +24,7 @@ from .linalg import Mat2, Z2
 from .simplify import id_simp, tcount
 from .rules import apply_rule, pivot, match_spider_parallel, spider
 from .circuit import Circuit
-from .circuit.gates import Gate, ParityPhase, CNOT, HAD, ZPhase, CZ, SWAP, InitAncilla
+from .circuit.gates import Gate, ParityPhase, CNOT, HAD, ZPhase, XPhase, CZ, CX, SWAP, InitAncilla
 
 from .graph.base import BaseGraph, VT, ET
 
@@ -503,6 +503,67 @@ def extract_circuit(
     # Since we were extracting from right to left, we reverse the order of the gates
     c.gates = list(reversed(c.gates))
     return graph_to_swaps(g) + c
+
+def extract_simple(g: BaseGraph[VT,ET]) -> Circuit:
+    """A simplified circuit extractor that works on graphs with a causal flow (e.g. graphs arising
+    from circuits via spider fusion)."""
+    circ = Circuit(g.qubit_count())
+    progress = True
+    while progress:
+        progress = False
+        
+        for o in g.outputs:
+            q = g.qubit(o)
+            if g.vertex_degree(o) != 1:
+                raise ValueError("Bad output degree")
+            v = list(g.neighbors(o))[0]
+            e = g.edge(o, v)
+            
+            if g.edge_type(e) == EdgeType.HADAMARD:
+                progress = True
+                circ.prepend_gate(HAD(g.qubit(o)))
+                g.set_edge_type(e, EdgeType.SIMPLE)
+            elif (g.type(v) == VertexType.Z or g.type(v) == VertexType.X) and g.vertex_degree(v) == 2:
+                ns = list(g.neighbors(v))
+                w = ns[0] if ns[1] == o else ns[1]
+                progress = True
+
+                if g.phase(v) != 0:
+                    gate = (ZPhase(q, g.phase(v)) if g.type(v) == VertexType.Z else
+                            XPhase(q, g.phase(v)))
+                    circ.prepend_gate(gate)
+
+                g.add_edge((w,o), edgetype=g.edge_type(g.edge(w,v)))
+                g.remove_vertex(v)
+                
+        if progress: continue
+        
+        for o1 in g.outputs:
+            for o2 in g.outputs:
+                v1 = list(g.neighbors(o1))[0]
+                v2 = list(g.neighbors(o2))[0]
+                if g.connected(v1,v2):
+                    if ((g.type(v1) == g.type(v2) and g.edge_type(g.edge(v1,v2)) == EdgeType.SIMPLE) or
+                        (g.type(v1) != g.type(v2) and g.edge_type(g.edge(v1,v2)) == EdgeType.HADAMARD)):
+                        raise ValueError("ZX diagram is not unitary")
+                    
+                    if g.type(v1) == VertexType.Z and g.type(v2) == VertexType.X:
+                        # CNOT
+                        progress = True
+                        circ.prepend_gate(CNOT(control=g.qubit(o1),target=g.qubit(o2)))
+                        g.remove_edge(g.edge(v1,v2))
+                    elif g.type(v1) == VertexType.Z and g.type(v2) == VertexType.Z:
+                        # CZ
+                        progress = True
+                        circ.prepend_gate(CZ(control=g.qubit(o1),target=g.qubit(o2)))
+                        g.remove_edge(g.edge(v1,v2))
+                    elif g.type(v1) == VertexType.X and g.type(v2) == VertexType.X:
+                        # conjugate CZ
+                        progress = True
+                        circ.prepend_gate(CX(control=g.qubit(o1),target=g.qubit(o2)))
+                        g.remove_edge(g.edge(v1,v2))
+
+    return graph_to_swaps(g) + circ
 
 def graph_to_swaps(g:BaseGraph[VT,ET]) -> Circuit:
     """Converts a graph containing only normal and Hadamard edges into a circuit of Hadamard
