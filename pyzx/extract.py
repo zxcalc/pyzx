@@ -539,6 +539,7 @@ def extract_simple(g: BaseGraph[VT,ET]) -> Circuit:
         
         for q1,o1 in enumerate(g.outputs):
             for q2,o2 in enumerate(g.outputs):
+                if o1 == o2: continue
                 v1 = list(g.neighbors(o1))[0]
                 v2 = list(g.neighbors(o2))[0]
                 if g.connected(v1,v2):
