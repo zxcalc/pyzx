@@ -428,7 +428,7 @@ def extract_circuit(
             for i, row in enumerate(m2.data):
                 if sum(row) == 1:
                     extractable.add(i)
-            # We now know which vertices are extractable, and hence the CNOTs on qubits that do not involved
+            # We now know which vertices are extractable, and hence the CNOTs on qubits that do not involve
             # these vertices aren't necessary.
             # So first, we get rid of all the CNOTs that happen in the Gaussian elimination after 
             # all the extractable vertices have become extractable
@@ -512,8 +512,7 @@ def extract_simple(g: BaseGraph[VT,ET]) -> Circuit:
     while progress:
         progress = False
         
-        for o in g.outputs:
-            q = g.qubit(o)
+        for q, o in enumerate(g.outputs):
             if g.vertex_degree(o) != 1:
                 raise ValueError("Bad output degree")
             v = list(g.neighbors(o))[0]
@@ -521,7 +520,7 @@ def extract_simple(g: BaseGraph[VT,ET]) -> Circuit:
             
             if g.edge_type(e) == EdgeType.HADAMARD:
                 progress = True
-                circ.prepend_gate(HAD(g.qubit(o)))
+                circ.prepend_gate(HAD(q))
                 g.set_edge_type(e, EdgeType.SIMPLE)
             elif (g.type(v) == VertexType.Z or g.type(v) == VertexType.X) and g.vertex_degree(v) == 2:
                 ns = list(g.neighbors(v))
@@ -533,13 +532,13 @@ def extract_simple(g: BaseGraph[VT,ET]) -> Circuit:
                             XPhase(q, g.phase(v)))
                     circ.prepend_gate(gate)
 
-                g.add_edge((w,o), edgetype=g.edge_type(g.edge(w,v)))
+                g.add_edge(g.edge(w,o), edgetype=g.edge_type(g.edge(w,v)))
                 g.remove_vertex(v)
                 
         if progress: continue
         
-        for o1 in g.outputs:
-            for o2 in g.outputs:
+        for q1,o1 in enumerate(g.outputs):
+            for q2,o2 in enumerate(g.outputs):
                 v1 = list(g.neighbors(o1))[0]
                 v2 = list(g.neighbors(o2))[0]
                 if g.connected(v1,v2):
@@ -550,17 +549,17 @@ def extract_simple(g: BaseGraph[VT,ET]) -> Circuit:
                     if g.type(v1) == VertexType.Z and g.type(v2) == VertexType.X:
                         # CNOT
                         progress = True
-                        circ.prepend_gate(CNOT(control=g.qubit(o1),target=g.qubit(o2)))
+                        circ.prepend_gate(CNOT(control=q1,target=q2))
                         g.remove_edge(g.edge(v1,v2))
                     elif g.type(v1) == VertexType.Z and g.type(v2) == VertexType.Z:
                         # CZ
                         progress = True
-                        circ.prepend_gate(CZ(control=g.qubit(o1),target=g.qubit(o2)))
+                        circ.prepend_gate(CZ(control=q1,target=q2))
                         g.remove_edge(g.edge(v1,v2))
                     elif g.type(v1) == VertexType.X and g.type(v2) == VertexType.X:
                         # conjugate CZ
                         progress = True
-                        circ.prepend_gate(CX(control=g.qubit(o1),target=g.qubit(o2)))
+                        circ.prepend_gate(CX(control=q1,target=q2))
                         g.remove_edge(g.edge(v1,v2))
 
     return graph_to_swaps(g) + circ
@@ -574,7 +573,7 @@ def graph_to_swaps(g:BaseGraph[VT,ET]) -> Circuit:
     for q,v in enumerate(g.outputs): # check for a last layer of Hadamards, and see if swap gates need to be applied.
         inp = list(g.neighbors(v))[0]
         if inp not in g.inputs: 
-            raise TypeError("Algorithm failed: Not fully reducable")
+            raise TypeError("Algorithm failed: Graph is not fully reduced")
             return c
         if g.edge_type(g.edge(v,inp)) == 2:
             c.prepend_gate(HAD(q))
