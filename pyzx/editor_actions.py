@@ -101,15 +101,18 @@ def apply_copy(
 		) -> rules.RewriteOutputType[ET,VT]:
 	rem = []
 	types = g.types()
-	for v,w,t,a,alpha, neigh in matches:
+	for v,w,t,a,alpha,neigh in matches:
 		rem.append(v)
-		if (types[w] == VertexType.H_BOX and a == 1): continue # Don't have to do anything more for this case
+		if (types[w] == VertexType.H_BOX and a == 1): 
+			continue # Don't have to do anything more for this case
 		rem.append(w)
-		g.scalar.add_power(1)
 		vt: VertexType.Type = VertexType.Z
 		if vertex_is_zx(types[w]):
 			vt = types[v] if t == EdgeType.SIMPLE else toggle_vertex(types[v])
 			if a: g.scalar.add_phase(alpha)
+			g.scalar.add_power(-(len(neigh)-1))
+		else: #types[w] == H_BOX
+			g.scalar.add_power(1)
 		for n in neigh: 
 			r = 0.7*g.row(w) + 0.3*g.row(n)
 			q = 0.7*g.qubit(w) + 0.3*g.qubit(n)
