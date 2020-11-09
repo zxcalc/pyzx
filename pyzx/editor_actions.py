@@ -331,8 +331,10 @@ def bialgebra(g: BaseGraph[VT,ET],
 			new_verts.append(v2)
 		if g.type(w) == VertexType.Z:
 			t = VertexType.X
-		else:
+			g.scalar.add_power((g.vertex_degree(v)-2)*(g.vertex_degree(w)-2))
+		else: #g.type(w) == VertexType.H_BOX
 			t = VertexType.Z
+			g.scalar.add_power(g.vertex_degree(v)-2)
 		for n in g.neighbors(w):
 			if n == v: continue
 			r = 0.6*g.row(w) + 0.4*g.row(n)
