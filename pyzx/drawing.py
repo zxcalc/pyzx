@@ -528,3 +528,38 @@ def print_matrix(m: Union[np.ndarray,BaseGraph,Circuit]) -> 'Label':
         m = m.to_matrix()
 
     return Label(matrix_to_latex(m))
+
+
+
+
+def graphs_to_gif(graphs: List[BaseGraph], filename: str, frame_duration: float=0.5):
+    """Given a list of graphs, outputs an animated gif showing them in sequence.
+
+    Args:
+        graphs: The list of Graph instances that should be made into a gif.
+        filename: the full filename of the output gif.
+        frame_duration: how long (in seconds) each frame should last.
+
+    """
+    import tempfile
+    from pathlib import Path
+    try:
+        import imageio # type: ignore
+    except ImportError:
+        raise Exception("This function requires imageio to be installed (try: pip install imageio).")
+
+    with tempfile.TemporaryDirectory() as tmpdirname:
+        #print(tz)
+        for i,g in enumerate(graphs):
+            fig = draw_matplotlib(g)
+            fname = os.path.join(tmpdirname, "graph{:03d}.png".format(i))
+            fig.savefig(fname)
+        image_path = Path(tmpdirname)
+        images = list(image_path.glob('*.png'))
+        image_list = []
+        for file_name in images:
+            image_list.append(imageio.imread(file_name))
+        durations = [frame_duration]*len(image_list)
+        durations[-1] = 5*frame_duration
+        imageio.mimwrite(filename, image_list, duration=durations)
+        return os.path.abspath(filename)
