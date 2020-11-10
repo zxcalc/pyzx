@@ -155,11 +155,12 @@ def draw_matplotlib(
         labels: bool                             =False, 
         figsize:Tuple[FloatInt,FloatInt]         =(8,2), 
         h_edge_draw: Literal['blue', 'box']      ='blue', 
+        show_scalar: bool                        =False,
         rows: Optional[Tuple[FloatInt,FloatInt]] =None
         ) -> Any: # TODO: Returns a matplotlib figure
     if plt is None:
         raise ImportError("This function requires matplotlib to be installed. "
-            "If you are running in a Jupyter notebook, you can instead use `zx.d3.draw`.")
+            "If you are running in a Jupyter notebook, you can instead use `zx.draw_d3`.")
     if isinstance(g, Circuit):
         g = g.to_graph(zh=True)
     fig1 = plt.figure(figsize=figsize)
@@ -236,6 +237,11 @@ def draw_matplotlib(
         if labels: plt.text(p[0]+0.25, p[1]+0.25, str(v), ha='center', color='gray', fontsize=5)
         if a: plt.text(p[0], p[1]-a_offset, phase_to_s(a, t), ha='center', color='blue', fontsize=8)
     
+    if show_scalar:
+        x = min((g.row(v) for v in g.vertices()), default = 0)
+        y = -sum((g.qubit(v) for v in g.vertices()))/(g.num_vertices()+1)
+        ax.text(x-5,y,g.scalar.to_latex())
+
     ax.axis('equal')
     plt.close()
     return fig1
@@ -243,22 +249,22 @@ def draw_matplotlib(
 
 # Provides functions for displaying pyzx graphs in jupyter notebooks using d3
 
-# _d3_display_seq = 0
-
 # make sure we get a fresh random seed
 random_graphid = random.Random()
 
-def draw_d3(g: Union[BaseGraph[VT,ET], Circuit],labels:bool=False, scale:Optional[FloatInt]=None, auto_hbox:bool=True) -> Any:
-    global _d3_display_seq
+def draw_d3(
+    g: Union[BaseGraph[VT,ET], Circuit],
+    labels:bool=False, 
+    scale:Optional[FloatInt]=None, 
+    auto_hbox:bool=True,
+    show_scalar:bool=False
+    ) -> Any:
 
     if settings.mode not in ("notebook", "browser"): 
         raise Exception("This method only works when loaded in a webpage or Jupyter notebook")
 
     if isinstance(g, Circuit):
         g = g.to_graph(zh=True)
-
-    # _d3_display_seq += 1
-    # graph_id = str(_d3_display_seq)
 
     # tracking global sequence can cause clashes if you restart the kernel without clearing ouput, so
     # use an 8-digit random alphanum instead.
@@ -300,13 +306,14 @@ def draw_d3(g: Union[BaseGraph[VT,ET], Circuit],labels:bool=False, scale:Optiona
 <script type="text/javascript">
 require(['zx_viewer'], function(zx_viewer) {{
     zx_viewer.showGraph('#graph-output-{id}',
-    JSON.parse('{graph}'), {width}, {height}, {scale}, {node_size}, {hbox}, {labels});
+    JSON.parse('{graph}'), {width}, {height}, {scale}, {node_size}, {hbox}, {labels}, '{scalar_str}');
 }});
 </script>""".format(id = graph_id, d3_load = settings.d3_load_string, viewer_code=viewer_code, 
                     graph = graphj, 
                    width=w, height=h, scale=scale, node_size=node_size,
                    hbox = 'true' if auto_hbox else 'false',
-                   labels='true' if labels else 'false')
+                   labels='true' if labels else 'false',
+                   scalar_str=g.scalar.to_unicode() if show_scalar else '')
     if settings.mode == "notebook":
         display(HTML(text))
     else:

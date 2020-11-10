@@ -36,7 +36,7 @@ define('zx_viewer', ['d3'], function(d3) {
     }
 
     return {
-    showGraph: function(tag, graph, width, height, scale, node_size, auto_hbox, show_labels) {
+    showGraph: function(tag, graph, width, height, scale, node_size, auto_hbox, show_labels, scalar_str) {
         var ntab = {};
 
         graph.nodes.forEach(function(d) {
@@ -129,6 +129,13 @@ define('zx_viewer', ['d3'], function(d3) {
                 .attr("font-family", "monospace")
                 .attr("fill", "#999")
                 .attr('style', 'pointer-events: none; user-select: none;');
+        }
+
+        if (scalar_str != "") {
+            svg.append("text")
+                .text(scalar_str)
+                .attr("x", 60).attr("y", 40)
+                .attr("text-anchor", "middle")
         }
 
         function update_hboxes() {
