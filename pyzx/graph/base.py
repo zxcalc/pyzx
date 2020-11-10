@@ -16,7 +16,6 @@
 
 import abc
 import math
-import cmath
 import copy
 from fractions import Fraction
 from typing import TYPE_CHECKING, Union, Optional, Generic, TypeVar, Any, Sequence
@@ -28,115 +27,11 @@ import numpy as np
 from ..utils import EdgeType, VertexType, toggle_edge, vertex_is_zx, toggle_vertex
 from ..utils import FloatInt, FractionLike
 from ..tensor import tensorfy, tensor_to_matrix
+
+from .scalar import Scalar
+
 if TYPE_CHECKING:
     from .. import simplify
-
-def cexp(val) -> complex:
-    return cmath.exp(1j*math.pi*val)
-
-class Scalar(object):
-    def __init__(self) -> None:
-        self.power2: int = 0 # Stores power of square root of two
-        self.phase: Fraction = Fraction(0) # Stores complex phase of the number
-        self.phasenodes: List[FractionLike] = [] # Stores list of legless spiders, by their phases.
-        self.floatfactor: complex = 1.0
-        self.is_unknown: bool = False # Whether this represents an unknown scalar value
-        self.is_zero: bool = False
-
-    def __repr__(self) -> str:
-        return "Scalar({})".format(str(self))
-
-    def __str__(self) -> str:
-        if self.is_unknown:
-            return "UNKNOWN"
-        s = "{0.real:.2f}{0.imag:+.2f}i = ".format(self.to_number())
-        if self.floatfactor != 1.0:
-            s += "{0.real:.2f}{0.imag:+.2f}i".format(self.floatfactor)
-        if self.phase:
-            s += "exp({}ipi)".format(str(self.phase))
-        s += "sqrt(2)^{:d}".format(self.power2)
-        for node in self.phasenodes:
-            s += "(1+exp({}ipi))".format(str(node))
-        return s
-
-    def __complex__(self) -> complex:
-        return self.to_number()
-
-    def copy(self) -> 'Scalar':
-        s = Scalar()
-        s.power2 = self.power2
-        s.phase = self.phase
-        s.phasenodes = copy.copy(self.phasenodes)
-        s.floatfactor = self.floatfactor
-        s.is_unknown = self.is_unknown
-        s.is_zero = self.is_zero
-        return s
-
-    def to_number(self) -> complex:
-        val = cexp(self.phase)
-        for node in self.phasenodes: # Node should be a Fraction
-            val *= 1+cexp(node)
-        val *= math.sqrt(2)**self.power2
-        return complex(val*self.floatfactor)
-
-    def set_unknown(self) -> None:
-        self.is_unknown = True
-        self.phasenodes = []
-
-    def add_power(self, n) -> None:
-        self.power2 += n
-    def add_phase(self, phase: FractionLike) -> None:
-        self.phase = (self.phase + phase) % 2
-    def add_node(self, node: FractionLike) -> None:
-        self.phasenodes.append(node)
-        if node == 1: self.is_zero = True
-    def add_float(self,f: complex) -> None:
-        self.floatfactor *= f
-
-    def mult_with_scalar(self, other: 'Scalar') -> None:
-        self.power2 += other.power2
-        self.phase = (self.phase +other.phase)%2
-        self.phasenodes.extend(other.phasenodes)
-        self.floatfactor *= other.floatfactor
-        if other.is_zero: self.is_zero = True
-        if other.is_unknown: self.is_unknown = True
-
-    def add_spider_pair(self, p1: FractionLike,p2: FractionLike) -> None:
-        """Add the scalar corresponding to a connected pair of spiders (p1)-H-(p2)."""
-        # These if statements look quite arbitrary, but they are just calculations of the scalar
-        # of a pair of connected single wire spiders of opposite colors.
-        # We make special cases for Clifford phases and pi/4 phases.
-        if p2 in (0,1):
-            p1,p2 = p2, p1
-        if p1 == 0:
-            self.add_power(1)
-            return
-        elif p1 == 1:
-            self.add_power(1)
-            self.add_phase(p2)
-            return
-        if p2.denominator == 2:
-            p1, p2 = p2, p1
-        if p1 == Fraction(1,2):
-            self.add_phase(Fraction(1,4))
-            self.add_node((p2-Fraction(1,2))%2)
-            return
-        elif p1 == Fraction(3,2):
-            self.add_phase(Fraction(7,4))
-            self.add_node((p2-Fraction(3,2))%2)
-            return
-        if (p1 + p2) % 2 == 0:
-            if p1.denominator == 4:
-                if p1.numerator in (3,5):
-                    self.add_phase(Fraction(1))
-                return
-            self.add_power(1)
-            self.add_float(math.cos(p1))
-            return
-        # Generic case
-        self.add_power(-1)
-        self.add_float(1+cexp(p1)+cexp(p2) - cexp(p1+p2))
-        return
 
 
 class DocstringMeta(GenericMeta):
