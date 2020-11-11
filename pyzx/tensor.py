@@ -24,7 +24,8 @@ If the ZX-diagram is not circuit-like, but instead has nodes with high degree,
 it will run out of memory even sooner."""
 
 __all__ = ['tensorfy', 'compare_tensors', 'compose_tensors', 
-            'adjoint', 'is_unitary','tensor_to_matrix']
+            'adjoint', 'is_unitary','tensor_to_matrix',
+            'find_scalar_correction']
 
 from math import pi, sqrt
 
@@ -203,6 +204,28 @@ def compare_tensors(t1: TensorConvertible,t2: TensorConvertible, preserve_scalar
     else:
         raise ValueError("Tensor is too close to zero")
     return np.allclose(t1/a,t2/t2.flat[i])
+
+def find_scalar_correction(t1: TensorConvertible, t2:TensorConvertible) -> complex:
+    """Returns the complex number ``z`` such that ``t1 = z*t2``.
+    
+    Warning:
+        This function assumes that ``compare_tensors(t1,t2,preserve_scalar=False)`` is True,
+        i.e. that ``t1`` and ``t2`` indeed are equal up to global scalar.
+        If they aren't, this function returns garbage.
+
+    """
+    if not isinstance(t1, np.ndarray):
+        t1 = t1.to_tensor(preserve_scalar=True)
+    if not isinstance(t2, np.ndarray):
+        t2 = t2.to_tensor(preserve_scalar=True)
+
+    epsilon = 10**-14
+    for i,a in enumerate(t1.flat):
+        if abs(a)>epsilon: 
+            if abs(t2.flat[i])<epsilon: return 0
+            return a/t2.flat[i]
+
+    return 0
 
 
 def compose_tensors(t1: np.ndarray, t2: np.ndarray) -> np.ndarray:
