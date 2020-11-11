@@ -157,7 +157,13 @@ class ZXEditorWidget(widgets.DOMWidget):
 	last_operation = Unicode('').tag(sync=True)
 	action 		   = Unicode('').tag(sync=True)
 	
-	def __init__(self, graph: GraphS, show_matrix:bool=False, *args, **kwargs) -> None:
+	def __init__(
+			self, 
+			graph: GraphS, 
+			show_matrix:bool=False, 
+			show_scalar:bool=False,
+			*args, **kwargs
+			) -> None:
 		super().__init__(*args,**kwargs)
 		self.observe(self._handle_graph_change, 'graph_json')
 		self.observe(self._selection_changed, 'graph_selected')
@@ -165,12 +171,14 @@ class ZXEditorWidget(widgets.DOMWidget):
 		self.observe(self._perform_action, 'action')
 		self.graph = graph
 		self.show_matrix = show_matrix
+		self.show_scalar = show_scalar
 		self.undo_stack: List[Tuple[str,str]] = [('initial',str(self.graph_json))]
 		self.undo_position: int = 1
 		self.halt_callbacks: bool = False
 		self.snapshots: List[GraphS] = []
 		self.msg: List[str] = []
 		self.output = widgets.Output()
+		self.scalar_view = widgets.Label()
 		self.matrix_view = widgets.Label()
 		self._update_matrix()
 	
@@ -178,6 +186,10 @@ class ZXEditorWidget(widgets.DOMWidget):
 		self.graph_json = graph_to_json(self.graph, self.graph.scale) # type: ignore
 
 	def _update_matrix(self):
+		if self.show_scalar:
+			s = self.graph.scalar.to_latex()
+			if s == '': s = '1'
+			self.scalar_view.value = "Scalar: " + s
 		if not self.show_matrix: return
 		try:
 			self.graph.auto_detect_inputs()
@@ -361,6 +373,7 @@ def edit(
 		g: GraphS, 
 		scale:Optional[FloatInt]=None, 
 		show_matrix:bool=False,
+		show_scalar:bool=False,
 		show_errors:bool=True) -> ZXEditorWidget:
 	"""Start an instance of an ZX-diagram editor on a given graph ``g``.
 	Only usable in a Jupyter Notebook. 
@@ -389,6 +402,7 @@ def edit(
 		g: The Graph instance to edit
 		scale: What size the vertices should have (ideally somewhere between 20 and 50)
 		show_matrix: When True, displays the linear map the Graph implements beneath the editor
+		show_scalar: When True, displays ``g.scalar`` beneath the editor.
 		show_errors: When True, prints Exceptions beneath the editor
 	
 	"""
@@ -414,13 +428,15 @@ def edit(
 
 
 	w = ZXEditorWidget(
-					g, show_matrix, 
+					g, show_matrix,show_scalar,
 					graph_json = js, graph_id = str(seq), 
 					graph_width=w, graph_height=h, 
 					graph_node_size=node_size,
 					graph_buttons = operations_to_js()
 					)
 	display(w)
+	if show_scalar:
+		display(w.scalar_view)
 	if show_matrix:
 		display(w.matrix_view)
 	if show_errors: display(w.output)
