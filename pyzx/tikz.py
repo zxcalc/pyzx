@@ -54,13 +54,16 @@ def _to_tikz(g: BaseGraph[VT,ET],
         p = g.phase(v)
         ty = g.type(v)
         if ty == VertexType.BOUNDARY:
-            style = "none"
+            style = settings.tikz_classes['boundary']
         elif ty == VertexType.H_BOX:
-            style = "hadamard"
+            style = settings.tikz_classes['H']
         else:
-            style = 'Z' if ty==VertexType.Z else 'X'
-            if p != 0: style += " phase"
-            style += " dot"
+            if p != 0:
+                if ty==VertexType.Z: style = settings.tikz_classes['Z phase']
+                else: style = settings.tikz_classes['X phase']
+            else:
+                if ty==VertexType.Z: style = settings.tikz_classes['Z']
+                else: style = settings.tikz_classes['X']
         if (ty == VertexType.H_BOX and p == 1) or (ty != VertexType.H_BOX and p == 0):
             phase = ""
         else:
@@ -80,13 +83,17 @@ def _to_tikz(g: BaseGraph[VT,ET],
         s = "        \\draw "
         if ty == EdgeType.HADAMARD: 
             if g.type(v) != VertexType.BOUNDARY and g.type(w) != VertexType.BOUNDARY:
-                s += "[style=hadamard edge] "
+                style = settings.tikz_classes['H-edge']
+                if style: s += "[style={:s}] ".format(style)
             else:
                 x = (g.row(v) + g.row(w))/2.0 +xoffset
                 y = -(g.qubit(v)+g.qubit(w))/2.0 -yoffset
-                t = "        \\node [style=hadamard] ({:d}) at ({:.2f}, {:.2f}) {{}};".format(maxindex+1, x,y)
+                t = "        \\node [style={:s}] ({:d}) at ({:.2f}, {:.2f}) {{}};".format(settings.tikz_classes['H'],maxindex+1, x,y)
                 verts.append(t)
                 maxindex += 1
+        else:
+            style = settings.tikz_classes['edge']
+            if style: s += "[style={:s}] ".format(style)
         s += "({:d}) to ({:d});".format(v+idoffset,w+idoffset) # type: ignore
         edges.append(s)
     
@@ -138,17 +145,12 @@ def tikzit(g: Union[BaseGraph[VT,ET],Circuit,str]) -> None:
     else:
         tz = g
     with tempfile.TemporaryDirectory() as tmpdirname:
-        #print(tz)
         fname = os.path.join(tmpdirname, "graph.tikz")
         with open(fname,'w') as f:
             f.write(tz)
         print("Opening Tikzit...")
-        #print(fname)
         subprocess.check_call([settings.tikzit_location, fname])
         print("Done")
-        # with open(fname, 'r') as f:
-        #     js = f.read()
-        #     g = json_to_graph(js)
 
 
 synonyms_boundary = ['none', 'empty', 'boundary']

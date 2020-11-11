@@ -16,7 +16,7 @@
 
 import os
 from fractions import Fraction
-from typing import Union, Optional, List
+from typing import Union, Optional, List, Dict
 from typing_extensions import Literal, Final
 
 FloatInt = Union[float,int]
@@ -71,16 +71,27 @@ def phase_to_s(a: FractionLike, t:VertexType.Type=VertexType.Z):
     # unicode 0x03c0 = pi
     return simstr + ns + '\u03c0' + ds
 
+tikz_classes = {
+    'boundary': 'empty',
+    'Z': 'Z dot',
+    'X': 'X dot',
+    'Z phase': 'Z phase dot',
+    'X phase': 'X phase dot',
+    'H': 'hadamard',
+    'edge': '',
+    'H-edge': 'hadamard edge'
+}
 
 class Settings(object): # namespace class
     mode: Literal["notebook", "browser", "shell"] = "shell"
     drawing_backend: Literal["d3","matplotlib"] = "d3" 
-    javascript_location: str = ""
+    javascript_location: str = "" # Path to javascript files of pyzx
     d3_load_string: str = ""
-    tikzit_location: str = ""
-    quantomatic_location: str = ""
+    tikzit_location: str = "" # Path to tikzit executable
+    quantomatic_location: str = "" # Path to quantomatic executable
     topt_command: Optional[List[str]] = None # Argument-separated command to run TOpt such as ["wsl", "./TOpt"]
     show_labels: bool = False
+    tikz_classes: Dict[str,str] = tikz_classes
 
 settings = Settings()
 
