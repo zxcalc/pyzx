@@ -43,13 +43,23 @@ TIKZ_BASE = """
 \\end{{tikzpicture}}
 """
 
-def _to_tikz(g: BaseGraph[VT,ET], 
-    xoffset:FloatInt=0, yoffset:FloatInt=0, idoffset:int=0) -> Tuple[List[str],List[str]]:
+def _to_tikz(g: BaseGraph[VT,ET], draw_scalar:bool = False,
+    xoffset:FloatInt=0, yoffset:FloatInt=0, idoffset:int=0
+    ) -> Tuple[List[str],List[str]]:
     """Converts a ZX-graph ``g`` to a string representing a tikz diagram.
     The optional arguments are used by :func:`to_tikz_sequence`.
     """
     verts = []
+
+    if draw_scalar:
+        scalar = g.scalar.to_latex()
+        x = -1 + xoffset + min([g.row(v) for v in g.vertices()],default=0)
+        y = - yoffset - sum([g.qubit(v) for v in g.vertices()])/(g.num_vertices()+1)
+        s = "        \\node [style=none] ({:d}) at ({:.2f}, {:.2f}) {{{:s}}};".format(idoffset,x,y,scalar)
+        idoffset += 1
+        verts.append(s)
     maxindex = idoffset
+
     for v in g.vertices():
         p = g.phase(v)
         ty = g.type(v)
@@ -99,12 +109,12 @@ def _to_tikz(g: BaseGraph[VT,ET],
     
     return (verts, edges)
 
-def to_tikz(g: BaseGraph[VT,ET]) -> str:
+def to_tikz(g: BaseGraph[VT,ET], draw_scalar:bool=False) -> str:
     """Converts a ZX-graph ``g`` to a string representing a tikz diagram."""
-    verts, edges = _to_tikz(g)
+    verts, edges = _to_tikz(g,draw_scalar)
     return TIKZ_BASE.format(vertices="\n".join(verts), edges="\n".join(edges))
 
-def to_tikz_sequence(graphs:List[BaseGraph], maxwidth:FloatInt=10) -> str:
+def to_tikz_sequence(graphs:List[BaseGraph], draw_scalar:bool=False, maxwidth:FloatInt=10) -> str:
     """Given a list of ZX-graphs, outputs a single tikz diagram with the graphs presented in a grid.
     ``maxwidth`` is the maximum width of the diagram, before a graph is put on a new row in the tikz diagram."""
     xoffset = -maxwidth
@@ -112,8 +122,8 @@ def to_tikz_sequence(graphs:List[BaseGraph], maxwidth:FloatInt=10) -> str:
     idoffset = 0
     total_verts, total_edges = [],[]
     for g in graphs:
-        max_index = max(g.vertices()) + 2*len(g.inputs) + 1
-        verts, edges = _to_tikz(g,xoffset,yoffset,idoffset)
+        max_index = max(g.vertices()) + 2*len(g.inputs) + 2
+        verts, edges = _to_tikz(g,draw_scalar,xoffset,yoffset,idoffset)
         total_verts.extend(verts)
         total_edges.extend(edges)
         if xoffset + g.depth() + 2> maxwidth:
@@ -127,7 +137,7 @@ def to_tikz_sequence(graphs:List[BaseGraph], maxwidth:FloatInt=10) -> str:
 
 
 
-def tikzit(g: Union[BaseGraph[VT,ET],Circuit,str]) -> None:
+def tikzit(g: Union[BaseGraph[VT,ET],Circuit,str], draw_scalar:bool=False) -> None:
     """Opens Tikzit with the graph ``g`` opened as a tikz diagram. 
     For this to work, ``zx.settings.tikzit_location`` must be pointed towards the Tikzit executable.
     Even though this function is intended to be used with Tikzit, ``zx.tikz.tikzit_location``
@@ -141,7 +151,7 @@ def tikzit(g: Union[BaseGraph[VT,ET],Circuit,str]) -> None:
     if isinstance(g, Circuit):
         g = g.to_graph(zh=True)
     if isinstance(g, BaseGraph):
-        tz = to_tikz(g)
+        tz = to_tikz(g,draw_scalar)
     else:
         tz = g
     with tempfile.TemporaryDirectory() as tmpdirname:

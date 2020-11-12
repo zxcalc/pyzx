@@ -72,7 +72,7 @@ def phase_to_s(a: FractionLike, t:VertexType.Type=VertexType.Z):
     return simstr + ns + '\u03c0' + ds
 
 tikz_classes = {
-    'boundary': 'empty',
+    'boundary': 'none',
     'Z': 'Z dot',
     'X': 'X dot',
     'Z phase': 'Z phase dot',

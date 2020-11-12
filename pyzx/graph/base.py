@@ -396,10 +396,10 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         from .jsonparser import to_graphml
         return to_graphml(self)
 
-    def to_tikz(self) -> str:
+    def to_tikz(self,draw_scalar:bool=False) -> str:
         """Returns a Tikz representation of the graph."""
         from ..tikz import to_tikz
-        return to_tikz(self)
+        return to_tikz(self,draw_scalar)
 
     @classmethod
     def from_json(cls, js) -> 'BaseGraph':
