@@ -19,7 +19,8 @@ from fractions import Fraction
 from typing import List, Dict, Any, Optional
 
 from ..utils import FractionLike, EdgeType, VertexType
-from .graph import Graph 
+from .graph import Graph
+from .scalar import Scalar
 from .base import BaseGraph, VT, ET
 from ..simplify import id_simp
 
@@ -123,12 +124,17 @@ def json_to_graph(js: str, backend:Optional[str]=None) -> BaseGraph:
         amount = edges.get(e,[0,0])
         amount[1] += 1
         edges[e] = amount
+
+    if "scalar" in j:
+        g.scalar = Scalar.from_json(j["scalar"])
     g.add_edge_table(edges)
 
     return g
 
-def graph_to_json(g: BaseGraph[VT,ET]) -> str:
-    """Converts a PyZX graph into JSON output compatible with Quantomatic."""
+def graph_to_json(g: BaseGraph[VT,ET], include_scalar: bool=True) -> str:
+    """Converts a PyZX graph into JSON output compatible with Quantomatic.
+    If include_scalar is set to True (the default), then this includes the value 
+    of g.scalar with the json, which will also be loaded by the ``from_json`` method."""
     node_vs: Dict[str, Dict[str, Any]] = {}
     wire_vs: Dict[str, Dict[str, Any]] = {}
     edges: Dict[str, Dict[str, str]] = {}
@@ -187,10 +193,15 @@ def graph_to_json(g: BaseGraph[VT,ET]) -> str:
         else:
             raise TypeError("Edge of type 0")
 
+    d: Dict[str,Any] = {
+        "wire_vertices": wire_vs, 
+        "node_vertices": node_vs, 
+        "undir_edges": edges
+    }
+    if include_scalar:
+        d["scalar"] = g.scalar.to_json()
 
-    return json.dumps({"wire_vertices": wire_vs, 
-            "node_vertices": node_vs, 
-            "undir_edges": edges})
+    return json.dumps(d)
 
 def to_graphml(g: BaseGraph[VT,ET]) -> str:
     gml = """<?xml version="1.0" encoding="UTF-8" standalone="no"?>

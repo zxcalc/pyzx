@@ -21,6 +21,7 @@ import cmath
 import copy
 from fractions import Fraction
 from typing import List
+import json
 
 from ..utils import FloatInt, FractionLike
 
@@ -148,6 +149,28 @@ class Scalar(object):
     		else:
     			s += "{:d}/{:d}π)".format(phase.numerator,phase.denominator)
     	return s
+
+    def to_json(self) -> str:
+        d = {"power2": self.power2, "phase": str(self.phase)}
+        if abs(self.floatfactor - 1) > 0.00001:
+            d["floatfactor"] =  self.floatfactor
+        if self.phasenodes:
+            d["phasenodes"] = [str(p) for p in self.phasenodes]
+        if self.is_zero:
+            d["is_zero"] = self.is_zero
+        if self.is_unknown:
+            d["is_unknown"] = self.is_unknown,
+        return json.dumps(d)
+
+    @classmethod
+    def from_json(cls, s: str) -> 'Scalar':
+        d = json.loads(s)
+        d["phase"] = Fraction(d["phase"])
+        if "phasenodes" in d:
+            d["phasenodes"] = [Fraction(p) for p in d["phasenodes"]]
+        scalar = Scalar()
+        scalar.__dict__.update(d)
+        return scalar
 
     def set_unknown(self) -> None:
         self.is_unknown = True
