@@ -348,7 +348,8 @@ class ZXEditorWidget(widgets.DOMWidget):
 				else:
 					self.graph.add_edge((s,t),et) # type: ignore
 			self.graph.remove_edges(marked)
-			self.graph.scalar = Scalar.from_json(js['scalar'])
+			if 'scalar' in js:
+				self.graph.scalar = Scalar.from_json(js['scalar'])
 			self._update_matrix()
 		except Exception as e:
 			with self.output: print(traceback.format_exc())
