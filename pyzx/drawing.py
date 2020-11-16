@@ -547,6 +547,9 @@ def graphs_to_gif(graphs: List[BaseGraph], filename: str, frame_duration: float=
         filename: the full filename of the output gif.
         frame_duration: how long (in seconds) each frame should last.
 
+    Warning:
+        This function requires imagio to be installed (pip install imageio).
+
     """
     import tempfile
     from pathlib import Path
