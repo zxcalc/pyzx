@@ -44,7 +44,7 @@ def match_hadamards(g: BaseGraph[VT,ET],
     return list(m)
 
 def hadamard_to_h_edge(g: BaseGraph[VT,ET], matches: List[VT]) -> rules.RewriteOutputType[ET,VT]:
-    """Converts a mathcing of H-boxes with arity 2 and phase 1, i.e. Hadamard gates, to Hadamard edges."""
+    """Converts a matching of H-boxes with arity 2 and phase 1, i.e. Hadamard gates, to Hadamard edges."""
     rem_verts = []
     etab = {}
     for v in matches:
@@ -57,6 +57,47 @@ def hadamard_to_h_edge(g: BaseGraph[VT,ET], matches: List[VT]) -> rules.RewriteO
         else:
             etab[g.edge(w1,w2)] = [1,0]
     g.scalar.add_power(len(matches)) # Correct for the sqrt(2) difference in H-boxes and H-edges
+    return (etab, rem_verts, [], True)
+
+def match_connected_hboxes(g: BaseGraph[VT,ET],
+        edgef: Optional[Callable[[ET],bool]] = None
+        ) -> List[ET]:
+    """Matches Hadamard-edges that are connected to H-boxes, as these can be fused,
+    see the rule (HS1) of https://arxiv.org/pdf/1805.02175.pdf."""
+    if edgef is not None: candidates = set([e for e in g.edges() if edgef(e)])
+    else: candidates = g.edge_set()
+    m : Set[ET] = set()
+    ty = g.types()
+    while candidates:
+        e = candidates.pop()
+        if g.edge_type(e) != EdgeType.HADAMARD: continue
+        v1,v2 = g.edge_st(e)
+        if ty[v1] != VertexType.H_BOX or ty[v2] != VertexType.H_BOX: continue
+        if g.phase(v1) != 1 and g.phase(v2) != 1: continue
+        m.add(e)
+        candidates.difference_update(g.incident_edges(v1))
+        candidates.difference_update(g.incident_edges(v2))
+    return list(m)
+
+def fuse_hboxes(g: BaseGraph[VT,ET], matches: List[ET]) -> rules.RewriteOutputType[ET,VT]:
+    """Fuses two neighbouring H-boxes together. 
+    See rule (HS1) of https://arxiv.org/pdf/1805.02175.pdf."""
+    rem_verts = []
+    etab = {}
+    for e in matches:
+        v1, v2 = g.edge_st(e)
+        if g.phase(v2) != 1: # at most one of v1 and v2 has a phase different from 1
+            v1, v2 = v2, v1
+        rem_verts.append(v2)
+        g.scalar.add_power(1)
+        for n in g.neighbors(v2):
+            if n == v1: continue
+            e2 = g.edge(v2,n)
+            if g.edge_type(e2) == EdgeType.SIMPLE:
+                etab[g.edge(v1,n)] = [1,0]
+            else:
+                etab[g.edge(v1,n)] = [0,1]
+    
     return (etab, rem_verts, [], True)
 
 def match_par_hbox(g: BaseGraph[VT,ET]) -> List[List[VT]]:
@@ -74,6 +115,7 @@ def match_par_hbox(g: BaseGraph[VT,ET]) -> List[List[VT]]:
     return list(filter(lambda l: len(l) > 1, hs.values()))
 
 def par_hbox(g: BaseGraph[VT,ET], ms: List[List[VT]]) -> None:
+    """Implements the `multiply rule' (M) from https://arxiv.org/abs/1805.02175"""
     for m in ms:
         p = sum(g.phase(h) for h in m) % 2
         g.remove_vertices(m[1:])
