@@ -25,6 +25,7 @@ from typing import Callable, Optional, List, Tuple, Set, Dict, Any, Union
 from .utils import EdgeType, VertexType, toggle_edge, vertex_is_zx, toggle_vertex
 from .utils import settings, phase_to_s, FloatInt
 from .drawing import matrix_to_latex
+from .graph import Scalar
 from .graph.graph import GraphS
 from . import rules
 from . import tikz
@@ -133,7 +134,8 @@ def graph_to_json(g: GraphS, scale:FloatInt) -> str:
 	links = [{'source': int(g.edge_s(e)), # type: ignore
 			  'target': int(g.edge_t(e)), # type: ignore
 			  't': g.edge_type(e) } for e in g.edges()]
-	return json.dumps({'nodes': nodes, 'links': links})
+	scalar = g.scalar.to_json()
+	return json.dumps({'nodes': nodes, 'links': links, 'scalar': scalar})
 
 
 @widgets.register
@@ -346,6 +348,7 @@ class ZXEditorWidget(widgets.DOMWidget):
 				else:
 					self.graph.add_edge((s,t),et) # type: ignore
 			self.graph.remove_edges(marked)
+			self.graph.scalar = Scalar.from_json(js['scalar'])
 			self._update_matrix()
 		except Exception as e:
 			with self.output: print(traceback.format_exc())
