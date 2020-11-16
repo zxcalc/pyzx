@@ -16,7 +16,7 @@
 
 from typing import Callable, List
 
-from .simplify import spider_simp, id_simp
+from .simplify import simp, Stats, spider_simp, id_simp
 from .utils import EdgeType, VertexType
 from .graph.base import BaseGraph, VT,ET
 from .hrules import *
@@ -122,6 +122,11 @@ def from_hypergraph_form(g: BaseGraph[VT,ET]) -> None:
                 g.remove_vertex(h)
     hadamard_simp(g,quiet=True)
 
+
+def par_hbox_simp(g: BaseGraph[VT,ET], matchf:Optional[Callable[[VT],bool]]=None, quiet:bool=False, stats:Optional[Stats]=None) -> int:
+    return simp(g, 'par_hbox_simp', match_par_hbox, par_hbox, matchf=matchf, quiet=quiet, stats=stats)
+
+
 # a stripped-down version of "simp", since hrules don't return edge tables etc
 def hsimp(
         g: BaseGraph[VT,ET], 
@@ -155,7 +160,7 @@ def hpivot_simp(g: BaseGraph[VT,ET], quiet:bool=False) -> int:
         to_hypergraph_form(g)
         i = hsimp(g, 'hpivot', match_hpivot, hpivot, iterations=1, quiet=quiet)
         #i += hsimp(g, 'zero_hbox', match_zero_hbox, zero_hbox, quiet=quiet)
-        i += hsimp(g, 'par_hbox', match_par_hbox, par_hbox, quiet=quiet)
+        i += par_hbox_simp(g,quiet=quiet)
         from_hypergraph_form(g)
         spider_simp(g, quiet=quiet)
         id_simp(g, quiet=quiet)

@@ -16,7 +16,7 @@
 
 from fractions import Fraction
 from itertools import combinations
-from typing import Dict, List, Tuple, Callable, Optional, Set
+from typing import Dict, List, Tuple, Callable, Optional, Set, FrozenSet
 from .utils import EdgeType, VertexType, toggle_edge, FractionLike, FloatInt
 from .simplify import *
 from .graph.base import BaseGraph, ET, VT
@@ -80,7 +80,7 @@ def match_connected_hboxes(g: BaseGraph[VT,ET],
     return list(m)
 
 def fuse_hboxes(g: BaseGraph[VT,ET], matches: List[ET]) -> rules.RewriteOutputType[ET,VT]:
-    """Fuses two neighbouring H-boxes together. 
+    """Fuses two neighboring H-boxes together. 
     See rule (HS1) of https://arxiv.org/pdf/1805.02175.pdf."""
     rem_verts = []
     etab = {}
@@ -100,27 +100,79 @@ def fuse_hboxes(g: BaseGraph[VT,ET], matches: List[ET]) -> rules.RewriteOutputTy
     
     return (etab, rem_verts, [], True)
 
-def match_par_hbox(g: BaseGraph[VT,ET]) -> List[List[VT]]:
-    """Matches pairs of H-boxes that have exactly the same set of neighbours.
-    Assumes the Graph is in hypergraph form, and hence all H-boxes are only connected to white spiders."""
-    hs: Dict[Tuple[VT,...],List[VT]] = dict()
-    types = g.types()
-    for h in g.vertices():
-        if types[h] != VertexType.H_BOX: continue
-        nhd = tuple(sorted(g.neighbors(h)))
-        if nhd in hs:
-            hs[nhd].append(h)
-        else:
-            hs[nhd] = [h]
-    return list(filter(lambda l: len(l) > 1, hs.values()))
 
-def par_hbox(g: BaseGraph[VT,ET], ms: List[List[VT]]) -> None:
+TYPE_MATCH_PAR_HBOX = Tuple[List[VT],List[VT],List[VT]]
+def match_par_hbox(
+    g: BaseGraph[VT,ET],
+    vertexf: Optional[Callable[[VT],bool]] = None
+    ) -> List[TYPE_MATCH_PAR_HBOX]:
+    """Matches sets of H-boxes that are connected in parallel (via optional NOT gates)
+    to the same white spiders."""
+    if vertexf is not None: candidates = set([v for v in g.vertices() if vertexf(v)])
+    else: candidates = g.vertex_set()
+    
+    groupings: Dict[Tuple[FrozenSet[VT],FrozenSet[VT]], Tuple[List[VT],List[VT],List[VT]]] = dict()
+    ty = g.types()
+    for h in candidates:
+        if ty[h] != VertexType.H_BOX: continue
+        suitable = True
+        neighbors_regular = set()
+        neighbors_NOT = set()
+        NOTs = []
+        for v in g.neighbors(h):
+            e = g.edge(v,h)
+            if g.edge_type(e) == EdgeType.HADAMARD:
+                if ty[v] == VertexType.X:
+                    neighbors_regular.add(v)
+                elif ty[v] == VertexType.Z and g.vertex_degree(v) == 2 and g.phase(v) == 1:
+                    w = [w for w in g.neighbors(v) if w!=h][0] # unique other neighbor
+                    if ty[w] != VertexType.Z or g.edge_type(g.edge(v,w)) != EdgeType.HADAMARD:
+                        suitable = False
+                        break
+                    neighbors_NOT.add(w)
+                    NOTs.append(v)
+                else:    
+                    suitable = False
+                    break
+            else: # e == EdgeType.SIMPLE
+                if ty[v] == VertexType.Z:
+                    neighbors_regular.add(v)
+                elif ty[v] == VertexType.X and g.vertex_degree(v) == 2 and g.phase(v) == 1:
+                    w = [w for w in g.neighbors(v) if w!=h][0] # unique other neighbor
+                    if ty[w] != VertexType.Z or g.edge_type(g.edge(v,w)) != EdgeType.SIMPLE:
+                        suitable = False
+                        break
+                    neighbors_NOT.add(w)
+                    NOTs.append(v)
+                else:
+                    suitable = False
+                    break
+        if not suitable: continue
+        group = (frozenset(neighbors_regular), frozenset(neighbors_NOT))
+        if group in groupings: 
+            groupings[group][0].append(h)
+            groupings[group][2].extend(NOTs)
+        else: groupings[group] = ([h],NOTs, [])
+
+    m = []
+    for (n_r, n_N), (hs,firstNOTs, NOTs) in groupings.items():
+        if len(hs) < 2: continue
+        m.append((hs, firstNOTs, NOTs))
+    return m
+
+def par_hbox(g: BaseGraph[VT,ET], matches: List[TYPE_MATCH_PAR_HBOX]) -> rules.RewriteOutputType[ET,VT]:
     """Implements the `multiply rule' (M) from https://arxiv.org/abs/1805.02175"""
-    for m in ms:
-        p = sum(g.phase(h) for h in m) % 2
-        g.remove_vertices(m[1:])
-        if p == 0: g.remove_vertex(m[0])
-        else: g.set_phase(m[0], p)
+    rem_verts = []
+    for hs, firstNOTs, NOTs in matches:
+        p = sum(g.phase(h) for h in hs) % 2
+        rem_verts.extend(hs[1:])
+        rem_verts.extend(NOTs)
+        if p == 0: 
+            rem_verts.append(hs[0])
+            rem_verts.extend(firstNOTs)
+        else: g.set_phase(hs[0], p)
+    
+    return ({}, rem_verts, [], False)
 
 def match_zero_hbox(g: BaseGraph[VT,ET]) -> List[VT]:
     """Matches H-boxes that have a phase of 2pi==0."""
@@ -130,7 +182,7 @@ def match_zero_hbox(g: BaseGraph[VT,ET]) -> List[VT]:
 
 def zero_hbox(g: BaseGraph[VT,ET], m: List[VT]) -> None:
     """Removes H-boxes with a phase of 2pi=0.
-    Note that this rule is only semantically correct when all its neighbours are white spiders."""
+    Note that this rule is only semantically correct when all its neighbors are white spiders."""
     g.remove_vertices(m)
 
 
