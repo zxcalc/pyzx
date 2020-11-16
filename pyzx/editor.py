@@ -360,8 +360,9 @@ class ZXEditorWidget(widgets.DOMWidget):
 		self.msg.append("Handling graph change")
 		try:
 			js = json.loads(change['new'])
+			js['scalar'] = self.graph.scalar.to_json()
 			self.graph_from_json(js)
-			self._undo_stack_add(self.last_operation, change['new'])
+			self._undo_stack_add(self.last_operation, json.dumps(js))
 		except Exception as e:
 			with self.output: print(traceback.format_exc())
 		
