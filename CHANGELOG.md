@@ -3,7 +3,25 @@
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
-Right now this project is in Beta and does not yet follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+Right now this project is in Beta and does not yet follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html). 
+Hence, occasionally changes will be backwards incompatible (although they will all be documented here).
+
+## [0.6.2] - 2020-11-16
+
+### Added
+- Added extract_simple function as simple method for extracting circuits from ZX-diagrams that have causal flow.
+- Added function find_scalar_correction(g1,g2) that gives the correct scalar to make g1 and g2 equal (assuming they represent the same linear map up to a global scalar).
+- Added function drawing.graphs_to_gif that takes in a list of Graphs and outputs an animated gif showing them in sequence. Note that this requires imagio to be installed.
+- The output classes for each of the vertex and edge types in the methods for converting a Graph to tikz format can now be set using zx.settings.tikz_classes.
+- draw_matplotlib, draw_d3 (and hence zx.draw) and editor.edit have additional optional argument show_scalar to display the scalar of the Graph.
+- Added argument draw_scalar to all functions converting a Graph into tikz format to toggle the display of the scalar of the Graph in the tikz output.
+- The Graph method to_json now remembers the scalar of the graph by default (and Graph.from_json can handle this).
+
+
+### Fixed
+- basicrules.strong_comp now preserves scalar correctly.
+- Undo in editor now remembers scalar correctly.
+- bialg and copy rewrites in editor now preserve scalar correctly.
 
 ## [0.6.1] - 2020-10-30
 
