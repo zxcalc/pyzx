@@ -17,7 +17,7 @@
 from fractions import Fraction
 from itertools import combinations
 from typing import Dict, List, Tuple, Callable, Optional, Set, FrozenSet
-from .utils import EdgeType, VertexType, toggle_edge, FractionLike, FloatInt
+from .utils import EdgeType, VertexType, toggle_edge, toggle_vertex, FractionLike, FloatInt, vertex_is_zx
 from .simplify import *
 from .graph.base import BaseGraph, ET, VT
 from . import rules
@@ -99,6 +99,135 @@ def fuse_hboxes(g: BaseGraph[VT,ET], matches: List[ET]) -> rules.RewriteOutputTy
                 etab[g.edge(v1,n)] = [0,1]
     
     return (etab, rem_verts, [], True)
+
+
+
+MatchCopyType = Tuple[VT,VT,EdgeType.Type,FractionLike,FractionLike,List[VT]]
+
+def match_copy(
+        g: BaseGraph[VT,ET], 
+        vertexf:Optional[Callable[[VT],bool]]=None
+        ) -> List[MatchCopyType[VT]]:
+    """Finds arity-1 spiders (with a 0 or pi phase) that can be copied through their neighbor.""" 
+    if vertexf is not None: candidates = set([v for v in g.vertices() if vertexf(v)])
+    else: candidates = g.vertex_set()
+    phases = g.phases()
+    types = g.types()
+    m = []
+    taken: Set[VT] = set()
+
+    while len(candidates) > 0:
+        v = candidates.pop()
+        if phases[v] not in (0,1) or not vertex_is_zx(types[v]) or g.vertex_degree(v) != 1:
+                    continue
+        w = list(g.neighbors(v))[0]
+        if w in taken: continue
+        tv = types[v]
+        tw = types[w]
+        if tw == VertexType.BOUNDARY: continue
+        e = g.edge(v,w)
+        et = g.edge_type(e)
+        if vertex_is_zx(types[w]) and ((tw != tv and et==EdgeType.HADAMARD) or
+                                       (tw == tv and et==EdgeType.SIMPLE)):
+            continue
+        if tw == VertexType.H_BOX and ((et==EdgeType.SIMPLE and tv != VertexType.X) or
+                                       (et==EdgeType.HADAMARD and tv != VertexType.Z)):
+            continue
+        neigh = [n for n in g.neighbors(w) if n != v]
+        m.append((v,w,et,phases[v],phases[w],neigh))
+        candidates.discard(w)
+        candidates.difference_update(neigh)
+        taken.add(w)
+        taken.update(neigh)
+
+    return m
+
+def apply_copy(
+        g: BaseGraph[VT,ET], 
+        matches: List[MatchCopyType[VT]]
+        ) -> rules.RewriteOutputType[ET,VT]:
+    """Copy arity-1 spider through their neighbor."""
+    rem = []
+    types = g.types()
+    for v,w,t,a,alpha,neigh in matches:
+        rem.append(v)
+        if (types[w] == VertexType.H_BOX and a == 1): 
+            continue # Don't have to do anything more for this case
+        rem.append(w)
+        vt: VertexType.Type = VertexType.Z
+        if vertex_is_zx(types[w]):
+            vt = types[v] if t == EdgeType.SIMPLE else toggle_vertex(types[v])
+            if a: g.scalar.add_phase(alpha)
+            g.scalar.add_power(-(len(neigh)-1))
+        else: #types[w] == H_BOX
+            g.scalar.add_power(1)
+        for n in neigh: 
+            r = 0.7*g.row(w) + 0.3*g.row(n)
+            q = 0.7*g.qubit(w) + 0.3*g.qubit(n)
+            
+            u = g.add_vertex(vt, q, r, a)
+            e = g.edge(n,w)
+            et = g.edge_type(e)
+            g.add_edge(g.edge(n,u), et)
+
+    return ({}, rem, [], True)
+
+
+def match_hbox_parallel_not(
+        g: BaseGraph[VT,ET], 
+        vertexf:Optional[Callable[[VT],bool]]=None
+        ) -> List[Tuple[VT,VT,VT]]:
+    """Finds H-boxes that are connected to a Z-spider both directly and via a NOT.""" 
+    if vertexf is not None: candidates = set([v for v in g.vertices() if vertexf(v)])
+    else: candidates = g.vertex_set()
+    phases = g.phases()
+    types = g.types()
+    m = []
+
+    while len(candidates) > 0:
+        h = candidates.pop()
+        if types[h] != VertexType.H_BOX or phases[h] != 1: continue
+
+        for n in g.neighbors(h):
+            if g.vertex_degree(n) != 2 or phases[n] != 1: continue # If it turns out to be useful, this rule can be generalised to allow spiders of arbitrary phase here
+            v = [v for v in g.neighbors(n) if v != h][0] # The other neighbor of n
+            if not g.connected(v,h): continue
+            if types[v] != VertexType.Z or g.edge_type(g.edge(h,v)) != EdgeType.SIMPLE: continue
+            if g.edge_type(g.edge(h,n)) == EdgeType.SIMPLE and types[n] == VertexType.X: 
+                if g.edge_type(g.edge(v,n)) != EdgeType.SIMPLE:
+                    continue
+            if g.edge_type(g.edge(h,n)) == EdgeType.HADAMARD and types[n] == VertexType.Z: 
+                if g.edge_type(g.edge(v,n)) != EdgeType.HADAMARD:
+                    continue
+            break
+        else:
+            continue
+        # h is connected to both v and n in the appropriate way, and n is a NOT that is connected to v as well
+        m.append((h,v,n))
+        candidates.difference_update(g.neighbors(h))
+    return m
+
+def hbox_parallel_not_remove(g: BaseGraph[VT,ET], 
+        matches: List[Tuple[VT,VT,VT]]
+        ) -> rules.RewriteOutputType[ET,VT]:
+    rem = []
+    etab = {}
+    types = g.types()
+    for h, v, n in matches:
+        rem.append(h)
+        rem.append(n)
+        for w in g.neighbors(h):
+            if w == v or w == n: continue
+            et = g.edge_type(g.edge(w,h))
+            if types[w] == VertexType.Z and et == EdgeType.SIMPLE: continue
+            if types[w] == VertexType.X and et == EdgeType.HADAMARD: continue
+            q = 0.6*g.qubit(h) + 0.4*g.qubit(w)
+            r = 0.6*g.row(h) + 0.4*g.row(w)
+            z = g.add_vertex(VertexType.Z,q,r)
+            if et == EdgeType.SIMPLE:
+                etab[g.edge(z,w)] = [1,0]
+            else: etab[g.edge(z,w)] = [0,1]
+    return (etab, rem, [], True)
 
 
 TYPE_MATCH_PAR_HBOX = Tuple[List[VT],List[VT],List[VT]]

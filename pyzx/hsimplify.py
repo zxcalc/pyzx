@@ -17,6 +17,7 @@
 from typing import Callable, List
 
 from .simplify import simp, Stats, spider_simp, id_simp
+from .simplify import pivot_simp, lcomp_simp, pivot_gadget_simp, pivot_boundary_simp
 from .utils import EdgeType, VertexType
 from .graph.base import BaseGraph, VT,ET
 from .hrules import *
@@ -126,6 +127,15 @@ def from_hypergraph_form(g: BaseGraph[VT,ET]) -> None:
 def par_hbox_simp(g: BaseGraph[VT,ET], matchf:Optional[Callable[[VT],bool]]=None, quiet:bool=False, stats:Optional[Stats]=None) -> int:
     return simp(g, 'par_hbox_simp', match_par_hbox, par_hbox, matchf=matchf, quiet=quiet, stats=stats)
 
+def copy_simp(g: BaseGraph[VT,ET], matchf:Optional[Callable[[VT],bool]]=None, quiet:bool=False, stats:Optional[Stats]=None) -> int:
+    return simp(g, 'copy_simp', match_copy, apply_copy, matchf=matchf, quiet=quiet, stats=stats)
+
+def hspider_simp(g: BaseGraph[VT,ET], matchf:Optional[Callable[[ET],bool]]=None, quiet:bool=False, stats:Optional[Stats]=None) -> int:
+    return simp(g, 'hspider_simp', match_connected_hboxes, fuse_hboxes, matchf=matchf, quiet=quiet, stats=stats)
+
+def hbox_parallel_not_remove_simp(g: BaseGraph[VT,ET], matchf:Optional[Callable[[VT],bool]]=None, quiet:bool=False, stats:Optional[Stats]=None) -> int:
+    return simp(g, 'hbox_parallel_not_remove_simp', match_hbox_parallel_not, hbox_parallel_not_remove, matchf=matchf, quiet=quiet, stats=stats)
+
 
 # a stripped-down version of "simp", since hrules don't return edge tables etc
 def hsimp(
@@ -166,4 +176,53 @@ def hpivot_simp(g: BaseGraph[VT,ET], quiet:bool=False) -> int:
         id_simp(g, quiet=quiet)
         if i == 0: break
         count += 1
+    return count
+
+def zh_simp(g: BaseGraph[VT,ET], quiet:bool=False) -> int:
+    """Does a whole bunch of rewrites to simplify diagrams containing
+    arbitrary Z-spiders, X-spiders and H-boxes. 
+    Tries to do as many "non-complicating" rewrites before doing
+    rewrites that can make a diagram look more complex."""
+    count = 0
+    while True:
+        to_gh(g)
+        i = spider_simp(g, quiet=quiet)
+        i += id_simp(g, quiet=quiet)
+        from_hypergraph_form(g)
+        i += spider_simp(g, quiet=quiet)
+        i += id_simp(g, quiet=quiet)
+        i += hspider_simp(g, quiet=quiet)
+        if i > 0: 
+            count += 1
+            continue
+        if copy_simp(g, quiet=quiet):
+            count += 1
+            continue
+        if par_hbox_simp(g,quiet=quiet):
+            count += 1
+            continue
+        if hbox_parallel_not_remove_simp(g,quiet=quiet):
+            count += 1
+            continue
+        i = pivot_simp(g, quiet=quiet)
+        i += lcomp_simp(g, quiet=quiet)
+        if i> 0: 
+            count += 1
+            continue
+        if pivot_gadget_simp(g, quiet=quiet):
+            count += 1
+            continue
+        if pivot_boundary_simp(g, quiet=quiet):
+            count += 1
+            continue
+
+        to_hypergraph_form(g)
+        i = hsimp(g, 'hpivot', match_hpivot, hpivot, iterations=1, quiet=quiet)
+        from_hypergraph_form(g)
+        id_simp(g, quiet=True)
+        if i > 0:
+            count += 1
+            continue
+        
+        break
     return count

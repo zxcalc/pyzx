@@ -56,74 +56,6 @@ def color_change(g: BaseGraph[VT,ET], matches: List[VT]) -> rules.RewriteOutputT
 	return ({}, [],[],False)
 
 
-MatchCopyType = Tuple[VT,VT,EdgeType.Type,FractionLike,FractionLike,List[VT]]
-
-def copy_matcher(
-		g: BaseGraph[VT,ET], 
-		vertexf:Optional[Callable[[VT],bool]]=None
-		) -> List[MatchCopyType[VT]]:
-	if vertexf is not None: candidates = set([v for v in g.vertices() if vertexf(v)])
-	else: candidates = g.vertex_set()
-	phases = g.phases()
-	types = g.types()
-	m = []
-	taken: Set[VT] = set()
-
-	while len(candidates) > 0:
-		v = candidates.pop()
-		if phases[v] not in (0,1) or not vertex_is_zx(types[v]) or g.vertex_degree(v) != 1:
-                    continue
-		w = list(g.neighbors(v))[0]
-		if w in taken: continue
-		tv = types[v]
-		tw = types[w]
-		if tw == VertexType.BOUNDARY: continue
-		e = g.edge(v,w)
-		et = g.edge_type(e)
-		if vertex_is_zx(types[w]) and ((tw != tv and et==EdgeType.HADAMARD) or
-									   (tw == tv and et==EdgeType.SIMPLE)):
-			continue
-		if tw == VertexType.H_BOX and ((et==EdgeType.SIMPLE and tv != VertexType.X) or
-									   (et==EdgeType.HADAMARD and tv != VertexType.Z)):
-			continue
-		neigh = [n for n in g.neighbors(w) if n != v]
-		m.append((v,w,et,phases[v],phases[w],neigh))
-		candidates.discard(w)
-		candidates.difference_update(neigh)
-		taken.add(w)
-		taken.update(neigh)
-
-	return m
-
-def apply_copy(
-		g: BaseGraph[VT,ET], 
-		matches: List[MatchCopyType[VT]]
-		) -> rules.RewriteOutputType[ET,VT]:
-	rem = []
-	types = g.types()
-	for v,w,t,a,alpha,neigh in matches:
-		rem.append(v)
-		if (types[w] == VertexType.H_BOX and a == 1): 
-			continue # Don't have to do anything more for this case
-		rem.append(w)
-		vt: VertexType.Type = VertexType.Z
-		if vertex_is_zx(types[w]):
-			vt = types[v] if t == EdgeType.SIMPLE else toggle_vertex(types[v])
-			if a: g.scalar.add_phase(alpha)
-			g.scalar.add_power(-(len(neigh)-1))
-		else: #types[w] == H_BOX
-			g.scalar.add_power(1)
-		for n in neigh: 
-			r = 0.7*g.row(w) + 0.3*g.row(n)
-			q = 0.7*g.qubit(w) + 0.3*g.qubit(n)
-			
-			u = g.add_vertex(vt, q, r, a)
-			e = g.edge(n,w)
-			et = g.edge_type(e)
-			g.add_edge(g.edge(n,u), et)
-
-	return ({}, rem, [], True)
-
 def pauli_matcher(
 		g: BaseGraph[VT,ET], 
 		vertexf: Optional[Callable[[VT],bool]] = None
@@ -392,8 +324,8 @@ operations = {
 			   "type": MATCHES_VERTICES},
 	"copy": {"text": "copy 0/pi spider", 
 			   "tooltip": "Copies a single-legged spider with a 0/pi phase through its neighbor",
-			   "matcher": copy_matcher, 
-			   "rule": apply_copy, 
+			   "matcher": hrules.match_copy, 
+			   "rule": hrules.apply_copy, 
 			   "type": MATCHES_VERTICES},
 	"pauli": {"text": "push Pauli", 
 			   "tooltip": "Pushes an arity 2 pi-phase through a selected neighbor",
