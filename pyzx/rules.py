@@ -172,7 +172,7 @@ def match_spider_parallel(
         v0, v1 = g.edge_st(e)
         v0t = types[v0]
         v1t = types[v1]
-        if (v0t == v1t and v0t!=VertexType.BOUNDARY and v0t!=VertexType.H_BOX):
+        if (v0t == v1t and vertex_is_zx(v0t)):
                 i += 1
                 for v in g.neighbors(v0):
                     for c in g.incident_edges(v): candidates.discard(c)
@@ -251,7 +251,7 @@ def match_pivot_parallel(
         g: BaseGraph[VT,ET], 
         matchf:Optional[Callable[[ET],bool]]=None, 
         num:int=-1, 
-        check_edge_types:bool=False
+        check_edge_types:bool=True
         ) -> List[MatchPivotType[VT]]:
     """Finds non-interacting matchings of the pivot rule.
     
@@ -274,7 +274,7 @@ def match_pivot_parallel(
     m = []
     while (num == -1 or i < num) and len(candidates) > 0:
         e = candidates.pop()
-        if not check_edge_types and g.edge_type(e) != EdgeType.HADAMARD: continue
+        if check_edge_types and g.edge_type(e) != EdgeType.HADAMARD: continue
         v0, v1 = g.edge_st(e)
 
         if not (types[v0] == VertexType.Z and types[v1] == VertexType.Z): continue
@@ -413,7 +413,7 @@ def match_pivot_boundary(
         w = None
         bound = None
         for n in g.neighbors(v):
-            if types[n] == VertexType.BOUNDARY:
+            if types[n] != VertexType.Z:
                 good_vert = False
                 break
             if len(g.neighbors(n)) == 1: # v is a phase gadget
@@ -422,9 +422,15 @@ def match_pivot_boundary(
             if n in consumed_vertices:
                 good_vert = False
                 break
-            boundaries = [b for b in g.neighbors(n) if types[b]==VertexType.BOUNDARY]
-            if len(boundaries) != 1: # n is not on the boundary,
-                continue             # or it is connected to both an input and an output
+            boundaries = []
+            wrong_match = False
+            for b in g.neighbors(n):
+                if types[b] == VertexType.BOUNDARY:
+                    boundaries.append(b)
+                elif types[b] != VertexType.Z:
+                    wrong_match = True
+            if len(boundaries) != 1 or wrong_match: # n is not on the boundary,
+                continue             # has too many boundaries or has neighbors of wrong type
             if phases[n] and phases[n].denominator == 2:
                 w = n
                 bound = boundaries[0]
@@ -530,7 +536,7 @@ def match_lcomp_parallel(
         g: BaseGraph[VT,ET], 
         vertexf:Optional[Callable[[VT],bool]]=None, 
         num:int=-1, 
-        check_edge_types:bool=False
+        check_edge_types:bool=True
         ) -> List[MatchLcompType[VT]]:
     """Finds noninteracting matchings of the local complementation rule.
     
@@ -556,6 +562,7 @@ def match_lcomp_parallel(
         vt = types[v]
         va = g.phase(v)
         
+        if vt != VertexType.Z: continue
         if not (va == Fraction(1,2) or va == Fraction(3,2)): continue
 
         if check_edge_types and not (
@@ -564,7 +571,7 @@ def match_lcomp_parallel(
                 
         vn = list(g.neighbors(v))
 
-        if not all(types[n] == vt for n in vn): continue # and phases[n].denominator <= 2
+        if not all(types[n] == VertexType.Z for n in vn): continue
 
         for n in vn: candidates.discard(n)
         m.append((v,vn))
