@@ -542,6 +542,13 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
 
         self.pack_circuit_rows()
 
+    def translate(self, x:FloatInt, y:FloatInt) -> 'BaseGraph':
+        g = self.copy()
+        for v in g.vertices():
+            g.set_row(v, g.row(v)+x)
+            g.set_qubit(v,g.qubit(v)+y)
+        return g
+
     def add_vertices(self, amount: int) -> List[VT]:
         """Add the given amount of vertices, and return the indices of the
         new vertices added to the graph, namely: range(g.vindex() - amount, g.vindex())"""
