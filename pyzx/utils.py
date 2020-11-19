@@ -85,6 +85,7 @@ tikz_classes = {
 class Settings(object): # namespace class
     mode: Literal["notebook", "browser", "shell"] = "shell"
     drawing_backend: Literal["d3","matplotlib"] = "d3" 
+    drawing_auto_hbox: bool = False
     javascript_location: str = "" # Path to javascript files of pyzx
     d3_load_string: str = ""
     tikzit_location: str = "" # Path to tikzit executable

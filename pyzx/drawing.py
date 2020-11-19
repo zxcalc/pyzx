@@ -256,12 +256,15 @@ def draw_d3(
     g: Union[BaseGraph[VT,ET], Circuit],
     labels:bool=False, 
     scale:Optional[FloatInt]=None, 
-    auto_hbox:bool=True,
+    auto_hbox:Optional[bool]=None,
     show_scalar:bool=False
     ) -> Any:
 
     if settings.mode not in ("notebook", "browser"): 
         raise Exception("This method only works when loaded in a webpage or Jupyter notebook")
+
+    if auto_hbox is None:
+        auto_hbox = settings.drawing_auto_hbox
 
     if isinstance(g, Circuit):
         g = g.to_graph(zh=True)
