@@ -19,9 +19,10 @@ __all__ = ['cnots','cliffords', 'cliffordT', 'identity', 'CNOT_HAD_PHASE_circuit
 import random
 from fractions import Fraction
 
-from typing import Optional, List
+from typing import Optional, List, Union
+from typing_extensions import Literal
 
-from .utils import EdgeType, VertexType, FloatInt
+from .utils import EdgeType, VertexType, FloatInt, FractionLike
 from .graph import Graph
 from .graph.base import BaseGraph
 from .circuit import Circuit
@@ -45,6 +46,34 @@ def identity(qubits: int, depth: FloatInt=1,backend:Optional[str]=None) -> BaseG
         g.outputs.append(w)
         g.add_edge((v,w))
 
+    return g
+
+def spider(
+    typ:Union[Literal["Z"],Literal["X"],Literal["H"],VertexType.Type],
+    inputs: int,
+    outputs: int,
+    phase:FractionLike=0
+    ) -> BaseGraph:
+    """Returns a Graph containing a single spider of the specified type 
+    and with the specified number of inputs and outputs."""
+    if typ == "Z": typ = VertexType.Z
+    elif typ == "X": typ = VertexType.X
+    elif typ == "H": typ = VertexType.H_BOX
+    else:
+        if not isinstance(typ,int):
+            raise TypeError("Wrong type for spider type: " + str(typ))
+    g = Graph()
+    for i in range(inputs):
+        v = g.add_vertex(VertexType.BOUNDARY,i,0)
+        g.inputs.append(v)
+    for i in range(outputs):
+        v = g.add_vertex(VertexType.BOUNDARY,i,2)
+        g.outputs.append(v)
+    v = g.add_vertex(typ,(inputs-1)/2,1,phase)
+    for w in g.inputs:
+        g.add_edge(g.edge(v,w))
+    for w in g.outputs:
+        g.add_edge(g.edge(v,w))
     return g
 
 
