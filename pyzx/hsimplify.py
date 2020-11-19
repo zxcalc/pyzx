@@ -218,6 +218,7 @@ def zh_simp(g: BaseGraph[VT,ET], quiet:bool=False) -> int:
 
         to_hypergraph_form(g)
         i = hsimp(g, 'hpivot', match_hpivot, hpivot, iterations=1, quiet=quiet)
+        i += par_hbox_simp(g,quiet=quiet)
         from_hypergraph_form(g)
         id_simp(g, quiet=True)
         if i > 0:
