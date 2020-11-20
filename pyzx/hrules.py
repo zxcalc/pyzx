@@ -102,7 +102,7 @@ def fuse_hboxes(g: BaseGraph[VT,ET], matches: List[ET]) -> rules.RewriteOutputTy
 
 
 
-MatchCopyType = Tuple[VT,VT,EdgeType.Type,FractionLike,FractionLike,List[VT]]
+MatchCopyType = Tuple[VT,VT,VertexType.Type,FractionLike,FractionLike,List[VT]]
 
 def match_copy(
         g: BaseGraph[VT,ET], 
@@ -118,23 +118,48 @@ def match_copy(
 
     while len(candidates) > 0:
         v = candidates.pop()
-        if phases[v] not in (0,1) or not vertex_is_zx(types[v]) or g.vertex_degree(v) != 1:
+        if phases[v] not in (0,1) or types[v] == VertexType.BOUNDARY or g.vertex_degree(v) != 1:
                     continue
         w = list(g.neighbors(v))[0]
         if w in taken: continue
         tv = types[v]
+        if tv == VertexType.H_BOX: tv = VertexType.Z # v is arity 1, so we can treat it as a Z spider
         tw = types[w]
         if tw == VertexType.BOUNDARY: continue
         e = g.edge(v,w)
         et = g.edge_type(e)
-        if vertex_is_zx(types[w]) and ((tw != tv and et==EdgeType.HADAMARD) or
-                                       (tw == tv and et==EdgeType.SIMPLE)):
-            continue
-        if tw == VertexType.H_BOX and ((et==EdgeType.SIMPLE and tv != VertexType.X) or
-                                       (et==EdgeType.HADAMARD and tv != VertexType.Z)):
-            continue
+        copy_type: VertexType.Type = VertexType.Z
+        if vertex_is_zx(tv):
+            if vertex_is_zx(tw):
+                if et == EdgeType.HADAMARD:
+                    if tw != tv: continue
+                    copy_type = toggle_vertex(tv)
+                else:
+                    if tw == tv: continue
+                    copy_type = tv
+            elif tw == VertexType.H_BOX:
+                # X pi/0 can always copy through H-box
+                # But if v is Z, then it can only copy if the phase is 1
+                if et == EdgeType.HADAMARD:
+                    if tv == VertexType.Z:
+                        if phases[v] == 1: copy_type = VertexType.BOUNDARY # We don't actually copy in this case
+                        else: copy_type = VertexType.Z
+                    else:
+                        if phases[v] != 1: continue
+                        copy_type = VertexType.X
+                else:
+                    if tv == VertexType.X:
+                        if phases[v] == 1: copy_type = VertexType.BOUNDARY # We don't actually copy in this case
+                        else: copy_type = VertexType.Z
+                    else:
+                        if phases[v] != 1: continue
+                        copy_type = VertexType.X
+            else:
+                continue
+        else:
+        	continue
         neigh = [n for n in g.neighbors(w) if n != v]
-        m.append((v,w,et,phases[v],phases[w],neigh))
+        m.append((v,w,copy_type,phases[v],phases[w],neigh))
         candidates.discard(w)
         candidates.difference_update(neigh)
         taken.add(w)
@@ -149,23 +174,28 @@ def apply_copy(
     """Copy arity-1 spider through their neighbor."""
     rem = []
     types = g.types()
-    for v,w,t,a,alpha,neigh in matches:
+    for v,w,copy_type,a,alpha,neigh in matches:
         rem.append(v)
-        if (types[w] == VertexType.H_BOX and a == 1): 
+        if copy_type == VertexType.BOUNDARY: 
+            g.scalar.add_power(1)
             continue # Don't have to do anything more for this case
         rem.append(w)
-        vt: VertexType.Type = VertexType.Z
         if vertex_is_zx(types[w]):
-            vt = types[v] if t == EdgeType.SIMPLE else toggle_vertex(types[v])
             if a: g.scalar.add_phase(alpha)
             g.scalar.add_power(-(len(neigh)-1))
         else: #types[w] == H_BOX
-            g.scalar.add_power(1)
+            if copy_type == VertexType.Z:
+                g.scalar.add_power(1)
+            else:
+            	g.scalar.add_power(-(len(neigh)-2))
+            	if alpha != 1:
+            		g.scalar.add_power(-2)
+            		g.scalar.add_node(alpha+1)
         for n in neigh: 
             r = 0.7*g.row(w) + 0.3*g.row(n)
             q = 0.7*g.qubit(w) + 0.3*g.qubit(n)
             
-            u = g.add_vertex(vt, q, r, a)
+            u = g.add_vertex(copy_type, q, r, a)
             e = g.edge(n,w)
             et = g.edge_type(e)
             g.add_edge(g.edge(n,u), et)
