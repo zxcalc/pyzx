@@ -85,7 +85,10 @@ def get_fitness_func(mode, matrix, architecture, row=True, col=True, full_reduce
         row_perm = permutation if row else e
         col_perm = permutation if col else e
         circuit = CNOT_tracker(n_qubits)
-        mat = Mat2(np.copy(matrix[row_perm][:, col_perm]))
+        if isinstance(matrix, list):
+            mat = Mat2(np.array(matrix)[row_perm][:, col_perm])
+        else:
+            mat = Mat2(np.copy(matrix[row_perm][:, col_perm]))
         gauss(mode, mat, architecture=architecture, x=circuit, full_reduce=full_reduce)
         return circuit.count_cnots()
 
