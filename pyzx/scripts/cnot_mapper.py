@@ -75,7 +75,10 @@ def get_fitness_func(mode, matrix, architecture, row=True, col=True, full_reduce
     :return: A fitness function that calculates the number of gates needed for a given permutation.
     """
     matrix = matrix.data
-    n_qubits = matrix.shape[0]
+    if isinstance(matrix, list):
+        n_qubits = len(matrix)
+    else:
+        n_qubits = matrix.shape[0]
 
     def fitness_func(permutation):
         e = np.arange(len(permutation))
