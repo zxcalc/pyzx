@@ -31,22 +31,22 @@ def cexp(val) -> complex:
     return cmath.exp(1j*math.pi*val)
 
 unicode_superscript = {
-	'0': '⁰',
-	'1': '¹',
-	'2': '²',
-	'3': '³',
-	'4': '⁴',
-	'5': '⁵',
-	'6': '⁶',
-	'7': '⁷',
-	'8': '⁸',
-	'9': '⁹'
+    '0': '⁰',
+    '1': '¹',
+    '2': '²',
+    '3': '³',
+    '4': '⁴',
+    '5': '⁵',
+    '6': '⁶',
+    '7': '⁷',
+    '8': '⁸',
+    '9': '⁹'
 }
 
 unicode_fractions = {
-	Fraction(1,4): '¼',
-	Fraction(1,2): '½',
-	Fraction(3,4): '¾',
+    Fraction(1,4): '¼',
+    Fraction(1,2): '½',
+    Fraction(3,4): '¾',
 }
 
 class Scalar(object):
@@ -97,59 +97,60 @@ class Scalar(object):
         return complex(val*self.floatfactor)
 
     def to_latex(self) -> str:
-    	if self.is_zero: return "0"
-    	elif self.is_unknown: return "Unknown"
-    	f = self.floatfactor
-    	for node in self.phasenodes:
-    		f *= 1+cexp(node)
-    	if self.phase == 1:
-    		f *= -1
+        """Converts the Scalar into a string that is compatible with LaTeX."""
+        if self.is_zero: return "0"
+        elif self.is_unknown: return "Unknown"
+        f = self.floatfactor
+        for node in self.phasenodes:
+            f *= 1+cexp(node)
+        if self.phase == 1:
+            f *= -1
 
-    	s = "$"
-    	if abs(f+1) < 0.001: #f \approx -1
-    		s += "-"
-    	elif abs(f-1) > 0.0001: #f \neq 1
-    		s += str(self.floatfactor)
-    	if self.power2 != 0:
-    		s += r"\sqrt{{2}}^{{{:d}}}".format(self.power2)
-    	if self.phase not in (0,1):
-    		s += r"\exp(i~\frac{{{:d}\pi}}{{{:d}}})".format(self.phase.numerator,self.phase.denominator)
-    	s += "$"
-    	if s == "$$": return ""
-    	return s
+        s = "$"
+        if abs(f+1) < 0.001: #f \approx -1
+            s += "-"
+        elif abs(f-1) > 0.0001: #f \neq 1
+            s += str(self.floatfactor)
+        if self.power2 != 0:
+            s += r"\sqrt{{2}}^{{{:d}}}".format(self.power2)
+        if self.phase not in (0,1):
+            s += r"\exp(i~\frac{{{:d}\pi}}{{{:d}}})".format(self.phase.numerator,self.phase.denominator)
+        s += "$"
+        if s == "$$": return ""
+        return s
 
     def to_unicode(self) -> str:
-    	"""Returns a representation of the scalar that uses unicode
-    	to represent pi's and sqrt's."""
-    	if self.is_zero: return "0"
-    	elif self.is_unknown: return "Unknown"
-    	f = self.floatfactor
-    	for node in self.phasenodes:
-    		f *= 1+cexp(node)
-    	phase = Fraction(self.phase)
-    	if self.phase >= 1:
-    		f *= -1
-    		phase -= 1
+        """Returns a representation of the scalar that uses unicode
+        to represent pi's and sqrt's."""
+        if self.is_zero: return "0"
+        elif self.is_unknown: return "Unknown"
+        f = self.floatfactor
+        for node in self.phasenodes:
+            f *= 1+cexp(node)
+        phase = Fraction(self.phase)
+        if self.phase >= 1:
+            f *= -1
+            phase -= 1
 
-    	if abs(f+1) > 0.001 and abs(f-1) > 0.001:
-    		return str(f)
+        if abs(f+1) > 0.001 and abs(f-1) > 0.001:
+            return str(f)
 
-    	s = ""
-    	if abs(f+1) < 0.001: #f \approx -1
-    		s += "-"
-    	if self.power2 != 0:
-    		s += r"√2"
-    		if self.power2 < 0:
-    			s += "⁻"
-    		val = str(abs(self.power2))
-    		s += "".join([unicode_superscript[i] for i in val])
-    	if phase != 0:
-    		s += "exp(i"
-    		if phase in unicode_fractions:
-    			s += unicode_fractions[phase] + "π)"
-    		else:
-    			s += "{:d}/{:d}π)".format(phase.numerator,phase.denominator)
-    	return s
+        s = ""
+        if abs(f+1) < 0.001: #f \approx -1
+            s += "-"
+        if self.power2 != 0:
+            s += r"√2"
+            if self.power2 < 0:
+                s += "⁻"
+            val = str(abs(self.power2))
+            s += "".join([unicode_superscript[i] for i in val])
+        if phase != 0:
+            s += "exp(i"
+            if phase in unicode_fractions:
+                s += unicode_fractions[phase] + "π)"
+            else:
+                s += "{:d}/{:d}π)".format(phase.numerator,phase.denominator)
+        return s
 
     def to_json(self) -> str:
         d = {"power2": self.power2, "phase": str(self.phase)}
@@ -178,8 +179,10 @@ class Scalar(object):
         self.phasenodes = []
 
     def add_power(self, n) -> None:
+        """Adds a factor of sqrt(2)^n to the scalar."""
         self.power2 += n
     def add_phase(self, phase: FractionLike) -> None:
+        """Multiplies the scalar by a complex phase."""
         self.phase = (self.phase + phase) % 2
     def add_node(self, node: FractionLike) -> None:
         """A solitary spider with a phase ``node`` is converted into the
@@ -193,6 +196,7 @@ class Scalar(object):
         self.floatfactor *= f
 
     def mult_with_scalar(self, other: 'Scalar') -> None:
+        """Multiplies two instances of Scalar together."""
         self.power2 += other.power2
         self.phase = (self.phase +other.phase)%2
         self.phasenodes.extend(other.phasenodes)
