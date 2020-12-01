@@ -89,6 +89,7 @@ class Scalar(object):
         return s
 
     def to_number(self) -> complex:
+        if self.is_zero: return 0
         val = cexp(self.phase)
         for node in self.phasenodes: # Node should be a Fraction
             val *= 1+cexp(node)
@@ -181,7 +182,12 @@ class Scalar(object):
     def add_phase(self, phase: FractionLike) -> None:
         self.phase = (self.phase + phase) % 2
     def add_node(self, node: FractionLike) -> None:
-        self.phasenodes.append(node)
+        """A solitary spider with a phase ``node`` is converted into the
+        scalar 1+e^(i*pi*node)."""
+        if node == 0:
+            self.power2 += 2
+        else:
+            self.phasenodes.append(node)
         if node == 1: self.is_zero = True
     def add_float(self,f: complex) -> None:
         self.floatfactor *= f

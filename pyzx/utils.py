@@ -107,7 +107,7 @@ settings.d3_load_string = 'require.config({paths: {d3: "https://d3js.org/d3.v5.m
 
 try:
     relpath = os.path.relpath(settings.javascript_location, os.getcwd())
-    if relpath.count('..') <= 1: # We are *probably* working in the PyZX directory
+    if relpath.count('..') <= 2: # We are *probably* working in the PyZX directory
         settings.javascript_location = os.path.relpath(settings.javascript_location, os.getcwd())
         settings.d3_load_string = 'require.config({{baseUrl: "{}",paths: {{d3: "d3.v5.min"}} }});'.format(
                             settings.javascript_location.replace('\\','/'))
