@@ -6,6 +6,26 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 Right now this project is in Beta and does not yet follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html). 
 Hence, occasionally changes will be backwards incompatible (although they will all be documented here).
 
+
+## [0.6.3] - 2020-12-2
+
+### Added
+- Added settings.drawing_auto_hbox to toggle the default value of auto_hbox when using zx.draw()
+- Added function generate.spider to construct a graph containing a single spider.
+- Added function Graph.translate(x,y) to translate all the coordinates in the Graph instance by the specified amount.
+- Added additional rewrite rule to editor for H-box fusion
+- Added hsimplify.zh_simp() rewrite strategy that does a collection of rewrites of increasing difficulty to simply ZH-diagrams.
+
+### Changed
+- The par_hbox() simplification can now also handle wires with NOTs on them.
+- The copy rule in the editor now also understands how to copy a |-> state through an H-box.
+
+### Fixed
+- Fixed exception in editor that made it unusable.
+- Fixed bug when matching parallel Hadamards with match_hadamards().
+- Undo in editor correctly remembers scalar.
+
+
 ## [0.6.2] - 2020-11-16
 
 ### Added
@@ -22,6 +42,7 @@ Hence, occasionally changes will be backwards incompatible (although they will a
 - basicrules.strong_comp now preserves scalar correctly.
 - Undo in editor now remembers scalar correctly.
 - bialg and copy rewrites in editor now preserve scalar correctly.
+
 
 ## [0.6.1] - 2020-10-30
 
@@ -44,6 +65,7 @@ Hence, occasionally changes will be backwards incompatible (although they will a
 - Fixed error that occurred when running pyzx from a different drive than the install drive on Windows.
 - Fixed several bugs in ``hsimplify.hpivot_simp``.
 - Fixed exception when entering negative phase in editor.
+
 
 ## [0.6.0] - 2020-06-16
 This release has made many backwards incompatible changes to the API in order to remove some old functions and rename other functions to more logical or consistent names. In particular, all British spelling names have been renamed to American spelling names. After this release the API should be significantly more stable.
