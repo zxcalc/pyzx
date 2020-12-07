@@ -568,8 +568,8 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         if phase is None:
             if ty == VertexType.H_BOX: phase = 1
             else: phase = 0
-        if qubit!=-1: self.set_qubit(v, qubit)
-        if row!=-1: self.set_row(v, row)
+        self.set_qubit(v, qubit)
+        self.set_row(v, row)
         if phase: 
             self.set_phase(v, phase)
         if self.track_phases:

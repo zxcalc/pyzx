@@ -226,7 +226,7 @@ def tikz_to_graph(
         pos, label = other.split("{",1)
         pos = pos.replace("(","").replace(")","").strip()
         x,y = [float(z) for z in pos.split(",")]
-        label = label[:-2].replace('$','').strip()
+        label = label[:-2].replace('$','').replace(r'\ ','').replace('~','').strip()
 
         ty: VertexType.Type
         if style.lower() in synonyms_boundary: ty = VertexType.BOUNDARY
@@ -266,20 +266,27 @@ def tikz_to_graph(
                     g.set_phase(v,1)
                 elif label.find(r'\frac') != -1:
                     label = label.replace(r'\frac','').strip()
-                    num, denom = label.split('}{',1)
-                    num = num.replace('{','').strip()
-                    denom = denom.replace('}','').strip()
-                    if num == '': n = 1
-                    elif num == '-': n = -1
-                    else:
+                    if label.find('}{') == -1:
+                        n = 1
                         try:
-                            n = int(num)
+                            m = int(label)
                         except:
                             raise ValueError("Node definition %s has invalid phase label" % l)
-                    try:
-                        m = int(denom)
-                    except:
-                        raise ValueError("Node definition %s has invalid phase label" % l)
+                    else:
+                        num, denom = label.split('}{',1)
+                        num = num.replace('{','').strip()
+                        denom = denom.replace('}','').strip()
+                        if num == '': n = 1
+                        elif num == '-': n = -1
+                        else:
+                            try:
+                                n = int(num)
+                            except:
+                                raise ValueError("Node definition %s has invalid phase label" % l)
+                        try:
+                            m = int(denom)
+                        except:
+                            raise ValueError("Node definition %s has invalid phase label" % l)
                     g.set_phase(v, Fraction(n,m))
                 elif label.find('/') != -1:
                     num, denom = label.split('/',1)
