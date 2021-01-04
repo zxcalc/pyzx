@@ -155,24 +155,46 @@ class QASMParser(object):
                 else: g = qasm_gate_table[name](argset[0]) # type: ignore # - Gate subclasses with different numbers of parameters
                 gates.append(g)
                 continue
-            if name.startswith("rx") or name.startswith("rz"):
+            if name.startswith("rx") or name.startswith("rz") or name.startswith("u1"):
                 i = name.find('(')
                 j = name.find(')')
                 if i == -1 or j == -1: raise TypeError("Invalid specification {}".format(name))
                 valp = name[i+1:j]
-                try:
-                    phasep = float(valp)/math.pi
-                except ValueError:
-                    if valp.find('pi') == -1: raise TypeError("Invalid specification {}".format(name))
-                    valp = valp.replace('pi', '')
-                    valp = valp.replace('*','')
-                    try: phasep = float(valp)
-                    except: raise TypeError("Invalid specification {}".format(name))
-                phase = Fraction(phasep).limit_denominator(100000000)
+                # try:
+                #     phasep = float(valp)/math.pi
+                # except ValueError:
+                #     if valp.find('pi') == -1: raise TypeError("Invalid specification {}".format(name))
+                #     valp = valp.replace('pi', '')
+                #     valp = valp.replace('*','')
+                #     try: phasep = float(valp)
+                #     except: raise TypeError("Invalid specification {}".format(name))
+                # phase = Fraction(phasep).limit_denominator(100000000)
+                phase = self.parse_phase_arg(valp)
                 if name.startswith('rx'): g = XPhase(argset[0],phase=phase)
                 else: g = ZPhase(argset[0],phase=phase)
                 gates.append(g)
                 continue
+            if name.startswith('u2') or name.startswith('u3'): # see https://arxiv.org/pdf/1707.03429.pdf
+                i = name.find('(')
+                j = name.find(')')
+                if i == -1 or j == -1: raise TypeError("Invalid specification {}".format(name))
+                vals = name[i+1:j].split(',')
+                phases = [self.parse_phase_arg(val) for val in vals]
+                if name.startswith('u2'):
+                    if len(phases) != 2: raise TypeError("Invalid specification {}".format(name))
+                    gates.append(ZPhase(argset[0],phase=(phases[1]-Fraction(1,2))%2))
+                    gates.append(XPhase(argset[0],phase=Fraction(1,2)))
+                    gates.append(ZPhase(argset[0],phase=(phases[0]+Fraction(1,2))%2))
+                    continue
+                else:
+                    # See equation (5) of https://arxiv.org/pdf/1707.03429.pdf
+                    if len(phases) != 3: raise TypeError("Invalid specification {}".format(name))
+                    gates.append(ZPhase(argset[0],phase=phases[2]))
+                    gates.append(XPhase(argset[0],phase=Fraction(1,2)))
+                    gates.append(ZPhase(argset[0],phase=(phases[0]+1)%2))
+                    gates.append(XPhase(argset[0],phase=Fraction(1,2)))
+                    gates.append(ZPhase(argset[0],phase=(phases[1]+3)%2))
+                    continue
             if name in ("cx","CX","cz"):
                 g = qasm_gate_table[name](control=argset[0],target=argset[1]) # type: ignore
                 gates.append(g)
@@ -183,6 +205,30 @@ class QASMParser(object):
                 continue
             raise TypeError("Unknown gate name: {}".format(c))
         return gates
+
+    def parse_phase_arg(self, val):
+        try:
+            phase = float(val)/math.pi
+        except ValueError:
+            if val.find('pi') == -1: raise TypeError("Invalid specification {}".format(name))
+            try:
+                val = val.replace('pi', '')
+                val = val.replace('*','')
+                if val.find('/') != -1:
+                    n, d = val.split('/',1)
+                    n = n.strip()
+                    if not n: n = 1
+                    elif n == '-': n = -1
+                    else: n = int(n)
+                    d = int(d.strip())
+                    phase = Fraction(n,d)
+                else:
+                    val = val.strip()
+                    if not val: phase = 1
+                    else: phase = float(val)
+            except: raise TypeError("Invalid specification {}".format(val))
+        phase = Fraction(phase).limit_denominator(100000000)
+        return phase
 
 def qasm(s: str) -> Circuit:
     """Parses a string representing a program in QASM, and outputs a `Circuit`."""
