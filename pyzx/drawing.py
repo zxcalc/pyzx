@@ -353,35 +353,35 @@ special_vals = {
 }
 
 simple_vals = {
-	1: "1",
-	1/2: r"\frac12",
-	1/3: r"\frac13",
-	1/4: r"\frac14",
-	2: "2",
-	3: "3"
+    1: "1",
+    1/2: r"\frac12",
+    1/3: r"\frac13",
+    1/4: r"\frac14",
+    2: "2",
+    3: "3"
 }
 sqrt_vals = {
-	math.sqrt(2): r"\sqrt{2}",
-	math.sqrt(3): r"\sqrt{3}",
+    math.sqrt(2): r"\sqrt{2}",
+    math.sqrt(3): r"\sqrt{3}",
     math.sqrt(3)/2: r"\frac12\sqrt{3}",
-	math.sqrt(1/2): r"\frac{1}{\sqrt{2}}",
-	2*math.sqrt(2): r"2\sqrt{2}",
-	math.sqrt(1/2)/2: r"\frac{1}{2\sqrt{2}}",
-	math.sqrt(1/2)/4: r"\frac{1}{2\sqrt{4}}"
+    math.sqrt(1/2): r"\frac{1}{\sqrt{2}}",
+    2*math.sqrt(2): r"2\sqrt{2}",
+    math.sqrt(1/2)/2: r"\frac{1}{2\sqrt{2}}",
+    math.sqrt(1/2)/4: r"\frac{1}{2\sqrt{4}}"
 }
 
 for v,s in simple_vals.items():
-	for w,t in sqrt_vals.items():
-		special_vals[v+w] = f"\\left({s}+{t}\\right)"
-		special_vals[v-w] = f"\\left({s}-{t}\\right)"
-		special_vals[-v+w] = f"\\left({t}-{s}\\right)"
-		special_vals[-v-w] = f"-\\left({t}+{s}\\right)"
+    for w,t in sqrt_vals.items():
+        special_vals[v+w] = f"\\left({s}+{t}\\right)"
+        special_vals[v-w] = f"\\left({s}-{t}\\right)"
+        special_vals[-v+w] = f"\\left({t}-{s}\\right)"
+        special_vals[-v-w] = f"-\\left({t}+{s}\\right)"
 
 def strip_brackets(s:str) -> str:
     if s.startswith("(") and s.endswith(")"):
         return s[1:-1]
     if s.startswith("\\left(") and s.endswith("\\right)"):
-    	return s[6:-7]
+        return s[6:-7]
     return s
 
 def pretty_complex(z: complex) -> str:
@@ -408,7 +408,13 @@ def pretty_complex(z: complex) -> str:
                 break
         else:
             if abs(a) > 0.001:
-                out += f"{a:.2f}".rstrip("0").rstrip(".")
+                if abs(round(a)-a) < 0.0001:
+                    out += str(round(a))
+                elif abs(round(a*math.sqrt(2))-a*math.sqrt(2)) < 0.0001:
+                    v = a/math.sqrt(2)
+                    out += f"{round(v):d}\\sqrt{{2}}"
+                else:
+                    out += f"{a:.2f}".rstrip("0").rstrip(".")
                 real_part = True
 
         if abs(b+1) < 0.0001:
@@ -420,18 +426,25 @@ def pretty_complex(z: complex) -> str:
                     if b > 0:
                         out += "+"
                     out += s + "i"
-                    real_part = True
+                    imag_part = True
                     break
             else:
                 if abs(b) > 0.001:
                     if b > 0.0:
                         if abs(a) > 0.001: out += "+"
-                        if abs(b-1) < 0.001:
-                            out += ""
+                    if b < 0.0:
+                        out += "-"
+                        b = -b
+                    if abs(b-1) < 0.001:
+                        out += ""
+                    else:
+                        if abs(round(b)-b) < 0.0001:
+                            out += str(round(b))
+                        elif abs(round(b*math.sqrt(2))-b*math.sqrt(2)) < 0.0001:
+                            v = b/math.sqrt(2)
+                            out += f"{round(v):d}\\sqrt{{2}}"
                         else:
                             out += f"{b:.2f}".rstrip("0").rstrip(".")
-                    else:
-                        out += f"-{-b:.2f}".rstrip("0").rstrip(".")
                     out += "i"
                     imag_part = True
         if abs(f) > 1:
@@ -467,9 +480,15 @@ def pretty_complex(z: complex) -> str:
                 f = int(math.log10(1/abs(r)))
                 if abs(f) > 1:
                     r *= 10**f
-                    out += f"{r:.2f}\cdot 10^{{{-f}}}"
+                if abs(round(r)-r) < 0.0001:
+                    out += str(round(r))
+                elif abs(round(r*math.sqrt(2))-r*math.sqrt(2)) < 0.0001:
+                    v = r/math.sqrt(2)
+                    out += f"{round(v):d}\\sqrt{{2}}"
                 else:
-                    out += f"{r:.2f}"
+                    out += f"{r:.2f}".rstrip("0").rstrip(".")
+                if abs(f) > 1:
+                    out += f"\cdot 10^{{{-f}}}"
     
     minus = ""
     if arg < 0:
