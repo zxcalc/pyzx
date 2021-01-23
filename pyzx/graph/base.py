@@ -169,6 +169,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         for e,f in etab.items():
             g.set_edge_type(f, self.edge_type(e))
         return g
+
     def adjoint(self) -> 'BaseGraph':
         """Returns a new graph equal to the adjoint of this graph."""
         return self.copy(adjoint=True)
@@ -325,6 +326,49 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
 
     def __matmul__(self, other: 'BaseGraph') -> 'BaseGraph':
         return self.tensor(other)
+
+    def merge(self, other: 'BaseGraph') -> Tuple[List[VT],List[ET]]:
+        """Merges this graph with the other graph in-place.
+        Returns (list-of-vertices, list-of-edges) corresponding to 
+        the id's of the vertices and edges of the other graph."""
+        ty = other.types()
+        rs = other.rows()
+        qs = other.qubits()
+        phase = other.phases()
+
+        vert_map = dict()
+        edges = []
+        for v in other.vertices():
+            w = self.add_vertex(ty[v],qs[v],rs[v],phase[v])
+            vert_map[v] = w
+        for e in other.edges():
+            s,t = other.edge_st(e)
+            f = self.edge(vert_map[s],vert_map[t])
+            self.add_edge(f,other.edge_type(e))
+            edges.append(e)
+        return (list(vert_map.values()),edges)
+
+    def subgraph_from_vertices(self,verts: List[VT]) -> 'BaseGraph':
+        """Returns the subgraph consisting of the specified vertices."""
+        from .graph import Graph # imported here to prevent circularity
+        g = Graph(backend=type(self).backend)
+        ty = self.types()
+        rs = self.rows()
+        qs = self.qubits()
+        phase = self.phases()
+
+        edges = [self.edge(v,w) for v in verts for w in verts if self.connected(v,w)]
+
+        vert_map = dict()
+        for v in verts:
+            w = g.add_vertex(ty[v],qs[v],rs[v],phase[v])
+            vert_map[v] = w
+        for e in edges:
+            s,t = self.edge_st(e)
+            f = g.edge(vert_map[s],vert_map[t])
+            g.add_edge(f,self.edge_type(e))
+
+        return g
 
     def apply_state(self, state: str) -> None:
         """Inserts a state into the inputs of the graph. ``state`` should be
