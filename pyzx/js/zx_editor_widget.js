@@ -356,7 +356,8 @@ define('make_editor', ['d3'], function(d3) {
                            if (d.t == 0) return 0.5 * node_size;
                            else return node_size;
                         })
-                    .attr("fill", function(d) { return nodeColor(d.t); });
+                    .attr("fill", function(d) { return nodeColor(d.t); })
+                    .attr("style", function(d) { return nodeStyle(d.selected); });
 
             node.select("text").text(function (d) { return d.phase })
                     .attr("visibility", function(d) {return (d.phase == "") ? 'hidden' : 'visible';});
@@ -364,6 +365,7 @@ define('make_editor', ['d3'], function(d3) {
             //TODO: Right now, if a node changes from non-type 3 to type 3 or back, 
             //then the square wouldn't update to a circle and vice versa
             hbox = node.filter(function(d) { return d.t == 3; });
+            hbox.select(":first-child").attr("style", function(d) { return nodeStyle(d.selected); });
 
             // Now let's construct and update all the edges
             
@@ -460,12 +462,26 @@ define('make_editor', ['d3'], function(d3) {
                     d3.event.preventDefault();
                     switchAddEdgeType(); break
                 case 90: // Z
-                	console.log("fired");
+                	console.log("Z press");
                 	if (!ctrlKey) return;
                 	d3.event.preventDefault();
                 	if (!shiftKey) {model.perform_action("undo");}
                 	else {model.perform_action("redo");}
                 	break;
+                case 86: // V
+                    console.log("V press")
+                    if (!ctrlKey) return;
+                    if (shiftKey) return;
+                    d3.event.preventDefault();
+                    model.perform_action("paste")
+                    break;
+                case 67: // C
+                    console.log("C press")
+                    if (!ctrlKey) return;
+                    if (shiftKey) return;
+                    d3.event.preventDefault();
+                    model.perform_action("copy")
+                    break;
             }
             
         }).on("keyup", function() {

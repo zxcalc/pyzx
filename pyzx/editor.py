@@ -22,6 +22,8 @@ import traceback
 
 from typing import Callable, Optional, List, Tuple, Set, Dict, Any, Union
 
+import pyperclip # type: ignore # Needed for clipboard actions
+
 from .utils import EdgeType, VertexType, toggle_edge, vertex_is_zx, toggle_vertex
 from .utils import settings, phase_to_s, FloatInt
 from .drawing import matrix_to_latex
@@ -124,16 +126,20 @@ def s_to_phase(s: str, t:VertexType.Type=VertexType.Z) -> Fraction:
 	if not s: return Fraction(1)
 	return Fraction(int(s))
 
-def graph_to_json(g: GraphS, scale:FloatInt) -> str:
+def graph_to_json(g: GraphS, scale:FloatInt, verts:Optional[List[int]]=None,edges:Optional[List[Tuple[int,int]]]=None) -> str:
+	if verts is None:
+		verts = list(g.vertices())
+	if edges is None:
+		edges = list(g.edges())
 	nodes = [{'name': int(v), # type: ignore
 			  'x': (g.row(v) + 1) * scale,
 			  'y': (g.qubit(v) + 2) * scale,
 			  't': g.type(v),
 			  'phase': phase_to_s(g.phase(v),g.type(v)) }
-			 for v in g.vertices()]
+			 for v in verts]
 	links = [{'source': int(g.edge_s(e)), # type: ignore
 			  'target': int(g.edge_t(e)), # type: ignore
-			  't': g.edge_type(e) } for e in g.edges()]
+			  't': g.edge_type(e) } for e in edges]
 	scalar = g.scalar.to_json()
 	return json.dumps({'nodes': nodes, 'links': links, 'scalar': scalar})
 
@@ -273,6 +279,8 @@ class ZXEditorWidget(widgets.DOMWidget):
 			elif action == 'redo': self.redo()
 			elif action == 'snapshot': self.make_snapshot()
 			elif action == 'tikzit': self.open_tikzit()
+			elif action == 'paste': self.paste()
+			elif action == 'copy': self.copy_to_clipboard()
 			else: raise ValueError("Unknown action '{}'".format(action))
 			self.action = ''
 		except Exception as e:
@@ -306,6 +314,40 @@ class ZXEditorWidget(widgets.DOMWidget):
 		self.graph_from_json(json.loads(js))
 		self.update()
 		self.halt_callbacks = False
+
+	def paste(self) -> None:
+		v = pyperclip.paste()
+		try:
+			g = tikz.tikz_to_graph(v,warn_overlap=False,ignore_nonzx=True)
+		except ValueError as e:
+			self.msg.append("Tried loading tikz from clipboard, but failed:")
+			self.msg.append(str(e))
+			return
+		self.msg.append("Copied graph from clipboard")
+		minrow = min([g.row(v) for v in g.vertices()], default=0)
+		minqub = min([g.qubit(v) for v in g.vertices()], default=0)
+		if minrow > 0: minrow = 0
+		if minqub > 0: minqub = 0
+		g = g.translate(-minrow,-minqub)
+		self.halt_callbacks = True
+		verts, edges = self.graph.merge(g)
+		# self.graph_selected = '{"nodes": [], "links": []}'
+		# js = graph_to_json(g, self.graph.scale) # type: ignore
+		# self.graph_from_json(json.loads(js))
+		self._undo_stack_add("paste",graph_to_json(self.graph,self.graph.scale)) # type: ignore
+		self.update()
+		self.graph_selected = graph_to_json(self.graph,self.graph.scale,verts,[]) # type: ignore
+		self.halt_callbacks = False
+		# self._selection_changed(None)
+
+	def copy_to_clipboard(self) -> None:
+		selection = json.loads(self.graph_selected)
+		verts = [n["name"] for n in selection["nodes"]]
+		g = self.graph.subgraph_from_vertices(verts)
+		tz = g.to_tikz()
+		self.msg.append("Copying graph to clipboard")
+		pyperclip.copy(tz)
+		
 
 	def make_snapshot(self) -> None:
 		self.snapshots.append(self.graph.copy()) # type: ignore

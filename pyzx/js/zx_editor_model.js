@@ -137,7 +137,6 @@ define('zx_editor', ["@jupyter-widgets/base", "make_editor"], function(widgets,m
             console.log("action: " + action);
             this.model.set('action', action);
             this.model.save_changes();
-
         },
 
         buttons_changed: function() {
