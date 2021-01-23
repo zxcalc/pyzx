@@ -175,10 +175,12 @@ def euler_expansion(g: BaseGraph[VT,ET],
 				g.add_to_phase(v1,Fraction(3,2))
 				g.add_to_phase(v2,Fraction(3,2))
 				g.set_phase(v, Fraction(3,2))
+				g.scalar.add_phase(Fraction(1,4))
 			else:
 				g.add_to_phase(v1,Fraction(1,2))
 				g.add_to_phase(v2,Fraction(1,2))
 				g.set_phase(v, Fraction(1,2))
+				g.scalar.add_phase(Fraction(7,4))
 		else:
 			r = 0.25*g.row(v1) + 0.75*g.row(v2)
 			q = 0.25*g.qubit(v1) + 0.75*g.qubit(v2)
@@ -193,6 +195,7 @@ def euler_expansion(g: BaseGraph[VT,ET],
 			w3 = g.add_vertex(VertexType.Z,q,r,Fraction(1,2))
 			etab[g.edge(w2,w3)] = [1,0]
 			etab[g.edge(w3,v1)] = [1,0]
+			g.scalar.add_phase(Fraction(7,4))
 			
 	return (etab, [], rem_edges, False)
 
