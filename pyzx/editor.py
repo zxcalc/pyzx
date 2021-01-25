@@ -60,6 +60,8 @@ HELP_STRING = """To create an editor, call `e = zx.editor.edit(g)` on a graph g.
 This will display the editor, and give you access to 
 the underlying Python instance e. Your changes are automatically pushed onto 
 the underlying graph instance g (which can also be accessed as e.graph).
+Adding the optional argument `zx.editor.edit(g,show_matrix=True)` will
+also display the matrix the diagram represents beneath the editor.
 
 Click on edges or vertices to select them. 
 Drag a box or hold shift to select multiple vertices or edges.
@@ -74,18 +76,20 @@ Click this box (or press the hotkey 'e') to change the adding type.
 
 When you have a selection, the buttons below the graph light up to denote that 
 a rewrite rule can be applied to some of the vertices or edges in this selection.
+Press Ctrl+C to copy the selection as tikz code onto the clipboard.
+Press Ctrl+V to paste a ZX-diagram on the clipboard (specified as tikz) into the editor.
+Press Ctrl+Z to undo an action and Ctrl+Shift+Z to redo an undo'd action.
 
 In order to reflect a change done on g in the Python kernel in the editor itself,
 call e.update().
-
-Example usage:
+Example:
 In [0]: c = zx.Circuit(3)
-		c.add_gate("TOF",0,1,2)
-		g = c.to_basic_gates().to_graph()
-		e = zx.editor_edit(g)
+        c.add_gate("TOF",0,1,2)
+        g = c.to_basic_gates().to_graph()
+        e = zx.editor_edit(g)
 >>> Now the graph g is shown in the output of the cell.
 In [1]: zx.spider_simp(g)
-		e.update()
+        e.update()
 >>> Now the view of g in the editor above is updated.
 """
 
@@ -328,6 +332,8 @@ class ZXEditorWidget(widgets.DOMWidget):
 		minqub = min([g.qubit(v) for v in g.vertices()], default=0)
 		if minrow > 0: minrow = 0
 		if minqub > 0: minqub = 0
+		minrow = minrow - 0.3
+		minqub = minqub - 0.3
 		g = g.translate(-minrow,-minqub)
 		self.halt_callbacks = True
 		verts, edges = self.graph.merge(g)

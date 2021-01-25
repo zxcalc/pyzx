@@ -60,6 +60,8 @@ Ctrl-drag (Command-drag) between two vertices to add a new edge of the type 'Edg
 
 Drag a box around vertices to select them. With a set selected, drag your mouse on one of the vertices to move them. Press delete or backspace to delete your selection. You can also directly select an edge by clicking it.
 
+Pressing Ctrl+C while having a selection copies your selection to the clipboard as tikz code that can be directly pasted into Tikzit. Pressing Ctrl+V pastes a diagram specified by tikz code into the diagram.
+
 Double-click a vertex to change its phase. You should enter a fraction possibly followed by pi. Example inputs: '1', '-1/2', '3/2pi'. An empty input gives the default value ('0' for Z/X spiders, '1' for H-boxes).
 
 Any change can be undone by pressing Ctrl-Z, and redone by pressing Ctrl-Shift-Z.
