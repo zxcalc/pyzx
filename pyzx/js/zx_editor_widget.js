@@ -23,8 +23,8 @@ define('make_editor', ['d3'], function(d3) {
     // styling functions
     function nodeColor(t) {
         if (t == 0) return "black";
-        else if (t == 1) return "green";
-        else if (t == 2) return "red";
+        else if (t == 1) return "#ccffcc";
+        else if (t == 2) return "#ff8888";
         else if (t == 3) return "yellow";
     }
 
