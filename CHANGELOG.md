@@ -7,13 +7,33 @@ Right now this project is in Beta and does not yet follow [Semantic Versioning](
 Hence, occasionally changes will be backwards incompatible (although they will all be documented here).
 
 
+## [0.6.4] - 2021-01-27
+
+The main feature added is support for copying and pasting inside the editor. This release should also hopefully fix the issue where users of the PyPI version can't use zx.draw and the editor.
+
+### Added
+- Added functionality to copy and paste parts of a diagram in the editor.
+- qasm files can now include u1/u2/u3 gates.
+- Method BaseGraph.merge() to merge two graphs in place.
+- Method BaseGraph.subgraph_from_vertices() to get the induced subgraph from a set of vertices.
+
+### Changed
+- tikz_to_graph() is now a bit more versatile in what it accepts as valid phases.
+- matrix_to_latex() is slightly more intelligent about parsing numbers.
+- Changed colours in editor to match those of zx.draw.
+
+### Fixed
+- Decomposing a Hadamard into Euler angles gave wrong scalar.
+- Added d3.v5.min.js to the manifest, which hopefully prevents the issue where people using the PyPI version can't see graphs drawn with d3.
+
+
 ## [0.6.3] - 2020-12-2
 
 ### Added
-- Added settings.drawing_auto_hbox to toggle the default value of auto_hbox when using zx.draw()
+- Added settings.drawing_auto_hbox to toggle the default value of auto_hbox when using zx.draw().
 - Added function generate.spider to construct a graph containing a single spider.
 - Added function Graph.translate(x,y) to translate all the coordinates in the Graph instance by the specified amount.
-- Added additional rewrite rule to editor for H-box fusion
+- Added additional rewrite rule to editor for H-box fusion.
 - Added hsimplify.zh_simp() rewrite strategy that does a collection of rewrites of increasing difficulty to simply ZH-diagrams.
 
 ### Changed
