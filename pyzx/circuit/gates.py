@@ -27,7 +27,6 @@ from typing import Dict, List, Type, ClassVar, TypeVar
 from ..utils import EdgeType, VertexType, FractionLike
 from ..graph.base import BaseGraph, VT, ET
 
-
 # We need this type variable so that the subclasses of Gate return the correct type for functions like copy()
 Tvar = TypeVar('Tvar', bound='Gate')
 
@@ -441,6 +440,47 @@ class SWAP(CZ):
         for gate in self.to_basic_gates():
             gate.to_graph(g, labels, qs,rs)
 
+class CRZ(Gate):
+    name = 'CRZ'
+    qasm_name = 'crz'
+    quippername = 'undefined'
+    printphase: ClassVar[bool] = True
+    def __init__(self, control: int, target: int, phase: FractionLike) -> None:
+        self.target = target
+        self.control = control
+        self.phase = phase
+
+    def to_basic_gates(self):
+    	return [ZPhase(self.target,Fraction(self.phase/2)),
+    			CNOT(self.control,self.target),
+    			ZPhase(self.target,Fraction(-self.phase/2)%2),
+    			CNOT(self.control,self.target)]
+
+
+    def to_graph(self, g, labels, qs, rs):
+        for gate in self.to_basic_gates():
+            gate.to_graph(g, labels, qs, rs)
+
+class CHAD(Gate):
+    name = 'CHAD'
+    qasm_name = 'ch'
+    quippername = 'undefined'
+
+    def __init__(self, control: int, target: int) -> None:
+        self.target = target
+        self.control = control
+
+    def to_basic_gates(self):
+    	return [HAD(self.target),S(self.target,adjoint=True),
+    			CNOT(self.control,self.target),
+    			HAD(self.target),T(self.target),
+    			CNOT(self.control,self.target),
+    			T(self.target),HAD(self.target),S(self.target),NOT(self.target),S(self.control)]
+
+
+    def to_graph(self, g, labels, qs, rs):
+        for gate in self.to_basic_gates():
+            gate.to_graph(g, labels, qs, rs)
 
 class ParityPhase(Gate):
     name = 'ParityPhase'
@@ -708,7 +748,10 @@ gate_types: Dict[str,Type[Gate]] = {
     "ParityPhase": ParityPhase,
     "CX": CX,
     "SWAP": SWAP,
+    "CRZ": CRZ,
     "HAD": HAD,
+    "H": HAD,
+    "CHAD": CHAD,
     "TOF": Tofolli,
     "CCZ": CCZ,
     "InitAncilla": InitAncilla,
@@ -726,6 +769,8 @@ qasm_gate_table: Dict[str, Type[Gate]] = {
     "cx": CNOT,
     "CX": CNOT,
     "cz": CZ,
+    "ch": CHAD,
+    "crz": CRZ,
     "ccx": Tofolli,
     "ccz": CCZ,
 }
