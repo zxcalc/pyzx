@@ -28,7 +28,7 @@ import subprocess
 import tempfile
 import time
 import random
-from typing import Optional, Dict, Tuple, List, Set, Iterable, FrozenSet
+from typing import Optional, Dict, Tuple, List, Set, Iterable, FrozenSet, Union
 from typing_extensions import Literal
 
 import numpy as np
@@ -36,7 +36,7 @@ import numpy as np
 from .circuit.gates import Gate, T, S, Z, ZPhase, CZ, CNOT, ParityPhase
 from .utils import settings, EdgeType, VertexType, FractionLike
 from .graph.base import BaseGraph, VT, ET
-from .linalg import Mat2
+from .linalg import Mat2, MatLike
 from .extract import permutation_as_swaps, column_optimal_swap
 from .parity_network import parity_network
 
@@ -87,7 +87,7 @@ class ParityPolynomial(object):
         """Converts the phase polynomial into a parity matrix."""
         cols = []
         for par, val in self.terms.items():
-            col = [1 if i in par else 0 for i in range(self.qubits)]
+            col: List[Union[Literal[0],Literal[1]]] = [1 if i in par else 0 for i in range(self.qubits)]
             for i in range(val): cols.append(col)
         return Mat2(cols).transpose()
 
@@ -356,10 +356,10 @@ def call_topt(m: Mat2, quiet:bool=True) -> Mat2:
     t = out[i+10: out.find("s",i)]
     if not quiet:
         print(t)
-    data = []
+    data: MatLike = []
     try:
         for row in rows:
-            data.append([int(i) for i in row])
+            data.append([int(i) for i in row]) # type: ignore # mypy doesn't understand literals
     except ValueError:
         print(out)
         print(rows)

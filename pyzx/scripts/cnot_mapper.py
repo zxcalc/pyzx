@@ -24,10 +24,7 @@ except:
     if __name__ == '__main__':
         print("Warning: could not import pandas. No performance data will be exported.")
 
-try:
-    import numpy as np
-except:
-    np = None
+import numpy as np
     
 if __name__ == '__main__':
     print("Please call this as python -m pyzx mapper ...")

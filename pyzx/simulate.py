@@ -53,14 +53,14 @@ class SumGraph(object):
             self.graphs = []
             
     def to_tensor(self) -> np.ndarray:
-        if not self.graphs: return 0
+        if not self.graphs: return np.zeros((1,1))
         t = self.graphs[0].to_tensor(True)
         for i in range(len(self.graphs)-1):
             t = t + self.graphs[i+1].to_tensor(True)
         return t
 
     def to_matrix(self) -> np.ndarray:
-        if not self.graphs: return 0
+        if not self.graphs: return np.zeros((1,1))
         t = self.graphs[0].to_matrix(True)
         for i in range(len(self.graphs)-1):
             t = t + self.graphs[i+1].to_matrix(True)

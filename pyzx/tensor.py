@@ -198,8 +198,8 @@ def compare_tensors(t1: TensorConvertible,t2: TensorConvertible, preserve_scalar
     if preserve_scalar: return False # We do not check for equality up to scalar
     epsilon = 10**-14
     for i,a in enumerate(t1.flat):
-        if abs(a)>epsilon: 
-            if abs(t2.flat[i])<epsilon: return False
+        if abs(a)>epsilon: # type: ignore #TODO: Figure out how numpy typing works
+            if abs(t2.flat[i])<epsilon: return False # type: ignore #TODO: Figure out how numpy typing works
             break
     else:
         raise ValueError("Tensor is too close to zero")
@@ -221,9 +221,9 @@ def find_scalar_correction(t1: TensorConvertible, t2:TensorConvertible) -> compl
 
     epsilon = 10**-14
     for i,a in enumerate(t1.flat):
-        if abs(a)>epsilon: 
-            if abs(t2.flat[i])<epsilon: return 0
-            return a/t2.flat[i]
+        if abs(a)>epsilon: # type: ignore #TODO: Figure out how numpy typing works
+            if abs(t2.flat[i])<epsilon: return 0 # type: ignore #TODO: Figure out how numpy typing works
+            return a/t2.flat[i] # type: ignore #TODO: Figure out how numpy typing works
 
     return 0
 

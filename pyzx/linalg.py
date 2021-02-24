@@ -28,7 +28,7 @@ except ImportError:
    gauss_fast = None
 
 Z2 = Literal[0,1]
-MatLike = Union[np.ndarray, List[List[Z2]]]
+MatLike = List[List[Z2]]
 
 class Mat2(object):
     """A matrix over Z2, with methods for multiplication, primitive row and column
@@ -51,8 +51,8 @@ class Mat2(object):
     def __init__(self, data: MatLike):
         self.data: MatLike = data
     def __mul__(self, m: 'Mat2') -> 'Mat2':
-        return Mat2([[sum(self.data[i][k] * m.data[k][j] for k in range(len(m.data))) % 2
-                      for j in range(len(m.data[0]))] for i in range(len(self.data))])
+        return Mat2([[sum(self.data[i][k] * m.data[k][j] for k in range(len(m.data))) % 2 #type: ignore # mypy doesn't understand literals
+                      for j in range(len(m.data[0]))] for i in range(len(self.data))]) #type: ignore # mypy doesn't understand literals
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, Mat2): return False
         if self.rows() != other.rows() or self.cols() != other.cols(): return False

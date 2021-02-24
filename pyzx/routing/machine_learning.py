@@ -15,10 +15,7 @@
 # limitations under the License.
 
 
-try:
-    import numpy as np
-except:
-    np = None
+import numpy as np
 
 class GeneticAlgorithm():
 
