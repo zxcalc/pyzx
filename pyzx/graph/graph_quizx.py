@@ -27,6 +27,9 @@ except ImportError:
     print("quizx bindings not available")
     libquizx = None
 
+
+
+
 class GraphQV(BaseGraph[int,Tuple[int,int]]):
     """Rust implementation of :class:`~graph.base.BaseGraph`, based on quizx::vec_graph::Graph."""
     backend = 'quizx-vec'
@@ -37,6 +40,52 @@ class GraphQV(BaseGraph[int,Tuple[int,int]]):
         BaseGraph.__init__(self)
         self._g: Any = libquizx.VecGraph()
         self._vdata: Dict[int,Any] = dict()
+
+
+    # n.b. we use python iterators to avoid issues with rust lifetimes
+
+    class VIter:
+        def __init__(self, g):
+            self.v = 0
+            self.g = g._g
+
+        def __iter__(self): return self
+
+        def __next__(self):
+            v = self.v
+            self.v += 1
+            if v >= self.g.vindex():
+                raise StopIteration
+            else:
+                if self.g.contains_vertex(v): return v
+                else: return next(self)
+
+    class EIter:
+        def __init__(self, g, nhd=False):
+            self.v = 0
+            self.n = 0
+            self.g = g._g
+            self.nhd = nhd
+
+        def __iter__(self): return self
+
+        def __next__(self):
+            if self.v >= self.g.vindex(): raise StopIteration
+            if self.g.contains_vertex(self.v):
+                if self.n < self.g.degree(self.v):
+                    n = self.n
+                    self.n += 1
+                    v1 = self.g.neighbor_at(self.v, n)
+                    if self.nhd:
+                        return v1
+                    else:
+                        if self.v < v1: return (self.v, v1)
+                        else: return next(self)
+
+            if self.nhd: raise StopIteration
+            self.n = 0
+            self.v += 1
+            return next(self)
 
     def vindex(self): return self._g.vindex()
 
@@ -52,6 +101,7 @@ class GraphQV(BaseGraph[int,Tuple[int,int]]):
             self._g.add_vertex(VertexType.BOUNDARY, 0, 0, (0, 1))
         return range(index_before, self._g.vindex())
 
+    # TODO
     # def add_vertex_indexed(self, index):
     #     """Adds a vertex that is guaranteed to have the chosen index (i.e. 'name').
     #     If the index isn't available, raises a ValueError.
@@ -88,7 +138,7 @@ class GraphQV(BaseGraph[int,Tuple[int,int]]):
         return self._g.num_edges()
 
     def vertices(self):
-        return iter([])
+        return GraphQV.VIter(self)
 
     def vertices_in_range(self, start, end):
         """Returns all vertices with index between start and end
@@ -99,7 +149,7 @@ class GraphQV(BaseGraph[int,Tuple[int,int]]):
                 yield v
 
     def edges(self):
-        return iter([])
+        return GraphQV.EIter(self)
 
     #def edges_in_range(self, start, end, safe=False):
     #    """like self.edges, but only returns edges that belong to vertices
@@ -132,14 +182,19 @@ class GraphQV(BaseGraph[int,Tuple[int,int]]):
     def edge_st(self, edge):
         return edge
 
-    def neighbors(self, vertex):
-        return iter([])
-
     def vertex_degree(self, vertex):
         return self._g.degree(vertex)
 
+    def neighbors(self, vertex):
+        it = GraphQV.EIter(self, nhd=True)
+        it.v = vertex
+        return it
+
     def incident_edges(self, vertex):
-        return iter([])
+        return map(
+            lambda n: (vertex, n) if vertex < n else (n, vertex),
+            self.neighbors(vertex)
+        )
 
     def connected(self,v1,v2):
         return self._g.connected(v1, v2)
@@ -163,7 +218,7 @@ class GraphQV(BaseGraph[int,Tuple[int,int]]):
         self._g.set_vertex_type(vertex, t)
 
     def phase(self, vertex):
-        p = self._phase.get(vertex,Fraction(1))
+        p = self._g.phase(vertex)
         return Fraction(p[0], p[1])
 
     def phases(self):
@@ -174,10 +229,11 @@ class GraphQV(BaseGraph[int,Tuple[int,int]]):
 
     def set_phase(self, vertex, phase):
         p = Fraction(phase)
-        self._g.set_phase(vertex, p.numerator, p.denominator)
+        self._g.set_phase(vertex, (p.numerator, p.denominator))
 
     def add_to_phase(self, vertex, phase):
-        self._phase[vertex] = (self._phase.get(vertex,Fraction(1)) + phase) % 2
+        p = Fraction(phase)
+        self._g.add_to_phase(vertex, (p.numerator, p.denominator))
 
     def qubit(self, vertex):
         return self._g.qubit(vertex)

@@ -20,7 +20,7 @@ from .base import BaseGraph
 from .graph_s import GraphS
 from .graph_quizx import GraphQV # type: ignore
 
-backends = {'simple': True}
+backends = { 'simple': True, 'quizx-vec': True }
 
 def Graph(backend:Optional[str]=None) -> BaseGraph:
 	"""Returns an instance of an implementation of :class:`~pyzx.graph.base.BaseGraph`. 
