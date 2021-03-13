@@ -198,6 +198,7 @@ class Mat2(object):
                             if y is not None: y.col_add(pivot_row, r0)
 
                         for r1 in range(pivot_row+1, rows):
+                            # TODO: remove pivot_row != r1 and test
                             if pivot_row != r1 and self.data[r1][p] != 0:
                                 self.row_add(pivot_row, r1)
                                 if x is not None: x.row_add(pivot_row, r1)
