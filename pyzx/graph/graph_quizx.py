@@ -14,6 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# type: ignore
+
 from fractions import Fraction
 from typing import Tuple, Dict, Any
 from .base import BaseGraph

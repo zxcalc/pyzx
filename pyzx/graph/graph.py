@@ -18,7 +18,7 @@ from typing import Optional
 
 from .base import BaseGraph
 from .graph_s import GraphS
-from .graph_quizx import GraphQV
+from .graph_quizx import GraphQV # type: ignore
 
 backends = {'simple': True}
 
@@ -42,7 +42,7 @@ def Graph(backend:Optional[str]=None) -> BaseGraph:
 	if backend == 'graph_tool': 
 		return GraphGT()
 	if backend == 'igraph': return GraphIG()
-	if backend == 'quizx-vec': return GraphQV()
+	if backend == 'quizx-vec': return GraphQV() # type: ignore
 	return GraphS()
 
 Graph.from_json = GraphS.from_json # type: ignore
