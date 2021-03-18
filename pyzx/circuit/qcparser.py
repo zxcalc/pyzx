@@ -64,6 +64,8 @@ def parse_qc(data: str) -> Circuit:
                 gates.append(CNOT(c,t))
             elif gname in ('cz', 'z'):
                 gates.append(CZ(c,t))
+            elif gname in ('swap', ):
+                gates.append(SWAP(c,t))
             else:
                 raise TypeError("Unknown gate with control: " + l)
         elif len(targets) == 3:
