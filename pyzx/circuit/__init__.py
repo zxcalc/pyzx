@@ -402,9 +402,26 @@ class Circuit(object):
         c = self.to_basic_gates()
         return sum(1 for g in c.gates if g.name in ('CNOT','CZ'))
 
-    def stats(self) -> str:
+    def stats(self, depth: bool = False) -> str:
         """Returns statistics on the amount of gates in the circuit, separated into different classes 
         (such as amount of T-gates, two-qubit gates, Hadamard gates)."""
+        d = self.stats_dict(depth)
+        s = """Circuit {} on {} qubits with {} gates.
+        {} is the T-count
+        {} Cliffords among which 
+        {} 2-qubit gates ({} CNOT, {} other) and
+        {} Hadamard gates.""".format(d["name"], d["qubits"], d["gates"],
+                d["tcount"], d["clifford"], d["twoqubit"], d["cnot"], d["twoqubit"] - d["cnot"], d["had"])
+        if d["other"] > 0:
+            s += "\nThere are {} gates of a different type".format(d["other"])
+        if depth:
+            s += "\nThe circuit depth is {}".format(d["depth"])
+            s += "\nThe circuit depth if no CZs are possible is {}".format(d["depth_cz"])
+        return s
+
+    def stats_dict(self, depth: bool = False) -> dict:
+        """Returns a dictionary containing statistics on the amount of gates in the circuit,
+        separated into different classes (such as amount of T-gates, two-qubit gates, Hadamard gates)."""
         total = 0
         tcount = 0
         twoqubit = 0
@@ -420,21 +437,47 @@ class Circuit(object):
             elif isinstance(g, HAD):
                 hadamard += 1
                 clifford += 1
-            elif isinstance(g, (CZ,CX, CNOT)):
+            elif isinstance(g, (CZ, CX, CNOT)):
                 twoqubit += 1
                 clifford += 1
                 if isinstance(g, CNOT): cnot += 1
             else:
                 other += 1
-        s = """Circuit {} on {} qubits with {} gates.
-        {} is the T-count
-        {} Cliffords among which 
-        {} 2-qubit gates ({} CNOT, {} other) and
-        {} Hadamard gates.""".format(self.name, self.qubits, total, 
-                tcount, clifford, twoqubit, cnot, twoqubit - cnot, hadamard)
-        if other > 0:
-            s += "\nThere are {} gates of a different type".format(other)
-        return s
+        d = dict()
+        d["name"] = self.name
+        d["qubits"] = self.qubits
+        d["gates"] = total
+        d["tcount"] = tcount
+        d["clifford"] = clifford
+        d["twoqubit"] = twoqubit
+        d["cnot"] = cnot
+        d["had"] = hadamard
+        d["other"] = other
+        d["depth"] = 0
+        d["depth_cz"] = 0
+        if depth:
+            basic_gates = [basic_gate for g in self.gates for basic_gate in g.to_basic_gates()]
+            d["depth"] = Circuit.depth_of_circ(self.qubits, basic_gates)
+            basic_no_cz = []
+            for g in basic_gates:
+                if isinstance(g, CZ):
+                    basic_no_cz.extend([HAD(g.target), CNOT(g.control, g.target), HAD(g.target)])
+                else:
+                    basic_no_cz.append(g)
+            d["depth_cz"] = Circuit.depth_of_circ(self.qubits, basic_no_cz)
+        return d
+
+    @staticmethod
+    def depth_of_circ(qubits: int, basic_gates: list[Gate]):
+        min_depth = [0] * qubits
+        for g in basic_gates:
+            if isinstance(g, (ZPhase, XPhase, HAD)):
+                min_depth[g.target] += 1
+            elif isinstance(g, (CZ, CNOT)):
+                gate_depth = max(min_depth[g.target], min_depth[g.control]) + 1
+                min_depth[g.target] = gate_depth
+                min_depth[g.control] = gate_depth
+        return max(min_depth)
 
 
 def determine_file_type(circuitfile: str) -> str:

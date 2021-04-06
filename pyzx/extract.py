@@ -14,7 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__all__ = ['extract_circuit', 'extract_simple', 'graph_to_swaps']
+__all__ = ['extract_circuit', 'extract_simple', 'graph_to_swaps', 'lookahead_extract_base', 'lookahead_full',
+           'lookahead_fast', 'lookahead_extract']
 
 from fractions import Fraction
 import itertools
@@ -165,34 +166,40 @@ def _find_targets(
 def xor_rows(l1: List[Z2], l2: List[Z2]) -> List[Z2]:
     return [0 if l1[i]==l2[i] else 1 for i in range(len(l1))]
 
-def find_minimal_sums(m: Mat2) -> Optional[Tuple[int,...]]:
+
+def find_minimal_sums(m: Mat2, reversed_search=False) -> Optional[Tuple[int, ...]]:
     """Returns a list of rows in m that can be added together to reduce one of the rows so that
     it only contains a single 1. Used in :func:`greedy_reduction`"""
     r = m.rows()
     d = m.data
-    if any(sum(r)==1 for r in d): return tuple()
-    combs:  Dict[Tuple[int,...],List[Z2]] = {(i,):d[i] for i in range(r)}
-    combs2: Dict[Tuple[int,...],List[Z2]] = {}
+    if any(sum(r) == 1 for r in d):
+        return tuple()
+    combs:  Dict[Tuple[int, ...], List[Z2]] = {(i,): d[i] for i in range(r)}
+    combs2: Dict[Tuple[int, ...], List[Z2]] = {}
     iterations = 0
     while True:
         combs2 = {}
-        for index,l in combs.items():
-            for k in range(max(index)+1,r):
-                #Unrolled xor_rows(combs[index],d[k])
-                row: List[Z2] = [0 if v1==v2 else 1 for v1,v2 in zip(combs[index],d[k])]
-                #row = xor_rows(combs[index],d[k])
+        for index, l in combs.items():
+            rr = range(max(index)+1, r)
+            if reversed_search:
+                rr = reversed(rr)
+            for k in rr:
+                # Unrolled xor_rows(combs[index],d[k])
+                row: List[Z2] = [0 if v1 == v2 else 1 for v1, v2 in zip(combs[index], d[k])]
+                # row = xor_rows(combs[index],d[k])
                 if sum(row) == 1:
-                    return (*index,k)
-                combs2[(*index,k)] = row
+                    return (*index, k)
+                combs2[(*index, k)] = row
                 iterations += 1
             if iterations > 100000:
                 return None
         if not combs2:
             return None
-            #raise ValueError("Irreducible input has been given")
+            # raise ValueError("Irreducible input has been given")
         combs = combs2
 
-def greedy_reduction(m: Mat2) -> Optional[List[Tuple[int,int]]]:
+
+def greedy_reduction(m: Mat2) -> Optional[List[Tuple[int, int]]]:
     """Returns a list of tuples (r1,r2) that specify which row should be added to which other row
     in order to reduce one row of m to only contain a single 1. 
     Used in :func:`extract_circuit`"""
@@ -221,6 +228,115 @@ def greedy_reduction(m: Mat2) -> Optional[List[Tuple[int,int]]]:
         weights[target] = weights[target] - reduction
         indices.remove(control)
     return result
+
+
+def flat_indices(m: Mat2, indices: list[int]) -> Tuple[List[Tuple[int, int]], int]:
+    if len(indices) == 0:
+        return [], -1
+    rows = {i: m.data[i] for i in indices}
+    weights = {i: sum(r) for i, r in rows.items()}
+    result = []
+    next_indices = []
+    while len(indices) > 1:
+        best = (-1, -1)
+        reduction = -10000
+        for i in indices:
+            for j in indices:
+                if j <= i: continue
+                w = sum(xor_rows(rows[i], rows[j]))
+                if weights[i] - w > reduction:
+                    best = (j, i)  # "Add row j to i"
+                    reduction = weights[i] - w
+                if weights[j] - w > reduction:
+                    best = (i, j)
+                    reduction = weights[j] - w
+        result.append(best)
+        control, target = best
+        rows[target] = xor_rows(rows[control], rows[target])
+        weights[target] = weights[target] - reduction
+        indices.remove(control)
+        indices.remove(target)
+        next_indices.append(target)
+        if len(indices) <= 1:
+            if len(indices) == 1:
+                next_indices.append(indices[0])
+            indices = next_indices
+            next_indices = []
+    return result, indices[0]
+
+
+def greedy_reduction2(m: Mat2) -> Optional[List[Tuple[int, int]]]:
+    """Returns a list of tuples (r1,r2) that specify which row should be added to which other row
+    in order to reduce one row of m to only contain a single 1.
+    Used in :func:`lookahead_extract`"""
+    indicest = find_minimal_sums(m, True)
+    if indicest is None: return indicest
+    return flat_indices(m, list(indicest))[0]
+
+
+def find_2_minimal_sums(m: Mat2) -> Optional[Tuple[Tuple[int, ...], Tuple[int, ...]]]:
+    """Returns two lists of rows in m that can be added together to reduce two of the rows so that
+    they only contains a single 1. Used in :func:`greedy_reduction3`"""
+    r = m.rows()
+    d = m.data
+    combs:  Dict[Tuple[int, ...], List[Z2]] = {(i,): d[i] for i in range(r)}
+    combs2: Dict[Tuple[int, ...], List[Z2]]
+    sum1: Optional[Tuple[int, ...]] = None
+    iterations = 0
+    while True:
+        combs2 = {}
+        for index, l in combs.items():
+            for k in range(max(index)+1, r):
+                row: List[Z2] = [0 if v1 == v2 else 1 for v1, v2 in zip(combs[index], d[k])]
+                if sum(row) == 1:
+                    if sum1 is None:
+                        sum1 = (*index, k)
+                    else:
+                        return sum1, (*index, k)
+                combs2[(*index, k)] = row
+                iterations += 1
+            if iterations > 100000:
+                return None
+        if not combs2:
+            return None
+        combs = combs2
+
+
+def greedy_reduction3(m: Mat2) -> Optional[List[Tuple[int, int]]]:
+    """Returns a list of tuples (r1,r2) that specify which row should be added to which other row
+    in order to reduce two rows of m to only contain a single 1.
+    Used in :func:`lookahead_extract`"""
+    indicest = find_2_minimal_sums(m)
+    if indicest is None:
+        return indicest
+    s1 = set(indicest[0])
+    s2 = set(indicest[1])
+
+    if s2.issubset(s1):
+        s3 = s2
+        s2 = s1
+        s1 = s3
+    if s1.issubset(s2):
+        res0, r0 = flat_indices(m, list(s1))
+        res1, r1 = flat_indices(m, list(s2.difference(s1)))
+        res0.extend(res1)
+        if r1 == -1:
+            # Should never happen
+            print("Got the same sets: {}, {}".format(s1, s2))
+            return None
+        res0.append((r0, r1))
+        return res0
+
+    res0, r0 = flat_indices(m, list(s1.intersection(s2)))
+    res1, r1 = flat_indices(m, list(s1.difference(s2)))
+    res2, r2 = flat_indices(m, list(s2.difference(s1)))
+    res0.extend(res1)
+    res0.extend(res2)
+    if r0 != -1:
+        res0.append((r0, r1))
+        res0.append((r0, r2))
+    return res0
+
 
 # O(N^3)
 def max_overlap(cz_matrix: Mat2) -> Tuple[Tuple[int,int],List[int]]:
@@ -267,10 +383,11 @@ def filter_duplicate_cnots(cnots: List[CNOT]) -> List[CNOT]:
     return c.gates # type: ignore
 
 def extract_circuit(
-        g:BaseGraph[VT,ET], 
-        optimize_czs:bool=True, 
-        optimize_cnots:int=2, 
-        quiet:bool=True
+        g: BaseGraph[VT, ET],
+        optimize_czs: bool = True,
+        optimize_cnots: int = 2,
+        up_to_perm: bool = False,
+        quiet: bool = True
         ) -> Circuit:
     """Given a graph put into semi-normal form by :func:`~pyzx.simplify.full_reduce`, 
     it extracts its equivalent set of gates into an instance of :class:`~pyzx.circuit.Circuit`.
@@ -281,6 +398,7 @@ def extract_circuit(
         g: The ZX-diagram graph to be extracted into a Circuit.
         optimize_czs: Whether to try to optimize the CZ-subcircuits by exploiting overlap between the CZ gates
         optimize_cnots: (0,1,2,3) Level of CNOT optimization to apply.
+        up_to_perm: If true, returns a circuit that is equivalent to the given graph up to a permutation of the inputs.
         quiet: Whether to print detailed output of the extraction process.
     """
     qs = g.qubits() # We are assuming that these are objects that update...
@@ -502,11 +620,18 @@ def extract_circuit(
     id_simp(g,quiet=True) # Now the graph should only contain inputs and outputs
     # Since we were extracting from right to left, we reverse the order of the gates
     c.gates = list(reversed(c.gates))
+    if up_to_perm:
+        return c
     return graph_to_swaps(g) + c
 
-def extract_simple(g: BaseGraph[VT,ET]) -> Circuit:
+
+def extract_simple(g: BaseGraph[VT, ET], up_to_perm: bool = True) -> Circuit:
     """A simplified circuit extractor that works on graphs with a causal flow (e.g. graphs arising
-    from circuits via spider fusion)."""
+    from circuits via spider fusion).
+
+    Args:
+        up_to_perm: If true, returns a circuit that is equivalent to the given graph up to a permutation of the inputs.
+    """
     circ = Circuit(g.qubit_count())
     progress = True
     while progress:
@@ -563,6 +688,8 @@ def extract_simple(g: BaseGraph[VT,ET]) -> Circuit:
                         circ.prepend_gate(CX(control=q1,target=q2))
                         g.remove_edge(g.edge(v1,v2))
 
+    if up_to_perm:
+        return circ
     return graph_to_swaps(g) + circ
 
 def graph_to_swaps(g:BaseGraph[VT,ET]) -> Circuit:
@@ -586,4 +713,734 @@ def graph_to_swaps(g:BaseGraph[VT,ET]) -> Circuit:
         for t1, t2 in permutation_as_swaps(swap_map):
             c.prepend_gate(SWAP(t1, t2))
     #c.gates = list(reversed(c.gates))
+    return c
+
+
+class LookaheadNode:
+    """
+    A class for the lookahead extraction.
+
+    Performs most operations recursively, such as expanding nodes,
+    picking next roots, and finding optimal nodes.
+
+    Supports two structures:
+        - for CNOT optimisation, each node holds the part of the circuit that it creates
+        - for depth optimisation, only the leaves hold circuits
+
+    The correct order of operations for a root is:
+    root.expand -> root.get_finished -> root.next_nodes, as used in lookahead_extract_base
+    """
+
+    def __init__(self,
+                 g: BaseGraph[VT, ET],
+                 c: Circuit,
+                 frontier: List[VT],
+                 qubit_map: Dict[VT, int],
+                 gadgets: Dict[VT, VT],
+                 opt_depth: bool,
+                 hard_limit: int,
+                 ext_count: int = 0):
+        self.g = g
+        self.c = c
+        self.frontier = frontier
+        self.qubit_map = qubit_map
+        self.gadgets = gadgets
+        self.children = []
+        self.expanded = False
+        self.ext_count = ext_count
+        self.collected = False
+        self.opt_depth = opt_depth
+        self.d = -1
+        self.total_d = -1
+        self.finished_children = None
+        self.hard_limit = hard_limit
+
+    def update_hard_limit(self, new_limit: int):
+        self.hard_limit = new_limit
+        for child in self.children:
+            child.update_hard_limit(new_limit)
+
+    def mark_expanded(self):
+        """
+        Free the memory once the node is expanded.
+        """
+        self.expanded = True
+        self.g = None
+        if self.opt_depth:
+            self.c = None
+        self.frontier = None
+        self.qubit_map = None
+        self.gadgets = None
+
+    def stats(self):
+        """
+        Returns the number of nodes, leaves, and maximum depth
+        """
+        if len(self.children) == 0:
+            return 1, 1, 0
+        depth = 0
+        nodes = 1
+        leaves = 0
+        for child in self.children:
+            c_n, c_l, c_d = child.stats()
+            if c_d > depth:
+                depth = c_d
+            nodes += c_n
+            leaves += c_l
+        return nodes, leaves, depth + 1
+
+    def optimal(self, sp, d: int = -1):
+        """
+        Computes the stats for leaves (number of 2 qubit gates or depth) to determine the best nodes.
+
+        Args:
+            sp: StepPicker, used to collect the leaves and filter the best ones
+            d: for CNOT optimisation only, the total number of two qubit gates of the parent nodes, up to root
+        """
+        if not self.opt_depth:
+            if self.d == -1:
+                self.d = get_optimize_value(self.c, False)
+            if d == -1:
+                d = 0
+            d = d + self.d
+            self.total_d = d
+        if len(self.children) == 0:
+            if self.opt_depth:
+                if self.total_d == -1:
+                    self.total_d = get_optimize_value(self.c, False)
+                d = self.total_d
+            if -1 < self.hard_limit <= d:
+                return
+            sp.add_leaf(self, Fraction(d, self.ext_count))
+            return
+        for child in self.children:
+            child.optimal(sp, d)
+
+    def next_nodes(self, min_extracted: int, sp, prev_circ: Optional[Circuit] = None, d: int = -1):
+        """
+        Used to find the next roots. Looks for nodes that fit the parameters, then searches their leaves.
+
+        Args:
+            min_extracted: minimum number of vertices extracted for a node to be considered a root
+            sp: StepPicker to collect the possible roots and best leaves
+            prev_circ: for CNOT optimisation, collect the circuit starting from the root up to the node to assign
+            to the node in case it is selected as a next root
+            d: for CNOT optimisation, the total number of two qubit gates starting from the root
+        """
+        if len(self.children) == 0 or self.ext_count > min_extracted:
+            sp.add_possible_root(self, prev_circ, d)
+            self.optimal(sp, d)
+            return
+        if not self.opt_depth:
+            if self.d == -1:
+                self.d = get_optimize_value(self.c, False)
+            prev_circ = self.c if prev_circ is None else prev_circ + self.c
+            d = self.d if d == -1 else d + self.d
+            self.total_d = d
+        for child in self.children:
+            child.next_nodes(min_extracted, sp, prev_circ, d)
+
+    def __has_finished(self):
+        """
+        For CNOT optimisation, check which children of a node has finished leaves
+        """
+        if self.collected:
+            return False
+        if not self.expanded:
+            if len(self.frontier) == 0:
+                return True
+            return False
+        for i, child in enumerate(self.children):
+            fin = child.__has_finished()
+            if fin:
+                if self.finished_children is None:
+                    self.finished_children = []
+                self.finished_children.append(i)
+        return self.finished_children is not None
+
+    def __collect_finished_cnot(self, best_c: Circuit, best_d: int,
+                                c: Circuit, up_to_perm: bool) -> (Optional[Circuit], int):
+        """
+        Find the best fully extracted circuits in the CNOT optimisation case
+        """
+        c = c + self.c
+        if not self.expanded:
+            self.collected = True
+            id_simp(self.g, quiet=True)
+            c.gates = list(reversed(c.gates))
+            if not up_to_perm:
+                c = graph_to_swaps(self.g) + c
+            d = get_optimize_value(c, self.opt_depth, True)
+            if d < best_d or best_d == -1:
+                best_c = c
+                best_d = d
+        else:
+            for i in self.finished_children:
+                best_c, best_d = self.children[i].__collect_finished_cnot(best_c, best_d, c, up_to_perm)
+            self.finished_children = None
+        return best_c, best_d
+
+    def __collect_finished_depth(self, best_c: Optional[Circuit], best_d: int,
+                                 up_to_perm: bool) -> (Optional[Circuit], int):
+        """
+        Find the best fully extracted circuits in the depth optimisation case
+        """
+        if not self.expanded and not self.collected and len(self.frontier) == 0:
+            self.collected = True
+            id_simp(self.g, quiet=True)
+            self.c.gates = list(reversed(self.c.gates))
+            self.c = graph_to_swaps(self.g) + self.c
+            d = get_optimize_value(self.c, self.opt_depth, True)
+            if d < best_d or best_d == -1:
+                best_c = self.c
+                best_d = d
+        elif self.children is not None:
+            for child in self.children:
+                best_c, best_d = child.__collect_finished_depth(best_c, best_d, up_to_perm)
+        return best_c, best_d
+
+    def get_finished(self, best_c: Circuit, best_d: int, up_to_perm: bool) -> (Optional[Circuit], int):
+        """
+        Find the best fully extracted circuits in the CNOT optimisation case
+
+        Args:
+            best_c: best circuit up to this point
+            best_d: best two qubit count/depth up to this point
+            up_to_perm: return an equivalent circuit up to a permutation of inputs
+
+        Returns:
+            best_c, best_d updated with any finished leaves found
+        """
+        if self.opt_depth:
+            return self.__collect_finished_depth(best_c, best_d, up_to_perm)
+        if self.__has_finished():
+            return self.__collect_finished_cnot(best_c, best_d, Circuit(self.c.qubits), up_to_perm)
+        return best_c, best_d
+
+    def can_expand(self):
+        if not self.expanded:
+            if len(self.frontier) == 0:
+                return False
+            if self.d == -1:  # Should only be the case for the initial root
+                return True
+            if self.total_d >= self.hard_limit > -1:
+                return False
+            return True
+        for child in self.children:
+            if child.can_expand():
+                return True
+        return False
+
+    def branch_child(self):
+        child = LookaheadNode(self.g.clone(), self.c.copy() if self.opt_depth else Circuit(self.c.qubits),
+                              self.frontier.copy(), self.qubit_map.copy(), self.gadgets.copy(), self.opt_depth,
+                              self.hard_limit, self.ext_count)
+        return child
+
+    def apply_cnots(self, cnots: List[CNOT], m: Mat2, neighbors: List[VT]):
+        good_verts = dict()
+        for i, row in enumerate(m.data):
+            if sum(row) == 1:
+                v = self.frontier[i]
+                w = neighbors[[j for j in range(len(row)) if row[j]][0]]
+                good_verts[v] = w
+        if not good_verts:
+            raise Exception("No extractable vertex found. Something went wrong")
+        hads = []
+        for v, w in good_verts.items():  # Update frontier vertices
+            hads.append(self.qubit_map[v])
+            # c.add_gate("HAD",qubit_map[v])
+            self.qubit_map[w] = self.qubit_map[v]
+            b = [o for o in self.g.neighbors(v) if o in self.g.outputs][0]
+            self.g.remove_vertex(v)
+            self.g.add_edge(self.g.edge(w, b))
+            self.frontier.remove(v)
+            self.frontier.append(w)
+        self.ext_count += len(good_verts)
+
+        for cnot in cnots:
+            self.c.add_gate(cnot)
+        for h in hads:
+            self.c.add_gate("HAD", h)
+
+    def optimize_cnots(self, cnots_to_apply: List[CNOT], mat: Mat2, neighbors: List[VT]):
+        m = mat.copy()
+        cnots = cnots_to_apply.copy()
+        m2 = m.copy()
+        for cnot in cnots:
+            m2.row_add(cnot.target, cnot.control)
+        extractable = set()
+        for i, row in enumerate(m2.data):
+            if sum(row) == 1:
+                extractable.add(i)
+        # We now know which vertices are extractable, and hence the CNOTs on qubits that do not involve
+        # these vertices aren't necessary.
+        # So first, we get rid of all the CNOTs that happen in the Gaussian elimination after
+        # all the extractable vertices have become extractable
+        m2 = m.copy()
+        for count, cnot in enumerate(cnots):
+            if sum(1 for row in m2.data if sum(row) == 1) == len(extractable):  # extractable rows equal to maximum
+                cnots = cnots[:count]  # So we do not need the remainder of the CNOTs
+                break
+            m2.row_add(cnot.target, cnot.control)
+        # We now recalculate which vertices were extractable, because the deleted cnots
+        # might have acted to swap this vertex around some.
+        extractable = set()
+        for i, row in enumerate(m2.data):
+            if sum(row) == 1:
+                extractable.add(i)
+        # And now we try to get rid of some more CNOTs, that can be commuted to the end of the CNOT circuit
+        # without changing extractability.
+        necessary_cnots = []
+        # 'A' stands for "blocked for All". 'R' for "blocked for Red", 'G' for "blocked for Green".
+        blocked = {i: 'A' for i in extractable}
+        for cnot in reversed(cnots):
+            if cnot.target not in blocked and cnot.control not in blocked:
+                continue  # CNOT not needed
+            should_add = False
+            if cnot.target in blocked and blocked[cnot.target] != 'R':
+                should_add = True
+                blocked[cnot.target] = 'A'
+            if cnot.control in blocked and blocked[cnot.control] != 'G':
+                should_add = True
+                blocked[cnot.control] = 'A'
+            if cnot.control in extractable:
+                should_add = True
+            if cnot.target in extractable:
+                should_add = True
+            if not should_add:
+                continue
+            necessary_cnots.append(cnot)
+            if cnot.control not in blocked:
+                blocked[cnot.control] = 'G'  # 'G' stands for Green
+            if cnot.target not in blocked:
+                blocked[cnot.target] = 'R'  # 'R' stands for Red
+        cnots = []
+        for cnot in reversed(necessary_cnots):
+            m.row_add(cnot.target, cnot.control)
+            cnots.append(CNOT(self.qubit_map[self.frontier[cnot.control]], self.qubit_map[self.frontier[cnot.target]]))
+        # for cnot in cnots:
+        #    m.row_add(cnot.target,cnot.control)
+        #    c.add_gate("CNOT",qubit_map[frontier[cnot.control]],qubit_map[frontier[cnot.target]])
+        connectivity_from_biadj(self.g, m, neighbors, self.frontier)
+        return cnots, m
+
+    def expand(self, limit: int, max_depth: int, algorithms: list[int]):
+        if max_depth == 0:
+            return
+        if self.total_d >= self.hard_limit > -1:
+            return
+        while not self.expanded and self.ext_count < limit and len(self.frontier) != 0:
+            self.d = -1
+            qs = self.g.qubits()  # We are assuming that these are objects that update...
+            rs = self.g.rows()  # ...to reflect changes to the graph, so that when...
+            ty = self.g.types()  # ... g.set_row/g.set_qubit is called, these things update directly to reflect that
+            phases = self.g.phases()
+            # preprocessing
+            for v in self.frontier:  # First removing single qubit gates
+                q = self.qubit_map[v]
+                b = [w for w in self.g.neighbors(v) if w in self.g.outputs][0]
+                e = self.g.edge(v, b)
+                if self.g.edge_type(e) == 2:  # Hadamard edge
+                    self.c.add_gate("HAD", q)
+                    self.g.set_edge_type(e, 1)
+                if phases[v]:
+                    self.c.add_gate("ZPhase", q, phases[v])
+                    self.g.set_phase(v, 0)
+            # And now on to CZ gates
+            cz_mat = Mat2([[0 for _i in range(self.g.qubit_count())] for _j in range(self.g.qubit_count())])
+            for v in self.frontier:
+                for w in list(self.g.neighbors(v)):
+                    if w in self.frontier:
+                        cz_mat.data[self.qubit_map[v]][self.qubit_map[w]] = 1
+                        cz_mat.data[self.qubit_map[w]][self.qubit_map[v]] = 1
+                        self.g.remove_edge(self.g.edge(v, w))
+
+            overlap_data = max_overlap(cz_mat)
+            while len(overlap_data[1]) > 2:  # there are enough common qubits to be worth optimizing
+                i, j = overlap_data[0][0], overlap_data[0][1]
+                self.c.add_gate("CNOT", i, j)
+                for qb in overlap_data[1]:
+                    self.c.add_gate("CZ", j, qb)
+                    cz_mat.data[i][qb] = 0
+                    cz_mat.data[j][qb] = 0
+                    cz_mat.data[qb][i] = 0
+                    cz_mat.data[qb][j] = 0
+                self.c.add_gate("CNOT", i, j)
+                overlap_data = max_overlap(cz_mat)
+
+            for i in range(self.g.qubit_count()):
+                for j in range(i + 1, self.g.qubit_count()):
+                    if cz_mat.data[i][j] == 1:
+                        self.c.add_gate("CZ", i, j)
+
+            # Now we can proceed with the actual extraction
+            # First make sure that frontier is connected in correct way to inputs
+            neighbor_set = set()
+            for v in self.frontier.copy():
+                d = [w for w in self.g.neighbors(v) if w not in self.g.outputs]
+                if any(w in self.g.inputs for w in d):  # frontier vertex v is connected to an input
+                    if len(d) == 1:  # Only connected to input, remove from frontier
+                        self.frontier.remove(v)
+                        self.ext_count += 1
+                        continue
+                    # We disconnect v from the input b via a new spider
+                    b = [w for w in d if w in self.g.inputs][0]
+                    q = qs[b]
+                    r = rs[b]
+                    w = self.g.add_vertex(1, q, r + 1)
+                    e = self.g.edge(v, b)
+                    et = self.g.edge_type(e)
+                    self.g.remove_edge(e)
+                    self.g.add_edge(self.g.edge(v, w), 2)
+                    self.g.add_edge(self.g.edge(w, b), toggle_edge(et))
+                    d.remove(b)
+                    d.append(w)
+                neighbor_set.update(d)
+
+            if not self.frontier:
+                break  # No more vertices to be processed. We are done.
+
+            # First we check if there is a phase gadget in the way
+            removed_gadget = False
+            for w in neighbor_set:
+                if w not in self.gadgets:
+                    continue
+                for v in self.g.neighbors(w):
+                    if v in self.frontier:
+                        apply_rule(self.g, pivot,
+                                   [(w, v, [], [o for o in self.g.neighbors(v) if o in self.g.outputs])])
+                        self.frontier.remove(v)
+                        self.ext_count += 1
+                        del self.gadgets[w]
+                        self.frontier.append(w)
+                        self.qubit_map[w] = self.qubit_map[v]
+                        removed_gadget = True
+                        break
+            if removed_gadget:  # There was indeed a gadget in the way. Go back to the top
+                continue
+
+            neighbors = list(neighbor_set)
+            m = bi_adj(self.g, neighbors, self.frontier)
+
+            cnots = []
+            if all(sum(row) != 1 for row in m.data):  # No easy vertex
+
+                qubits = self.c.qubits
+                branches = []
+                for alg in algorithms:
+                    # Try different algorithms to get distinct sets of CNOTs that can be used
+                    res = self.apply_operation(alg, m, neighbors)
+                    if res is None:
+                        continue
+                    cnots, child, cnots_opt, m_opt = res
+                    should_append = True
+                    for i in range(len(branches)):
+                        other = branches[i][2]
+                        if compare_cnots(cnots_opt, other, qubits):  # Same result when applying CNOTs
+                            should_append = False
+                            if len(cnots_opt) < len(other):
+                                branches[i] = res
+                            break
+                    if should_append:
+                        branches.append(res)
+
+                if len(branches) == 0:
+                    raise Exception("All steps returned impossible")
+                elif len(branches) == 1:  # No need to branch
+                    cnots, m = self.optimize_cnots(cnots, m, neighbors)
+                else:  # Branch and go to children
+                    for cnots, child, cnots_opt, m_opt in branches:
+                        child.apply_cnots(cnots_opt, m_opt, neighbors)
+                        self.children.append(child)
+                    self.mark_expanded()
+                    break
+
+            self.apply_cnots(cnots, m, neighbors)
+
+        for child in self.children:
+            child.expand(limit, max_depth - 1, algorithms)
+
+    def apply_operation(self, operation_id: int, m: Mat2, neighbors: list[VT]):
+        """
+        Apply one of the possible operations to the current node to obtain a list of CNOTs
+        """
+        child = self.branch_child()
+        cnots: list[CNOT]
+
+        if operation_id == 0:
+            perm = column_optimal_swap(m)
+            perm = {v: k for k, v in perm.items()}
+            neighbors2 = [neighbors[perm[i]] for i in range(len(neighbors))]
+            m2 = bi_adj(self.g, neighbors2, self.frontier)
+            cnots = m2.to_cnots(optimize=False, use_log_blocksize=True)
+            cnots = filter_duplicate_cnots(
+                cnots)  # Since the matrix is not square, the algorithm sometimes introduces duplicates
+
+        elif operation_id == 1:
+            greedy_operations = greedy_reduction(m)
+            if greedy_operations is None:
+                return None
+            cnots = [CNOT(target, control) for control, target in greedy_operations]
+
+        elif operation_id == 2:
+            greedy_operations = greedy_reduction2(m)
+            if greedy_operations is None:
+                return None
+            cnots = [CNOT(target, control) for control, target in greedy_operations]
+
+        elif operation_id == 3:
+            greedy_operations = greedy_reduction3(m)
+            if greedy_operations is None:
+                return None
+            cnots = [CNOT(target, control) for control, target in greedy_operations]
+
+        else:
+            raise Exception("Unknown extraction step: {}".format(operation_id))
+
+        cnots_opt, m_opt = child.optimize_cnots(cnots, m, neighbors)
+        return cnots, child, cnots_opt, m_opt
+
+
+class StepPicker:
+    """
+    Class for picking the next roots that correspond to the best k leaves.
+    """
+    def __init__(self, k: int):
+        self.k: int = k
+        self.nodes: List[(LookaheadNode, Optional[Circuit], int)] = []
+        self.best: List[(LookaheadNode, Fraction, int)] = []
+
+    def add_possible_root(self, n: LookaheadNode, c: Optional[Circuit], d: int):
+        """
+        Add a node that satisfies the conditions for being a root in the next step
+        For CNOT optimisation, include the circuit up to this node
+        """
+        self.nodes.append((n, c, d))
+
+    def add_leaf(self, n: LookaheadNode, d: Fraction):
+        """
+        Add a leaf to the list of the best k leaves. It is assigned to the last possible root added.
+
+        Args:
+            n: the leaf
+            d: the metric for comparison (two qubit count or depth divided by the number of vertices extracted)
+        """
+        if len(self.nodes) == 0:
+            raise AssertionError("Adding leaf without any possible root")
+        i = 0
+        while i < len(self.best) and d >= self.best[i][1]:
+            i += 1
+        if i == self.k:
+            return
+        self.best.insert(i, (n, d, len(self.nodes) - 1))
+        if len(self.best) > self.k:
+            self.best.pop()
+
+    def get_next_roots(self) -> List[LookaheadNode]:
+        """
+        Pick the roots that correspond to the best k leaves added
+        """
+        if len(self.nodes) == 0:
+            return []
+        s = set()
+        for p in self.best:
+            s.add(p[2])
+        nodes = []
+        for i in s:
+            n = self.nodes[i][0]
+            if self.nodes[i][1] is not None:
+                n.c = self.nodes[i][1] + n.c
+                if n.d != -1:
+                    n.d = self.nodes[i][2] + n.d
+            nodes.append(n)
+        return nodes
+
+
+def lookahead_extract_base(
+        g: BaseGraph[VT, ET],
+        steps: int = -1,  # ideal number of steps to look ahead
+        depth_limit: int = 7,  # maximum depth os the lookahead tree
+        min_extract: int = 5,  # minimum extracted vertices at each step, improves performance
+        nodes_kept: int = 4,   # keep the best 'nodes_kept' nodes when advancing to the next step
+        hard_limit: int = -1,  # do not consider circuits where the comparison metric is over this
+        algorithms: Optional[List[int]] = None,  # always include 0, pick any from 1, 2, 3
+        optimize_for_depth: bool = False,  # optimize for depth instead of two qubit gates
+        compare_basic: bool = True,  # use the default extractions and pick the best
+        up_to_perm: bool = False  # return an equivalent circuit up to an input permutation
+        ) -> Optional[Circuit]:
+    """
+    Main method for the lookahead extraction. Uses different methods to produce CNOTS and extract vertices,
+    simulates a few steps in advance, and picks the best results.
+
+    Args:
+        g: the graph to transform into a circuit
+        steps: the number of vertices to extract before comparing different results; should generally vary with the number of qubits in the graph
+        depth_limit: the maximum depth of the search tree, to stop from memory problems in some edge cases; negative values remove the constrint
+        min_extract: the minimum number of vertices extracted for a node to be considered as a root for the next step
+        nodes_kept: instead of only considering the best result when looking ahead, consider the best 'nodes_kept' results and pick the nodes that correspond to each result to be roots in the next step
+        hard_limit: stop the search when reaching 'hard_limit' two qubit gates/depth
+        algorithms: the different algorithms to use in the search; always include 0, other possibilities are 1, 2, 3; the length of this list gives the branching factor of the search tree
+        optimize_for_depth: if set to false (default), optimize for the number of two qubit gates; if set to true, optimize for depth
+        compare_basic: perform the standard extractions and pick the best between the standard and the result of the lookahead extraction
+        up_to_perm: if set to true, returns a circuit that corresponds to the graph up to a permutation of th inputs
+
+    Returns:
+        A circuit that corresponds to the given graph, with two qubit count / depth less than 'hard_limit'; None if no such circuit was found
+    """
+
+    if steps < 1:
+        steps = g.qubit_count() * 3
+    if depth_limit < 1:
+        depth_limit = -1
+    if min_extract < 0:
+        min_extract = 0
+    if nodes_kept < 1:
+        nodes_kept = 1
+    if hard_limit < 0:
+        hard_limit = -1
+    if algorithms is None:
+        algorithms = [0, 1, 2]
+
+    best_c = None
+    best_d = hard_limit
+
+    if compare_basic:
+        c1 = extract_circuit(g.clone(), optimize_cnots=1, up_to_perm=up_to_perm)
+        d1 = get_optimize_value(c1, optimize_for_depth, True)
+        if best_d > d1 or best_d == -1:
+            best_c = c1
+            best_d = d1
+        c1 = extract_circuit(g.clone(), optimize_cnots=3, up_to_perm=up_to_perm)
+        d1 = get_optimize_value(c1, optimize_for_depth, True)
+        if best_d > d1 or best_d == -1:
+            best_c = c1
+            best_d = d1
+        hard_limit = best_d
+
+    gadgets = {}
+    for v in g.vertices():
+        if g.vertex_degree(v) == 1 and v not in g.inputs and v not in g.outputs:
+            n = list(g.neighbors(v))[0]
+            gadgets[n] = v
+
+    qubit_map: Dict[VT, int] = dict()
+    frontier = []
+    for i, o in enumerate(g.outputs):
+        v = list(g.neighbors(o))[0]
+        if v in g.inputs:
+            continue
+        frontier.append(v)
+        qubit_map[v] = i
+
+    roots = [LookaheadNode(g, Circuit(g.qubit_count()), frontier, qubit_map, gadgets, optimize_for_depth, hard_limit)]
+
+    while len(roots) > 0:
+        sp = StepPicker(nodes_kept)
+        for root in roots:
+            if root.hard_limit > hard_limit:
+                root.update_hard_limit(hard_limit)
+            if root.can_expand():
+                new_limit = root.ext_count + steps
+                prev_extracted = root.ext_count
+                root.expand(new_limit, depth_limit, algorithms)
+                best_c, best_d = root.get_finished(best_c, best_d, up_to_perm)
+                if best_d < hard_limit:
+                    hard_limit = best_d
+                    root.update_hard_limit(hard_limit)
+                root.next_nodes(prev_extracted + min_extract, sp)
+        roots = sp.get_next_roots()
+
+    return best_c
+
+
+def get_optimize_value(c: Circuit, optimize_for_depth: bool, expand_to_basic: bool = False) -> int:
+    """
+    Computes the two qubit count or the depth for the circuit.
+    """
+    if expand_to_basic:
+        c = c.to_basic_gates()
+    if not optimize_for_depth:
+        d = 0
+        for gate in c.gates:
+            if isinstance(gate, (CNOT, CZ)):
+                d += 1
+        return d
+    return Circuit.depth_of_circ(c.qubits, c.gates)
+
+
+def cnots_to_xor_list(cnots: list[CNOT], size: int) -> list[set[int]]:
+    sets = [{i} for i in range(size)]
+    for c in cnots:
+        for i in sets[c.target]:
+            if i in sets[c.control]:
+                sets[c.control].remove(i)
+            else:
+                sets[c.control].add(i)
+    return sets
+
+
+def compare_cnots(c1: list[CNOT], c2: list[CNOT], size: int, qubits: Optional[list[int]] = None) -> bool:
+    """
+    Checks if two sets of cnots give the same results on the given qubits.
+    """
+    if qubits is None:
+        qubits = list(range(size))
+    s1 = cnots_to_xor_list(c1, size)
+    s2 = cnots_to_xor_list(c2, size)
+    for index in qubits:
+        if s1[index] != s2[index]:
+            return False
+    return True
+
+
+def lookahead_fast(g: BaseGraph[VT, ET], optimize_for_depth: bool = False, up_to_perm: bool = False) -> Circuit:
+    """
+    A lookahead extraction with relatively fast results. For details see :func:`lookahead_extract_base`
+    """
+    c = lookahead_extract_base(g, 4 * g.qubit_count(), 8, 0, 4, -1, [0, 2], optimize_for_depth, False, up_to_perm)
+    if c is None:
+        raise AssertionError("Lookahead extraction with no hard limit returned None")
+    return c
+
+
+def lookahead_extract(g: BaseGraph[VT, ET], optimize_for_depth: bool = False, up_to_perm: bool = False) -> Circuit:
+    """
+        A lookahead extraction with recommended parameters. For details see :func:`lookahead_extract_base`
+    """
+    c = lookahead_extract_base(g, 3 * g.qubit_count(), 7, int(g.qubit_count() / 2), 4, -1,
+                               [0, 1, 3], optimize_for_depth, True, up_to_perm)
+    if c is None:
+        raise AssertionError("Lookahead extraction with no hard limit returned None")
+    return c
+
+
+def lookahead_full(g: BaseGraph[VT, ET], optimize_for_depth: bool = False, up_to_perm: bool = False) -> Circuit:
+    """
+        A lookahead extraction which compares a number of possible extractions and returns the best result.
+        Can take a very long time for large circuits. For details see :func:`lookahead_extract_base`
+    """
+    qubits = g.qubit_count()
+    c = lookahead_extract_base(g.clone(), 3 * qubits, 7, qubits, 4, -1,
+                               [0, 1, 3], optimize_for_depth, True, up_to_perm)
+    if c is None:
+        raise AssertionError("Lookahead extraction with no hard limit returned None")
+    d = get_optimize_value(c, optimize_for_depth, True)
+    c1 = lookahead_extract_base(g.clone(), 4 * qubits, 8, 0, 4, d, [0, 1], optimize_for_depth, False, up_to_perm)
+    if c1 is not None:
+        d1 = get_optimize_value(c1, optimize_for_depth, True)
+        if d1 < d:
+            c = c1
+            d = d1
+    c1 = lookahead_extract_base(g.clone(), 4 * qubits, 8, 0, 4, d, [0, 2], optimize_for_depth, False, up_to_perm)
+    if c1 is not None:
+        d1 = get_optimize_value(c1, optimize_for_depth, True)
+        if d1 < d:
+            c = c1
+            d = d1
+    c1 = lookahead_extract_base(g, 4 * qubits, 8, 0, 4, d, [0, 3], optimize_for_depth, False, up_to_perm)
+    if c1 is not None:
+        d1 = get_optimize_value(c1, optimize_for_depth, True)
+        if d1 < d:
+            c = c1
     return c

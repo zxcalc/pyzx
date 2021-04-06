@@ -338,12 +338,15 @@ class Mat2(object):
             vectors.append(v)
         return vectors
 
-    def to_cnots(self, optimize:bool=False) -> List[CNOT]:
+    def to_cnots(self, optimize: bool = False, use_log_blocksize: bool = False) -> List[CNOT]:
         """Returns a list of CNOTs that implements the matrix as a reversible circuit of qubits."""
         cn: Optional[CNOTMaker]
         if not optimize:
             cn = CNOTMaker()
-            self.copy().gauss(full_reduce=True,x=cn, blocksize=5)
+            blocksize = 5
+            if use_log_blocksize:
+                blocksize = int(math.log2(self.rows()))
+            self.copy().gauss(full_reduce=True,x=cn, blocksize=blocksize)
         else:
             best = 1000000
             best_cn = None
