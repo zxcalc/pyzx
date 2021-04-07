@@ -620,9 +620,7 @@ def extract_circuit(
     id_simp(g,quiet=True) # Now the graph should only contain inputs and outputs
     # Since we were extracting from right to left, we reverse the order of the gates
     c.gates = list(reversed(c.gates))
-    if up_to_perm:
-        return c
-    return graph_to_swaps(g) + c
+    return graph_to_swaps(g, up_to_perm) + c
 
 
 def extract_simple(g: BaseGraph[VT, ET], up_to_perm: bool = True) -> Circuit:
@@ -688,13 +686,12 @@ def extract_simple(g: BaseGraph[VT, ET], up_to_perm: bool = True) -> Circuit:
                         circ.prepend_gate(CX(control=q1,target=q2))
                         g.remove_edge(g.edge(v1,v2))
 
-    if up_to_perm:
-        return circ
-    return graph_to_swaps(g) + circ
+    return graph_to_swaps(g, up_to_perm) + circ
 
-def graph_to_swaps(g:BaseGraph[VT,ET]) -> Circuit:
+
+def graph_to_swaps(g: BaseGraph[VT, ET], no_swaps: bool = False) -> Circuit:
     """Converts a graph containing only normal and Hadamard edges into a circuit of Hadamard
-    and SWAP gates."""
+    and SWAP gates. If 'no_swaps' is True, only add Hadamards where needed"""
     c = Circuit(g.qubit_count())
     swap_map = {}
     leftover_swaps = False
@@ -709,7 +706,7 @@ def graph_to_swaps(g:BaseGraph[VT,ET]) -> Circuit:
         q2 = g.inputs.index(inp)
         if q2 != q: leftover_swaps = True
         swap_map[q] = q2
-    if leftover_swaps: 
+    if not no_swaps and leftover_swaps:
         for t1, t2 in permutation_as_swaps(swap_map):
             c.prepend_gate(SWAP(t1, t2))
     #c.gates = list(reversed(c.gates))
@@ -868,8 +865,7 @@ class LookaheadNode:
             self.collected = True
             id_simp(self.g, quiet=True)
             c.gates = list(reversed(c.gates))
-            if not up_to_perm:
-                c = graph_to_swaps(self.g) + c
+            c = graph_to_swaps(self.g, up_to_perm) + c
             d = get_optimize_value(c, self.opt_depth, True)
             if d < best_d or best_d == -1:
                 best_c = c
@@ -889,7 +885,7 @@ class LookaheadNode:
             self.collected = True
             id_simp(self.g, quiet=True)
             self.c.gates = list(reversed(self.c.gates))
-            self.c = graph_to_swaps(self.g) + self.c
+            self.c = graph_to_swaps(self.g, up_to_perm) + self.c
             d = get_optimize_value(self.c, self.opt_depth, True)
             if d < best_d or best_d == -1:
                 best_c = self.c
