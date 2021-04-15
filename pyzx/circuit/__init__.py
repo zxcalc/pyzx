@@ -19,7 +19,7 @@ from typing import List, Union, Optional, Iterator
 
 import numpy as np
 
-from .gates import Gate, gate_types, ZPhase, XPhase, CZ, CX, CNOT, HAD
+from .gates import Gate, gate_types, ZPhase, XPhase, CZ, CX, CNOT, HAD, SWAP, CCZ, Tofolli
 
 from ..graph.base import BaseGraph
 
@@ -37,7 +37,7 @@ class Circuit(object):
     between different representations of a quantum circuit.
 
     The methods in this class that convert a specification of a circuit into an instance of this class,
-    generally do not check whether the specification is well-defined. If a bad input is given, 
+    generally do not check whether the specification is well-defined. If a bad input is given,
     the behaviour is undefined."""
     def __init__(self, qubit_amount: int, name: str = '') -> None:
         self.qubits: int        = qubit_amount
@@ -69,12 +69,12 @@ class Circuit(object):
     def verify_equality(self, other: 'Circuit', up_to_swaps: bool = False) -> bool:
         """Composes the other circuit with the adjoint of this circuit, and tries to reduce
         it to the identity using :func:`simplify.full_reduce``. If successful returns True,
-        if not returns None. 
+        if not returns None.
 
         Note:
             A successful reduction to the identity is strong evidence that the two
             circuits are equal, if this function is not able to reduce the graph to the identity
-            this does not prove anything. 
+            this does not prove anything.
 
         Args:
             other: the circuit to compare equality to.
@@ -95,12 +95,12 @@ class Circuit(object):
             return False
 
     def add_gate(self, gate: Union[Gate,str], *args, **kwargs) -> None:
-        """Adds a gate to the circuit. ``gate`` can either be 
+        """Adds a gate to the circuit. ``gate`` can either be
         an instance of a :class:`Gate`, or it can be the name of a gate,
         in which case additional arguments should be given.
 
         Example::
-            
+
             circuit.add_gate("CNOT", 1, 4) # adds a CNOT gate with control 1 and target 4
             circuit.add_gate("ZPhase", 2, phase=Fraction(3,4)) # Adds a ZPhase gate on qubit 2 with phase 3/4
         """
@@ -132,7 +132,7 @@ class Circuit(object):
         """Adds the gate of another circuit to this one. If ``mask`` is not given,
         then they must have the same amount of qubits and they are mapped one-to-one.
         If mask is given then it must be a list specifying to which qubits the qubits
-        in the given circuit correspond. 
+        in the given circuit correspond.
 
         Example::
 
@@ -140,7 +140,7 @@ class Circuit(object):
             c2 = Circuit(qubit_amount=2)
             c2.add_gate("CNOT",0,1)
             c1.add_circuit(c2, mask=[0,3]) # Now c1 has a CNOT from the first to the last qubit
-        
+
         If the circuits have the same amount of qubits then it can also be called as an operator::
 
             c1 = Circuit(2)
@@ -343,7 +343,7 @@ class Circuit(object):
     @staticmethod
     def from_qasm(s: str) -> 'Circuit':
         """Produces a :class:`Circuit` based on a QASM input string.
-        It ignores all the non-unitary instructions like measurements in the file. 
+        It ignores all the non-unitary instructions like measurements in the file.
         It currently doesn't support custom gates that have parameters."""
         from .qasmparser import QASMParser
         p = QASMParser()
@@ -352,7 +352,7 @@ class Circuit(object):
     @staticmethod
     def from_qasm_file(fname: str) -> 'Circuit':
         """Produces a :class:`Circuit` based on a QASM description of a circuit.
-        It ignores all the non-unitary instructions like measurements in the file. 
+        It ignores all the non-unitary instructions like measurements in the file.
         It currently doesn't support custom gates that have parameters."""
         from .qasmparser import QASMParser
         p = QASMParser()
@@ -396,14 +396,14 @@ class Circuit(object):
         """Returns the amount of T-gates necessary to implement this circuit."""
         return sum(g.tcount() for g in self.gates)
         #return sum(1 for g in self.gates if isinstance(g, (ZPhase, XPhase, ParityPhase)) and g.phase.denominator >= 4)
-    
+
     def twoqubitcount(self) -> int:
         """Returns the amount of 2-qubit gates necessary to implement this circuit."""
         c = self.to_basic_gates()
         return sum(1 for g in c.gates if g.name in ('CNOT','CZ'))
 
     def stats(self, depth: bool = False) -> str:
-        """Returns statistics on the amount of gates in the circuit, separated into different classes 
+        """Returns statistics on the amount of gates in the circuit, separated into different classes
         (such as amount of T-gates, two-qubit gates, Hadamard gates)."""
         d = self.stats_dict(depth)
         s = """Circuit {} on {} qubits with {} gates.
@@ -456,27 +456,33 @@ class Circuit(object):
         d["depth"] = 0
         d["depth_cz"] = 0
         if depth:
-            basic_gates = [basic_gate for g in self.gates for basic_gate in g.to_basic_gates()]
-            d["depth"] = Circuit.depth_of_circ(self.qubits, basic_gates)
+            c = Circuit(self.qubits)
+            c.gates = [basic_gate for g in self.gates for basic_gate in g.to_basic_gates()]
+            d["depth"] = c.depth()
             basic_no_cz = []
-            for g in basic_gates:
+            for g in c.gates:
                 if isinstance(g, CZ):
                     basic_no_cz.extend([HAD(g.target), CNOT(g.control, g.target), HAD(g.target)])
                 else:
                     basic_no_cz.append(g)
-            d["depth_cz"] = Circuit.depth_of_circ(self.qubits, basic_no_cz)
+            c.gates = basic_no_cz
+            d["depth_cz"] = c.depth()
         return d
 
-    @staticmethod
-    def depth_of_circ(qubits: int, basic_gates: list[Gate]):
-        min_depth = [0] * qubits
-        for g in basic_gates:
+    def depth(self) -> int:
+        min_depth = [0] * self.qubits
+        for g in self.gates:
             if isinstance(g, (ZPhase, XPhase, HAD)):
                 min_depth[g.target] += 1
-            elif isinstance(g, (CZ, CNOT)):
+            elif isinstance(g, (CZ, CNOT, SWAP)):
                 gate_depth = max(min_depth[g.target], min_depth[g.control]) + 1
                 min_depth[g.target] = gate_depth
                 min_depth[g.control] = gate_depth
+            elif isinstance(g, (CCZ, Tofolli)):
+                gate_depth = max(min_depth[g.target], min_depth[g.ctrl1], min_depth[g.ctrl2]) + 1
+                min_depth[g.target] = gate_depth
+                min_depth[g.ctrl1] = gate_depth
+                min_depth[g.ctrl2] = gate_depth
         return max(min_depth)
 
 

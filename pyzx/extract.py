@@ -1362,7 +1362,7 @@ def get_optimize_value(c: Circuit, optimize_for_depth: bool, expand_to_basic: bo
             if isinstance(gate, (CNOT, CZ)):
                 d += 1
         return d
-    return Circuit.depth_of_circ(c.qubits, c.gates)
+    return c.depth()
 
 
 def cnots_to_xor_list(cnots: list[CNOT], size: int) -> list[set[int]]:
