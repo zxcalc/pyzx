@@ -382,6 +382,191 @@ def filter_duplicate_cnots(cnots: List[CNOT]) -> List[CNOT]:
     c = basic_optimization(c,do_swaps=False)
     return c.gates # type: ignore
 
+
+def remove_extra_cnots(cnots_to_apply: List[CNOT], mat: Mat2) -> List[CNOT]:
+    """Remove redundant CNOTs and return a list of only the necessary ones"""
+    cnots = cnots_to_apply.copy()
+    m2 = mat.copy()
+    for cnot in cnots:
+        m2.row_add(cnot.target, cnot.control)
+    extractable = set()
+    for i, row in enumerate(m2.data):
+        if sum(row) == 1:
+            extractable.add(i)
+    # We now know which vertices are extractable, and hence the CNOTs on qubits that do not involve
+    # these vertices aren't necessary.
+    # So first, we get rid of all the CNOTs that happen in the Gaussian elimination after
+    # all the extractable vertices have become extractable
+    m2 = mat.copy()
+    for count, cnot in enumerate(cnots):
+        if sum(1 for row in m2.data if sum(row) == 1) == len(extractable):  # extractable rows equal to maximum
+            cnots = cnots[:count]  # So we do not need the remainder of the CNOTs
+            break
+        m2.row_add(cnot.target, cnot.control)
+    # We now recalculate which vertices were extractable, because the deleted cnots
+    # might have acted to swap this vertex around some.
+    extractable = set()
+    for i, row in enumerate(m2.data):
+        if sum(row) == 1:
+            extractable.add(i)
+    # And now we try to get rid of some more CNOTs, that can be commuted to the end of the CNOT circuit
+    # without changing extractability.
+    necessary_cnots = []
+    # 'A' stands for "blocked for All". 'R' for "blocked for Red", 'G' for "blocked for Green".
+    blocked = {i: 'A' for i in extractable}
+    for cnot in reversed(cnots):
+        if cnot.target not in blocked and cnot.control not in blocked:
+            continue  # CNOT not needed
+        should_add = False
+        if cnot.target in blocked and blocked[cnot.target] != 'R':
+            should_add = True
+            blocked[cnot.target] = 'A'
+        if cnot.control in blocked and blocked[cnot.control] != 'G':
+            should_add = True
+            blocked[cnot.control] = 'A'
+        if cnot.control in extractable:
+            should_add = True
+        if cnot.target in extractable:
+            should_add = True
+        if not should_add:
+            continue
+        necessary_cnots.append(cnot)
+        if cnot.control not in blocked:
+            blocked[cnot.control] = 'G'  # 'G' stands for Green
+        if cnot.target not in blocked:
+            blocked[cnot.target] = 'R'  # 'R' stands for Red
+
+    return list(reversed(necessary_cnots))
+
+
+def apply_cnots(g: BaseGraph[VT, ET], c: Circuit, frontier: List[VT], qubit_map: Dict[VT, int],
+                cnots: List[CNOT], m: Mat2, neighbors: List[VT]) -> int:
+    """Adds the list of CNOTs to the circuit, modifying the graph, frontier, and qubit map as needed.
+    Returns the number of vertices that end up being extracted"""
+    if len(cnots) > 0:
+        cnots2 = cnots
+        cnots = []
+        for cnot in cnots2:
+            m.row_add(cnot.target, cnot.control)
+            cnots.append(CNOT(qubit_map[frontier[cnot.control]], qubit_map[frontier[cnot.target]]))
+        connectivity_from_biadj(g, m, neighbors, frontier)
+
+    good_verts = dict()
+    for i, row in enumerate(m.data):
+        if sum(row) == 1:
+            v = frontier[i]
+            w = neighbors[[j for j in range(len(row)) if row[j]][0]]
+            good_verts[v] = w
+    if not good_verts:
+        raise Exception("No extractable vertex found. Something went wrong")
+    hads = []
+    for v, w in good_verts.items():  # Update frontier vertices
+        hads.append(qubit_map[v])
+        # c.add_gate("HAD",qubit_map[v])
+        qubit_map[w] = qubit_map[v]
+        b = [o for o in g.neighbors(v) if o in g.outputs][0]
+        g.remove_vertex(v)
+        g.add_edge(g.edge(w, b))
+        frontier.remove(v)
+        frontier.append(w)
+
+    for cnot in cnots:
+        c.add_gate(cnot)
+    for h in hads:
+        c.add_gate("HAD", h)
+
+    return len(good_verts)
+
+
+def clean_frontier(g: BaseGraph[VT, ET], c: Circuit, frontier: List[VT],
+                   qubit_map: Dict[VT, int], optimize_czs: bool = True) -> int:
+    phases = g.phases()
+    czs_saved = 0
+    for v in frontier:  # First removing single qubit gates
+        q = qubit_map[v]
+        b = [w for w in g.neighbors(v) if w in g.outputs][0]
+        e = g.edge(v, b)
+        if g.edge_type(e) == 2:  # Hadamard edge
+            c.add_gate("HAD", q)
+            g.set_edge_type(e, 1)
+        if phases[v]:
+            c.add_gate("ZPhase", q, phases[v])
+            g.set_phase(v, 0)
+    # And now on to CZ gates
+    cz_mat = Mat2([[0 for i in range(g.qubit_count())] for j in range(g.qubit_count())])
+    for v in frontier:
+        for w in list(g.neighbors(v)):
+            if w in frontier:
+                cz_mat.data[qubit_map[v]][qubit_map[w]] = 1
+                cz_mat.data[qubit_map[w]][qubit_map[v]] = 1
+                g.remove_edge(g.edge(v, w))
+
+    if optimize_czs:
+        overlap_data = max_overlap(cz_mat)
+        while len(overlap_data[1]) > 2:  # there are enough common qubits to be worth optimizing
+            i, j = overlap_data[0][0], overlap_data[0][1]
+            czs_saved += len(overlap_data[1]) - 2
+            c.add_gate("CNOT", i, j)
+            for qb in overlap_data[1]:
+                c.add_gate("CZ", j, qb)
+                cz_mat.data[i][qb] = 0
+                cz_mat.data[j][qb] = 0
+                cz_mat.data[qb][i] = 0
+                cz_mat.data[qb][j] = 0
+            c.add_gate("CNOT", i, j)
+            overlap_data = max_overlap(cz_mat)
+
+    for i in range(g.qubit_count()):
+        for j in range(i + 1, g.qubit_count()):
+            if cz_mat.data[i][j] == 1:
+                c.add_gate("CZ", i, j)
+
+    return czs_saved
+
+
+def neighbors_of_frontier(g: BaseGraph[VT, ET], frontier: List[VT]) -> Set[VT]:
+    qs = g.qubits()
+    rs = g.rows()
+    neighbor_set = set()
+    for v in frontier.copy():
+        d = [w for w in g.neighbors(v) if w not in g.outputs]
+        if any(w in g.inputs for w in d):  # frontier vertex v is connected to an input
+            if len(d) == 1:  # Only connected to input, remove from frontier
+                frontier.remove(v)
+                continue
+            # We disconnect v from the input b via a new spider
+            b = [w for w in d if w in g.inputs][0]
+            q = qs[b]
+            r = rs[b]
+            w = g.add_vertex(1, q, r + 1)
+            e = g.edge(v, b)
+            et = g.edge_type(e)
+            g.remove_edge(e)
+            g.add_edge(g.edge(v, w), 2)
+            g.add_edge(g.edge(w, b), toggle_edge(et))
+            d.remove(b)
+            d.append(w)
+        neighbor_set.update(d)
+    return neighbor_set
+
+
+def remove_gadget(g: BaseGraph[VT, ET], frontier: List[VT], qubit_map: Dict[VT, int],
+                  neighbor_set: Set[VT], gadgets: Dict[VT, VT]) -> bool:
+    removed_gadget = False
+    for w in neighbor_set:
+        if w not in gadgets: continue
+        for v in g.neighbors(w):
+            if v in frontier:
+                apply_rule(g, pivot, [(w, v, [], [o for o in g.neighbors(v) if o in g.outputs])])  # type: ignore
+                frontier.remove(v)
+                del gadgets[w]
+                frontier.append(w)
+                qubit_map[w] = qubit_map[v]
+                removed_gadget = True
+                break
+    return removed_gadget
+
+
 def extract_circuit(
         g: BaseGraph[VT, ET],
         optimize_czs: bool = True,
@@ -401,10 +586,6 @@ def extract_circuit(
         up_to_perm: If true, returns a circuit that is equivalent to the given graph up to a permutation of the inputs.
         quiet: Whether to print detailed output of the extraction process.
     """
-    qs = g.qubits() # We are assuming that these are objects that update...
-    rs = g.rows()   # ...to reflect changes to the graph, so that when...
-    ty = g.types()  # ... g.set_row/g.set_qubit is called, these things update directly to reflect that
-    phases = g.phases()
     c = Circuit(g.qubit_count())
 
     gadgets = {}
@@ -415,122 +596,63 @@ def extract_circuit(
     
     qubit_map: Dict[VT,int] = dict()
     frontier = []
-    for i,o in enumerate(g.outputs):
+    for i, o in enumerate(g.outputs):
         v = list(g.neighbors(o))[0]
-        if v in g.inputs: continue
+        if v in g.inputs:
+            continue
         frontier.append(v)
         qubit_map[v] = i
         
     czs_saved = 0
-    q: Union[float,int]
+    q: Union[float, int]
     
     while True:
         # preprocessing
-        for v in frontier: # First removing single qubit gates
-            q = qubit_map[v]
-            b = [w for w in g.neighbors(v) if w in g.outputs][0]
-            e = g.edge(v,b)
-            if g.edge_type(e) == 2: # Hadamard edge
-                c.add_gate("HAD",q)
-                g.set_edge_type(e,1)
-            if phases[v]: 
-                c.add_gate("ZPhase", q, phases[v])
-                g.set_phase(v,0)
-        # And now on to CZ gates
-        cz_mat = Mat2([[0 for i in range(g.qubit_count())] for j in range(g.qubit_count())])
-        for v in frontier:
-            for w in list(g.neighbors(v)):
-                if w in frontier:
-                    cz_mat.data[qubit_map[v]][qubit_map[w]] = 1
-                    cz_mat.data[qubit_map[w]][qubit_map[v]] = 1
-                    g.remove_edge(g.edge(v,w))
-        
-        if optimize_czs:
-            overlap_data = max_overlap(cz_mat)
-            while len(overlap_data[1]) > 2: #there are enough common qubits to be worth optimizing
-                i,j = overlap_data[0][0], overlap_data[0][1]
-                czs_saved += len(overlap_data[1])-2
-                c.add_gate("CNOT",i,j)
-                for qb in overlap_data[1]:
-                    c.add_gate("CZ",j,qb)
-                    cz_mat.data[i][qb]=0
-                    cz_mat.data[j][qb]=0
-                    cz_mat.data[qb][i]=0
-                    cz_mat.data[qb][j]=0
-                c.add_gate("CNOT",i,j)
-                overlap_data = max_overlap(cz_mat)
-
-        for i in range(g.qubit_count()):
-            for j in range(i+1,g.qubit_count()):
-                if cz_mat.data[i][j]==1:
-                    c.add_gate("CZ",i,j)
+        czs_saved += clean_frontier(g, c, frontier, qubit_map, optimize_czs)
         
         # Now we can proceed with the actual extraction
         # First make sure that frontier is connected in correct way to inputs
-        neighbor_set = set()
-        for v in frontier.copy():
-            d = [w for w in g.neighbors(v) if w not in g.outputs]
-            if any(w in g.inputs for w in d): #frontier vertex v is connected to an input
-                if len(d) == 1: # Only connected to input, remove from frontier
-                    frontier.remove(v)
-                    continue
-                # We disconnect v from the input b via a new spider
-                b = [w for w in d if w in g.inputs][0]
-                q = qs[b]
-                r = rs[b]
-                w = g.add_vertex(1,q,r+1)
-                e = g.edge(v,b)
-                et = g.edge_type(e)
-                g.remove_edge(e)
-                g.add_edge(g.edge(v,w),2)
-                g.add_edge(g.edge(w,b),toggle_edge(et))
-                d.remove(b)
-                d.append(w)
-            neighbor_set.update(d)
+        neighbor_set = neighbors_of_frontier(g, frontier)
         
-        if not frontier: break # No more vertices to be processed. We are done.
+        if not frontier:
+            break  # No more vertices to be processed. We are done.
         
         # First we check if there is a phase gadget in the way
-        removed_gadget = False
-        for w in neighbor_set:
-            if w not in gadgets: continue
-            for v in g.neighbors(w):
-                if v in frontier:
-                    apply_rule(g,pivot,[(w,v,[],[o for o in g.neighbors(v) if o in g.outputs])]) # type: ignore
-                    frontier.remove(v)
-                    del gadgets[w]
-                    frontier.append(w)
-                    qubit_map[w] = qubit_map[v]
-                    removed_gadget = True
-                    break
-        if removed_gadget: # There was indeed a gadget in the way. Go back to the top
+        if remove_gadget(g, frontier, qubit_map, neighbor_set, gadgets):
+            # There was a gadget in the way. Go back to the top
             continue
             
         neighbors = list(neighbor_set)
-        m = bi_adj(g,neighbors,frontier)
-        if all(sum(row)!=1 for row in m.data): # No easy vertex
-            if optimize_cnots>1:
-                 greedy_operations = greedy_reduction(m)
-            else: greedy_operations = None
+        m = bi_adj(g, neighbors, frontier)
+        if all(sum(row) != 1 for row in m.data):  # No easy vertex
+            if optimize_cnots > 1:
+                greedy_operations = greedy_reduction(m)
+            else:
+                greedy_operations = None
+
             if greedy_operations is not None:
-                greedy = [CNOT(target,control) for control,target in greedy_operations]
-                if (len(greedy)==1 or optimize_cnots<3) and not quiet: print("Found greedy reduction with", len(greedy), "CNOT")
+                greedy = [CNOT(target, control) for control, target in greedy_operations]
+                if (len(greedy) == 1 or optimize_cnots < 3) and not quiet:
+                    print("Found greedy reduction with", len(greedy), "CNOT")
                 cnots = greedy
-            if greedy_operations is None or (optimize_cnots == 3 and len(greedy)>1):
+
+            if greedy_operations is None or (optimize_cnots == 3 and len(greedy) > 1):
                 perm = column_optimal_swap(m)
-                perm = {v:k for k,v in perm.items()}
+                perm = {v: k for k, v in perm.items()}
                 neighbors2 = [neighbors[perm[i]] for i in range(len(neighbors))]
                 m2 = bi_adj(g, neighbors2, frontier)
                 if optimize_cnots > 0:
                     cnots = m2.to_cnots(optimize=True)
                 else:
                     cnots = m2.to_cnots(optimize=False)
-                cnots = filter_duplicate_cnots(cnots) # Since the matrix is not square, the algorithm sometimes introduces duplicates
+                # Since the matrix is not square, the algorithm sometimes introduces duplicates
+                cnots = filter_duplicate_cnots(cnots)
+
                 if greedy_operations is not None:
                     m3 = m2.copy()
                     for cnot in cnots:
                         m3.row_add(cnot.target,cnot.control)
-                    reductions = sum(1 for row in m3.data if sum(row)==1)
+                    reductions = sum(1 for row in m3.data if sum(row) == 1)
                     if greedy and (len(cnots)/reductions > len(greedy)-0.1):
                         if not quiet: print("Found greedy reduction with", len(greedy), "CNOTs")
                         cnots = greedy
@@ -539,85 +661,17 @@ def extract_circuit(
                         m = m2
                         if not quiet: print("Gaussian elimination with", len(cnots), "CNOTs")
             # We now have a set of CNOTs that suffice to extract at least one vertex.
-            m2 = m.copy()
-            for cnot in cnots:
-                m2.row_add(cnot.target,cnot.control)
-            extractable = set()
-            for i, row in enumerate(m2.data):
-                if sum(row) == 1:
-                    extractable.add(i)
-            # We now know which vertices are extractable, and hence the CNOTs on qubits that do not involve
-            # these vertices aren't necessary.
-            # So first, we get rid of all the CNOTs that happen in the Gaussian elimination after 
-            # all the extractable vertices have become extractable
-            m2 = m.copy()
-            for count, cnot in enumerate(cnots):
-                if sum(1 for row in m2.data if sum(row)==1) == len(extractable): #extractable rows equal to maximum
-                    cnots = cnots[:count] # So we do not need the remainder of the CNOTs
-                    break
-                m2.row_add(cnot.target, cnot.control)
-            # We now recalculate which vertices were extractable, because the deleted cnots
-            # might have acted to swap this vertex around some.
-            extractable = set()
-            for i, row in enumerate(m2.data):
-                if sum(row) == 1:
-                    extractable.add(i)
-            # And now we try to get rid of some more CNOTs, that can be commuted to the end of the CNOT circuit
-            # without changing extractability.
-            necessary_cnots = []
-            blocked = {i:'A' for i in extractable} # 'A' stands for "blocked for All". 'R' for "blocked for Red", 'G' for "blocked for Green".
-            for cnot in reversed(cnots):
-                if cnot.target not in blocked and cnot.control not in blocked: continue #CNOT not needed
-                should_add = False
-                if cnot.target in blocked and blocked[cnot.target] != 'R': 
-                    should_add = True
-                    blocked[cnot.target] = 'A'
-                if cnot.control in blocked and blocked[cnot.control] != 'G':
-                    should_add = True
-                    blocked[cnot.control] = 'A'
-                if cnot.control in extractable: should_add = True
-                if cnot.target in extractable: should_add = True
-                if not should_add: continue
-                necessary_cnots.append(cnot)
-                if cnot.control not in blocked: blocked[cnot.control] = 'G' # 'G' stands for Green
-                if cnot.target not in blocked: blocked[cnot.target] = 'R' # 'R' stands for Red
-            if not quiet: print("Actual realization required", len(necessary_cnots), "CNOTs")
-            cnots = []
-            for cnot in reversed(necessary_cnots):
-                m.row_add(cnot.target,cnot.control)
-                cnots.append(CNOT(qubit_map[frontier[cnot.control]],qubit_map[frontier[cnot.target]]))
-            #for cnot in cnots:
-            #    m.row_add(cnot.target,cnot.control)
-            #    c.add_gate("CNOT",qubit_map[frontier[cnot.control]],qubit_map[frontier[cnot.target]])
-            connectivity_from_biadj(g,m,neighbors,frontier)
         else:
             if not quiet: print("Simple vertex")
             cnots = []
-        good_verts = dict()
-        for i, row in enumerate(m.data):
-            if sum(row) == 1:
-                v = frontier[i]
-                w = neighbors[[j for j in range(len(row)) if row[j]][0]]
-                good_verts[v] = w
-        if not good_verts: raise Exception("No extractable vertex found. Something went wrong")
-        hads = []
-        for v,w in good_verts.items(): # Update frontier vertices
-            hads.append(qubit_map[v])
-            #c.add_gate("HAD",qubit_map[v])
-            qubit_map[w] = qubit_map[v]
-            b = [o for o in g.neighbors(v) if o in g.outputs][0]
-            g.remove_vertex(v)
-            g.add_edge(g.edge(w,b))
-            frontier.remove(v)
-            frontier.append(w)
-        if not quiet: print("Vertices extracted:", len(good_verts))
-        for cnot in cnots: c.add_gate(cnot)
-        for h in hads: c.add_gate("HAD",h)
+
+        extracted = apply_cnots(g, c, frontier, qubit_map, cnots, m, neighbors)
+        if not quiet: print("Vertices extracted:", extracted)
             
     if optimize_czs:
         if not quiet: print("CZ gates saved:", czs_saved)
     # Outside of loop. Finish up the permutation
-    id_simp(g,quiet=True) # Now the graph should only contain inputs and outputs
+    id_simp(g, quiet=True)  # Now the graph should only contain inputs and outputs
     # Since we were extracting from right to left, we reverse the order of the gates
     c.gates = list(reversed(c.gates))
     return graph_to_swaps(g, up_to_perm) + c
@@ -628,6 +682,7 @@ def extract_simple(g: BaseGraph[VT, ET], up_to_perm: bool = True) -> Circuit:
     from circuits via spider fusion).
 
     Args:
+        g: The graph to extract
         up_to_perm: If true, returns a circuit that is equivalent to the given graph up to a permutation of the inputs.
     """
     circ = Circuit(g.qubit_count())
@@ -934,92 +989,7 @@ class LookaheadNode:
         return child
 
     def apply_cnots(self, cnots: List[CNOT], m: Mat2, neighbors: List[VT]):
-        good_verts = dict()
-        for i, row in enumerate(m.data):
-            if sum(row) == 1:
-                v = self.frontier[i]
-                w = neighbors[[j for j in range(len(row)) if row[j]][0]]
-                good_verts[v] = w
-        if not good_verts:
-            raise Exception("No extractable vertex found. Something went wrong")
-        hads = []
-        for v, w in good_verts.items():  # Update frontier vertices
-            hads.append(self.qubit_map[v])
-            # c.add_gate("HAD",qubit_map[v])
-            self.qubit_map[w] = self.qubit_map[v]
-            b = [o for o in self.g.neighbors(v) if o in self.g.outputs][0]
-            self.g.remove_vertex(v)
-            self.g.add_edge(self.g.edge(w, b))
-            self.frontier.remove(v)
-            self.frontier.append(w)
-        self.ext_count += len(good_verts)
-
-        for cnot in cnots:
-            self.c.add_gate(cnot)
-        for h in hads:
-            self.c.add_gate("HAD", h)
-
-    def optimize_cnots(self, cnots_to_apply: List[CNOT], mat: Mat2, neighbors: List[VT]):
-        m = mat.copy()
-        cnots = cnots_to_apply.copy()
-        m2 = m.copy()
-        for cnot in cnots:
-            m2.row_add(cnot.target, cnot.control)
-        extractable = set()
-        for i, row in enumerate(m2.data):
-            if sum(row) == 1:
-                extractable.add(i)
-        # We now know which vertices are extractable, and hence the CNOTs on qubits that do not involve
-        # these vertices aren't necessary.
-        # So first, we get rid of all the CNOTs that happen in the Gaussian elimination after
-        # all the extractable vertices have become extractable
-        m2 = m.copy()
-        for count, cnot in enumerate(cnots):
-            if sum(1 for row in m2.data if sum(row) == 1) == len(extractable):  # extractable rows equal to maximum
-                cnots = cnots[:count]  # So we do not need the remainder of the CNOTs
-                break
-            m2.row_add(cnot.target, cnot.control)
-        # We now recalculate which vertices were extractable, because the deleted cnots
-        # might have acted to swap this vertex around some.
-        extractable = set()
-        for i, row in enumerate(m2.data):
-            if sum(row) == 1:
-                extractable.add(i)
-        # And now we try to get rid of some more CNOTs, that can be commuted to the end of the CNOT circuit
-        # without changing extractability.
-        necessary_cnots = []
-        # 'A' stands for "blocked for All". 'R' for "blocked for Red", 'G' for "blocked for Green".
-        blocked = {i: 'A' for i in extractable}
-        for cnot in reversed(cnots):
-            if cnot.target not in blocked and cnot.control not in blocked:
-                continue  # CNOT not needed
-            should_add = False
-            if cnot.target in blocked and blocked[cnot.target] != 'R':
-                should_add = True
-                blocked[cnot.target] = 'A'
-            if cnot.control in blocked and blocked[cnot.control] != 'G':
-                should_add = True
-                blocked[cnot.control] = 'A'
-            if cnot.control in extractable:
-                should_add = True
-            if cnot.target in extractable:
-                should_add = True
-            if not should_add:
-                continue
-            necessary_cnots.append(cnot)
-            if cnot.control not in blocked:
-                blocked[cnot.control] = 'G'  # 'G' stands for Green
-            if cnot.target not in blocked:
-                blocked[cnot.target] = 'R'  # 'R' stands for Red
-        cnots = []
-        for cnot in reversed(necessary_cnots):
-            m.row_add(cnot.target, cnot.control)
-            cnots.append(CNOT(self.qubit_map[self.frontier[cnot.control]], self.qubit_map[self.frontier[cnot.target]]))
-        # for cnot in cnots:
-        #    m.row_add(cnot.target,cnot.control)
-        #    c.add_gate("CNOT",qubit_map[frontier[cnot.control]],qubit_map[frontier[cnot.target]])
-        connectivity_from_biadj(self.g, m, neighbors, self.frontier)
-        return cnots, m
+        self.ext_count += apply_cnots(self.g, self.c, self.frontier, self.qubit_map, cnots, m, neighbors)
 
     def expand(self, limit: int, max_depth: int, algorithms: list[int]):
         if max_depth == 0:
@@ -1028,92 +998,18 @@ class LookaheadNode:
             return
         while not self.expanded and self.ext_count < limit and len(self.frontier) != 0:
             self.d = -1
-            qs = self.g.qubits()  # We are assuming that these are objects that update...
-            rs = self.g.rows()  # ...to reflect changes to the graph, so that when...
-            ty = self.g.types()  # ... g.set_row/g.set_qubit is called, these things update directly to reflect that
-            phases = self.g.phases()
-            # preprocessing
-            for v in self.frontier:  # First removing single qubit gates
-                q = self.qubit_map[v]
-                b = [w for w in self.g.neighbors(v) if w in self.g.outputs][0]
-                e = self.g.edge(v, b)
-                if self.g.edge_type(e) == 2:  # Hadamard edge
-                    self.c.add_gate("HAD", q)
-                    self.g.set_edge_type(e, 1)
-                if phases[v]:
-                    self.c.add_gate("ZPhase", q, phases[v])
-                    self.g.set_phase(v, 0)
-            # And now on to CZ gates
-            cz_mat = Mat2([[0 for _i in range(self.g.qubit_count())] for _j in range(self.g.qubit_count())])
-            for v in self.frontier:
-                for w in list(self.g.neighbors(v)):
-                    if w in self.frontier:
-                        cz_mat.data[self.qubit_map[v]][self.qubit_map[w]] = 1
-                        cz_mat.data[self.qubit_map[w]][self.qubit_map[v]] = 1
-                        self.g.remove_edge(self.g.edge(v, w))
-
-            overlap_data = max_overlap(cz_mat)
-            while len(overlap_data[1]) > 2:  # there are enough common qubits to be worth optimizing
-                i, j = overlap_data[0][0], overlap_data[0][1]
-                self.c.add_gate("CNOT", i, j)
-                for qb in overlap_data[1]:
-                    self.c.add_gate("CZ", j, qb)
-                    cz_mat.data[i][qb] = 0
-                    cz_mat.data[j][qb] = 0
-                    cz_mat.data[qb][i] = 0
-                    cz_mat.data[qb][j] = 0
-                self.c.add_gate("CNOT", i, j)
-                overlap_data = max_overlap(cz_mat)
-
-            for i in range(self.g.qubit_count()):
-                for j in range(i + 1, self.g.qubit_count()):
-                    if cz_mat.data[i][j] == 1:
-                        self.c.add_gate("CZ", i, j)
+            clean_frontier(self.g, self.c, self.frontier, self.qubit_map)
 
             # Now we can proceed with the actual extraction
             # First make sure that frontier is connected in correct way to inputs
-            neighbor_set = set()
-            for v in self.frontier.copy():
-                d = [w for w in self.g.neighbors(v) if w not in self.g.outputs]
-                if any(w in self.g.inputs for w in d):  # frontier vertex v is connected to an input
-                    if len(d) == 1:  # Only connected to input, remove from frontier
-                        self.frontier.remove(v)
-                        self.ext_count += 1
-                        continue
-                    # We disconnect v from the input b via a new spider
-                    b = [w for w in d if w in self.g.inputs][0]
-                    q = qs[b]
-                    r = rs[b]
-                    w = self.g.add_vertex(1, q, r + 1)
-                    e = self.g.edge(v, b)
-                    et = self.g.edge_type(e)
-                    self.g.remove_edge(e)
-                    self.g.add_edge(self.g.edge(v, w), 2)
-                    self.g.add_edge(self.g.edge(w, b), toggle_edge(et))
-                    d.remove(b)
-                    d.append(w)
-                neighbor_set.update(d)
+            neighbor_set = neighbors_of_frontier(self.g, self.frontier)
 
             if not self.frontier:
                 break  # No more vertices to be processed. We are done.
 
             # First we check if there is a phase gadget in the way
-            removed_gadget = False
-            for w in neighbor_set:
-                if w not in self.gadgets:
-                    continue
-                for v in self.g.neighbors(w):
-                    if v in self.frontier:
-                        apply_rule(self.g, pivot,
-                                   [(w, v, [], [o for o in self.g.neighbors(v) if o in self.g.outputs])])
-                        self.frontier.remove(v)
-                        self.ext_count += 1
-                        del self.gadgets[w]
-                        self.frontier.append(w)
-                        self.qubit_map[w] = self.qubit_map[v]
-                        removed_gadget = True
-                        break
-            if removed_gadget:  # There was indeed a gadget in the way. Go back to the top
+            if remove_gadget(self.g, self.frontier, self.qubit_map, neighbor_set, self.gadgets):
+                # There was a gadget in the way. Go back to the top
                 continue
 
             neighbors = list(neighbor_set)
@@ -1129,10 +1025,10 @@ class LookaheadNode:
                     res = self.apply_operation(alg, m, neighbors)
                     if res is None:
                         continue
-                    cnots, child, cnots_opt, m_opt = res
+                    child, cnots_opt = res
                     should_append = True
                     for i in range(len(branches)):
-                        other = branches[i][2]
+                        other = branches[i][1]
                         if compare_cnots(cnots_opt, other, qubits):  # Same result when applying CNOTs
                             should_append = False
                             if len(cnots_opt) < len(other):
@@ -1144,10 +1040,10 @@ class LookaheadNode:
                 if len(branches) == 0:
                     raise Exception("All steps returned impossible")
                 elif len(branches) == 1:  # No need to branch
-                    cnots, m = self.optimize_cnots(cnots, m, neighbors)
+                    cnots = branches[0][1]
                 else:  # Branch and go to children
-                    for cnots, child, cnots_opt, m_opt in branches:
-                        child.apply_cnots(cnots_opt, m_opt, neighbors)
+                    for child, cnots_opt in branches:
+                        child.apply_cnots(cnots_opt, m.copy(), neighbors)
                         self.children.append(child)
                     self.mark_expanded()
                     break
@@ -1194,8 +1090,8 @@ class LookaheadNode:
         else:
             raise Exception("Unknown extraction step: {}".format(operation_id))
 
-        cnots_opt, m_opt = child.optimize_cnots(cnots, m, neighbors)
-        return cnots, child, cnots_opt, m_opt
+        cnots_opt = remove_extra_cnots(cnots, m)
+        return child, cnots_opt
 
 
 class StepPicker:
@@ -1351,9 +1247,7 @@ def lookahead_extract_base(
 
 
 def get_optimize_value(c: Circuit, optimize_for_depth: bool, expand_to_basic: bool = False) -> int:
-    """
-    Computes the two qubit count or the depth for the circuit.
-    """
+    """ Computes the two qubit count or the depth for the circuit. """
     if expand_to_basic:
         c = c.to_basic_gates()
     if not optimize_for_depth:
@@ -1376,15 +1270,11 @@ def cnots_to_xor_list(cnots: list[CNOT], size: int) -> list[set[int]]:
     return sets
 
 
-def compare_cnots(c1: list[CNOT], c2: list[CNOT], size: int, qubits: Optional[list[int]] = None) -> bool:
-    """
-    Checks if two sets of cnots give the same results on the given qubits.
-    """
-    if qubits is None:
-        qubits = list(range(size))
+def compare_cnots(c1: list[CNOT], c2: list[CNOT], size: int) -> bool:
+    """ Checks if two sets of cnots give the same results """
     s1 = cnots_to_xor_list(c1, size)
     s2 = cnots_to_xor_list(c2, size)
-    for index in qubits:
+    for index in range(size):
         if s1[index] != s2[index]:
             return False
     return True
