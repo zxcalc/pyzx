@@ -792,20 +792,20 @@ class LookaheadNode:
                  opt_depth: bool,
                  hard_limit: int,
                  ext_count: int = 0):
-        self.g = g
-        self.c = c
-        self.frontier = frontier
-        self.qubit_map = qubit_map
-        self.gadgets = gadgets
-        self.children = []
-        self.expanded = False
-        self.ext_count = ext_count
-        self.collected = False
-        self.opt_depth = opt_depth
-        self.d = -1
-        self.total_d = -1
-        self.finished_children = None
-        self.hard_limit = hard_limit
+        self.g: BaseGraph[VT, ET] = g
+        self.c: Circuit = c
+        self.frontier: List[VT] = frontier
+        self.qubit_map: Dict[VT, int] = qubit_map
+        self.gadgets: Dict[VT, VT] = gadgets
+        self.children: List['LookaheadNode'] = []
+        self.expanded: bool = False
+        self.ext_count: int = ext_count
+        self.collected: bool = False
+        self.opt_depth: bool = opt_depth
+        self.d: int = -1
+        self.total_d: int = -1
+        self.finished_children: Optional[List[int]] = None
+        self.hard_limit: int = hard_limit
 
     def update_hard_limit(self, new_limit: int):
         self.hard_limit = new_limit
@@ -841,7 +841,7 @@ class LookaheadNode:
             leaves += c_l
         return nodes, leaves, depth + 1
 
-    def optimal(self, sp, d: int = -1):
+    def optimal(self, sp: 'StepPicker', d: int = -1):
         """
         Computes the stats for leaves (number of 2 qubit gates or depth) to determine the best nodes.
 
@@ -868,7 +868,7 @@ class LookaheadNode:
         for child in self.children:
             child.optimal(sp, d)
 
-    def next_nodes(self, min_extracted: int, sp, prev_circ: Optional[Circuit] = None, d: int = -1):
+    def next_nodes(self, min_extracted: int, sp: 'StepPicker', prev_circ: Optional[Circuit] = None, d: int = -1):
         """
         Used to find the next roots. Looks for nodes that fit the parameters, then searches their leaves.
 
@@ -892,7 +892,7 @@ class LookaheadNode:
         for child in self.children:
             child.next_nodes(min_extracted, sp, prev_circ, d)
 
-    def __has_finished(self):
+    def __has_finished(self) -> bool:
         """
         For CNOT optimisation, check which children of a node has finished leaves
         """
@@ -950,7 +950,7 @@ class LookaheadNode:
                 best_c, best_d = child.__collect_finished_depth(best_c, best_d, up_to_perm)
         return best_c, best_d
 
-    def get_finished(self, best_c: Circuit, best_d: int, up_to_perm: bool) -> (Optional[Circuit], int):
+    def get_finished(self, best_c: Optional[Circuit], best_d: int, up_to_perm: bool) -> (Optional[Circuit], int):
         """
         Find the best fully extracted circuits in the CNOT optimisation case
 
@@ -982,7 +982,7 @@ class LookaheadNode:
                 return True
         return False
 
-    def branch_child(self):
+    def branch_child(self) -> 'LookaheadNode':
         child = LookaheadNode(self.g.clone(), self.c.copy() if self.opt_depth else Circuit(self.c.qubits),
                               self.frontier.copy(), self.qubit_map.copy(), self.gadgets.copy(), self.opt_depth,
                               self.hard_limit, self.ext_count)
@@ -1053,7 +1053,8 @@ class LookaheadNode:
         for child in self.children:
             child.expand(limit, max_depth - 1, algorithms)
 
-    def apply_operation(self, operation_id: int, m: Mat2, neighbors: list[VT]):
+    def apply_operation(self, operation_id: int, m: Mat2, neighbors: list[VT]) \
+            -> Optional[Tuple['LookaheadNode', List[CNOT]]]:
         """
         Apply one of the possible operations to the current node to obtain a list of CNOTs
         """
@@ -1259,7 +1260,7 @@ def get_optimize_value(c: Circuit, optimize_for_depth: bool, expand_to_basic: bo
     return c.depth()
 
 
-def cnots_to_xor_list(cnots: list[CNOT], size: int) -> list[set[int]]:
+def cnots_to_xor_list(cnots: List[CNOT], size: int) -> List[Set[int]]:
     sets = [{i} for i in range(size)]
     for c in cnots:
         for i in sets[c.target]:
@@ -1270,7 +1271,7 @@ def cnots_to_xor_list(cnots: list[CNOT], size: int) -> list[set[int]]:
     return sets
 
 
-def compare_cnots(c1: list[CNOT], c2: list[CNOT], size: int) -> bool:
+def compare_cnots(c1: List[CNOT], c2: List[CNOT], size: int) -> bool:
     """ Checks if two sets of cnots give the same results """
     s1 = cnots_to_xor_list(c1, size)
     s2 = cnots_to_xor_list(c2, size)
