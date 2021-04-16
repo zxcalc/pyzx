@@ -986,6 +986,7 @@ class LookaheadNode:
         child = LookaheadNode(self.g.clone(), self.c.copy() if self.opt_depth else Circuit(self.c.qubits),
                               self.frontier.copy(), self.qubit_map.copy(), self.gadgets.copy(), self.opt_depth,
                               self.hard_limit, self.ext_count)
+        self.children.append(child)
         return child
 
     def apply_cnots(self, cnots: List[CNOT], m: Mat2, neighbors: List[VT]):
@@ -1022,29 +1023,27 @@ class LookaheadNode:
                 branches = []
                 for alg in algorithms:
                     # Try different algorithms to get distinct sets of CNOTs that can be used
-                    res = self.apply_operation(alg, m, neighbors)
-                    if res is None:
+                    cnots_opt = self.apply_operation(alg, m, neighbors)
+                    if cnots_opt is None:
                         continue
-                    child, cnots_opt = res
                     should_append = True
                     for i in range(len(branches)):
-                        other = branches[i][1]
-                        if compare_cnots(cnots_opt, other, qubits):  # Same result when applying CNOTs
+                        if compare_cnots(cnots_opt, branches[i], qubits):  # Same result when applying CNOTs
                             should_append = False
-                            if len(cnots_opt) < len(other):
-                                branches[i] = res
+                            if len(cnots_opt) < len(branches[i]):
+                                branches[i] = cnots_opt
                             break
                     if should_append:
-                        branches.append(res)
+                        branches.append(cnots_opt)
 
                 if len(branches) == 0:
                     raise Exception("All steps returned impossible")
                 elif len(branches) == 1:  # No need to branch
-                    cnots = branches[0][1]
+                    cnots = branches[0]
                 else:  # Branch and go to children
-                    for child, cnots_opt in branches:
+                    for cnots_opt in branches:
+                        child = self.branch_child()
                         child.apply_cnots(cnots_opt, m.copy(), neighbors)
-                        self.children.append(child)
                     self.mark_expanded()
                     break
 
@@ -1053,12 +1052,10 @@ class LookaheadNode:
         for child in self.children:
             child.expand(limit, max_depth - 1, algorithms)
 
-    def apply_operation(self, operation_id: int, m: Mat2, neighbors: list[VT]) \
-            -> Optional[Tuple['LookaheadNode', List[CNOT]]]:
+    def apply_operation(self, operation_id: int, m: Mat2, neighbors: list[VT])  -> Optional[List[CNOT]]:
         """
         Apply one of the possible operations to the current node to obtain a list of CNOTs
         """
-        child = self.branch_child()
         cnots: list[CNOT]
 
         if operation_id == 0:
@@ -1092,7 +1089,7 @@ class LookaheadNode:
             raise Exception("Unknown extraction step: {}".format(operation_id))
 
         cnots_opt = remove_extra_cnots(cnots, m)
-        return child, cnots_opt
+        return cnots_opt
 
 
 class StepPicker:
