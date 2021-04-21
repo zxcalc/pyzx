@@ -841,14 +841,17 @@ class LookaheadNode:
             leaves += c_l
         return nodes, leaves, depth + 1
 
-    def optimal(self, sp: 'StepPicker', d: int = -1):
+    def optimal(self, rp: 'RootPicker', d: int = -1):
         """
         Computes the stats for leaves (number of 2 qubit gates or depth) to determine the best nodes.
 
         Args:
-            sp: StepPicker, used to collect the leaves and filter the best ones
+            rp: RootPicker, used to collect the leaves and filter the best ones
             d: for CNOT optimisation only, the total number of two qubit gates of the parent nodes, up to root
         """
+        if self.collected:
+            # Already checked, not interested in it
+            return
         if not self.opt_depth:
             if self.d == -1:
                 self.d = get_optimize_value(self.c, False)
@@ -859,29 +862,29 @@ class LookaheadNode:
         if len(self.children) == 0:
             if self.opt_depth:
                 if self.total_d == -1:
-                    self.total_d = get_optimize_value(self.c, False)
+                    self.total_d = get_optimize_value(self.c, True)
                 d = self.total_d
             if -1 < self.hard_limit <= d:
                 return
-            sp.add_leaf(self, Fraction(d, self.ext_count))
+            rp.add_leaf(self, Fraction(d, self.ext_count))
             return
         for child in self.children:
-            child.optimal(sp, d)
+            child.optimal(rp, d)
 
-    def next_nodes(self, min_extracted: int, sp: 'StepPicker', prev_circ: Optional[Circuit] = None, d: int = -1):
+    def next_nodes(self, min_extracted: int, rp: 'RootPicker', prev_circ: Optional[Circuit] = None, d: int = -1):
         """
         Used to find the next roots. Looks for nodes that fit the parameters, then searches their leaves.
 
         Args:
             min_extracted: minimum number of vertices extracted for a node to be considered a root
-            sp: StepPicker to collect the possible roots and best leaves
+            rp: RootPicker to collect the possible roots and best leaves
             prev_circ: for CNOT optimisation, collect the circuit starting from the root up to the node to assign
             to the node in case it is selected as a next root
             d: for CNOT optimisation, the total number of two qubit gates starting from the root
         """
         if len(self.children) == 0 or self.ext_count > min_extracted:
-            sp.add_possible_root(self, prev_circ, d)
-            self.optimal(sp, d)
+            rp.add_possible_root(self, prev_circ, d)
+            self.optimal(rp, d)
             return
         if not self.opt_depth:
             if self.d == -1:
@@ -890,7 +893,7 @@ class LookaheadNode:
             d = self.d if d == -1 else d + self.d
             self.total_d = d
         for child in self.children:
-            child.next_nodes(min_extracted, sp, prev_circ, d)
+            child.next_nodes(min_extracted, rp, prev_circ, d)
 
     def __has_finished(self) -> bool:
         """
@@ -1052,7 +1055,7 @@ class LookaheadNode:
         for child in self.children:
             child.expand(limit, max_depth - 1, algorithms)
 
-    def apply_operation(self, operation_id: int, m: Mat2, neighbors: list[VT])  -> Optional[List[CNOT]]:
+    def apply_operation(self, operation_id: int, m: Mat2, neighbors: list[VT]) -> Optional[List[CNOT]]:
         """
         Apply one of the possible operations to the current node to obtain a list of CNOTs
         """
@@ -1092,13 +1095,13 @@ class LookaheadNode:
         return cnots_opt
 
 
-class StepPicker:
+class RootPicker:
     """
     Class for picking the next roots that correspond to the best k leaves.
     """
     def __init__(self, k: int):
         self.k: int = k
-        self.nodes: List[(LookaheadNode, Optional[Circuit], int)] = []
+        self.nodes: List[Optional[(LookaheadNode, Optional[Circuit], int)]] = []
         self.best: List[(LookaheadNode, Fraction, int)] = []
 
     def add_possible_root(self, n: LookaheadNode, c: Optional[Circuit], d: int):
@@ -1106,6 +1109,16 @@ class StepPicker:
         Add a node that satisfies the conditions for being a root in the next step
         For CNOT optimisation, include the circuit up to this node
         """
+        # First, remove any of the previous nodes that we do not need
+        # This will let the garbage collector to clean the unnecessary nodes
+        if len(self.nodes) > 0:
+            s = set()
+            for p in self.best:
+                s.add(p[2])
+            for i in range(len(self.nodes)):
+                if i not in s:
+                    self.nodes[i] = None
+        # Add the new node
         self.nodes.append((n, c, d))
 
     def add_leaf(self, n: LookaheadNode, d: Fraction):
@@ -1223,11 +1236,13 @@ def lookahead_extract_base(
         frontier.append(v)
         qubit_map[v] = i
 
-    roots = [LookaheadNode(g, Circuit(g.qubit_count()), frontier, qubit_map, gadgets, optimize_for_depth, hard_limit)]
+    roots: List[Optional[LookaheadNode]] =\
+        [LookaheadNode(g, Circuit(g.qubit_count()), frontier, qubit_map, gadgets, optimize_for_depth, hard_limit)]
 
     while len(roots) > 0:
-        sp = StepPicker(nodes_kept)
-        for root in roots:
+        rp = RootPicker(nodes_kept)
+        for i in range(len(roots)):
+            root = roots[i]
             if root.hard_limit > hard_limit:
                 root.update_hard_limit(hard_limit)
             if root.can_expand():
@@ -1238,8 +1253,10 @@ def lookahead_extract_base(
                 if best_d < hard_limit:
                     hard_limit = best_d
                     root.update_hard_limit(hard_limit)
-                root.next_nodes(prev_extracted + min_extract, sp)
-        roots = sp.get_next_roots()
+                root.next_nodes(prev_extracted + min_extract, rp)
+            # Allow unneeded nodes to be removed to free memory
+            roots[i] = None
+        roots = rp.get_next_roots()
 
     return best_c
 
