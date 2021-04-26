@@ -12,3 +12,4 @@ pyzx.egg-info
 *.class
 *.ipynb_checkpoints
 pyzx/js/d3.v5.js
+*~

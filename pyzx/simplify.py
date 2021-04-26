@@ -1,4 +1,4 @@
-# PyZX - Python library for quantum circuit rewriting 
+# PyZX - Python library for quantum circuit rewriting
 #        and optimization using the ZX-calculus
 # Copyright (C) 2018 - Aleks Kissinger and John van de Wetering
 
@@ -16,14 +16,14 @@
 
 """This module contains the ZX-diagram simplification strategies of PyZX.
 Each strategy is based on applying some combination of the rewrite rules in the rules_ module.
-The main procedures of interest are :func:`clifford_simp` for simple reductions, 
-:func:`full_reduce` for the full rewriting power of PyZX, and :func:`teleport_reduce` to 
+The main procedures of interest are :func:`clifford_simp` for simple reductions,
+:func:`full_reduce` for the full rewriting power of PyZX, and :func:`teleport_reduce` to
 use the power of :func:`full_reduce` while not changing the structure of the graph.
 """
 
-__all__ = ['bialg_simp','spider_simp', 'id_simp', 'phase_free_simp', 'pivot_simp', 
+__all__ = ['bialg_simp','spider_simp', 'id_simp', 'phase_free_simp', 'pivot_simp',
         'pivot_gadget_simp', 'pivot_boundary_simp', 'gadget_simp',
-        'lcomp_simp', 'clifford_simp', 'tcount', 'to_gh', 'to_rg', 
+        'lcomp_simp', 'clifford_simp', 'tcount', 'to_gh', 'to_rg',
         'full_reduce', 'teleport_reduce', 'reduce_scalar', 'supplementarity_simp']
 
 from typing import List, Callable, Optional, Union, Generic, Tuple, Dict, Iterator
@@ -51,20 +51,20 @@ class Stats(object):
         return s
 
 def simp(
-    g: BaseGraph[VT,ET], 
-    name: str, 
-    match: Callable[..., List[MatchObject]], 
-    rewrite: Callable[[BaseGraph[VT,ET],List[MatchObject]],RewriteOutputType[ET,VT]], 
-    matchf:Optional[Union[Callable[[ET],bool], Callable[[VT],bool]]]=None, 
+    g: BaseGraph[VT,ET],
+    name: str,
+    match: Callable[..., List[MatchObject]],
+    rewrite: Callable[[BaseGraph[VT,ET],List[MatchObject]],RewriteOutputType[ET,VT]],
+    matchf:Optional[Union[Callable[[ET],bool], Callable[[VT],bool]]]=None,
     quiet:bool=False,
     stats:Optional[Stats]=None) -> int:
     """Helper method for constructing simplification strategies based on the rules present in rules_.
-    It uses the ``match`` function to find matches, and then rewrites ``g`` using ``rewrite``. 
+    It uses the ``match`` function to find matches, and then rewrites ``g`` using ``rewrite``.
     If ``matchf`` is supplied, only the vertices or edges for which matchf() returns True are considered for matches.
 
     Example:
         ``simp(g, 'spider_simp', rules.match_spider_parallel, rules.spider)``
-    
+
     Args:
         g: The graph that needs to be simplified.
         str name: The name to display if ``quiet`` is set to False.
@@ -142,7 +142,7 @@ def phase_free_simp(g: BaseGraph[VT,ET], quiet:bool=False, stats:Optional[Stats]
     return i1+i2
 
 def interior_clifford_simp(g: BaseGraph[VT,ET], quiet:bool=False, stats:Optional[Stats]=None) -> int:
-    """Keeps doing the simplifications ``id_simp``, ``spider_simp``, 
+    """Keeps doing the simplifications ``id_simp``, ``spider_simp``,
     ``pivot_simp`` and ``lcomp_simp`` until none of them can be applied anymore."""
     spider_simp(g, quiet=quiet, stats=stats)
     to_gh(g)
@@ -176,7 +176,7 @@ def reduce_scalar(g: BaseGraph[VT,ET], quiet:bool=True, stats:Optional[Stats]=No
         i2 = spider_simp(g, quiet=quiet, stats=stats)
         i3 = pivot_simp(g, quiet=quiet, stats=stats)
         i4 = lcomp_simp(g, quiet=quiet, stats=stats)
-        if i1+i2+i3+i4: 
+        if i1+i2+i3+i4:
             i += 1
             continue
         i5 = pivot_gadget_simp(g,quiet=quiet, stats=stats)
@@ -205,9 +205,9 @@ def full_reduce(g: BaseGraph[VT,ET], quiet:bool=True, stats:Optional[Stats]=None
             break
 
 def teleport_reduce(g: BaseGraph[VT,ET], quiet:bool=True, stats:Optional[Stats]=None) -> BaseGraph[VT,ET]:
-    """This simplification procedure runs :func:`full_reduce` in a way 
+    """This simplification procedure runs :func:`full_reduce` in a way
     that does not change the graph structure of the resulting diagram.
-    The only thing that is different in the output graph are the location and value of the phases.""" 
+    The only thing that is different in the output graph are the location and value of the phases."""
     s = Simplifier(g)
     s.full_reduce(quiet=quiet, stats=stats)
     return s.mastergraph
@@ -260,9 +260,9 @@ class Simplifier(Generic[VT, ET]):
         else: phase = p1 - p2
         self.mastergraph.set_phase(v1,phase)
         self.mastergraph.set_phase(v2,0)
-        
+
         self.simplifygraph.phase_mult[i2] = 1
-    
+
     def full_reduce(self, quiet:bool=True, stats: Stats=None) -> None:
         full_reduce(self.simplifygraph,quiet=quiet, stats=stats)
 
@@ -310,9 +310,9 @@ def tcount(g: Union[BaseGraph[VT,ET], Circuit]) -> int:
 #The functions below haven't been updated in a while. Use at your own risk.
 
 def simp_iter(
-        g: BaseGraph[VT,ET], 
-        name: str, 
-        match: Callable[..., List[MatchObject]], 
+        g: BaseGraph[VT,ET],
+        name: str,
+        match: Callable[..., List[MatchObject]],
         rewrite: Callable[[BaseGraph[VT,ET],List[MatchObject]],RewriteOutputType[ET,VT]]
         ) -> Iterator[Tuple[BaseGraph[VT,ET],str]]:
     """Version of :func:`simp` that instead of performing all rewrites at once, returns an iterator."""
@@ -356,3 +356,98 @@ def clifford_iter(g: BaseGraph[VT,ET]) -> Iterator[Tuple[BaseGraph[VT,ET],str]]:
     yield from pivot_iter(g)
     yield from id_iter(g)
     yield from spider_iter(g)
+
+
+def is_graph_like(g):
+    # checks that all spiders are Z-spiders
+    for v in g.vertices():
+        if g.type(v) not in [VertexType.Z, VertexType.BOUNDARY]:
+            return False
+
+    for v1, v2 in itertools.combinations(g.vertices(), 2):
+        if not g.connected(v1, v2):
+            continue
+
+        # Z-spiders are only connected via Hadamard edges
+        if g.type(v1) == VertexType.Z and g.type(v2) == VertexType.Z \
+           and g.edge_type(g.edge(v1, v2)) != EdgeType.HADAMARD:
+            return False
+
+        # FIXME: no parallel edges
+
+    # no self-loops
+    for v in g.vertices():
+        if g.connected(v, v):
+            return False
+
+    # every I/O is connected to a Z-spider
+    bs = [v for v in g.vertices() if g.type(v) == VertexType.BOUNDARY]
+    for b in bs:
+        if g.vertex_degree(b) != 1 or g.type(list(g.neighbors(b))[0]) != VertexType.Z:
+            return False
+
+    # every Z-spider is connected to at most one I/O
+    zs = [v for v in g.vertices() if g.type(v) == VertexType.Z]
+    for z in zs:
+        b_neighbors = [n for n in g.neighbors(z) if g.type(n) == VertexType.BOUNDARY]
+        if len(b_neighbors) > 1:
+            return False
+
+    return True
+
+
+def to_graph_like(g):
+    # turn all red spiders into green spiders
+    to_gh(g)
+
+    # simplify: remove excess HAD's, fuse along non-HAD edges, remove parallel edges and self-loops
+    spider_simp(g, quiet=True)
+
+    # ensure all I/O are connected to a Z-spider
+    bs = [v for v in g.vertices() if g.type(v) == VertexType.BOUNDARY]
+    for v in bs:
+
+        # if it's already connected to a Z-spider, continue on
+        if any([g.type(n) == VertexType.Z for n in g.neighbors(v)]):
+            continue
+
+        # have to connect the (boundary) vertex to a Z-spider
+        ns = list(g.neighbors(v))
+        for n in ns:
+            # every neighbor is another boundary or an H-Box
+            assert(g.type(n) in [VertexType.BOUNDARY, VertexType.H_BOX])
+            if g.type(n) == VertexType.BOUNDARY:
+                z1 = g.add_vertex(ty=zx.VertexType.Z)
+                z2 = g.add_vertex(ty=zx.VertexType.Z)
+                z3 = g.add_vertex(ty=zx.VertexType.Z)
+                g.remove_edge(g.edge(v, n))
+                g.add_edge(g.edge(v, z1), edgetype=EdgeType.SIMPLE)
+                g.add_edge(g.edge(z1, z2), edgetype=EdgeType.HADAMARD)
+                g.add_edge(g.edge(z2, z3), edgetype=EdgeType.HADAMARD)
+                g.add_edge(g.edge(z3, n), edgetype=EdgeType.SIMPLE)
+            else: # g.type(n) == VertexType.H_BOX
+                z = g.add_vertex(ty=zx.VertexType.Z)
+                g.remove_edge(g.edge(v, n))
+                g.add_edge(g.edge(v, z), edgetype=EdgeType.SIMPLE)
+                g.add_edge(g.edge(z, n), edgetype=EdgeType.SIMPLE)
+
+    # each Z-spider can only be connected to at most 1 I/O
+    vs = list(g.vertices())
+    for v in vs:
+        if not g.type(v) == VertexType.Z:
+            continue
+        boundary_ns = [n for n in g.neighbors(v) if g.type(n) == VertexType.BOUNDARY]
+        if len(boundary_ns) <= 1:
+            continue
+
+        # add dummy spiders for all but one
+        for b in boundary_ns[:-1]:
+            z1 = g.add_vertex(ty=zx.VertexType.Z)
+            z2 = g.add_vertex(ty=zx.VertexType.Z)
+
+            g.remove_edge(g.edge(v, b))
+            g.add_edge(g.edge(z1, z2), edgetype=EdgeType.HADAMARD)
+            g.add_edge(g.edge(b, z1), edgetype=EdgeType.SIMPLE)
+            g.add_edge(g.edge(z2, v), edgetype=EdgeType.HADAMARD)
+
+    assert(is_graph_like(g))

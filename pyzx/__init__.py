@@ -1,4 +1,4 @@
-# PyZX - Python library for quantum circuit rewriting 
+# PyZX - Python library for quantum circuit rewriting
 #        and optimisation using the ZX-calculus
 # Copyright (C) 2018 - Aleks Kissinger and John van de Wetering
 
@@ -26,6 +26,8 @@ from .optimize import *
 from .extract import *
 from .io import *
 from .tensor import *
+from .simulated_annealing import *
+from .genetic import *
 from .circuit.qasmparser import qasm
 from .circuit.sqasm import sqasm
 from . import quantomatic
@@ -43,7 +45,9 @@ from . import tikz
 from . import simulate
 from . import editor
 from . import routing
-from . import sparsify
+from . import scores
+from . import simulated_annealing
+from . import genetic
 from .routing.parity_maps import CNOT_tracker
 
 # some common scalars
