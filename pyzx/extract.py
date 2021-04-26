@@ -1299,7 +1299,7 @@ def lookahead_fast(g: BaseGraph[VT, ET], optimize_for_depth: bool = False, up_to
     """
     A lookahead extraction with relatively fast results. For details see :func:`lookahead_extract_base`
     """
-    c = lookahead_extract_base(g, 4 * g.qubit_count(), 8, 0, 4, -1, [0, 2], optimize_for_depth, False, up_to_perm)
+    c = lookahead_extract_base(g, 4 * g.qubit_count(), 8, 5, 4, -1, [0, 1], optimize_for_depth, False, up_to_perm)
     if c is None:
         raise AssertionError("Lookahead extraction with no hard limit returned None")
     return c
@@ -1309,10 +1309,16 @@ def lookahead_extract(g: BaseGraph[VT, ET], optimize_for_depth: bool = False, up
     """
         A lookahead extraction with recommended parameters. For details see :func:`lookahead_extract_base`
     """
-    c = lookahead_extract_base(g, 3 * g.qubit_count(), 7, int(g.qubit_count() / 2), 4, -1,
-                               [0, 1, 3], optimize_for_depth, True, up_to_perm)
+    qubits = g.qubit_count()
+    c = lookahead_extract_base(g.clone(), 4 * qubits, 8, 0, 4, -1, [0, 1], optimize_for_depth, True, up_to_perm)
     if c is None:
         raise AssertionError("Lookahead extraction with no hard limit returned None")
+    d = get_optimize_value(c, optimize_for_depth, True)
+    c1 = lookahead_extract_base(g, 4 * qubits, 8, 5, 4, d, [0, 3], optimize_for_depth, False, up_to_perm)
+    if c1 is not None:
+        d1 = get_optimize_value(c1, optimize_for_depth, True)
+        if d1 < d:
+            c = c1
     return c
 
 
@@ -1333,13 +1339,13 @@ def lookahead_full(g: BaseGraph[VT, ET], optimize_for_depth: bool = False, up_to
         if d1 < d:
             c = c1
             d = d1
-    c1 = lookahead_extract_base(g.clone(), 4 * qubits, 8, 0, 4, d, [0, 2], optimize_for_depth, False, up_to_perm)
+    c1 = lookahead_extract_base(g.clone(), 4 * qubits, 8, 5, 4, d, [0, 2], optimize_for_depth, False, up_to_perm)
     if c1 is not None:
         d1 = get_optimize_value(c1, optimize_for_depth, True)
         if d1 < d:
             c = c1
             d = d1
-    c1 = lookahead_extract_base(g, 4 * qubits, 8, 0, 4, d, [0, 3], optimize_for_depth, False, up_to_perm)
+    c1 = lookahead_extract_base(g, 4 * qubits, 8, 5, 4, d, [0, 3], optimize_for_depth, False, up_to_perm)
     if c1 is not None:
         d1 = get_optimize_value(c1, optimize_for_depth, True)
         if d1 < d:
