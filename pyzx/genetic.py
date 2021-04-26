@@ -1,3 +1,4 @@
+from tqdm import tqdm # type: ignore
 import numpy as np
 from random import shuffle
 import random
@@ -111,7 +112,8 @@ class GeneticOptimizer():
             raise RuntimeError(f"[select] Unknown selection method {method}")
 
 
-    def evolve(self, g, n_mutants, n_generations):
+    def evolve(self, g, n_mutants, n_generations, quiet=True):
+        self.quiet = quiet
         _, _, g_opt = self._evolve(g, n_mutants, n_generations)
         return g_opt
 
@@ -132,7 +134,7 @@ class GeneticOptimizer():
 
         gen_scores = [best_score]
         best_scores = [best_score]
-        for i in range(self.n_gens):
+        for i in tqdm(range(self.n_gens), desc="Generations", disable=self.quiet):
             n_unique_mutants = len(list(set([id(m) for m in self.mutants])))
             assert(n_unique_mutants == self.n_mutants)
 
