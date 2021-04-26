@@ -1,4 +1,3 @@
-from tqdm import tqdm
 import random
 import math
 import numpy as np
@@ -18,15 +17,14 @@ def anneal(g, iters=1000,
            lc_select=uniform_weights,
            pivot_select=uniform_weights,
            full_reduce_prob=0.1,
-           reset_prob=0.0,
-           quiet=False):
+           reset_prob=0.0):
     g_best = g.copy()
     sz = score(g_best)
     sz_best = sz
 
     best_scores = list()
 
-    for i in tqdm(range(iters), desc="annealing...", disable=quiet):
+    for i in range(iters):
 
         g1 = g.copy()
 

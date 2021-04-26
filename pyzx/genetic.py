@@ -1,4 +1,3 @@
-from tqdm import tqdm
 import numpy as np
 from random import shuffle
 import random
@@ -59,7 +58,7 @@ class GeneticOptimizer():
 
     # TODO: multi-thread
     def mutate(self):
-        for m in tqdm(self.mutants, desc="Mutating", disable=True):
+        for m in self.mutants:
             # Note: actions have to look for their own matches/subjects
             success = False
             shuffle(self.actions)
@@ -112,8 +111,7 @@ class GeneticOptimizer():
             raise RuntimeError(f"[select] Unknown selection method {method}")
 
 
-    def evolve(self, g, n_mutants, n_generations, quiet=True):
-        self.quiet = quiet
+    def evolve(self, g, n_mutants, n_generations):
         _, _, g_opt = self._evolve(g, n_mutants, n_generations)
         return g_opt
 
@@ -134,7 +132,7 @@ class GeneticOptimizer():
 
         gen_scores = [best_score]
         best_scores = [best_score]
-        for i in tqdm(range(self.n_gens), desc="Generations", disable=self.quiet):
+        for i in range(self.n_gens):
             n_unique_mutants = len(list(set([id(m) for m in self.mutants])))
             assert(n_unique_mutants == self.n_mutants)
 
@@ -147,8 +145,6 @@ class GeneticOptimizer():
 
             best_scores.append(best_score)
             if all([m.dead for m in self.mutants]):
-                if not self.quiet:
-                    print("[_optimize] stopping early -- all mutants are dead")
                 break
 
             self.select()
