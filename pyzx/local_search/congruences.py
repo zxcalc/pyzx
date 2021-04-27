@@ -1,17 +1,45 @@
+# PyZX - Python library for quantum circuit rewriting
+#        and optimisation using the ZX-calculus
+# Copyright (C) 2021 - Aleks Kissinger and John van de Wetering
+
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+
+#    http://www.apache.org/licenses/LICENSE-2.0
+
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+
+
+"""
+This module contains two congruences (i.e., non-simplification rewrite rules) for exploring the space of equivalent ZX-diagrams. The two congruences defined here are based on the graph-theoretic notions of local complementation and pivoting. The methods lc_cong and pivot_cong take a ZX-diagram and subjects over which to apply the rewrite rule as parameters. The methods apply_rand_lc and apply_rand_pivot select these subjects probabilistically.
+"""
+
+
 import numpy as np
 import itertools
 from fractions import Fraction
 
-from .utils import VertexType, EdgeType
+import sys
+if __name__ == '__main__':
+    sys.path.append('..')
+from pyzx.utils import VertexType, EdgeType
 
 ### Utilities
 def toggle_edge(g, v1, v2):
+    """Toggles the connectivity between two spiders in a graph-like ZX-diagram."""
     if g.connected(v1, v2):
         g.remove_edge(g.edge(v1, v2))
     else:
         g.add_edge(g.edge(v1, v2), edgetype=EdgeType.HADAMARD)
 
 def toggle_subset_connectivity(g, vs1, vs2):
+    """Toggles the connectivity between two subsets of spiders in a graph-like ZX-diagram."""
     for v1 in vs1:
         for v2 in vs2:
             toggle_edge(g, v1, v2)
@@ -21,8 +49,9 @@ def uniform_weights(g, elts):
 
 def unfuse(g, v):
     """
-    For a Z-spider with a phase and neighbors that are both BOUNDARY and Z, unfuse the phase in the form of a new spider that holds the connectivity to the boundaries.
-    Note that v will maintain its connectivity to any Z spiders (just not boundaries).
+    For a Z-spider with a phase and neighbors that are both BOUNDARY and Z, unfuse the phase
+    in the form of a new spider that holds the connectivity to the boundaries. Note that v will
+    maintain its connectivity to any Z spiders (just not boundaries).
     """
     v_phase = g.phase(v)
     bs = [v for v in g.neighbors(v) if g.type(v) == VertexType.BOUNDARY]
@@ -53,6 +82,7 @@ def unfuse(g, v):
 
 ### Local Complementation
 def is_lc_vertex(g, v):
+    """Checks if a spider in a ZX-diagram is a valid subject for local complementation."""
     # don't want to apply LC to a single-degree spider because it will only result in a growing chain
     if g.vertex_degree(v) < 2 or g.type(v) != VertexType.Z:
         return False
@@ -67,6 +97,8 @@ def is_lc_vertex(g, v):
 
 # Assumes that v is a Z-spider (green)
 def lc_cong(g, v):
+    """Applies local complementation at a provided spider in a ZX-diagram"""
+
     # FIXME: not gracefully handling if on boundary. If on boundary, sohuld just add on same qubit rather than add a gadget
     ns = [n for n in g.neighbors(v) if g.type(n) == VertexType.Z]
 
@@ -92,6 +124,8 @@ def lc_cong(g, v):
 
 
 def apply_rand_lc(g, weight_func=uniform_weights):
+    """Applies local complementation to randomly selected spider"""
+
     lc_vs = [v for v in g.vertices() if is_lc_vertex(g, v)]
     weights = weight_func(g, lc_vs)
     lc_v = np.random.choice(lc_vs, 1, p=weights)[0]
@@ -104,10 +138,14 @@ def apply_rand_lc(g, weight_func=uniform_weights):
 
 # TODO: May want to add some additional cases when we know it's not useful (as in the LC case)
 def is_pivot_edge(g, e):
+    """Checks if a given edge in a ZX-diagram is a suitable candidate for pivoting"""
+
     v1, v2 = g.edge_st(e)
     return g.type(v1) == VertexType.Z and g.type(v2) == VertexType.Z
 
 def pivot_cong(g, v1, v2):
+    """Applies pivoting to two connected spiders"""
+
     # get the three subsets
     nhd1 = list(g.neighbors(v1))
     nhd2 = list(g.neighbors(v2))
@@ -144,6 +182,8 @@ def pivot_cong(g, v1, v2):
 
 
 def apply_rand_pivot(g, weight_func=uniform_weights):
+    """Applies pivoting to a randomly selected pair of connected spiders"""
+
     # assumes len(candidates) != 0
     candidates = [e for e in g.edges() if is_pivot_edge(g, e)]
     weights = weight_func(g, candidates)

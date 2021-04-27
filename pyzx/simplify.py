@@ -359,6 +359,8 @@ def clifford_iter(g: BaseGraph[VT,ET]) -> Iterator[Tuple[BaseGraph[VT,ET],str]]:
 
 
 def is_graph_like(g):
+    """Puts a ZX-diagram in graph-like form"""
+
     # checks that all spiders are Z-spiders
     for v in g.vertices():
         if g.type(v) not in [VertexType.Z, VertexType.BOUNDARY]:
@@ -397,6 +399,8 @@ def is_graph_like(g):
 
 
 def to_graph_like(g):
+    """Checks if a ZX-diagram is graph-like"""
+
     # turn all red spiders into green spiders
     to_gh(g)
 
