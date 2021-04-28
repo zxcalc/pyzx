@@ -6,3 +6,4 @@ pyperclip >= 1.8.1
 sphinx >= 2.3
 sphinx_autodoc_typehints >= 1.10
 sphinx_rtd_theme >= 0.4
+tqdm >= 4.56.0
