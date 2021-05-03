@@ -77,8 +77,8 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
 
     def __init__(self) -> None:
         self.scalar: Scalar = Scalar()
-        self.inputs: List[VT] = []
-        self.outputs: List[VT] = []
+        # self.inputs: List[VT] = []
+        # self.outputs: List[VT] = []
         #Data necessary for phase tracking for phase teleportation
         self.track_phases: bool = False
         self.phase_index : Dict[VT,int] = dict() # {vertex:index tracking its phase for phase teleportation}
@@ -592,6 +592,22 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
             g.set_row(v, g.row(v)+x)
             g.set_qubit(v,g.qubit(v)+y)
         return g
+
+    def inputs(self) -> Tuple[VT]:
+        """Gets the inputs of the graph."""
+        raise NotImplementedError("Not implemented on backend " + type(self).backend)
+
+    def set_inputs(self, inputs: Tuple[VT]):
+        """Sets the inputs of the graph."""
+        raise NotImplementedError("Not implemented on backend " + type(self).backend)
+
+    def outputs(self) -> Tuple[VT]:
+        """Gets the outputs of the graph."""
+        raise NotImplementedError("Not implemented on backend " + type(self).backend)
+
+    def set_outputs(self, outputs: Tuple[VT]):
+        """Sets the outputs of the graph."""
+        raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
     def add_vertices(self, amount: int) -> List[VT]:
         """Add the given amount of vertices, and return the indices of the
