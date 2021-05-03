@@ -40,6 +40,8 @@ class GraphS(BaseGraph[int,Tuple[int,int]]):
         self._maxr: FloatInt                            = -1
 
         self._vdata: Dict[int,Any]                      = dict()
+        self._inputs: Tuple[int, ...]                   = tuple()
+        self._outputs: Tuple[int, ...]                  = tuple()
         
 
     def vindex(self): return self._vindex
@@ -51,6 +53,18 @@ class GraphS(BaseGraph[int,Tuple[int,int]]):
         if self._qindex: self._maxq = max(self._qindex.values())
         else: self._maxq = -1
         return self._maxq + 1
+
+    def inputs(self):
+        return self._inputs
+
+    def set_inputs(self, inputs):
+        self._inputs = inputs
+
+    def outputs(self):
+        return self._outputs
+
+    def set_outputs(self, outputs):
+        self._outputs = outputs
 
     def add_vertices(self, amount):
         for i in range(self._vindex, self._vindex + amount):

@@ -96,28 +96,30 @@ def tensorfy(g: 'BaseGraph[VT,ET]', preserve_scalar:bool=True) -> np.ndarray:
         if r in verts_row: verts_row[r].append(v)
         else: verts_row[r] = [v]
 
-    if not g.inputs and not g.outputs:
-    	if any(g.type(v)==VertexType.BOUNDARY for v in g.vertices()):
-    		raise ValueError("Diagram contains BOUNDARY-type vertices, but has no inputs or outputs set. Perhaps call g.auto_detect_inputs() first?")
-    
+    inputs = g.inputs()
+    outputs = g.outputs()
+    if not inputs and not outputs:
+        if any(g.type(v)==VertexType.BOUNDARY for v in g.vertices()):
+            raise ValueError("Diagram contains BOUNDARY-type vertices, but has no inputs or outputs set. Perhaps call g.auto_detect_inputs() first?")
+
     had = 1/sqrt(2)*np.array([[1,1],[1,-1]])
     id2 = np.identity(2)
     tensor = np.array(1.0,dtype='complex128')
-    qubits = len(g.inputs)
+    qubits = len(inputs)
     for i in range(qubits): tensor = np.tensordot(tensor,id2,axes=0)
-    inputs = sorted(g.inputs,key=g.qubit)
+    inputs = tuple(sorted(inputs,key=g.qubit))
     indices = {}
     for i, v in enumerate(inputs):
         indices[v] = [1 + 2*i]
-    
+
     for i,r in enumerate(sorted(verts_row.keys())):
         for v in sorted(verts_row[r]):
             neigh = list(g.neighbors(v))
             d = len(neigh)
-            if v in g.inputs:
+            if v in inputs:
                 if types[v] != 0: raise ValueError("Wrong type for input:", v, types[v])
                 continue # inputs already taken care of
-            if v in g.outputs: 
+            if v in outputs: 
                 #print("output")
                 if d != 1: raise ValueError("Weird output")
                 if types[v] != 0: raise ValueError("Wrong type for output:",v, types[v])
@@ -147,9 +149,9 @@ def tensorfy(g: 'BaseGraph[VT,ET]', preserve_scalar:bool=True) -> np.ndarray:
                 if np.abs(tensor).max() < 10**-6: # Values are becoming too small
                     tensor *= 10**4 # So scale all the numbers up
     perm = []
-    for o in sorted(g.outputs,key=g.qubit):
+    for o in sorted(outputs,key=g.qubit):
         perm.append(indices[o][0])
-    for i in range(len(g.inputs)):
+    for i in range(len(inputs)):
         perm.append(i)
 
     tensor = np.transpose(tensor,perm)
@@ -280,4 +282,4 @@ def is_unitary(g: 'BaseGraph') -> bool:
     from .generate import identity # Imported here to prevent circularity
     adj = g.adjoint()
     adj.compose(g)
-    return compare_tensors(adj.to_tensor(), identity(len(g.inputs),2).to_tensor(), False)
+    return compare_tensors(adj.to_tensor(), identity(len(g.inputs()),2).to_tensor(), False)

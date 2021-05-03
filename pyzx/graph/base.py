@@ -157,12 +157,14 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
             for k in self.vdata_keys(v):
                 g.set_vdata(i, k, self.vdata(v, k))
 
-        for i in self.inputs:
-            if adjoint: g.outputs.append(vtab[i])
-            else: g.inputs.append(vtab[i])
-        for o in self.outputs:
-            if adjoint: g.inputs.append(vtab[o])
-            else: g.outputs.append(vtab[o])
+        new_inputs = tuple(vtab[i] for i in self.inputs())
+        new_outputs = tuple(vtab[i] for i in self.outputs())
+        if not adjoint:
+            g.set_inputs(new_inputs)
+            g.set_outputs(new_outputs)
+        else:
+            g.set_inputs(new_outputs)
+            g.set_outputs(new_inputs)
         
         etab = {e:g.edge(vtab[self.edge_s(e)],vtab[self.edge_t(e)]) for e in self.edges()}
         g.add_edges(etab.values())
@@ -195,13 +197,15 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         The graphs are glued together based on the qubit index of the vertices."""
         qleft = [v for v in self.vertices() if self.row(v)==left_row]
         qright= [v for v in self.vertices() if self.row(v)==right_row]
-        if len(qleft) != len(replace.inputs):
+        r_inputs = replace.inputs()
+        r_outputs = replace.outputs()
+        if len(qleft) != len(r_inputs):
             raise TypeError("Inputs do not match glueing vertices")
-        if len(qright) != len(replace.outputs):
+        if len(qright) != len(r_outputs):
             raise TypeError("Outputs do not match glueing vertices")
-        if set(self.qubit(v) for v in qleft) != set(replace.qubit(v) for v in replace.inputs):
+        if set(self.qubit(v) for v in qleft) != set(replace.qubit(v) for v in r_inputs):
             raise TypeError("Input qubit indices do not match")
-        if set(self.qubit(v) for v in qright)!= set(replace.qubit(v) for v in replace.outputs):
+        if set(self.qubit(v) for v in qright)!= set(replace.qubit(v) for v in r_outputs):
             raise TypeError("Output qubit indices do not match")
         
         self.remove_vertices([v for v in self.vertices() if (left_row < self.row(v) and self.row(v) < right_row)])
@@ -212,13 +216,13 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
 
         vtab = {}
         for v in replace.vertices():
-            if v in replace.inputs or v in replace.outputs: continue
+            if v in r_inputs or v in r_outputs: continue
             vtab[v] = self.add_vertex(replace.type(v),replace.qubit(v),
                                 replace.row(v)+left_row,replace.phase(v))
-        for v in replace.inputs:
+        for v in r_inputs:
             vtab[v] = [i for i in qleft if self.qubit(i) == replace.qubit(v)][0]
 
-        for v in replace.outputs:
+        for v in r_outputs:
             vtab[v] = [i for i in qright if self.qubit(i) == replace.qubit(v)][0]
 
         etab = {e:self.edge(vtab[replace.edge_s(e)],vtab[replace.edge_t(e)]) for e in replace.edges()}
@@ -375,13 +379,13 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         a string with every character representing an input state for each qubit.
         The possible types of states are on of '0', '1', '+', '-' for the respective
         kets. If '/' is specified this input is skipped."""
-        if len(state) > len(self.inputs): raise TypeError("Too many input states specified")
-        inputs = self.inputs.copy()
-        self.inputs = []
+        inputs = self.inputs()
+        if len(state) > len(inputs): raise TypeError("Too many input states specified")
+        new_inputs = []
         for i,s in enumerate(state):
             v = inputs[i]
             if s == '/': 
-                self.inputs.append(v)
+                new_inputs.append(v)
                 continue
             if s in ('0', '1'):
                 self.scalar.add_power(-1)
@@ -395,19 +399,20 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
                     self.set_phase(v, Fraction(1))
             else:
                 raise TypeError("Unknown input state " + s)
+        self.set_inputs(tuple(new_inputs))
 
     def apply_effect(self, effect: str) -> None:
         """Inserts an effect into the outputs of the graph. ``effect`` should be
         a string with every character representing an output effect for each qubit.
         The possible types of effects are one of '0', '1', '+', '-' for the respective
         kets. If '/' is specified this output is skipped."""
-        if len(effect) > len(self.outputs): raise TypeError("Too many output effects specified")
-        outputs = self.outputs.copy()
-        self.outputs = []
+        outputs = self.outputs()
+        if len(effect) > len(outputs): raise TypeError("Too many output effects specified")
+        new_outputs = []
         for i,s in enumerate(effect):
             v = outputs[i]
             if s == '/': 
-                self.outputs.append(v)
+                new_outputs.append(v)
                 continue
             if s in ('0', '1'):
                 self.scalar.add_power(-1)
@@ -421,6 +426,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
                     self.set_phase(v, Fraction(1))
             else:
                 raise TypeError("Unknown output effect " + s)
+        self.set_outputs(tuple(new_outputs))
 
     def to_tensor(self, preserve_scalar:bool=True) -> np.ndarray:
         """Returns a representation of the graph as a tensor using :func:`~pyzx.tensor.tensorfy`"""
@@ -593,19 +599,19 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
             g.set_qubit(v,g.qubit(v)+y)
         return g
 
-    def inputs(self) -> Tuple[VT]:
+    def inputs(self) -> Tuple[VT, ...]:
         """Gets the inputs of the graph."""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
-    def set_inputs(self, inputs: Tuple[VT]):
+    def set_inputs(self, inputs: Tuple[VT, ...]):
         """Sets the inputs of the graph."""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
-    def outputs(self) -> Tuple[VT]:
+    def outputs(self) -> Tuple[VT, ...]:
         """Gets the outputs of the graph."""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
-    def set_outputs(self, outputs: Tuple[VT]):
+    def set_outputs(self, outputs: Tuple[VT, ...]):
         """Sets the outputs of the graph."""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
