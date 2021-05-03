@@ -233,14 +233,16 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
     def compose(self, other: 'BaseGraph') -> None:
         """Inserts a graph after this one. The amount of qubits of the graphs must match.
         Also available by the operator `graph1 + graph2`"""
-        if len(self.outputs) != len(other.inputs):
+        outputs = self.outputs()
+        inputs = other.inputs()
+        if len(outputs) != len(inputs):
             raise TypeError("Outputs of first graph must match inputs of second.")
         other = other.copy()
 
         plugs: List[Tuple[VT,VT,EdgeType.Type]] = []
-        for k in range(len(self.outputs)):
-            o = self.outputs[k]
-            i = other.inputs[k]
+        for k in range(len(outputs)):
+            o = outputs[k]
+            i = inputs[k]
             if len(self.neighbors(o)) != 1:
                 raise ValueError("Bad output vertex: " + str(o))
             if len(other.neighbors(i)) != 1:
@@ -258,26 +260,26 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
                     if other.type(v) != VertexType.BOUNDARY), default=0)
         offset = maxr - minr + 1
 
-        for v in self.outputs:
+        for v in outputs:
             self.remove_vertex(v)
 
         vtab : Dict[VT,VT] = dict()
         for v in other.vertices():
-            if not v in other.inputs:
+            if not v in inputs:
                 vtab[v] = self.add_vertex(other.type(v),
                         phase=other.phase(v),
                         qubit=other.qubit(v),
                         row=offset + other.row(v))
         for e in other.edges():
             s,t = other.edge_st(e)
-            if not s in other.inputs and not t in other.inputs:
+            if not s in inputs and not t in inputs:
                 self.add_edge(self.edge(vtab[s],vtab[t]),
                         edgetype=other.edge_type(e))
 
         for (no,ni,et) in plugs:
             self.add_edge_smart(self.edge(no,vtab[ni]), edgetype=et)
 
-        self.outputs = [vtab[v] for v in other.outputs]
+        self.set_outputs(tuple(vtab[v] for v in other.outputs()))
 
 
 
@@ -298,17 +300,18 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         for e in other.edges():
             s,t = other.edge_st(e)
             g.add_edge((vertex_map[s],vertex_map[t]),other.edge_type(e))
-        for v in other.inputs:
-            g.inputs.append(vertex_map[v])
-        for v in other.outputs:
-            g.outputs.append(vertex_map[v])
 
-        minr = min((g.row(v) for v in g.inputs), default=1)
-        for v in g.inputs:
+        inputs = g.inputs() + tuple(vertex_map[v] for v in other.inputs())
+        outputs = g.outputs() + tuple(vertex_map[v] for v in other.outputs())
+        g.set_inputs(inputs)
+        g.set_outputs(outputs)
+
+        minr = min((g.row(v) for v in inputs), default=1)
+        for v in inputs:
             g.set_row(v, minr)
 
-        maxr = max((g.row(v) for v in g.outputs), default=1)
-        for v in g.outputs:
+        maxr = max((g.row(v) for v in outputs), default=1)
+        for v in outputs:
             g.set_row(v, maxr)
 
         return g
