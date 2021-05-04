@@ -94,21 +94,23 @@ def alt_extract_circuit(
     """
     qs = g.qubits() # We are assuming that these are objects that update...
     rs = g.rows()   # ...to reflect changes to the graph, so that when...
-    ty = g.types()  # ... g.set_row/g.set_qubit is called, these things update directly to reflect that
+    # ty = g.types()  # ... g.set_row/g.set_qubit is called, these things update directly to reflect that
     phases = g.phases()
     c = Circuit(g.qubit_count())
 
     gadgets = {}
+    inputs = g.inputs()
+    outputs = g.outputs()
     for v in g.vertices():
-        if g.vertex_degree(v) == 1 and v not in g.inputs and v not in g.outputs:
+        if g.vertex_degree(v) == 1 and v not in inputs and v not in outputs:
             n = list(g.neighbors(v))[0]
             gadgets[n] = v
     
     qubit_map: Dict[VT,int] = dict()
     frontier = []
-    for i,o in enumerate(g.outputs):
+    for i,o in enumerate(outputs):
         v = list(g.neighbors(o))[0]
-        if v in g.inputs: continue
+        if v in inputs: continue
         frontier.append(v)
         qubit_map[v] = i
         
@@ -120,7 +122,7 @@ def alt_extract_circuit(
 
         for v in frontier: # First removing single qubit gates
             q = qubit_map[v]
-            b = [w for w in g.neighbors(v) if w in g.outputs][0]
+            b = [w for w in g.neighbors(v) if w in outputs][0]
             e = g.edge(v,b)
             if g.edge_type(e) == 2: # Hadamard edge
                 c.add_gate("HAD",q)
@@ -162,13 +164,13 @@ def alt_extract_circuit(
         # First make sure that frontier is connected in correct way to inputs
         neighbor_set = set()
         for v in frontier.copy():
-            d = [w for w in g.neighbors(v) if w not in g.outputs]
-            if any(w in g.inputs for w in d): #frontier vertex v is connected to an input
+            d = [w for w in g.neighbors(v) if w not in outputs]
+            if any(w in inputs for w in d): #frontier vertex v is connected to an input
                 if len(d) == 1: # Only connected to input, remove from frontier
                     frontier.remove(v)
                     continue
                 # We disconnect v from the input b via a new spider
-                b = [w for w in d if w in g.inputs][0]
+                b = [w for w in d if w in inputs][0]
                 q = qs[b]
                 r = rs[b]
                 w = g.add_vertex(1,q,r+1)
@@ -234,7 +236,7 @@ def alt_extract_circuit(
             hads.append(qubit_map[v])
             #c.add_gate("HAD",qubit_map[v])
             qubit_map[w] = qubit_map[v]
-            b = [o for o in g.neighbors(v) if o in g.outputs][0]
+            b = [o for o in g.neighbors(v) if o in outputs][0]
             g.remove_vertex(v)
             g.add_edge(g.edge(w,b))
             frontier.remove(v)
