@@ -162,12 +162,12 @@ class TestGraphCircuitMethods(unittest.TestCase):
         g = self.graph
         i1 = g.add_vertex(VertexType.BOUNDARY,0,0) #add_vertex(type,qubit_index,row_index,phase=0)
         i2 = g.add_vertex(VertexType.BOUNDARY,1,0)
-        g.inputs = [i1,i2]
+        g.set_inputs((i1,i2))
         v = g.add_vertex(VertexType.Z,0,1,Fraction(1,2))
         w = g.add_vertex(VertexType.X,1,1,Fraction(1,1))
         o1 = g.add_vertex(VertexType.BOUNDARY,0,2)
         o2 = g.add_vertex(VertexType.BOUNDARY,1,2)
-        g.outputs = [o1, o2]
+        g.set_outputs((o1, o2))
         g.add_edges([(i1,v),(i2,w),(v,w),(v,o1),(w,o2)])
         self.i1, self.i2, self.v, self.w, self.o1, self.o2 = i1, i2, v, w, o1, o2
 
@@ -192,7 +192,7 @@ class TestGraphCircuitMethods(unittest.TestCase):
     def test_compose_basic(self):
         g = self.graph.copy()
         g.compose(g)
-        self.assertEqual((len(g.inputs),len(g.outputs)),(2,2))
+        self.assertEqual((g.num_inputs(),g.num_outputs()),(2,2))
 
     @unittest.skipUnless(np, "numpy needs to be installed for this to run")
     def test_compose_unitary(self):

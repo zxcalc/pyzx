@@ -56,8 +56,8 @@ class TestTensor(unittest.TestCase):
         g = Graph()
         i = g.add_vertex(0,0,0)
         o = g.add_vertex(0,0,1)
-        g.inputs.append(i)
-        g.outputs.append(o)
+        g.set_inputs((i,))
+        g.set_outputs((o,))
         g.add_edge((i,o))
         t = tensorfy(g)
         id_array = np.array([[1,0],[0,1]])
@@ -68,8 +68,8 @@ class TestTensor(unittest.TestCase):
         g = Graph()
         i = g.add_vertex(0,0,0)
         o = g.add_vertex(0,0,2)
-        g.inputs.append(i)
-        g.outputs.append(o)
+        g.set_inputs((i,))
+        g.set_outputs((o,))
         g2 = g.copy()
         g.add_edge((i,o))
         v = g2.add_vertex(1,0,1)
@@ -84,8 +84,8 @@ class TestTensor(unittest.TestCase):
         i2 = g.add_vertex(0,1,0)
         o1 = g.add_vertex(0,0,1)
         o2 = g.add_vertex(0,1,1)
-        g.inputs = [i1, i2]
-        g.outputs = [o1, o2]
+        g.set_inputs((i1, i2))
+        g.set_outputs((o1, o2))
         g2 = g.copy()
         g.add_edges([(i1,o2),(i2,o1)])
         g2.add_edges([(i1,o1),(i2,o2)])
@@ -99,8 +99,8 @@ class TestTensor(unittest.TestCase):
         i2 = g.add_vertex(0,1,0)
         o1 = g.add_vertex(0,0,1)
         o2 = g.add_vertex(0,1,1)
-        g.inputs = [i1, i2]
-        g.outputs = [o1, o2]
+        g.set_inputs((i1, i2))
+        g.set_outputs((o1, o2))
         g.add_edges([(i1,o2),(i2,o1)])
         swap = tensorfy(g)
         c = Circuit(2)
