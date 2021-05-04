@@ -39,12 +39,16 @@ def identity(qubits: int, depth: FloatInt=1,backend:Optional[str]=None) -> BaseG
         backend: the backend to use for the output graph
     """
     g = Graph(backend)
+    inputs = []
+    outputs = []
     for i in range(qubits):
         v = g.add_vertex(VertexType.BOUNDARY,i,0)
         w = g.add_vertex(VertexType.BOUNDARY,i,depth)
-        g.inputs.append(v)
-        g.outputs.append(w)
+        inputs.append(v)
+        outputs.append(w)
         g.add_edge((v,w))
+    g.set_inputs(tuple(inputs))
+    g.set_outputs(tuple(outputs))
 
     return g
 
@@ -63,17 +67,23 @@ def spider(
         if not isinstance(typ,int):
             raise TypeError("Wrong type for spider type: " + str(typ))
     g = Graph()
+    inp = []
+    outp = []
     for i in range(inputs):
         v = g.add_vertex(VertexType.BOUNDARY,i,0)
-        g.inputs.append(v)
+        inp.append(v)
     for i in range(outputs):
         v = g.add_vertex(VertexType.BOUNDARY,i,2)
-        g.outputs.append(v)
+        outp.append(v)
     v = g.add_vertex(typ,(inputs-1)/2,1,phase)
-    for w in g.inputs:
+    for w in inp:
         g.add_edge(g.edge(v,w))
-    for w in g.outputs:
+    for w in outp:
         g.add_edge(g.edge(v,w))
+
+    g.set_inputs(tuple(inp))
+    g.set_outputs(tuple(outp))
+
     return g
 
 
@@ -186,9 +196,14 @@ def cnots(qubits: int, depth: int, backend:Optional[str]=None) -> BaseGraph:
 
     g.add_edges(es)
 
+    inputs = []
+    outputs = []
     for i in range(qubits):
-        g.inputs.append(i)
-        g.outputs.append(v-i-1)
+        inputs.append(i)
+        outputs.append(v-i-1)
+
+    g.set_inputs(tuple(inputs))
+    g.set_outputs(tuple(outputs))
 
     g.scalar.add_power(depth)
     return g
@@ -251,10 +266,12 @@ def cliffordT(
     #p_hsh = (1 - p_t) / 3.0
     #p_cnot = (1 - p_t) / 3.0
     
+    inputs = []
+    outputs = []
 
     for i in range(qubits):
         g.add_vertex(VertexType.BOUNDARY,i,r)
-        g.inputs.append(v)
+        inputs.append(v)
         v += 1
     r += 1
 
@@ -307,8 +324,11 @@ def cliffordT(
     for i in range(qubits):
         g.add_vertex(VertexType.BOUNDARY,i,r)
         g.add_edge((qs[i], v))
-        g.outputs.append(v)
+        outputs.append(v)
         v += 1
+
+    g.set_inputs(tuple(inputs))
+    g.set_outputs(tuple(outputs))
 
     return g
 
@@ -419,10 +439,16 @@ def cliffords(
     g.add_edges(es1, EdgeType.SIMPLE)
     g.add_edges(es2, EdgeType.HADAMARD)
 
+    inputs = []
+    outputs = []
+
     for i in range(qubits):
-        g.inputs.append(i)
-        #g.outputs.append(v-i-1)
-        g.outputs.append(v-qubits+i)
+        inputs.append(i)
+        outputs.append(v-qubits+i)
+
+    g.set_inputs(tuple(inputs))
+    g.set_outputs(tuple(outputs))
+
     return g
 
 
