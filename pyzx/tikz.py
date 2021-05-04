@@ -122,7 +122,7 @@ def to_tikz_sequence(graphs:List[BaseGraph], draw_scalar:bool=False, maxwidth:Fl
     idoffset = 0
     total_verts, total_edges = [],[]
     for g in graphs:
-        max_index = max(g.vertices()) + 2*len(g.inputs) + 2
+        max_index = max(g.vertices()) + 2*g.num_inputs() + 2
         verts, edges = _to_tikz(g,draw_scalar,xoffset,yoffset,idoffset)
         total_verts.extend(verts)
         total_edges.extend(edges)

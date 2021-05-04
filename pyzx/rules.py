@@ -405,6 +405,7 @@ def match_pivot_boundary(
     consumed_vertices : Set[VT] = set()
     i = 0
     m: List[MatchPivotType[VT]] = []
+    inputs = g.inputs()
     while (num == -1 or i < num) and len(candidates) > 0:
         v = candidates.pop()
         if types[v] != VertexType.Z or phases[v] not in (0,1): continue
@@ -438,7 +439,7 @@ def match_pivot_boundary(
                 w = n
                 bound = boundaries[0]
         if not good_vert or w is None: continue
-        if bound in g.inputs: mod = 0.5
+        if bound in inputs: mod = 0.5
         else: mod = -0.5
         v1 = g.add_vertex(VertexType.Z,-2,rs[w]+mod,phases[w])
         v2 = g.add_vertex(VertexType.Z,-1,rs[w]+mod,0)
@@ -667,13 +668,15 @@ def match_phase_gadgets(g: BaseGraph[VT,ET]) -> List[MatchGadgetType[VT]]:
 
     parities: Dict[FrozenSet[VT], List[VT]] = dict()
     gadgets: Dict[VT,VT] = dict()
+    inputs = g.inputs()
+    outputs = g.outputs()
     # First we find all the phase-gadgets, and the list of vertices they act on
     for v in g.vertices():
         if phases[v] != 0 and phases[v].denominator > 2 and len(list(g.neighbors(v)))==1:
             n = list(g.neighbors(v))[0]
             if phases[n] not in (0,1): continue # Not a real phase gadget (happens for scalar diagrams)
             if n in gadgets: continue # Not a real phase gadget (happens for scalar diagrams)
-            if n in g.inputs or n in g.outputs: continue # Not a real phase gadget (happens for non-unitary diagrams)
+            if n in inputs or n in outputs: continue # Not a real phase gadget (happens for non-unitary diagrams)
             gadgets[n] = v
             par = frozenset(set(g.neighbors(n)).difference({v}))
             if par in parities: parities[par].append(n)
@@ -817,6 +820,7 @@ def match_copy(
 def apply_copy(g: BaseGraph[VT,ET], matches: List[MatchCopyType[VT]]) -> RewriteOutputType[ET,VT]:
     rem = []
     types = g.types()
+    outputs = g.outputs()
     for v,w,a,alpha, neigh in matches:
         rem.append(v)
         rem.append(w)
@@ -824,7 +828,7 @@ def apply_copy(g: BaseGraph[VT,ET], matches: List[MatchCopyType[VT]]) -> Rewrite
         if a: g.scalar.add_phase(alpha)
         for n in neigh: 
             if types[n] == VertexType.BOUNDARY:
-                r = g.row(n) - 1 if n in g.outputs else g.row(n)+1
+                r = g.row(n) - 1 if n in outputs else g.row(n)+1
                 u = g.add_vertex(VertexType.Z, g.qubit(n), r, a)
                 e = g.edge(w,n)
                 et = g.edge_type(e)
@@ -840,8 +844,10 @@ def match_gadgets_phasepoly(g: BaseGraph[VT,ET]) -> List[MatchPhasePolyType[VT]]
     rule R_13 of the paper *A Finite Presentation of CNOT-Dihedral Operators*.""" 
     targets: Dict[VT,Set[FrozenSet[VT]]] = {}
     gadgets: Dict[FrozenSet[VT], Tuple[VT,VT]] = {}
+    inputs = g.inputs()
+    outputs = g.outputs()
     for v in g.vertices():
-        if v not in g.inputs and v not in g.outputs and len(list(g.neighbors(v)))==1:
+        if v not in inputs and v not in outputs and len(list(g.neighbors(v)))==1:
             if g.phase(v) != 0 and g.phase(v).denominator != 4: continue
             n = list(g.neighbors(v))[0]
             tgts = frozenset(set(g.neighbors(n)).difference({v}))

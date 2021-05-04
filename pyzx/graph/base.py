@@ -436,7 +436,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         return tensorfy(self, preserve_scalar)
     def to_matrix(self,preserve_scalar:bool=True) -> np.ndarray:
         """Returns a representation of the graph as a matrix using :func:`~pyzx.tensor.tensorfy`"""
-        return tensor_to_matrix(tensorfy(self, preserve_scalar), len(self.inputs), len(self.outputs))
+        return tensor_to_matrix(tensorfy(self, preserve_scalar), self.num_inputs(), self.num_outputs())
 
     def to_json(self, include_scalar:bool=True) -> str:
         """Returns a json representation of the graph that follows the Quantomatic .qgraph format.
@@ -486,16 +486,15 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         """Returns whether the graph is just a set of identity wires,
         i.e. a graph where all the vertices are either inputs or outputs,
         and they are connected to each other in a non-permuted manner."""
-        for e in self.edges():
-            s,t = self.edge_st(e)
-            if s in self.inputs and t in self.outputs:
-                if self.inputs.index(s) != self.outputs.index(t):
-                    return False
-            elif t in self.inputs and s in self.outputs:
-                if self.inputs.index(t) != self.outputs.index(s):
-                    return False
-            else:
-                return False
+        inputs = self.inputs()
+        outputs = self.outputs()
+
+        if (len(inputs) != len(outputs) or
+            self.num_vertices() != 2*len(inputs) or
+            self.num_edges() != len(inputs)): return False
+
+        for i in range(len(inputs)):
+            if not self.connected(inputs[i], outputs[i]): return False
         return True
 
     def vindex(self) -> VT:
@@ -517,13 +516,9 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
 
     def qubit_count(self) -> int:
         """Returns the number of inputs of the graph"""
-        return len(self.inputs)
+        return self.num_inputs()
 
-    def auto_detect_inputs(self) -> Tuple[List[VT],List[VT]]:
-        """DEPRECATED: alias for auto_detect_io"""
-        return self.auto_detect_io()
-
-    def auto_detect_io(self) -> Tuple[List[VT],List[VT]]:
+    def auto_detect_io(self):
         """Adds every vertex that is of boundary-type to the list of inputs or outputs.
         Whether it is an input or output is determined by looking whether its neighbor
         is further to the right or further to the left of the input. 
@@ -532,35 +527,36 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         or if this neighbor is on the same horizontal position.
         """
         ty = self.types()
+        inputs = []
+        outputs = []
         for v in self.vertices():
             if ty[v] != VertexType.BOUNDARY: continue
-            if v in self.inputs or v in self.outputs: continue
+            if v in inputs or v in outputs: continue
             if self.vertex_degree(v) != 1:
                 raise TypeError("Invalid ZX-diagram: Boundary-type vertex does not have unique neighbor")
             w = list(self.neighbors(v))[0]
             if self.row(w) > self.row(v):
-                self.inputs.append(v)
+                inputs.append(v)
             elif self.row(w) < self.row(v):
-                self.outputs.append(v)
+                outputs.append(v)
             else:
                 raise TypeError("Boundary-type vertex at same horizontal position as neighbor. Can't determine whether it is an input or output.")
-        self.inputs = list(filter(lambda v: v in self.vertices(), self.inputs))
-        self.outputs = list(filter(lambda v: v in self.vertices(), self.outputs))
-        self.inputs.sort(key=self.qubit)
-        self.outputs.sort(key=self.qubit)
-        return self.inputs, self.outputs
+        inputs = sorted(filter(lambda v: v in self.vertices(), inputs), key=self.qubit)
+        outputs = sorted(filter(lambda v: v in self.vertices(), outputs), key=self.qubit)
+        self.set_inputs(tuple(inputs))
+        self.set_outputs(tuple(outputs))
 
     def normalize(self) -> None:
         """Puts every node connecting to an input/output at the correct qubit index and row."""
-        if not self.inputs:
-            self.auto_detect_inputs()
+        if self.num_inputs() == 0:
+            self.auto_detect_io()
         max_r = self.depth() - 1
         if max_r <= 2: 
-            for o in self.outputs:
+            for o in self.outputs():
                 self.set_row(o,4)
             max_r = self.depth() -1
         claimed = []
-        for q,i in enumerate(sorted(self.inputs, key=self.qubit)):
+        for q,i in enumerate(sorted(self.inputs(), key=self.qubit)):
             self.set_row(i,0)
             self.set_qubit(i,q)
             #q = self.qubit(i)
@@ -577,7 +573,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
                 self.add_edge(self.edge(i,v),toggle_edge(t))
                 self.add_edge(self.edge(v,n),EdgeType.HADAMARD)
                 claimed.append(v)
-        for q, o in enumerate(sorted(self.outputs,key=self.qubit)):
+        for q, o in enumerate(sorted(self.outputs(),key=self.qubit)):
             #q = self.qubit(o)
             self.set_row(o,max_r+1)
             self.set_qubit(o,q)
@@ -610,12 +606,20 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         """Sets the inputs of the graph."""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
+    def num_inputs(self) -> int:
+        """Gets the number of inputs of the graph."""
+        raise NotImplementedError("Not implemented on backend " + type(self).backend)
+
     def outputs(self) -> Tuple[VT, ...]:
         """Gets the outputs of the graph."""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
     def set_outputs(self, outputs: Tuple[VT, ...]):
         """Sets the outputs of the graph."""
+        raise NotImplementedError("Not implemented on backend " + type(self).backend)
+
+    def num_outputs(self) -> int:
+        """Gets the number of outputs of the graph."""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
     def add_vertices(self, amount: int) -> List[VT]:

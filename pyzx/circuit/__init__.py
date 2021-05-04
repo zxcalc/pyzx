@@ -90,7 +90,7 @@ class Circuit(object):
             if up_to_swaps:
                 return True
             else:
-                return all(g.connected(v,w) for v,w in zip(g.inputs,g.outputs))
+                return all(g.connected(v,w) for v,w in zip(g.inputs(),g.outputs()))
         else:
             return False
 

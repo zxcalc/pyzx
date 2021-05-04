@@ -57,11 +57,17 @@ class GraphS(BaseGraph[int,Tuple[int,int]]):
     def inputs(self):
         return self._inputs
 
+    def num_inputs(self):
+        return len(self._inputs)
+
     def set_inputs(self, inputs):
         self._inputs = inputs
 
     def outputs(self):
         return self._outputs
+
+    def num_outputs(self):
+        return len(self._outputs)
 
     def set_outputs(self, outputs):
         self._outputs = outputs
