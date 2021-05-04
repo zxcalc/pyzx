@@ -59,11 +59,11 @@ from .graph.base import BaseGraph, VT, ET
 def gflow(g: BaseGraph[VT,ET]) -> Optional[Tuple[Dict[VT,int], Dict[VT,Set[VT]], int]]:
     l:     Dict[VT,int]      = {}
     gflow: Dict[VT, Set[VT]] = {}
-    for v in g.outputs:
+    for v in g.outputs():
         l[v] = 0
 
-    inputs = set(g.inputs)
-    processed = set(g.outputs)
+    inputs = set(g.inputs())
+    processed = set(g.outputs())
     vertices = set(g.vertices())
     k = 1
     while True:
