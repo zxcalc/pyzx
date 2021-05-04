@@ -94,7 +94,7 @@ class SumGraph(object):
         https://arxiv.org/pdf/1808.00128.pdf"""
         terms = self.graphs
         if len(terms) == 0: return 0.0
-        q = len(terms[0].outputs)
+        q = terms[0].num_outputs()
         # We want to compose g with a random equatorial Clifford effect.
         # In the ZX-calculus this consists of random k*pi/2 phases
         # with connections being a Erdos-Renyi random graph with probability 1/2.
@@ -106,11 +106,11 @@ class SumGraph(object):
         val: complex = 0
         for g in terms:
             g = g.copy()
-            vs = g.outputs.copy()
+            vs = g.outputs()
             for i, v in enumerate(vs):
                 g.set_type(v, VertexType.Z)
                 g.set_phase(v, phases[i])
-            g.outputs = []
+            g.set_outputs(())
             g.add_edges([(vs[i1],vs[i2]) for (i1,i2) in connections],EdgeType.HADAMARD)
             g.scalar.add_power(len(connections))
             # Now that we have composed g with a right sort of effect, 
@@ -139,8 +139,9 @@ class SumGraph(object):
         terms = []
         for g in self.graphs:
             g = g.copy()
+            outputs = g.outputs()
             for qubit, effect in qubits.items():
-                v = g.outputs[qubit]
+                v = outputs[qubit]
                 g.set_type(v,VertexType.Z)
                 g.scalar.add_power(-1)
                 if effect in ('0', '1'): #Push a Hadamard gate out of the spider
@@ -149,7 +150,7 @@ class SumGraph(object):
                     g.set_edge_type(e,toggle_edge(et))
                 if effect in ('1', '-'):
                     g.set_phase(v,1)
-            g.outputs = [v for i,v in enumerate(g.outputs) if i not in qubits]
+            g.set_outputs(tuple(v for i,v in enumerate(outputs) if i not in qubits))
             terms.append(g)
         return SumGraph(terms)
 
@@ -321,6 +322,8 @@ def replace_magic_states(g: BaseGraph[VT,ET], pick_random:Any=False) -> SumGraph
     internal = []
     gadgets = []
     ranking = dict()
+    inputs = g.inputs()
+    outputs = g.outputs()
     for v in g.vertices():
         if not phases[v] or phases[v].denominator != 4: continue
 
@@ -332,7 +335,7 @@ def replace_magic_states(g: BaseGraph[VT,ET], pick_random:Any=False) -> SumGraph
                 gadgets.append(v)
                 deg = g.vertex_degree(w)-1
 
-        if any(w in g.inputs or w in g.outputs for w in g.neighbors(v)):
+        if any(w in inputs or w in outputs for w in g.neighbors(v)):
             boundary.append(v)
         else:
             internal.append(v)
