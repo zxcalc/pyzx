@@ -38,31 +38,33 @@ def sqasm(s: str, simplify=True) -> BaseGraph:
     p = QASMParser()
     c = p.parse(s, strict=False)
     g = c.to_graph(zh=True)
+    inputs = list(g.inputs())
+    outputs = list(g.outputs())
     for r,sp in p.registers.items():
         if len(r) > 0 and r[0].isupper():
             for q in range(sp[0],sp[0]+sp[1]):
                 if r[0] != 'Z':
-                    v = g.inputs[q]
+                    v = inputs[q]
                     v1 = list(g.neighbors(v))
                     if len(v1) > 0 and g.type(v1[0]) != VertexType.BOUNDARY:
                         g.set_type(v, g.type(v1[0]))
                     else:
                         g.set_type(v, VertexType.Z)
-                    g.inputs[q] = None
+                    inputs[q] = None
                     g.scalar.add_power(-1)
 
                 if r[0] != 'A':
-                    v = g.outputs[q]
+                    v = outputs[q]
                     v1 = list(g.neighbors(v))
                     if len(v1) > 0 and g.type(v1[0]) != VertexType.BOUNDARY:
                         g.set_type(v, g.type(v1[0]))
                     else:
                         g.set_type(v, VertexType.Z)
-                    g.outputs[q] = None
+                    outputs[q] = None
                     g.scalar.add_power(-1)
         
-    g.inputs = [x for x in g.inputs if not x is None]
-    g.outputs = [x for x in g.outputs if not x is None]
+    g.set_inputs(tuple(x for x in inputs if not x is None))
+    g.set_outputs(tuple(x for x in outputs if not x is None))
     
     while simplify:
         i = simp(g, '', match_spider_parallel, spider_nocheck, quiet=True)

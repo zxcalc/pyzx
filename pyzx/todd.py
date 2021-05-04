@@ -445,8 +445,10 @@ def todd_on_graph(g: BaseGraph[VT,ET]) -> None:
     using ancilla qubits."""
     gadgets = {}
     t_nodes = []
+    inputs = g.inputs()
+    outputs = g.outputs()
     for v in g.vertices():
-        if v not in g.inputs and v not in g.outputs and len(list(g.neighbors(v)))==1:
+        if v not in inputs and v not in outputs and len(list(g.neighbors(v)))==1:
             if g.phase(v) != 0 and g.phase(v).denominator != 4: continue
             n = list(g.neighbors(v))[0]
             tgts = frozenset(set(g.neighbors(n)).difference({v}))

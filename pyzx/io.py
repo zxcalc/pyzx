@@ -56,6 +56,9 @@ def json_to_graph(js: str) -> BaseGraph:
 
     names: Dict[str, Any] = {} # TODO: Any = VT
     hadamards: Dict[str, List[Any]] = {}
+
+    inputs = []
+    outputs = []
     for name,attr in j.get('node_vertices',{}).items():
         if ('data' in attr and 'type' in attr['data'] and attr['data']['type'] == "hadamard" 
             and 'is_edge' in attr['data'] and attr['data']['is_edge'] == 'true'):
@@ -93,10 +96,13 @@ def json_to_graph(js: str) -> BaseGraph:
         v = g.add_vertex(VertexType.BOUNDARY,q,r)
         g.set_vdata(v,'name',name)
         names[name] = v
-        if "input" in ann and ann["input"]: g.inputs.append(v)
-        if "output" in ann and ann["output"]: g.outputs.append(v)
+        if "input" in ann and ann["input"]: inputs.append(v)
+        if "output" in ann and ann["output"]: outputs.append(v)
         #g.set_vdata(v, 'x', c[0])
         #g.set_vdata(v, 'y', c[1])
+
+    g.set_inputs(tuple(inputs))
+    g.set_outputs(tuple(outputs))
 
     edges: Dict[Any, List[int]] = {} # TODO: Any = ET
     for edge in j.get('undir_edges',{}).values():
@@ -139,6 +145,10 @@ def graph_to_json(g: BaseGraph[VT,ET]) -> str:
     names: Dict[VT, str] = {}
     freenamesv = ["v"+str(i) for i in range(g.num_vertices()+g.num_edges())]
     freenamesb = ["b"+str(i) for i in range(g.num_vertices())]
+
+    inputs = g.inputs()
+    outputs = g.outputs()
+
     for v in g.vertices():
         t = g.type(v)
         coord = [g.row(v),-g.qubit(v)]
@@ -156,7 +166,7 @@ def graph_to_json(g: BaseGraph[VT,ET]) -> str:
         names[v] = name
         if t == VertexType.BOUNDARY:
             wire_vs[name] = {"annotation":{"boundary":True,"coord":coord,
-                                           "input":(v in g.inputs), "output":(v in g.outputs)}}
+                                           "input":(v in inputs), "output":(v in outputs)}}
         else:
             node_vs[name] = {"annotation": {"coord":coord},"data":{}}
             if t==VertexType.Z:

@@ -28,8 +28,10 @@ def graph_to_circuit(g:BaseGraph[VT,ET], split_phases:bool=True) -> Circuit:
     ty = g.types()
     phases = g.phases()
     rows: Dict[FloatInt,List[VT]] = {}
+
+    inputs = g.inputs()
     for v in g.vertices():
-        if v in g.inputs: continue
+        if v in inputs: continue
         r = g.row(v)
         if r in rows: rows[r].append(v)
         else: rows[r] = [v]
@@ -89,9 +91,11 @@ def circuit_to_graph(c: Circuit, compress_rows:bool=True, backend:Optional[str]=
     g = Graph(backend)
     qs = {}
     rs = {}
+    inputs = []
+    outputs = []
     for i in range(c.qubits):
         v = g.add_vertex(VertexType.BOUNDARY,i,0)
-        g.inputs.append(v)
+        inputs.append(v)
         qs[i] = v
         rs[i] = 1
 
@@ -132,7 +136,10 @@ def circuit_to_graph(c: Circuit, compress_rows:bool=True, backend:Optional[str]=
     r = max(rs.values())
     for l, o in labels.items():
         v = g.add_vertex(VertexType.BOUNDARY,o,r)
-        g.outputs.append(v)
+        outputs.append(v)
         g.add_edge((qs[l],v))
+
+    g.set_inputs(tuple(inputs))
+    g.set_outputs(tuple(outputs))
 
     return g

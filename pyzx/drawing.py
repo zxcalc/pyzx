@@ -73,11 +73,13 @@ def pack_circuit_nf(g: BaseGraph[VT,ET], nf:Literal['grg','gslc'] ='grg') -> Non
     x_index = 0
     ty = g.types()
 
+    inputs = g.inputs()
+    outputs = g.outputs()
     if nf == 'grg':
         for v in g.vertices():
-            if v in g.inputs:
+            if v in inputs:
                 g.set_row(v, 0)
-            elif v in g.outputs:
+            elif v in outputs:
                 g.set_row(v, 4)
             elif ty[v] == VertexType.X:
                 g.set_row(v, 2)
@@ -85,27 +87,27 @@ def pack_circuit_nf(g: BaseGraph[VT,ET], nf:Literal['grg','gslc'] ='grg') -> Non
                 x_index += 1
             elif ty[v] == VertexType.Z:
                 for w in g.neighbors(v):
-                    if w in g.inputs:
+                    if w in inputs:
                         g.set_row(v,1)
                         g.set_qubit(v, g.qubit(w))
                         break
-                    elif w in g.outputs:
+                    elif w in outputs:
                         g.set_row(v,3)
                         g.set_qubit(v, g.qubit(w))
                         break
     elif nf == 'gslc':
         for v in g.vertices():
-            if v in g.inputs:
+            if v in inputs:
                 g.set_row(v,0)
-            elif v in g.outputs:
+            elif v in outputs:
                 g.set_row(v, 4)
             elif ty[v] == VertexType.Z:
                 for w in g.neighbors(v):
-                    if w in g.inputs:
+                    if w in inputs:
                         g.set_row(v,1)
                         #g.set_vdata(v, 'q', g.get_vdata(w, 'q'))
                         break
-                    elif w in g.outputs:
+                    elif w in outputs:
                         g.set_row(v,3)
                         #g.set_vdata(v, 'q', g.get_vdata(w, 'q'))
                         break
