@@ -444,7 +444,6 @@ class Circuit(object):
             else:
                 other += 1
         d = dict()
-        d["name"] = self.name
         d["qubits"] = self.qubits
         d["gates"] = total
         d["tcount"] = tcount

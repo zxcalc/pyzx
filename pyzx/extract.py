@@ -29,7 +29,7 @@ from .circuit.gates import Gate, ParityPhase, CNOT, HAD, ZPhase, XPhase, CZ, CX,
 
 from .graph.base import BaseGraph, VT, ET
 
-from typing import List, Optional, Tuple, Dict, Set, Union
+from typing import List, Optional, Tuple, Dict, Set, Union, Iterator
 
 
 def bi_adj(g: BaseGraph[VT,ET], vs:List[VT], ws:List[VT]) -> Mat2:
@@ -180,7 +180,7 @@ def find_minimal_sums(m: Mat2, reversed_search=False) -> Optional[Tuple[int, ...
     while True:
         combs2 = {}
         for index, l in combs.items():
-            rr = range(max(index)+1, r)
+            rr: Union[range, Iterator[int]] = range(max(index)+1, r)
             if reversed_search:
                 rr = reversed(rr)
             for k in rr:
@@ -202,7 +202,7 @@ def find_minimal_sums(m: Mat2, reversed_search=False) -> Optional[Tuple[int, ...
 def greedy_reduction(m: Mat2) -> Optional[List[Tuple[int, int]]]:
     """Returns a list of tuples (r1,r2) that specify which row should be added to which other row
     in order to reduce one row of m to only contain a single 1. 
-    Used in :func:`extract_circuit`"""
+    Used in :func:`extract_circuit` and :func:`lookahead_extract_base`"""
     indicest = find_minimal_sums(m)
     if indicest is None: return indicest
     indices = list(indicest)
@@ -231,6 +231,13 @@ def greedy_reduction(m: Mat2) -> Optional[List[Tuple[int, int]]]:
 
 
 def flat_indices(m: Mat2, indices: list[int]) -> Tuple[List[Tuple[int, int]], int]:
+    """Given a matrix and a list of row indices that have to be added together,
+    returns a list of row operations and the index of the row that would end up with
+    the sum of the input rows.
+
+    When transformed into CNOTs, the the depth of the circuit is log_2(len(indices)).
+
+    If the list of indices is empty, returns ([], -1)"""
     if len(indices) == 0:
         return [], -1
     rows = {i: m.data[i] for i in indices}
@@ -265,10 +272,13 @@ def flat_indices(m: Mat2, indices: list[int]) -> Tuple[List[Tuple[int, int]], in
     return result, indices[0]
 
 
-def greedy_reduction2(m: Mat2) -> Optional[List[Tuple[int, int]]]:
+def greedy_reduction_flat(m: Mat2) -> Optional[List[Tuple[int, int]]]:
     """Returns a list of tuples (r1,r2) that specify which row should be added to which other row
     in order to reduce one row of m to only contain a single 1.
-    Used in :func:`lookahead_extract`"""
+    In contrast to :func:`greedy_reduction`, it preforms the brute-force search starting with the
+    highest indices, and places the row operations in such a way that the resulting depth is log_2
+    of the number of rows that have to be added together.
+    Used in :func:`lookahead_extract_base`"""
     indicest = find_minimal_sums(m, True)
     if indicest is None: return indicest
     return flat_indices(m, list(indicest))[0]
@@ -276,7 +286,7 @@ def greedy_reduction2(m: Mat2) -> Optional[List[Tuple[int, int]]]:
 
 def find_2_minimal_sums(m: Mat2) -> Optional[Tuple[Tuple[int, ...], Tuple[int, ...]]]:
     """Returns two lists of rows in m that can be added together to reduce two of the rows so that
-    they only contains a single 1. Used in :func:`greedy_reduction3`"""
+    they only contains a single 1. Used in :func:`greedy_two_reduction`"""
     r = m.rows()
     d = m.data
     combs:  Dict[Tuple[int, ...], List[Z2]] = {(i,): d[i] for i in range(r)}
@@ -302,9 +312,9 @@ def find_2_minimal_sums(m: Mat2) -> Optional[Tuple[Tuple[int, ...], Tuple[int, .
         combs = combs2
 
 
-def greedy_reduction3(m: Mat2) -> Optional[List[Tuple[int, int]]]:
+def greedy_two_reduction(m: Mat2) -> Optional[List[Tuple[int, int]]]:
     """Returns a list of tuples (r1,r2) that specify which row should be added to which other row
-    in order to reduce two rows of m to only contain a single 1.
+    in order to reduce two rows (instead of one as the other greedy reductions) of m to only contain a single 1.
     Used in :func:`lookahead_extract`"""
     indicest = find_2_minimal_sums(m)
     if indicest is None:
@@ -480,6 +490,8 @@ def apply_cnots(g: BaseGraph[VT, ET], c: Circuit, frontier: List[VT], qubit_map:
 
 def clean_frontier(g: BaseGraph[VT, ET], c: Circuit, frontier: List[VT],
                    qubit_map: Dict[VT, int], optimize_czs: bool = True) -> int:
+    """Remove single qubit gates from the frontier and any CZs between the vertices in the frontier
+    Returns the number of CZs saved if `optimize_czs` is True; otherwise returns 0"""
     phases = g.phases()
     czs_saved = 0
     for v in frontier:  # First removing single qubit gates
@@ -525,6 +537,11 @@ def clean_frontier(g: BaseGraph[VT, ET], c: Circuit, frontier: List[VT],
 
 
 def neighbors_of_frontier(g: BaseGraph[VT, ET], frontier: List[VT]) -> Set[VT]:
+    """Returns the set of neighbors of the frontier. When collecting the vertices, it also checks if the vertices
+    of the frontier are connected correctly to the inputs.
+    If a frontier vertex is only connected to an input, it is removed from the frontier.
+    If a frontier vertex is connected to an input and some other vertices, it is disconnected from the input via a new
+    spider."""
     qs = g.qubits()
     rs = g.rows()
     neighbor_set = set()
@@ -552,6 +569,7 @@ def neighbors_of_frontier(g: BaseGraph[VT, ET], frontier: List[VT]) -> Set[VT]:
 
 def remove_gadget(g: BaseGraph[VT, ET], frontier: List[VT], qubit_map: Dict[VT, int],
                   neighbor_set: Set[VT], gadgets: Dict[VT, VT]) -> bool:
+    """Removes a gadget that is attached to a frontier vertex. Returns True if such gadget was found, False otherwise"""
     removed_gadget = False
     for w in neighbor_set:
         if w not in gadgets: continue
@@ -913,8 +931,8 @@ class LookaheadNode:
                 self.finished_children.append(i)
         return self.finished_children is not None
 
-    def __collect_finished_cnot(self, best_c: Circuit, best_d: int,
-                                c: Circuit, up_to_perm: bool) -> (Optional[Circuit], int):
+    def __collect_finished_cnot(self, best_c: Optional[Circuit], best_d: int,
+                                c: Circuit, up_to_perm: bool) -> Tuple[Optional[Circuit], int]:
         """
         Find the best fully extracted circuits in the CNOT optimisation case
         """
@@ -935,7 +953,7 @@ class LookaheadNode:
         return best_c, best_d
 
     def __collect_finished_depth(self, best_c: Optional[Circuit], best_d: int,
-                                 up_to_perm: bool) -> (Optional[Circuit], int):
+                                 up_to_perm: bool) -> Tuple[Optional[Circuit], int]:
         """
         Find the best fully extracted circuits in the depth optimisation case
         """
@@ -953,7 +971,7 @@ class LookaheadNode:
                 best_c, best_d = child.__collect_finished_depth(best_c, best_d, up_to_perm)
         return best_c, best_d
 
-    def get_finished(self, best_c: Optional[Circuit], best_d: int, up_to_perm: bool) -> (Optional[Circuit], int):
+    def get_finished(self, best_c: Optional[Circuit], best_d: int, up_to_perm: bool) -> Tuple[Optional[Circuit], int]:
         """
         Find the best fully extracted circuits in the CNOT optimisation case
 
@@ -1019,11 +1037,11 @@ class LookaheadNode:
             neighbors = list(neighbor_set)
             m = bi_adj(self.g, neighbors, self.frontier)
 
-            cnots = []
+            cnots: List[CNOT] = []
             if all(sum(row) != 1 for row in m.data):  # No easy vertex
 
                 qubits = self.c.qubits
-                branches = []
+                branches: List[List[CNOT]] = []
                 for alg in algorithms:
                     # Try different algorithms to get distinct sets of CNOTs that can be used
                     cnots_opt = self.apply_operation(alg, m, neighbors)
@@ -1077,13 +1095,13 @@ class LookaheadNode:
             cnots = [CNOT(target, control) for control, target in greedy_operations]
 
         elif operation_id == 2:
-            greedy_operations = greedy_reduction2(m)
+            greedy_operations = greedy_reduction_flat(m)
             if greedy_operations is None:
                 return None
             cnots = [CNOT(target, control) for control, target in greedy_operations]
 
         elif operation_id == 3:
-            greedy_operations = greedy_reduction3(m)
+            greedy_operations = greedy_two_reduction(m)
             if greedy_operations is None:
                 return None
             cnots = [CNOT(target, control) for control, target in greedy_operations]
@@ -1101,8 +1119,8 @@ class RootPicker:
     """
     def __init__(self, k: int):
         self.k: int = k
-        self.nodes: List[Optional[(LookaheadNode, Optional[Circuit], int)]] = []
-        self.best: List[(LookaheadNode, Fraction, int)] = []
+        self.nodes: List[Optional[Tuple[LookaheadNode, Optional[Circuit], int]]] = []
+        self.best: List[Tuple[LookaheadNode, Fraction, int]] = []
 
     def add_possible_root(self, n: LookaheadNode, c: Optional[Circuit], d: int):
         """
@@ -1140,9 +1158,11 @@ class RootPicker:
         if len(self.best) > self.k:
             self.best.pop()
 
-    def get_next_roots(self) -> List[LookaheadNode]:
+    def get_next_roots(self) -> List[Optional[LookaheadNode]]:
         """
         Pick the roots that correspond to the best k leaves added
+
+        The type needs Optional to match the type in `lookahead_extract_base`
         """
         if len(self.nodes) == 0:
             return []
@@ -1209,6 +1229,7 @@ def lookahead_extract_base(
     best_d = hard_limit
 
     if compare_basic:
+        # Perform the basic extractions and pick the best result
         c1 = extract_circuit(g.clone(), optimize_cnots=1, up_to_perm=up_to_perm)
         d1 = get_optimize_value(c1, optimize_for_depth, True)
         if best_d > d1 or best_d == -1:
@@ -1243,6 +1264,8 @@ def lookahead_extract_base(
         rp = RootPicker(nodes_kept)
         for i in range(len(roots)):
             root = roots[i]
+            if root is None:
+                continue  # Never happens, but creates problems with type checker
             if root.hard_limit > hard_limit:
                 root.update_hard_limit(hard_limit)
             if root.can_expand():
