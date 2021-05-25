@@ -1164,24 +1164,27 @@ class RootPicker:
         """
         Pick the roots that correspond to the best k leaves added
 
-        The type needs Optional to match the type in `lookahead_extract_base`
+        The type needs Optional to match the type in `lookahead_extract_base`, which allows nodes to be removed from
+        the list early.
         """
         if len(self.nodes) == 0:
             return []
         s = set()
         for p in self.best:
             s.add(p[2])
-        nodes = []
+        nodes: List[Optional[LookaheadNode]] = []
         for i in s:
-            if self.nodes[i] is None:
+            entry = self.nodes[i]
+            if entry is None:
                 # Does not happen, needed for type checking
                 raise AssertionError("RootPicker removed a root that was still needed")
-            n = self.nodes[i][0]
-            if self.nodes[i][1] is not None:
-                n.c = self.nodes[i][1] + n.c
-                if n.d != -1:
-                    n.d = self.nodes[i][2] + n.d
-            nodes.append(n)
+            else:
+                n = entry[0]
+                if entry[1] is not None:
+                    n.c = entry[1] + n.c
+                    if n.d != -1:
+                        n.d = entry[2] + n.d
+                nodes.append(n)
         return nodes
 
 
