@@ -180,9 +180,8 @@ def find_minimal_sums(m: Mat2, reversed_search=False) -> Optional[Tuple[int, ...
     while True:
         combs2 = {}
         for index, l in combs.items():
-            rr: Union[range, Iterator[int]] = range(max(index)+1, r)
-            if reversed_search:
-                rr = reversed(rr)
+            max_index: int = max(index)
+            rr: range = range(max_index + 1, r) if not reversed_search else range(r - 1, max_index, -1)
             for k in rr:
                 # Unrolled xor_rows(combs[index],d[k])
                 row: List[Z2] = [0 if v1 == v2 else 1 for v1, v2 in zip(combs[index], d[k])]
@@ -230,7 +229,7 @@ def greedy_reduction(m: Mat2) -> Optional[List[Tuple[int, int]]]:
     return result
 
 
-def flat_indices(m: Mat2, indices: list[int]) -> Tuple[List[Tuple[int, int]], int]:
+def flat_indices(m: Mat2, indices: List[int]) -> Tuple[List[Tuple[int, int]], int]:
     """Given a matrix and a list of row indices that have to be added together,
     returns a list of row operations and the index of the row that would end up with
     the sum of the input rows.
@@ -947,6 +946,9 @@ class LookaheadNode:
                 best_c = c
                 best_d = d
         else:
+            if self.finished_children is None:
+                raise AssertionError("LookaheadNode.__collect_finished_cnot was called before " +
+                                     "LookaheadNode.__has_finished")
             for i in self.finished_children:
                 best_c, best_d = self.children[i].__collect_finished_cnot(best_c, best_d, c, up_to_perm)
             self.finished_children = None
@@ -1013,7 +1015,7 @@ class LookaheadNode:
     def apply_cnots(self, cnots: List[CNOT], m: Mat2, neighbors: List[VT]):
         self.ext_count += apply_cnots(self.g, self.c, self.frontier, self.qubit_map, cnots, m, neighbors)
 
-    def expand(self, limit: int, max_depth: int, algorithms: list[int]):
+    def expand(self, limit: int, max_depth: int, algorithms: List[int]):
         if max_depth == 0:
             return
         if self.total_d >= self.hard_limit > -1:
@@ -1073,11 +1075,11 @@ class LookaheadNode:
         for child in self.children:
             child.expand(limit, max_depth - 1, algorithms)
 
-    def apply_operation(self, operation_id: int, m: Mat2, neighbors: list[VT]) -> Optional[List[CNOT]]:
+    def apply_operation(self, operation_id: int, m: Mat2, neighbors: List[VT]) -> Optional[List[CNOT]]:
         """
         Apply one of the possible operations to the current node to obtain a list of CNOTs
         """
-        cnots: list[CNOT]
+        cnots: List[CNOT]
 
         if operation_id == 0:
             perm = column_optimal_swap(m)
@@ -1171,6 +1173,9 @@ class RootPicker:
             s.add(p[2])
         nodes = []
         for i in s:
+            if self.nodes[i] is None:
+                # Does not happen, needed for type checking
+                raise AssertionError("RootPicker removed a root that was still needed")
             n = self.nodes[i][0]
             if self.nodes[i][1] is not None:
                 n.c = self.nodes[i][1] + n.c
