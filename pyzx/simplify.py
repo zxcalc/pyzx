@@ -50,6 +50,7 @@ class Stats(object):
         s += "%s TOTAL" % str(nt).rjust(6)
         return s
 
+
 def simp(
     g: BaseGraph[VT,ET],
     name: str,
