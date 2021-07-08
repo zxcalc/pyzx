@@ -38,7 +38,7 @@ def wgc(c, two_qb_weight=10):
     return two_qb_weight * n2 + single_qubit_count
 
 # Weighted gate count of a ZX-diagram
-def g_wgc(g, two_qb_weight=10, g_simplify=True, c_simplify=True):
+def g_wgc(g, two_qb_weight=10, g_simplify=False, c_simplify=True):
     """A measure of the complexity of the circuit obtained from a a ZX-diagram
     upon extraction using the above measure of circuit complexity"""
 
@@ -46,7 +46,7 @@ def g_wgc(g, two_qb_weight=10, g_simplify=True, c_simplify=True):
     if g_simplify:
         full_reduce(g_tmp)
 
-    c = extract_circuit(g_tmp.copy()).to_basic_gates()
+    c = extract_circuit(g_tmp).to_basic_gates()
 
     if c_simplify:
         c = basic_optimization(c)

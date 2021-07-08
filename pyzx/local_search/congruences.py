@@ -25,6 +25,8 @@ import numpy as np
 import itertools
 from fractions import Fraction
 
+from ..rules import apply_rule, lcomp
+
 import sys
 if __name__ == '__main__':
     sys.path.append('..')
@@ -102,7 +104,7 @@ def lc_cong(g, v):
     # FIXME: not gracefully handling if on boundary. If on boundary, sohuld just add on same qubit rather than add a gadget
     ns = [n for n in g.neighbors(v) if g.type(n) == VertexType.Z]
 
-    # swap edges between neighbors
+    # complement edges between neighbors
     # TODO: use add_edge_table
     for n1, n2 in itertools.combinations(ns, 2):
         toggle_edge(g, n1, n2)
@@ -122,6 +124,24 @@ def lc_cong(g, v):
     g.add_edge(g.edge(v, new_v), edgetype=EdgeType.HADAMARD)
 
 
+def lc_cong2(g, v):
+    p = g.phase(v)
+    if p != Fraction(1,2) and p != Fraction(-1,2):
+        v1 = g.add_vertex(
+                ty=VertexType.Z,
+                phase=g.phase(v) + Fraction(1, 2),
+                qubit=g.qubit(v)-2,
+                row=g.row(v))
+        v2 = g.add_vertex(
+                ty=VertexType.Z,
+                qubit=g.qubit(v)-1,
+                row=g.row(v))
+        g.add_edge(g.edge(v1, v2), edgetype=EdgeType.HADAMARD)
+        g.add_edge(g.edge(v2, v), edgetype=EdgeType.HADAMARD)
+        g.set_phase(v, Fraction(-1,2))
+    # apply_rule(g, lcomp, [[v, list(g.neighbors(v))]])
+
+
 
 def apply_rand_lc(g, weight_func=uniform_weights):
     """Applies local complementation to randomly selected spider"""
@@ -129,7 +149,7 @@ def apply_rand_lc(g, weight_func=uniform_weights):
     lc_vs = [v for v in g.vertices() if is_lc_vertex(g, v)]
     weights = weight_func(g, lc_vs)
     lc_v = np.random.choice(lc_vs, 1, p=weights)[0]
-    lc_cong(g, lc_v)
+    lc_cong2(g, lc_v)
 
 
 
