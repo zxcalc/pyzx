@@ -15,7 +15,7 @@
 # limitations under the License.
 
 import os
-from typing import List, Union, Optional, Iterator
+from typing import List, Union, Optional, Iterator, Dict
 
 import numpy as np
 
@@ -443,7 +443,7 @@ class Circuit(object):
                 if isinstance(g, CNOT): cnot += 1
             else:
                 other += 1
-        d = dict()
+        d : Dict[str, Union[str,int]] = dict()
         d["name"] = self.name
         d["qubits"] = self.qubits
         d["gates"] = total
