@@ -94,7 +94,7 @@ class Scalar(object):
         for node in self.phasenodes: # Node should be a Fraction
             val *= 1+cexp(node)
         val *= math.sqrt(2)**self.power2
-        return complex(val*self.floatfactor)
+        return val*self.floatfactor
 
     def to_latex(self) -> str:
         """Converts the Scalar into a string that is compatible with LaTeX."""

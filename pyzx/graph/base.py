@@ -176,6 +176,14 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         """Returns a new graph equal to the adjoint of this graph."""
         return self.copy(adjoint=True)
 
+    def clone(self) -> 'BaseGraph':
+        """
+        This method should return an identical copy of the graph, without any relabeling
+
+        Used in lookahead extraction.
+        """
+        return self.copy()
+
     def map_qubits(self, qubit_map:Mapping[int,Tuple[float,float]]) -> None:
         for v in self.vertices():
             q = self.qubit(v)

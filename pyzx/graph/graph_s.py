@@ -43,6 +43,28 @@ class GraphS(BaseGraph[int,Tuple[int,int]]):
         self._inputs: Tuple[int, ...]                   = tuple()
         self._outputs: Tuple[int, ...]                  = tuple()
         
+    def clone(self):
+        cpy = GraphS()
+        for v, d in self.graph.items():
+            cpy.graph[v] = d.copy()
+        cpy._vindex = self._vindex
+        cpy.nedges = self.nedges
+        cpy.ty = self.ty.copy()
+        cpy._phase = self._phase.copy()
+        cpy._qindex = self._qindex.copy()
+        cpy._maxq = self._maxq
+        cpy._rindex = self._rindex.copy()
+        cpy._maxr = self._maxr
+        cpy._vdata = self._vdata.copy()
+        cpy.scalar = self.scalar.copy()
+        cpy.inputs = self.inputs.copy()
+        cpy.outputs = self.outputs.copy()
+        cpy.track_phases = self.track_phases
+        cpy.phase_index = self.phase_index.copy()
+        cpy.phase_master = self.phase_master
+        cpy.phase_mult = self.phase_mult.copy()
+        cpy.max_phase_index = self.max_phase_index
+        return cpy
 
     def vindex(self): return self._vindex
     def depth(self): 

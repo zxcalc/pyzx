@@ -60,7 +60,8 @@ def anneal(g, iters=1000,
 
         g1 = g.copy()
 
-        cong_method = np.random.choice(["LC", "PIVOT"], 1, p=cong_ps)[0]
+        # cong_method = np.random.choice(["LC", "PIVOT"], 1, p=cong_ps)[0]
+        cong_method = "PIVOT"
 
         if cong_method == "PIVOT":
             apply_rand_pivot(g1, weight_func=pivot_select)
