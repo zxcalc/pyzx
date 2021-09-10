@@ -204,7 +204,7 @@ class ZXEditorWidget(widgets.DOMWidget):
 			self.scalar_view.value = "Scalar: " + s
 		if not self.show_matrix: return
 		try:
-			self.graph.auto_detect_inputs()
+			self.graph.auto_detect_io()
 		except TypeError:
 			self.matrix_view.value = "Couldn't parse inputs or outputs"
 			return
