@@ -71,6 +71,12 @@ def phase_to_s(a: FractionLike, t:VertexType.Type=VertexType.Z):
     # unicode 0x03c0 = pi
     return simstr + ns + '\u03c0' + ds
 
+def phase_is_clifford(phase: FractionLike):
+    return phase in [Fraction(i, 2) for i in range(4)]
+
+def phase_is_pauli(phase: FractionLike):
+    return phase in (0, 1)
+
 tikz_classes = {
     'boundary': 'none',
     'Z': 'Z dot',

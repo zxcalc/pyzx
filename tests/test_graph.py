@@ -24,7 +24,8 @@ if __name__ == '__main__':
     sys.path.append('..')
     sys.path.append('.')
 
-from pyzx.graph import Graph, EdgeType, VertexType
+from pyzx.graph import Graph
+from pyzx.utils import EdgeType, VertexType
 from pyzx.generate import identity
 
 import numpy as np
@@ -68,10 +69,15 @@ class TestGraphBasicMethods(unittest.TestCase):
     def test_set_attributes(self):
         g = Graph()
         v = g.add_vertex()
+        self.assertEqual(g.phase(v),0)
         g.set_phase(v,1)
         self.assertEqual(g.phase(v),1)
-        g.set_type(v,2)
-        self.assertEqual(g.type(v),2)
+        self.assertEqual(g.type(v),VertexType.BOUNDARY)
+        g.set_type(v,VertexType.X)
+        self.assertEqual(g.type(v),VertexType.X)
+        self.assertFalse(g.is_ground(v))
+        g.set_ground(v)
+        self.assertTrue(g.is_ground(v))
         g.set_row(v,3)
         self.assertEqual(g.row(v),3)
         g.set_qubit(v,2)

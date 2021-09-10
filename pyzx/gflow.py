@@ -1,4 +1,4 @@
-# PyZX - Python library for quantum circuit rewriting 
+# PyZX - Python library for quantum circuit rewriting
 #        and optimization using the ZX-calculus
 # Copyright (C) 2018 - Aleks Kissinger and John van de Wetering
 
@@ -54,26 +54,50 @@ from typing import Dict, Set, Tuple, Optional
 
 from .extract import bi_adj
 from .linalg import Mat2
-from .graph.base import BaseGraph, VT, ET
+from .graph.base import BaseGraph, VertexType, VT, ET
 
-def gflow(g: BaseGraph[VT,ET]) -> Optional[Tuple[Dict[VT,int], Dict[VT,Set[VT]], int]]:
-    l:     Dict[VT,int]      = {}
+
+def gflow(
+    g: BaseGraph[VT, ET]
+) -> Optional[Tuple[Dict[VT, int], Dict[VT, Set[VT]], int]]:
+    """Compute the maximally delayed gflow of a diagram in graph-like form.
+
+    Based on algorithm by Perdrix and Mhalla.
+    See dx.doi.org/10.1007/978-3-540-70575-8_70
+    """
+    l: Dict[VT, int] = {}
     gflow: Dict[VT, Set[VT]] = {}
-    for v in g.outputs():
+
+    inputs: Set[VT] = set(g.inputs())
+    processed: Set[VT] = set(g.outputs()) | g.grounds()
+    vertices: Set[VT] = set(g.vertices())
+    pattern_inputs: Set[VT] = set()
+    for inp in inputs:
+        if g.type(inp) == VertexType.BOUNDARY:
+            pattern_inputs |= set(g.neighbors(inp))
+        else:
+            pattern_inputs.add(inp)
+    k: int = 1
+
+    for v in processed:
         l[v] = 0
 
-    inputs = set(g.inputs())
-    processed = set(g.outputs())
-    vertices = set(g.vertices())
-    k = 1
     while True:
         correct = set()
-        #unprocessed = list()
-        processed_prime = [v for v in processed.difference(inputs) if any(w not in processed for w in g.neighbors(v))]
-        candidates = [v for v in vertices.difference(processed) if any(w in processed_prime for w in g.neighbors(v))]
-        
+        # unprocessed = list()
+        processed_prime = [
+            v
+            for v in processed.difference(pattern_inputs)
+            if any(w not in processed for w in g.neighbors(v))
+        ]
+        candidates = [
+            v
+            for v in vertices.difference(processed)
+            if any(w in processed_prime for w in g.neighbors(v))
+        ]
+
         zerovec = Mat2([[0] for i in range(len(candidates))])
-        #print(unprocessed, processed_prime, zerovec)
+        # print(unprocessed, processed_prime, zerovec)
         m = bi_adj(g, processed_prime, candidates)
         for u in candidates:
             vu = zerovec.copy()

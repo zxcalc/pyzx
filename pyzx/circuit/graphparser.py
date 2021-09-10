@@ -17,6 +17,7 @@
 from typing import Dict, List, Optional
 
 from . import Circuit
+from .gates import TargetMapper
 from ..utils import EdgeType, VertexType, FloatInt, FractionLike
 from ..graph import Graph
 from ..graph.base import BaseGraph, VT, ET
@@ -84,60 +85,69 @@ def graph_to_circuit(g:BaseGraph[VT,ET], split_phases:bool=True) -> Circuit:
     return c
 
 
-def circuit_to_graph(c: Circuit, compress_rows:bool=True, backend:Optional[str]=None):
+def circuit_to_graph(c: Circuit, compress_rows:bool=True, backend:Optional[str]=None) -> BaseGraph[VT, ET]:
     """Turns the circuit into a ZX-Graph.
     If ``compress_rows`` is set, it tries to put single qubit gates on different qubits,
     on the same row."""
     g = Graph(backend)
-    qs = {}
-    rs = {}
+    q_mapper: TargetMapper[VT] = TargetMapper()
+    c_mapper: TargetMapper[VT] = TargetMapper()
     inputs = []
     outputs = []
+
     for i in range(c.qubits):
         v = g.add_vertex(VertexType.BOUNDARY,i,0)
         inputs.append(v)
-        qs[i] = v
-        rs[i] = 1
-
-    labels = {i:i for i in range(c.qubits)}
+        q_mapper.set_prev_vertex(i, v)
+        q_mapper.set_next_row(i, 1)
+        q_mapper.set_qubit(i, i)
+    for i in range(c.bits):
+        qubit = i+c.qubits
+        v = g.add_vertex(VertexType.BOUNDARY, qubit, 0)
+        inputs.append(v)
+        c_mapper.set_prev_vertex(i, v)
+        c_mapper.set_next_row(i, 1)
+        c_mapper.set_qubit(i, qubit)
 
     for gate in c.gates:
         if gate.name == 'InitAncilla':
             l = gate.label # type: ignore
-            if l in labels:
+            try:
+                q_mapper.add_label(l)
+            except ValueError:
                 raise ValueError("Ancilla label {} already in use".format(str(l)))
-            q = len(labels)
-            labels[l] = q
-            r = max(rs.values())
-            for i in rs: rs[i] = r
-            rs[l] = r+1
-            v = g.add_vertex(VertexType.Z, q, r)
-            qs[l] = v
+            v = g.add_vertex(VertexType.Z, q_mapper.to_qubit(l), q_mapper.next_row(l))
+            q_mapper.set_prev_vertex(l, v)
         elif gate.name == 'PostSelect':
             l = gate.label # type: ignore
-            if l not in labels:
+            try:
+                q = q_mapper.to_qubit(l)
+                r = q_mapper.next_row(l)
+                u = q_mapper.prev_vertex(l)
+                q_mapper.remove_label(l)
+            except ValueError:
                 raise ValueError("PostSelect label {} is not in use".format(str(l)))
-            v = g.add_vertex(VertexType.Z, labels[l], rs[l])
-            g.add_edge((qs[l],v),EdgeType.SIMPLE)
-            r = max(rs.values())
-            for i in rs: rs[i] = r+1
-            del qs[l]
-            del rs[l]
-            del labels[l]
+            v = g.add_vertex(VertexType.Z, q, r)
+            g.add_edge(g.edge(u,v),EdgeType.SIMPLE)
         else:
             if not compress_rows: #or not isinstance(gate, (ZPhase, XPhase, HAD)):
-                r = max(rs.values())
-                for i in rs: rs[i] = r
-            gate.to_graph(g,labels, qs,rs)
+                r = max(q_mapper.max_row(), c_mapper.max_row())
+                q_mapper.set_all_rows(r)
+                c_mapper.set_all_rows(r)
+            gate.to_graph(g, q_mapper, c_mapper)
             if not compress_rows: # or not isinstance(gate, (ZPhase, XPhase, HAD)):
-                r = max(rs.values())
-                for i in rs: rs[i] = r
+                r = max(q_mapper.max_row(), c_mapper.max_row())
+                q_mapper.set_all_rows(r)
+                c_mapper.set_all_rows(r)
 
-    r = max(rs.values())
-    for l, o in labels.items():
-        v = g.add_vertex(VertexType.BOUNDARY,o,r)
-        outputs.append(v)
-        g.add_edge((qs[l],v))
+    r = max(q_mapper.max_row(), c_mapper.max_row())
+    for mapper in (q_mapper, c_mapper):
+        for l in mapper.labels():
+            o = mapper.to_qubit(l)
+            v = g.add_vertex(VertexType.BOUNDARY, o, r)
+            outputs.append(v)
+            u = mapper.prev_vertex(l)
+            g.add_edge(g.edge(u,v))
 
     g.set_inputs(tuple(inputs))
     g.set_outputs(tuple(outputs))

@@ -156,6 +156,8 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
             vtab[v] = i
             for k in self.vdata_keys(v):
                 g.set_vdata(i, k, self.vdata(v, k))
+        for v in self.grounds():
+            g.set_ground(vtab[v], True)
 
         new_inputs = tuple(vtab[i] for i in self.inputs())
         new_outputs = tuple(vtab[i] for i in self.outputs())
@@ -225,8 +227,11 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         vtab = {}
         for v in replace.vertices():
             if v in r_inputs or v in r_outputs: continue
-            vtab[v] = self.add_vertex(replace.type(v),replace.qubit(v),
-                                replace.row(v)+left_row,replace.phase(v))
+            vtab[v] = self.add_vertex(replace.type(v),
+                                      replace.qubit(v),
+                                      replace.row(v)+left_row,
+                                      replace.phase(v),
+                                      replace.is_ground(v))
         for v in r_inputs:
             vtab[v] = [i for i in qleft if self.qubit(i) == replace.qubit(v)][0]
 
@@ -303,7 +308,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         phases = other.phases()
         vertex_map = dict()
         for v in other.vertices():
-            w = g.add_vertex(ts[v],qs[v]+height,rs[v],phases[v])
+            w = g.add_vertex(ts[v],qs[v]+height,rs[v],phases[v],g.is_ground(v))
             vertex_map[v] = w
         for e in other.edges():
             s,t = other.edge_st(e)
@@ -639,7 +644,8 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
                    ty:VertexType.Type=VertexType.BOUNDARY, 
                    qubit:FloatInt=-1, 
                    row:FloatInt=-1, 
-                   phase:Optional[FractionLike]=None
+                   phase:Optional[FractionLike]=None,
+                   ground:bool=False
                    ) -> VT:
         """Add a single vertex to the graph and return its index.
         The optional parameters allow you to respectively set
@@ -653,6 +659,8 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         self.set_row(v, row)
         if phase: 
             self.set_phase(v, phase)
+        if ground:
+            self.set_ground(v, True)
         if self.track_phases:
             self.max_phase_index += 1
             self.phase_index[v] = self.max_phase_index
@@ -938,7 +946,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
     def set_type(self, vertex: VT, t: VertexType.Type) -> None:
         """Sets the type of the given vertex to t."""
         raise NotImplementedError("Not implemented on backend" + type(self).backend)
-    
+
     def phase(self, vertex: VT) -> FractionLike:
         """Returns the phase value of the given vertex."""
         raise NotImplementedError("Not implemented on backend" + type(self).backend)
@@ -973,6 +981,20 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
     def set_row(self, vertex: VT, r: FloatInt) -> None:
         """Sets the row the vertex should be positioned at."""
         raise NotImplementedError("Not implemented on backend" + type(self).backend)
+
+    def is_ground(self, vertex: VT) -> bool:
+        """Returns a boolean indicating if the vertex is connected to a ground."""
+        raise NotImplementedError("Not implemented on backend" + type(self).backend)
+    def grounds(self) -> Set[VT]:
+        """Returns the set of vertices connected to a ground."""
+        raise NotImplementedError("Not implemented on backend" + type(self).backend)
+    def set_ground(self, vertex: VT, flag: bool=True) -> None:
+        """Connect or disconnect the vertex to a ground."""
+        raise NotImplementedError("Not implemented on backend" + type(self).backend)
+    def is_hybrid(self) -> bool:
+        """Returns whether this is a hybrid quantum-classical graph,
+        i.e. a graph with ground generators."""
+        return bool(self.grounds())
 
     def set_position(self, vertex: VT, q: FloatInt, r: FloatInt):
         """Set both the qubit index and row index of the vertex."""

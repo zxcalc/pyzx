@@ -259,7 +259,8 @@ def draw_d3(
     labels:bool=False, 
     scale:Optional[FloatInt]=None, 
     auto_hbox:Optional[bool]=None,
-    show_scalar:bool=False
+    show_scalar:bool=False,
+    vdata: List[str]=[]
     ) -> Any:
 
     if settings.mode not in ("notebook", "browser"): 
@@ -295,7 +296,11 @@ def draw_d3(
               'x': (g.row(v)-minrow + 1) * scale,
               'y': (g.qubit(v)-minqub + 2) * scale,
               't': g.type(v),
-              'phase': phase_to_s(g.phase(v), g.type(v)) }
+              'phase': phase_to_s(g.phase(v), g.type(v)),
+              'ground': g.is_ground(v),
+              'vdata': [(key, g.vdata(v, key))
+                  for key in vdata if g.vdata(v, key, None) is not None],
+              }
              for v in g.vertices()]
     links = [{'source': str(g.edge_s(e)),
               'target': str(g.edge_t(e)),

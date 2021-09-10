@@ -86,6 +86,8 @@ def tensorfy(g: 'BaseGraph[VT,ET]', preserve_scalar:bool=True) -> np.ndarray:
     """Takes in a Graph and outputs a multidimensional numpy array
     representing the linear map the ZX-diagram implements.
     Beware that quantum circuits take exponential memory to represent."""
+    if g.is_hybrid():
+        raise ValueError("Hybrid graphs are not supported.")
     rows = g.rows()
     phases = g.phases()
     types = g.types()

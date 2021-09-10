@@ -15,7 +15,7 @@
 # limitations under the License.
 
 from fractions import Fraction
-from typing import Tuple, Dict, Any
+from typing import Tuple, Dict, Set, Any
 
 from .base import BaseGraph
 
@@ -38,6 +38,7 @@ class GraphS(BaseGraph[int,Tuple[int,int]]):
         self._maxq: FloatInt                            = -1
         self._rindex: Dict[int, FloatInt]               = dict()
         self._maxr: FloatInt                            = -1
+        self._grounds: Set[int] = set()
 
         self._vdata: Dict[int,Any]                      = dict()
         self._inputs: Tuple[int, ...]                   = tuple()
@@ -140,6 +141,7 @@ class GraphS(BaseGraph[int,Tuple[int,int]]):
             except: pass
             try: del self.phase_index[v]
             except: pass
+            self._grounds.discard(v)
             self._vdata.pop(v,None)
         self._vindex = max(self.vertices(),default=0) + 1
 
@@ -262,6 +264,16 @@ class GraphS(BaseGraph[int,Tuple[int,int]]):
     def set_row(self, vertex, r):
         if r > self._maxr: self._maxr = r
         self._rindex[vertex] = r
+
+    def is_ground(self, vertex):
+        return vertex in self._grounds
+    def grounds(self):
+        return self._grounds
+    def set_ground(self, vertex, flag=True):
+        if flag:
+            self._grounds.add(vertex)
+        else:
+            self._grounds.discard(vertex)
 
     def vdata_keys(self, vertex):
         return self._vdata.get(vertex, {}).keys()
