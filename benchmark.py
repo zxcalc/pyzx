@@ -56,7 +56,7 @@ class CircuitComparer:
         t = time.time()
         self.extracts = True
         try:
-            c2 = zx.extract.streaming_extract(g,quiet=True)
+            c2 = zx.extract.extract_circuit(g,quiet=True)
             self.time_extr = time.time() - t
         except Exception:
             self.extracts = False

@@ -130,6 +130,10 @@ class GraphS(BaseGraph[int,Tuple[int,int]]):
             del self.graph[v]
             del self.ty[v]
             del self._phase[v]
+            if v in self._inputs:
+                self._inputs = tuple(u for u in self._inputs if u != v)
+            if v in self._outputs:
+                self._outputs = tuple(u for u in self._outputs if u != v)
             try: del self._qindex[v]
             except: pass
             try: del self._rindex[v]
@@ -241,7 +245,7 @@ class GraphS(BaseGraph[int,Tuple[int,int]]):
     def set_phase(self, vertex, phase):
         self._phase[vertex] = Fraction(phase) % 2
     def add_to_phase(self, vertex, phase):
-        self._phase[vertex] = (self._phase.get(vertex,Fraction(1)) + phase) % 2
+        self._phase[vertex] = (self._phase.get(vertex,Fraction(1)) + Fraction(phase)) % 2
 
     def qubit(self, vertex):
         return self._qindex.get(vertex,-1)

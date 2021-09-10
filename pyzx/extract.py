@@ -107,8 +107,8 @@ def column_optimal_swap(m: Mat2) -> Dict[int,int]:
     return target
 
 def _find_targets(
-        conn: Dict[int,Set[int]], 
-        connr: Dict[int,Set[int]], 
+        conn: Dict[int,Set[int]],
+        connr: Dict[int,Set[int]],
         target:Dict[int,int]={}
         ) -> Optional[Dict[int,int]]:
     """Helper function for :func:`column_optimal_swap`.
@@ -117,10 +117,10 @@ def _find_targets(
     target = target.copy()
     r = len(conn)
     c = len(connr)
-    
+
     claimedcols = set(target.keys())
     claimedrows = set(target.values())
-    
+
     while True:
         min_index = -1
         min_options = set(range(1000))
@@ -499,9 +499,9 @@ def clean_frontier(g: BaseGraph[VT, ET], c: Circuit, frontier: List[VT],
         q = qubit_map[v]
         b = [w for w in g.neighbors(v) if w in outputs][0]
         e = g.edge(v, b)
-        if g.edge_type(e) == 2:  # Hadamard edge
+        if g.edge_type(e) == EdgeType.HADAMARD:
             c.add_gate("HAD", q)
-            g.set_edge_type(e, 1)
+            g.set_edge_type(e, EdgeType.SIMPLE)
         if phases[v]:
             c.add_gate("ZPhase", q, phases[v])
             g.set_phase(v, 0)
@@ -558,11 +558,11 @@ def neighbors_of_frontier(g: BaseGraph[VT, ET], frontier: List[VT]) -> Set[VT]:
             b = [w for w in d if w in inputs][0]
             q = qs[b]
             r = rs[b]
-            w = g.add_vertex(1, q, r + 1)
+            w = g.add_vertex(VertexType.Z, q, r + 1)
             e = g.edge(v, b)
             et = g.edge_type(e)
             g.remove_edge(e)
-            g.add_edge(g.edge(v, w), 2)
+            g.add_edge(g.edge(v, w), EdgeType.HADAMARD)
             g.add_edge(g.edge(w, b), toggle_edge(et))
             d.remove(b)
             d.append(w)
@@ -617,7 +617,7 @@ def extract_circuit(
         if g.vertex_degree(v) == 1 and v not in inputs and v not in outputs:
             n = list(g.neighbors(v))[0]
             gadgets[n] = v
-    
+
     qubit_map: Dict[VT,int] = dict()
     frontier = []
     for i, o in enumerate(outputs):
@@ -626,7 +626,7 @@ def extract_circuit(
             continue
         frontier.append(v)
         qubit_map[v] = i
-        
+
     czs_saved = 0
     q: Union[float, int]
     
@@ -783,7 +783,7 @@ def graph_to_swaps(g: BaseGraph[VT, ET], no_swaps: bool = False) -> Circuit:
         if inp not in inputs: 
             raise TypeError("Algorithm failed: Graph is not fully reduced")
             return c
-        if g.edge_type(g.edge(v,inp)) == 2:
+        if g.edge_type(g.edge(v,inp)) == EdgeType.HADAMARD:
             c.prepend_gate(HAD(q))
             g.set_edge_type(g.edge(v,inp),EdgeType.SIMPLE)
         q2 = inputs.index(inp)
@@ -792,7 +792,6 @@ def graph_to_swaps(g: BaseGraph[VT, ET], no_swaps: bool = False) -> Circuit:
     if not no_swaps and leftover_swaps:
         for t1, t2 in permutation_as_swaps(swap_map):
             c.prepend_gate(SWAP(t1, t2))
-    #c.gates = list(reversed(c.gates))
     return c
 
 
