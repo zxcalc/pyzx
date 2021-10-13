@@ -30,7 +30,8 @@ setup(
         "pyzx.circuit",
         "pyzx.graph",
         "pyzx.routing",
-        "pyzx.scripts"
+        "pyzx.local_search",
+        "pyzx.scripts",
     ],
     python_requires='>=3.6',
     install_requires=["typing_extensions>=3.7.4",
