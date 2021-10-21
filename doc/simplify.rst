@@ -3,7 +3,7 @@ Optimizing and simplifying circuits
 
 The main functionality of PyZX is the ability to optimize quantum circuits. The main optimization methods work by converting a circuit into a ZX-diagram, simplifying this diagram, and then converting it back into a quantum circuit. This process is explained in the next section. There are also some basic optimization methods that work directly on the quantum circuit representation. This is detailed in the section `Gate-level optimization`_.
 
-optimizing circuits using the ZX-calculus
+Optimizing circuits using the ZX-calculus
 -----------------------------------------
 
 PyZX allows the simplification of quantum circuits via a translation to the ZX-calculus. To demonstrate this functionality, let us generate a random circuit using :func:`~pyzx.generate.CNOT_HAD_PHASE_circuit`::
