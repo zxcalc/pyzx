@@ -93,6 +93,7 @@ class Optimizer(object):
         self.circuit: Circuit = circuit
         self.qubits: int = circuit.qubits
         self.minimize_czs: bool = False
+        self.do_swaps: bool = True
     
     @overload
     def parse_circuit(self, 
