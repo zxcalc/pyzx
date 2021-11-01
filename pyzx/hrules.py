@@ -347,7 +347,7 @@ TYPE_MATCH_PAR_HBOX_INTRO = Tuple[VT,VT,VT,List[VT],Set[VT]]
 def match_par_hbox_intro(
     g: BaseGraph[VT,ET],
     vertexf: Optional[Callable[[VT],bool]] = None
-    ) -> List[TYPE_MATCH_PAR_HBOX]:
+    ) -> List[TYPE_MATCH_PAR_HBOX_INTRO]:
     """Matches sets of H-boxes that are connected in parallel (via optional NOT gates)
     to the same white spiders, but with just one NOT different, so that the Intro rule can be applied there."""
     if vertexf is not None: candidates = set([v for v in g.vertices() if vertexf(v)])
