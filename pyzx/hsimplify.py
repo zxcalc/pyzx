@@ -127,6 +127,9 @@ def from_hypergraph_form(g: BaseGraph[VT,ET]) -> None:
 def par_hbox_simp(g: BaseGraph[VT,ET], matchf:Optional[Callable[[VT],bool]]=None, quiet:bool=False, stats:Optional[Stats]=None) -> int:
     return simp(g, 'par_hbox_simp', match_par_hbox, par_hbox, matchf=matchf, quiet=quiet, stats=stats)
 
+def par_hbox_intro_simp(g: BaseGraph[VT,ET], matchf:Optional[Callable[[VT],bool]]=None, quiet:bool=False, stats:Optional[Stats]=None) -> int:
+    return simp(g, 'par_hbox_intro_simp', match_par_hbox_intro, par_hbox_intro, matchf=matchf, quiet=quiet, stats=stats)
+
 def copy_simp(g: BaseGraph[VT,ET], matchf:Optional[Callable[[VT],bool]]=None, quiet:bool=False, stats:Optional[Stats]=None) -> int:
     return simp(g, 'copy_simp', match_copy, apply_copy, matchf=matchf, quiet=quiet, stats=stats)
 
@@ -199,6 +202,9 @@ def zh_simp(g: BaseGraph[VT,ET], quiet:bool=False) -> int:
             count += 1
             continue
         if par_hbox_simp(g,quiet=quiet):
+            count += 1
+            continue
+        if par_hbox_intro_simp(g,quiet=quiet):
             count += 1
             continue
         if hbox_parallel_not_remove_simp(g,quiet=quiet):
