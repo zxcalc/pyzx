@@ -203,6 +203,19 @@ def apply_copy(
     return ({}, rem, [], True)
 
 
+def is_NOT_gate(g, v, n1, n2):
+    """Returns whether the vertex v in graph g is a NOT gate between its neighbours n1 and n2."""
+    if g.edge_type(g.edge(n1,v)) == EdgeType.SIMPLE and g.type(v) == VertexType.X: 
+        if g.edge_type(g.edge(n2,v)) != EdgeType.SIMPLE:
+            return False
+    elif g.edge_type(g.edge(n1,v)) == EdgeType.HADAMARD and g.type(v) == VertexType.Z: 
+        if g.edge_type(g.edge(n2,v)) != EdgeType.HADAMARD:
+            return False
+    else:
+        return False
+    return True
+
+
 def match_hbox_parallel_not(
         g: BaseGraph[VT,ET], 
         vertexf:Optional[Callable[[VT],bool]]=None
@@ -222,13 +235,8 @@ def match_hbox_parallel_not(
             if g.vertex_degree(n) != 2 or phases[n] != 1: continue # If it turns out to be useful, this rule can be generalised to allow spiders of arbitrary phase here
             v = [v for v in g.neighbors(n) if v != h][0] # The other neighbor of n
             if not g.connected(v,h): continue
-            if types[v] != VertexType.Z or g.edge_type(g.edge(h,v)) != EdgeType.SIMPLE: continue
-            if g.edge_type(g.edge(h,n)) == EdgeType.SIMPLE and types[n] == VertexType.X: 
-                if g.edge_type(g.edge(v,n)) != EdgeType.SIMPLE:
-                    continue
-            if g.edge_type(g.edge(h,n)) == EdgeType.HADAMARD and types[n] == VertexType.Z: 
-                if g.edge_type(g.edge(v,n)) != EdgeType.HADAMARD:
-                    continue
+            if not is_NOT_gate(g,n,h,v):
+                continue
             break
         else:
             continue
@@ -240,6 +248,7 @@ def match_hbox_parallel_not(
 def hbox_parallel_not_remove(g: BaseGraph[VT,ET], 
         matches: List[Tuple[VT,VT,VT]]
         ) -> rules.RewriteOutputType[ET,VT]:
+    """If a Z-spider is connected to an H-box via a regular wire and a NOT, then they disconnect, and the H-box is turned into a Z-spider."""
     rem = []
     etab = {}
     types = g.types()
