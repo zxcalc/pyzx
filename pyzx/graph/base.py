@@ -722,9 +722,6 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
                 elif t2 == VertexType.Z: # Z & H-box
                     n1 = bool(n1) # parallel regular edges collapse to single wire
                     if n2 > 1: raise ValueError("Parallel H-edges between H-box and Z-spider are not supported")
-                    #if n2 and (n2-1) % 2 == 1: # parallel H-edges also collapse, but each extra one adds a pi phase
-                    #    self.add_to_phase(v2, 1)
-                    #n2 = bool(n2)
                     if n1 and n2:
                         # There is no simple way to deal with a parallel H-edge and regular edge
                         # So we simply add a 2-ary H-box to the graph
@@ -733,15 +730,13 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
                         w = self.add_vertex(VertexType.H_BOX,(q1+q2)/2,(r1+r2)/2-0.5)
                         add[EdgeType.SIMPLE].extend([self.edge(v1,w),self.edge(v2,w)])
                         new_type = EdgeType.SIMPLE
+                        self.scalar.add_power(-1)  # H-boxes are scaled differently than H-edges, so we compensate with 1/sqrt(2) here.
                     elif n1: new_type = EdgeType.SIMPLE
                     elif n2: new_type = EdgeType.HADAMARD
                     else: new_type = None
-                elif t2 == VertexType.X: # X & H-box
-                    n2 = bool(n2) # parallel H-edges collapse to single wire
+                elif t2 == VertexType.X:  # X & H-box
+                    n2 = bool(n2)  # parallel H-edges collapse to single wire
                     if n1 > 1: raise ValueError("Parallel edges between H-box and X-spider are not supported")
-                    #if (n1-1) % 2 == 1: # parallel regular edges also collapse, but each extra one adds a pi phase
-                    #    self.add_to_phase(v2, 1)
-                    #n1 = bool(n1)
                     if n1 and n2:
                         # There is no simple way to deal with a parallel H-edge and regular edge
                         # So we simply add a 2-ary H-box to the graph
@@ -750,6 +745,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
                         w = self.add_vertex(VertexType.H_BOX,(q1+q2)/2,(r1+r2)/2-0.5)
                         add[EdgeType.SIMPLE].extend([self.edge(v1,w),self.edge(v2,w)])
                         new_type = EdgeType.SIMPLE
+                        self.scalar.add_power(-1)  # H-boxes are scaled differently than H-edges, so we compensate with 1/sqrt(2) here.
                     elif n1: new_type = EdgeType.SIMPLE
                     elif n2: new_type = EdgeType.HADAMARD
                     else: new_type = None
