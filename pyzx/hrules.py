@@ -384,7 +384,7 @@ def match_par_hbox_intro(
                     else:
                         neighbors_regular.add(v)
                 else:
-                    if ty[v] != VertexType.X and g.vertex_degree(v) != 2 and g.phase(v) != 1:
+                    if ty[v] != VertexType.X or g.vertex_degree(v) != 2 or g.phase(v) != 1:
                         suitable = False
                         break
                     w = [w for w in g.neighbors(v) if w!=h][0]  # unique other neighbor
