@@ -34,30 +34,27 @@ def to_tensor(g: BaseGraph) -> qtn.TensorNetwork:
         vtable[v] = count
         count += 1
     
-    # Here we have Z-spiders with only one output and no input translated to the coresponding tensors.
-    vertex_tensors = [qtn.Tensor(data = [1, np.exp(1j * np.pi * g.phase(v))],
-                      inds = (f'{vtable[v]}',), tags = ("V",)) for v in g.vertices()]
-    # Phaseless Z-spiders translated to tensors.
-    phaseless_tensors = [qtn.Tensor() for v in g.vertices()]
-    # List of Hadamard gates translated to tensors, to be filled in.
-    h_tensors = []
+    # Here we have phase tensors corresponding to Z-spiders with only one output and no input.
+    vertex_tensors = []
+    for v in g.vertices():
+        if g.type(v) == VertexType.Z and g.phase(v) != 0:
+            vertex_tensors.append(qtn.Tensor(data = [1, np.exp(1j * np.pi * g.phase(v))],
+                                             inds = (f'{vtable[v]}',),
+                                             tags = ("V",)))
     
-    count = 0
-    for i, t in enumerate(phaseless_tensors):
-        t.new_ind(f'{i}', size = 2)
+    # Hadamard or Kronecker tensors, one for each edge of the diagram.
+    edge_tensors = []
+    
     for i, edge in enumerate(g.edges()):
         x, y = edge
-        if g.edge_type(edge) == EdgeType.SIMPLE:
-            phaseless_tensors[vtable[x]].new_ind(f'k{i}', size = 2)
-            phaseless_tensors[vtable[y]].new_ind(f'k{i}', size = 2)
-        else:
-            count = len(h_tensors)
-            phaseless_tensors[vtable[x]].new_ind(f'h{2 * count}', size = 2)
-            phaseless_tensors[vtable[y]].new_ind(f'h{2 * count + 1}', size = 2)
-            t = qtn.Tensor(data = qu.hadamard(),
-                           inds = (f'h{2 * count}', f'h{2 * count + 1}'),
-                           tags = ("H",))
-            h_tensors.append(t)
+        isHadamard = g.edge_type(edge) == EdgeType.HADAMARD
+        t = qtn.Tensor(data = qu.hadamard() if isHadamard else np.array([1, 0, 0, 1]).reshape(2, 2),
+                       inds = (f'{vtable[x]}', f'{vtable[y]}'),
+                       tags = ("H",) if isHadamard else ("N",))
+        edge_tensors.append(t)
+        #if g.type(x) == VertexType.Z and g.type(y) == VertexType.Z:
+        #if g.type(x) == VertexType.BOUNDARY:
+        #if g.type(y) == VertexType.BOUNDARY:
 
-    network = qtn.TensorNetwork(vertex_tensors) & qtn.TensorNetwork(phaseless_tensors) & qtn.TensorNetwork(h_tensors)
+    network = qtn.TensorNetwork(vertex_tensors) & qtn.TensorNetwork(edge_tensors)
     return network
