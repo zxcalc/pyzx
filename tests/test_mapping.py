@@ -38,8 +38,6 @@ from pyzx.graph import Graph
 from pyzx.utils import EdgeType, VertexType
 from pyzx.mapping import to_tensor
 
-SEED = 1337
-
 @unittest.skipUnless(np, "numpy needs to be installed for this to run")
 @unittest.skipUnless(qu, "quimb needs to be installed for this to run")
 class TestMapping(unittest.TestCase):
