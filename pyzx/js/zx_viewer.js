@@ -35,9 +35,29 @@ define('zx_viewer', ['d3'], function(d3) {
         return selected ? "stroke-width: 2px; stroke: #00f" : "stroke-width: 1.5px";
     }
 
+    var symbolGround = {
+        draw: function(context, size){
+            let s = size/2;
+
+            context.moveTo(0,-s);
+            context.lineTo(0,0);
+
+            context.moveTo(-s,0);
+            context.lineTo(s,0);
+
+            context.moveTo(-2*s/3,s/3);
+            context.lineTo(2*s/3,s/3);
+
+            context.moveTo(-s/3,2*s/3);
+            context.lineTo(s/3,2*s/3);
+        }
+    }
+
     return {
     showGraph: function(tag, graph, width, height, scale, node_size, auto_hbox, show_labels, scalar_str) {
         var ntab = {};
+
+        var groundOffset = 2.5 * node_size;
 
         graph.nodes.forEach(function(d) {
             ntab[d.name] = d;
@@ -93,6 +113,23 @@ define('zx_viewer', ['d3'], function(d3) {
                 return "translate(" + d.x + "," + d.y +")";
             });
 
+        // Draw a ground symbol connected to the node.
+        node.filter(function(d) { return d.ground; })
+            .append("path")
+            .attr("stroke", "black")
+            .attr("style", "stroke-width: 1.5px")
+            .attr("fill", "none")
+            .attr("d", "M 0 0 L 0 "+(groundOffset))
+            .attr("class", "selectable");
+        node.filter(function(d) { return d.ground; })
+            .append("path")
+            .attr("stroke", "black")
+            .attr("style", "stroke-width: 1.5px")
+            .attr("fill", "none")
+            .attr("d", d3.symbol().type(symbolGround).size(node_size*1.5))
+            .attr("transform", "translate(0,"+groundOffset+")")
+            .attr("class", "selectable");
+
         node.filter(function(d) { return d.t != 3; })
             .append("circle")
             .attr("r", function(d) {
@@ -100,7 +137,8 @@ define('zx_viewer', ['d3'], function(d3) {
                else return node_size;
             })
             .attr("fill", function(d) { return nodeColor(d.t); })
-            .attr("stroke", "black");
+            .attr("stroke", "black")
+            .attr("class", "selectable");
 
         var hbox = node.filter(function(d) { return d.t == 3; });
 
@@ -108,7 +146,8 @@ define('zx_viewer', ['d3'], function(d3) {
             .attr("x", -0.75 * node_size).attr("y", -0.75 * node_size)
             .attr("width", node_size * 1.5).attr("height", node_size * 1.5)
             .attr("fill", function(d) { return nodeColor(d.t); })
-            .attr("stroke", "black");
+            .attr("stroke", "black")
+            .attr("class", "selectable");
 
         node.filter(function(d) { return d.phase != ''; })
             .append("text")
@@ -130,6 +169,23 @@ define('zx_viewer', ['d3'], function(d3) {
                 .attr("fill", "#999")
                 .attr('style', 'pointer-events: none; user-select: none;');
         }
+
+        // Display the chosen data fields over the node.
+        node.filter(d => d.vdata.length > 0)
+            .append("text")
+            .attr("y", d => -0.7 * node_size - 14 - 10 * d.vdata.length)
+            .attr("text-anchor", "middle")
+            .attr("font-size", "8px")
+            .attr("font-family", "monospace")
+            .attr("fill", "#c66")
+            .attr('style', 'pointer-events: none; user-select: none;')
+            .selectAll("tspan")
+              .data(d => d.vdata)
+              .enter()
+              .append("tspan")
+              .attr("x", "0")
+              .attr("dy", "1.2em")
+              .text(x => x.join(": "));
 
         if (scalar_str != "") {
             svg.append("text")
@@ -183,10 +239,10 @@ define('zx_viewer', ['d3'], function(d3) {
 
         node.on("mousedown", function(d) {
                 if (shiftKey) {
-                    d3.select(this).select(":first-child").attr("style", nodeStyle(d.selected = !d.selected));
+                    d3.select(this).selectAll(".selectable").attr("style", nodeStyle(d.selected = !d.selected));
                     d3.event.stopImmediatePropagation();
                 } else if (!d.selected) {
-                    node.select(":first-child").attr("style", function(p) { return nodeStyle(p.selected = d === p); });
+                    node.selectAll(".selectable").attr("style", function(p) { return nodeStyle(p.selected = d === p); });
                 }
             })
             .call(d3.drag().on("drag", function(d) {
@@ -223,7 +279,7 @@ define('zx_viewer', ['d3'], function(d3) {
             .extent([[0, 0], [width, height]])
             .on("start", function() {
                 if (d3.event.sourceEvent.type !== "end") {
-                    node.select(":first-child").attr("style", function(d) {
+                    node.selectAll(".selectable").attr("style", function(d) {
                         return nodeStyle(
                             d.selected = d.previouslySelected = shiftKey &&
                             d.selected);
@@ -233,7 +289,7 @@ define('zx_viewer', ['d3'], function(d3) {
             .on("brush", function() {
                 if (d3.event.sourceEvent.type !== "end") {
                     var selection = d3.event.selection;
-                    node.select(":first-child").attr("style", function(d) {
+                    node.selectAll(".selectable").attr("style", function(d) {
                         return nodeStyle(d.selected = d.previouslySelected ^
                             (selection != null
                             && selection[0][0] <= d.x && d.x < selection[1][0]

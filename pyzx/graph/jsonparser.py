@@ -76,6 +76,8 @@ def json_to_graph(js: str, backend:Optional[str]=None) -> BaseGraph:
                 g.set_phase(v,_quanto_value_to_phase(d['value']))
             else:
                 g.set_phase(v,Fraction(0,1))
+            if d.get('ground', False):
+                g.set_ground(v)
         else:
             g.set_type(v,VertexType.Z)
             g.set_phase(v,Fraction(0,1))
@@ -192,6 +194,8 @@ def graph_to_json(g: BaseGraph[VT,ET], include_scalar: bool=True) -> str:
             else: raise Exception("Unkown vertex type "+ str(t))
             phase = _phase_to_quanto_value(g.phase(v))
             if phase: node_vs[name]["data"]["value"] = phase
+            if g.is_ground(v):
+                node_vs[name]["data"]["ground"] = True
             if not node_vs[name]["data"]: del node_vs[name]["data"]
             for key in g.vdata_keys(v):
                 if key in node_vs[name]["annotation"]:

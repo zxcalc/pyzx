@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__all__ = ['cnots','cliffords', 'cliffordT', 'identity', 'CNOT_HAD_PHASE_circuit']
+__all__ = ['cnots','cliffords', 'cliffordT', 'cliffordTmeas', 'identity', 'CNOT_HAD_PHASE_circuit']
 
 import random
 from fractions import Fraction
@@ -216,19 +216,20 @@ def random_phase(add_t: bool) -> Fraction:
         return Fraction(random.randint(1,8),4)
     return Fraction(random.randint(1,4),2)
 
-def cliffordT(
+def cliffordTmeas(
         qubits: int, 
         depth: int, 
         p_t:Optional[float]=None, 
         p_s:Optional[float]=None, 
         p_hsh:Optional[float]=None, 
         p_cnot:Optional[float]=None, 
+        p_meas:Optional[float]=None, 
         backend:Optional[str]=None
         ) -> BaseGraph:
     """Generates a circuit consisting of randomly placed Clifford+T gates. Optionally, take
-    probabilities of adding T, S, HSH, and CNOT. If probabilities for only a subset of gates
-    is given, any remaining probability will be uniformly distributed among the remaining
-    gates.
+    probabilities of adding T, S, HSH, CNOT, and measurements.
+    If probabilities for only a subset of gates is given, any remaining probability will be
+    uniformly distributed among the remaining gates.
 
     :param qubits: Amount of qubits in circuit.
     :param depth: Depth of circuit.
@@ -236,6 +237,7 @@ def cliffordT(
     :param p_s: Probability that each gate is a S-gate.
     :param p_hsh: Probability that each gate is a HSH-gate.
     :param p_cnot: Probability that each gate is a CNOT-gate.
+    :param p_meas: Probability that each gate is a measurement.
     :param backend: When given, should be one of the possible :ref:`graph_api` backends.
     :rtype: Instance of graph of the given backend.
     """
@@ -254,6 +256,8 @@ def cliffordT(
     else: rest -= p_hsh
     if p_cnot is None: num += 1.0
     else: rest -= p_cnot
+    if p_meas is None: num += 1.0
+    else: rest -= p_meas
 
     if rest < 0: raise ValueError("Probabilities are >1.")
 
@@ -261,6 +265,7 @@ def cliffordT(
     if p_s is None: p_s = rest / num
     if p_hsh is None: p_hsh = rest / num
     if p_cnot is None: p_cnot = rest / num
+    if p_meas is None: p_meas = rest / num
 
     #p_s = (1 - p_t) / 3.0
     #p_hsh = (1 - p_t) / 3.0
@@ -310,6 +315,9 @@ def cliffordT(
         elif p > 1 - p_cnot - p_hsh - p_s:
             # apply S gate
             g.set_phase(v-1, Fraction(1,2))
+        elif p > 1 - p_cnot - p_hsh - p_s - p_meas:
+            # apply a measurement
+            g.set_ground(v-1)
         else:
             # apply T gate
             g.set_phase(v-1, Fraction(1,4))
@@ -332,7 +340,30 @@ def cliffordT(
 
     return g
 
+def cliffordT(
+        qubits: int,
+        depth: int,
+        p_t:Optional[float]=None,
+        p_s:Optional[float]=None,
+        p_hsh:Optional[float]=None,
+        p_cnot:Optional[float]=None,
+        backend:Optional[str]=None
+        ) -> BaseGraph:
+    """Generates a circuit consisting of randomly placed Clifford+T gates. Optionally, take
+    probabilities of adding T, S, HSH, and CNOT. If probabilities for only a subset of gates
+    is given, any remaining probability will be uniformly distributed among the remaining
+    gates.
 
+    :param qubits: Amount of qubits in circuit.
+    :param depth: Depth of circuit.
+    :param p_t: Probability that each gate is a T-gate.
+    :param p_s: Probability that each gate is a S-gate.
+    :param p_hsh: Probability that each gate is a HSH-gate.
+    :param p_cnot: Probability that each gate is a CNOT-gate.
+    :param backend: When given, should be one of the possible :ref:`graph_api` backends.
+    :rtype: Instance of graph of the given backend.
+    """
+    return cliffordTmeas(qubits, depth, p_t, p_s, p_hsh, p_cnot, 0, backend)
 
 def cliffords(
         qubits: int, 
