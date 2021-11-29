@@ -20,7 +20,7 @@ from .graph.graph import Graph
 from .circuit import Circuit, gates, id
 from .linalg import Mat2
 from .utils import settings, VertexType, EdgeType
-from .mapping import to_tensor
+from .quimb import to_tensor
 from .drawing import *
 from .simplify import *
 from .optimize import *

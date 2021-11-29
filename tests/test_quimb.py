@@ -36,7 +36,7 @@ except ImportError:
 
 from pyzx.graph import Graph
 from pyzx.utils import EdgeType, VertexType
-from pyzx.mapping import to_tensor
+from pyzx.quimb import to_tensor
 
 @unittest.skipUnless(np, "numpy needs to be installed for this to run")
 @unittest.skipUnless(qu, "quimb needs to be installed for this to run")
@@ -89,7 +89,28 @@ class TestMapping(unittest.TestCase):
                             qtn.Tensor(data = [1 - y, y], inds = ("1",)) &
                             qtn.Tensor(data = [1 - z, z], inds = ("3",))).contract(output_inds = ()) - 
                             ((x ^ y) == z) / np.sqrt(2)) < 1e-9)
+    
+    def test_phases_tensor(self):
+        # This diagram represents a 1-input 1-output Z-spider of phase pi/2,
+        # but written using two Z-spiders of phases pi/6 and pi/3 that are
+        # connected by a simple edge.
+        g = Graph()
+        x = g.add_vertex(VertexType.BOUNDARY)
+        v = g.add_vertex(VertexType.Z, phase = 1. / 6.)
+        w = g.add_vertex(VertexType.Z, phase = 1. / 3.)
+        y = g.add_vertex(VertexType.BOUNDARY)
         
+        g.add_edge(g.edge(x, v), edgetype = EdgeType.SIMPLE)
+        g.add_edge(g.edge(v, w), edgetype = EdgeType.SIMPLE)
+        g.add_edge(g.edge(w, y), edgetype = EdgeType.SIMPLE)
+        tn = to_tensor(g)
+        
+        self.assertTrue(abs((tn & qtn.Tensor(data = [1, 0], inds = ("0",)) 
+                            & qtn.Tensor(data = [1, 0], inds = ("3",)))
+                        .contract(output_inds = ()) - 1) < 1e-9)
+        self.assertTrue(abs((tn & qtn.Tensor(data = [0, 1], inds = ("0",)) 
+                            & qtn.Tensor(data = [0, 1j], inds = ("3",)))
+                        .contract(output_inds = ()) + 1) < 1e-9)
 
 if __name__ == '__main__':
     unittest.main()
