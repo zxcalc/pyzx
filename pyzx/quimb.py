@@ -20,7 +20,7 @@ import quimb.tensor as qtn
 from .utils import EdgeType, VertexType
 from .graph.base import BaseGraph
 
-def to_tensor(g: BaseGraph) -> qtn.TensorNetwork:
+def to_quimb_tensor(g: BaseGraph) -> qtn.TensorNetwork:
     """Converts tensor network representing the given :func:`pyzx.graph.Graph`.
     Precondition: g does not have X-spiders.
     Pretty printing: to_tensor(g).draw(color = ['V', 'H'])

@@ -36,10 +36,9 @@ except ImportError:
 
 from pyzx.graph import Graph
 from pyzx.utils import EdgeType, VertexType
-from pyzx.quimb import to_tensor
+from pyzx.quimb import to_quimb_tensor
 
 @unittest.skipUnless(np, "numpy needs to be installed for this to run")
-@unittest.skipUnless(qu, "quimb needs to be installed for this to run")
 class TestMapping(unittest.TestCase):
     def test_id_tensor(self):
         g = Graph()
@@ -47,7 +46,7 @@ class TestMapping(unittest.TestCase):
         y = g.add_vertex(VertexType.BOUNDARY)
         g.add_edge(g.edge(x, y), edgetype = EdgeType.SIMPLE)
         
-        tn = to_tensor(g)
+        tn = to_quimb_tensor(g)
         self.assertTrue((tn & qtn.Tensor(data = [0, 1], inds = ("0",)) 
                             & qtn.Tensor(data = [0, 1], inds = ("1",)))
                         .contract(output_inds = ()) == 1)
@@ -61,7 +60,7 @@ class TestMapping(unittest.TestCase):
         y = g.add_vertex(VertexType.BOUNDARY)
         g.add_edge(g.edge(x, y), edgetype = EdgeType.HADAMARD)
         
-        tn = to_tensor(g)
+        tn = to_quimb_tensor(g)
         self.assertTrue(abs((tn & qtn.Tensor(data = [1, 0], inds = ("0",)) 
                             & qtn.Tensor(data = [1 / np.sqrt(2), 1 / np.sqrt(2)], inds = ("1",)))
                         .contract(output_inds = ()) - 1) < 1e-9)
@@ -79,7 +78,7 @@ class TestMapping(unittest.TestCase):
         g.add_edge(g.edge(x, v), edgetype = EdgeType.HADAMARD)
         g.add_edge(g.edge(y, v), edgetype = EdgeType.HADAMARD)
         g.add_edge(g.edge(v, z), edgetype = EdgeType.HADAMARD)
-        tn = to_tensor(g)
+        tn = to_quimb_tensor(g)
         
         for x in range(2):
             for y in range(2):
@@ -103,7 +102,7 @@ class TestMapping(unittest.TestCase):
         g.add_edge(g.edge(x, v), edgetype = EdgeType.SIMPLE)
         g.add_edge(g.edge(v, w), edgetype = EdgeType.SIMPLE)
         g.add_edge(g.edge(w, y), edgetype = EdgeType.SIMPLE)
-        tn = to_tensor(g)
+        tn = to_quimb_tensor(g)
         
         self.assertTrue(abs((tn & qtn.Tensor(data = [1, 0], inds = ("0",)) 
                             & qtn.Tensor(data = [1, 0], inds = ("3",)))
