@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import math
 import numpy as np
 import quimb as qu
 import quimb.tensor as qtn
@@ -42,6 +43,10 @@ def to_quimb_tensor(g: BaseGraph) -> qtn.TensorNetwork:
                                              inds = (f'{vtable[v]}',),
                                              tags = ("V",)))
     
+    vertex_tensors.append(qtn.Tensor(data = np.exp(1j * np.pi * g.scalar.phase) * g.scalar.floatfactor,
+                                     inds = (),
+                                     tags = ("S",)))
+
     # Hadamard or Kronecker tensors, one for each edge of the diagram.
     edge_tensors = []
     
@@ -57,4 +62,5 @@ def to_quimb_tensor(g: BaseGraph) -> qtn.TensorNetwork:
         #if g.type(y) == VertexType.BOUNDARY:
 
     network = qtn.TensorNetwork(vertex_tensors) & qtn.TensorNetwork(edge_tensors)
+    network.exponent = math.log10(math.sqrt(2)) * g.scalar.power2
     return network
