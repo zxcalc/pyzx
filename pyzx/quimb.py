@@ -20,20 +20,20 @@ import quimb as qu
 import quimb.tensor as qtn
 from .utils import EdgeType, VertexType
 from .graph.base import BaseGraph
+from .simplify import to_gh
 
 def to_quimb_tensor(g: BaseGraph) -> qtn.TensorNetwork:
     """Converts tensor network representing the given :func:`pyzx.graph.Graph`.
-    Precondition: g does not have X-spiders.
     Pretty printing: to_tensor(g).draw(color = ['V', 'H'])
     
     Args:
         g: graph to be converted."""
-    # We need to normalize vertices because there might be gaps in their representation in g.
-    vtable = {}
-    count = 0
-    for v in g.vertices():
-        vtable[v] = count
-        count += 1
+
+    # copying a graph guarantees consecutive indices, which are needed for the tensor net
+    g = g.copy()
+
+    # only Z spiders are handled below
+    to_gh(g)
     
     tensors = []
 
@@ -41,7 +41,7 @@ def to_quimb_tensor(g: BaseGraph) -> qtn.TensorNetwork:
     for v in g.vertices():
         if g.type(v) == VertexType.Z and g.phase(v) != 0:
             tensors.append(qtn.Tensor(data = [1, np.exp(1j * np.pi * g.phase(v))],
-                                      inds = (f'{vtable[v]}',),
+                                      inds = (f'{v}',),
                                       tags = ("V",)))
     
 
@@ -50,7 +50,7 @@ def to_quimb_tensor(g: BaseGraph) -> qtn.TensorNetwork:
         x, y = edge
         isHadamard = g.edge_type(edge) == EdgeType.HADAMARD
         t = qtn.Tensor(data = qu.hadamard() if isHadamard else np.array([1, 0, 0, 1]).reshape(2, 2),
-                       inds = (f'{vtable[x]}', f'{vtable[y]}'),
+                       inds = (f'{x}', f'{y}'),
                        tags = ("H",) if isHadamard else ("N",))
         tensors.append(t)
 
