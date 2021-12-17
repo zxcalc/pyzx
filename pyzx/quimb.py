@@ -35,32 +35,42 @@ def to_quimb_tensor(g: BaseGraph) -> qtn.TensorNetwork:
         vtable[v] = count
         count += 1
     
+    tensors = []
+
     # Here we have phase tensors corresponding to Z-spiders with only one output and no input.
-    vertex_tensors = []
     for v in g.vertices():
         if g.type(v) == VertexType.Z and g.phase(v) != 0:
-            vertex_tensors.append(qtn.Tensor(data = [1, np.exp(1j * np.pi * g.phase(v))],
-                                             inds = (f'{vtable[v]}',),
-                                             tags = ("V",)))
+            tensors.append(qtn.Tensor(data = [1, np.exp(1j * np.pi * g.phase(v))],
+                                      inds = (f'{vtable[v]}',),
+                                      tags = ("V",)))
     
-    vertex_tensors.append(qtn.Tensor(data = np.exp(1j * np.pi * g.scalar.phase) * g.scalar.floatfactor,
-                                     inds = (),
-                                     tags = ("S",)))
 
     # Hadamard or Kronecker tensors, one for each edge of the diagram.
-    edge_tensors = []
-    
     for i, edge in enumerate(g.edges()):
         x, y = edge
         isHadamard = g.edge_type(edge) == EdgeType.HADAMARD
         t = qtn.Tensor(data = qu.hadamard() if isHadamard else np.array([1, 0, 0, 1]).reshape(2, 2),
                        inds = (f'{vtable[x]}', f'{vtable[y]}'),
                        tags = ("H",) if isHadamard else ("N",))
-        edge_tensors.append(t)
-        #if g.type(x) == VertexType.Z and g.type(y) == VertexType.Z:
-        #if g.type(x) == VertexType.BOUNDARY:
-        #if g.type(y) == VertexType.BOUNDARY:
+        tensors.append(t)
 
-    network = qtn.TensorNetwork(vertex_tensors) & qtn.TensorNetwork(edge_tensors)
-    network.exponent = math.log10(math.sqrt(2)) * g.scalar.power2
+    # Grab the float factor and exponent from the scalar
+    scalar_float = np.exp(1j * np.pi * g.scalar.phase) * g.scalar.floatfactor
+    scalar_exp = math.log10(math.sqrt(2)) * g.scalar.power2
+
+    # If the TN is empty, create a single 0-tensor with scalar factor, otherwise
+    # multiply the scalar into one of the tensors.
+    if len(tensors) == 0:
+        tensors.append(qtn.Tensor(data = scalar_float,
+                                  inds = (),
+                                  tags = ("S",)))
+    else:
+        tensors[0].modify(data = tensors[0].data * scalar_float)
+
+
+    network = qtn.TensorNetwork(tensors)
+
+    # the exponent can be very large, so distribute it evenly through the TN
+    network.exponent = scalar_exp
+    network.distribute_exponent()
     return network
