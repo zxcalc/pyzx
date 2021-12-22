@@ -39,6 +39,7 @@ from pyzx.utils import EdgeType, VertexType
 from pyzx.quimb import to_quimb_tensor
 
 @unittest.skipUnless(np, "numpy needs to be installed for this to run")
+@unittest.skipUnless(qu, "quimb needs to be installed for this to run")
 class TestMapping(unittest.TestCase):
     def test_id_tensor(self):
         g = Graph()

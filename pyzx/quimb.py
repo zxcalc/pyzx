@@ -16,18 +16,28 @@
 
 import math
 import numpy as np
-import quimb as qu
-import quimb.tensor as qtn
+
+try:
+    import quimb as qu # type:ignore
+    import quimb.tensor as qtn #type:ignore
+except ImportError:
+    qu = None
+    qtn = None
+
+
 from .utils import EdgeType, VertexType
 from .graph.base import BaseGraph
 from .simplify import to_gh
 
-def to_quimb_tensor(g: BaseGraph) -> qtn.TensorNetwork:
+def to_quimb_tensor(g: BaseGraph) -> 'qtn.TensorNetwork':
     """Converts tensor network representing the given :func:`pyzx.graph.Graph`.
     Pretty printing: to_tensor(g).draw(color = ['V', 'H'])
     
     Args:
         g: graph to be converted."""
+
+    if qu is None:
+        raise ImportError("quimb must be installed to use this function.")
 
     # copying a graph guarantees consecutive indices, which are needed for the tensor net
     g = g.copy()
