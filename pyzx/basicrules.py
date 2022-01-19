@@ -51,7 +51,7 @@ def color_change_diagram(g: BaseGraph[VT,ET]):
     """Color-change an entire diagram by applying Hadamards to the inputs and ouputs."""
     for v in g.vertices():
         if g.type(v) == VertexType.BOUNDARY:
-            if g.vertex_degree(v) != 0:
+            if g.vertex_degree(v) != 1:
                 raise ValueError("Boundary should only have 1 neighbor.")
             v1 = next(iter(g.neighbors(v)))
             e = g.edge(v,v1)
