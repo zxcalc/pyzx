@@ -34,6 +34,10 @@ __all__ = ['color_change_diagram',
         'copy_X',
         'check_copy_Z',
         'copy_Z',
+        'check_pi_commute_X',
+        'pi_commute_X',
+        'check_pi_commute_Z',
+        'pi_commute_Z',
         'check_strong_comp',
         'strong_comp',
         'check_fuse',
@@ -139,6 +143,39 @@ def copy_X(g: BaseGraph[VT,ET], v: VT) -> bool:
     strong_comp(g, v, nv)
     
     return True
+
+def check_pi_commute_Z(g: BaseGraph[VT, ET], v: VT) -> bool:
+    return g.type(v) == VertexType.Z
+
+def pi_commute_Z(g: BaseGraph[VT, ET], v: VT) -> bool:
+    if not check_pi_commute_Z(g, v): return False
+    g.set_phase(v, -g.phase(v))
+    ns = g.neighbors(v)
+    for w in ns:
+        e = g.edge(v, w)
+        et = g.edge_type(e)
+        if ((g.type(w) == VertexType.Z and et == EdgeType.HADAMARD) or
+            (g.type(w) == VertexType.X and et == EdgeType.SIMPLE)):
+            g.add_to_phase(w, 1)
+        else:
+            g.remove_edge(e)
+            c = g.add_vertex(VertexType.X,
+                    qubit=0.5*(g.qubit(v) + g.qubit(w)),
+                    row=0.5*(g.row(v) + g.row(w)))
+            g.add_edge((v, c))
+            g.add_edge((c, w), edgetype=et)
+    
+def check_pi_commute_X(g: BaseGraph[VT,ET], v: VT) -> bool:
+    color_change_diagram(g)
+    b = check_pi_commute_Z(g, v)
+    color_change_diagram(g)
+    return b
+
+def pi_commute_X(g: BaseGraph[VT,ET], v: VT) -> bool:
+    color_change_diagram(g)
+    b = pi_commute_Z(g, v)
+    color_change_diagram(g)
+    return b
 
 def check_copy_Z(g: BaseGraph[VT,ET], v: VT) -> bool:
     color_change_diagram(g)
