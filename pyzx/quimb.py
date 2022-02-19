@@ -66,6 +66,8 @@ def to_quimb_tensor(g: BaseGraph) -> 'qtn.TensorNetwork':
 
     # Grab the float factor and exponent from the scalar
     scalar_float = np.exp(1j * np.pi * g.scalar.phase) * g.scalar.floatfactor
+    for node in g.scalar.phasenodes:    # Each node is a Fraction
+        scalar_float *= 1 + np.exp(1j * np.pi * node)
     scalar_exp = math.log10(math.sqrt(2)) * g.scalar.power2
 
     # If the TN is empty, create a single 0-tensor with scalar factor, otherwise
