@@ -29,7 +29,6 @@ Paul Tirlisan).
 
 ### Changed
 - `Graph.inputs` is now a method that returns a list of inputs, instead of `Graph.inputs` being a list itself. The same for `Graph.outputs`.
-- 
 
 ### Fixed
 - Several incorrect scalars were fixed in ZH-diagram rewrite rules.
