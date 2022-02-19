@@ -162,8 +162,9 @@ def pi_commute_Z(g: BaseGraph[VT, ET], v: VT) -> bool:
             c = g.add_vertex(VertexType.X,
                     qubit=0.5*(g.qubit(v) + g.qubit(w)),
                     row=0.5*(g.row(v) + g.row(w)))
-            g.add_edge((v, c))
-            g.add_edge((c, w), edgetype=et)
+            g.add_edge(g.edge(v, c))
+            g.add_edge(g.edge(c, w), edgetype=et)
+    return True
     
 def check_pi_commute_X(g: BaseGraph[VT,ET], v: VT) -> bool:
     color_change_diagram(g)
