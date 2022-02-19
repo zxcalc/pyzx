@@ -7,6 +7,33 @@ Right now this project is in Beta and does not yet follow [Semantic Versioning](
 Hence, occasionally changes will be backwards incompatible (although they will all be documented here).
 
 
+## [0.7.0] - 2022-02-19
+
+This release adds several new features: support for evaluating ZX-diagrams as tensor networks using the hypergraph contraction methods of [quimb](https://quimb.readthedocs.io/en/latest/index.html), basic support for interacting with the Rust port of PyZX [quizx](https://github.com/Quantomatic/quizx), support for 'hybrid' ZX-diagrams that contain classical wires and measurements, as well as several heuristics for trying to optimise the CNOT count of a circuit that is to be extracted from a ZX-diagram.
+
+There is one small breaking change, which is that `Graph.inputs` and `Graph.outputs` are now methods  that return a list, instead of being lists themselves.
+
+### Added
+- Added support for evaluating ZX-diagrams as tensor networks in [quimb](https://quimb.readthedocs.io/en/latest/index.html) (courtesy of 
+Paul Tirlisan).
+- Added [quizx](https://github.com/Quantomatic/quizx) backend for the `Graph` class.
+- `Graph` vertices can now carry a `ground` generator. This makes it possible to represent measurements and classical control in the diagrams. See the accompanying [paper](https://arxiv.org/abs/2109.06071) (courtesy of ABorgna).
+- Added `extract.lookahead_extract` that uses heuristics to extract circuit with less CNOT gates (courtesy of VladMoldoveanu).
+- Added `local_search` submodule for doing simulated annealing on rewrites of a ZX-diagram to try to get it to be extracted with less CNOTS (courtesy of Ryan Krueger).
+- Added new rewrite rule for ZH-diagrams `hsimplify.par_hbox_intro_simp()` that can remove some H-boxes.
+- Added several new rewrite rules to `basicrules` and `mbqc`.
+- QASM parser: added support for controlled-Hadamard and controlled-Z phase gates.
+- QC parser: added support for SWAP gates (courtesy of wdomitrz).
+- Added `Graph.set_inputs()` and `Graph.set_outputs()` to set a list of vertices to be the inputs/outputs of a diagram.
+- Added `Graph.num_inputs()` and `Graph.num_outputs()` to get the number of inputs and outputs of a diagram.
+
+### Changed
+- `Graph.inputs` is now a method that returns a list of inputs, instead of `Graph.inputs` being a list itself. The same for `Graph.outputs`.
+- 
+
+### Fixed
+- Several incorrect scalars were fixed in ZH-diagram rewrite rules.
+
 ## [0.6.4] - 2021-01-27
 
 The main feature added is support for copying and pasting inside the editor. This release should also hopefully fix the issue where users of the PyPI version can't use zx.draw and the editor.
