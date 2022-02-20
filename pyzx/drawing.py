@@ -314,14 +314,14 @@ def draw_d3(
 
     if draw_d3_print_libraries:
         draw_d3_print_libraries = False
-        with open(os.path.join(settings.javascript_location, 'zx_viewer.js'), 'r') as f:
-            viewer_code = f.read()
+        library_code = '<script type="text/javascript">\n'
 
-        # d3_load = settings.d3_load_string
-        with open(os.path.join(settings.javascript_location, 'd3.v5.min.inline.js'), 'r') as f:
-            d3_code = f.read()
+        for lib in ['require.min.inline.js', 'd3.v5.min.inline.js', 'zx_viewer.js']:
+            with open(os.path.join(settings.javascript_location, lib), 'r') as f:
+                library_code += f.read() + '\n'
 
-        library_code = '<script type="text/javascript">\n' + viewer_code + '\n' + d3_code + '\n</script>\n'
+        library_code += '</script>'
+
     else:
         library_code = ''
 
