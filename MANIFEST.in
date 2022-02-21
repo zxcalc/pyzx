@@ -2,5 +2,4 @@ include pyzx/js/zx_editor_model.js
 include pyzx/js/zx_editor_widget.js
 include pyzx/js/zx_viewer.js
 include pyzx/js/d3.v5.min.js
-include pyzx/js/d3.v5.min.inline.js
-include pyzx/js/require.min.inline.js
+include pyzx/js/zx_viewer.inline.js

@@ -255,22 +255,22 @@ def draw_matplotlib(
 random_graphid = random.Random()
 
 # only inline JS libraries on the first call to draw_d3
-draw_d3_print_libraries = True
-
-def init_drawing() -> None:
-    global draw_d3_print_libraries
-    draw_d3_print_libraries = False
-    if settings.mode not in ("notebook", "browser"): 
-        raise Exception("This method only works when loaded in a webpage or Jupyter notebook")
-
-    library_code = '<script type="text/javascript">\n'
-
-    for lib in ['require.min.inline.js', 'd3.v5.min.inline.js', 'zx_viewer.js']:
-        with open(os.path.join(settings.javascript_location, lib), 'r') as f:
-            library_code += f.read() + '\n'
-
-    library_code += '</script>'
-    display(HTML(library_code))
+# draw_d3_print_libraries = True
+#
+# def init_drawing() -> None:
+#     global draw_d3_print_libraries
+#     draw_d3_print_libraries = False
+#     if settings.mode not in ("notebook", "browser"): 
+#         raise Exception("This method only works when loaded in a webpage or Jupyter notebook")
+#
+#     library_code = '<script type="text/javascript">\n'
+#
+#     for lib in ['require.min.inline.js', 'd3.v5.min.inline.js', 'zx_viewer.js']:
+#         with open(os.path.join(settings.javascript_location, lib), 'r') as f:
+#             library_code += f.read() + '\n'
+#
+#     library_code += '</script>'
+#     display(HTML(library_code))
 
 def draw_d3(
     g: Union[BaseGraph[VT,ET], Circuit],
@@ -280,8 +280,6 @@ def draw_d3(
     show_scalar:bool=False,
     vdata: List[str]=[]
     ) -> Any:
-
-    global draw_d3_print_libraries
 
     if settings.mode not in ("notebook", "browser"): 
         raise Exception("This method only works when loaded in a webpage or Jupyter notebook")
@@ -327,22 +325,23 @@ def draw_d3(
               't': g.edge_type(e) } for e in g.edges()]
     graphj = json.dumps({'nodes': nodes, 'links': links})
 
-    if draw_d3_print_libraries:
-        display(HTML("<div style='color:red'>WARNING: For more reliable output, you should call pyzx.init_drawing() before using pyzx.draw().</div>"))
-        init_drawing()
+    with open(os.path.join(settings.javascript_location, 'zx_viewer.inline.js'), 'r') as f:
+        library_code = f.read() + '\n'
 
     text = """<div style="overflow:auto" id="graph-output-{id}"></div>
-<script type="text/javascript">
-require(['zx_viewer'], function(zx_viewer) {{
-    zx_viewer.showGraph('#graph-output-{id}',
-    JSON.parse('{graph}'), {width}, {height}, {scale}, {node_size}, {hbox}, {labels}, '{scalar_str}');
-}});
-</script>""".format(id = graph_id,
+<script type="module">
+import * as d3 from "https://cdn.skypack.dev/d3@5";
+{library_code}
+showGraph('#graph-output-{id}',
+  JSON.parse('{graph}'), {width}, {height}, {scale},
+  {node_size}, {hbox}, {labels}, '{scalar_str}');
+</script>""".format(library_code=library_code,
+                    id = graph_id,
                     graph = graphj, 
-                   width=w, height=h, scale=scale, node_size=node_size,
-                   hbox = 'true' if auto_hbox else 'false',
-                   labels='true' if labels else 'false',
-                   scalar_str=g.scalar.to_unicode() if show_scalar else '')
+                    width=w, height=h, scale=scale, node_size=node_size,
+                    hbox = 'true' if auto_hbox else 'false',
+                    labels='true' if labels else 'false',
+                    scalar_str=g.scalar.to_unicode() if show_scalar else '')
     if settings.mode == "notebook":
         display(HTML(text))
     else:
