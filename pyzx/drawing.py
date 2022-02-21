@@ -313,7 +313,7 @@ def draw_d3(
     graphj = json.dumps({'nodes': nodes, 'links': links})
 
     if draw_d3_print_libraries:
-        draw_d3_print_libraries = False
+        # draw_d3_print_libraries = False
         library_code = '<script type="text/javascript">\n'
 
         for lib in ['require.min.inline.js', 'd3.v5.min.inline.js', 'zx_viewer.js']:
