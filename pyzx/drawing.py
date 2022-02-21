@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__all__ = ['draw', 'init_drawing', 'arrange_scalar_diagram', 'draw_matplotlib', 'draw_d3', 
+__all__ = ['draw', 'arrange_scalar_diagram', 'draw_matplotlib', 'draw_d3', 
             'matrix_to_latex', 'print_matrix']
 
 import os
