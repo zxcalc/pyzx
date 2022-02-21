@@ -64,6 +64,9 @@ def to_quimb_tensor(g: BaseGraph) -> 'qtn.TensorNetwork':
                        tags = ("H",) if isHadamard else ("N",))
         tensors.append(t)
 
+    # TODO: This is not taking care of all the stuff that can be in g.scalar
+    # In particular, it doesn't check g.scalar.phasenodes
+    # TODO: This will give the wrong tensor when g.scalar.is_zero == True.
     # Grab the float factor and exponent from the scalar
     scalar_float = np.exp(1j * np.pi * g.scalar.phase) * g.scalar.floatfactor
     scalar_exp = math.log10(math.sqrt(2)) * g.scalar.power2
