@@ -10,7 +10,7 @@ setup(
     name="pyzx",
     author="Quantomatic",
     author_email="john@vdwetering.name",
-    version="0.6.4",
+    version="0.7.0",
     url="https://github.com/Quantomatic/pyzx.git",
     description="Library for quantum circuit rewriting and optimisation using the ZX-calculus",
     long_description=README,
@@ -36,6 +36,7 @@ setup(
     python_requires='>=3.6',
     install_requires=["typing_extensions>=3.7.4",
                       "numpy>=1.14",
-                      "pyperclip>=1.8.1"],
+                      "pyperclip>=1.8.1",
+                      "tqdm>=4.56.0"],
     include_package_data=True,
 )

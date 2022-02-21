@@ -37,6 +37,7 @@ except ImportError:
 from pyzx.graph import Graph
 from pyzx.utils import EdgeType, VertexType
 from pyzx.quimb import to_quimb_tensor
+from pyzx.simplify import full_reduce
 
 @unittest.skipUnless(np, "numpy needs to be installed for this to run")
 @unittest.skipUnless(qu, "quimb needs to be installed for this to run")
@@ -111,6 +112,18 @@ class TestMapping(unittest.TestCase):
         self.assertTrue(abs((tn & qtn.Tensor(data = [0, 1], inds = ("0",)) 
                             & qtn.Tensor(data = [0, 1j], inds = ("3",)))
                         .contract(output_inds = ()) + 1) < 1e-9)
+    
+    def test_scalar(self):
+        g = Graph()
+        x = g.add_vertex(VertexType.Z, row = 0, phase = 1 / 2)
+        y = g.add_vertex(VertexType.Z, row = 1, phase = 1 / 4)
+        g.add_edge(g.edge(x, y), edgetype = EdgeType.SIMPLE)
+        
+        full_reduce(g)
+        val = to_quimb_tensor(g).contract(output_inds = ())
+        expected_val = 1 + np.exp(1j * np.pi * 3 / 4)
+        self.assertTrue(abs(val - expected_val) < 1e-9)
+        
 
 if __name__ == '__main__':
     unittest.main()
