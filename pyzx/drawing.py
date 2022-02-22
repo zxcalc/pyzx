@@ -254,21 +254,13 @@ def draw_matplotlib(
 # make sure we get a fresh random seed
 random_graphid = random.Random()
 
-# only inline JS libraries on the first call to draw_d3
-# draw_d3_print_libraries = True
-#
 # def init_drawing() -> None:
-#     global draw_d3_print_libraries
-#     draw_d3_print_libraries = False
-#     if settings.mode not in ("notebook", "browser"): 
-#         raise Exception("This method only works when loaded in a webpage or Jupyter notebook")
+#     if settings.mode not in ("notebook", "browser"): return
 #
 #     library_code = '<script type="text/javascript">\n'
-#
-#     for lib in ['require.min.inline.js', 'd3.v5.min.inline.js', 'zx_viewer.js']:
+#     for lib in ['d3.v5.min.inline.js']:
 #         with open(os.path.join(settings.javascript_location, lib), 'r') as f:
 #             library_code += f.read() + '\n'
-#
 #     library_code += '</script>'
 #     display(HTML(library_code))
 
@@ -330,7 +322,8 @@ def draw_d3(
 
     text = """<div style="overflow:auto" id="graph-output-{id}"></div>
 <script type="module">
-import * as d3 from "https://cdn.skypack.dev/d3@5";
+var d3;
+if (d3 == null) {{ d3 = await import("https://cdn.skypack.dev/d3@5"); }}
 {library_code}
 showGraph('#graph-output-{id}',
   JSON.parse('{graph}'), {width}, {height}, {scale},
