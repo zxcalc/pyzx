@@ -15,7 +15,7 @@
 # limitations under the License.
 
 __all__ = ['draw', 'arrange_scalar_diagram', 'draw_matplotlib', 'draw_d3', 
-            'matrix_to_latex', 'print_matrix']
+            'matrix_to_latex', 'print_matrix', 'graphs_to_gif']
 
 import os
 import math
