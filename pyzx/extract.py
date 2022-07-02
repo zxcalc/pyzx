@@ -206,7 +206,7 @@ def greedy_reduction(m: Mat2) -> Optional[List[Tuple[int, int]]]:
     if indicest is None: return indicest
     indices = list(indicest)
     rows = {i:m.data[i] for i in indices}
-    weights = {i: sum(r) for i,r in rows.items()}
+    weights: Dict[int,int] = {i: sum(r) for i,r in rows.items()}
     result = []
     while len(indices)>1:
         best = (-1,-1)
@@ -240,7 +240,7 @@ def flat_indices(m: Mat2, indices: List[int]) -> Tuple[List[Tuple[int, int]], in
     if len(indices) == 0:
         return [], -1
     rows = {i: m.data[i] for i in indices}
-    weights = {i: sum(r) for i, r in rows.items()}
+    weights: Dict[int,int] = {i: sum(r) for i, r in rows.items()}
     result = []
     next_indices = []
     while len(indices) > 1:
