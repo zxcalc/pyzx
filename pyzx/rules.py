@@ -610,7 +610,8 @@ def match_lcomp_parallel(
 
 def lcomp(g: BaseGraph[VT,ET], matches: List[MatchLcompType[VT]]) -> RewriteOutputType[ET,VT]:
     """Performs a local complementation based rewrite rule on the given graph with the
-    given ``matches`` returned from ``match_lcomp(_parallel)``. See *insert paper here* 
+    given ``matches`` returned from ``match_lcomp(_parallel)``. See "Graph Theoretic
+    Simplification of Quantum Circuits using the ZX calculus" (arXiv:1902.03178)
     for more details on the rewrite"""
     etab: Dict[ET,List[int]] = dict()
     rem = []
