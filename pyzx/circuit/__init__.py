@@ -1,4 +1,4 @@
-# PyZX - Python library for quantum circuit rewriting 
+# PyZX - Python library for quantum circuit rewriting
 #        and optimization using the ZX-calculus
 # Copyright (C) 2018 - Aleks Kissinger and John van de Wetering
 
@@ -22,6 +22,7 @@ import numpy as np
 from .gates import Gate, gate_types, ZPhase, XPhase, CZ, CX, CNOT, HAD, SWAP, CCZ, Tofolli, Measurement
 
 from ..graph.base import BaseGraph
+from ..utils import EdgeType
 
 CircuitLike = Union['Circuit', Gate]
 
@@ -90,7 +91,8 @@ class Circuit(object):
         c.add_circuit(other)
         g = c.to_graph()
         full_reduce(g)
-        if g.num_vertices() == self.qubits*2:
+        if (g.num_vertices() == self.qubits*2 and
+                all(g.edge_type(e) == EdgeType.SIMPLE for e in g.edges())):
             if up_to_swaps:
                 return True
             else:
@@ -424,7 +426,7 @@ class Circuit(object):
         d = self.stats_dict(depth)
         s = """Circuit {} on {} qubits with {} gates.
         {} is the T-count
-        {} Cliffords among which 
+        {} Cliffords among which
         {} 2-qubit gates ({} CNOT, {} other) and
         {} Hadamard gates.""".format(d["name"], d["qubits"], d["gates"],
                 d["tcount"], d["clifford"], d["twoqubit"], d["cnot"], d["twoqubit"] - d["cnot"], d["had"])
