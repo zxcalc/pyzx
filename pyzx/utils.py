@@ -18,6 +18,10 @@ import os
 from fractions import Fraction
 from typing import Union, Optional, List, Dict
 from typing_extensions import Literal, Final
+from sympy import Expr, Symbol
+from sympy.printing.pretty.pretty import PrettyPrinter
+from sympy.printing.pretty.stringpict import prettyForm
+
 
 FloatInt = Union[float,int]
 FractionLike = Union[Fraction,int]
@@ -52,10 +56,45 @@ def toggle_edge(ty: EdgeType.Type) -> EdgeType.Type:
     return EdgeType.HADAMARD if ty == EdgeType.SIMPLE else EdgeType.SIMPLE
 
 
+superscript_map = {
+    k: v for k, v in
+    zip('0123456789ABDEGHIJKLMNOPRTUW⋅()+-',
+        '⁰¹²³⁴⁵⁶⁷⁸⁹ᴬᴮᴰᴱᴳᴴᴵᴶᴷᴸᴹᴺᴼᴾᴿᵀᵁᵂ˙⁽⁾⁺⁻')}
+
+
+class NewPrettyPrinter(PrettyPrinter):
+    def _print_Pow(self, power):
+        s = super()._print_Pow(power)
+        if str(s).count('\n') > 0:
+            if str(s).count('\n') == 1:
+                b, e = power.as_base_exp()
+                e_str = symbolize(e)
+                if all(chr in superscript_map for chr in e_str):
+                    e = ''.join([superscript_map[chr] for chr in e_str])
+                    b_str = symbolize(b)
+                    if not isinstance(b, Symbol):
+                        b_str = '(' + b_str + ')'
+                    return prettyForm(f'{b_str}{e}')
+            return prettyForm(str(power).replace('**', '^'))
+        return s
+
+
+def symbolize(expr):
+    """Reformat a symbolic expression to a string. """
+    pp = NewPrettyPrinter({})
+    s = pp.doprint(expr)
+    if '\n' in s:
+        return str(expr)
+    s = s.replace('⋅', '')
+    return s
+
 
 def phase_to_s(a: FractionLike, t:VertexType.Type=VertexType.Z):
     if (a == 0 and t != VertexType.H_BOX): return ''
     if (a == 1 and t == VertexType.H_BOX): return ''
+
+    if isinstance(a, Expr):
+        return symbolize(a)
     if not isinstance(a, Fraction):
         a = Fraction(a)
 
