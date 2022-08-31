@@ -191,7 +191,7 @@ class Circuit(object):
     def to_basic_gates(self) -> 'Circuit':
         """Returns a new circuit with every gate expanded in terms of X/Z phases, Hadamards
         and the 2-qubit gates CNOT, CZ, CX."""
-        c = Circuit(self.qubits, name=self.name)
+        c = Circuit(self.qubits, name=self.name, bit_amount=self.bits)
         for g in self.gates:
             c.gates.extend(g.to_basic_gates())
         return c
