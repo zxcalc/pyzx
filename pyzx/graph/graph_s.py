@@ -20,7 +20,6 @@ from typing import Tuple, Dict, Set, Any
 from .base import BaseGraph
 
 from ..utils import VertexType, EdgeType, FractionLike, FloatInt
-from sympy import Expr
 
 class GraphS(BaseGraph[int,Tuple[int,int]]):
     """Purely Pythonic implementation of :class:`~graph.base.BaseGraph`."""
@@ -246,16 +245,16 @@ class GraphS(BaseGraph[int,Tuple[int,int]]):
     def phases(self):
         return self._phase
     def set_phase(self, vertex, phase):
-        if isinstance(phase, Expr):
-            self._phase[vertex] = phase
-        else:
+        try:
             self._phase[vertex] = Fraction(phase) % 2
+        except Exception:
+            self._phase[vertex] = phase
     def add_to_phase(self, vertex, phase):
         old_phase = self._phase.get(vertex, Fraction(1))
-        if isinstance(phase, Expr) or isinstance(self._phase[vertex], Expr):
-            self._phase[vertex] = old_phase + phase
-        else:
+        try:
             self._phase[vertex] = (old_phase + Fraction(phase)) % 2
+        except Exception:
+            self._phase[vertex] = old_phase + phase
     def qubit(self, vertex):
         return self._qindex.get(vertex,-1)
     def qubits(self):
