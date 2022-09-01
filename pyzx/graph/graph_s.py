@@ -245,10 +245,16 @@ class GraphS(BaseGraph[int,Tuple[int,int]]):
     def phases(self):
         return self._phase
     def set_phase(self, vertex, phase):
-        self._phase[vertex] = Fraction(phase) % 2
+        try:
+            self._phase[vertex] = Fraction(phase) % 2
+        except Exception:
+            self._phase[vertex] = phase
     def add_to_phase(self, vertex, phase):
-        self._phase[vertex] = (self._phase.get(vertex,Fraction(1)) + Fraction(phase)) % 2
-
+        old_phase = self._phase.get(vertex, Fraction(1))
+        try:
+            self._phase[vertex] = (old_phase + Fraction(phase)) % 2
+        except Exception:
+            self._phase[vertex] = old_phase + phase
     def qubit(self, vertex):
         return self._qindex.get(vertex,-1)
     def qubits(self):

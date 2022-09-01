@@ -19,6 +19,7 @@ from fractions import Fraction
 from typing import Union, Optional, List, Dict
 from typing_extensions import Literal, Final
 
+
 FloatInt = Union[float,int]
 FractionLike = Union[Fraction,int]
 
@@ -52,12 +53,13 @@ def toggle_edge(ty: EdgeType.Type) -> EdgeType.Type:
     return EdgeType.HADAMARD if ty == EdgeType.SIMPLE else EdgeType.SIMPLE
 
 
-
 def phase_to_s(a: FractionLike, t:VertexType.Type=VertexType.Z):
     if (a == 0 and t != VertexType.H_BOX): return ''
     if (a == 1 and t == VertexType.H_BOX): return ''
-    if not isinstance(a, Fraction):
+    try:
         a = Fraction(a)
+    except Exception:
+        return str(a)
 
     if a == 0: return '0'
     simstr = ''
