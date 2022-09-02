@@ -563,10 +563,17 @@ class CRZ(Gate):
         self.phase = phase
 
     def to_basic_gates(self):
-        return [ZPhase(self.target,Fraction(self.phase/2)),
-                CNOT(self.control,self.target),
-                ZPhase(self.target,Fraction(-self.phase/2)%2),
-                CNOT(self.control,self.target)]
+        phase1 = self.phase / 2
+        phase2 = -self.phase / 2
+        try:
+            phase1 = Fraction(phase1) % 2
+            phase2 = Fraction(phase2) % 2
+        except Exception:
+            pass
+        return [ZPhase(self.target, phase1),
+                CNOT(self.control, self.target),
+                ZPhase(self.target, phase2),
+                CNOT(self.control, self.target)]
 
 
     def to_graph(self, g, q_mapper, c_mapper):
