@@ -29,11 +29,14 @@ def parse_quipper_block(lines: List[str]) -> Circuit:
         raise TypeError("File does not start correctly: " + start)
     if start.endswith(','): start = start[:-1]
     inputs = start[8:].split(",")
-    
-    for ip in inputs:
-        n, ty = ip.split(":")
-        if ty.strip() != "Qbit":
-            raise TypeError("Unsupported type " + ty)
+
+    if inputs == ["none"]:
+        inputs = []
+    else:
+        for ip in inputs:
+            n, ty = ip.split(":")
+            if ty.strip() != "Qbit":
+                raise TypeError("Unsupported type " + ty)
 
     c = Circuit(len(inputs))
     for gate in gates:
@@ -43,6 +46,8 @@ def parse_quipper_block(lines: List[str]) -> Circuit:
             if t>=c.qubits: c.qubits = t+1
             continue
         if gate.startswith("QTerm0"): continue
+        if gate.startswith("QMeas"): continue
+        if gate.startswith("QDiscard"): continue
         if gate.startswith("QRot"):
             i = gate.find("exp(")
             if gate[i+4:i+8] == '-i%Z':
@@ -71,7 +76,7 @@ def parse_quipper_block(lines: List[str]) -> Circuit:
         gname = g[g.find('[')+2:g.find(']')-1]
         t = int(g[g.find('(')+1:g.find(')')])
         adjoint = g.find("*")!=-1
-        if len(l) == 2 and l[1].find('nocontrol')!=-1: #no controls
+        if len(l) == 1 or (len(l) == 2 and l[1].find("nocontrol") != -1):  # no controls
             if gname == "H": c.add_gate("HAD", t)
             elif gname == "not": c.add_gate("NOT", t)
             elif gname == "Z": c.add_gate("Z", t)

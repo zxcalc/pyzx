@@ -69,6 +69,12 @@ class TestCircuit(unittest.TestCase):
         self.assertEqual(self.c.qubits, c2.qubits)
         self.assertListEqual(self.c.gates,c2.gates)
 
+    def test_load_quipper_from_file(self):
+        c1 = Circuit.from_quipper_file("test_circuit.circuit")
+        c2 = Circuit.from_quipper_file("test_circuit_nocontrol_noqubits.circuit")
+        self.assertEqual(c1.qubits, c2.qubits)
+        self.assertListEqual(c2.gates,c2.gates)
+
     def test_cliffordT_preserves_graph_semantics(self):
         random.seed(SEED)
         g = cliffordT(4,20,0.2)

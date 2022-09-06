@@ -1,0 +1,27 @@
+Inputs: none
+QInit0(0)
+QInit0(1)
+QInit0(2)
+QInit0(3)
+QInit0(4)
+QGate["not"](4)
+QGate["H"](4)
+QGate["Z"](4) with controls=[+0,+3] with nocontrol
+QGate["Z"](4) with controls=[+2,+3] with nocontrol
+QGate["H"](4)
+QGate["not"](4) with controls=[+3] with nocontrol
+QGate["H"](4)
+QGate["Z"](4) with controls=[+1,+2] with nocontrol
+QGate["H"](4)
+QGate["not"](4) with controls=[+2] with nocontrol
+QGate["H"](4)
+QGate["Z"](4) with controls=[+0,+1] with nocontrol
+QGate["H"](4)
+QGate["not"](4) with controls=[+1] with nocontrol
+QGate["not"](4) with controls=[+0] with nocontrol
+QTerm0(2)
+QTerm0(3)
+QMeas(0)
+QMeas(1)
+QDiscard(4)
+Outputs: 0:Cbit, 1:Cbit

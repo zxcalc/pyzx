@@ -329,7 +329,8 @@ class Circuit(object):
 
     @staticmethod
     def from_quipper(s: str) -> 'Circuit':
-        """Produces a :class:`Circuit` based on a Quipper ASCII description of a circuit."""
+        """Produces a :class:`Circuit` based on a Quipper ASCII description of a circuit.
+        Currently measurement instructions are not supported and are discarded."""
         from .quipperparser import parse_quipper_block
         text = s.strip()
         lines = text.splitlines()
@@ -341,7 +342,8 @@ class Circuit(object):
 
     @staticmethod
     def from_quipper_file(fname: str) -> 'Circuit':
-        """Produces a :class:`Circuit` based on a Quipper ASCII description of a circuit."""
+        """Produces a :class:`Circuit` based on a Quipper ASCII description of a circuit.
+        Currently measurement instructions are not supported and are discarded."""
         from .quipperparser import parse_quipper_block, quipper_center_block
         try:
             with open(fname, 'r') as f:
