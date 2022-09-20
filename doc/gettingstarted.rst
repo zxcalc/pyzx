@@ -12,9 +12,6 @@ If you wish to use the demo notebooks or benchmark circuits, then the repository
 The best way to get started if you have cloned the repository is to run the `Getting Started notebook <https://github.com/Quantomatic/pyzx/blob/master/demos/gettingstarted.ipynb>`_ in Jupyter. This page contains the same general information as that notebook.
 
 .. warning::
-	If you are using the pip installed version, please make sure it is version 0.6.0, and not 0.5.x as the api has changed considerably in between.
-
-.. warning::
 	The newer JupyterLab as opposed to the older Jupyter Notebook uses a different framework for widgets which is currently not compatible with the widgets used in PyZX. It is therefore recommended that you use the classic notebook interface. If you are using JupyterLab you can find this interface by going to 'Help -> Launch Classic Notebook'.
 
 Let's start by importing the library::
@@ -29,7 +26,7 @@ Quantum circuits in PyZX are represented by the :class:`~pyzx.circuit.Circuit` c
 
 PyZX tries to automatically figure out in which format the circuit is represented. The :mod:`~pyzx.generate` module supplies several ways to generate random circuits::
 	
-	>>> circuit = zx.generate.CNOT_HAD_PHASE_circuit(qubits=10,depth=20,clifford=True)
+	>>> circuit = zx.generate.CNOT_HAD_PHASE_circuit(qubits=4,depth=20,clifford=True)
 
 If you are running inside a Jupyter notebook, circuits can be easily visualized::
 	
@@ -38,9 +35,15 @@ If you are running inside a Jupyter notebook, circuits can be easily visualized:
 .. figure::  _static/clifford.png
    :align:   center
 
-The default drawing method is to use the d3 javascript library. When not running in a Jupyter notebook ``zx.draw`` returns a matplotlib figure instead.
+The default drawing method is to use the D3 Javascript library. When not running in a Jupyter notebook ``zx.draw`` returns a matplotlib figure instead. 
+In PyZX, Hadamard gates are stored as edges between vertices, which here are shown as blue lines.
 
-Most of the functionality of PyZX is based on the ZX-diagrams. These are represented by instances of :class:`~pyzx.graph.base.BaseGraph`. To convert a circuit into a ZX-diagram, simply do::
+There are two main data structures in PyZX, Circuits and Graphs. A :class:`~pyzx.circuit.Circuit` is essentially just a list of gates. The above is an example of a ``Circuit``::
+
+	>>>print(circuit.gates)
+	[CNOT(2,3), CNOT(0,1), CNOT(1,3), CNOT(1,2), CNOT(1,3), S(0), S(1), S(3), HAD(2), HAD(3), CNOT(2,1), HAD(3), CNOT(2,0), S(3), CNOT(1,3), S(3), HAD(0), HAD(1), CNOT(3,1), CNOT(3,2)]
+
+Most of the functionality in PyZX works on Graphs instead, which directly represent ZX-diagrams (the drawing function ``zx.draw`` above for instance first converted the circuit into a Graph before drawing it). ZX-diagrams are represented by instances of :class:`~pyzx.graph.base.BaseGraph`. To convert a circuit into a ZX-diagram, simply do::
 
 	g = circuit.to_graph()
 
@@ -54,15 +57,15 @@ Let us use one of the built-in ZX-diagram simplification routines on this ZX-dia
 .. figure::  _static/clifford_simp.png
    :align:   center
 
-   The same circuit, but rewritten into a more compact form. The blue lines represent edges which have a Hadamard gate on them.
+   The same circuit, but rewritten into a more compact ZX-diagram. The blue lines represent edges which have a Hadamard gate on them.
 
-A ZX-diagram is represented internally as a graph::
+Internally, a ZX-diagram is just a graph with some additional data::
 	
 	>>> print(g)
 	Graph(16 vertices, 21 edges)
 
 
-This simplified ZX-graph no longer looks like a circuit. PyZX supplies some methods for turning a ZX-graph back into a circuit::
+The simplified ZX-diagram above no longer looks like a circuit. PyZX supplies some methods for turning a Graph back into a circuit::
 	
 	>>> c = zx.extract_circuit(g.copy())
 	>>> zx.draw(c)
@@ -70,37 +73,46 @@ This simplified ZX-graph no longer looks like a circuit. PyZX supplies some meth
 .. figure::  _static/clifford_extracted.png
    :align:   center
 
-To verify that the simplified circuit is still equal to the original we can convert them to numpy tensors and compare equality directly::
+This extraction procedure is sometimes not as good at keeping the number of two-qubit gates low, and will sometimes increase the size of the circuit. PyZX also supplies some Circuit-level optimisers that more consistently reduce the size of the circuit (but are less powerful)::
 	
-	>>> zx.compare_tensors(c,g,preserve_scalar=False)
+	>>> c2 = zx.optimize.basic_optimization(c.to_basic_gates())
+	>>> zx.draw(c2)
+
+.. figure::  _static/clifford_optimized.png
+   :align:   center
+
+To verify that the optimized circuit is still equal to the original we can convert them to numpy tensors and compare equality directly::
+	
+	>>> zx.compare_tensors(c2,g,preserve_scalar=False)
 		True
 
-Note that a ``Circuit`` is not much more than just a series of gates::
+We can convert circuits into one of several circuit description languages, such as QASM::
 	
-	>>> print(c.gates)
-		[S(1), S*(2), Z(3), CZ(1,3), CZ(2,3), S(0), CZ(1,0), CZ(3,0), CNOT(1,0), CNOT(2,0), CNOT(3,0), CNOT(2,3), CNOT(0,3), NOT(2), CX(2,3), HAD(3)]
+	>>> print(c2.to_qasm())
+	OPENQASM 2.0;
+	include "qelib1.inc";
+	qreg q[4];
+	rz(0.5*pi) q[1];
+	h q[1];
+	rz(0.5*pi) q[1];
+	cx q[2], q[0];
+	h q[2];
+	h q[3];
+	h q[0];
+	cx q[0], q[1];
+	sdg q[1];
+	cx q[2], q[1];
+	cz q[0], q[2];
+	h q[2];
+	cz q[0], q[3];
+	h q[3];
+	rz(0.5*pi) q[3];
+	h q[0];
+	x q[0];
+	cx q[1], q[2];
+	cx q[2], q[1];
+	cx q[1], q[2];
 
-We can convert circuits into one of several circuit description languages, such as that of QUIPPER::
-	
-	>>> print(c.to_quipper())
-	Inputs: 0Qbit, 1Qbit, 2Qbit, 3Qbit
-	QGate["S"](1) with nocontrol
-	QGate["S"]*(2) with nocontrol
-	QGate["Z"](3) with nocontrol
-	QGate["Z"](3) with controls=[+1] with nocontrol
-	QGate["Z"](3) with controls=[+2] with nocontrol
-	QGate["S"](0) with nocontrol
-	QGate["Z"](0) with controls=[+1] with nocontrol
-	QGate["Z"](0) with controls=[+3] with nocontrol
-	QGate["not"](0) with controls=[+1] with nocontrol
-	QGate["not"](0) with controls=[+2] with nocontrol
-	QGate["not"](0) with controls=[+3] with nocontrol
-	QGate["not"](3) with controls=[+2] with nocontrol
-	QGate["not"](3) with controls=[+0] with nocontrol
-	QGate["not"](2) with nocontrol
-	QGate["X"](3) with controls=[+2] with nocontrol
-	QGate["H"](3) with nocontrol
-	Outputs: 0Qbit, 1Qbit, 2Qbit, 3Qbit
 
 Optimizing random circuits is of course not very useful, so let us do some optimization on a predefined circuit::
 
