@@ -1,3 +1,7 @@
+# type: ignore
+
+# NOTE: this is experimental code, and not fully implemented. Do not expect it to extract circuits.
+
 from .utils import EdgeType, VertexType, toggle_edge
 from .linalg import Mat2, Z2
 from .simplify import id_simp, tcount
