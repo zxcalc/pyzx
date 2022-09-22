@@ -11,6 +11,7 @@ PyZX
    :caption: Contents:
    
    gettingstarted
+   faq
    simplify
    graph
    representations
