@@ -108,7 +108,7 @@ settings = Settings()
 settings.javascript_location = os.path.join(os.path.dirname(__file__), 'js')
 
 # We default to importing d3 from a CDN
-settings.d3_load_string = 'require.config({paths: {d3: "https://cdnjs.cloudflare.com/ajax/libs/d3/5.0.0/d3.min.js"} });'
+settings.d3_load_string = 'require.config({paths: {d3: "https://cdnjs.cloudflare.com/ajax/libs/d3/5.16.0/d3.min"} });'
 # However, if we are working in the pyzx directory itself, we can use the copy of d3
 # local to pyzx, which doesn't require an internet connection
 # We only do this if we believe we are running in the PyZX directory itself.
@@ -117,8 +117,8 @@ try:
     relpath = os.path.relpath(settings.javascript_location, os.getcwd())
     if relpath.count('..') <= 2: # We are *probably* working in the PyZX directory
         settings.javascript_location = os.path.relpath(settings.javascript_location, os.getcwd())
-        settings.d3_load_string = 'require.config({{baseUrl: "{}",paths: {{d3: "d3.v5.min"}} }});'.format(
-                            settings.javascript_location.replace('\\','/'))
+        #settings.d3_load_string = 'require.config({{baseUrl: "{}",paths: {{d3: "d3.v5.min"}} }});'.format(
+        #                    settings.javascript_location.replace('\\','/'))
         # TODO: This will fail if Jupyter is started in the parent directory of pyzx, while
         # the notebook is not in the pyzx directory
 except ValueError: # relpath raises this Exception when the drive letters don't match
