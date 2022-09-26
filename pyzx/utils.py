@@ -108,7 +108,7 @@ settings = Settings()
 settings.javascript_location = os.path.join(os.path.dirname(__file__), 'js')
 
 # We default to importing d3 from a CDN
-settings.d3_load_string = 'require.config({paths: {d3: "https://d3js.org/d3.v5.min"} });'
+settings.d3_load_string = 'require.config({paths: {d3: "https://cdnjs.cloudflare.com/ajax/libs/d3/5.0.0/d3.min.js"} });'
 # However, if we are working in the pyzx directory itself, we can use the copy of d3
 # local to pyzx, which doesn't require an internet connection
 # We only do this if we believe we are running in the PyZX directory itself.
