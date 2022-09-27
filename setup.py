@@ -37,6 +37,7 @@ setup(
     install_requires=["typing_extensions>=3.7.4",
                       "numpy>=1.14",
                       "pyperclip>=1.8.1",
-                      "tqdm>=4.56.0"],
+                      "tqdm>=4.56.0",
+                      "ipywidgets>=7.5,<8"],
     include_package_data=True,
 )
