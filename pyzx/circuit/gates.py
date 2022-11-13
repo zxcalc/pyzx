@@ -429,6 +429,34 @@ class XPhase(Gate):
         gates.append(HAD(self.target))
         return gates
 
+class YPhase(Gate):
+    name = 'YPhase'
+    printphase: ClassVar[bool] = True
+    qasm_name = 'ry'
+    def __init__(self, target: int, phase: FractionLike=0) -> None:
+        self.target = target
+        self.phase = phase
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, YPhase): return False
+        if self.index != other.index: return False
+        if self.target == other.target and self.phase == other.phase:
+            return True
+        return False
+
+    def __str__(self) -> str:
+        return 'QRot["exp(-i%Y)",{!s}]({!s})'.format(math.pi*self.phase/2,self.target)
+
+    def to_basic_gates(self):
+        return [ZPhase(self.target, Fraction(1,2)), XPhase(self.target, self.phase), ZPhase(self.target, -Fraction(1,2))]
+
+    def to_graph(self, g, q_mapper, c_mapper):
+        for gate in self.to_basic_gates():
+            gate.to_graph(g, q_mapper, c_mapper)
+
+    def tcount(self):
+        return 1 if self.phase.denominator > 2 else 0
+
 class NOT(XPhase):
     name = 'NOT'
     quippername = 'not'
@@ -930,6 +958,7 @@ gate_types: Dict[str,Type[Gate]] = {
     "XPhase": XPhase,
     "NOT": NOT,
     "ZPhase": ZPhase,
+    "YPhase": YPhase,
     "Z": Z,
     "S": S,
     "T": T,
