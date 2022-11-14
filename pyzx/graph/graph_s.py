@@ -44,7 +44,7 @@ class GraphS(BaseGraph[int,Tuple[int,int]]):
         self._inputs: Tuple[int, ...]                   = tuple()
         self._outputs: Tuple[int, ...]                  = tuple()
         
-    def clone(self) -> GraphS:
+    def clone(self) -> 'GraphS':
         cpy = GraphS()
         for v, d in self.graph.items():
             cpy.graph[v] = d.copy()
