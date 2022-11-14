@@ -32,4 +32,4 @@ jobs:
         mypy pyzx/
     - name: Test with unittest
       run: |
-        sh runtests.sh
+        python -m unittest discover -s "tests" -t "."
