@@ -5,9 +5,11 @@
 import unittest
 import random
 import sys
+import os
 if __name__ == '__main__':
     sys.path.append('..')
     sys.path.append('.')
+mydir = os.path.dirname(__file__)
 
 try:
     import numpy as np
@@ -32,7 +34,7 @@ class TestCircuit(unittest.TestCase):
         self.assertListEqual(self.c.gates,c1.gates)
 
     def test_load_qasm_from_file(self):
-        c1 = Circuit.from_qasm_file("ry.qasm")
+        c1 = Circuit.from_qasm_file(os.path.join(mydir,"ry.qasm"))
         self.assertEqual(c1.qubits, self.c.qubits)
         self.assertListEqual(c1.gates,self.c.gates)
 
