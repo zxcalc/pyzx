@@ -110,7 +110,7 @@ class ParitySingle(object):
 class MultiLinearPoly(object):
     """Class for representing phase polynomials in the multilinear formalism.
     For example: x1 + x2 + 2x1x2 + 4x1x2x3"""
-    def __init__(self):
+    def __init__(self) -> None:
         self.l: Dict[int,int]            = {}
         self.q: Dict[Tuple[int,int],int] = {}
         self.c: Set[Tuple[int,int,int]]  = set()

@@ -27,7 +27,7 @@ class GraphS(BaseGraph[int,Tuple[int,int]]):
 
     #The documentation of what these methods do 
     #can be found in base.BaseGraph
-    def __init__(self):
+    def __init__(self) -> None:
         BaseGraph.__init__(self)
         self.graph: Dict[int,Dict[int,EdgeType.Type]]   = dict()
         self._vindex: int                               = 0
@@ -44,7 +44,7 @@ class GraphS(BaseGraph[int,Tuple[int,int]]):
         self._inputs: Tuple[int, ...]                   = tuple()
         self._outputs: Tuple[int, ...]                  = tuple()
         
-    def clone(self):
+    def clone(self) -> GraphS:
         cpy = GraphS()
         for v, d in self.graph.items():
             cpy.graph[v] = d.copy()
@@ -58,8 +58,8 @@ class GraphS(BaseGraph[int,Tuple[int,int]]):
         cpy._maxr = self._maxr
         cpy._vdata = self._vdata.copy()
         cpy.scalar = self.scalar.copy()
-        cpy.inputs = self.inputs.copy()
-        cpy.outputs = self.outputs.copy()
+        cpy._inputs = tuple(list(self._inputs))
+        cpy._outputs = tuple(list(self._outputs))
         cpy.track_phases = self.track_phases
         cpy.phase_index = self.phase_index.copy()
         cpy.phase_master = self.phase_master

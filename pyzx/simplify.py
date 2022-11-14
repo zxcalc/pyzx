@@ -115,7 +115,7 @@ def pivot_boundary_simp(g: BaseGraph[VT,ET], matchf:Optional[Callable[[ET],bool]
 def lcomp_simp(g: BaseGraph[VT,ET], matchf:Optional[Callable[[VT],bool]]=None, quiet:bool=False, stats:Optional[Stats]=None) -> int:
     return simp(g, 'lcomp_simp', match_lcomp_parallel, lcomp, matchf=matchf, quiet=quiet, stats=stats)
 
-def bialg_simp(g: BaseGraph[VT,ET], quiet:bool=False, stats: Stats=None) -> int:
+def bialg_simp(g: BaseGraph[VT,ET], quiet:bool=False, stats: Optional[Stats]=None) -> int:
     return simp(g, 'bialg_simp', match_bialg_parallel, bialg, quiet=quiet, stats=stats)
 
 def spider_simp(g: BaseGraph[VT,ET], matchf:Optional[Callable[[VT],bool]]=None, quiet:bool=False, stats:Optional[Stats]=None) -> int:
@@ -264,7 +264,7 @@ class Simplifier(Generic[VT, ET]):
 
         self.simplifygraph.phase_mult[i2] = 1
 
-    def full_reduce(self, quiet:bool=True, stats: Stats=None) -> None:
+    def full_reduce(self, quiet:bool=True, stats:Optional[Stats]=None) -> None:
         full_reduce(self.simplifygraph,quiet=quiet, stats=stats)
 
 
