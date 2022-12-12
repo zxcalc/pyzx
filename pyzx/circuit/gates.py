@@ -570,7 +570,8 @@ class CRZ(Gate):
             phase2 = Fraction(phase2) % 2
         except Exception:
             pass
-        return [ZPhase(self.target, phase1),
+        return [ZPhase(self.control, phase1),
+                ZPhase(self.target, phase1),
                 CNOT(self.control, self.target),
                 ZPhase(self.target, phase2),
                 CNOT(self.control, self.target)]
