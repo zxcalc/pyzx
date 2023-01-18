@@ -16,11 +16,9 @@
 
 
 import sys
-if __name__ == '__main__':
-    sys.path.append('..')
 from pyzx.generate import cnots as generate_cnots
-from pyzx.circuit import Circuit, gates
-from pyzx.linalg import Mat2
+from pyzx.circuit import Circuit, gates, gate_types, CNOT
+from pyzx.linalg import Mat2, MatLike
 
 # try:
 #     import numpy as np
@@ -33,17 +31,36 @@ import numpy as np
 class CNOT_tracker(Circuit):
     def __init__(self, n_qubits, **kwargs):
         super().__init__(n_qubits, **kwargs)
-        self.matrix = Mat2.id(n_qubits)
+        self.matrix = Mat2(np.identity(n_qubits, dtype=np.int32).tolist())
         self.row_perm = np.arange(n_qubits)
         self.col_perm = np.arange(n_qubits)
         self.n_qubits = n_qubits
 
     def count_cnots(self):
-        return len([g for g in self.gates if hasattr(g, "name") and g.name == "CNOT"])
+        return len([g for g in self.gates if hasattr(g, "name") and g.name in ["CNOT", "CZ"]])
+
+    def cnot_depth(self):
+        depth = 1
+        previous_gates = []
+        for g in self.gates:
+            if hasattr(g, "name") and g.name in ["CNOT", "CZ"]:
+                if g.control in previous_gates or g.target in previous_gates: # type: ignore # Overlapping gate
+                    # Start a new CNOT layer
+                    previous_gates = [] 
+                    depth += 1
+                else:
+                    previous_gates += [g.control, g.target] # type: ignore
+        return depth
 
     def row_add(self, q0, q1):
         self.add_gate("CNOT", q0, q1)
         self.matrix.row_add(q0, q1)
+
+    def add_gate(self, gate, *args, **kwargs):
+        if isinstance(gate, CNOT):
+            self.row_add(gate.control, gate.target)
+        else:
+            super().add_gate(gate, *args, **kwargs)
 
     def col_add(self, q0, q1):
         self.prepend_gate("CNOT", q1, q0)
@@ -51,11 +68,12 @@ class CNOT_tracker(Circuit):
 
     @staticmethod
     def get_metric_names():
-        return ["n_cnots"]
+        return ["n_cnots", "depth"]
 
     def gather_metrics(self):
         metrics = {}
         metrics["n_cnots"] = self.count_cnots()
+        metrics["depth"] = self.cnot_depth()
         return metrics
 
     def prepend_gate(self, gate, *args, **kwargs):
@@ -99,7 +117,7 @@ class CNOT_tracker(Circuit):
         circuit = Circuit.from_qasm_file(fname)
         return CNOT_tracker.from_circuit(circuit)
 
-def build_random_parity_map(qubits, n_cnots, circuit=None):
+def build_random_parity_map(qubits: int, n_cnots: int, circuit=None) -> MatLike:
     """
     Builds a random parity map.
 
@@ -116,44 +134,9 @@ def build_random_parity_map(qubits, n_cnots, circuit=None):
     c = Circuit.from_graph(g)
     matrix = Mat2.id(qubits)
     for gate in c.gates:
-        matrix.row_add(gate.control, gate.target)
+        if not hasattr(gate, "control") or not hasattr(gate, "target"):
+            continue
+        matrix.row_add(gate.control, gate.target) # type: ignore
         for c in circuit:
-            c.row_add(gate.control, gate.target)
+            c.row_add(gate.control, gate.target) # type: ignore
     return matrix.data
-
-
-if __name__ == '__main__':
-    import argparse
-    import os
-    from pyzx.scripts.cnot_mapper import make_into_list
-
-    parser = argparse.ArgumentParser(description="Generates random CNOT circuits and stores them as QASM files.")
-    parser.add_argument("folder", help="The QASM file or folder with QASM files to be routed.")
-    parser.add_argument("-q", "--n_qubits", nargs='+', default=9, type=int, help="The number of qubits participating in the circuit.")
-    parser.add_argument("-m", "--n_maps", default=1, type=int, help="The number of circuits to be generated.")
-    parser.add_argument("-d", "--n_cnots", nargs='+', default=None, type=int, help="The number of CNOTs in the generated circuit.")
-
-    args = parser.parse_args()
-    if args.n_cnots is None:
-        parser.error(message="Please specify the number of CNOT gates to be generated with the -d flag.")
-    folder = args.folder
-    os.makedirs(folder, exist_ok=True)
-
-    n_qubits = make_into_list(args.n_qubits)
-    n_maps = args.n_maps
-    n_cnots = make_into_list(args.n_cnots)
-
-    for q in n_qubits:
-        for n in n_cnots:
-            dest_folder = os.path.join(folder, str(q) + "qubits", str(n))
-            os.makedirs(dest_folder, exist_ok=True)
-            for i in range(n_maps):
-                filename = "Original" + str(i) + ".qasm"
-                dest_file = os.path.join(dest_folder, filename)
-                circuit = CNOT_tracker(q)
-                build_random_parity_map(q, n, circuit)
-                with open(dest_file, "w") as f:
-                    f.write(circuit.to_qasm())
-
-
-

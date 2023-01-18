@@ -15,8 +15,9 @@
 # limitations under the License.
 
 import os
+from argparse import ArgumentTypeError
 from fractions import Fraction
-from typing import Union, Optional, List, Dict
+from typing import Union, Optional, List, Dict, Any
 from typing_extensions import Literal, Final
 
 
@@ -137,3 +138,43 @@ except:
         settings.mode = "browser"
     except:
         settings.mode = "shell"
+
+
+def restricted_float(x):
+    x = float(x)
+    if x < 0.0 or x > 1.0:
+        raise ArgumentTypeError("%r not in range [0.0, 1.0]." % (x,))
+    return x
+
+
+def make_into_list(possible_list: Any) -> List[Any]:
+    if not isinstance(possible_list, List):
+        return [possible_list]
+    return possible_list
+
+
+def maxelements(seq, key=None, reverse=False):
+    """
+    Return list of position(s) of largest element.
+
+    Adapted from: https://stackoverflow.com/questions/3989016/how-to-find-all-positions-of-the-maximum-value-in-a-list
+    """
+    indices = []
+    if key is None:
+        key = lambda x: x
+    if reverse:
+        compare = lambda x, y: x <= y
+    else:
+        compare = lambda x, y: x >= y
+    if seq:
+        best_val = key(seq[0])
+        for i, val in enumerate(seq):
+            cur_val = key(val)
+            if compare(cur_val, best_val):
+                if cur_val == best_val:
+                    indices.append(i)
+                else:
+                    best_val = cur_val
+                    indices = [i]
+
+    return indices

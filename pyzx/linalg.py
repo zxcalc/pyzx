@@ -137,7 +137,13 @@ class Mat2(object):
             v = self.data[r][c0]
             self.data[r][c0] = self.data[r][c1]
             self.data[r][c1] = v
-
+    
+    def permute_rows(self, p: List[int]) -> None:
+        """Permute the rows of the matrix according to the permutation p."""
+        self.data = [self.data[i] for i in p]
+    def permute_cols(self, p: List[int]) -> None:
+        """Permute the columns of the matrix according to the permutation p."""
+        self.data = [[self.data[i][j] for j in p] for i in range(self.rows())]
     
     def gauss(self, full_reduce:bool=False, x:Any=None, y:Any=None, blocksize:int=6, pivot_cols:List[int]=[]) -> int:
         """Compute the echelon form. Returns the number of non-zero rows in the result, i.e.
