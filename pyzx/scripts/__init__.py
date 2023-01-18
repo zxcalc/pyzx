@@ -23,6 +23,7 @@ The options for command are:
     tikz      -- Convert a circuit into a Tikz file
     router    -- Map any circuit onto restricted architectures
     cnots     -- Generate random CNOT circuits 
+    phasepoly -- Generates random phase polynomial circuits and stores them as QASM files
 
 For help on the arguments for these commands run for instance 'python -m pyzx opt --help'
 """
@@ -32,6 +33,7 @@ from . import circ2circ
 from . import circ2tikz
 from . import circuit_router
 from . import cnot_generator
+from . import phase_poly_generator
    
 def main(argv):
     parser = argparse.ArgumentParser(prog="PyZX", description="PyZX commandline interface",
@@ -41,7 +43,7 @@ def main(argv):
         parser.print_help()
         exit(1)
     args = parser.parse_args(argv[1:2])
-    if args.command not in ('opt', 'tikz', 'router', 'cnots'):
+    if args.command not in ('opt', 'tikz', 'router', 'cnots', 'phasepoly'):
         print("Unrecognized command '{}'".format(args.command))
         parser.print_help()
         exit(1)
@@ -54,3 +56,5 @@ def main(argv):
         circuit_router.main(argv[2:])
     if args.command == 'cnots':
         cnot_generator.main(argv[2:])
+    if args.command == 'phasepoly':
+        phase_poly_generator.main(argv[2:])
