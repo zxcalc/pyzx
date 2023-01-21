@@ -15,11 +15,12 @@
 # limitations under the License.
 
 from pyquil import Program, get_qc
-from pyquil.gates import CNOT
+from pyquil.gates import CNOT, S, T, RZ, H, CZ
 from pyquil.quil import Pragma
 from pyquil.api import LocalQVMCompiler
 from pyquil.parser import parse as parse_quil
 from pyquil.quilbase import Pragma, Gate
+from numpy import pi
 
 from pyzx.routing.parity_maps import CNOT_tracker
 from pyzx.circuit import Circuit
@@ -98,16 +99,34 @@ class PyQuilCircuit(CNOT_tracker):
     def update_program(self):
         self.program = Program()
         for gate in self.gates:
-            if hasattr(gate, "name") and gate.name == "CNOT":
-                self.program += CNOT(gate.control, gate.target)
-            else:
-                print("Warning: PyquilCircuit can only be used for circuits with only CNOT gates for now.")
+            if hasattr(gate, "name"):
+                if gate.name == "CNOT":
+                    self.program += CNOT(gate.control, gate.target)
+                elif gate.name == "CZ":
+                    self.program += CZ(gate.control, gate.target)
+                elif gate.name == "HAD":
+                    self.program += H(gate.target)
+                elif gate.name == "S":
+                    self.program += S(gate.target)
+                elif gate.name == "T":
+                    self.program += T(gate.target)
+                elif gate.name == "T*":
+                    self.program += RZ(3*pi/4, gate.target)
+                else:
+                    print(f"Warning: PyquilCircuit does not currently support the gate '{gate}'.")
 
     @staticmethod
     def from_CNOT_tracker(circuit, architecture):
         new_circuit = PyQuilCircuit(architecture, n_qubits=circuit.qubits, name=circuit.name)
         new_circuit.gates = circuit.gates
         new_circuit.update_matrix()
+        new_circuit.update_program()
+        return new_circuit
+
+    @staticmethod
+    def from_circuit(circuit, architecture):
+        new_circuit = PyQuilCircuit(architecture, n_qubits=circuit.qubits, name=circuit.name)
+        new_circuit.gates = circuit.gates
         new_circuit.update_program()
         return new_circuit
 
