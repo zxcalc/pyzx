@@ -17,7 +17,8 @@
 
 import math
 import sys
-from typing import Dict, Iterator, List, Literal, Set, Tuple, Optional, Union
+from typing import Dict, Iterator, List, Set, Tuple, Optional, Union
+from typing_extensions import Literal
 
 from pyzx.graph.base import BaseGraph
 if __name__ == '__main__':
