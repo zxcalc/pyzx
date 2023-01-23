@@ -16,6 +16,7 @@
 
 
 import math
+import itertools
 import sys
 from typing import Dict, Iterator, List, Set, Tuple, Optional, Union
 from typing_extensions import Literal
@@ -739,15 +740,15 @@ def create_dynamic_density_hamiltonian_architecture(n_qubits, density_prob=0.1, 
     return Architecture(name=name, coupling_graph=graph, backend=backend, **kwargs)
 
 def create_dynamic_density_tree_architecture(n_qubits, density_prob=0.1, backend=None, **kwargs):
-    import networkx as nx
-    graph = nx.Graph()
-    vertices = [i for i in range(n_qubits)]
-    graph.add_nodes_from(vertices)
+    graph = Graph(backend=backend)
+    vertices = graph.add_vertices(n_qubits)
     edges = []
+    # Pick a random root
     indices = [i for i in range(len(vertices))]
     index = np.random.choice(indices)
     root = vertices[index]
     indices.remove(index)
+    # Create the tree
     stack = [root]
     while stack != []:
         parent = stack.pop(0)
@@ -755,7 +756,7 @@ def create_dynamic_density_tree_architecture(n_qubits, density_prob=0.1, backend
             if len(indices) == 1:
                 n_children = 1
             else:
-                p = [0]
+                p = [0.]
                 x = 0.5
                 while len(p) < len(indices)-1:
                     p.append(x)
@@ -772,30 +773,42 @@ def create_dynamic_density_tree_architecture(n_qubits, density_prob=0.1, backend
         possible_edges = [(v1, v2) for i, v1 in enumerate(vertices) for v2 in vertices[i+1:] if (v1,v2) not in edges and v1!=v2 and (v2,v1) not in edges]
         indices = np.random.choice(len(possible_edges), n_edges, replace=False)
         edges.extend([possible_edges[i] for i in indices])
-    #print(*sorted([(e1,e2) if e1 > e2 else (e2,e1) for e1,e2 in edges], key=lambda p: p[0]), sep="\n")
-    graph.add_edges_from(edges)
+    graph.add_edges(edges)
     # Make the coupling graph and adjust the numbering
-    m = nx.to_numpy_array(graph)
     name = dynamic_size_architecture_name(DENSITY+str(density_prob), n_qubits)
-    arch = Architecture(name, coupling_matrix=m, **kwargs)
+    arch = Architecture(name=name, coupling_graph=graph, **kwargs)
     return arch
 
 def create_dynamic_density_architecture(n_qubits, density_prob=0.1, backend=None, **kwargs):
-    # raise NotImplementedError("This version is not fully implemented. please use create_dynamic_density_hamiltonian_architecture()")
-    import networkx as nx
-    # Generate a random graph
-    graph = nx.gnp_random_graph(n_qubits, density_prob)
+    # Generate a random graph by adding each possible edge with probability density_prob
+    graph = Graph(backend=backend)
+    vertices = graph.add_vertices(n_qubits)
+    for v,u in itertools.combinations(vertices, 2):
+        if np.random.rand() < density_prob:
+            graph.add_edge(v,u)
     # Make sure it is connected
-    connectivity = nx.all_pairs_node_connectivity(graph)
-    disconnected = [(v1, v2) for v1,d in connectivity.items() for v2, score in d.items() if score == 0]
-    while disconnected != []:
-        to_add = np.random.choice(len(disconnected))
-        graph.add_edge(*disconnected[to_add])
-        connectivity = nx.all_pairs_node_connectivity(graph)
-        disconnected = [(v1, v2) for v1,d in connectivity.items() for v2, score in d.items() if score == 0]
-    m = nx.to_numpy_array(graph)
+    to_explore = set(vertices)
+    explored = set()
+    while to_explore:
+        # Pick a random root
+        root = np.random.choice(tuple(to_explore))
+        if explored:
+            # Add an edge to the explored component
+            v = np.random.choice(tuple(explored))
+            graph.add_edge(root, v)
+        to_explore.remove(root)
+        explored.add(root)
+        # Mark the connected component as explored
+        queue = [root]
+        while queue:
+            v = queue.pop(0)
+            for u in v.neighbors:
+                if u in to_explore:
+                    to_explore.remove(u)
+                    explored.add(u)
+                    queue.append(u)
     name = dynamic_size_architecture_name(DENSITY+str(density_prob), n_qubits)
-    arch = Architecture(name, coupling_matrix=m, **kwargs)
+    arch = Architecture(name=name, coupling_graph=graph, **kwargs)
     return arch
 
 def create_ibm_rochester(backend=None, **kwargs):
