@@ -1,10 +1,13 @@
 import numpy as np
 
 from enum import Enum
-from typing import Optional
+from typing import List, Optional, Tuple
+
+from pyzx.circuit import Circuit
 
 from ..linalg import Mat2
 from .architecture import (
+    Architecture,
     create_fully_connected_architecture,
 )
 from .parity_maps import CNOT_tracker
@@ -19,11 +22,24 @@ class ElimMode(Enum):
     """
 
     GAUSS_MODE = "gauss"
+    """Gaussian elimination, ignoring the architecture."""
+
     STEINER_MODE = "steiner"
-    GENETIC_STEINER_MODE = "genetic_steiner"
+    """Steiner tree based Gaussian elimination, optimizing the number of SWAPs
+    operations required to synthesize the CNOTs on the restricted
+    architecture."""
+
     GENETIC_GAUSS_MODE = "genetic_gauss"
+    """Gauss elimination using a genetic algorithm to find the best row permutation."""
+
+    GENETIC_STEINER_MODE = "genetic_steiner"
+    """Steiner Gauss elimination using a genetic algorithm to find the best row permutation."""
+
     PSO_GAUSS_MODE = "pso_gauss"
+    """Gauss elimination using Particle Swarm Optimization to find the best row permutation."""
+
     PSO_STEINER_MODE = "pso_steiner"
+    """Steiner Gauss elimination using Particle Swarm Optimization to find the best row permutation."""
 
     def __str__(self):
         return f"{self.value}"
@@ -35,121 +51,50 @@ basic_elim_modes = [ElimMode.STEINER_MODE, ElimMode.GAUSS_MODE]
 elim_modes = list(ElimMode)
 
 
-class CompileMode(Enum):
+class CostMetric(Enum):
     """
-    Compilation modes for the cnot mapper procedures
+    Metrics for the cost of the gates needed for a given permutation,
+    used by the cnot mapper fitness functions.
     """
 
-    QUIL_COMPILER = "quilc"
-    NO_COMPILER = "not_compiled"
-    TKET_COMPILER = "tket"
+    COMBINED = "combined"
+    """Count both the number of CNOTs and the depth of the circuit"""
+    DEPTH = "depth"
+    """Count the number of CNOTs in the circuit"""
+    COUNT = "count"
+    """Count the depth of the circuit"""
 
     def __str__(self):
         return f"{self.value}"
-
-
-class Metric(Enum):
-    """
-    Metrics for the cnot mapper procedures
-    """
-
-    COMBINED_METRIC = "combined"
-    DEPTH_METRIC = "depth"
-    COUNT_METRIC = "count"
-
-    def __str__(self):
-        return f"{self.value}"
-
-
-def depth_fitness_func(
-    mode, matrix, architecture, row=True, col=True, full_reduce=True, **kwargs
-):
-    metric_func = lambda c: c.cnot_depth()
-    return basic_fitness_func(
-        Metric.DEPTH_METRIC, mode, matrix, architecture, row, col, full_reduce, **kwargs
-    )
-
-
-def cnot_fitness_func(
-    mode, matrix, architecture, row=True, col=True, full_reduce=True, **kwargs
-):
-    metric_func = lambda c: c.count_cnots()
-    return basic_fitness_func(
-        Metric.COUNT_METRIC, mode, matrix, architecture, row, col, full_reduce, **kwargs
-    )
-
-
-def combined_fitness_func(
-    mode, matrix, architecture, row=True, col=True, full_reduce=True, **kwargs
-):
-    metric_func = lambda c: c.cnot_depth() * 10000 + c.count_cnots()
-    return basic_fitness_func(
-        Metric.COMBINED_METRIC,
-        mode,
-        matrix,
-        architecture,
-        row,
-        col,
-        full_reduce,
-        **kwargs,
-    )
-
-
-def basic_fitness_func(
-    metric_func,
-    mode,
-    matrix,
-    architecture,
-    row=True,
-    col=True,
-    full_reduce=True,
-    **kwargs,
-):
-    """
-    Creates and returns a fitness function to be used for the genetic algorithm that uses CNOT gate count as fitness.
-
-    :param mode: The type of Gaussian elimination to be used
-    :param matrix: A Mat2 parity map to route.
-    :param architecture: The architecture to take into account when routing
-    :param row: Whether to find a row permutation
-    :param col: Whether to find a column permutation
-    :param full_reduce: Whether to fully reduce the matrix, thus rebuild the full circuit.
-    :return: A fitness function that calculates the number of gates needed for a given permutation.
-    """
-    # n_qubits = len(matrix.data)
-
-    # def fitness_func(permutation):
-    #    row_perm = permutation if row else np.arange(len(matrix.data))
-    #    col_perm = permutation if col else np.arange(len(matrix.data[0]))
-    #    circuit = CNOT_tracker(n_qubits)
-    #    mat = Mat2([[matrix.data[r][c] for c in col_perm] for r in row_perm])
-    #    gauss(mode, mat, architecture=architecture, y=circuit, full_reduce=full_reduce, **kwargs)
-    #    return metric_func(circuit)
-    fitness_func = FitnessFunction(
-        metric_func,
-        matrix,
-        mode,
-        architecture,
-        row=row,
-        col=col,
-        full_reduce=full_reduce,
-        **kwargs,
-    )
-    return fitness_func
 
 
 class FitnessFunction(object):
+    """
+    A fitness function that calculates the cost of the gates needed for a given permutation.
+    """
+
     def __init__(
         self,
-        metric,
-        matrix,
-        mode,
-        architecture,
-        row=True,
-        col=True,
-        full_reduce=True,
+        metric: CostMetric,
+        matrix: Mat2,
+        mode: Optional[ElimMode],
+        architecture: Optional[Architecture],
+        row: bool = True,
+        col: bool = True,
+        full_reduce: bool = True,
         **kwargs,
     ):
+        """
+        Creates and returns a fitness function using the given metric.
+
+        :param metric_func: The metric to use for the fitness function
+        :param mode: The type of Gaussian elimination to be used
+        :param matrix: A Mat2 parity map to route.
+        :param architecture: The architecture to take into account when routing
+        :param row: Whether to find a row permutation
+        :param col: Whether to find a column permutation
+        :param full_reduce: Whether to fully reduce the matrix, thus rebuild the full circuit.
+        """
         self.metric = metric
         self.matrix = matrix
         self.mode = mode
@@ -157,15 +102,15 @@ class FitnessFunction(object):
         self.row = row
         self.col = col
         self.full_reduce = full_reduce
-        self.n_qubits = architecture.n_qubits
+        self.n_qubits = architecture.n_qubits if architecture else matrix.cols()
         self.kwargs = kwargs
 
     def _make_function(self):
-        if self.metric == Metric.COMBINED_METRIC:
+        if self.metric == CostMetric.COMBINED:
             f = lambda c: c.cnot_depth() * 10000 + c.count_cnots()
-        elif self.metric == Metric.COUNT_METRIC:
+        elif self.metric == CostMetric.COUNT:
             f = lambda c: c.count_cnots()
-        elif self.metric == Metric.DEPTH_METRIC:
+        elif self.metric == CostMetric.DEPTH:
             f = lambda c: c.cnot_depth()
 
         def fitness_func(permutation):
@@ -190,82 +135,23 @@ class FitnessFunction(object):
         return f(permutation)
 
 
-class StepFunction:
-    def __init__(self, matrices, mode, architecture, fitness_func, **kwargs):
-        self.matrices = matrices
-        self.mode = mode
-        self.architecture = architecture
-        self.fitness_func = fitness_func
-        self.kwargs = kwargs
-        self.rev_matrices = [
-            Mat2(np.asarray(m.data).T.tolist()) for m in reversed(matrices)
-        ]  # Reverse and transpose the parity matrices to create the reversed equivalent sequence
-
-    def __call__(self, initial_perm):
-        matrices = self.matrices
-        new_mode = self.mode
-        architecture = self.architecture
-        fitness_func = self.fitness_func
-        rev_matrices = self.rev_matrices
-        kwargs = self.kwargs
-        # Apply the original qubit placement
-        ms = [
-            Mat2([[row[i] for i in initial_perm] for row in m.data])
-            if j == 0
-            else Mat2([r for r in m.data])
-            for j, m in enumerate(matrices)
-        ]
-        # Optimize the sequence
-        circs, perms, score = sequential_gauss(
-            ms,
-            new_mode,
-            architecture=architecture,
-            fitness_func=fitness_func,
-            input_perm=False,
-            output_perm=True,
-            n_threads=1,
-            **kwargs,
-        )
-        # Resulting permutation is the initial permutation of the reverse pass
-        perms[0] = initial_perm
-        ms = [
-            Mat2([[row[i] for i in perms[-1]] for row in m.data])
-            if j == 0
-            else Mat2([r for r in m.data])
-            for j, m in enumerate(rev_matrices)
-        ]
-        # Optimize the reverse sequences.
-        _, new_perms, _ = sequential_gauss(
-            ms,
-            new_mode,
-            architecture=architecture,
-            fitness_func=fitness_func,
-            input_perm=False,
-            output_perm=True,
-            n_threads=1,
-            **kwargs,
-        )
-        # New initial placement is the final placement of the reverse pass.
-        # new_perms[0] = perms[-1]
-        return new_perms[-1], (circs, perms), score
-
-
 def gauss(
     mode: Optional[ElimMode],
     matrix: Mat2,
-    architecture=None,
-    permutation=None,
+    architecture: Optional[Architecture] = None,
+    permutation: Optional[List[int]] = None,
     try_transpose: bool = False,
     **kwargs,
 ) -> int:
     """
-    Performs gaussian elimination of type mode on Mat2 matrix on the given architecture, if needed.
+    Performs architecture-aware Gaussian Elimination on a matrix.
 
-    :param mode: Type of Gaussian elimination to be used
-    :param matrix: Mat2 matrix to run the algorithm on
-    :param architecture: Device architecture to take into account [optional]
-    :param kwargs: Other arguments that can be given to the Mat2.gauss() function or parameters for the genetic algorithm.
-    :return: The rank of the matrix. Mat2 matrix is transformed.
+    :param mode: Type of Gaussian elimination to be used, see :class:`ElimMode`.
+    :param matrix: Target matrix to be reduced.
+    :param architecture: Device architecture to take into account.
+    :param permutation: If given, reduce a permuted version of the matrix.
+    :param kwargs: Other arguments that can be given to the :meth:`Mat2.gauss` function or parameters for the genetic algorithm.
+    :return: The rank of the matrix. :data:`matrix` is transformed inplace.
     """
     if try_transpose:
         matrix = matrix.transpose()
@@ -347,26 +233,28 @@ def gauss(
 
 
 def permuted_gauss(
-    matrix,
-    mode=None,
-    architecture=None,
-    population_size=30,
-    crossover_prob=0.8,
-    mutate_prob=0.2,
-    n_iterations=5,
-    row=True,
-    col=True,
-    full_reduce=True,
-    fitness_func=None,
+    matrix: Mat2,
+    mode: Optional[ElimMode] = None,
+    architecture: Optional[Architecture] = None,
+    population_size: int = 30,
+    crossover_prob: float = 0.8,
+    mutate_prob: float = 0.2,
+    n_iterations: int = 5,
+    row: bool = True,
+    col: bool = True,
+    full_reduce: bool = True,
+    fitness_func: Optional[FitnessFunction] = None,
     x=None,
     y=None,
-    n_threads=None,
     **kwargs,
-):
+) -> Tuple[List[int], Circuit, int]:
     """
-    Finds an optimal permutation of the matrix to reduce the number of CNOT gates.
+    Applies gaussian elimination to the given matrix, finding an optimal
+    permutation of the matrix to reduce the number of CNOT gates.
 
     :param matrix: Mat2 matrix to do gaussian elimination over
+    :param mode: Elimination mode to use
+    :param architecture: Architecture to take into account
     :param population_size: For the genetic algorithm
     :param crossover_prob: For the genetic algorithm
     :param mutate_prob: For the genetic algorithm
@@ -374,13 +262,18 @@ def permuted_gauss(
     :param row: If the rows should be permutedA
     :param col: If the columns should be permuted
     :param full_reduce: Whether to do full gaussian reduction
-    :return: Best permutation found, list of CNOTS corresponding to the elimination.
+    :param fitness_func: Optional fitness function to use
+    :param x: Optional tracker for the row operations
+    :param y: Optional tracker for the column operations
+    :return: Best permutation found, list of CNOTS corresponding to the
+        elimination.
     """
     if row or col:
         if fitness_func is None:
-            fitness_func = combined_fitness_func(
-                mode,
+            fitness_func = FitnessFunction(
+                CostMetric.COMBINED,
                 matrix,
+                mode,
                 architecture,
                 row=row,
                 col=col,
@@ -413,32 +306,55 @@ def permuted_gauss(
     rank = gauss(
         mode, mat, architecture, x=x, y=circuit, full_reduce=full_reduce, **kwargs
     )
+    best_permutation = list(best_permutation)
     return best_permutation, circuit, rank
 
 
 def sequential_gauss(
-    matrices,
-    mode=None,
-    architecture=None,
-    fitness_func=None,
-    input_perm=True,
-    output_perm=True,
-    swarm_size=15,
-    n_steps=5,
-    s_crossover=0.4,
-    p_crossover=0.3,
-    pso_mutation=0.2,
-    n_threads=None,
-    full_reduce=True,
+    matrices: list[Mat2],
+    mode: Optional[ElimMode] = None,
+    architecture: Optional[Architecture] = None,
+    fitness_func: Optional[FitnessFunction] = None,
+    input_perm: bool = True,
+    output_perm: bool = True,
+    swarm_size: int = 15,
+    n_steps: int = 5,
+    s_crossover: float = 0.4,
+    p_crossover: float = 0.3,
+    pso_mutation: float = 0.2,
+    full_reduce: bool = True,
     **kwargs,
-):
+) -> Tuple[List[CNOT_tracker], List[List[int]], int]:
+    """
+    Applies architecture-aware Gaussian elimination to multiple matrices,
+    sharing the optimization passes when using ParticleSwarmOptimization modes.
+
+    :param matrix: List of matrices to do gaussian elimination over
+    :param mode: Elimination mode to use
+    :param architecture: Architecture to take into account
+    :param fitness_func: Optional fitness function to use
+    :param input_perm: Allow input permutation
+    :param output_perm: Whether the location of the output qubits can be
+        different for the input location. Qubit locations can be optimized with
+        pso.
+    :param swarm_size: Swarm size for the swarm optimization.
+    :param n_steps: The number of iterations for the particle swarm optimization.
+    :param s_crossover: The crossover percentage with the best particle in the swarm for the particle swarm optimizer. Must be between 0.0 and 1.0.
+    :param p_crossover: The crossover percentage with the personal best of a particle for the particle swarm optimizer. Must be between 0.0 and 1.0.
+    :param pso_mutation: The mutation percentage of a particle for the particle swarm optimizer. Must be between 0.0 and 1.0.
+    :param full_reduce: Fully reduce the matrices
+    :return: List of CNOT trackers corresponding to the eliminations, list of
+        final permutations for each matrix, and the cost of the eliminations.
+    """
     n_qubits = len(matrices[0].data)
     kwargs["full_reduce"] = full_reduce
+    circuits: List[CNOT_tracker]
+    permutations: List[List[int]] = []
     # print(mode)
     # print(*matrices, sep="\n\n")
     if mode in basic_elim_modes or mode is None:
         circuits = [CNOT_tracker(n_qubits) for _ in matrices]
-        permutations = [np.arange(n_qubits) for _ in range(len(matrices) + 1)]
+        permutations = [list(range(n_qubits)) for _ in range(len(matrices) + 1)]
         for i, m in enumerate(matrices):
             gauss(mode, m, architecture=architecture, y=circuits[i], **kwargs)
     elif mode in genetic_elim_modes:
@@ -450,7 +366,7 @@ def sequential_gauss(
         row = True
         circuits = []
         permutations = []
-        current_perm = np.arange(n_qubits)  # [i for i in range(n_qubits)]
+        current_perm = list(range(n_qubits))
         if not col:
             permutations.append(
                 current_perm
@@ -467,18 +383,17 @@ def sequential_gauss(
                 fitness_func=fitness_func,
                 row=row,
                 col=col,
-                n_threads=n_threads,
                 **kwargs,
             )
             # if not col and not row:
             #    perm = current_perm
-            circuits.append(circuit)  # Store the extracted circuit
+            circuits.append(circuit)  # type: ignore # Store the extracted circuit
             # Update the new permutation
-            current_perm = perm
+            current_perm = list(perm)  # type: ignore
             if col:
                 permutations.append(current_perm)  # Add optimized initial permutation
                 if not row:
-                    current_perm = np.arange(n_qubits)
+                    current_perm = list(range(n_qubits))
             permutations.append(current_perm)  # Store the obtained permutation
             col = False  # Subsequent initial permutations are determined by the previous output permutation.
         # input("current perm - should be [0..] ")
@@ -496,7 +411,6 @@ def sequential_gauss(
                 fitness_func=fitness_func,
                 input_perm=input_perm,
                 output_perm=output_perm,
-                n_threads=n_threads,
                 **kwargs,
             )
 
@@ -505,7 +419,6 @@ def sequential_gauss(
         )
         optimizer = ParticleSwarmOptimization(
             swarm_size=swarm_size,
-            fitness_func=fitness_func,
             step_func=step_func,
             s_best_crossover=s_crossover,
             p_best_crossover=p_crossover,
@@ -522,3 +435,64 @@ def sequential_gauss(
         permutations,
         sum([c.cnot_depth() * 10000 + c.count_cnots() for c in circuits]),
     )
+
+class StepFunction:
+    """
+    A step function for the PSO algorithm.
+    """
+
+    def __init__(self, matrices, mode, architecture, fitness_func, **kwargs):
+        self.matrices = matrices
+        self.mode = mode
+        self.architecture = architecture
+        self.fitness_func = fitness_func
+        self.kwargs = kwargs
+        self.rev_matrices = [
+            Mat2(np.asarray(m.data).T.tolist()) for m in reversed(matrices)
+        ]  # Reverse and transpose the parity matrices to create the reversed equivalent sequence
+
+    def __call__(self, initial_perm):
+        matrices = self.matrices
+        new_mode = self.mode
+        architecture = self.architecture
+        fitness_func = self.fitness_func
+        rev_matrices = self.rev_matrices
+        kwargs = self.kwargs
+        # Apply the original qubit placement
+        ms = [
+            Mat2([[row[i] for i in initial_perm] for row in m.data])
+            if j == 0
+            else Mat2([r for r in m.data])
+            for j, m in enumerate(matrices)
+        ]
+        # Optimize the sequence
+        circs, perms, score = sequential_gauss(
+            ms,
+            new_mode,
+            architecture=architecture,
+            fitness_func=fitness_func,
+            input_perm=False,
+            output_perm=True,
+            **kwargs,
+        )
+        # Resulting permutation is the initial permutation of the reverse pass
+        perms[0] = initial_perm
+        ms = [
+            Mat2([[row[i] for i in perms[-1]] for row in m.data])
+            if j == 0
+            else Mat2([r for r in m.data])
+            for j, m in enumerate(rev_matrices)
+        ]
+        # Optimize the reverse sequences.
+        _, new_perms, _ = sequential_gauss(
+            ms,
+            new_mode,
+            architecture=architecture,
+            fitness_func=fitness_func,
+            input_perm=False,
+            output_perm=True,
+            **kwargs,
+        )
+        # New initial placement is the final placement of the reverse pass.
+        # new_perms[0] = perms[-1]
+        return new_perms[-1], (circs, perms), score

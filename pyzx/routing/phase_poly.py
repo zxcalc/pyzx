@@ -18,13 +18,13 @@
 
 import numpy as np
 from fractions import Fraction
-from typing import Callable, Dict, List, Tuple, Union, Optional, Any
+from typing import Callable, Dict, List, Set, Tuple, Union, Optional, Any
 from enum import Enum
 
 from ..circuit import Circuit, ZPhase, HAD, XPhase, CNOT
 from ..graph.graph import Graph
 from ..linalg import Mat2, MatLike
-from ..routing.parity_maps import build_random_parity_map, CNOT_tracker
+from ..routing.parity_maps import build_random_parity_map, CNOT_tracker, Parity
 from ..routing.cnot_mapper import sequential_gauss, ElimMode, gauss
 from ..routing.steiner import steiner_reduce_column
 from ..routing.architecture import create_architecture, FULLY_CONNECTED, Architecture
@@ -33,13 +33,27 @@ from ..utils import make_into_list, maxelements
 
 class RoutingMethod(Enum):
     """
-    Phase polynomial routing method used in :func:`.route_phase_poly`
+    Phase polynomial routing method to use in :func:`.route_phase_poly`.
     """
 
     MATROID = "matroid"
+    """Routing method based on matroid partitioning. Commonly slower than
+    :attr:`.RoutingMethod.GRAY` and :attr:`.RoutingMethod.MEIJER`."""
+
     GRAY = "GraySynth"
+    """
+    Routing method based on Gray synthesis (see arxiv.org/abs/1712.01859 ).
+    """
+
     MEIJER = "meijer"
+    """
+    Routing method by Meijer and Duncan (see arxiv.org/abs/2004.06052 ).
+    """
+
     GRAY_MEIJER = "GraySynth+Meijer"
+    """
+    Combination of :attr:`.RoutingMethod.GRAY` and :attr:`.RoutingMethod.MEIJER`, keeps the best result of both.
+    """
 
     def __str__(self):
         return f"{self.value}"
@@ -47,15 +61,20 @@ class RoutingMethod(Enum):
 
 class RootHeuristic(Enum):
     """
-    Heuristics for choosing the root of a Steiner tree
+    Heuristics for choosing the root of a Steiner tree during phase polynomial routing.
     """
 
     RANDOM = "gauss"
+    """Randomly choose a root."""
+
     EXHAUSTIVE = "exhaustive"
+    """Try all possible roots and choose the one with the lowest cost."""
+
     ARITY = "arity"
+    """Choose the root randomly between the nodes with highest arity."""
+
     RECURSIVE = "recursive"
-    NASH = "nash"
-    FIXED = "fixed"
+    """Use an already-chosen root in a recursive call."""
 
     def __str__(self):
         return f"{self.value}"
@@ -71,23 +90,23 @@ class RootHeuristic(Enum):
             return arity_root_heuristic  # type: ignore
         elif self == RootHeuristic.RECURSIVE:
             return rec_root_heuristic  # type: ignore
-        elif self == RootHeuristic.NASH:
-            return nash_rec_root_heuristic  # type: ignore
-        elif self == RootHeuristic.FIXED:
-            return fixed_root_heuristic  # type: ignore
         else:
             raise KeyError(f"The root heuristic '{self}' is not implemented")
 
 
 class SplitHeuristic(Enum):
     """
-    Heuristics for splitting a circuit into subcircuits
+    Heuristics for choosing nodes to split a circuit during phase polynomial routing.
     """
 
     RANDOM = "random"
+    """Randomly pick a candidate."""
+
     ARITY = "arity"
+    """Split the circuit on the nodes with highest arity."""
+
     COUNT = "count"
-    COUNT_ARITY = "count->arity"
+    """Split the circuit on all the candidate nodes."""
 
     def __str__(self):
         return f"{self.value}"
@@ -101,8 +120,6 @@ class SplitHeuristic(Enum):
             return arity_split_heuristic  # type: ignore
         elif self == SplitHeuristic.COUNT:
             return count_split_heuristic  # type: ignore
-        elif self == SplitHeuristic.COUNT_ARITY:
-            return count_arity_split_heuristic
         else:
             raise KeyError(f"The split heuristic '{self}' is not implemented")
 
@@ -125,7 +142,7 @@ def route_phase_poly(
     :param mode: The elimination mode to use during the CNOT mapping step.
     :param split_heuristic: The heuristic to use for splitting the circuit into subcircuits.
     :param root_heuristic: The heuristic to use for finding the root of the circuit.
-
+    :return: The compiled circuit.
     """
     if isinstance(circuit, Circuit):
         phase_poly = PhasePoly.fromCircuit(circuit)
@@ -202,29 +219,29 @@ def make_random_phase_poly_approximate(
         return PhasePoly.fromCircuit(c)
 
 
-def make_random_phase_poly_from_gadgets(n_qubits, n_gadgets, return_circuit=False):
-    parities = set()
+def make_random_phase_poly_from_gadgets(
+    n_qubits: int, n_gadgets: int, return_circuit: bool = False
+) -> Union["PhasePoly", CNOT_tracker]:
+    parities: Set[Parity] = set()
     if n_gadgets > 2**n_qubits:
         n_gadgets = n_qubits ^ 3
     if n_qubits < 26:
         for integer in np.random.choice(
             2**n_qubits - 1, replace=False, size=n_gadgets
         ):  # type: ignore # random.choice returns a list here
-            parities.add(integer + 1)
+            parities.add(Parity(integer + 1, n_qubits))
     elif n_qubits < 64:
         while len(parities) < n_gadgets:
-            parities.add(np.random.randint(1, 2**n_qubits))
+            parities.add(Parity(np.random.randint(1, 2**n_qubits), n_qubits))
     else:
         while len(parities) < n_gadgets:
-            parities.add("".join(np.random.choice(["0", "1"], n_qubits, replace=True)))
-    if n_qubits < 64:
-        parities = [
-            ("{0:{fill}" + str(n_qubits) + "b}").format(
-                integer, fill="0", align="right"
-            )
-            for integer in parities
-        ]
-    zphase_dict = {"".join([str(int(i)) for i in p]): Fraction(1, 4) for p in parities}
+            par: Parity = Parity([])
+            while not par.count():
+                par = Parity(
+                    np.random.choice([False, True], n_qubits, replace=True), n_qubits
+                )
+            parities.add(par)
+    zphase_dict = {p: Fraction(1, 4) for p in parities}
     out_parities = mat22partition(Mat2.id(n_qubits))
     phase_poly = PhasePoly(zphase_dict, out_parities)
     if return_circuit:
@@ -315,33 +332,6 @@ def rec_root_heuristic(
     )
 
 
-def nash_rec_root_heuristic(
-    architecture, matrix, cols_to_use, qubits, column, phase_qubit, **kwargs
-):
-    root = phase_qubit
-    col = [1 if i in qubits else 0 for i in range(architecture.n_qubits)]
-    return list(
-        steiner_reduce_column(
-            architecture,
-            col,
-            root,
-            qubits,
-            [i for i in range(architecture.n_qubits)],
-            [],
-            upper=True,
-        )
-    )
-
-
-def fixed_root_heuristic(
-    root_order, architecture, matrix, cols_to_use, qubits, column, phase_qubit, **kwargs
-):
-    phase_qubit = int(root_order[column])
-    return rec_root_heuristic(
-        architecture, matrix, cols_to_use, qubits, column, phase_qubit, **kwargs
-    )
-
-
 def calculate_reward(architecture, matrix, cols_to_use, root):
     n_qubits = architecture.n_qubits
     all_cnots = 0
@@ -393,46 +383,20 @@ def count_split_heuristic(architecture, matrix, cols_to_use, qubits, **kwargs):
     return qubits
 
 
-def count_arity_split_heuristic(
-    architecture, matrix, cols_to_use, qubits, phase_qubit=None, **kwargs
-):
-    counts = [
-        max(
-            [
-                len([col for col in cols_to_use if matrix.data[q][col] == i])
-                for i in [1, 0]
-            ],
-            default=-1,
-        )
-        for q in qubits
-    ]
-    best = max(counts)
-    qubits = [q for count, q in zip(counts, qubits) if count == best]
-    # print("tie break:", len(qubits))
-    if phase_qubit is None:
-        return arity_split_heuristic(
-            architecture, matrix, cols_to_use, qubits, **kwargs
-        )
-    else:
-        if architecture.distances is None:
-            architecture.pre_calc_distances()
-        distances = architecture.distances["upper"][0]
-        chosen_qubit = min(qubits, key=lambda q: distances[(q, phase_qubit)][0])
-        return [chosen_qubit]
-
-
 class PhasePoly:
+    """
+    A class representing a phase polynomial.
+    """
+
     def __init__(
         self,
-        zphase_dict: Dict[str, Fraction],
-        out_parities: List[str],
-        root_heuristic: Optional[RootHeuristic] = None,
+        zphase_dict: Dict[Parity, Fraction],
+        out_parities: List[Parity],
     ):
         self.zphases = zphase_dict
         self.out_par = out_parities
-        self.n_qubits = len(out_parities[0])
+        self.n_qubits = out_parities[0].n_qubits()
         self.all_parities = list(zphase_dict.keys())
-        self.root_heuristic = root_heuristic
 
     @staticmethod
     def fromCircuit(
@@ -444,7 +408,7 @@ class PhasePoly:
         current_parities = mat22partition(Mat2.id(circuit.qubits))
         if initial_qubit_placement is not None:
             current_parities = [
-                "".join([row[i] for i in initial_qubit_placement])
+                Parity(row[i] for i in initial_qubit_placement)
                 for row in current_parities
             ]
         for gate in circuit.gates:
@@ -452,8 +416,8 @@ class PhasePoly:
             if gate.name in ["CNOT", "CX"]:
                 # Update current_parities
                 control = current_parities[gate.control]
-                current_parities[gate.target] = "".join(
-                    [str((int(i) + int(j)) % 2) for i, j in zip(control, parity)]
+                current_parities[gate.target] = Parity(
+                    (int(i) + int(j)) % 2 for i, j in zip(control, parity)
                 )
             elif isinstance(gate, ZPhase):
                 # Add the T rotation to the phases
@@ -655,7 +619,7 @@ class PhasePoly:
         return self._dfs(new_nodes, graph, inv_vs_dict, partitions)
 
     @staticmethod
-    def _independent(partition: List[str]) -> bool:
+    def _independent(partition: List[Parity]) -> bool:
         return inverse_hack(partition2mat2(partition)) is not None
 
     def matroid_synth(
@@ -706,7 +670,7 @@ class PhasePoly:
         current_parities = Mat2(
             [
                 [
-                    Mat2.id(n_qubits).data[i][perms[0].tolist().index(j)]
+                    Mat2.id(n_qubits).data[i][perms[0].index(j)]
                     for j in range(n_qubits)
                 ]
                 for i in range(n_qubits)
@@ -723,7 +687,7 @@ class PhasePoly:
                     pass
             # Place the rotations at each parity
             for target, p in enumerate(current_parities.data):
-                parity = "".join([str(v) for v in p])
+                parity = Parity(p)
                 # Apply the phases at current parity if needed.
                 if parity in zphases:
                     phase = self.zphases[parity]
@@ -753,7 +717,7 @@ class PhasePoly:
         # Make a matrix from the parities
         matrix = Mat2(
             [
-                [1 if parity[i] == "1" else 0 for parity in parities_to_reach]
+                [1 if parity[i] else 0 for parity in parities_to_reach]
                 for i in range(arch.n_qubits)
             ]
         )
@@ -845,7 +809,7 @@ class PhasePoly:
         # Make a matrix from the parities
         matrix = Mat2(
             [
-                [1 if parity[i] == "1" else 0 for parity in parities_to_reach]
+                [1 if parity[i] else 0 for parity in parities_to_reach]
                 for i in range(architecture.n_qubits)
             ]
         )
@@ -989,7 +953,7 @@ class PhasePoly:
         # Make a matrix from the parities
         parity_matrix = Mat2(
             [
-                [1 if parity[i] == "1" else 0 for parity in parities_to_reach]
+                [1 if parity[i] else 0 for parity in parities_to_reach]
                 for i in range(architecture.n_qubits)
             ]
         )
@@ -997,7 +961,7 @@ class PhasePoly:
         cols_to_reach = self._check_columns(
             parity_matrix,
             circuit,
-            [i for i in range(len(parities_to_reach))],
+            list(range(len(parities_to_reach))),
             parities_to_reach,
         )
         self.prev_rows: List[int] = []
@@ -1118,9 +1082,11 @@ class PhasePoly:
                 one_recurse(cols1, qubits_to_use, qubit)
 
         base_recurse(cols_to_reach, [i for i in range(n_qubits)])
+
         if full:
             # Calculate the final parity that needs to be added from the circuit and self.out_par
             self._obtain_final_parities(circuit, architecture, mode, **kwargs)
+
         # Return the circuit
         return (
             circuit,
@@ -1133,7 +1099,7 @@ class PhasePoly:
         parity_matrix: Mat2,
         circuit: Circuit,
         columns: List[int],
-        parities_to_reach: List[str],
+        parities_to_reach: List[Parity],
     ):
         """
         Check if any of the columns are finished (are phase gadgets over a single qubit)
@@ -1189,7 +1155,7 @@ class PhasePoly:
         """
         current_parities = circuit.matrix
         output_parities = Mat2(
-            [[1 if v == "1" else 0 for v in row] for row in self.out_par]
+            [[1 if v else 0 for v in row] for row in self.out_par]
         )
         current_parities_inv = current_parities.inverse()
         if current_parities_inv is None:
@@ -1228,9 +1194,9 @@ def inverse_hack(matrix: Mat2) -> Optional[Tuple[Mat2, Mat2]]:
         return matrix, inv
 
 
-def partition2mat2(partition: List[str]) -> Mat2:
-    return Mat2([[1 if i == "1" else 0 for i in parity] for parity in partition])
+def partition2mat2(partition: List[Parity]) -> Mat2:
+    return Mat2([parity.to_mat2_row() for parity in partition])
 
 
-def mat22partition(m: Mat2) -> List[str]:
-    return ["".join(str(i) for i in parity) for parity in m.data]
+def mat22partition(m: Mat2) -> List[Parity]:
+    return [Parity(p) for p in m.data]

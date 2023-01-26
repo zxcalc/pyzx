@@ -10,9 +10,10 @@ import numpy as np
 
 from pyzx.linalg import Mat2, MatLike
 from pyzx.routing.cnot_mapper import (
+    CostMetric,
     gauss,
     ElimMode,
-    cnot_fitness_func,
+    FitnessFunction,
     sequential_gauss,
 )
 from pyzx.routing.architecture import (
@@ -27,7 +28,7 @@ from pyzx.routing.architecture import (
 )
 from pyzx.routing.parity_maps import CNOT_tracker, build_random_parity_map
 from pyzx.routing.machine_learning import GeneticAlgorithm
-from pyzx.circuit import CNOT, Circuit
+from pyzx.circuit import CNOT
 from pyzx.extract import permutation_as_swaps
 from pyzx.routing.steiner import steiner_gauss
 
@@ -252,7 +253,7 @@ class TestSteiner(unittest.TestCase):
                     population,
                     crossover_prob,
                     mutate_prob,
-                    cnot_fitness_func(ElimMode.STEINER_MODE, self.matrix[i], self.arch),
+                    FitnessFunction(CostMetric.COUNT, self.matrix[i], ElimMode.STEINER_MODE, self.arch),
                 )
                 best_permutation = optimizer.find_optimum(self.n_qubits, n_iter)
                 self.do_permuted_gauss(
@@ -290,11 +291,11 @@ class TestSteiner(unittest.TestCase):
                             )
                             if not permute_input:
                                 self.assertListEqual(
-                                    perms[0].tolist(), [i for i in range(self.n_qubits)]
+                                    perms[0], [i for i in range(self.n_qubits)]
                                 )
                             if not permute_output:
                                 self.assertListEqual(
-                                    perms[-1].tolist(),
+                                    perms[-1],
                                     [i for i in range(self.n_qubits)],
                                 )
                             aggr_c = CNOT_tracker(self.n_qubits)

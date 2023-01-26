@@ -16,12 +16,13 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+from enum import Enum
 import sys, os
 import time
 import argparse
 from typing import Any, Dict, Iterable, List, Union
 
-from pyzx.routing.cnot_mapper import CompileMode, ElimMode, gauss, genetic_elim_modes, basic_elim_modes, pso_elim_modes, sequential_gauss, elim_modes
+from pyzx.routing.cnot_mapper import ElimMode, gauss, genetic_elim_modes, basic_elim_modes, pso_elim_modes, sequential_gauss, elim_modes
 from pyzx.routing.parity_maps import CNOT_tracker
 
 try:
@@ -58,6 +59,17 @@ debug = False
 
 from ..extract import bi_adj, connectivity_from_biadj, permutation_as_swaps
 
+class CompileMode(Enum):
+    """
+    Compilation modes for the cnot mapper procedures
+    """
+
+    QUIL_COMPILER = "quilc"
+    NO_COMPILER = "not_compiled"
+    TKET_COMPILER = "tket"
+
+    def __str__(self):
+        return f"{self.value}"
 
 def create_dest_filename(
     original_file,
@@ -75,7 +87,7 @@ def create_dest_filename(
 ):
     pop_ext = "" if population is None else "pop" + str(population)
     iter_ext = "" if iteration is None else "iter" + str(iteration)
-    crosover_ext = "" if crossover_prob is None else "crossover" + str(crossover_prob)
+    crossover_ext = "" if crossover_prob is None else "crossover" + str(crossover_prob)
     mutation_ext = "" if mutation_prob is None else "mutate" + str(mutation_prob)
     pso_ext = (
         "pso"
@@ -112,7 +124,7 @@ def create_dest_filename(
                     base_file,
                     pop_ext,
                     iter_ext,
-                    crosover_ext,
+                    crossover_ext,
                     mutation_ext,
                     pso_ext,
                     index_ext,
@@ -503,7 +515,6 @@ def route_circuit(
             # optimizer = GeneticAlgorithm(population, crossover_prob, mutation_prob, fitness, quiet=False)
             optimizer = ParticleSwarmOptimization(
                 swarm_size=swarm_size,
-                fitness_func=fitness,
                 step_func=step,
                 s_best_crossover=s_crossover,
                 p_best_crossover=p_crossover,
@@ -1185,7 +1196,7 @@ def sequential_map_cnot_circuits(
                                 try:
                                     print("Sequence length", len(matrices))
                                     start_time = time.time()
-                                    circuits, permutations, score = sequential_gauss(
+                                    _circs, permutations, score = sequential_gauss(
                                         matrices,
                                         architecture=architecture,
                                         mode=mode,

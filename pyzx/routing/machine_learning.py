@@ -1,4 +1,4 @@
-# PyZX - Python library for quantum circuit rewriting 
+# PyZX - Python library for quantum circuit rewriting
 #        and optimization using the ZX-calculus
 # Copyright (C) 2018 - Aleks Kissinger and John van de Wetering
 
@@ -20,38 +20,52 @@ from multiprocessing.pool import Pool
 from typing import Any, List, Optional, Tuple
 import numpy as np
 
-class GeneticAlgorithm():
 
-    def __init__(self, population_size: int, crossover_prob: float, mutation_prob: float, fitness_func, maximize: bool=False):
+class GeneticAlgorithm:
+    def __init__(
+        self,
+        population_size: int,
+        crossover_prob: float,
+        mutation_prob: float,
+        fitness_func,
+        maximize: bool = False,
+    ):
         self.population_size = population_size
         self.negative_population_size = int(np.sqrt(population_size))
         self.crossover_prob = crossover_prob
         self.mutation_prob = mutation_prob
         self.fitness_func = fitness_func
-        self._sort = lambda l: l.sort(key=lambda x:x[1], reverse=maximize)
+        self._sort = lambda l: l.sort(key=lambda x: x[1], reverse=maximize)
         self.maximize = maximize
         self.n_qubits = 0
         self.population: List[Tuple[List[int], Any]] = []
 
     def _select(self):
-        fitness_scores = [f for c,f in self.population]
+        fitness_scores = [f for c, f in self.population]
         total_fitness = sum(fitness_scores)
         if self.maximize:
-            selection_chance = [f/total_fitness for f in fitness_scores]
+            selection_chance = [f / total_fitness for f in fitness_scores]
         else:
             max_fitness = max(fitness_scores) + 1
             adjusted_scores = [max_fitness - f for f in fitness_scores]
             adjusted_total = sum(adjusted_scores)
-            selection_chance = [ f/adjusted_total for f in adjusted_scores]
-        return np.random.choice(self.population_size, size=2, replace=False, p=selection_chance)
+            selection_chance = [f / adjusted_total for f in adjusted_scores]
+        return np.random.choice(
+            self.population_size, size=2, replace=False, p=selection_chance
+        )
 
     def _create_population(self, n):
         population = [np.random.permutation(n) for _ in range(self.population_size)]
-        self.population = [(list(chromosome), self.fitness_func(chromosome)) for chromosome in population]
+        self.population = [
+            (list(chromosome), self.fitness_func(chromosome))
+            for chromosome in population
+        ]
         self._sort(self.population)
-        self.negative_population = self.population[-self.negative_population_size:]
+        self.negative_population = self.population[-self.negative_population_size :]
 
-    def find_optimum(self, n_qubits, n_generations, initial_order=None, n_child=None, continued=False):
+    def find_optimum(
+        self, n_qubits, n_generations, initial_order=None, n_child=None, continued=False
+    ):
         self.n_qubits = n_qubits
         partial_solution = False
         if not continued or not self.population:
@@ -74,17 +88,28 @@ class GeneticAlgorithm():
 
     def _add_children(self, children):
         n_child = len(children)
-        self.population.extend([(child, self.fitness_func(child)) for child in children])
+        self.population.extend(
+            [(child, self.fitness_func(child)) for child in children]
+        )
         self._sort(self.population)
         self.negative_population.extend(self.population[-n_child:])
-        self.negative_population = [self.negative_population[i] for i in np.random.choice(self.negative_population_size + n_child, size=self.negative_population_size, replace=False)]
-        self.population = self.population[:self.population_size]
+        self.negative_population = [
+            self.negative_population[i]
+            for i in np.random.choice(
+                self.negative_population_size + n_child,
+                size=self.negative_population_size,
+                replace=False,
+            )
+        ]
+        self.population = self.population[: self.population_size]
 
     def _update_population(self, n_child: int):
         children = []
         # Create a child from weak parents to avoid local optima
         p1, p2 = np.random.choice(self.negative_population_size, size=2, replace=False)
-        child = self._crossover(self.negative_population[p1][0], self.negative_population[p2][0])
+        child = self._crossover(
+            self.negative_population[p1][0], self.negative_population[p2][0]
+        )
         children.append(child)
         for _ in range(n_child):
             if np.random.random() < self.crossover_prob:
@@ -96,16 +121,16 @@ class GeneticAlgorithm():
         self._add_children(children)
 
     def _crossover(self, parent1, parent2):
-        crossover_start = np.random.choice(int(self.n_qubits/2))
-        crossover_length = np.random.choice(self.n_qubits-crossover_start)
+        crossover_start = np.random.choice(int(self.n_qubits / 2))
+        crossover_length = np.random.choice(self.n_qubits - crossover_start)
         crossover_end = crossover_start + crossover_length
-        child = -1*np.ones_like(parent1)
-        child[crossover_start:crossover_end] = parent1[crossover_start: crossover_end]
+        child = -1 * np.ones_like(parent1)
+        child[crossover_start:crossover_end] = parent1[crossover_start:crossover_end]
         child_idx = 0
         for parent_gen in parent2:
-            if child_idx == crossover_start: # skip over the parent1 part in child
+            if child_idx == crossover_start:  # skip over the parent1 part in child
                 child_idx = crossover_end
-            if parent_gen not in child: # only add new genes
+            if parent_gen not in child:  # only add new genes
                 child[child_idx] = parent_gen
                 child_idx += 1
         return child
@@ -117,10 +142,32 @@ class GeneticAlgorithm():
         parent[gen2] = _
         return parent
 
-class ParticleSwarmOptimization():
+class ParticleSwarmOptimization:
+    """
+    Optimizer based on the particle swarm optimization algorithm.
+    """
 
-    def __init__(self, swarm_size: int, fitness_func, step_func, s_best_crossover: float, p_best_crossover: float, mutation: float, maximize: bool=False, n_threads :Optional[int]=None):
-        #self.fitness_func = fitness_func
+    def __init__(
+        self,
+        swarm_size: int,
+        step_func, # type 'StepFunction'
+        s_best_crossover: float,
+        p_best_crossover: float,
+        mutation: float,
+        maximize: bool = False,
+        n_threads: Optional[int] = None,
+    ):
+        """
+        Setup the optimizer
+
+        :param swarm_size: Swarm size for the swarm optimization.
+        :param step_function: The to progress the swarm.
+        :param s_best_crossover: The crossover percentage with the best particle in the swarm. Must be between 0.0 and 1.0.
+        :param p_best_crossover: The crossover percentage with the personal best of a particle. Must be between 0.0 and 1.0.
+        :param mutation: The mutation percentage of a particle. Must be between 0.0 and 1.0.
+        :param maximize: Whether to maximize the fitness function.
+        :param n_threads: Number of threads to use for the optimization. If None, use all available threads.
+        """
         self.step_func = step_func
         self.size = swarm_size
         self.s_crossover = s_best_crossover
@@ -130,26 +177,38 @@ class ParticleSwarmOptimization():
         self.maximize = maximize
         self.swarm: List[Particle] = []
         self.pool: Optional[Pool] = None
-        n_threads = min(n_threads, cpu_count()) if n_threads is not None else cpu_count()
-        if n_threads > 1: 
+        n_threads = (
+            min(n_threads, cpu_count()) if n_threads is not None else cpu_count()
+        )
+        if n_threads > 1:
             self.pool = Pool(n_threads)
 
     def __getstate__(self):
         state = self.__dict__.copy()
         # Don't pickle baz
-        #del state["fitness_func"]
+        # del state["fitness_func"]
         del state["pool"]
         return state
 
     def __setstate__(self, state):
         self.__dict__.update(state)
         # Add baz back since it doesn't exist in the pickle
-        #self.fitness_func = None
+        # self.fitness_func = None
         self.pool = None
 
     def _create_swarm(self, n):
-        self.swarm = [Particle(n, self.step_func, self.s_crossover, self.p_crossover, self.mutation, self.maximize, id=i) 
-                        for i in range(self.size)]
+        self.swarm = [
+            Particle(
+                n,
+                self.step_func,
+                self.s_crossover,
+                self.p_crossover,
+                self.mutation,
+                self.maximize,
+                id=i,
+            )
+            for i in range(self.size)
+        ]
         # Start with 1 particle with initial permutation
         self.swarm[0].current = np.arange(n)
 
@@ -159,7 +218,13 @@ class ParticleSwarmOptimization():
         for i in range(n_steps):
             self._update_swarm()
             if not quiet:
-                print("PSO - Iteration", i, "best fitness:", self.best_particle.best, self.best_particle.best_point)
+                print(
+                    "PSO - Iteration",
+                    i,
+                    "best fitness:",
+                    self.best_particle.best,
+                    self.best_particle.best_point,
+                )
         if close_pool and self.pool:
             self.pool.close()
             self.pool.join()
@@ -173,38 +238,55 @@ class ParticleSwarmOptimization():
 
     def _update_swarm(self):
         if self.pool is not None:
-            self.swarm = self.pool.map(self.particle_update_func, [(self.best_particle, p) for p in self.swarm])
+            self.swarm = self.pool.map(
+                self.particle_update_func, [(self.best_particle, p) for p in self.swarm]
+            )
         else:
-            self.swarm = [self.particle_update_func((self.best_particle, p)) for p in self.swarm]
+            self.swarm = [
+                self.particle_update_func((self.best_particle, p)) for p in self.swarm
+            ]
         if self.maximize:
-            top = max(self.swarm, key=lambda p: p.best if p.best is not None else -np.inf)
+            top = max(
+                self.swarm, key=lambda p: p.best if p.best is not None else -np.inf
+            )
         else:
-            top = min(self.swarm, key=lambda p: p.best if p.best is not None else np.inf)
+            top = min(
+                self.swarm, key=lambda p: p.best if p.best is not None else np.inf
+            )
         if self.best_particle is None or top.compare(self.best_particle.best):
             self.best_particle = top
 
-class Particle():
 
-    def __init__(self, size, step_func, s_best_crossover, p_best_crossover, mutation, maximize=False, id=None):
+class Particle:
+    def __init__(
+        self,
+        size,
+        step_func,
+        s_best_crossover,
+        p_best_crossover,
+        mutation,
+        maximize=False,
+        id=None,
+    ):
         self.step_func = step_func
         self.size = size
         self.current = np.random.permutation(size)
         self.best_point = self.current
         self.best = None
         self.best_solution = None
-        self.s_crossover = int(s_best_crossover*size)
-        self.p_crossover = int(p_best_crossover*size)
-        self.mutation = int(mutation*size)
+        self.s_crossover = int(s_best_crossover * size)
+        self.p_crossover = int(p_best_crossover * size)
+        self.mutation = int(mutation * size)
         self.maximize = maximize
         self.id = id
-    
+
     def compare(self, x):
-        if x is None: 
+        if x is None:
             return True
         if self.maximize:
             return x < self.best
         else:
-            return x > self.best 
+            return x > self.best
 
     def step(self, swarm_best):
         new, solution, fitness = self.step_func(self.current)
@@ -218,7 +300,11 @@ class Particle():
             new = self._crossover(new, self.best_point, self.p_crossover)
             new = self._crossover(new, swarm_best.best_point, self.s_crossover)
             # Sanity check TODO can be removed!
-            if any([i not in new for i in range(self.size)]): raise Exception("The new particle point is not a permutation anymore!" + str(self.current))
+            if any([i not in new for i in range(self.size)]):
+                raise Exception(
+                    "The new particle point is not a permutation anymore!"
+                    + str(self.current)
+                )
         self.current = new
         return is_better
 
@@ -232,12 +318,12 @@ class Particle():
 
     def _crossover(self, particle, best_particle, n):
         cross_idxs = np.random.choice(self.size, size=n, replace=False)
-        new_particle = -1*np.ones_like(particle)
+        new_particle = -1 * np.ones_like(particle)
         new_particle[cross_idxs] = best_particle[cross_idxs]
         idx = 0
         for i, gen in enumerate(new_particle):
-            if gen == -1: # skip over the parent1 part in child
-                while(particle[idx] in new_particle):
+            if gen == -1:  # skip over the parent1 part in child
+                while particle[idx] in new_particle:
                     idx += 1
                     if idx == len(particle):
                         break
@@ -245,23 +331,21 @@ class Particle():
                     new_particle[i] = particle[idx]
         return new_particle
 
+if __name__ == "__main__":
 
-if __name__ == '__main__':
     def fitness_func(chromosome):
         t1 = 1
         t2 = 1
         size = len(chromosome)
-        f1 = [chromosome[i]-i for i in range(size)]
+        f1 = [chromosome[i] - i for i in range(size)]
         f2 = [size - g for g in f1]
         f1.sort()
         f2.sort()
         for i in range(1, size):
-            t1 += int(f1[i] == f1[i-1])
-            t2 += int(f2[i] == f2[i-1])
+            t1 += int(f1[i] == f1[i - 1])
+            t2 += int(f2[i] == f2[i - 1])
         return t1 + t2
-
 
     optimizer = GeneticAlgorithm(1000, 0.8, 0.2, fitness_func)
     optimizer.find_optimum(8, 300)
     print(optimizer.population)
-
