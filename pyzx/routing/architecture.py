@@ -18,7 +18,7 @@
 import math
 import itertools
 import sys
-from typing import Dict, Iterator, List, Set, Tuple, Optional, Union
+from typing import Any, Dict, Iterator, List, Set, Tuple, Optional, Union
 from typing_extensions import Literal
 
 from pyzx.graph.base import BaseGraph
@@ -53,13 +53,17 @@ DENSITY = "dynamic_density"
 architectures = [SQUARE, CIRCLE, FULLY_CONNECTED, LINE, DENSITY, IBM_QX4, IBM_QX2, IBM_QX3, 
                 IBM_QX5, IBM_Q20_TOKYO, RIGETTI_8Q_AGAVE, RIGETTI_16Q_ASPEN, RIGETTI_19Q_ACORN, 
                 REC_ARCH, SYCAMORE_LIKE, IBMQ_POUGHKEEPSIE, IBMQ_BOEBLINGEN, IBMQ_SINGAPORE, 
-                GOOGLE_SYCAMORE, IBM_ROCHESTER]
+                GOOGLE_SYCAMORE, IBM_ROCHESTER] # List of available architectures
 dynamic_size_architectures = [FULLY_CONNECTED, LINE, CIRCLE, SQUARE, DENSITY]
 hamiltonian_path_architectures = [FULLY_CONNECTED, LINE, CIRCLE, SQUARE, IBM_QX4, IBM_QX2, IBM_QX3, 
                 IBM_QX5, IBM_Q20_TOKYO, RIGETTI_8Q_AGAVE, RIGETTI_16Q_ASPEN, 
                 IBMQ_POUGHKEEPSIE]
 
 class Architecture():
+    """
+    Class that represents the architecture of the qubits to be taken into account when routing.
+    """
+
     def __init__(self, name: str, coupling_graph: Optional[BaseGraph]=None, coupling_matrix=None, backend: Optional[str]=None, qubit_map: Optional[List[int]] = None, reduce_order: Optional[List[int]]=None, **kwargs):
         """
         Class that represents the architecture of the qubits to be taken into account when routing.
@@ -120,9 +124,9 @@ class Architecture():
         """
         Pre-calculates the distances between all pairs of qubits in the architecture.
 
-        self.distances["upper"|"full"][until][(v1,v2)] contains the distance between v1 and v2, and the shortest path, where
-        upper|full indicates whether to consider bidirectional edges or not (respectively),
-        until indicates the number of qubits to consider, for "full" the distance is calculated only between qubits with index <= until),
+        :return: The computed distances. distances["upper"|"full"][until][(v1,v2)] contains the distance between v1 and v2, and the shortest path, where
+            upper|full indicates whether to consider bidirectional edges or not (respectively),
+            until indicates the number of qubits to consider, for "full" the distance is calculated only between qubits with index <= until),
             and for "upper" the distance is calculated only between qubits with index >= until)
         """
         return {"upper": [self.floyd_warshall(self.vertices[until:], upper=True) for until, v in enumerate(self.vertices)],
@@ -838,13 +842,21 @@ def create_google_sycamore(backend=None, **kwargs):
     arch = Architecture(GOOGLE_SYCAMORE, coupling_graph=graph, backend=backend, **kwargs)
     return arch
 
-def create_architecture(name, **kwargs):
-    # Source Rigetti architectures: https://www.rigetti.com/qpu # TODO create the architectures from names in pyquil.list_quantum_computers() <- needs mapping
+def create_architecture(name: Union[str, Architecture], **kwargs) -> Architecture:
+    """
+    Creates an architecture from a name.
+
+    :param name: The name of the architecture, see :py:data:`pyzx.routing.architectures` for the available constants.
+    :param kwargs: Additional arguments to pass to the architecture constructor.
+    :return: The architecture.
+    """
+    # Source Rigetti architectures: https://www.rigetti.com/qpu
+    # TODO create the architectures from names in pyquil.list_quantum_computers() <- needs mapping
     # Source IBM architectures: http://iic.jku.at/files/eda/2018_tcad_mapping_quantum_circuit_to_ibm_qx.pdf​
     # IBM architectures are currently ignoring CNOT direction.
     if isinstance(name, Architecture):
         return name
-    arch_dict = {}
+    arch_dict: Dict[str, Any] = {}
     arch_dict[SQUARE] = create_square_architecture
     arch_dict[LINE] = create_line_architecture
     arch_dict[FULLY_CONNECTED] = create_fully_connected_architecture

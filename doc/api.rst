@@ -108,6 +108,20 @@ Below is listed the content of ``optimize.py``.
    :undoc-members:
 
 
+.. _routing:
+
+List of routing functions
+------------------------------
+
+Below is listed the content of ``routing.py``.
+
+.. module:: routing
+
+.. automodule:: pyzx.routing
+   :members:
+   :undoc-members:
+   :member-order: bysource
+
 .. _tensor:
 
 Functions for dealing with tensors

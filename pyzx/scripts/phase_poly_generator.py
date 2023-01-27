@@ -17,10 +17,7 @@
 import argparse
 import os
 from ..utils import make_into_list
-from ..routing.phase_poly import (
-    make_random_phase_poly,
-    make_random_phase_poly_from_gadgets,
-)
+from .. import generate
 
 description = (
     "Generates random phase polynomial circuits and stores them as QASM files."
@@ -73,7 +70,7 @@ def main(args):
             for i in range(n_maps):
                 filename = "Original" + str(i) + ".qasm"
                 dest_file = os.path.join(dest_folder, filename)
-                circuit = make_random_phase_poly_from_gadgets(q, p, True)
+                circuit = generate.phase_poly_from_gadgets(q, p)
                 with open(dest_file, "w") as f:
                     f.write(circuit.to_qasm())
 
@@ -118,6 +115,6 @@ def main_old(args):
                 for i in range(n_maps):
                     filename = "Original" + str(i) + ".qasm"
                     dest_file = os.path.join(dest_folder, filename)
-                    circuit = make_random_phase_poly(q, p, n, True)
+                    circuit = generate.phase_poly(q, p, n)
                     with open(dest_file, "w") as f:
                         f.write(circuit.to_qasm())

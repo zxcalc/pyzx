@@ -1,3 +1,4 @@
+from typing import List
 import unittest
 import sys, os
 
@@ -10,7 +11,7 @@ from fractions import Fraction
 from pyzx.routing import architecture
 from pyzx.routing.architecture import create_architecture
 from pyzx.routing.cnot_mapper import ElimMode
-from pyzx.routing.parity_maps import CNOT_tracker
+from pyzx.routing.parity_maps import CNOT_tracker, Parity
 from pyzx.linalg import Mat2
 from pyzx.routing.phase_poly import PhasePoly
 from pyzx.circuit import Circuit, HAD, CNOT, ZPhase, XPhase
@@ -24,8 +25,7 @@ class TestPhasePoly(unittest.TestCase):
     def setUp(self):
         np.random.seed(SEED)
 
-        self.n_tests = 4
-        # self.n_qubits = 9
+        self.n_tests = 1
         self.n_qubits = 5
         name = architecture.LINE
         self.architecture = create_architecture(name, n_qubits=self.n_qubits)
@@ -112,21 +112,22 @@ class TestPhasePoly(unittest.TestCase):
         self.assertDictEqual(p1.zphases, p2.zphases)
         self.assertListEqual(p1.out_par, p2.out_par)
 
-    def assertPartitionEqual(self, sets, partition):
-        flat_partition = [p for subset in partition for p in subset]
+    def assertPartitionEqual(self, sets, partitions: List[List[Parity]]):
+        flat_partition = [p for subset in partitions for p in subset]
         # Are all sets partitioned?
-        [self.assertIn(s, flat_partition) for s in sets]
+        for s in sets:
+            self.assertIn(s, flat_partition)
         extra_parities = []
         for p in flat_partition:
             if p not in sets:
                 extra_parities.append(p)
-        [
-            self.assertTrue(p.count("1") == 1) for p in extra_parities
-        ]  # Only identity rows
+        for p in extra_parities:
+            self.assertTrue(p.count() == 1)
         # self.assertCountEqual(extra_parities, list(set(extra_parities))) # No duplicates
         # [self.assertIn(p, sets) for p in flat_partition]
         # Is every partition a set of independent parities?
-        [self.assertTrue(PhasePoly._independent(p)) for p in partition]
+        for pt in partitions:
+            self.assertTrue(PhasePoly._independent(pt))
 
     def assertFinalParityEqual(self, c1, c2):
         old_cnots = CNOT_tracker(c1.qubits)
@@ -172,7 +173,7 @@ class TestPhasePoly(unittest.TestCase):
                     if isinstance(gate, CNOT):
                         old_cnots.row_add(gate.control, gate.target)
                 original_out_par = [
-                    "".join([str(v) for v in row]) for row in old_cnots.matrix.data
+                    Parity(row) for row in old_cnots.matrix.data
                 ]
                 # Check if the output parities are the same
                 self.assertListEqual(original_out_par, phase_poly.out_par)

@@ -60,3 +60,32 @@ Besides the advanced simplification strategies based on the ZX-calculus, PyZX al
 A more advanced optimization technique involves splitting up the circuit into `phase polynomial <https://arxiv.org/abs/1303.2042>`_ subcircuits, optimizing each of these, and then resynthesising the circuit, which can be done using :func:`~pyzx.optimize.phase_block_optimize`.
 
 The :func:`~pyzx.optimize.basic_optimization` and :func:`~pyzx.optimize.phase_block_optimize` functions are also combined into a single function :func:`~pyzx.optimize.full_optimize`.
+
+Architecture-aware circuit routing
+----------------------------------
+
+The :func:`~pyzx.extract.extract_circuit` function does not take into account
+the architecture of the quantum computer that the circuit will be run on. When
+targeting a specific architecture it is often beneficial to resynthesize the
+circuit to that architecture by following the qubit connectivity when deciding
+which multi-qubit gates to use.
+
+First, we need to define the specific architecture we want to target. The
+function :func:`~pyzx.routing.create_architecture` can create a number of
+pre-defined :class:`~pyzx.routing.Architecture` objects.::
+
+	import pyzx.routing.architecture
+	
+	# Create a 9-qubit square grid architecture
+	grid_arch = architecture.create_architecture(architecture.SQUARE, 9)
+	
+	# Create a IBM qx5 architecture
+	ibm_arch = architecture.create_architecture(architecture.IBM_QX5)
+
+PyZX provides a function for routing phase-polynomial circuits. These circuits
+composed of CNOT, CX and ZPhase gates, which can be directly translated to phase
+gadgets in ZX. The module :mod:`~pyzx.generate` provides a function for creating
+such circuits to an architecture.::
+
+	c_pp = zx.generate.phase_poly(n_qubits=16, n_phase_layers=10, cnots_per_layer=10)
+	routed_circuit = zx.routing.route_phase_poly(c_pp, ibm_arch)

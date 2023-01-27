@@ -18,7 +18,8 @@
 import argparse
 import os
 from ..utils import make_into_list
-from ..routing.parity_maps import build_random_parity_map, CNOT_tracker
+from ..routing.parity_maps import CNOT_tracker
+from ..generate import build_random_parity_map
 
 description = "Generates random CNOT circuits and stores them as QASM files."
 
