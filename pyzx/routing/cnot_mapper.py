@@ -311,7 +311,7 @@ def permuted_gauss(
 
 
 def sequential_gauss(
-    matrices: list[Mat2],
+    matrices: List[Mat2],
     mode: Optional[ElimMode] = None,
     architecture: Optional[Architecture] = None,
     fitness_func: Optional[FitnessFunction] = None,
