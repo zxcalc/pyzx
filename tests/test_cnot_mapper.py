@@ -26,10 +26,11 @@ from pyzx.routing.architecture import (
     FULLY_CONNECTED,
     IBMQ_SINGAPORE,
 )
-from pyzx.routing.parity_maps import CNOT_tracker, build_random_parity_map
+from pyzx.routing.parity_maps import CNOT_tracker
 from pyzx.routing.machine_learning import GeneticAlgorithm
 from pyzx.circuit import CNOT
 from pyzx.extract import permutation_as_swaps
+from pyzx.generate import build_random_parity_map
 from pyzx.routing.steiner import steiner_gauss
 
 SEED = 42

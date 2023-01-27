@@ -24,7 +24,7 @@ from enum import Enum
 from ..circuit import Circuit, ZPhase, HAD, XPhase, CNOT
 from ..graph.graph import Graph
 from ..linalg import Mat2, MatLike
-from ..routing.parity_maps import build_random_parity_map, CNOT_tracker, Parity
+from ..routing.parity_maps import CNOT_tracker, Parity
 from ..routing.cnot_mapper import sequential_gauss, ElimMode, gauss
 from ..routing.steiner import steiner_reduce_column
 from ..routing.architecture import create_architecture, FULLY_CONNECTED, Architecture
@@ -177,76 +177,6 @@ def route_phase_poly(
     else:
         raise KeyError(f"The routing method '{method}' is not supported")
     return new_circuit
-
-
-def make_random_phase_poly(
-    n_qubits, n_phase_layers, cnots_per_layer, return_circuit=False
-):
-    c = CNOT_tracker(n_qubits)
-    for _ in range(n_phase_layers):
-        build_random_parity_map(n_qubits, cnots_per_layer, circuit=c)
-        for i in range(n_qubits):
-            phase = np.random.choice([1, -1]) * Fraction(
-                1, int(np.random.choice([1, 2, 4]))
-            )
-            c.add_gate(ZPhase(target=i, phase=phase))
-    if return_circuit:
-        return c
-    else:
-        return PhasePoly.fromCircuit(c)
-
-
-def make_random_phase_poly_approximate(
-    n_qubits, n_CNOTs, n_phases, return_circuit=False
-):
-    c = CNOT_tracker(n_qubits)
-    cnot_count = 0
-    p = n_phases / (n_CNOTs + n_phases)
-    while cnot_count < n_CNOTs:
-        target = np.random.randint(n_qubits)
-        if np.random.rand() < p:
-            phase = np.random.choice([1, -1]) * Fraction(
-                1, int(np.random.choice([1, 2, 4]))
-            )
-            c.add_gate(ZPhase(target=target, phase=phase))
-        else:
-            control = np.random.choice([i for i in range(n_qubits) if i != target])
-            c.add_gate(CNOT(control, target))
-            cnot_count += 1
-    if return_circuit:
-        return c
-    else:
-        return PhasePoly.fromCircuit(c)
-
-
-def make_random_phase_poly_from_gadgets(
-    n_qubits: int, n_gadgets: int, return_circuit: bool = False
-) -> Union["PhasePoly", CNOT_tracker]:
-    parities: Set[Parity] = set()
-    if n_gadgets > 2**n_qubits:
-        n_gadgets = n_qubits ^ 3
-    if n_qubits < 26:
-        for integer in np.random.choice(
-            2**n_qubits - 1, replace=False, size=n_gadgets
-        ):  # type: ignore # random.choice returns a list here
-            parities.add(Parity(integer + 1, n_qubits))
-    elif n_qubits < 64:
-        while len(parities) < n_gadgets:
-            parities.add(Parity(np.random.randint(1, 2**n_qubits), n_qubits))
-    else:
-        while len(parities) < n_gadgets:
-            par: Parity = Parity([])
-            while not par.count():
-                par = Parity(
-                    np.random.choice([False, True], n_qubits, replace=True), n_qubits
-                )
-            parities.add(par)
-    zphase_dict = {p: Fraction(1, 4) for p in parities}
-    out_parities = mat22partition(Mat2.id(n_qubits))
-    phase_poly = PhasePoly(zphase_dict, out_parities)
-    if return_circuit:
-        return phase_poly.rec_gray_synth("gauss", architecture=None)[0]
-    return phase_poly
 
 
 def random_root_heuristic(

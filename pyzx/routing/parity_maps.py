@@ -16,7 +16,6 @@
 
 
 from typing import Any, Dict, Iterable, List, Optional, Union
-from pyzx.generate import cnots as generate_cnots
 from pyzx.circuit import Circuit, Gate, gate_types, CNOT
 from pyzx.linalg import Z2, Mat2, MatLike
 
@@ -135,31 +134,6 @@ class CNOT_tracker(Circuit):
     def from_qasm_file(fname: str) -> "CNOT_tracker":
         circuit = Circuit.from_qasm_file(fname)
         return CNOT_tracker.from_circuit(circuit)
-
-
-def build_random_parity_map(qubits: int, n_cnots: int, circuit=None) -> MatLike:
-    """
-    Builds a random parity map.
-
-    :param qubits: The number of qubits that participate in the parity map
-    :param n_cnots: The number of CNOTs in the parity map
-    :param circuit: A (list of) circuit object(s) that implements a row_add() method to add the generated CNOT gates [optional]
-    :return: a 2D numpy array that represents the parity map.
-    """
-    if circuit is None:
-        circuit = []
-    if not isinstance(circuit, list):
-        circuit = [circuit]
-    g = generate_cnots(qubits=qubits, depth=n_cnots)
-    c = Circuit.from_graph(g)
-    matrix = Mat2.id(qubits)
-    for gate in c.gates:
-        if not hasattr(gate, "control") or not hasattr(gate, "target"):
-            continue
-        matrix.row_add(gate.control, gate.target)  # type: ignore
-        for c in circuit:
-            c.row_add(gate.control, gate.target)  # type: ignore
-    return matrix.data
 
 class Parity:
     """

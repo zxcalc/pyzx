@@ -14,13 +14,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__all__ = ['cnots','cliffords', 'cliffordT', 'cliffordTmeas', 'identity', 'CNOT_HAD_PHASE_circuit']
+__all__ = [
+    "cnots",
+    "cliffords",
+    "cliffordT",
+    "cliffordTmeas",
+    "identity",
+    "CNOT_HAD_PHASE_circuit",
+    "phase_poly",
+    "phase_poly_approximate",
+    "phase_poly_from_gadgets",
+]
 
 import random
 from fractions import Fraction
 
-from typing import Optional, List, Union
+from typing import Optional, List, Set, Union
 from typing_extensions import Literal
+
+import numpy as np
+from pyzx.circuit.gates import CNOT, ZPhase
+from pyzx.linalg import Mat2, MatLike
+
+from pyzx.routing.parity_maps import CNOT_tracker, Parity
+from pyzx.routing.phase_poly import PhasePoly, mat22partition
 
 from .utils import EdgeType, VertexType, FloatInt, FractionLike
 from .graph import Graph
@@ -565,3 +582,108 @@ def circuit_identity_two_qubit2() -> Circuit:
     c.add_gate("T",1,adjoint=True)
     c.add_circuit(c)
     return c
+
+
+
+def phase_poly(n_qubits: int, n_phase_layers: int, cnots_per_layer: int) -> Circuit:
+    """
+    Create a random phase polynomial circuit.
+
+    :param n_qubits: Number of qubits in the circuit.
+    :param n_phase_layers: Number of layers of phase gates.
+    :param cnots_per_layer: Number of CNOTs in each layer.
+    :return: A random phase polynomial circuit.
+    """
+    c = CNOT_tracker(n_qubits)
+    for _ in range(n_phase_layers):
+        build_random_parity_map(n_qubits, cnots_per_layer, circuit=c)
+        for i in range(n_qubits):
+            phase = Fraction(
+                np.random.choice([1, -1]), int(np.random.choice([1, 2, 4]))
+            )
+            c.add_gate(ZPhase(target=i, phase=phase))
+    return c
+
+
+def phase_poly_approximate(n_qubits: int, n_CNOTs: int, n_phases: int) -> Circuit:
+    """
+    Create a random phase polynomial circuit with an exact number of CNOT gates.
+
+    :param n_qubits: Number of qubits in the circuit.
+    :param n_CNOTs: Number of CNOTs in the circuit.
+    :param n_phases: Target of phase gates in the circuit. The actual number of phase gates may be slightly different.
+    :return: A random phase polynomial circuit.
+    """
+    c = CNOT_tracker(n_qubits)
+    cnot_count = 0
+    p = n_phases / (n_CNOTs + n_phases)
+    while cnot_count < n_CNOTs:
+        target = np.random.randint(n_qubits)
+        if np.random.rand() < p:
+            phase = np.random.choice([1, -1]) * Fraction(
+                1, int(np.random.choice([1, 2, 4]))
+            )
+            c.add_gate(ZPhase(target=target, phase=phase))
+        else:
+            control = np.random.choice([i for i in range(n_qubits) if i != target])
+            c.add_gate(CNOT(control, target))
+            cnot_count += 1
+    return c
+
+
+def phase_poly_from_gadgets(n_qubits: int, n_gadgets: int) -> Circuit:
+    """
+    Create a random phase polynomial circuit from a set of phase gadgets.
+
+    :param n_qubits: Number of qubits in the circuit.
+    :param n_gadgets: Number of phase gadgets to generate.
+    :return: A random phase polynomial circuit.
+    """
+    parities: Set[Parity] = set()
+    if n_gadgets > 2**n_qubits:
+        n_gadgets = n_qubits ^ 3
+    if n_qubits < 26:
+        for integer in np.random.choice(
+            2**n_qubits - 1, replace=False, size=n_gadgets
+        ):  # type: ignore # random.choice returns a list here
+            parities.add(Parity(integer + 1, n_qubits))
+    elif n_qubits < 64:
+        while len(parities) < n_gadgets:
+            parities.add(Parity(np.random.randint(1, 2**n_qubits), n_qubits))
+    else:
+        while len(parities) < n_gadgets:
+            par: Parity = Parity([])
+            while not par.count():
+                par = Parity(
+                    np.random.choice([False, True], n_qubits, replace=True), n_qubits
+                )
+            parities.add(par)
+    zphase_dict = {p: Fraction(1, 4) for p in parities}
+    out_parities = mat22partition(Mat2.id(n_qubits))
+    phase_poly = PhasePoly(zphase_dict, out_parities)
+    return phase_poly.rec_gray_synth("gauss", architecture=None)[0]
+
+
+def build_random_parity_map(qubits: int, n_cnots: int, circuit=None) -> MatLike:
+    """
+    Builds a random parity map.
+
+    :param qubits: The number of qubits that participate in the parity map
+    :param n_cnots: The number of CNOTs in the parity map
+    :param circuit: A (list of) circuit object(s) that implements a row_add() method to add the generated CNOT gates [optional]
+    :return: a 2D numpy array that represents the parity map.
+    """
+    if circuit is None:
+        circuit = []
+    if not isinstance(circuit, list):
+        circuit = [circuit]
+    g = cnots(qubits=qubits, depth=n_cnots)
+    c = Circuit.from_graph(g)
+    matrix = Mat2.id(qubits)
+    for gate in c.gates:
+        if not hasattr(gate, "control") or not hasattr(gate, "target"):
+            continue
+        matrix.row_add(gate.control, gate.target)  # type: ignore
+        for c in circuit:
+            c.row_add(gate.control, gate.target)  # type: ignore
+    return matrix.data
