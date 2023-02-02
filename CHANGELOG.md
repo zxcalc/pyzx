@@ -7,6 +7,31 @@ Right now this project is in Beta and does not yet follow [Semantic Versioning](
 Hence, occasionally changes will be backwards incompatible (although they will all be documented here).
 
 
+## [0.7.1] - 2022-02-02
+This release improves support and documentation for routing circuits (courtesy of @aborgna-q). In particular it implements the architecture-aware synthesis technique for phase polynomials of [this paper](https://arxiv.org/abs/2004.06052).
+
+The way that the D3 library is loaded is also changed, meaning that the D3 visualization should now work on more systems, in particular on Google Colab. This should also hopefully fix some errors with loading the diagram editor (although this still relies on Jupyter's widget library so that that will only work locally).
+
+### Added
+- New routing method for phase polynomial circuits `zx.routing.route_phase_poly` adapted from [this paper](https://arxiv.org/abs/2004.06052) (courtesy of @Aerylia and @aborgna-q).
+- Support for more architectures in routing library (@Aerylia and @aborgna-q).
+- Support for more gates of PyQuil (@Aerylia and @aborgna-q).
+- New phase polynomial circuit generation functions `zx.generate.phase_poly`, `zx.generate.phase_poly_approximate` and `zx.generate.phase_poly_from_gadgets`
+- New scripts `cnots` and `phasepoly` that generates random CNOT and phase polynomial circuits (@aborgna-q).
+- Basic support for symbolic angles using `sympy` when doing rewriting (courtesy of @y-richie-y).
+- Support for Quipper files that do not contain the "nocontrol" keyword.
+- Added support for `ry` gates in QASM files (courtesy of @mgrzesiuk).
+
+
+### Changed
+- Requirement of `ipywidgets` has been updated from `ipywidgets>= 7.5` to `ipywidgets>=7.5,<8` as newer version broke the diagram editor.
+- Script `mapper` has been renamed to `router`.
+
+### Fixed
+- Fixed bug in `Circuit.verify_equality` where it would sometimes say that circuits are equal while they are not (courtesy of Julian Verweij).
+
+
+
 ## [0.7.0] - 2022-02-19
 
 This release adds several new features: support for evaluating ZX-diagrams as tensor networks using the hypergraph contraction methods of [quimb](https://quimb.readthedocs.io/en/latest/index.html), basic support for interacting with the Rust port of PyZX [quizx](https://github.com/Quantomatic/quizx), support for 'hybrid' ZX-diagrams that contain classical wires and measurements, as well as several heuristics for trying to optimise the CNOT count of a circuit that is to be extracted from a ZX-diagram.
