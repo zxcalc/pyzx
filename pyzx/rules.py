@@ -183,6 +183,15 @@ def match_spider_parallel(
                 m.append((v0,v1))
     return m
 
+def unfuse_phase_spiders(g: BaseGraph[VT,ET]) -> None:
+    """ Unfuses all spiders with non-zero phase. """
+    vs = list(g.vertices())
+    for v in vs:
+        p = g.phase(v)
+        if p != 0:
+            g.set_phase(v, 0)
+            nv = g.add_vertex(ty=g.types()[v], phase=p)
+            g.add_edge(g.edge(v, nv))
 
 def spider(g: BaseGraph[VT,ET], matches: List[MatchSpiderType[VT]]) -> RewriteOutputType[ET,VT]:
     '''Performs spider fusion given a list of matchings from ``match_spider(_parallel)``
