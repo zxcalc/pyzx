@@ -27,7 +27,7 @@ except ImportError:
 
 from .utils import EdgeType, VertexType
 from .graph.base import BaseGraph
-from .simplify import to_gh, unfuse_phase_spiders
+from .simplify import to_gh
 
 def to_quimb_tensor(g: BaseGraph) -> 'qtn.TensorNetwork':
     """Converts tensor network representing the given :func:`pyzx.graph.Graph`.
@@ -44,10 +44,7 @@ def to_quimb_tensor(g: BaseGraph) -> 'qtn.TensorNetwork':
 
     # only Z spiders are handled below
     to_gh(g)
-
-    # unfuse spiders with phase
-    unfuse_phase_spiders(g)
-
+    
     tensors = []
 
     # Here we have phase tensors corresponding to Z-spiders with only one output and no input.
