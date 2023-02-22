@@ -246,11 +246,11 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
     def compose(self, other: 'BaseGraph') -> None:
         """Inserts a graph after this one. The amount of qubits of the graphs must match.
         Also available by the operator `graph1 + graph2`"""
+        other = other.copy()
         outputs = self.outputs()
         inputs = other.inputs()
         if len(outputs) != len(inputs):
             raise TypeError("Outputs of first graph must match inputs of second.")
-        other = other.copy()
 
         plugs: List[Tuple[VT,VT,EdgeType.Type]] = []
         for k in range(len(outputs)):
@@ -291,7 +291,6 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
 
         for (no,ni,et) in plugs:
             self.add_edge_smart(self.edge(no,vtab[ni]), edgetype=et)
-
         self.set_outputs(tuple(vtab[v] for v in other.outputs()))
 
 

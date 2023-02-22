@@ -237,7 +237,7 @@ class Circuit(object):
         return self.tensor(other)
 
 
-    ### MATRIX EMULATION (FOR E.G. Mat2.guass)
+    ### MATRIX EMULATION (FOR E.G. Mat2.gauss)
 
     def row_add(self, q0: int, q1: int):
         self.add_gate("CNOT", q0, q1)
