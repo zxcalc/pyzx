@@ -7,7 +7,15 @@ Right now this project is in Beta and does not yet follow [Semantic Versioning](
 Hence, occasionally changes will be backwards incompatible (although they will all be documented here).
 
 
-## [0.7.1] - 2022-02-02
+## [0.7.3] - 2023-02-22
+Hotfix for bug `Graph.compose()` function
+
+### Fixed
+- `BaseGraph.compose()` now functions as expected.
+
+
+
+## [0.7.1] - 2023-02-02
 This release improves support and documentation for routing circuits (courtesy of @aborgna-q). In particular it implements the architecture-aware synthesis technique for phase polynomials of [this paper](https://arxiv.org/abs/2004.06052).
 
 The way that the D3 library is loaded is also changed, meaning that the D3 visualization should now work on more systems, in particular on Google Colab. This should also hopefully fix some errors with loading the diagram editor (although this still relies on Jupyter's widget library so that that will only work locally).
