@@ -229,6 +229,7 @@ class QASMParser(object):
                 else:
                     val = val.strip()
                     if not val: phase = 1
+                    elif val == '-': phase = -1
                     else: phase = float(val)
             except: raise TypeError("Invalid specification {}".format(val))
         phase = Fraction(phase).limit_denominator(100000000)
