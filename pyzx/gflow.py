@@ -109,7 +109,7 @@ def gflow(
                 l[u] = k
 
         if not correct:
-            if not candidates:
+            if vertices.difference(processed) == inputs.difference(pattern_inputs):
                 return l, gflow, k
             return None
         else:
