@@ -23,16 +23,18 @@ import cmath
 import json
 import string
 import random
+import importlib
 from fractions import Fraction
 from typing import Dict, List, Tuple, Optional, Union, Iterable, Any, TYPE_CHECKING
 from typing_extensions import Literal
 import numpy as np
 
-try:
-    import matplotlib.pyplot as plt
-    from matplotlib import patches, lines, path
-except:
-    plt = None
+# matplotlib is lazy-imported on the first call to draw_matplotlib
+plt = None
+path = None
+patches = None
+lines = None
+
 
 from .utils import settings, phase_to_s, EdgeType, VertexType, FloatInt
 from .graph.base import BaseGraph, VT, ET
@@ -160,9 +162,19 @@ def draw_matplotlib(
         show_scalar: bool                        =False,
         rows: Optional[Tuple[FloatInt,FloatInt]] =None
         ) -> Any: # TODO: Returns a matplotlib figure
+
+    # lazy import matplotlib
+    global plt, path, patches, lines
     if plt is None:
-        raise ImportError("This function requires matplotlib to be installed. "
-            "If you are running in a Jupyter notebook, you can instead use `zx.draw_d3`.")
+        try:
+            plt = importlib.import_module('matplotlib.pyplot')
+            path = importlib.import_module('matplotlib.path')
+            patches = importlib.import_module('matplotlib.patches')
+            lines = importlib.import_module('matplotlib.lines')
+        except ImportError:
+            raise ImportError("This function requires matplotlib to be installed. "
+                "If you are running in a Jupyter notebook, you can instead use `zx.draw_d3`.")
+
     if isinstance(g, Circuit):
         g = g.to_graph(zh=True)
     fig1 = plt.figure(figsize=figsize)
@@ -227,9 +239,9 @@ def draw_matplotlib(
         a_offset = 0.5
 
         if t == VertexType.Z:
-            ax.add_patch(patches.Circle(p, 0.2, facecolor='green', edgecolor='black', zorder=1))
+            ax.add_patch(patches.Circle(p, 0.2, facecolor='#ccffcc', edgecolor='black', zorder=1))
         elif t == VertexType.X:
-            ax.add_patch(patches.Circle(p, 0.2, facecolor='red', edgecolor='black', zorder=1))
+            ax.add_patch(patches.Circle(p, 0.2, facecolor='#ff8888', edgecolor='black', zorder=1))
         elif t == VertexType.H_BOX:
             ax.add_patch(patches.Rectangle((p[0]-0.1, p[1]-0.1), 0.2, 0.2, facecolor='yellow', edgecolor='black'))
             a_offset = 0.25
