@@ -36,13 +36,13 @@ patches = None
 lines = None
 
 
-from .utils import settings, phase_to_s, EdgeType, VertexType, FloatInt
+from .utils import settings, get_mode, phase_to_s, EdgeType, VertexType, FloatInt
 from .graph.base import BaseGraph, VT, ET
 from .circuit import Circuit
 
-if settings.mode == "notebook":
+if get_mode() == "notebook":
     from IPython.display import display, HTML # type: ignore
-elif settings.mode == "browser":
+elif get_mode() == "browser":
     from browser import document, html # type: ignore
 
 if TYPE_CHECKING:
@@ -57,11 +57,11 @@ def draw(g: Union[BaseGraph[VT,ET], Circuit], labels: bool=False, **kwargs) -> A
     # TODO: probably better to make labels Optional[bool]
     labels = labels or settings.show_labels
 
-    if settings.mode == "shell":
+    if get_mode() == "shell":
         if plt is None: 
             raise ImportError("This function requires matplotlib.")
         return draw_matplotlib(g, labels, **kwargs)
-    elif settings.mode == "browser":
+    elif get_mode() == "browser":
         return draw_d3(g, labels, **kwargs)
     else: # in notebook
         if settings.drawing_backend == "d3":
@@ -267,7 +267,7 @@ def draw_matplotlib(
 random_graphid = random.Random()
 
 # def init_drawing() -> None:
-#     if settings.mode not in ("notebook", "browser"): return
+#     if get_mode() not in ("notebook", "browser"): return
 #
 #     library_code = '<script type="text/javascript">\n'
 #     for lib in ['d3.v5.min.inline.js']:
@@ -285,7 +285,7 @@ def draw_d3(
     vdata: List[str]=[]
     ) -> Any:
 
-    if settings.mode not in ("notebook", "browser"): 
+    if get_mode() not in ("notebook", "browser"): 
         raise Exception("This method only works when loaded in a webpage or Jupyter notebook")
 
     if auto_hbox is None:
@@ -347,7 +347,7 @@ showGraph('#graph-output-{id}',
                     hbox = 'true' if auto_hbox else 'false',
                     labels='true' if labels else 'false',
                     scalar_str=g.scalar.to_unicode() if show_scalar else '')
-    if settings.mode == "notebook":
+    if get_mode() == "notebook":
         display(HTML(text))
     else:
         d = html.DIV(style={"overflow": "auto"}, id="graph-output-{}".format(graph_id))

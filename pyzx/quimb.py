@@ -15,6 +15,7 @@
 # limitations under the License.
 
 import math
+from typing import Any
 import numpy as np
 import importlib
 
@@ -27,12 +28,15 @@ import importlib
 qu = None
 qtn = None
 
+import quimb as qu # type:ignore
+import quimb.tensor as qtn #type:ignore
 
 from .utils import EdgeType, VertexType
 from .graph.base import BaseGraph
 from .simplify import to_gh
 
-def to_quimb_tensor(g: BaseGraph) -> 'qtn.TensorNetwork':
+
+def to_quimb_tensor(g: BaseGraph) -> "qtn.TensorNetwork": # type:ignore
     """Converts tensor network representing the given :func:`pyzx.graph.Graph`.
     Pretty printing: to_tensor(g).draw(color = ['V', 'H'])
     

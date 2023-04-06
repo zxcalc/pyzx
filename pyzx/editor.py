@@ -25,7 +25,7 @@ from typing import Callable, Optional, List, Tuple, Set, Dict, Any, Union
 import pyperclip # type: ignore # Needed for clipboard actions
 
 from .utils import EdgeType, VertexType, toggle_edge, vertex_is_zx, toggle_vertex
-from .utils import settings, phase_to_s, FloatInt
+from .utils import settings, get_mode, phase_to_s, FloatInt
 from .drawing import matrix_to_latex
 from .graph import Scalar
 from .graph.graph import GraphS
@@ -34,7 +34,7 @@ from . import tikz
 
 from .editor_actions import MATCHES_VERTICES, MATCHES_EDGES, operations, operations_to_js
 
-if settings.mode == 'notebook':
+if get_mode() == 'notebook':
 	import ipywidgets as widgets
 	from traitlets import Unicode, validate, Bool, Int, Float
 	from IPython.display import display, HTML
@@ -102,7 +102,7 @@ Run %%pip install ipywidgets in a cell in your notebook to install the correct p
 """
 
 def load_js() -> None:
-	if settings.mode != 'notebook':
+	if get_mode() != 'notebook':
 		raise Exception(ERROR_STRING)
 	with open(os.path.join(settings.javascript_location,"zx_editor_widget.js")) as f:
 		data1 = f.read()

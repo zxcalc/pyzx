@@ -92,7 +92,7 @@ tikz_classes = {
 }
 
 class Settings(object): # namespace class
-    mode: Literal["notebook", "browser", "shell"] = "shell"
+    mode: Literal["notebook", "browser", "shell", ""] = "shell"
     drawing_backend: Literal["d3","matplotlib"] = "d3"
     drawing_auto_hbox: bool = False
     javascript_location: str = "" # Path to javascript files of pyzx
@@ -126,18 +126,24 @@ except ValueError: # relpath raises this Exception when the drive letters don't 
     pass
 
 
-try:
-    import IPython # type: ignore
-    ipython_instance = IPython.get_ipython()
-    if ipython_instance is None: raise Exception
-    if 'IPKernelApp' in ipython_instance.config: settings.mode = "notebook"
-    ipython_instance.config.InlineBackend.figure_format = 'svg'
-except:
-    try:
-        import browser # type: ignore
-        settings.mode = "browser"
-    except:
-        settings.mode = "shell"
+settings.mode = ''
+def get_mode():
+    if settings.mode == '':
+        try:
+            import IPython # type: ignore
+            ipython_instance = IPython.get_ipython()
+            if ipython_instance is None: raise Exception
+            if 'IPKernelApp' in ipython_instance.config: settings.mode = "notebook"
+            ipython_instance.config.InlineBackend.figure_format = 'svg'
+        except:
+            try:
+                import browser # type: ignore
+                settings.mode = "browser"
+            except:
+                settings.mode = "shell"
+
+    return settings.mode
+        
 
 
 def restricted_float(x):
