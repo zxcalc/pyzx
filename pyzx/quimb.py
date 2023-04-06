@@ -16,13 +16,16 @@
 
 import math
 import numpy as np
+import importlib
 
-try:
-    import quimb as qu # type:ignore
-    import quimb.tensor as qtn #type:ignore
-except ImportError:
-    qu = None
-    qtn = None
+# try:
+#     import quimb as qu # type:ignore
+#     import quimb.tensor as qtn #type:ignore
+# except ImportError:
+
+# load quimb modules on first call to to_quimb_tensor
+qu = None
+qtn = None
 
 
 from .utils import EdgeType, VertexType
@@ -36,8 +39,10 @@ def to_quimb_tensor(g: BaseGraph) -> 'qtn.TensorNetwork':
     Args:
         g: graph to be converted."""
 
+    global qu, qtn
     if qu is None:
-        raise ImportError("quimb must be installed to use this function.")
+        qu = importlib.import_module('quimb')
+        qtn = importlib.import_module('quimb.tensor')
 
     # copying a graph guarantees consecutive indices, which are needed for the tensor net
     g = g.copy()
