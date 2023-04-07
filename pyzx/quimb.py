@@ -28,9 +28,6 @@ import importlib
 qu = None
 qtn = None
 
-import quimb as qu # type:ignore
-import quimb.tensor as qtn #type:ignore
-
 from .utils import EdgeType, VertexType
 from .graph.base import BaseGraph
 from .simplify import to_gh
