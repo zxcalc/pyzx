@@ -52,7 +52,7 @@ If you are using a Jupyter notebook, probably the best way to build an arbitrari
    :align:   center
 
 .. warning::
-	The newer JupyterLab as opposed to the older Jupyter Notebook uses a different framework for widgets which is currently not compatible with the widgets used in PyZX. For the editor to work you therefore must use the classic notebook interface. If you are using JupyterLab you can find this interface by going to 'Help -> Launch Classic Notebook'. In addition, the newest versions of ``ipywidgets`` break the editor widget. The latest version that is known to work is ``ipywidgets==7.7.1``.
+	The newer JupyterLab as opposed to the older Jupyter Notebook uses a different framework for widgets which is currently not compatible with the widgets used in PyZX. For the editor to work you therefore must use the classic notebook interface. If you are using JupyterLab you can find this interface by going to 'Help -> Launch Classic Notebook'. In addition, versions ``ipywidgets>=8`` and ``notebook>=6.5`` break the editor widget. The latest versions known to work is ``ipywidgets==7.7.1`` and ``notebook==6.4.12``.
 
 Ctrl-clicking (Command-clicking for Mac users) on the view of the graph will add a new vertex of the type specified by 'Vertex type' (so a Z-vertex in the above example). Click 'Vertex type' to change the type of vertex to be added, or with the editor window selected, use the hotkey 'X'.
 
