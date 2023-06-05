@@ -6,4 +6,3 @@ include pyzx/js/zx_viewer.inline.js
 include pyzx/py.typed
 include readme.md
 include LICENSE
-include pyzx/py.typed
