@@ -182,6 +182,8 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         """
         This method should return an identical copy of the graph, without any relabeling
 
+        FIXME: this currently *does* change lables.
+
         Used in lookahead extraction.
         """
         return self.copy()
