@@ -14,15 +14,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__all__ = ['extract_circuit', 'extract_simple', 'graph_to_swaps', 'lookahead_extract_base', 'lookahead_full',
-           'lookahead_fast', 'lookahead_extract']
+__all__ = ['extract_circuit', 'extract_simple', 'graph_to_swaps', 'extract_clifford_normal_form',
+           'lookahead_extract_base', 'lookahead_full', 'lookahead_fast', 'lookahead_extract']
 
 from fractions import Fraction
 import itertools
 
 from .utils import EdgeType, VertexType, toggle_edge
 from .linalg import Mat2, Z2
-from .simplify import id_simp, tcount
+from .simplify import id_simp, tcount,full_reduce
 from .rules import apply_rule, pivot, match_spider_parallel, spider
 from .circuit import Circuit
 from .circuit.gates import Gate, ParityPhase, CNOT, HAD, ZPhase, XPhase, CZ, CX, SWAP, InitAncilla
@@ -234,7 +234,7 @@ def flat_indices(m: Mat2, indices: List[int]) -> Tuple[List[Tuple[int, int]], in
     returns a list of row operations and the index of the row that would end up with
     the sum of the input rows.
 
-    When transformed into CNOTs, the the depth of the circuit is log_2(len(indices)).
+    When transformed into CNOTs, the depth of the circuit is log_2(len(indices)).
 
     If the list of indices is empty, returns ([], -1)"""
     if len(indices) == 0:
@@ -274,7 +274,7 @@ def flat_indices(m: Mat2, indices: List[int]) -> Tuple[List[Tuple[int, int]], in
 def greedy_reduction_flat(m: Mat2) -> Optional[List[Tuple[int, int]]]:
     """Returns a list of tuples (r1,r2) that specify which row should be added to which other row
     in order to reduce one row of m to only contain a single 1.
-    In contrast to :func:`greedy_reduction`, it preforms the brute-force search starting with the
+    In contrast to :func:`greedy_reduction`, it performs the brute-force search starting with the
     highest indices, and places the row operations in such a way that the resulting depth is log_2
     of the number of rows that have to be added together.
     Used in :func:`lookahead_extract_base`"""
@@ -385,6 +385,7 @@ def max_overlap(cz_matrix: Mat2) -> Tuple[Tuple[int,int],List[int]]:
 def filter_duplicate_cnots(cnots: List[CNOT]) -> List[CNOT]:
     """Cancels adjacent CNOT gates in a list of CNOT gates."""
     from .optimize import basic_optimization
+    if not cnots: return cnots  # Nothing to do if the list is empty
     qubits = max([max(cnot.control,cnot.target) for cnot in cnots]) + 1
     c = Circuit(qubits)
     c.gates = cnots.copy() # type: ignore
@@ -792,6 +793,69 @@ def graph_to_swaps(g: BaseGraph[VT, ET], no_swaps: bool = False) -> Circuit:
     if not no_swaps and leftover_swaps:
         for t1, t2 in permutation_as_swaps(swap_map):
             c.prepend_gate(SWAP(t1, t2))
+    return c
+
+
+def extract_clifford_normal_form(g: BaseGraph[VT,ET]) -> Circuit:
+    """Given a Clifford graph, extracts a circuit that follows the normal form described in
+    *Graph-theoretic Simplification of Quantum Circuits with the ZX-calculus* (https://arxiv.org/abs/1902.03178).
+    That is, a circuit consisting of layers Had-Phase-CZ-CNOT-Had-CZ-Phase-Had.
+    """
+    # We prepare the circuit in the same way as we do in simplify.to_clifford_normal_form_graph()
+    # To make it foolproof, we process it in the desired way first.
+    full_reduce(g)
+    g.normalize()
+    # At this point the only vertices g should have are those directly connected to an input or an output (and not both).
+    if any([((g.phase(v)*4) % 2 != 0) for v in g.vertices()]):  # If any phase is not a multiple of 1/2, then this will fail.
+        raise ValueError("Specified graph is not Clifford.")
+    
+    inputs = list(g.inputs())
+    outputs = list(g.outputs())
+    v_inputs = [list(g.neighbors(i))[0] for i in inputs] # input vertices should have a unique spider neighbor
+    v_outputs = [list(g.neighbors(o))[0] for o in outputs] # input vertices should have a unique spider neighbor
+
+    if len(inputs) != len(outputs):
+        raise ValueError("Number of input wires does not match number of output wires. Currently only unitary Clifford extraction is supported.")
+    if len(v_inputs) != len(inputs) or len(v_inputs) != len(v_outputs):
+        raise ValueError("Something has gone wrong with simplifying the Clifford diagram to the graph normal form.")
+    
+    c = Circuit(len(inputs))
+
+    for q in range(len(inputs)):
+        if g.edge_type(g.edge(inputs[q],v_inputs[q])) == EdgeType.HADAMARD:
+            c.add_gate(HAD(q))
+
+    for q in range(len(inputs)):
+        phase = g.phase(v_inputs[q])
+        if phase != 0:
+            c.add_gate(ZPhase(q,phase))
+
+    for q1 in range(len(inputs)):
+        for q2 in range(q1+1, len(inputs)):
+            if g.connected(v_inputs[q1],v_inputs[q2]):
+                c.add_gate(CZ(q1,q2))
+
+    adj = bi_adj(g, v_outputs, v_inputs)
+    for cnot in adj.to_cnots(use_log_blocksize=True):
+        c.add_gate(cnot)
+
+    for q in range(len(outputs)):
+        c.add_gate(HAD(q))
+
+    for q1 in range(len(outputs)):
+        for q2 in range(q1+1, len(outputs)):
+            if g.connected(v_outputs[q1],v_outputs[q2]):
+                c.add_gate(CZ(q1,q2))
+
+    for q in range(len(outputs)):
+        phase = g.phase(v_outputs[q])
+        if phase != 0:
+            c.add_gate(ZPhase(q,phase))
+
+    for q in range(len(outputs)):
+        if g.edge_type(g.edge(outputs[q],v_outputs[q])) == EdgeType.HADAMARD:
+            c.add_gate(HAD(q))
+
     return c
 
 
