@@ -321,7 +321,7 @@ def replace_magic_states(g: BaseGraph[VT,ET], pick_random:Any=False) -> SumGraph
     boundary = []
     internal = []
     gadgets = []
-    ranking = dict()
+    ranking: Dict[VT, int] = dict()
     inputs = g.inputs()
     outputs = g.outputs()
     for v in g.vertices():
@@ -352,7 +352,7 @@ def replace_magic_states(g: BaseGraph[VT,ET], pick_random:Any=False) -> SumGraph
     else:
         if not isinstance(pick_random,bool):
             random.seed(pick_random)
-        candidates = random.sample(ranking.keys(),num_replace)
+        candidates = random.sample(list(ranking.keys()),num_replace)
 
     graphs = []
     if num_replace == 6:
