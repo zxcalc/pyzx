@@ -24,7 +24,8 @@ use the power of :func:`full_reduce` while not changing the structure of the gra
 __all__ = ['bialg_simp','spider_simp', 'id_simp', 'phase_free_simp', 'pivot_simp',
         'pivot_gadget_simp', 'pivot_boundary_simp', 'gadget_simp',
         'lcomp_simp', 'clifford_simp', 'tcount', 'to_gh', 'to_rg',
-        'full_reduce', 'teleport_reduce', 'reduce_scalar', 'supplementarity_simp']
+        'full_reduce', 'teleport_reduce', 'reduce_scalar', 'supplementarity_simp',
+        'to_clifford_normal_form_graph']
 
 from typing import List, Callable, Optional, Union, Generic, Tuple, Dict, Iterator
 
@@ -359,8 +360,8 @@ def clifford_iter(g: BaseGraph[VT,ET]) -> Iterator[Tuple[BaseGraph[VT,ET],str]]:
     yield from spider_iter(g)
 
 
-def is_graph_like(g):
-    """Puts a ZX-diagram in graph-like form"""
+def is_graph_like(g: BaseGraph[VT,ET]) -> bool:
+    """Checks if a ZX-diagram is graph-like."""
 
     # checks that all spiders are Z-spiders
     for v in g.vertices():
@@ -399,8 +400,8 @@ def is_graph_like(g):
     return True
 
 
-def to_graph_like(g):
-    """Checks if a ZX-diagram is graph-like"""
+def to_graph_like(g: BaseGraph[VT,ET]) -> None:
+    """Puts a ZX-diagram in graph-like form."""
 
     # turn all red spiders into green spiders
     to_gh(g)
@@ -422,16 +423,16 @@ def to_graph_like(g):
             # every neighbor is another boundary or an H-Box
             assert(g.type(n) in [VertexType.BOUNDARY, VertexType.H_BOX])
             if g.type(n) == VertexType.BOUNDARY:
-                z1 = g.add_vertex(ty=zx.VertexType.Z)
-                z2 = g.add_vertex(ty=zx.VertexType.Z)
-                z3 = g.add_vertex(ty=zx.VertexType.Z)
+                z1 = g.add_vertex(ty=VertexType.Z)
+                z2 = g.add_vertex(ty=VertexType.Z)
+                z3 = g.add_vertex(ty=VertexType.Z)
                 g.remove_edge(g.edge(v, n))
                 g.add_edge(g.edge(v, z1), edgetype=EdgeType.SIMPLE)
                 g.add_edge(g.edge(z1, z2), edgetype=EdgeType.HADAMARD)
                 g.add_edge(g.edge(z2, z3), edgetype=EdgeType.HADAMARD)
                 g.add_edge(g.edge(z3, n), edgetype=EdgeType.SIMPLE)
             else: # g.type(n) == VertexType.H_BOX
-                z = g.add_vertex(ty=zx.VertexType.Z)
+                z = g.add_vertex(ty=VertexType.Z)
                 g.remove_edge(g.edge(v, n))
                 g.add_edge(g.edge(v, z), edgetype=EdgeType.SIMPLE)
                 g.add_edge(g.edge(z, n), edgetype=EdgeType.SIMPLE)
@@ -447,8 +448,8 @@ def to_graph_like(g):
 
         # add dummy spiders for all but one
         for b in boundary_ns[:-1]:
-            z1 = g.add_vertex(ty=zx.VertexType.Z)
-            z2 = g.add_vertex(ty=zx.VertexType.Z)
+            z1 = g.add_vertex(ty=VertexType.Z)
+            z2 = g.add_vertex(ty=VertexType.Z)
 
             g.remove_edge(g.edge(v, b))
             g.add_edge(g.edge(z1, z2), edgetype=EdgeType.HADAMARD)
@@ -456,3 +457,95 @@ def to_graph_like(g):
             g.add_edge(g.edge(z2, v), edgetype=EdgeType.HADAMARD)
 
     assert(is_graph_like(g))
+
+def to_clifford_normal_form_graph(g: BaseGraph[VT,ET]) -> None:
+    """Converts a graph that is Clifford into the form described by the right-hand side of eq. (11) of
+    *Graph-theoretic Simplification of Quantum Circuits with the ZX-calculus* (https://arxiv.org/abs/1902.03178).
+    That is, writes it as a series of layers: 
+    Hadamards, phase gates, CZ gates, parity form of Z-spiders to X-spiders, Hadamards, CZ gates, phase gates, Hadamards.
+    Changes the graph in place.
+    """
+    full_reduce(g)
+    g.normalize()
+    # At this point the only vertices g should have are those directly connected to an input or an output (and not both).
+    if any([((g.phase(v)*4) % 2 != 0) for v in g.vertices()]):  # If any phase is not a multiple of 1/2, then this will fail.
+        raise ValueError("Specified graph is not Clifford.")
+
+    inputs = list(g.inputs())
+    outputs = list(g.outputs())
+    v_inputs = [list(g.neighbors(i))[0] for i in inputs] # input vertices should have a unique spider neighbor
+    v_outputs = [list(g.neighbors(o))[0] for o in outputs] # input vertices should have a unique spider neighbor
+    # create more spacing
+    for v in v_inputs:
+        g.set_row(v, 3)
+    for v in v_outputs:
+        g.set_row(v,  5)
+    for o in outputs:
+        g.set_row(o, 8)
+    
+    # Separate out the Hadamards 
+    for q in range(len(inputs)):
+        v = v_inputs[q]
+        i = inputs[q]
+        e = g.edge(v,i)
+        if g.edge_type(e) == EdgeType.HADAMARD or g.phase(v) != 0:
+            h = g.add_vertex(VertexType.Z, q, row=1, phase=g.phase(v))
+            g.add_edge(g.edge(i,h),EdgeType.HADAMARD)
+            g.add_edge(g.edge(h,v),EdgeType.SIMPLE)
+            g.remove_edge(e)
+            g.set_phase(v,0)
+            inputs[q] = h
+    
+    for q in range(len(outputs)):
+        v = v_outputs[q]
+        o = outputs[q]
+        e = g.edge(v,o)
+        if g.edge_type(e) == EdgeType.HADAMARD or g.phase(v) != 0:
+            h = g.add_vertex(VertexType.Z, q, row=7, phase=g.phase(v))
+            g.add_edge(g.edge(h,o),EdgeType.HADAMARD)
+            g.add_edge(g.edge(v,h),EdgeType.SIMPLE)
+            g.remove_edge(e)
+            g.set_phase(v,0)
+            outputs[q] = h
+    
+    # Unfuse the czs on the inputs
+    czs = []
+    cz_qubits = set()
+    for q1 in range(len(inputs)):
+        for q2 in range(q1+1,len(inputs)):
+            if g.connected(v_inputs[q1],v_inputs[q2]):
+                g.remove_edge(g.edge(v_inputs[q1],v_inputs[q2]))
+                czs.append((q1,q2))
+                cz_qubits.add(q1)
+                cz_qubits.add(q2)
+    cz_v = {}
+    for q in cz_qubits:
+        w = g.add_vertex(VertexType.Z,q,row=2)
+        g.remove_edge(g.edge(inputs[q],v_inputs[q]))
+        g.add_edge(g.edge(inputs[q],w))
+        g.add_edge(g.edge(w,v_inputs[q]))
+        cz_v[q] = w
+    for q1,q2 in czs:
+        g.add_edge(g.edge(cz_v[q1],cz_v[q2]),EdgeType.HADAMARD)
+    
+    # Unfuse the czs on the outputs
+    czs = []
+    cz_qubits = set(range(len(outputs))) # We actually definitely need to add another spider at every position, as we are going to introduce Hadamards everywhere later
+    for q1 in range(len(outputs)):
+        for q2 in range(q1+1,len(outputs)):
+            if g.connected(v_outputs[q1],v_outputs[q2]):
+                g.remove_edge(g.edge(v_outputs[q1],v_outputs[q2]))
+                czs.append((q1,q2))
+                cz_qubits.add(q1)
+                cz_qubits.add(q2)
+    cz_v = {}
+    for q in cz_qubits:
+        w = g.add_vertex(VertexType.Z,q,row=6)
+        g.remove_edge(g.edge(v_outputs[q],outputs[q]))
+        g.add_edge(g.edge(w,outputs[q]))
+        g.add_edge(g.edge(v_outputs[q],w))
+        cz_v[q] = w
+    for q1,q2 in czs:
+        g.add_edge(g.edge(cz_v[q1],cz_v[q2]),EdgeType.HADAMARD)
+    
+    to_rg(g,select=lambda v: v in v_outputs)
