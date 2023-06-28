@@ -28,15 +28,14 @@ import subprocess
 import tempfile
 import time
 import random
-from typing import Optional, Dict, Tuple, List, Set, Iterable, FrozenSet, Union
-from typing_extensions import Literal
+from typing import Optional, Dict, Tuple, List, Set, Iterable, cast
 
 import numpy as np
 
 from .circuit.gates import Gate, T, S, Z, ZPhase, CZ, CNOT, ParityPhase
 from .utils import settings, EdgeType, VertexType, FractionLike
 from .graph.base import BaseGraph, VT, ET
-from .linalg import Mat2, MatLike
+from .linalg import Mat2, MatLike, Z2
 from .extract import permutation_as_swaps, column_optimal_swap
 from .parity_network import parity_network
 
@@ -87,7 +86,7 @@ class ParityPolynomial(object):
         """Converts the phase polynomial into a parity matrix."""
         cols = []
         for par, val in self.terms.items():
-            col: List[Union[Literal[0],Literal[1]]] = [1 if i in par else 0 for i in range(self.qubits)]
+            col: List[Z2] = [1 if i in par else 0 for i in range(self.qubits)]
             for i in range(val): cols.append(col)
         return Mat2(cols).transpose()
 
@@ -203,7 +202,7 @@ def phase_gates_to_poly(gates: List[Gate], qubits: int) -> Tuple[ParityPolynomia
 
 
 
-def xi(m: Mat2, z: List[Literal[0,1]]) -> Mat2:
+def xi(m: Mat2, z: List[Z2]) -> Mat2:
     """Constructs the \chi matrix from the TOpt paper."""
     arr = np.asarray(m.data)
     rows = m.rows()
@@ -245,13 +244,13 @@ def xi(m: Mat2, z: List[Literal[0,1]]) -> Mat2:
     return Mat2(data)
 
 
-def find_todd_match(m: Mat2) -> Tuple[int,int, Optional[List[Literal[0,1]]],Optional[List[Literal[0,1]]]]:
+def find_todd_match(m: Mat2) -> Tuple[int,int, Optional[List[Z2]],Optional[List[Z2]]]:
     """Tries to find a match for the TODD algorithm given a parity matrix."""
     rows = m.rows()
     cols = m.cols()
     for a in range(cols):
         for b in range(a+1, cols):
-            z: List[Literal[0,1]] = [0]*rows
+            z: List[Z2] = [0]*rows
             for i in range(rows):
                 r = m.data[i]
                 if r[a]:
@@ -359,7 +358,7 @@ def call_topt(m: Mat2, quiet:bool=True) -> Mat2:
     data: MatLike = []
     try:
         for row in rows:
-            data.append([int(i) for i in row]) # type: ignore # mypy doesn't understand literals
+            data.append([cast(Z2, i) for i in row])
     except ValueError:
         print(out)
         print(rows)
@@ -472,7 +471,7 @@ def todd_on_graph(g: BaseGraph[VT,ET]) -> None:
 
     cols = []
     for par, (_,v) in gadgets.items():
-        col: List[Literal[0,1]] = [0]*nt
+        col: List[Z2] = [0]*nt
         for t in par:
             col[targets.index(t)] = 1
         phase = g.phase(v)
