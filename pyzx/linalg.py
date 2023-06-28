@@ -15,10 +15,8 @@
 # limitations under the License.
 
 import math
-from typing import Union, Any, Tuple, List, Optional, Set, Dict
+from typing import Union, Any, Tuple, List, Optional, Dict, cast
 from typing_extensions import Literal
-
-import numpy as np
 
 from .circuit.gates import CNOT
 
@@ -51,8 +49,8 @@ class Mat2(object):
     def __init__(self, data: MatLike):
         self.data: MatLike = data
     def __mul__(self, m: 'Mat2') -> 'Mat2':
-        return Mat2([[sum(self.data[i][k] * m.data[k][j] for k in range(len(m.data))) % 2 #type: ignore # mypy doesn't understand literals
-                      for j in range(len(m.data[0]))] for i in range(len(self.data))]) #type: ignore # mypy doesn't understand literals
+        return Mat2([[cast(Z2, sum(self.data[i][k] * m.data[k][j] for k in range(len(m.data))) % 2)
+                      for j in range(len(m.data[0]))] for i in range(len(self.data))])
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, Mat2): return False
         if self.rows() != other.rows() or self.cols() != other.cols(): return False

@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import List, Tuple
+from typing import List, Tuple, cast
 from typing_extensions import Literal
 
 from .circuit.gates import CNOT
@@ -36,7 +36,7 @@ def parity_network(n: int, S: List[List[Literal[0,1]]]) -> List[CNOT]:
                         c.append(CNOT(j,i))
                         for (Sp,Ip,ip) in (Q+[(S,I,i)]):
                             for y in Sp:
-                                y[j] = (y[i]+y[j])%2 # type: ignore # mypy doesn't understand this will always be Literal[0,1]
+                                y[j] = cast(Literal[0,1], (y[i]+y[j])%2)
                         break
                 else:
                     break
