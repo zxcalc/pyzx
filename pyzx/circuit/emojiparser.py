@@ -32,7 +32,7 @@ def circuit_to_emoji(c: Circuit, compress_rows:bool=True) -> str:
             for s in strings: 
                 s.extend([':W_:']*(r-len(s)))
         if not hasattr(gate, "to_emoji"): raise TypeError("Gate {} cannot be converted to emoji".format(str(gate)))
-        gate.to_emoji(strings) # type: ignore
+        gate.to_emoji(strings)
         if not compress_rows:
             r = max([len(s) for s in strings])
             for s in strings: 

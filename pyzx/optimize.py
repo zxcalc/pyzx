@@ -77,7 +77,7 @@ def stats(circ: Circuit) -> Tuple[int,int,int]:
             two_qubit += 1
         elif g.name == 'HAD':
             had += 1
-        elif g.name != 'NOT' and g.phase != 1: # type: ignore
+        elif g.name != 'NOT' and g.phase != 1:
             non_pauli += 1
     return had, two_qubit, non_pauli
 
@@ -206,11 +206,11 @@ class Optimizer(object):
                         output.append(gs.pop(0))
                     elif g.index in available_indices:
                         available_indices.remove(g.index)
-                        q2 = g.target if q == g.control else g.control # type: ignore
+                        q2 = g.target if q == g.control else g.control
                         self.gates[q2].remove(g)
                         output.append(gs.pop(0))
                     else:
-                        ty = 1 if (g.name == 'CZ' or g.control == q) else 2 # type: ignore
+                        ty = 1 if (g.name == 'CZ' or g.control == q) else 2
                         available_indices.add(g.index)
                         remove = []
                         for i, g2 in enumerate(gs[1:]):
@@ -218,11 +218,11 @@ class Optimizer(object):
                                 output.append(g2)
                                 remove.append(i)
                             elif g2.name not in ('CZ', 'CNOT'): break
-                            elif ((ty == 1 and (g2.name == 'CZ' or g2.control == q)) or # type: ignore
-                                  (ty == 2 and g2.name == 'CNOT' and g2.target == q)): # type: ignore
+                            elif ((ty == 1 and (g2.name == 'CZ' or g2.control == q)) or
+                                  (ty == 2 and g2.name == 'CNOT' and g2.target == q)):
                                 if g2.index in available_indices:
                                     available_indices.remove(g2.index)
-                                    q2 = g2.target if q == g2.control else g2.control # type: ignore
+                                    q2 = g2.target if q == g2.control else g2.control
                                     self.gates[q2].remove(g2)
                                     output.append(g2)
                                     remove.append(i)
@@ -262,7 +262,7 @@ class Optimizer(object):
         if self.minimize_czs:
             for c,t in [(t1,t2),(t2,t1)]:
                 for g in self.available[c]:
-                    if g.name == 'CNOT' and g.control == c and g.target == t: # type: ignore[attr-defined]
+                    if g.name == 'CNOT' and g.control == c and g.target == t:
                         if self.availty[t] == 2:
                             if g in self.available[t]: # The gate is also available on the target qubit
                                 found_match = True
@@ -480,7 +480,7 @@ class Optimizer(object):
                 self.add_hadamard(t1)
                 self.add_hadamard(t2)
             if t1 not in self.hadamards and t2 not in self.hadamards:
-                self.add_cz(g) # type: ignore
+                self.add_cz(g)
             # Exactly one of t1 and t2 has a hadamard
             # So the CZ commutes trough and becomes a CNOT
             elif t1 in self.hadamards:
@@ -501,16 +501,16 @@ class Optimizer(object):
             if c in self.hadamards and t in self.hadamards:
                 g.control = t
                 g.target = c
-                self.add_cnot(g) # type: ignore
+                self.add_cnot(g)
             elif c not in self.hadamards and t not in self.hadamards:
-                self.add_cnot(g) # type: ignore
+                self.add_cnot(g)
             # If there is a HAD on the target, the CNOT commutes trough to become a CZ
             elif t in self.hadamards:
                 cz = CZ(c if c<t else t, c if c>t else t)
                 self.add_cz(cz)
             else: # Only the control has a hadamard gate in front of it
                 self.add_hadamard(c)
-                self.add_cnot(g) # type: ignore
+                self.add_cnot(g)
         
         else:
             raise TypeError("Unknown gate {}".format(str(g)))

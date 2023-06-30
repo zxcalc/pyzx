@@ -83,9 +83,9 @@ def _to_tikz(g: BaseGraph[VT,ET], draw_scalar:bool = False,
             else: phase = r"$%s\pi$" % ns
         x = g.row(v) + xoffset
         y = - g.qubit(v) - yoffset
-        s = "        \\node [style={}] ({:d}) at ({:.2f}, {:.2f}) {{{:s}}};".format(style,v+idoffset,x,y,phase) # type: ignore
+        s = "        \\node [style={}] ({:d}) at ({:.2f}, {:.2f}) {{{:s}}};".format(style,v+idoffset,x,y,phase)
         verts.append(s)
-        maxindex = max([v+idoffset,maxindex]) # type: ignore
+        maxindex = max([v+idoffset,maxindex])
     edges = []
     for e in g.edges():
         v,w = g.edge_st(e)
@@ -104,7 +104,7 @@ def _to_tikz(g: BaseGraph[VT,ET], draw_scalar:bool = False,
         else:
             style = settings.tikz_classes['edge']
             if style: s += "[style={:s}] ".format(style)
-        s += "({:d}) to ({:d});".format(v+idoffset,w+idoffset) # type: ignore
+        s += "({:d}) to ({:d});".format(v+idoffset,w+idoffset)
         edges.append(s)
     
     return (verts, edges)

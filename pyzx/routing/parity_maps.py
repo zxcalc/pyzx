@@ -124,7 +124,7 @@ class CNOT_tracker(Circuit):
         self.matrix = Mat2.id(self.n_qubits)
         for gate in self.gates:
             if hasattr(gate, "name") and gate.name == "CNOT":
-                self.matrix.row_add(gate.control, gate.target) # type: ignore
+                self.matrix.row_add(gate.control, gate.target)
             else:
                 print(
                     "Warning: CNOT tracker can only be used for circuits with only CNOT gates!"

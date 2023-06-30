@@ -645,7 +645,7 @@ def phase_poly_from_gadgets(n_qubits: int, n_gadgets: int) -> Circuit:
     if n_qubits < 26:
         for integer in np.random.choice(
             2**n_qubits - 1, replace=False, size=n_gadgets
-        ):  # type: ignore # random.choice returns a list here
+        ):
             parities.add(Parity(integer + 1, n_qubits))
     elif n_qubits < 64:
         while len(parities) < n_gadgets:
@@ -683,7 +683,7 @@ def build_random_parity_map(qubits: int, n_cnots: int, circuit=None) -> MatLike:
     for gate in c.gates:
         if not hasattr(gate, "control") or not hasattr(gate, "target"):
             continue
-        matrix.row_add(gate.control, gate.target)  # type: ignore
+        matrix.row_add(gate.control, gate.target)
         for c in circuit:
-            c.row_add(gate.control, gate.target)  # type: ignore
+            c.row_add(gate.control, gate.target)
     return matrix.data

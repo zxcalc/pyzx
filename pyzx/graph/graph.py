@@ -46,7 +46,7 @@ def Graph(backend:Optional[str]=None) -> BaseGraph:
 	if backend == 'graph_tool': 
 		return GraphGT()
 	if backend == 'igraph': return GraphIG()
-	if backend == 'quizx-vec': return quizx.VecGraph() # type: ignore
+	if backend == 'quizx-vec': return quizx.VecGraph()
 	return GraphS()
 
 Graph.from_json = GraphS.from_json # type: ignore

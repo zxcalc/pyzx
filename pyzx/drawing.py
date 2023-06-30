@@ -550,10 +550,10 @@ def matrix_to_latex(m: np.ndarray) -> str:
     best_val = None
     denom = None
     for v in m.flat:
-        if abs(v) > epsilon: # type: ignore #TODO: Figure out how numpy typing works
+        if abs(v) > epsilon:
             if best_val is None: 
                 best_val = v
-                denom = Fraction(cmath.phase(v)/math.pi).limit_denominator(512).denominator # type: ignore #TODO: Figure out how numpy typing works
+                denom = Fraction(cmath.phase(v)/math.pi).limit_denominator(512).denominator
             else:
                 p = Fraction(cmath.phase(v)/math.pi).limit_denominator(512)
                 if p.denominator < denom:
@@ -569,7 +569,7 @@ def matrix_to_latex(m: np.ndarray) -> str:
     v = best_val
     m = m/v
     
-    s = pretty_complex(v) # type: ignore #TODO: Figure out how numpy typing works
+    s = pretty_complex(v)
     if s == "1": s = ""
     if s == "-1": s= "-"
     out += s + "\n\\begin{pmatrix}\n"
