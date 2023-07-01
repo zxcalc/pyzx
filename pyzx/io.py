@@ -158,7 +158,7 @@ def graph_to_json(g: BaseGraph[VT,ET]) -> str:
             else: name = freenamesv.pop(0)
         else: 
             try:
-                freenamesb.remove(name) if t==VertexType.BOUNDARY else freenamesv.remove(name) # type: ignore
+                freenamesb.remove(name) if t==VertexType.BOUNDARY else freenamesv.remove(name)
             except:
                 pass
                 #print("couldn't remove name '{}'".format(name))

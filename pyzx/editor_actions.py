@@ -133,8 +133,8 @@ def pauli_push(g: BaseGraph[VT,ET],
             if len(new_verts) == 2:
                 etab[g.edge(new_verts[0],new_verts[1])] = [0,1]
             else:
-                r = (g.row(v) + sum(g.row(n) for n in new_verts)) / (len(new_verts) + 1)  # type: ignore # I don't understand this error
-                q = (g.qubit(v) + sum(g.qubit(n) for n in new_verts))/(len(new_verts)+1)  # type: ignore
+                r = (g.row(v) + sum(g.row(n) for n in new_verts)) / (len(new_verts) + 1)
+                q = (g.qubit(v) + sum(g.qubit(n) for n in new_verts))/(len(new_verts)+1)
                 h = g.add_vertex(VertexType.H_BOX,q,r,Fraction(1))
                 for n in new_verts: etab[g.edge(h,n)] = [1,0]
     return (etab, rem_verts, rem_edges, False)

@@ -772,7 +772,7 @@ class PhasePoly:
                         qubits,
                         column,
                         phase_qubit,
-                        mode=mode,  # type: ignore
+                        mode=mode,
                         root_heuristic=RootHeuristic.RECURSIVE,
                         split_heuristic=SplitHeuristic.COUNT,
                     )
@@ -809,7 +809,7 @@ class PhasePoly:
                         matrix,
                         cols_to_use,
                         qubits,
-                        phase_qubit=phase_qubit,  # type: ignore
+                        phase_qubit=phase_qubit,
                     )
                     # Pick the qubit where the recursion split will be most skewed.
                     chosen_row = max(

@@ -137,7 +137,7 @@ def tensorfy(g: 'BaseGraph[VT,ET]', preserve_scalar:bool=True) -> np.ndarray:
                     t = H_to_tensor(d,phase)
                 else:
                     raise ValueError("Vertex %s has non-ZXH type but is not an input or output" % str(v))
-            nn = list(filter(lambda n: rows[n]<r or (rows[n]==r and n<v), neigh)) # type: ignore # TODO: allow ordering on vertex indices?
+            nn = list(filter(lambda n: rows[n]<r or (rows[n]==r and n<v), neigh)) # TODO: allow ordering on vertex indices?
             ety = {n:g.edge_type(g.edge(v,n)) for n in nn}
             nn.sort(key=lambda n: ety[n]) 
             for n in nn:
@@ -202,8 +202,8 @@ def compare_tensors(t1: TensorConvertible,t2: TensorConvertible, preserve_scalar
     if preserve_scalar: return False # We do not check for equality up to scalar
     epsilon = 10**-14
     for i,a in enumerate(t1.flat):
-        if abs(a)>epsilon: # type: ignore #TODO: Figure out how numpy typing works
-            if abs(t2.flat[i])<epsilon: return False # type: ignore #TODO: Figure out how numpy typing works
+        if abs(a)>epsilon:
+            if abs(t2.flat[i])<epsilon: return False
             break
     else:
         raise ValueError("Tensor is too close to zero")
@@ -225,9 +225,9 @@ def find_scalar_correction(t1: TensorConvertible, t2:TensorConvertible) -> compl
 
     epsilon = 10**-14
     for i,a in enumerate(t1.flat):
-        if abs(a)>epsilon: # type: ignore #TODO: Figure out how numpy typing works
-            if abs(t2.flat[i])<epsilon: return 0 # type: ignore #TODO: Figure out how numpy typing works
-            return a/t2.flat[i] # type: ignore #TODO: Figure out how numpy typing works
+        if abs(a)>epsilon:
+            if abs(t2.flat[i])<epsilon: return 0
+            return a/t2.flat[i]
 
     return 0
 

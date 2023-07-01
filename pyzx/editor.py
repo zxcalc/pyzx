@@ -135,14 +135,14 @@ def graph_to_json(g: GraphS, scale:FloatInt, verts:Optional[List[int]]=None,edge
 		verts = list(g.vertices())
 	if edges is None:
 		edges = list(g.edges())
-	nodes = [{'name': int(v), # type: ignore
+	nodes = [{'name': int(v),
 			  'x': (g.row(v) + 1) * scale,
 			  'y': (g.qubit(v) + 2) * scale,
 			  't': g.type(v),
 			  'phase': phase_to_s(g.phase(v),g.type(v)) }
 			 for v in verts]
-	links = [{'source': int(g.edge_s(e)), # type: ignore
-			  'target': int(g.edge_t(e)), # type: ignore
+	links = [{'source': int(g.edge_s(e)),
+			  'target': int(g.edge_t(e)),
 			  't': g.edge_type(e) } for e in edges]
 	scalar = g.scalar.to_json()
 	return json.dumps({'nodes': nodes, 'links': links, 'scalar': scalar})
@@ -377,12 +377,12 @@ class ZXEditorWidget(widgets.DOMWidget):
 				t = int(n["t"])
 				phase = s_to_phase(n["phase"], t) # type: ignore
 				if v not in marked:
-					self.graph.add_vertex_indexed(v) # type: ignore
+					self.graph.add_vertex_indexed(v)
 				else: 
 					marked.remove(v)
 				self.graph.set_position(v, q, r)
 				self.graph.set_phase(v, phase)
-				self.graph.set_type(v, t) # type: ignore
+				self.graph.set_type(v, t)
 			self.graph.remove_vertices(marked)
 			marked = self.graph.edge_set()
 			for e in js["links"]:

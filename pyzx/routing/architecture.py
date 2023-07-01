@@ -261,15 +261,15 @@ class Architecture():
     def to_quil_device(self):
         # Only required here
         import networkx as nx
-        from pyquil.device import NxDeviceA # type: ignore
+        from pyquil.device import NxDeviceA
         edges = [edge for edge in self.graph.edges() if edge[0] in self.vertices]
         topology = nx.from_edgelist(edges)
-        device = NxDevice(topology) # type: ignore
+        device = NxDevice(topology)
         return device
 
     def visualize(self, filename=None):
         import networkx as nx
-        import matplotlib.pyplot as plt # type: ignore
+        import matplotlib.pyplot as plt
         plt.switch_backend('agg')
         g = nx.Graph()
         g.add_nodes_from(self.vertices)

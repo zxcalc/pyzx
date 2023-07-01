@@ -301,8 +301,8 @@ def permuted_gauss(
     else:
         circuit = y
     mat = Mat2([[matrix.data[r][c] for c in col_perm] for r in row_perm])
-    circuit.row_perm = row_perm  # type: ignore
-    circuit.col_perm = col_perm  # type: ignore
+    circuit.row_perm = row_perm
+    circuit.col_perm = col_perm
     rank = gauss(
         mode, mat, architecture, x=x, y=circuit, full_reduce=full_reduce, **kwargs
     )
@@ -389,7 +389,7 @@ def sequential_gauss(
             #    perm = current_perm
             circuits.append(circuit)  # type: ignore # Store the extracted circuit
             # Update the new permutation
-            current_perm = list(perm)  # type: ignore
+            current_perm = list(perm)
             if col:
                 permutations.append(current_perm)  # Add optimized initial permutation
                 if not row:
