@@ -102,16 +102,16 @@ class GraphS(BaseGraph[int,Tuple[int,int]]):
             self._phase[i] = 0
         self._vindex += amount
         return range(self._vindex - amount, self._vindex)
-    def add_vertex_indexed(self, index):
+    def add_vertex_indexed(self, v):
         """Adds a vertex that is guaranteed to have the chosen index (i.e. 'name').
         If the index isn't available, raises a ValueError.
         This method is used in the editor to support undo, which requires vertices
         to preserve their index."""
-        if index in self.graph: raise ValueError("Vertex with this index already exists")
-        if index >= self._vindex: self._vindex = index+1
-        self.graph[index] = dict()
-        self.ty[index] = VertexType.BOUNDARY
-        self._phase[index] = 0
+        if v in self.graph: raise ValueError("Vertex with this index already exists")
+        if v >= self._vindex: self._vindex = index+1
+        self.graph[v] = dict()
+        self.ty[v] = VertexType.BOUNDARY
+        self._phase[v] = 0
 
     def add_edges(self, edges, edgetype=EdgeType.SIMPLE, smart=False):
         for s,t in edges:

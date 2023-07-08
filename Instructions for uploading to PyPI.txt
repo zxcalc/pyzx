@@ -1,0 +1,9 @@
+Update version numbers in setup.py, doc/conf.py, pyzx/__init__.py
+Delete dist folder
+python -m build
+(this require pip install build)
+twine check dist/*
+(this requires twine to be installed: pip install twine)
+twine upload dist/*
+username: jmmwetering
+password: 

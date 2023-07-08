@@ -668,6 +668,13 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
             self.phase_mult[self.max_phase_index] = 1
         return v
 
+    def add_vertex_indexed(self,v:VT) -> None:
+        """Adds a vertex that is guaranteed to have the chosen index (i.e. 'name').
+        If the index isn't available, raises a ValueError.
+        This method is used in the editor and ZXLive to support undo, 
+        which requires vertices to preserve their index."""
+        raise NotImplementedError("Not implemented on backend " + type(self).backend)
+
     def add_edges(self, edges: Iterable[ET], edgetype:EdgeType.Type=EdgeType.SIMPLE) -> None:
         """Adds a list of edges to the graph."""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
