@@ -108,7 +108,7 @@ class GraphS(BaseGraph[int,Tuple[int,int]]):
         This method is used in the editor to support undo, which requires vertices
         to preserve their index."""
         if v in self.graph: raise ValueError("Vertex with this index already exists")
-        if v >= self._vindex: self._vindex = index+1
+        if v >= self._vindex: self._vindex = v+1
         self.graph[v] = dict()
         self.ty[v] = VertexType.BOUNDARY
         self._phase[v] = 0
