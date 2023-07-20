@@ -569,7 +569,7 @@ class CX(CZ):
 class SWAP(CZ):
     name = 'SWAP'
     quippername = 'undefined'
-    qasm_name = 'undefined'
+    qasm_name = 'swap'
     qc_name = 'undefined'
     def to_basic_gates(self):
         c1 = CNOT(self.control, self.target)
@@ -994,5 +994,6 @@ qasm_gate_table: Dict[str, Type[Gate]] = {
     "crz": CRZ,
     "ccx": Tofolli,
     "ccz": CCZ,
+    "swap": SWAP,
     "measure": Measurement,
 }

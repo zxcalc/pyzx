@@ -199,7 +199,7 @@ class QASMParser(object):
                     gates.append(XPhase(argset[0],phase=Fraction(1,2)))
                     gates.append(ZPhase(argset[0],phase=(phases[1]+3)%2))
                     continue
-            if name in ("cx","CX","cz","ch"):
+            if name in ("cx","CX","cz","ch", "swap"):
                 g = qasm_gate_table[name](control=argset[0],target=argset[1]) # type: ignore
                 gates.append(g)
                 continue
