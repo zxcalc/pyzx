@@ -15,7 +15,7 @@
 # limitations under the License.
 
 from fractions import Fraction
-from typing import Tuple, Dict, Set, Any
+from typing import List, Tuple, Dict, Set, Any
 
 from .base import BaseGraph
 
@@ -29,11 +29,14 @@ class GraphS(BaseGraph[int,Tuple[int,int]]):
     #can be found in base.BaseGraph
     def __init__(self) -> None:
         BaseGraph.__init__(self)
-        self.graph: Dict[int,Dict[int,EdgeType.Type]]   = dict()
+        self.graph: Dict[int,Dict[int,List[int]]]       = dict()
         self._vindex: int                               = 0
         self._eindex: int                               = 0
+        self._s: Dict[int, int]                         = dict()
+        self._t: Dict[int, int]                         = dict()
         self.nedges: int                                = 0
         self.ty: Dict[int,VertexType.Type]              = dict()
+        self.ety: Dict[int,EdgeType.Type]               = dict()
         self._phase: Dict[int, FractionLike]            = dict()
         self._qindex: Dict[int, FloatInt]               = dict()
         self._maxq: FloatInt                            = -1
@@ -51,6 +54,7 @@ class GraphS(BaseGraph[int,Tuple[int,int]]):
         for v, d in self.graph.items():
             cpy.graph[v] = d.copy()
         cpy._vindex = self._vindex
+        cpy._eindex = self._eindex
         cpy.nedges = self.nedges
         cpy.ty = self.ty.copy()
         cpy._phase = self._phase.copy()
@@ -123,9 +127,19 @@ class GraphS(BaseGraph[int,Tuple[int,int]]):
 
     def add_edges(self, edges, edgetype=EdgeType.SIMPLE, smart=False):
         for s,t in edges:
-            self.nedges += 1
-            self.graph[s][t] = edgetype
-            self.graph[t][s] = edgetype
+            # s,t = (t,s) if s>t else (s,t)
+            if s in self.graph and t in self.graph[s]:
+                arr = self.graph[s][t]
+            else:
+                arr = []
+                self.graph[s][t] = arr
+                self.graph[t][s] = arr
+
+            arr.append(self._eindex)
+            self.ety[self._eindex] = edgetype #type:ignore
+            self._s[self._eindex] = s
+            self._t[self._eindex] = t
+            self._eindex += 1
 
     def remove_vertices(self, vertices):
         for v in vertices:
