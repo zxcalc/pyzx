@@ -31,6 +31,7 @@ class GraphS(BaseGraph[int,Tuple[int,int]]):
         BaseGraph.__init__(self)
         self.graph: Dict[int,Dict[int,EdgeType.Type]]   = dict()
         self._vindex: int                               = 0
+        self._eindex: int                               = 0
         self.nedges: int                                = 0
         self.ty: Dict[int,VertexType.Type]              = dict()
         self._phase: Dict[int, FractionLike]            = dict()
@@ -43,6 +44,7 @@ class GraphS(BaseGraph[int,Tuple[int,int]]):
         self._vdata: Dict[int,Any]                      = dict()
         self._inputs: Tuple[int, ...]                   = tuple()
         self._outputs: Tuple[int, ...]                  = tuple()
+        self._multigraph: bool                          = False
         
     def clone(self) -> 'GraphS':
         cpy = GraphS()
@@ -76,6 +78,12 @@ class GraphS(BaseGraph[int,Tuple[int,int]]):
         if self._qindex: self._maxq = max(self._qindex.values())
         else: self._maxq = -1
         return self._maxq + 1
+
+    def set_multigraph(self, m: bool):
+        self._multigraph = m
+
+    def multigraph(self):
+        return self._multigraph
 
     def inputs(self):
         return self._inputs

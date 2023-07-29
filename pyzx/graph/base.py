@@ -612,6 +612,13 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
             g.set_qubit(v,g.qubit(v)+y)
         return g
 
+    def set_multigraph(self, multi: bool):
+        if multi == True:
+            raise NotImplementedError("Backend does not support multigraphs")
+
+    def multigraph(self):
+        return False
+
     def inputs(self) -> Tuple[VT, ...]:
         """Gets the inputs of the graph."""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
