@@ -15,7 +15,7 @@
 # limitations under the License.
 
 from fractions import Fraction
-from typing import Tuple, Dict, Set, Any
+from typing import List, Tuple, Dict, Set, Any
 
 from .base import BaseGraph
 
@@ -29,10 +29,14 @@ class GraphS(BaseGraph[int,Tuple[int,int]]):
     #can be found in base.BaseGraph
     def __init__(self) -> None:
         BaseGraph.__init__(self)
-        self.graph: Dict[int,Dict[int,EdgeType.Type]]   = dict()
-        self._vindex: int                               = 0
-        self.nedges: int                                = 0
+        self.graph: Dict[int,Dict[int,List[int]]]       = dict()
         self.ty: Dict[int,VertexType.Type]              = dict()
+        self.ety: Dict[int,EdgeType.Type]               = dict()
+
+        self._vindex: int                               = 0
+        self._eindex: int                               = 0
+        self._s: Dict[int, int]                         = dict()
+        self._t: Dict[int, int]                         = dict()
         self._phase: Dict[int, FractionLike]            = dict()
         self._qindex: Dict[int, FloatInt]               = dict()
         self._maxq: FloatInt                            = -1
@@ -49,8 +53,11 @@ class GraphS(BaseGraph[int,Tuple[int,int]]):
         for v, d in self.graph.items():
             cpy.graph[v] = d.copy()
         cpy._vindex = self._vindex
-        cpy.nedges = self.nedges
+        cpy._eindex = self._eindex
         cpy.ty = self.ty.copy()
+        cpy.ety = self.ety.copy()
+        cpy._s = self._s.copy()
+        cpy._t = self._s.copy()
         cpy._phase = self._phase.copy()
         cpy._qindex = self._qindex.copy()
         cpy._maxq = self._maxq
@@ -76,6 +83,9 @@ class GraphS(BaseGraph[int,Tuple[int,int]]):
         if self._qindex: self._maxq = max(self._qindex.values())
         else: self._maxq = -1
         return self._maxq + 1
+
+    def multigraph(self):
+        return True
 
     def inputs(self):
         return self._inputs
@@ -115,23 +125,29 @@ class GraphS(BaseGraph[int,Tuple[int,int]]):
 
     def add_edges(self, edge_pairs, edgetype=EdgeType.SIMPLE, smart=False):
         for s,t in edge_pairs:
-            self.nedges += 1
-            self.graph[s][t] = edgetype
-            self.graph[t][s] = edgetype
+            # s,t = (t,s) if s>t else (s,t)
+            if t in self.graph[s]:
+                arr = self.graph[s][t]
+            else:
+                arr = []
+                self.graph[s][t] = arr
+                self.graph[t][s] = arr
 
-    def add_edge(self, edge_pair, edgetype=EdgeType.SIMPLE, smart=False):
-        self.nedges += 1
-        s,t = edge_pair
-        self.graph[s][t] = edgetype
-        self.graph[t][s] = edgetype
-        return (s,t) if s <= t else (t,s)
+            arr.append(self._eindex)
+            self.ety[self._eindex] = edgetype #type:ignore
+            self._s[self._eindex] = s
+            self._t[self._eindex] = t
+            self._eindex += 1
 
     def remove_vertices(self, vertices):
         for v in vertices:
             vs = list(self.graph[v])
             # remove all edges
             for v1 in vs:
-                self.nedges -= 1
+                for e in self.graph[v][v1]:
+                    del self.ety[e]
+                    del self._s[e]
+                    del self._t[e]
                 del self.graph[v][v1]
                 del self.graph[v1][v]
             # remove the vertex

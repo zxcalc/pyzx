@@ -612,10 +612,6 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
             g.set_qubit(v,g.qubit(v)+y)
         return g
 
-    def set_multigraph(self, multi: bool):
-        if multi == True:
-            raise NotImplementedError("Backend does not support multigraphs")
-
     def multigraph(self):
         return False
 
@@ -682,116 +678,121 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         which requires vertices to preserve their index."""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
-    def add_edges(self, edges: Iterable[ET], edgetype:EdgeType.Type=EdgeType.SIMPLE) -> None:
+    def add_edges(self, edge_pairs: Iterable[Tuple[VT,VT]], edgetype:EdgeType.Type=EdgeType.SIMPLE) -> None:
         """Adds a list of edges to the graph."""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
-    def add_edge(self, edge: ET, edgetype:EdgeType.Type=EdgeType.SIMPLE) -> None:
-        """Adds a single edge of the given type"""
-        self.add_edges([edge], edgetype)
+    def add_edge(self, edge_pair: Tuple[VT,VT], edgetype:EdgeType.Type=EdgeType.SIMPLE) -> ET:
+        """Adds a single edge of the given type and return its id"""
+        raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
-    def add_edge_table(self, etab:Mapping[ET,List[int]]) -> None:
+    def add_edge_table(self, etab:Mapping[Tuple[VT,VT],List[int]]) -> None:
         """Takes a dictionary mapping (source,target) --> (#edges, #h-edges) specifying that
         #edges regular edges must be added between source and target and $h-edges Hadamard edges.
         The method selectively adds or removes edges to produce that ZX diagram which would 
         result from adding (#edges, #h-edges), and then removing all parallel edges using Hopf/spider laws."""
-        add: Dict[EdgeType.Type,List[ET]] = {EdgeType.SIMPLE: [], EdgeType.HADAMARD: []} # list of edges and h-edges to add
-        new_type: Optional[EdgeType.Type]
-        remove: List = []   # list of edges to remove
-        for e,(n1,n2) in etab.items():
-            v1,v2 = self.edge_st(e)
-            t1 = self.type(v1)
-            t2 = self.type(v2)
-            conn_type = self.edge_type(e)
-            if conn_type == EdgeType.SIMPLE: n1 += 1 #and add to the relevant edge count
-            elif conn_type == EdgeType.HADAMARD: n2 += 1
 
-            if n1 + n2 <= 1: # We first deal with simple edges
-                if n1 == 1: new_type = EdgeType.SIMPLE
-                elif n2 == 1: new_type = EdgeType.HADAMARD
-                else: new_type = None
-            # Hence, all the other cases have some kind of parallel edge
-            elif t1 == VertexType.BOUNDARY or t2 == VertexType.BOUNDARY:
-                raise ValueError("Parallel edges to a boundary edge are not supported")
-            elif t1 == t2 and vertex_is_zx(t1): #types are ZX & equal,
-                n1 = bool(n1)            #so normal edges fuse
-                pairs, n2 = divmod(n2,2) #while hadamard edges go modulo 2
-                self.scalar.add_power(-2*pairs)
-                if n1 != 0 and n2 != 0:  #reduction rule for when both edges appear
-                    new_type = EdgeType.SIMPLE
-                    self.add_to_phase(v1, 1)
-                    self.scalar.add_power(-1)
-                elif n1 != 0: new_type = EdgeType.SIMPLE
-                elif n2 != 0: new_type = EdgeType.HADAMARD
-                else: new_type = None
-            elif t1 != t2 and vertex_is_zx(t1) and vertex_is_zx(t2): #types are ZX & different
-                pairs, n1 = divmod(n1,2) #so normal edges go modulo 2
-                n2 = bool(n2)            #while hadamard edges fuse
-                self.scalar.add_power(-2*pairs)
-                if n1 != 0 and n2 != 0:  #reduction rule for when both edges appear
-                    new_type = EdgeType.HADAMARD
-                    self.add_to_phase(v1, 1)
-                    self.scalar.add_power(-1)
-                elif n1 != 0: new_type = EdgeType.SIMPLE
-                elif n2 != 0: new_type = EdgeType.HADAMARD
-                else: new_type = None
-            elif t1 == VertexType.H_BOX or t2 == VertexType.H_BOX:
-                # TODO: Check scalar accuracy
-                if t1 != VertexType.H_BOX: # Ensure that the first vertex is an H-box
-                    v1,v2 = v2,v1
-                    t1,t2 = t2,t1
-                if t2 == VertexType.H_BOX: # They are both H-boxes
-                    raise ValueError("Parallel edges between H-boxes are not supported")
-                elif t2 == VertexType.Z: # Z & H-box
-                    n1 = bool(n1) # parallel regular edges collapse to single wire
-                    if n2 > 1: raise ValueError("Parallel H-edges between H-box and Z-spider are not supported")
-                    if n1 and n2:
-                        # There is no simple way to deal with a parallel H-edge and regular edge
-                        # So we simply add a 2-ary H-box to the graph
-                        r1,r2 = self.row(v1), self.row(v2)
-                        q1,q2 = self.qubit(v1), self.qubit(v2)
-                        w = self.add_vertex(VertexType.H_BOX,(q1+q2)/2,(r1+r2)/2-0.5)
-                        add[EdgeType.SIMPLE].extend([self.edge(v1,w),self.edge(v2,w)])
-                        new_type = EdgeType.SIMPLE
-                        self.scalar.add_power(-1)  # H-boxes are scaled differently than H-edges, so we compensate with 1/sqrt(2) here.
-                    elif n1: new_type = EdgeType.SIMPLE
-                    elif n2: new_type = EdgeType.HADAMARD
-                    else: new_type = None
-                elif t2 == VertexType.X:  # X & H-box
-                    n2 = bool(n2)  # parallel H-edges collapse to single wire
-                    if n1 > 1: raise ValueError("Parallel edges between H-box and X-spider are not supported")
-                    if n1 and n2:
-                        # There is no simple way to deal with a parallel H-edge and regular edge
-                        # So we simply add a 2-ary H-box to the graph
-                        r1,r2 = self.row(v1), self.row(v2)
-                        q1,q2 = self.qubit(v1), self.qubit(v2)
-                        w = self.add_vertex(VertexType.H_BOX,(q1+q2)/2,(r1+r2)/2-0.5)
-                        add[EdgeType.SIMPLE].extend([self.edge(v1,w),self.edge(v2,w)])
-                        new_type = EdgeType.SIMPLE
-                        self.scalar.add_power(-1)  # H-boxes are scaled differently than H-edges, so we compensate with 1/sqrt(2) here.
-                    elif n1: new_type = EdgeType.SIMPLE
-                    elif n2: new_type = EdgeType.HADAMARD
-                    else: new_type = None
-                else:
-                    raise ValueError("Unhandled parallel edges between nodes of type (%s,%s)" % (t1,t2))
-            else:
-                raise ValueError("Unhandled parallel edges between nodes of type (%s,%s)" % (t1,t2))
+        raise Exception("This method is deprecated. Use add_edge/add_edges instead.")
+        # add: Dict[EdgeType.Type,List[Tuple[VT,VT]]] = {EdgeType.SIMPLE: [], EdgeType.HADAMARD: []} # list of edges and h-edges to add
+        # new_type: Optional[EdgeType.Type]
+        # remove: List = []   # list of edges to remove
+        # for (v1,v2),(n1,n2) in etab.items():
+        #     # v1,v2 = self.edge_st(e)
+        #     t1 = self.type(v1)
+        #     t2 = self.type(v2)
 
-            if new_type: # The vertices should be connected, so update the graph
-                if not conn_type: #new edge added
-                    add[new_type].append(self.edge(v1,v2))
-                elif conn_type != new_type: #type of edge has changed
-                    self.set_edge_type(self.edge(v1,v2), new_type)
-            elif conn_type: #They were connected, but not anymore, so update the graph
-                remove.append(self.edge(v1,v2))
+        #     e = self.edge(v1, v2)
+        #     conn_type = self.edge_type(e) if e else 0
+        #     if conn_type == EdgeType.SIMPLE: n1 += 1 #and add to the relevant edge count
+        #     elif conn_type == EdgeType.HADAMARD: n2 += 1
 
-        self.remove_edges(remove)
-        self.add_edges(add[EdgeType.SIMPLE],EdgeType.SIMPLE)
-        self.add_edges(add[EdgeType.HADAMARD],EdgeType.HADAMARD)
+        #     if n1 + n2 <= 1: # We first deal with simple edges
+        #         if n1 == 1: new_type = EdgeType.SIMPLE
+        #         elif n2 == 1: new_type = EdgeType.HADAMARD
+        #         else: new_type = None
+        #     # Hence, all the other cases have some kind of parallel edge
+        #     elif t1 == VertexType.BOUNDARY or t2 == VertexType.BOUNDARY:
+        #         raise ValueError("Parallel edges to a boundary edge are not supported")
+        #     elif t1 == t2 and vertex_is_zx(t1): #types are ZX & equal,
+        #         n1 = bool(n1)            #so normal edges fuse
+        #         pairs, n2 = divmod(n2,2) #while hadamard edges go modulo 2
+        #         self.scalar.add_power(-2*pairs)
+        #         if n1 != 0 and n2 != 0:  #reduction rule for when both edges appear
+        #             new_type = EdgeType.SIMPLE
+        #             self.add_to_phase(v1, 1)
+        #             self.scalar.add_power(-1)
+        #         elif n1 != 0: new_type = EdgeType.SIMPLE
+        #         elif n2 != 0: new_type = EdgeType.HADAMARD
+        #         else: new_type = None
+        #     elif t1 != t2 and vertex_is_zx(t1) and vertex_is_zx(t2): #types are ZX & different
+        #         pairs, n1 = divmod(n1,2) #so normal edges go modulo 2
+        #         n2 = bool(n2)            #while hadamard edges fuse
+        #         self.scalar.add_power(-2*pairs)
+        #         if n1 != 0 and n2 != 0:  #reduction rule for when both edges appear
+        #             new_type = EdgeType.HADAMARD
+        #             self.add_to_phase(v1, 1)
+        #             self.scalar.add_power(-1)
+        #         elif n1 != 0: new_type = EdgeType.SIMPLE
+        #         elif n2 != 0: new_type = EdgeType.HADAMARD
+        #         else: new_type = None
+        #     elif t1 == VertexType.H_BOX or t2 == VertexType.H_BOX:
+        #         # TODO: Check scalar accuracy
+        #         if t1 != VertexType.H_BOX: # Ensure that the first vertex is an H-box
+        #             v1,v2 = v2,v1
+        #             t1,t2 = t2,t1
+        #         if t2 == VertexType.H_BOX: # They are both H-boxes
+        #             raise ValueError("Parallel edges between H-boxes are not supported")
+        #         elif t2 == VertexType.Z: # Z & H-box
+        #             n1 = bool(n1) # parallel regular edges collapse to single wire
+        #             if n2 > 1: raise ValueError("Parallel H-edges between H-box and Z-spider are not supported")
+        #             if n1 and n2:
+        #                 # There is no simple way to deal with a parallel H-edge and regular edge
+        #                 # So we simply add a 2-ary H-box to the graph
+        #                 r1,r2 = self.row(v1), self.row(v2)
+        #                 q1,q2 = self.qubit(v1), self.qubit(v2)
+        #                 w = self.add_vertex(VertexType.H_BOX,(q1+q2)/2,(r1+r2)/2-0.5)
+        #                 add[EdgeType.SIMPLE].extend([(v1,w),(v2,w)])
+        #                 new_type = EdgeType.SIMPLE
+        #                 self.scalar.add_power(-1)  # H-boxes are scaled differently than H-edges, so we compensate with 1/sqrt(2) here.
+        #             elif n1: new_type = EdgeType.SIMPLE
+        #             elif n2: new_type = EdgeType.HADAMARD
+        #             else: new_type = None
+        #         elif t2 == VertexType.X:  # X & H-box
+        #             n2 = bool(n2)  # parallel H-edges collapse to single wire
+        #             if n1 > 1: raise ValueError("Parallel edges between H-box and X-spider are not supported")
+        #             if n1 and n2:
+        #                 # There is no simple way to deal with a parallel H-edge and regular edge
+        #                 # So we simply add a 2-ary H-box to the graph
+        #                 r1,r2 = self.row(v1), self.row(v2)
+        #                 q1,q2 = self.qubit(v1), self.qubit(v2)
+        #                 w = self.add_vertex(VertexType.H_BOX,(q1+q2)/2,(r1+r2)/2-0.5)
+        #                 add[EdgeType.SIMPLE].extend([(v1,w),(v2,w)])
+        #                 new_type = EdgeType.SIMPLE
+        #                 self.scalar.add_power(-1)  # H-boxes are scaled differently than H-edges, so we compensate with 1/sqrt(2) here.
+        #             elif n1: new_type = EdgeType.SIMPLE
+        #             elif n2: new_type = EdgeType.HADAMARD
+        #             else: new_type = None
+        #         else:
+        #             raise ValueError("Unhandled parallel edges between nodes of type (%s,%s)" % (t1,t2))
+        #     else:
+        #         raise ValueError("Unhandled parallel edges between nodes of type (%s,%s)" % (t1,t2))
 
-    def add_edge_smart(self, e: ET, edgetype: EdgeType.Type):
+        #     if new_type: # The vertices should be connected, so update the graph
+        #         if not conn_type: #new edge added
+        #             add[new_type].append((v1,v2))
+        #         elif conn_type != new_type: #type of edge has changed
+        #             self.set_edge_type(self.edge(v1,v2), new_type)
+        #     elif conn_type: #They were connected, but not anymore, so update the graph
+        #         remove.append(self.edge(v1,v2))
+
+        # self.remove_edges(remove)
+        # self.add_edges(add[EdgeType.SIMPLE],EdgeType.SIMPLE)
+        # self.add_edges(add[EdgeType.HADAMARD],EdgeType.HADAMARD)
+
+    def add_edge_smart(self, edge_desc: Tuple[VT,VT], edgetype: EdgeType.Type):
         """Like add_edge, but does the right thing if there is an existing edge."""
-        self.add_edge_table({e : [1,0] if edgetype == EdgeType.SIMPLE else [0,1]})
+        # TODO: implement these on backend
+        raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
     def set_phase_master(self, m: 'simplify.Simplifier') -> None:
         """Points towards an instance of the class :class:`~pyzx.simplify.Simplifier`.
@@ -893,8 +894,9 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         """Iterator over all the vertices."""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
-    def edges(self) -> Sequence[ET]:
-        """Iterator that returns all the edges. Output type depends on implementation in backend."""
+    def edges(self, s: Optional[VT]=None, t: Optional[VT]=None) -> Sequence[ET]:
+        """Iterator that returns all the edges in the graph, or all the edges connecting the pair of vertices.
+        Output type depends on implementation in backend."""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
     def vertex_set(self) -> Set[VT]:
@@ -907,16 +909,18 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         Should be overloaded if the backend supplies a cheaper version than this."""
         return set(self.edges())
 
-    def edge(self, s:VT, t:VT) -> ET:
-        """Returns the edge object with the given source/target."""
+    def edge(self, s:VT, t:VT) -> Optional[ET]:
+        """Returns the name of the first edge with the given source/target or None if the vertices are not connected."""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
     def edge_st(self, edge: ET) -> Tuple[VT, VT]:
         """Returns a tuple of source/target of the given edge."""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
+
     def edge_s(self, edge: ET) -> VT:
         """Returns the source of the given edge."""
         return self.edge_st(edge)[0]
+
     def edge_t(self, edge: ET) -> VT:
         """Returns the target of the given edge."""
         return self.edge_st(edge)[1]
@@ -951,9 +955,11 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         VertexType.BOUNDARY if it is a boundary, VertexType.Z if it is a Z node,
         VertexType.X if it is a X node, VertexType.H_BOX if it is an H-box."""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
+
     def types(self) -> Mapping[VT, VertexType.Type]:
         """Returns a mapping of vertices to their types."""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
+
     def set_type(self, vertex: VT, t: VertexType.Type) -> None:
         """Sets the type of the given vertex to t."""
         raise NotImplementedError("Not implemented on backend" + type(self).backend)
@@ -961,12 +967,15 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
     def phase(self, vertex: VT) -> FractionLike:
         """Returns the phase value of the given vertex."""
         raise NotImplementedError("Not implemented on backend" + type(self).backend)
+
     def phases(self) -> Mapping[VT, FractionLike]:
         """Returns a mapping of vertices to their phase values."""
         raise NotImplementedError("Not implemented on backend" + type(self).backend)
+
     def set_phase(self, vertex: VT, phase: FractionLike) -> None:
         """Sets the phase of the vertex to the given value."""
         raise NotImplementedError("Not implemented on backend" + type(self).backend)
+
     def add_to_phase(self, vertex: VT, phase: FractionLike) -> None:
         """Add the given phase to the phase value of the given vertex."""
         self.set_phase(vertex,self.phase(vertex)+phase)
@@ -975,9 +984,11 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         """Returns the qubit index associated to the vertex. 
         If no index has been set, returns -1."""
         raise NotImplementedError("Not implemented on backend" + type(self).backend)
+
     def qubits(self) -> Mapping[VT,FloatInt]:
         """Returns a mapping of vertices to their qubit index."""
         raise NotImplementedError("Not implemented on backend" + type(self).backend)
+
     def set_qubit(self, vertex: VT, q: FloatInt) -> None:
         """Sets the qubit index associated to the vertex."""
         raise NotImplementedError("Not implemented on backend" + type(self).backend)
@@ -986,9 +997,11 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         """Returns the row that the vertex is positioned at. 
         If no row has been set, returns -1."""
         raise NotImplementedError("Not implemented on backend" + type(self).backend)
+
     def rows(self) -> Mapping[VT, FloatInt]:
         """Returns a mapping of vertices to their row index."""
         raise NotImplementedError("Not implemented on backend" + type(self).backend)
+
     def set_row(self, vertex: VT, r: FloatInt) -> None:
         """Sets the row the vertex should be positioned at."""
         raise NotImplementedError("Not implemented on backend" + type(self).backend)
@@ -996,12 +1009,15 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
     def is_ground(self, vertex: VT) -> bool:
         """Returns a boolean indicating if the vertex is connected to a ground."""
         raise NotImplementedError("Not implemented on backend" + type(self).backend)
+
     def grounds(self) -> Set[VT]:
         """Returns the set of vertices connected to a ground."""
         raise NotImplementedError("Not implemented on backend" + type(self).backend)
+
     def set_ground(self, vertex: VT, flag: bool=True) -> None:
         """Connect or disconnect the vertex to a ground."""
         raise NotImplementedError("Not implemented on backend" + type(self).backend)
+
     def is_hybrid(self) -> bool:
         """Returns whether this is a hybrid quantum-classical graph,
         i.e. a graph with ground generators."""
@@ -1016,10 +1032,12 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         """Returns an iterable of the vertex data key names.
         Used e.g. in making a copy of the graph in a backend-independent way."""
         raise NotImplementedError("Not implemented on backend" + type(self).backend)
+
     def vdata(self, vertex: VT, key: str, default: Any=0) -> Any:
         """Returns the data value of the given vertex associated to the key.
         If this key has no value associated with it, it returns the default value."""
         raise NotImplementedError("Not implemented on backend" + type(self).backend)
+
     def set_vdata(self, vertex: VT, key: str, val: Any) -> None:
         """Sets the vertex data associated to key to val."""
         raise NotImplementedError("Not implemented on backend" + type(self).backend)
