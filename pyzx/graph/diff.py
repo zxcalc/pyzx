@@ -15,7 +15,7 @@
 # limitations under the License.
 
 import json
-from typing import Any, Callable, Generic,Optional, List, Dict, Tuple
+from typing import Any, Callable, Generic, Optional, List, Dict, Tuple
 import copy
 
 from ..utils import VertexType, EdgeType, FractionLike, FloatInt
@@ -146,5 +146,5 @@ class GraphDiff(Generic[VT, ET]):
 		gd.changed_pos = map_dict_keys(d["changed_pos"], int)
 		return gd
 
-def map_dict_keys(d: Dict[str, Any], f: Callable[[int], int]) -> Dict[str, Any]:
+def map_dict_keys(d: Dict[str, Any], f: Callable[[str], Any]) -> Dict[Any, Any]:
 	return {f(k): v for k, v in d.items()}
