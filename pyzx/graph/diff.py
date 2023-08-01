@@ -14,7 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Generic,Optional, List, Dict, Tuple
+import json
+from typing import Any, Callable, Generic,Optional, List, Dict, Tuple
 import copy
 
 from ..utils import VertexType, EdgeType, FractionLike, FloatInt
@@ -115,3 +116,35 @@ class GraphDiff(Generic[VT, ET]):
 			g.set_edge_type(e,self.changed_edge_types[e])
 
 		return g
+
+	def to_json(self) -> str:
+		changed_edge_types_str_dict = {}
+		for key, value in self.changed_edge_types.items():
+			changed_edge_types_str_dict[f"{key[0]},{key[1]}"] = value
+		return json.dumps({
+			"removed_verts": self.removed_verts,
+			"new_verts": self.new_verts,
+			"removed_edges": self.removed_edges,
+			"new_edges": self.new_edges,
+			"changed_vertex_types": self.changed_vertex_types,
+			"changed_edge_types": changed_edge_types_str_dict,
+			"changed_phases": self.changed_phases,
+			"changed_pos": self.changed_pos,
+		})
+
+	@staticmethod
+	def from_json(json_str: str) -> "GraphDiff":
+		d = json.loads(json_str)
+		gd = GraphDiff(GraphS(),GraphS())
+		gd.removed_verts = d["removed_verts"]
+		gd.new_verts = d["new_verts"]
+		gd.removed_edges = list(map(tuple, d["removed_edges"]))
+		gd.new_edges = list(map(tuple, d["new_edges"]))
+		gd.changed_vertex_types = map_dict_keys(d["changed_vertex_types"], int)
+		gd.changed_edge_types = map_dict_keys(d["changed_edge_types"], lambda x: tuple(map(int, x.split(","))))
+		gd.changed_phases = map_dict_keys(d["changed_phases"], int)
+		gd.changed_pos = map_dict_keys(d["changed_pos"], int)
+		return gd
+
+def map_dict_keys(d: Dict[str, Any], f: Callable[[int], int]) -> Dict[str, Any]:
+	return {f(k): v for k, v in d.items()}
