@@ -168,10 +168,10 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
             g.set_inputs(new_outputs)
             g.set_outputs(new_inputs)
         
-        etab = {e:g.edge(vtab[self.edge_s(e)],vtab[self.edge_t(e)]) for e in self.edges()}
-        g.add_edges(etab.values())
-        for e,f in etab.items():
-            g.set_edge_type(f, self.edge_type(e))
+        for e in self.edges():
+            s, t = self.edge_st(e)
+            self.add_edge((vtab[s], vtab[t]), self.edge_type(e))
+
         return g
 
     def adjoint(self) -> 'BaseGraph':
@@ -201,49 +201,50 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
             self.set_row(v, rf)
 
 
-    def replace_subgraph(self, left_row: FloatInt, right_row: FloatInt, replace: 'BaseGraph') -> None:
-        """Deletes the subgraph of all nodes with rank strictly between ``left_row``
-        and ``right_row`` and replaces it with the graph ``replace``.
-        The amount of nodes on the left row should match the amount of inputs of 
-        the replacement graph and the same for the right row and the outputs.
-        The graphs are glued together based on the qubit index of the vertices."""
-        qleft = [v for v in self.vertices() if self.row(v)==left_row]
-        qright= [v for v in self.vertices() if self.row(v)==right_row]
-        r_inputs = replace.inputs()
-        r_outputs = replace.outputs()
-        if len(qleft) != len(r_inputs):
-            raise TypeError("Inputs do not match glueing vertices")
-        if len(qright) != len(r_outputs):
-            raise TypeError("Outputs do not match glueing vertices")
-        if set(self.qubit(v) for v in qleft) != set(replace.qubit(v) for v in r_inputs):
-            raise TypeError("Input qubit indices do not match")
-        if set(self.qubit(v) for v in qright)!= set(replace.qubit(v) for v in r_outputs):
-            raise TypeError("Output qubit indices do not match")
+    # def replace_subgraph(self, left_row: FloatInt, right_row: FloatInt, replace: 'BaseGraph') -> None:
+    #     """Deletes the subgraph of all nodes with rank strictly between ``left_row``
+    #     and ``right_row`` and replaces it with the graph ``replace``.
+    #     The amount of nodes on the left row should match the amount of inputs of 
+    #     the replacement graph and the same for the right row and the outputs.
+    #     The graphs are glued together based on the qubit index of the vertices."""
+
+    #     qleft = [v for v in self.vertices() if self.row(v)==left_row]
+    #     qright= [v for v in self.vertices() if self.row(v)==right_row]
+    #     r_inputs = replace.inputs()
+    #     r_outputs = replace.outputs()
+    #     if len(qleft) != len(r_inputs):
+    #         raise TypeError("Inputs do not match glueing vertices")
+    #     if len(qright) != len(r_outputs):
+    #         raise TypeError("Outputs do not match glueing vertices")
+    #     if set(self.qubit(v) for v in qleft) != set(replace.qubit(v) for v in r_inputs):
+    #         raise TypeError("Input qubit indices do not match")
+    #     if set(self.qubit(v) for v in qright)!= set(replace.qubit(v) for v in r_outputs):
+    #         raise TypeError("Output qubit indices do not match")
         
-        self.remove_vertices([v for v in self.vertices() if (left_row < self.row(v) and self.row(v) < right_row)])
-        self.remove_edges([self.edge(s,t) for s in qleft for t in qright if self.connected(s,t)])
-        rdepth = replace.depth() -1
-        for v in (v for v in self.vertices() if self.row(v)>=right_row):
-            self.set_row(v, self.row(v)+rdepth)
+    #     self.remove_vertices([v for v in self.vertices() if (left_row < self.row(v) and self.row(v) < right_row)])
+    #     self.remove_edges([self.edge(s,t) for s in qleft for t in qright if self.connected(s,t)])
+    #     rdepth = replace.depth() -1
+    #     for v in (v for v in self.vertices() if self.row(v)>=right_row):
+    #         self.set_row(v, self.row(v)+rdepth)
 
-        vtab = {}
-        for v in replace.vertices():
-            if v in r_inputs or v in r_outputs: continue
-            vtab[v] = self.add_vertex(replace.type(v),
-                                      replace.qubit(v),
-                                      replace.row(v)+left_row,
-                                      replace.phase(v),
-                                      replace.is_ground(v))
-        for v in r_inputs:
-            vtab[v] = [i for i in qleft if self.qubit(i) == replace.qubit(v)][0]
+    #     vtab = {}
+    #     for v in replace.vertices():
+    #         if v in r_inputs or v in r_outputs: continue
+    #         vtab[v] = self.add_vertex(replace.type(v),
+    #                                   replace.qubit(v),
+    #                                   replace.row(v)+left_row,
+    #                                   replace.phase(v),
+    #                                   replace.is_ground(v))
+    #     for v in r_inputs:
+    #         vtab[v] = [i for i in qleft if self.qubit(i) == replace.qubit(v)][0]
 
-        for v in r_outputs:
-            vtab[v] = [i for i in qright if self.qubit(i) == replace.qubit(v)][0]
+    #     for v in r_outputs:
+    #         vtab[v] = [i for i in qright if self.qubit(i) == replace.qubit(v)][0]
 
-        etab = {e:self.edge(vtab[replace.edge_s(e)],vtab[replace.edge_t(e)]) for e in replace.edges()}
-        self.add_edges(etab.values())
-        for e,f in etab.items():
-            self.set_edge_type(f, replace.edge_type(e))
+    #     etab = {e:self.edge(vtab[replace.edge_s(e)],vtab[replace.edge_t(e)]) for e in replace.edges()}
+    #     self.add_edges(etab.values())
+    #     for e,f in etab.items():
+    #         self.set_edge_type(f, replace.edge_type(e))
 
     def compose(self, other: 'BaseGraph') -> None:
         """Inserts a graph after this one. The amount of qubits of the graphs must match.
@@ -909,8 +910,8 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         Should be overloaded if the backend supplies a cheaper version than this."""
         return set(self.edges())
 
-    def edge(self, s:VT, t:VT) -> Optional[ET]:
-        """Returns the name of the first edge with the given source/target or None if the vertices are not connected."""
+    def edge(self, s:VT, t:VT) -> ET:
+        """Returns the name of the first edge with the given source/target. Behaviour is undefined if the vertices are not connected."""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
     def edge_st(self, edge: ET) -> Tuple[VT, VT]:
