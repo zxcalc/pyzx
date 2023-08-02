@@ -47,7 +47,7 @@ __all__ = ['color_change_diagram',
 
 from typing import Tuple, List
 from .graph.base import BaseGraph, VT, ET
-from .utils import VertexType, EdgeType
+from .utils import VertexType, EdgeType, is_pauli
 
 def color_change_diagram(g: BaseGraph[VT,ET]):
     """Color-change an entire diagram by applying Hadamards to the inputs and ouputs."""
@@ -87,8 +87,8 @@ def color_change(g: BaseGraph[VT,ET], v: VT) -> bool:
 def check_strong_comp(g: BaseGraph[VT,ET], v1: VT, v2: VT) -> bool:
     if not (((g.type(v1) == VertexType.X and g.type(v2) == VertexType.Z) or
              (g.type(v1) == VertexType.Z and g.type(v2) == VertexType.X)) and
-            (g.phase(v1) == 0 or g.phase(v1) == 1) and
-            (g.phase(v2) == 0 or g.phase(v2) == 1) and
+            is_pauli(g.phase(v1)) and
+            is_pauli(g.phase(v2)) and
             g.connected(v1,v2) and
             g.edge_type(g.edge(v1,v2)) == EdgeType.SIMPLE):
         return False
@@ -127,7 +127,7 @@ def strong_comp(g: BaseGraph[VT,ET], v1: VT, v2: VT) -> bool:
 def check_copy_X(g: BaseGraph[VT,ET], v: VT) -> bool:
     if not (g.vertex_degree(v) == 1 and
             g.type(v) == VertexType.X and
-            (g.phase(v) == 0 or g.phase(v) == 1)):
+            is_pauli(g.phase(v))):
         return False
     nv = next(iter(g.neighbors(v)))
     if not (g.type(nv) == VertexType.Z and
