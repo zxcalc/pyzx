@@ -120,7 +120,7 @@ class GraphDiff(Generic[VT, ET]):
 	def to_json(self) -> str:
 		changed_edge_types_str_dict = {}
 		for key, value in self.changed_edge_types.items():
-			changed_edge_types_str_dict[f"{key[0]},{key[1]}"] = value
+			changed_edge_types_str_dict[f"{key[0]},{key[1]}"] = value # type: ignore
 		return json.dumps({
 			"removed_verts": self.removed_verts,
 			"new_verts": self.new_verts,
@@ -138,8 +138,8 @@ class GraphDiff(Generic[VT, ET]):
 		gd = GraphDiff(GraphS(),GraphS())
 		gd.removed_verts = d["removed_verts"]
 		gd.new_verts = d["new_verts"]
-		gd.removed_edges = list(map(tuple, d["removed_edges"]))
-		gd.new_edges = list(map(tuple, d["new_edges"]))
+		gd.removed_edges = list(map(tuple, d["removed_edges"])) # type: ignore
+		gd.new_edges = list(map(tuple, d["new_edges"])) # type: ignore
 		gd.changed_vertex_types = map_dict_keys(d["changed_vertex_types"], int)
 		gd.changed_edge_types = map_dict_keys(d["changed_edge_types"], lambda x: tuple(map(int, x.split(","))))
 		gd.changed_phases = map_dict_keys(d["changed_phases"], int)
