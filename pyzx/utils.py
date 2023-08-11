@@ -32,6 +32,8 @@ class VertexType:
     Z: Final = 1
     X: Final = 2
     H_BOX: Final = 3
+    W_INPUT: Final = 4
+    W_OUTPUT: Final = 5
 
 def vertex_is_zx(ty: VertexType.Type) -> bool:
     """Check if a vertex type corresponds to a green or red spider."""
@@ -48,6 +50,7 @@ class EdgeType:
     Type = Literal[1,2]
     SIMPLE: Final = 1
     HADAMARD: Final = 2
+    W_IO: Final = 3
 
 def toggle_edge(ty: EdgeType.Type) -> EdgeType.Type:
     """Swap the regular and Hadamard edge types."""
@@ -143,7 +146,7 @@ def get_mode():
                 settings.mode = "shell"
 
     return settings.mode
-        
+
 
 
 def restricted_float(x):
