@@ -45,6 +45,23 @@ def toggle_vertex(ty: VertexType.Type) -> VertexType.Type:
         return ty
     return VertexType.Z if ty == VertexType.X else VertexType.X
 
+def vertex_is_w(ty: VertexType.Type) -> bool:
+    return ty == VertexType.W_INPUT or ty == VertexType.W_OUTPUT
+
+def get_w_partner(g, v):
+    assert vertex_is_w(g.type(v))
+    for u in g.neighbors(v):
+        if g.edge_type((u, v)) == EdgeType.W_IO:
+            return u
+    assert False
+
+def get_w_io(g, v):
+    v2 = get_w_partner(g, v)
+    if g.type(v) == VertexType.W_INPUT:
+        return v, v2
+    return v2, v
+
+
 class EdgeType:
     """Type of an edge in the graph."""
     Type = Literal[1,2]

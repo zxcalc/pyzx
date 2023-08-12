@@ -53,7 +53,7 @@ from typing_extensions import Literal
 from fractions import Fraction
 import itertools
 
-from .utils import VertexType, EdgeType, toggle_edge, vertex_is_zx, FloatInt, FractionLike
+from .utils import VertexType, EdgeType, get_w_partner, toggle_edge, vertex_is_w, vertex_is_zx, FloatInt, FractionLike, get_w_io
 from .graph.base import BaseGraph, VT, ET
 
 RewriteOutputType = Tuple[Dict[ET,List[int]], List[VT], List[ET], bool]
@@ -175,12 +175,12 @@ def match_spider_parallel(
         v0t = types[v0]
         v1t = types[v1]
         if (v0t == v1t and vertex_is_zx(v0t)):
-                i += 1
-                for v in g.neighbors(v0):
-                    for c in g.incident_edges(v): candidates.discard(c)
-                for v in g.neighbors(v1):
-                    for c in g.incident_edges(v): candidates.discard(c)
-                m.append((v0,v1))
+            i += 1
+            for v in g.neighbors(v0):
+                for c in g.incident_edges(v): candidates.discard(c)
+            for v in g.neighbors(v1):
+                for c in g.incident_edges(v): candidates.discard(c)
+            m.append((v0,v1))
     return m
 
 
@@ -250,6 +250,73 @@ def unspider(g: BaseGraph[VT,ET], m: List[Any], qubit:FloatInt=-1, row:FloatInt=
         g.set_phase(v, g.phase(u))
         g.set_phase(u, 0)
     return v
+
+MatchWType = Tuple[VT,VT]
+
+def match_w_fusion(g: BaseGraph[VT,ET]) -> List[MatchWType[VT]]:
+    """Does the same as :func:`match_spider_parallel` but with ``num=1``."""
+    return match_spider_parallel(g, num=1)
+
+def match_w_fusion_parallel(
+        g: BaseGraph[VT,ET],
+        matchf:Optional[Callable[[ET],bool]]=None,
+        num:int=-1
+        ) -> List[MatchWType[VT]]:
+    """Finds non-interacting matchings of the W fusion rule.
+
+    :param g: An instance of a ZX-graph.
+    :param matchf: An optional filtering function for candidate edge, should
+       return True if the edge should be considered for matchings. Passing None will
+       consider all edges.
+    :param num: Maximal amount of matchings to find. If -1 (the default)
+       tries to find as many as possible.
+    :rtype: List of 2-tuples ``(v1, v2)``
+    """
+    if matchf is not None: candidates = set([e for e in g.edges() if matchf(e)])
+    else: candidates = g.edge_set()
+    types = g.types()
+
+    i = 0
+    m = []
+    while (num == -1 or i < num) and len(candidates) > 0:
+        e = candidates.pop()
+        if g.edge_type(e) != EdgeType.SIMPLE: continue
+        v0, v1 = g.edge_st(e)
+        v0t = types[v0]
+        v1t = types[v1]
+        if vertex_is_w(v0t) and vertex_is_w(v1t):
+            i += 1
+            candidates_to_remove = []
+            candidates_to_remove.extend(list(g.neighbors(v0)))
+            candidates_to_remove.extend(list(g.neighbors(v1)))
+            candidates_to_remove.extend(list(g.neighbors(get_w_partner(g, v0))))
+            candidates_to_remove.extend(list(g.neighbors(get_w_partner(g, v1))))
+            for v in candidates_to_remove:
+                for c in g.incident_edges(v): candidates.discard(c)
+            m.append((v0,v1))
+    return m
+
+def w_fusion(g: BaseGraph[VT,ET], matches: List[MatchSpiderType[VT]]) -> RewriteOutputType[ET,VT]:
+    '''Performs W fusion given a list of matchings from ``match_w_fusion(_parallel)``
+    '''
+    rem_verts = []
+    etab: Dict[ET,List[int]] = dict()
+
+    for v0, v1 in matches:
+        v0_in, v0_out = get_w_io(g, v0)
+        v1_in, v1_out = get_w_io(g, v1)
+        # always delete the second vertex in the match
+        rem_verts.extend([v1_in, v1_out])
+
+        # edges from the second vertex are transferred to the first
+        for w in g.neighbors(v1_out):
+            if w == v1_in:
+                continue
+            e = g.edge(v0_out, w)
+            if e not in etab: etab[e] = [0,0]
+            etab[e][g.edge_type(g.edge(v1_out, w)) - 1] += 1
+    return (etab, rem_verts, [], True)
+
 
 MatchPivotType = Tuple[VT,VT,List[VT],List[VT]]
 
