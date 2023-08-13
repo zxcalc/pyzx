@@ -204,3 +204,14 @@ def maxelements(seq, key=None, reverse=False):
                     indices = [i]
 
     return indices
+
+
+def is_pauli(phase):
+    """
+    Check whether phase is Pauli.
+    
+    Compatible with zxlive symbols.
+    """
+    if phase == 0 or phase == 1:
+        return True
+    return getattr(phase, 'is_pauli', False)
