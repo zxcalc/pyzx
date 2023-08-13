@@ -703,6 +703,12 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
                 if n1 == 1: new_type = EdgeType.SIMPLE
                 elif n2 == 1: new_type = EdgeType.HADAMARD
                 else: new_type = None
+                # self loops are allowed for W nodes. this is a hack to add self-loops using id Z spiders
+                if v1 == v2 and t1 == VertexType.W_OUTPUT and new_type:
+                    id_1 = self.add_vertex(VertexType.Z, self.qubit(v1) + 1, self.row(v1) - 0.5)
+                    id_2 = self.add_vertex(VertexType.Z, self.qubit(v1) + 1, self.row(v1) + 0.5)
+                    add[EdgeType.SIMPLE].extend([self.edge(v1, id_1), self.edge(v1, id_2)])
+                    add[new_type].append(self.edge(id_1, id_2))
             # Hence, all the other cases have some kind of parallel edge
             elif t1 == VertexType.BOUNDARY or t2 == VertexType.BOUNDARY:
                 raise ValueError("Parallel edges to a boundary edge are not supported")
@@ -767,6 +773,21 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
                     else: new_type = None
                 else:
                     raise ValueError("Unhandled parallel edges between nodes of type (%s,%s)" % (t1,t2))
+            elif t1 == VertexType.W_OUTPUT or t2 == VertexType.W_OUTPUT:
+                # Since we don't yet support parallel edges, we simply add identity Z spiders to hack a parallel edge
+                r1,r2 = self.row(v1), self.row(v2)
+                q1,q2 = self.qubit(v1), self.qubit(v2)
+                id_1 = self.add_vertex(VertexType.Z, (q1 + q2) / 2 - 0.2, (r1 + r2) / 2 - 0.2)
+                id_2 = self.add_vertex(VertexType.Z, (q1 + q2) / 2 + 0.2, (r1 + r2) / 2 + 0.2)
+                add[EdgeType.SIMPLE].extend([self.edge(v1, id_1), self.edge(v1, id_2)])
+                if n1 > 1:
+                    add[EdgeType.SIMPLE].extend([self.edge(id_1, v2), self.edge(id_2, v2)])
+                elif n2 > 2:
+                    add[EdgeType.HADAMARD].extend([self.edge(id_1, v2), self.edge(id_2, v2)])
+                else:
+                    add[EdgeType.SIMPLE].append(self.edge(id_1, v2))
+                    add[EdgeType.HADAMARD].append(self.edge(id_2, v2))
+                new_type = None
             else:
                 raise ValueError("Unhandled parallel edges between nodes of type (%s,%s)" % (t1,t2))
 

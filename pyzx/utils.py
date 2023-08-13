@@ -32,6 +32,8 @@ class VertexType:
     Z: Final = 1
     X: Final = 2
     H_BOX: Final = 3
+    W_INPUT: Final = 4
+    W_OUTPUT: Final = 5
 
 def vertex_is_zx(ty: VertexType.Type) -> bool:
     """Check if a vertex type corresponds to a green or red spider."""
@@ -43,11 +45,29 @@ def toggle_vertex(ty: VertexType.Type) -> VertexType.Type:
         return ty
     return VertexType.Z if ty == VertexType.X else VertexType.X
 
+def vertex_is_w(ty: VertexType.Type) -> bool:
+    return ty == VertexType.W_INPUT or ty == VertexType.W_OUTPUT
+
+def get_w_partner(g, v):
+    assert vertex_is_w(g.type(v))
+    for u in g.neighbors(v):
+        if g.edge_type((u, v)) == EdgeType.W_IO:
+            return u
+    assert False
+
+def get_w_io(g, v):
+    v2 = get_w_partner(g, v)
+    if g.type(v) == VertexType.W_INPUT:
+        return v, v2
+    return v2, v
+
+
 class EdgeType:
     """Type of an edge in the graph."""
     Type = Literal[1,2]
     SIMPLE: Final = 1
     HADAMARD: Final = 2
+    W_IO: Final = 3
 
 def toggle_edge(ty: EdgeType.Type) -> EdgeType.Type:
     """Swap the regular and Hadamard edge types."""
@@ -143,7 +163,7 @@ def get_mode():
                 settings.mode = "shell"
 
     return settings.mode
-        
+
 
 
 def restricted_float(x):
