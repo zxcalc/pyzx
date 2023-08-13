@@ -107,8 +107,11 @@ tikz_classes = {
     'Z phase': 'Z phase dot',
     'X phase': 'X phase dot',
     'H': 'hadamard',
+    'W': 'W triangle',
+    'W input': 'W input',
     'edge': '',
-    'H-edge': 'hadamard edge'
+    'H-edge': 'hadamard edge',
+    'W-io-edge': 'W io edge'
 }
 
 class Settings(object): # namespace class
