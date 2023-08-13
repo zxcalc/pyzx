@@ -24,7 +24,7 @@ from typing_extensions import Literal, GenericMeta # type: ignore # https://gith
 
 import numpy as np
 
-from ..utils import EdgeType, VertexType, toggle_edge, vertex_is_zx, toggle_vertex
+from ..utils import EdgeType, VertexType, toggle_edge, vertex_is_zx, toggle_vertex, vertex_is_w, get_w_partner
 from ..utils import FloatInt, FractionLike
 from ..tensor import tensorfy, tensor_to_matrix
 
@@ -70,7 +70,7 @@ ET = TypeVar('ET') # The type used for representing edges (e.g. a pair of intege
 class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
     """Base class for letting graph backends interact with PyZX.
     For a backend to work with PyZX, there should be a class that implements
-    all the methods of this class. For implementations of this class see 
+    all the methods of this class. For implementations of this class see
     :class:`~pyzx.graph.graph_s.GraphS` or :class:`~pyzx.graph.graph_ig.GraphIG`."""
 
     backend: ClassVar[str] = 'None'
@@ -114,7 +114,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         return s
 
     def copy(self, adjoint:bool=False, backend:Optional[str]=None) -> 'BaseGraph':
-        """Create a copy of the graph. If ``adjoint`` is set, 
+        """Create a copy of the graph. If ``adjoint`` is set,
         the adjoint of the graph will be returned (inputs and outputs flipped, phases reversed).
         When ``backend`` is set, a copy of the graph with the given backend is produced. 
         By default the copy will have the same backend.
@@ -150,7 +150,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         for v in self.vertices():
             i = g.add_vertex(ty[v],phase=mult*ph[v])
             if v in qs: g.set_qubit(i,qs[v])
-            if v in rs: 
+            if v in rs:
                 if adjoint: g.set_row(i, maxr-rs[v])
                 else: g.set_row(i, rs[v])
             vtab[v] = i
@@ -167,7 +167,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         else:
             g.set_inputs(new_outputs)
             g.set_outputs(new_inputs)
-        
+
         etab = {e:g.edge(vtab[self.edge_s(e)],vtab[self.edge_t(e)]) for e in self.edges()}
         g.add_edges(etab.values())
         for e,f in etab.items():
@@ -204,7 +204,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
     def replace_subgraph(self, left_row: FloatInt, right_row: FloatInt, replace: 'BaseGraph') -> None:
         """Deletes the subgraph of all nodes with rank strictly between ``left_row``
         and ``right_row`` and replaces it with the graph ``replace``.
-        The amount of nodes on the left row should match the amount of inputs of 
+        The amount of nodes on the left row should match the amount of inputs of
         the replacement graph and the same for the right row and the outputs.
         The graphs are glued together based on the qubit index of the vertices."""
         qleft = [v for v in self.vertices() if self.row(v)==left_row]
@@ -219,7 +219,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
             raise TypeError("Input qubit indices do not match")
         if set(self.qubit(v) for v in qright)!= set(replace.qubit(v) for v in r_outputs):
             raise TypeError("Output qubit indices do not match")
-        
+
         self.remove_vertices([v for v in self.vertices() if (left_row < self.row(v) and self.row(v) < right_row)])
         self.remove_edges([self.edge(s,t) for s in qleft for t in qright if self.connected(s,t)])
         rdepth = replace.depth() -1
@@ -350,7 +350,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
 
     def merge(self, other: 'BaseGraph') -> Tuple[List[VT],List[ET]]:
         """Merges this graph with the other graph in-place.
-        Returns (list-of-vertices, list-of-edges) corresponding to 
+        Returns (list-of-vertices, list-of-edges) corresponding to
         the id's of the vertices and edges of the other graph."""
         ty = other.types()
         rs = other.rows()
@@ -401,7 +401,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         new_inputs = []
         for i,s in enumerate(state):
             v = inputs[i]
-            if s == '/': 
+            if s == '/':
                 new_inputs.append(v)
                 continue
             if s in ('0', '1'):
@@ -470,15 +470,15 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
 
     @classmethod
     def from_json(cls, js) -> 'BaseGraph':
-        """Converts the given .qgraph json string into a Graph. 
+        """Converts the given .qgraph json string into a Graph.
         Works with the output of :meth:`to_json`."""
         from .jsonparser import json_to_graph
         return json_to_graph(js,cls.backend)
 
     @classmethod
     def from_tikz(cls, tikz: str, warn_overlap:bool= True, fuse_overlap:bool = True, ignore_nonzx:bool = False) -> 'BaseGraph':
-        """Converts a tikz diagram into a pyzx Graph. 
-    The tikz diagram is assumed to be one generated by Tikzit, 
+        """Converts a tikz diagram into a pyzx Graph.
+    The tikz diagram is assumed to be one generated by Tikzit,
     and hence should have a nodelayer and a edgelayer..
 
     Args:
@@ -494,7 +494,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         from ..tikz import tikz_to_graph
         return tikz_to_graph(tikz,warn_overlap, fuse_overlap, ignore_nonzx, cls.backend)
 
-    
+
 
     def is_id(self) -> bool:
         """Returns whether the graph is just a set of identity wires,
@@ -565,7 +565,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         if self.num_inputs() == 0:
             self.auto_detect_io()
         max_r = self.depth() - 1
-        if max_r <= 2: 
+        if max_r <= 2:
             for o in self.outputs():
                 self.set_row(o,4)
             max_r = self.depth() -1
@@ -704,11 +704,14 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
                 elif n2 == 1: new_type = EdgeType.HADAMARD
                 else: new_type = None
                 # self loops are allowed for W nodes. this is a hack to add self-loops using id Z spiders
-                if v1 == v2 and t1 == VertexType.W_OUTPUT and new_type:
+                if new_type and vertex_is_w(t1) and vertex_is_w(t2) and \
+                    (v1 == v2 or v1 == get_w_partner(self, v2)):
                     id_1 = self.add_vertex(VertexType.Z, self.qubit(v1) + 1, self.row(v1) - 0.5)
-                    id_2 = self.add_vertex(VertexType.Z, self.qubit(v1) + 1, self.row(v1) + 0.5)
-                    add[EdgeType.SIMPLE].extend([self.edge(v1, id_1), self.edge(v1, id_2)])
+                    id_2 = self.add_vertex(VertexType.Z, self.qubit(v2) + 1, self.row(v2) + 0.5)
+                    add[EdgeType.SIMPLE].extend([self.edge(v1, id_1), self.edge(v2, id_2)])
                     add[new_type].append(self.edge(id_1, id_2))
+                    new_type = None
+                    conn_type = None
             # Hence, all the other cases have some kind of parallel edge
             elif t1 == VertexType.BOUNDARY or t2 == VertexType.BOUNDARY:
                 raise ValueError("Parallel edges to a boundary edge are not supported")
