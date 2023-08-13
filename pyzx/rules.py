@@ -312,6 +312,8 @@ def w_fusion(g: BaseGraph[VT,ET], matches: List[MatchSpiderType[VT]]) -> Rewrite
         for w in g.neighbors(v1_out):
             if w == v1_in:
                 continue
+            if w == v1_out:
+                w = v0_out
             e = g.edge(v0_out, w)
             if e not in etab: etab[e] = [0,0]
             etab[e][g.edge_type(g.edge(v1_out, w)) - 1] += 1

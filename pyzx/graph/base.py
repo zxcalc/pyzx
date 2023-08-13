@@ -703,6 +703,12 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
                 if n1 == 1: new_type = EdgeType.SIMPLE
                 elif n2 == 1: new_type = EdgeType.HADAMARD
                 else: new_type = None
+                # self loops are allowed for W nodes. this is a hack to add self-loops using id Z spiders
+                if v1 == v2 and t1 == VertexType.W_OUTPUT and new_type:
+                    id_1 = self.add_vertex(VertexType.Z, self.qubit(v1) + 1, self.row(v1) - 0.5)
+                    id_2 = self.add_vertex(VertexType.Z, self.qubit(v1) + 1, self.row(v1) + 0.5)
+                    add[EdgeType.SIMPLE].extend([self.edge(v1, id_1), self.edge(v1, id_2)])
+                    add[new_type].append(self.edge(id_1, id_2))
             # Hence, all the other cases have some kind of parallel edge
             elif t1 == VertexType.BOUNDARY or t2 == VertexType.BOUNDARY:
                 raise ValueError("Parallel edges to a boundary edge are not supported")
