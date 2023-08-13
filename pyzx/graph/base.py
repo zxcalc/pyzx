@@ -116,7 +116,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
     def copy(self, adjoint:bool=False, backend:Optional[str]=None) -> 'BaseGraph':
         """Create a copy of the graph. If ``adjoint`` is set,
         the adjoint of the graph will be returned (inputs and outputs flipped, phases reversed).
-        When ``backend`` is set, a copy of the graph with the given backend is produced. 
+        When ``backend`` is set, a copy of the graph with the given backend is produced.
         By default the copy will have the same backend.
 
         Args:
@@ -535,9 +535,9 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
     def auto_detect_io(self):
         """Adds every vertex that is of boundary-type to the list of inputs or outputs.
         Whether it is an input or output is determined by looking whether its neighbor
-        is further to the right or further to the left of the input. 
+        is further to the right or further to the left of the input.
         Inputs and outputs are sorted by vertical position.
-        Raises an exception if boundary vertex does not have a unique neighbor 
+        Raises an exception if boundary vertex does not have a unique neighbor
         or if this neighbor is on the same horizontal position.
         """
         ty = self.types()
@@ -641,10 +641,10 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         new vertices added to the graph, namely: range(g.vindex() - amount, g.vindex())"""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
-    def add_vertex(self, 
-                   ty:VertexType.Type=VertexType.BOUNDARY, 
-                   qubit:FloatInt=-1, 
-                   row:FloatInt=-1, 
+    def add_vertex(self,
+                   ty:VertexType.Type=VertexType.BOUNDARY,
+                   qubit:FloatInt=-1,
+                   row:FloatInt=-1,
                    phase:Optional[FractionLike]=None,
                    ground:bool=False
                    ) -> VT:
@@ -658,7 +658,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
             else: phase = 0
         self.set_qubit(v, qubit)
         self.set_row(v, row)
-        if phase: 
+        if phase:
             self.set_phase(v, phase)
         if ground:
             self.set_ground(v, True)
@@ -671,7 +671,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
     def add_vertex_indexed(self,v:VT) -> None:
         """Adds a vertex that is guaranteed to have the chosen index (i.e. 'name').
         If the index isn't available, raises a ValueError.
-        This method is used in the editor and ZXLive to support undo, 
+        This method is used in the editor and ZXLive to support undo,
         which requires vertices to preserve their index."""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
@@ -686,7 +686,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
     def add_edge_table(self, etab:Mapping[ET,List[int]]) -> None:
         """Takes a dictionary mapping (source,target) --> (#edges, #h-edges) specifying that
         #edges regular edges must be added between source and target and $h-edges Hadamard edges.
-        The method selectively adds or removes edges to produce that ZX diagram which would 
+        The method selectively adds or removes edges to produce that ZX diagram which would
         result from adding (#edges, #h-edges), and then removing all parallel edges using Hopf/spider laws."""
         add: Dict[EdgeType.Type,List[ET]] = {EdgeType.SIMPLE: [], EdgeType.HADAMARD: []} # list of edges and h-edges to add
         new_type: Optional[EdgeType.Type]
@@ -710,8 +710,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
                     id_2 = self.add_vertex(VertexType.Z, self.qubit(v2) + 1, self.row(v2) + 0.5)
                     add[EdgeType.SIMPLE].extend([self.edge(v1, id_1), self.edge(v2, id_2)])
                     add[new_type].append(self.edge(id_1, id_2))
-                    new_type = None
-                    conn_type = None
+                    continue
             # Hence, all the other cases have some kind of parallel edge
             elif t1 == VertexType.BOUNDARY or t2 == VertexType.BOUNDARY:
                 raise ValueError("Parallel edges to a boundary edge are not supported")
@@ -825,9 +824,9 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         self.phase_index[new] = i
 
     def fuse_phases(self, p1: VT, p2: VT) -> None:
-        if p1 not in self.phase_index or p2 not in self.phase_index: 
+        if p1 not in self.phase_index or p2 not in self.phase_index:
             return
-        if self.phase_master is not None: 
+        if self.phase_master is not None:
             self.phase_master.fuse_phases(self.phase_index[p1],self.phase_index[p2])
         self.phase_index[p2] = self.phase_index[p1]
 
@@ -837,7 +836,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         mult = self.phase_mult[index]
         if mult == 1: self.phase_mult[index] = -1
         else: self.phase_mult[index] = 1
-        #self.phase_mult[index] = -1*mult 
+        #self.phase_mult[index] = -1*mult
 
     def vertex_from_phase_index(self, i: int) -> VT:
         return list(self.phase_index.keys())[list(self.phase_index.values()).index(i)]
@@ -915,12 +914,12 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
     def vertex_set(self) -> Set[VT]:
-        """Returns the vertices of the graph as a Python set. 
+        """Returns the vertices of the graph as a Python set.
         Should be overloaded if the backend supplies a cheaper version than this."""
         return set(self.vertices())
 
     def edge_set(self) -> Set[ET]:
-        """Returns the edges of the graph as a Python set. 
+        """Returns the edges of the graph as a Python set.
         Should be overloaded if the backend supplies a cheaper version than this."""
         return set(self.edges())
 
@@ -989,7 +988,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         self.set_phase(vertex,self.phase(vertex)+phase)
 
     def qubit(self, vertex: VT) -> FloatInt:
-        """Returns the qubit index associated to the vertex. 
+        """Returns the qubit index associated to the vertex.
         If no index has been set, returns -1."""
         raise NotImplementedError("Not implemented on backend" + type(self).backend)
     def qubits(self) -> Mapping[VT,FloatInt]:
@@ -1000,7 +999,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         raise NotImplementedError("Not implemented on backend" + type(self).backend)
 
     def row(self, vertex: VT) -> FloatInt:
-        """Returns the row that the vertex is positioned at. 
+        """Returns the row that the vertex is positioned at.
         If no row has been set, returns -1."""
         raise NotImplementedError("Not implemented on backend" + type(self).backend)
     def rows(self) -> Mapping[VT, FloatInt]:

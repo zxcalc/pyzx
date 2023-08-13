@@ -27,7 +27,7 @@ FractionLike = Union[Fraction,int]
 
 class VertexType:
     """Type of a vertex in the graph."""
-    Type = Literal[0,1,2,3]
+    Type = Literal[0, 1, 2, 3, 4, 5]
     BOUNDARY: Final = 0
     Z: Final = 1
     X: Final = 2
@@ -64,7 +64,7 @@ def get_w_io(g, v):
 
 class EdgeType:
     """Type of an edge in the graph."""
-    Type = Literal[1,2]
+    Type = Literal[1, 2, 3]
     SIMPLE: Final = 1
     HADAMARD: Final = 2
     W_IO: Final = 3
