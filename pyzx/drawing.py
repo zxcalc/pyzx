@@ -184,7 +184,7 @@ def draw_matplotlib(
     vs_on_row: Dict[FloatInt, int] = {} # count the vertices on each row
     for v in g.vertices():
         vs_on_row[g.row(v)] = vs_on_row.get(g.row(v), 0) + 1
-    
+
     #Dict[VT,Tuple[FloatInt,FloatInt]]
     layout = {v:(g.row(v),-g.qubit(v)) for v in g.vertices()}
 
@@ -195,18 +195,22 @@ def draw_matplotlib(
     else:
         vertices = g.vertices()
         edges = g.edges()
-    
+
     for e in edges:
         sp = layout[g.edge_s(e)]
         tp = layout[g.edge_t(e)]
         et = g.edge_type(e)
         n_row = vs_on_row.get(g.row(g.edge_s(e)), 0)
 
-        
         dx = tp[0] - sp[0]
         dy = tp[1] - sp[1]
         bend_wire = (dx == 0) and h_edge_draw == 'blue' and n_row > 2
-        ecol = '#0099ff' if h_edge_draw == 'blue' and et == 2 else 'black'
+        if et == 2 and h_edge_draw == 'blue':
+            ecol = '#0099ff'
+        elif et == 3:
+            ecol = 'gray'
+        else:
+            ecol = 'black'
 
         if bend_wire:
             bend = 0.25
@@ -231,7 +235,7 @@ def draw_matplotlib(
             ax.add_patch(patches.Rectangle(centre,w,h,angle=angle/math.pi*180,facecolor='yellow',edgecolor='black'))
 
         #plt.plot([sp[0],tp[0]],[sp[1],tp[1]], 'k', zorder=0, linewidth=0.8)
-    
+
     for v in vertices:
         p = layout[v]
         t = g.type(v)
@@ -245,12 +249,16 @@ def draw_matplotlib(
         elif t == VertexType.H_BOX:
             ax.add_patch(patches.Rectangle((p[0]-0.1, p[1]-0.1), 0.2, 0.2, facecolor='yellow', edgecolor='black'))
             a_offset = 0.25
+        elif t == VertexType.W_INPUT:
+            ax.add_patch(patches.Circle(p, 0.05, facecolor='black', edgecolor='black', zorder=1))
+        elif t == VertexType.W_OUTPUT:
+            ax.add_patch(patches.Polygon([(p[0]-0.2, p[1]-0.2), (p[0]+0.2, p[1]-0.2), (p[0], p[1]+0.15)], facecolor='black', edgecolor='black'))
         else:
             ax.add_patch(patches.Circle(p, 0.1, facecolor='black', edgecolor='black', zorder=1))
 
         if labels: plt.text(p[0]+0.25, p[1]+0.25, str(v), ha='center', color='gray', fontsize=5)
         if a: plt.text(p[0], p[1]-a_offset, phase_to_s(a, t), ha='center', color='blue', fontsize=8)
-    
+
     if show_scalar:
         x = min((g.row(v) for v in g.vertices()), default = 0)
         y = -sum((g.qubit(v) for v in g.vertices()))/(g.num_vertices()+1)
