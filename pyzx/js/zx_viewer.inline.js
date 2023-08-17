@@ -154,7 +154,8 @@ function showGraph(tag, graph, width, height, scale, node_size, auto_hbox, show_
         .attr("d", "M 0 0 L "+node_size+" "+node_size+" L -"+node_size+" "+node_size+" Z")
         .attr("fill", function(d) { return nodeColor(d.t); })
         .attr("stroke", "black")
-        .attr("class", "selectable");
+        .attr("class", "selectable")
+        .attr("transform", "translate(" + (-node_size/2) + ", 0) rotate(-90)");
 
     node.filter(function(d) { return d.phase != ''; })
         .append("text")

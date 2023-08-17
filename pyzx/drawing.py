@@ -252,7 +252,7 @@ def draw_matplotlib(
         elif t == VertexType.W_INPUT:
             ax.add_patch(patches.Circle(p, 0.05, facecolor='black', edgecolor='black', zorder=1))
         elif t == VertexType.W_OUTPUT:
-            ax.add_patch(patches.Polygon([(p[0]-0.2, p[1]-0.2), (p[0]+0.2, p[1]-0.2), (p[0], p[1]+0.15)], facecolor='black', edgecolor='black'))
+            ax.add_patch(patches.Polygon([(p[0]-0.15, p[1]), (p[0]+0.15, p[1]+0.2), (p[0]+0.15, p[1]-0.2)], facecolor='black', edgecolor='black'))
         else:
             ax.add_patch(patches.Circle(p, 0.1, facecolor='black', edgecolor='black', zorder=1))
 
