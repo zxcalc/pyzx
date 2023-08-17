@@ -47,7 +47,8 @@ __all__ = ['color_change_diagram',
 
 from typing import Tuple, List
 from .graph.base import BaseGraph, VT, ET
-from .utils import VertexType, EdgeType, is_pauli
+from .rules import apply_rule, w_fusion
+from .utils import VertexType, EdgeType, get_w_io, is_pauli, vertex_is_w
 
 def color_change_diagram(g: BaseGraph[VT,ET]):
     """Color-change an entire diagram by applying Hadamards to the inputs and ouputs."""
@@ -95,8 +96,8 @@ def check_strong_comp(g: BaseGraph[VT,ET], v1: VT, v2: VT) -> bool:
     return True
 
 def strong_comp(g: BaseGraph[VT,ET], v1: VT, v2: VT) -> bool:
-    if not check_strong_comp(g, v1, v2): return False    
-    
+    if not check_strong_comp(g, v1, v2): return False
+
     nhd: Tuple[List[VT],List[VT]] = ([],[])
     v = (v1,v2)
 
@@ -121,7 +122,7 @@ def strong_comp(g: BaseGraph[VT,ET], v1: VT, v2: VT) -> bool:
 
     g.remove_vertex(v1)
     g.remove_vertex(v2)
-    
+
     return True
 
 def check_copy_X(g: BaseGraph[VT,ET], v: VT) -> bool:
@@ -136,10 +137,10 @@ def check_copy_X(g: BaseGraph[VT,ET], v: VT) -> bool:
     return True
 
 def copy_X(g: BaseGraph[VT,ET], v: VT) -> bool:
-    if not check_copy_X(g, v): return False    
+    if not check_copy_X(g, v): return False
     nv = next(iter(g.neighbors(v)))
     strong_comp(g, v, nv)
-    
+
     return True
 
 def check_pi_commute_Z(g: BaseGraph[VT, ET], v: VT) -> bool:
@@ -163,7 +164,7 @@ def pi_commute_Z(g: BaseGraph[VT, ET], v: VT) -> bool:
             g.add_edge(g.edge(v, c))
             g.add_edge(g.edge(c, w), edgetype=et)
     return True
-    
+
 def check_pi_commute_X(g: BaseGraph[VT,ET], v: VT) -> bool:
     color_change_diagram(g)
     b = check_pi_commute_Z(g, v)
@@ -189,22 +190,38 @@ def copy_Z(g: BaseGraph, v: VT) -> bool:
     return b
 
 def check_fuse(g: BaseGraph[VT,ET], v1: VT, v2: VT) -> bool:
+    if check_fuse_w(g, v1, v2):
+        return True
     if not (g.connected(v1,v2) and
             ((g.type(v1) == VertexType.Z and g.type(v2) == VertexType.Z) or
              (g.type(v1) == VertexType.X and g.type(v2) == VertexType.X)) and
             g.edge_type(g.edge(v1,v2)) == EdgeType.SIMPLE):
         return False
-    else:
-        return True
+    return True
 
 def fuse(g: BaseGraph[VT,ET], v1: VT, v2: VT) -> bool:
     if not check_fuse(g, v1, v2): return False
+    if vertex_is_w(g.type(v1)):
+        return fuse_w(g, v1, v2)
     g.add_to_phase(v1, g.phase(v2))
     for v3 in g.neighbors(v2):
         if v3 != v1:
             g.add_edge_smart(g.edge(v1,v3), edgetype=g.edge_type(g.edge(v2,v3)))
-    
     g.remove_vertex(v2)
+    return True
+
+def check_fuse_w(g: BaseGraph[VT,ET], v1: VT, v2: VT) -> bool:
+    if vertex_is_w(g.type(v1)) and vertex_is_w(g.type(v2)):
+        v1_in, v1_out = get_w_io(g, v1)
+        v2_in, v2_out = get_w_io(g, v2)
+        if g.edge_type(g.edge(v1_in, v2_out)) == EdgeType.SIMPLE or \
+           g.edge_type(g.edge(v2_in, v1_out)) == EdgeType.SIMPLE:
+            return True
+    return False
+
+def fuse_w(g: BaseGraph[VT,ET], v1: VT, v2: VT) -> bool:
+    if not check_fuse_w(g, v1, v2): return False
+    apply_rule(g, w_fusion, [(v1, v2)])
     return True
 
 def check_remove_id(g: BaseGraph[VT,ET], v: VT) -> bool:
@@ -216,13 +233,13 @@ def check_remove_id(g: BaseGraph[VT,ET], v: VT) -> bool:
 def remove_id(g: BaseGraph[VT,ET], v: VT) -> bool:
     if not check_remove_id(g, v):
         return False
-    
+
     v1, v2 = tuple(g.neighbors(v))
     g.add_edge_smart(g.edge(v1,v2), edgetype=EdgeType.SIMPLE
             if g.edge_type(g.edge(v,v1)) == g.edge_type(g.edge(v,v2))
             else EdgeType.HADAMARD)
     g.remove_vertex(v)
-    
+
     return True
 
 
