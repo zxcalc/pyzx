@@ -254,8 +254,8 @@ def unspider(g: BaseGraph[VT,ET], m: List[Any], qubit:FloatInt=-1, row:FloatInt=
 MatchWType = Tuple[VT,VT]
 
 def match_w_fusion(g: BaseGraph[VT,ET]) -> List[MatchWType[VT]]:
-    """Does the same as :func:`match_spider_parallel` but with ``num=1``."""
-    return match_spider_parallel(g, num=1)
+    """Does the same as :func:`match_w_fusion_parallel` but with ``num=1``."""
+    return match_w_fusion_parallel(g, num=1)
 
 def match_w_fusion_parallel(
         g: BaseGraph[VT,ET],
