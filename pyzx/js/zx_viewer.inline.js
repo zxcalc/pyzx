@@ -20,11 +20,14 @@ function nodeColor(t) {
     else if (t == 1) return "#ccffcc";
     else if (t == 2) return "#ff8888";
     else if (t == 3) return "yellow";
+    else if (t == 4) return "black";
+    else if (t == 5) return "black";
 }
 
 function edgeColor(t) {
     if (t == 1) return "black";
     else if (t == 2) return "#08f";
+    else if (t == 3) return "gray";
 }
 
 function nodeStyle(selected) {
@@ -125,10 +128,11 @@ function showGraph(tag, graph, width, height, scale, node_size, auto_hbox, show_
         .attr("transform", "translate(0,"+groundOffset+")")
         .attr("class", "selectable");
 
-    node.filter(function(d) { return d.t != 3; })
+    node.filter(function(d) { return d.t != 3 && d.t != 5; })
         .append("circle")
         .attr("r", function(d) {
             if (d.t == 0) return 0.5 * node_size;
+            else if (d.t == 4) return 0.25 * node_size;
             else return node_size;
         })
         .attr("fill", function(d) { return nodeColor(d.t); })
@@ -143,6 +147,15 @@ function showGraph(tag, graph, width, height, scale, node_size, auto_hbox, show_
         .attr("fill", function(d) { return nodeColor(d.t); })
         .attr("stroke", "black")
         .attr("class", "selectable");
+
+    // draw a triangle for d.t == 5
+    node.filter(function(d) { return d.t == 5; })
+        .append("path")
+        .attr("d", "M 0 0 L "+node_size+" "+node_size+" L -"+node_size+" "+node_size+" Z")
+        .attr("fill", function(d) { return nodeColor(d.t); })
+        .attr("stroke", "black")
+        .attr("class", "selectable")
+        .attr("transform", "translate(" + (-node_size/2) + ", 0) rotate(-90)");
 
     node.filter(function(d) { return d.phase != ''; })
         .append("text")

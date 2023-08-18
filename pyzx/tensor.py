@@ -14,16 +14,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""This module provides methods for converting ZX-graphs into numpy tensors 
-and using these tensors to test semantic equality of ZX-graphs. 
-This module is not meant as an efficient quantum simulator. 
-Due to the way the tensor is calculated it can only handle 
-circuits of small size before running out of memory on a regular machine. 
-Currently, it can reliably transform 9 qubit circuits into tensors. 
-If the ZX-diagram is not circuit-like, but instead has nodes with high degree, 
+"""This module provides methods for converting ZX-graphs into numpy tensors
+and using these tensors to test semantic equality of ZX-graphs.
+This module is not meant as an efficient quantum simulator.
+Due to the way the tensor is calculated it can only handle
+circuits of small size before running out of memory on a regular machine.
+Currently, it can reliably transform 9 qubit circuits into tensors.
+If the ZX-diagram is not circuit-like, but instead has nodes with high degree,
 it will run out of memory even sooner."""
 
-__all__ = ['tensorfy', 'compare_tensors', 'compose_tensors', 
+__all__ = ['tensorfy', 'compare_tensors', 'compose_tensors',
             'adjoint', 'is_unitary','tensor_to_matrix',
             'find_scalar_correction']
 
@@ -58,7 +58,7 @@ def X_to_tensor(arity: int, phase: float) -> np.ndarray:
         m[()] = 1 + np.exp(1j*phase)
         return m
     for i in range(2**arity):
-        if bin(i).count("1")%2 == 0: 
+        if bin(i).count("1")%2 == 0:
             m[i] += np.exp(1j*phase)
         else:
             m[i] -= np.exp(1j*phase)
@@ -68,6 +68,16 @@ def H_to_tensor(arity: int, phase: float) -> np.ndarray:
     m = np.ones(2**arity, dtype = complex)
     if phase != 0: m[-1] = np.exp(1j*phase)
     return m.reshape([2]*arity)
+
+def W_to_tensor(arity: int) -> np.ndarray:
+    m = np.zeros([2]*arity,dtype=complex)
+    if arity == 0:
+        return m
+    for i in range(arity):
+        index = [0,]*arity
+        index[i] = 1
+        m[tuple(index)] = 1
+    return m
 
 def pop_and_shift(verts, indices):
     res = []
@@ -121,8 +131,7 @@ def tensorfy(g: 'BaseGraph[VT,ET]', preserve_scalar:bool=True) -> np.ndarray:
             if v in inputs:
                 if types[v] != 0: raise ValueError("Wrong type for input:", v, types[v])
                 continue # inputs already taken care of
-            if v in outputs: 
-                #print("output")
+            if v in outputs:
                 if d != 1: raise ValueError("Weird output")
                 if types[v] != 0: raise ValueError("Wrong type for output:",v, types[v])
                 d += 1
@@ -135,18 +144,21 @@ def tensorfy(g: 'BaseGraph[VT,ET]', preserve_scalar:bool=True) -> np.ndarray:
                     t = X_to_tensor(d,phase)
                 elif types[v] == 3:
                     t = H_to_tensor(d,phase)
+                elif types[v] == 4 or types[v] == 5:
+                    if phase != 0: raise ValueError("Phase on W node")
+                    t = W_to_tensor(d)
                 else:
                     raise ValueError("Vertex %s has non-ZXH type but is not an input or output" % str(v))
             nn = list(filter(lambda n: rows[n]<r or (rows[n]==r and n<v), neigh)) # TODO: allow ordering on vertex indices?
             ety = {n:g.edge_type(g.edge(v,n)) for n in nn}
-            nn.sort(key=lambda n: ety[n]) 
+            nn.sort(key=lambda n: ety[n])
             for n in nn:
                 if ety[n] == EdgeType.HADAMARD:
                     t = np.tensordot(t,had,(0,0)) # Hadamard edges are moved to the last index of t
             contr = pop_and_shift(nn,indices) #the last indices in contr correspond to hadamard contractions
             tensor = np.tensordot(tensor,t,axes=(contr,list(range(len(t.shape)-len(contr),len(t.shape)))))
             indices[v] = list(range(len(tensor.shape)-d+len(contr), len(tensor.shape)))
-            
+
             if not preserve_scalar and i % 10 == 0:
                 if np.abs(tensor).max() < 10**-6: # Values are becoming too small
                     tensor *= 10**4 # So scale all the numbers up
@@ -177,8 +189,6 @@ def tensor_to_matrix(t: np.ndarray, inputs: int, outputs: int) -> np.ndarray:
             for c in range(2**inputs):
                 a = o.copy()
                 a.extend([int(i) for i in bin(c)[2:].zfill(inputs)])
-                #print(a)
-                #print(t[tuple(a)])
                 row.append(t[tuple(a)])
         rows.append(row)
     return np.array(rows)
@@ -211,7 +221,7 @@ def compare_tensors(t1: TensorConvertible,t2: TensorConvertible, preserve_scalar
 
 def find_scalar_correction(t1: TensorConvertible, t2:TensorConvertible) -> complex:
     """Returns the complex number ``z`` such that ``t1 = z*t2``.
-    
+
     Warning:
         This function assumes that ``compare_tensors(t1,t2,preserve_scalar=False)`` is True,
         i.e. that ``t1`` and ``t2`` indeed are equal up to global scalar.
@@ -269,7 +279,7 @@ def adjoint(t: np.ndarray) -> np.ndarray:
         compare_tensors(adjoint(t),tadj) # This is True
 
     """
-    
+
     q = len(t.shape)//2
     transp = []
     for i in range(q):

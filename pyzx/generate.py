@@ -39,7 +39,7 @@ from pyzx.linalg import Mat2, MatLike
 from pyzx.routing.parity_maps import CNOT_tracker, Parity
 from pyzx.routing.phase_poly import PhasePoly, mat22partition
 
-from .utils import EdgeType, VertexType, FloatInt, FractionLike
+from .utils import EdgeType, VertexType, FloatInt, FractionLike, vertex_is_w
 from .graph import Graph
 from .graph.base import BaseGraph
 from .circuit import Circuit
@@ -70,7 +70,7 @@ def identity(qubits: int, depth: FloatInt=1,backend:Optional[str]=None) -> BaseG
     return g
 
 def spider(
-    typ:Union[Literal["Z"],Literal["X"],Literal["H"],VertexType.Type],
+    typ:Union[Literal["Z"], Literal["X"], Literal["H"], Literal["W"], VertexType.Type],
     inputs: int,
     outputs: int,
     phase:FractionLike=0
@@ -80,10 +80,20 @@ def spider(
     if typ == "Z": typ = VertexType.Z
     elif typ == "X": typ = VertexType.X
     elif typ == "H": typ = VertexType.H_BOX
+    elif typ == "W": typ = VertexType.W_OUTPUT
     else:
-        if not isinstance(typ,int):
+        if not isinstance(typ, int):
             raise TypeError("Wrong type for spider type: " + str(typ))
     g = Graph()
+    if vertex_is_w(typ):
+        if inputs != 1:
+            raise ValueError("Wrong number of inputs for W node: " + str(inputs))
+        v_in = g.add_vertex(VertexType.W_INPUT, (outputs-1)/2, 0.8)
+        v_out = g.add_vertex(VertexType.W_OUTPUT, (outputs-1)/2, 1)
+        g.add_edge(g.edge(v_in, v_out), EdgeType.W_IO)
+    else:
+        v_in = g.add_vertex(typ, (inputs-1)/2, 1, phase)
+        v_out = v_in
     inp = []
     outp = []
     for i in range(inputs):
@@ -92,11 +102,10 @@ def spider(
     for i in range(outputs):
         v = g.add_vertex(VertexType.BOUNDARY,i,2)
         outp.append(v)
-    v = g.add_vertex(typ,(inputs-1)/2,1,phase)
     for w in inp:
-        g.add_edge(g.edge(v,w))
+        g.add_edge(g.edge(v_in, w))
     for w in outp:
-        g.add_edge(g.edge(v,w))
+        g.add_edge(g.edge(v_out, w))
 
     g.set_inputs(tuple(inp))
     g.set_outputs(tuple(outp))
@@ -105,13 +114,13 @@ def spider(
 
 
 def CNOT_HAD_PHASE_circuit(
-        qubits: int, 
-        depth: int, 
-        p_had: float = 0.2, 
-        p_t: float = 0.2, 
+        qubits: int,
+        depth: int,
+        p_had: float = 0.2,
+        p_t: float = 0.2,
         clifford:bool=False
         ) -> Circuit:
-    """Construct a Circuit consisting of CNOT, HAD and phase gates. 
+    """Construct a Circuit consisting of CNOT, HAD and phase gates.
     The default phase gate is the T gate, but if ``clifford=True``\ , then
     this is replaced by the S gate.
 
