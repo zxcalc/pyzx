@@ -221,7 +221,14 @@ def check_fuse_w(g: BaseGraph[VT,ET], v1: VT, v2: VT) -> bool:
 
 def fuse_w(g: BaseGraph[VT,ET], v1: VT, v2: VT) -> bool:
     if not check_fuse_w(g, v1, v2): return False
-    apply_rule(g, w_fusion, [(v1, v2)])
+    v1_in, v1_out = get_w_io(g, v1)
+    v2_in, v2_out = get_w_io(g, v2)
+    if g.edge_type(g.edge(v1_out, v2_in)) == EdgeType.SIMPLE:
+        apply_rule(g, w_fusion, [(v1, v2)])
+    else:
+        g.set_position(v2_in, g.qubit(v1_in), g.row(v1_in))
+        g.set_position(v2_out, g.qubit(v1_out), g.row(v1_out))
+        apply_rule(g, w_fusion, [(v2, v1)])
     return True
 
 def check_remove_id(g: BaseGraph[VT,ET], v: VT) -> bool:
