@@ -305,12 +305,15 @@ def w_fusion(g: BaseGraph[VT,ET], matches: List[MatchSpiderType[VT]]) -> Rewrite
     for v0, v1 in matches:
         v0_in, v0_out = get_w_io(g, v0)
         v1_in, v1_out = get_w_io(g, v1)
+        if not g.connected(v0_out, v1_in):
+            v0_in, v1_in = v1_in, v0_in
+            v0_out, v1_out = v1_out, v0_out
         # always delete the second vertex in the match
         rem_verts.extend([v1_in, v1_out])
 
         # edges from the second vertex are transferred to the first
         for w in g.neighbors(v1_out):
-            if w == v1_in:
+            if w == v1_in or w == v0_in:
                 continue
             if w == v1_out:
                 w = v0_out
