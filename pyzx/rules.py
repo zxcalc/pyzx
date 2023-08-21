@@ -189,7 +189,6 @@ def spider(g: BaseGraph[VT,ET], matches: List[MatchSpiderType[VT]]) -> RewriteOu
     '''
     rem_verts = []
     etab: Dict[ET,List[int]] = dict()
-    types = g.types()
 
     for m in matches:
         if g.row(m[0]) == 0:
