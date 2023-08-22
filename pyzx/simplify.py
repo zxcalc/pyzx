@@ -348,17 +348,61 @@ def spider_iter(g: BaseGraph[VT,ET]) -> Iterator[Tuple[BaseGraph[VT,ET],str]]:
 def id_iter(g: BaseGraph[VT,ET]) -> Iterator[Tuple[BaseGraph[VT,ET],str]]:
     return simp_iter(g, 'id', match_ids_parallel, remove_ids)
 
+def pivot_gadget_iter(g: BaseGraph[VT,ET]) -> Iterator[Tuple[BaseGraph[VT,ET],str]]:
+    return simp_iter(g, 'pivot_gadget', match_pivot_gadget, pivot)
+
+def gadget_iter(g: BaseGraph[VT,ET]) -> Iterator[Tuple[BaseGraph[VT,ET],str]]:
+    return simp_iter(g, 'gadget', match_phase_gadgets, merge_phase_gadgets)
+
+def pivot_boundary_iter(g: BaseGraph[VT,ET]) -> Iterator[Tuple[BaseGraph[VT,ET],str]]:
+    return simp_iter(g, 'pivot_boundary', match_pivot_boundary, pivot)
+
 def clifford_iter(g: BaseGraph[VT,ET]) -> Iterator[Tuple[BaseGraph[VT,ET],str]]:
+    ok = True
+    while ok:
+        ok = False
+        for g, step in interior_clifford_iter(g):
+            yield g, step
+        for g, step in pivot_boundary_iter(g):
+            ok = True
+            yield g, step
+
+def interior_clifford_iter(g: BaseGraph[VT,ET]) -> Iterator[Tuple[BaseGraph[VT,ET],str]]:
     yield from spider_iter(g)
     to_gh(g)
     yield g, "to_gh"
-    yield from spider_iter(g)
-    yield from pivot_iter(g)
-    yield from lcomp_iter(g)
-    yield from pivot_iter(g)
-    yield from id_iter(g)
-    yield from spider_iter(g)
+    ok = True
+    while ok:
+        ok = False
+        for g, step in id_iter(g):
+            ok = True
+            yield g, step
+        for g, step in spider_iter(g):
+            ok = True
+            yield g, step
+        for g, step in pivot_iter(g):
+            ok = True
+            yield g, step
+        for g, step in lcomp_iter(g):
+            ok = True
+            yield g, step
 
+def full_reduce_iter(g: BaseGraph[VT,ET]) -> Iterator[Tuple[BaseGraph[VT,ET],str]]:
+    yield from interior_clifford_iter(g)
+    yield from pivot_gadget_iter(g)
+    ok = True
+    while ok:
+        ok = False
+        for g, step in clifford_iter(g):
+            yield g, f"clifford -> {step}"
+        for g, step in gadget_iter(g):
+            ok = True
+            yield g, f"gadget -> {step}"
+        for g, step in interior_clifford_iter(g):
+            yield g, f"interior_clifford -> {step}"
+        for g, step in pivot_gadget_iter(g):
+            ok = True
+            yield g, f"pivot_gadget -> {step}"
 
 def is_graph_like(g: BaseGraph[VT,ET]) -> bool:
     """Checks if a ZX-diagram is graph-like."""
