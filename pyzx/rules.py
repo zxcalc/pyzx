@@ -781,7 +781,12 @@ def match_phase_gadgets(g: BaseGraph[VT,ET]) -> List[MatchGadgetType[VT]]:
     outputs = g.outputs()
     # First we find all the phase-gadgets, and the list of vertices they act on
     for v in g.vertices():
-        if phases[v] != 0 and hasattr(phases[v], 'denominator') and phases[v].denominator > 2 and len(list(g.neighbors(v)))==1:
+        non_clifford = phases[v] != 0 and getattr(phases[v], 'denominator', 1) > 2
+        try: # symbol check
+            float(phases[v])
+        except:
+            non_clifford = True
+        if non_clifford and len(list(g.neighbors(v)))==1:
             n = list(g.neighbors(v))[0]
             if phases[n] not in (0,1): continue # Not a real phase gadget (happens for scalar diagrams)
             if n in gadgets: continue # Not a real phase gadget (happens for scalar diagrams)
