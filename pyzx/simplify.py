@@ -354,16 +354,18 @@ def pivot_gadget_iter(g: BaseGraph[VT,ET]) -> Iterator[Tuple[BaseGraph[VT,ET],st
 def gadget_iter(g: BaseGraph[VT,ET]) -> Iterator[Tuple[BaseGraph[VT,ET],str]]:
     return simp_iter(g, 'gadget', match_phase_gadgets, merge_phase_gadgets)
 
+def pivot_boundary_iter(g: BaseGraph[VT,ET]) -> Iterator[Tuple[BaseGraph[VT,ET],str]]:
+    return simp_iter(g, 'pivot_boundary', match_pivot_boundary, pivot)
+
 def clifford_iter(g: BaseGraph[VT,ET]) -> Iterator[Tuple[BaseGraph[VT,ET],str]]:
-    yield from spider_iter(g)
-    to_gh(g)
-    yield g, "to_gh"
-    yield from spider_iter(g)
-    yield from pivot_iter(g)
-    yield from lcomp_iter(g)
-    yield from pivot_iter(g)
-    yield from id_iter(g)
-    yield from spider_iter(g)
+    ok = True
+    while ok:
+        ok = False
+        for g, step in interior_clifford_iter(g):
+            yield g, step
+        for g, step in pivot_boundary_iter(g):
+            ok = True
+            yield g, step
 
 def interior_clifford_iter(g: BaseGraph[VT,ET]) -> Iterator[Tuple[BaseGraph[VT,ET],str]]:
     yield from spider_iter(g)
