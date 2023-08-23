@@ -507,7 +507,7 @@ def clean_frontier(g: BaseGraph[VT, ET], c: Circuit, frontier: List[VT],
             c.add_gate("ZPhase", q, phases[v])
             g.set_phase(v, 0)
     # And now on to CZ gates
-    cz_mat = Mat2([[0 for i in range(g.qubit_count())] for j in range(g.qubit_count())])
+    cz_mat = Mat2([[0 for i in range(len(outputs))] for j in range(len(outputs))])
     for v in frontier:
         for w in list(g.neighbors(v)):
             if w in frontier:
@@ -530,8 +530,8 @@ def clean_frontier(g: BaseGraph[VT, ET], c: Circuit, frontier: List[VT],
             c.add_gate("CNOT", i, j)
             overlap_data = max_overlap(cz_mat)
 
-    for i in range(g.qubit_count()):
-        for j in range(i + 1, g.qubit_count()):
+    for i in range(len(outputs)):
+        for j in range(i + 1, len(outputs)):
             if cz_mat.data[i][j] == 1:
                 c.add_gate("CZ", i, j)
 
