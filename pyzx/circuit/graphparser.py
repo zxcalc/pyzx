@@ -23,14 +23,15 @@ from ..graph import Graph
 from ..graph.base import BaseGraph, VT, ET
 
 def graph_to_circuit(g:BaseGraph[VT,ET], split_phases:bool=True) -> Circuit:
-    c = Circuit(g.qubit_count())
+    inputs = g.inputs()
     qs = g.qubits()
     rs = g.rows()
     ty = g.types()
     phases = g.phases()
     rows: Dict[FloatInt,List[VT]] = {}
 
-    inputs = g.inputs()
+    c = Circuit(len(inputs))
+    
     for v in g.vertices():
         if v in inputs: continue
         r = g.row(v)

@@ -712,10 +712,10 @@ def extract_simple(g: BaseGraph[VT, ET], up_to_perm: bool = True) -> Circuit:
         g: The graph to extract
         up_to_perm: If true, returns a circuit that is equivalent to the given graph up to a permutation of the inputs.
     """
-    circ = Circuit(g.qubit_count())
+    
     progress = True
-    # inputs = g.inputs()
     outputs = g.outputs()
+    circ = Circuit(len(outputs))
     while progress:
         progress = False
         
@@ -776,11 +776,13 @@ def extract_simple(g: BaseGraph[VT, ET], up_to_perm: bool = True) -> Circuit:
 def graph_to_swaps(g: BaseGraph[VT, ET], no_swaps: bool = False) -> Circuit:
     """Converts a graph containing only normal and Hadamard edges into a circuit of Hadamard
     and SWAP gates. If 'no_swaps' is True, only add Hadamards where needed"""
-    c = Circuit(g.qubit_count())
     swap_map = {}
     leftover_swaps = False
     inputs = g.inputs()
     outputs = g.outputs()
+
+    c = Circuit(len(inputs))
+
     for q,v in enumerate(outputs): # check for a last layer of Hadamards, and see if swap gates need to be applied.
         inp = list(g.neighbors(v))[0]
         if inp not in inputs: 
@@ -1297,7 +1299,7 @@ def lookahead_extract_base(
     """
 
     if steps < 1:
-        steps = g.qubit_count() * 3
+        steps = len(g.inputs()) * 3
     if depth_limit < 1:
         depth_limit = -1
     if min_extract < 0:
@@ -1344,7 +1346,7 @@ def lookahead_extract_base(
         qubit_map[v] = i
 
     roots: List[Optional[LookaheadNode]] =\
-        [LookaheadNode(g, Circuit(g.qubit_count()), frontier, qubit_map, gadgets, optimize_for_depth, hard_limit)]
+        [LookaheadNode(g, Circuit(len(inputs)), frontier, qubit_map, gadgets, optimize_for_depth, hard_limit)]
 
     while len(roots) > 0:
         rp = RootPicker(nodes_kept)
@@ -1408,7 +1410,7 @@ def lookahead_fast(g: BaseGraph[VT, ET], optimize_for_depth: bool = False, up_to
     """
     A lookahead extraction with relatively fast results. For details see :func:`lookahead_extract_base`
     """
-    c = lookahead_extract_base(g, 4 * g.qubit_count(), 8, 5, 4, -1, [0, 1], optimize_for_depth, False, up_to_perm)
+    c = lookahead_extract_base(g, 4 * len(g.inputs()), 8, 5, 4, -1, [0, 1], optimize_for_depth, False, up_to_perm)
     if c is None:
         raise AssertionError("Lookahead extraction with no hard limit returned None")
     return c
@@ -1418,7 +1420,7 @@ def lookahead_extract(g: BaseGraph[VT, ET], optimize_for_depth: bool = False, up
     """
         A lookahead extraction with recommended parameters. For details see :func:`lookahead_extract_base`
     """
-    qubits = g.qubit_count()
+    qubits = len(g.inputs())
     c = lookahead_extract_base(g.clone(), 4 * qubits, 8, 0, 4, -1, [0, 1], optimize_for_depth, True, up_to_perm)
     if c is None:
         raise AssertionError("Lookahead extraction with no hard limit returned None")
@@ -1436,7 +1438,7 @@ def lookahead_full(g: BaseGraph[VT, ET], optimize_for_depth: bool = False, up_to
         A lookahead extraction which compares a number of possible extractions and returns the best result.
         Can take a very long time for large circuits. For details see :func:`lookahead_extract_base`
     """
-    qubits = g.qubit_count()
+    qubits = len(g.inputs())
     c = lookahead_extract_base(g.clone(), 3 * qubits, 7, qubits, 4, -1,
                                [0, 1, 3], optimize_for_depth, True, up_to_perm)
     if c is None:
