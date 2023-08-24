@@ -609,11 +609,13 @@ def extract_circuit(
         up_to_perm: If true, returns a circuit that is equivalent to the given graph up to a permutation of the inputs.
         quiet: Whether to print detailed output of the extraction process.
     """
-    c = Circuit(g.qubit_count())
 
     gadgets = {}
     inputs = g.inputs()
     outputs = g.outputs()
+
+    c = Circuit(len(outputs))
+
     for v in g.vertices():
         if g.vertex_degree(v) == 1 and v not in inputs and v not in outputs:
             n = list(g.neighbors(v))[0]
