@@ -464,6 +464,7 @@ class Optimizer(object):
                 if self.availty[t] == 2: # If previous gate was of X-type
                     self.availty[t] = 1  # We reset the available gates on this qubit
                     self.available[t] = list()
+                g = ZPhase(t, g.phase)  # Avoid subclasses of ZPhase with inconsistent phase
                 self.add_gate(t, g)
         elif g.name == 'CZ':
             t1, t2 = g.control, g.target
