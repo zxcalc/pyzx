@@ -246,7 +246,7 @@ class Gate(object):
         for a in ["ctrl1","ctrl2", "control", "target"]:
             if hasattr(self, a): args.append("q[{:d}]".format(getattr(self,a)))
         param = ""
-        if hasattr(self, "printphase") and self.printphase: # type: ignore
+        if hasattr(self, "phase") and self.printphase:      # type: ignore
             param = "({}*pi)".format(float(self.phase))     # type: ignore
         return "{}{} {};".format(n, param, ", ".join(args))
 
@@ -268,7 +268,7 @@ class Gate(object):
         for a in ["ctrl1","ctrl2", "control", "target"]:
             if hasattr(self, a): args.append("q{:d}".format(getattr(self,a)))
         
-        # if hasattr(self, "printphase") and self.printphase:
+        # if hasattr(self, "phase") and self.printphase:
         #     args.insert(0, phase_to_s(self.phase))
         return "{} {}".format(n, " ".join(args))
 
