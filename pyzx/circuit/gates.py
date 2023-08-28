@@ -149,7 +149,7 @@ class Gate(object):
     def __str__(self) -> str:
         attribs = []
         if hasattr(self, "control"): attribs.append(str(self.control))
-        if hasattr(self, "target"): attribs.append(str(self.target))    # type: ignore #https://github.com/python/mypy/issues/1424
+        if hasattr(self, "target"): attribs.append(str(self.target))
         if hasattr(self, "phase") and self.printphase:                  # type: ignore 
             attribs.append("phase={!s}".format(self.phase))             # type: ignore 
         return "{}{}({})".format(
@@ -172,7 +172,7 @@ class Gate(object):
         return True
 
     def _max_target(self) -> int:
-        qubits = self.target        # type: ignore
+        qubits = self.target        # type: ignore # due to ParityPhase
         if hasattr(self, "control"):
             qubits = max([qubits, self.control])
         return qubits
@@ -208,8 +208,8 @@ class Gate(object):
 
     def reposition(self: Tvar, mask: List[int], bit_mask: Optional[List[int]] = None) -> Tvar:
         g = self.copy()
-        if hasattr(g, "target"): 
-            g.target = mask[g.target]   # type: ignore
+        if hasattr(g, "target"):
+            g.target = mask[g.target]
         if hasattr(g, "control"):
             g.control = mask[g.control]
         return g
@@ -226,7 +226,7 @@ class Gate(object):
             return "\n".join(g.to_quipper() for g in bg)
         s = 'QGate["{}"]{}({!s})'.format(n,
                                          ("*" if (hasattr(self,"adjoint") and self.adjoint) else ""),
-                                         self.target) # type: ignore
+                                         self.target) # type: ignore # due to ParityPhase
         if hasattr(self, "control"):
             s += ' with controls=[+{!s}]'.format(self.control)
         s += ' with nocontrol'
