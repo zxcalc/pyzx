@@ -151,8 +151,8 @@ class Gate(object):
         attribs = []
         if hasattr(self, "control"): attribs.append(str(self.control))  # type: ignore # See issue #1424
         if hasattr(self, "target"): attribs.append(str(self.target))    # type: ignore #https://github.com/python/mypy/issues/1424
-        if hasattr(self, "phase") and self.print_phase:                  # type: ignore 
-            attribs.append("phase={!s}".format(self.phase))             # type: ignore 
+        if hasattr(self, "phase") and self.print_phase:
+            attribs.append("phase={!s}".format(self.phase))
         return "{}{}({})".format(
                         self.name,
                         ("*" if (hasattr(self,"adjoint") and self.adjoint) else ""), # type: ignore
@@ -198,9 +198,9 @@ class Gate(object):
 
     def to_adjoint(self: Tvar) -> Tvar:
         g = self.copy()
-        if hasattr(g, "phase"): 
-            g.phase = -g.phase          # type: ignore
-        if hasattr(g, "adjoint"): 
+        if hasattr(g, "phase"):
+            g.phase = -g.phase
+        if hasattr(g, "adjoint"):
             g.adjoint = not g.adjoint   # type: ignore
         return g
 
@@ -247,8 +247,8 @@ class Gate(object):
         for a in ["ctrl1","ctrl2", "control", "target"]:
             if hasattr(self, a): args.append("q[{:d}]".format(getattr(self,a)))
         param = ""
-        if hasattr(self, "phase") and self.print_phase:      # type: ignore
-            param = "({}*pi)".format(float(self.phase))     # type: ignore
+        if hasattr(self, "phase") and self.print_phase:
+            param = "({}*pi)".format(float(self.phase))
         return "{}{} {};".format(n, param, ", ".join(args))
 
     def to_qc(self) -> str:
