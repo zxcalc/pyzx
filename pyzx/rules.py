@@ -985,7 +985,7 @@ def match_gadgets_phasepoly(g: BaseGraph[VT,ET]) -> List[MatchPhasePolyType[VT]]
         s = t1.difference({frozenset({v1})})
         for c in [d for d in s if not any(d.issuperset(e) for e in s if e!=d)]:
             if not all(v2 in targets for v2 in c): continue
-            if any(v2<v1 for v2 in c): continue # type: ignore
+            if any(v2<v1 for v2 in c): continue
             a = set()
             for t in c: a.update([i for s in targets[t] for i in s if i in targets])
             for group in itertools.combinations(a.difference(c),4-len(c)):
