@@ -82,6 +82,7 @@ class RootHeuristic(Enum):
     def to_function(
         self,
     ) -> Callable[[Architecture, Mat2, List[int], List[int], int, int, Any], List[int]]:
+        # ignore types due to https://github.com/python/mypy/issues/5876
         if self == RootHeuristic.RANDOM:
             return random_root_heuristic  # type: ignore
         elif self == RootHeuristic.EXHAUSTIVE:
