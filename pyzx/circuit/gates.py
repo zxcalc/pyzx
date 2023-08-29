@@ -145,13 +145,14 @@ class Gate(object):
     qc_name:            ClassVar[str] = 'undefined'
     qasm_name:          ClassVar[str] = 'undefined'
     qasm_name_adjoint:  ClassVar[str] = 'undefined'
+    print_phase:        ClassVar[bool] = False
     index = 0
     def __str__(self) -> str:
         attribs = []
         if hasattr(self, "control"): attribs.append(str(self.control))
         if hasattr(self, "target"): attribs.append(str(self.target))
-        if hasattr(self, "phase") and self.printphase:                  # type: ignore 
-            attribs.append("phase={!s}".format(self.phase))             # type: ignore 
+        if hasattr(self, "phase") and self.print_phase:
+            attribs.append("phase={!s}".format(self.phase))
         return "{}{}({})".format(
                         self.name,
                         ("*" if (hasattr(self,"adjoint") and self.adjoint) else ""),
@@ -197,8 +198,8 @@ class Gate(object):
 
     def to_adjoint(self: Tvar) -> Tvar:
         g = self.copy()
-        if hasattr(g, "phase"): 
-            g.phase = -g.phase          # type: ignore
+        if hasattr(g, "phase"):
+            g.phase = -g.phase
         if hasattr(g, "adjoint"):
             g.adjoint = not g.adjoint
         return g
@@ -246,8 +247,8 @@ class Gate(object):
         for a in ["ctrl1","ctrl2", "control", "target"]:
             if hasattr(self, a): args.append("q[{:d}]".format(getattr(self,a)))
         param = ""
-        if hasattr(self, "printphase") and self.printphase: # type: ignore
-            param = "({}*pi)".format(float(self.phase))     # type: ignore
+        if hasattr(self, "phase") and self.print_phase:
+            param = "({}*pi)".format(float(self.phase))
         return "{}{} {};".format(n, param, ", ".join(args))
 
     def to_qc(self) -> str:
@@ -268,7 +269,7 @@ class Gate(object):
         for a in ["ctrl1","ctrl2", "control", "target"]:
             if hasattr(self, a): args.append("q{:d}".format(getattr(self,a)))
         
-        # if hasattr(self, "printphase") and self.printphase:
+        # if hasattr(self, "phase") and self.print_phase:
         #     args.insert(0, phase_to_s(self.phase))
         return "{} {}".format(n, " ".join(args))
 
@@ -297,8 +298,8 @@ class Gate(object):
 
 class ZPhase(Gate):
     name = 'ZPhase'
-    printphase: ClassVar[bool] = True
     qasm_name = 'rz'
+    print_phase = True
     def __init__(self, target: int, phase: FractionLike) -> None:
         self.target = target
         self.phase = phase
@@ -308,7 +309,7 @@ class ZPhase(Gate):
         q_mapper.advance_next_row(self.target)
 
     def to_quipper(self):
-        if not self.printphase:
+        if not self.print_phase:
             return super().to_quipper()
         return 'QRot["exp(-i%Z)",{!s}]({!s})'.format(math.pi*self.phase/2,self.target)
 
@@ -352,7 +353,7 @@ class Z(ZPhase):
     name = 'Z'
     qasm_name = 'z'
     qc_name = 'Z'
-    printphase = False
+    print_phase = False
     def __init__(self, target: int) -> None:
         super().__init__(target, Fraction(1,1))
 
@@ -361,7 +362,7 @@ class S(ZPhase):
     qasm_name = 's'
     qasm_name_adjoint = 'sdg'
     qc_name = 'S'
-    printphase = False
+    print_phase = False
     def __init__(self, target: int, adjoint:bool=False) -> None:
         super().__init__(target, Fraction(1,2)*(-1 if adjoint else 1))
         self.adjoint = adjoint
@@ -371,15 +372,15 @@ class T(ZPhase):
     qasm_name = 't'
     qasm_name_adjoint = 'tdg'
     qc_name = 'T'
-    printphase = False
+    print_phase = False
     def __init__(self, target: int, adjoint:bool=False) -> None:
         super().__init__(target, Fraction(1,4)*(-1 if adjoint else 1))
         self.adjoint = adjoint
 
 class XPhase(Gate):
     name = 'XPhase'
-    printphase: ClassVar[bool] = True
     qasm_name = 'rx'
+    print_phase = True
     def __init__(self, target: int, phase: FractionLike=0) -> None:
         self.target = target
         self.phase = phase
@@ -402,7 +403,7 @@ class XPhase(Gate):
         strings[self.target].append(s)
 
     def to_quipper(self):
-        if not self.printphase:
+        if not self.print_phase:
             return super().to_quipper()
         return 'QRot["exp(-i%X)",{!s}]({!s})'.format(math.pi*self.phase/2,self.target)
 
@@ -431,8 +432,8 @@ class XPhase(Gate):
 
 class YPhase(Gate):
     name = 'YPhase'
-    printphase: ClassVar[bool] = True
     qasm_name = 'ry'
+    print_phase = True
     def __init__(self, target: int, phase: FractionLike=0) -> None:
         self.target = target
         self.phase = phase
@@ -462,7 +463,7 @@ class NOT(XPhase):
     quippername = 'not'
     qasm_name = 'x'
     qc_name = 'X'
-    printphase = False
+    print_phase = False
     def __init__(self, target: int) -> None:
         super().__init__(target, phase = Fraction(1,1))
 
@@ -584,7 +585,7 @@ class CRZ(Gate):
     name = 'CRZ'
     qasm_name = 'crz'
     quippername = 'undefined'
-    printphase: ClassVar[bool] = True
+    print_phase = True
     def __init__(self, control: int, target: int, phase: FractionLike) -> None:
         self.target = target
         self.control = control
@@ -631,7 +632,7 @@ class CHAD(Gate):
 
 class ParityPhase(Gate):
     name = 'ParityPhase'
-    printphase: ClassVar[bool] = True
+    print_phase = True
     def __init__(self, phase: FractionLike, *targets: int):
         self.targets = targets
         self.phase = phase
@@ -670,7 +671,7 @@ class ParityPhase(Gate):
 class FSim(Gate):
     name = 'FSim'
     qsim_name = 'fs'
-    printphase: ClassVar[bool] = True
+    print_phase = True
     def __init__(self, theta:FractionLike, phi:FractionLike, control:int, target:int):
         self.control = control
         self.target = target
