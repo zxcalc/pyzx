@@ -112,7 +112,7 @@ class Circuit(object):
         """
         if isinstance(gate, str):
             gate_class = gate_types[gate]
-            gate = gate_class(*args, **kwargs) # type: ignore
+            gate = gate_class(*args, **kwargs)
         self.gates.append(gate)
 
     def prepend_gate(self, gate, *args, **kwargs):

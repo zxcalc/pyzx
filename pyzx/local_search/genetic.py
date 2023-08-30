@@ -21,7 +21,7 @@ This module contains an implementation of a genetic algorithm. As with simulated
 Mutants are represented as pairs of (ZX-diagram, circuit) to allow for mutation operators that act on either, though by default only the two two congruences defined in congruences.py (that act at the graph-level) are used. Tournament selection is used by default but other options are available. The default fitness function is a weighted gate count defined in scores.py.
 """
 
-from tqdm import tqdm # type: ignore
+from tqdm import tqdm
 import numpy as np
 from random import shuffle
 import random

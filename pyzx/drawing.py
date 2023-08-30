@@ -41,7 +41,7 @@ from .graph.base import BaseGraph, VT, ET
 from .circuit import Circuit
 
 if get_mode() == "notebook":
-    from IPython.display import display, HTML # type: ignore
+    from IPython.display import display, HTML
 elif get_mode() == "browser":
     from browser import document, html # type: ignore
 

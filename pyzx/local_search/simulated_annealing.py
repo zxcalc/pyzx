@@ -15,7 +15,7 @@
 # limitations under the License.
 
 
-from tqdm import tqdm # type: ignore
+from tqdm import tqdm
 import random
 import math
 import numpy as np

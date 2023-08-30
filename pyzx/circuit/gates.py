@@ -149,13 +149,13 @@ class Gate(object):
     index = 0
     def __str__(self) -> str:
         attribs = []
-        if hasattr(self, "control"): attribs.append(str(self.control))  # type: ignore # See issue #1424
-        if hasattr(self, "target"): attribs.append(str(self.target))    # type: ignore #https://github.com/python/mypy/issues/1424
+        if hasattr(self, "control"): attribs.append(str(self.control))
+        if hasattr(self, "target"): attribs.append(str(self.target))
         if hasattr(self, "phase") and self.print_phase:
             attribs.append("phase={!s}".format(self.phase))
         return "{}{}({})".format(
                         self.name,
-                        ("*" if (hasattr(self,"adjoint") and self.adjoint) else ""), # type: ignore
+                        ("*" if (hasattr(self,"adjoint") and self.adjoint) else ""),
                         ",".join(attribs))
 
     def __repr__(self) -> str:
@@ -173,9 +173,9 @@ class Gate(object):
         return True
 
     def _max_target(self) -> int:
-        qubits = self.target        # type: ignore
-        if hasattr(self, "control"): 
-            qubits = max([qubits, self.control]) # type: ignore # See issue #1424
+        qubits = self.target        # type: ignore # due to ParityPhase
+        if hasattr(self, "control"):
+            qubits = max([qubits, self.control])
         return qubits
 
     def __add__(self, other):
@@ -201,7 +201,7 @@ class Gate(object):
         if hasattr(g, "phase"):
             g.phase = -g.phase
         if hasattr(g, "adjoint"):
-            g.adjoint = not g.adjoint   # type: ignore
+            g.adjoint = not g.adjoint
         return g
 
     def tcount(self) -> int:
@@ -209,10 +209,10 @@ class Gate(object):
 
     def reposition(self: Tvar, mask: List[int], bit_mask: Optional[List[int]] = None) -> Tvar:
         g = self.copy()
-        if hasattr(g, "target"): 
-            g.target = mask[g.target]   # type: ignore
-        if hasattr(g, "control"): 
-            g.control = mask[g.control] # type: ignore
+        if hasattr(g, "target"):
+            g.target = mask[g.target]
+        if hasattr(g, "control"):
+            g.control = mask[g.control]
         return g
 
     def to_basic_gates(self) -> List['Gate']:
@@ -226,10 +226,10 @@ class Gate(object):
                 raise TypeError("Gate {} doesn't have a Quipper description".format(str(self)))
             return "\n".join(g.to_quipper() for g in bg)
         s = 'QGate["{}"]{}({!s})'.format(n,
-                                         ("*" if (hasattr(self,"adjoint") and self.adjoint) else ""), # type: ignore
-                                         self.target) # type: ignore
+                                         ("*" if (hasattr(self,"adjoint") and self.adjoint) else ""),
+                                         self.target) # type: ignore # due to ParityPhase
         if hasattr(self, "control"):
-            s += ' with controls=[+{!s}]'.format(self.control) # type: ignore
+            s += ' with controls=[+{!s}]'.format(self.control)
         s += ' with nocontrol'
         return s
 
@@ -240,7 +240,7 @@ class Gate(object):
             if len(bg) == 1:
                 raise TypeError("Gate {} doesn't have a QASM description".format(str(self)))
             return "\n".join(g.to_qasm() for g in bg)
-        if hasattr(self, "adjoint") and self.adjoint: # type: ignore
+        if hasattr(self, "adjoint") and self.adjoint:
             n = self.qasm_name_adjoint
 
         args = []
@@ -253,7 +253,7 @@ class Gate(object):
 
     def to_qc(self) -> str:
         n = self.qc_name
-        if hasattr(self, "adjoint") and self.adjoint: # type: ignore
+        if hasattr(self, "adjoint") and self.adjoint:
             n += "*"
         if n == 'undefined':
             if isinstance(self, (ZPhase, XPhase)):
