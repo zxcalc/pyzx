@@ -83,9 +83,9 @@ pre-defined :class:`~pyzx.routing.Architecture` objects.::
 	ibm_arch = architecture.create_architecture(architecture.IBM_QX5)
 
 PyZX provides a function for routing phase-polynomial circuits. These circuits
-composed of CNOT, CX and ZPhase gates, which can be directly translated to phase
-gadgets in ZX. The module :mod:`~pyzx.generate` provides a function for creating
-such circuits to an architecture.::
+are composed of CNOT, XCX, and ZPhase gates, which can be directly translated
+to phase gadgets in ZX. The module :mod:`~pyzx.generate` provides a function
+for creating such circuits to an architecture.::
 
 	c_pp = zx.generate.phase_poly(n_qubits=16, n_phase_layers=10, cnots_per_layer=10)
 	routed_circuit = zx.routing.route_phase_poly(c_pp, ibm_arch)

@@ -19,7 +19,7 @@ from typing import List, Union, Optional, Iterator, Dict
 
 import numpy as np
 
-from .gates import Gate, gate_types, ZPhase, XPhase, CZ, CX, CNOT, HAD, SWAP, CCZ, Tofolli, Measurement
+from .gates import Gate, gate_types, ZPhase, XPhase, CZ, XCX, CNOT, HAD, SWAP, CCZ, Tofolli, Measurement
 
 from ..graph.base import BaseGraph
 from ..utils import EdgeType
@@ -460,7 +460,7 @@ class Circuit(object):
             elif isinstance(g, HAD):
                 hadamard += 1
                 clifford += 1
-            elif isinstance(g, (CZ, CX, CNOT)):
+            elif isinstance(g, (CZ, XCX, CNOT)):
                 twoqubit += 1
                 clifford += 1
                 if isinstance(g, CNOT): cnot += 1

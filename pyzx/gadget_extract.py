@@ -7,7 +7,7 @@ from .linalg import Mat2, Z2
 from .simplify import id_simp, tcount
 from .rules import apply_rule, pivot, match_spider_parallel, spider
 from .circuit import Circuit
-from .circuit.gates import Gate, ParityPhase, CNOT, HAD, ZPhase, XPhase, CZ, CX, SWAP, InitAncilla
+from .circuit.gates import Gate, ParityPhase, CNOT, HAD, ZPhase, XPhase, CZ, XCX, SWAP, InitAncilla
 from .graph.base import BaseGraph, VT, ET, FractionLike
 
 from typing import List, Optional, Tuple, Dict, Set, Union, Iterator
