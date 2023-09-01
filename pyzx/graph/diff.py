@@ -21,6 +21,7 @@ import copy
 from ..utils import VertexType, EdgeType, FractionLike, FloatInt
 from .base import BaseGraph, VT, ET
 from .graph_s import GraphS
+from .jsonparser import _phase_to_quanto_value, _quanto_value_to_phase
 
 class GraphDiff(Generic[VT, ET]):
 	removed_verts: List[VT]
@@ -121,6 +122,7 @@ class GraphDiff(Generic[VT, ET]):
 		changed_edge_types_str_dict = {}
 		for key, value in self.changed_edge_types.items():
 			changed_edge_types_str_dict[f"{key[0]},{key[1]}"] = value # type: ignore
+		changed_phases_str = {k: _phase_to_quanto_value(v) for k, v in self.changed_phases.items()}
 		return json.dumps({
 			"removed_verts": self.removed_verts,
 			"new_verts": self.new_verts,
@@ -128,7 +130,7 @@ class GraphDiff(Generic[VT, ET]):
 			"new_edges": self.new_edges,
 			"changed_vertex_types": self.changed_vertex_types,
 			"changed_edge_types": changed_edge_types_str_dict,
-			"changed_phases": self.changed_phases,
+			"changed_phases": changed_phases_str,
 			"changed_pos": self.changed_pos,
 		})
 
@@ -142,7 +144,7 @@ class GraphDiff(Generic[VT, ET]):
 		gd.new_edges = list(map(tuple, d["new_edges"])) # type: ignore
 		gd.changed_vertex_types = map_dict_keys(d["changed_vertex_types"], int)
 		gd.changed_edge_types = map_dict_keys(d["changed_edge_types"], lambda x: tuple(map(int, x.split(","))))
-		gd.changed_phases = map_dict_keys(d["changed_phases"], int)
+		gd.changed_phases = {int(k): _quanto_value_to_phase(v) for k, v in d["changed_phases"].items()}
 		gd.changed_pos = map_dict_keys(d["changed_pos"], int)
 		return gd
 
