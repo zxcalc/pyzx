@@ -27,7 +27,7 @@ __all__ = ['bialg_simp','spider_simp', 'id_simp', 'phase_free_simp', 'pivot_simp
         'full_reduce', 'teleport_reduce', 'reduce_scalar', 'supplementarity_simp',
         'to_clifford_normal_form_graph']
 
-from typing import List, Callable, Optional, Union, Generic, Tuple, Dict, Iterator
+from typing import List, Callable, Optional, Union, Generic, Tuple, Dict, Iterator, cast
 
 from .utils import EdgeType, VertexType, toggle_edge, vertex_is_zx, toggle_vertex
 from .rules import *
@@ -237,7 +237,7 @@ class Simplifier(Generic[VT, ET]):
         if (p2 == 0 or p2.denominator <= 2): # Deleted vertex contains Clifford phase
             if v2 in self.phantom_phases:
                 v3,i3 = self.phantom_phases[v2]
-                m2 = m2*self.simplifygraph.phase_mult[i3] # type: ignore
+                m2 = cast(Literal[1, -1], m2*self.simplifygraph.phase_mult[i3])
                 v2,i2 = v3,i3
                 p2 = self.mastergraph.phase(v2)
             else: return
@@ -251,7 +251,7 @@ class Simplifier(Generic[VT, ET]):
                 if (p1+p2).denominator <= 2:
                     del self.phantom_phases[v1]
                 v1,i1 = v3,i3
-                m1 = m1*self.simplifygraph.phase_mult[i3] # type: ignore
+                m1 = cast(Literal[1, -1], m1*self.simplifygraph.phase_mult[i3])
             else:
                 self.phantom_phases[v1] = (v2,i2)
                 self.simplifygraph.phase_mult[i2] = m2

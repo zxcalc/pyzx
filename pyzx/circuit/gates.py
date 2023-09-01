@@ -142,19 +142,21 @@ class TargetMapper(Generic[VT]):
 class Gate(object):
     """Base class for representing quantum gates."""
     name:               ClassVar[str] = "BaseGate"
-    qc_name:            ClassVar[str] = 'undefined'
     qasm_name:          ClassVar[str] = 'undefined'
     qasm_name_adjoint:  ClassVar[str] = 'undefined'
+    qc_name:            ClassVar[str] = 'undefined'
+    quipper_name:       ClassVar[str] = 'undefined'
+    print_phase:        ClassVar[bool] = False
     index = 0
     def __str__(self) -> str:
         attribs = []
-        if hasattr(self, "control"): attribs.append(str(self.control))  # type: ignore # See issue #1424
-        if hasattr(self, "target"): attribs.append(str(self.target))    # type: ignore #https://github.com/python/mypy/issues/1424
-        if hasattr(self, "phase") and self.printphase:                  # type: ignore 
-            attribs.append("phase={!s}".format(self.phase))             # type: ignore 
+        if hasattr(self, "control"): attribs.append(str(self.control))
+        if hasattr(self, "target"): attribs.append(str(self.target))
+        if hasattr(self, "phase") and self.print_phase:
+            attribs.append("phase={!s}".format(self.phase))
         return "{}{}({})".format(
                         self.name,
-                        ("*" if (hasattr(self,"adjoint") and self.adjoint) else ""), # type: ignore
+                        ("*" if (hasattr(self,"adjoint") and self.adjoint) else ""),
                         ",".join(attribs))
 
     def __repr__(self) -> str:
@@ -172,9 +174,9 @@ class Gate(object):
         return True
 
     def _max_target(self) -> int:
-        qubits = self.target        # type: ignore
-        if hasattr(self, "control"): 
-            qubits = max([qubits, self.control]) # type: ignore # See issue #1424
+        qubits = self.target        # type: ignore # due to ParityPhase
+        if hasattr(self, "control"):
+            qubits = max([qubits, self.control])
         return qubits
 
     def __add__(self, other):
@@ -197,10 +199,10 @@ class Gate(object):
 
     def to_adjoint(self: Tvar) -> Tvar:
         g = self.copy()
-        if hasattr(g, "phase"): 
-            g.phase = -g.phase          # type: ignore
-        if hasattr(g, "adjoint"): 
-            g.adjoint = not g.adjoint   # type: ignore
+        if hasattr(g, "phase"):
+            g.phase = -g.phase
+        if hasattr(g, "adjoint"):
+            g.adjoint = not g.adjoint
         return g
 
     def tcount(self) -> int:
@@ -208,27 +210,27 @@ class Gate(object):
 
     def reposition(self: Tvar, mask: List[int], bit_mask: Optional[List[int]] = None) -> Tvar:
         g = self.copy()
-        if hasattr(g, "target"): 
-            g.target = mask[g.target]   # type: ignore
-        if hasattr(g, "control"): 
-            g.control = mask[g.control] # type: ignore
+        if hasattr(g, "target"):
+            g.target = mask[g.target]
+        if hasattr(g, "control"):
+            g.control = mask[g.control]
         return g
 
     def to_basic_gates(self) -> List['Gate']:
         return [self]
 
     def to_quipper(self) -> str:
-        n = self.name if not hasattr(self, "quippername") else self.quippername # type: ignore
+        n = self.quipper_name
         if n == 'undefined':
             bg = self.to_basic_gates()
             if len(bg) == 1:
                 raise TypeError("Gate {} doesn't have a Quipper description".format(str(self)))
             return "\n".join(g.to_quipper() for g in bg)
         s = 'QGate["{}"]{}({!s})'.format(n,
-                                         ("*" if (hasattr(self,"adjoint") and self.adjoint) else ""), # type: ignore
-                                         self.target) # type: ignore
+                                         ("*" if (hasattr(self,"adjoint") and self.adjoint) else ""),
+                                         self.target) # type: ignore # due to ParityPhase
         if hasattr(self, "control"):
-            s += ' with controls=[+{!s}]'.format(self.control) # type: ignore
+            s += ' with controls=[+{!s}]'.format(self.control)
         s += ' with nocontrol'
         return s
 
@@ -239,20 +241,20 @@ class Gate(object):
             if len(bg) == 1:
                 raise TypeError("Gate {} doesn't have a QASM description".format(str(self)))
             return "\n".join(g.to_qasm() for g in bg)
-        if hasattr(self, "adjoint") and self.adjoint: # type: ignore
+        if hasattr(self, "adjoint") and self.adjoint:
             n = self.qasm_name_adjoint
 
         args = []
         for a in ["ctrl1","ctrl2", "control", "target"]:
             if hasattr(self, a): args.append("q[{:d}]".format(getattr(self,a)))
         param = ""
-        if hasattr(self, "printphase") and self.printphase: # type: ignore
-            param = "({}*pi)".format(float(self.phase))     # type: ignore
+        if hasattr(self, "phase") and self.print_phase:
+            param = "({}*pi)".format(float(self.phase))
         return "{}{} {};".format(n, param, ", ".join(args))
 
     def to_qc(self) -> str:
         n = self.qc_name
-        if hasattr(self, "adjoint") and self.adjoint: # type: ignore
+        if hasattr(self, "adjoint") and self.adjoint:
             n += "*"
         if n == 'undefined':
             if isinstance(self, (ZPhase, XPhase)):
@@ -268,7 +270,7 @@ class Gate(object):
         for a in ["ctrl1","ctrl2", "control", "target"]:
             if hasattr(self, a): args.append("q{:d}".format(getattr(self,a)))
         
-        # if hasattr(self, "printphase") and self.printphase:
+        # if hasattr(self, "phase") and self.print_phase:
         #     args.insert(0, phase_to_s(self.phase))
         return "{} {}".format(n, " ".join(args))
 
@@ -297,8 +299,9 @@ class Gate(object):
 
 class ZPhase(Gate):
     name = 'ZPhase'
-    printphase: ClassVar[bool] = True
     qasm_name = 'rz'
+    quipper_name = 'ZPhase'
+    print_phase = True
     def __init__(self, target: int, phase: FractionLike) -> None:
         self.target = target
         self.phase = phase
@@ -308,7 +311,7 @@ class ZPhase(Gate):
         q_mapper.advance_next_row(self.target)
 
     def to_quipper(self):
-        if not self.printphase:
+        if not self.print_phase:
             return super().to_quipper()
         return 'QRot["exp(-i%Z)",{!s}]({!s})'.format(math.pi*self.phase/2,self.target)
 
@@ -352,7 +355,8 @@ class Z(ZPhase):
     name = 'Z'
     qasm_name = 'z'
     qc_name = 'Z'
-    printphase = False
+    quipper_name = 'Z'
+    print_phase = False
     def __init__(self, target: int) -> None:
         super().__init__(target, Fraction(1,1))
 
@@ -361,7 +365,8 @@ class S(ZPhase):
     qasm_name = 's'
     qasm_name_adjoint = 'sdg'
     qc_name = 'S'
-    printphase = False
+    quipper_name = 'S'
+    print_phase = False
     def __init__(self, target: int, adjoint:bool=False) -> None:
         super().__init__(target, Fraction(1,2)*(-1 if adjoint else 1))
         self.adjoint = adjoint
@@ -371,15 +376,17 @@ class T(ZPhase):
     qasm_name = 't'
     qasm_name_adjoint = 'tdg'
     qc_name = 'T'
-    printphase = False
+    quipper_name = 'T'
+    print_phase = False
     def __init__(self, target: int, adjoint:bool=False) -> None:
         super().__init__(target, Fraction(1,4)*(-1 if adjoint else 1))
         self.adjoint = adjoint
 
 class XPhase(Gate):
     name = 'XPhase'
-    printphase: ClassVar[bool] = True
     qasm_name = 'rx'
+    quipper_name = 'XPhase'
+    print_phase = True
     def __init__(self, target: int, phase: FractionLike=0) -> None:
         self.target = target
         self.phase = phase
@@ -402,7 +409,7 @@ class XPhase(Gate):
         strings[self.target].append(s)
 
     def to_quipper(self):
-        if not self.printphase:
+        if not self.print_phase:
             return super().to_quipper()
         return 'QRot["exp(-i%X)",{!s}]({!s})'.format(math.pi*self.phase/2,self.target)
 
@@ -431,8 +438,9 @@ class XPhase(Gate):
 
 class YPhase(Gate):
     name = 'YPhase'
-    printphase: ClassVar[bool] = True
     qasm_name = 'ry'
+    quipper_name = 'YPhase'
+    print_phase = True
     def __init__(self, target: int, phase: FractionLike=0) -> None:
         self.target = target
         self.phase = phase
@@ -459,18 +467,18 @@ class YPhase(Gate):
 
 class NOT(XPhase):
     name = 'NOT'
-    quippername = 'not'
     qasm_name = 'x'
     qc_name = 'X'
-    printphase = False
+    quipper_name = 'not'
+    print_phase = False
     def __init__(self, target: int) -> None:
         super().__init__(target, phase = Fraction(1,1))
 
 class HAD(Gate):
     name = 'HAD'
-    quippername = 'H'
     qasm_name = 'h'
     qc_name = 'H'
+    quipper_name = 'H'
     def __init__(self, target: int) -> None:
         self.target = target
 
@@ -485,9 +493,9 @@ class HAD(Gate):
 
 class CNOT(Gate):
     name = 'CNOT'
-    quippername = 'not'
     qasm_name = 'cx'
     qc_name = 'Tof'
+    quipper_name = 'not'
     def __init__(self, control: int, target: int) -> None:
         self.target = target
         self.control = control
@@ -517,9 +525,9 @@ class CNOT(Gate):
 
 class CZ(Gate):
     name = 'CZ'
-    quippername = 'Z'
     qasm_name = 'cz'
     qc_name = 'Z'
+    quipper_name = 'Z'
     def __init__(self, control: int, target: int) -> None:
         self.target = target
         self.control = control
@@ -549,11 +557,12 @@ class CZ(Gate):
         strings[t].append(':H_:')
 
 
-class CX(CZ):
+class XCX(CZ):
+    '''This class represents the X-controlled-X gate.'''
     name = 'CX'
-    quippername = 'X'
     qasm_name = 'undefined'
     qc_name = 'undefined'
+    quipper_name = 'X'
     def to_graph(self, g, q_mapper, _c_mapper):
         r = max(q_mapper.next_row(self.target), q_mapper.next_row(self.control))
         t = self.graph_add_node(g, q_mapper, VertexType.X, self.target, r)
@@ -568,9 +577,9 @@ class CX(CZ):
 
 class SWAP(CZ):
     name = 'SWAP'
-    quippername = 'undefined'
     qasm_name = 'swap'
     qc_name = 'undefined'
+    quipper_name = 'undefined'
     def to_basic_gates(self):
         c1 = CNOT(self.control, self.target)
         c2 = CNOT(self.target, self.control)
@@ -583,8 +592,8 @@ class SWAP(CZ):
 class CRZ(Gate):
     name = 'CRZ'
     qasm_name = 'crz'
-    quippername = 'undefined'
-    printphase: ClassVar[bool] = True
+    quipper_name = 'undefined'
+    print_phase = True
     def __init__(self, control: int, target: int, phase: FractionLike) -> None:
         self.target = target
         self.control = control
@@ -611,7 +620,7 @@ class CRZ(Gate):
 class CHAD(Gate):
     name = 'CHAD'
     qasm_name = 'ch'
-    quippername = 'undefined'
+    quipper_name = 'undefined'
 
     def __init__(self, control: int, target: int) -> None:
         self.target = target
@@ -631,7 +640,7 @@ class CHAD(Gate):
 
 class ParityPhase(Gate):
     name = 'ParityPhase'
-    printphase: ClassVar[bool] = True
+    print_phase = True
     def __init__(self, phase: FractionLike, *targets: int):
         self.targets = targets
         self.phase = phase
@@ -670,7 +679,7 @@ class ParityPhase(Gate):
 class FSim(Gate):
     name = 'FSim'
     qsim_name = 'fs'
-    printphase: ClassVar[bool] = True
+    print_phase = True
     def __init__(self, theta:FractionLike, phi:FractionLike, control:int, target:int):
         self.control = control
         self.target = target
@@ -782,9 +791,9 @@ class FSim(Gate):
 
 class CCZ(Gate):
     name = 'CCZ'
-    quippername = 'Z'
     qasm_name = 'ccz'
     qc_name = 'Z'
+    quipper_name = 'Z'
     def __init__(self, ctrl1: int, ctrl2: int, target: int):
         self.target = target
         self.ctrl1 = ctrl1
@@ -837,16 +846,16 @@ class CCZ(Gate):
         q_mapper.set_next_row(self.ctrl2, r+1)
 
     def to_quipper(self):
-        s = 'QGate["{}"]({!s})'.format(self.quippername,self.target)
+        s = 'QGate["{}"]({!s})'.format(self.quipper_name,self.target)
         s += ' with controls=[+{!s},+{!s}]'.format(self.ctrl1,self.ctrl2)
         s += ' with nocontrol'
         return s
 
 class Tofolli(CCZ):
     name = 'Tof'
-    quippername = 'not'
     qasm_name = 'ccx'
     qc_name = 'Tof'
+    quipper_name = 'not'
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, Tofolli): return False
@@ -909,7 +918,7 @@ class Measurement(Gate):
     target: int
     result_bit: Optional[int]
 
-    quippername = 'measure'
+    quipper_name = 'measure'
     # This gate has special syntax in qasm: https://qiskit.github.io/openqasm/language/insts.html
 
     def __init__(self, target: int, result_bit: Optional[int]) -> None:
@@ -965,7 +974,7 @@ gate_types: Dict[str,Type[Gate]] = {
     "CNOT": CNOT,
     "CZ": CZ,
     "ParityPhase": ParityPhase,
-    "CX": CX,
+    "XCX": XCX,
     "SWAP": SWAP,
     "CRZ": CRZ,
     "HAD": HAD,
