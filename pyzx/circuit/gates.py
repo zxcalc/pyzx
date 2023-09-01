@@ -557,7 +557,8 @@ class CZ(Gate):
         strings[t].append(':H_:')
 
 
-class CX(CZ):
+class XCX(CZ):
+    '''This class represents the X-controlled-X gate.'''
     name = 'CX'
     qasm_name = 'undefined'
     qc_name = 'undefined'
@@ -973,7 +974,7 @@ gate_types: Dict[str,Type[Gate]] = {
     "CNOT": CNOT,
     "CZ": CZ,
     "ParityPhase": ParityPhase,
-    "CX": CX,
+    "XCX": XCX,
     "SWAP": SWAP,
     "CRZ": CRZ,
     "HAD": HAD,

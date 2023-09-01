@@ -25,7 +25,7 @@ from .linalg import Mat2, Z2
 from .simplify import id_simp, tcount,full_reduce
 from .rules import apply_rule, pivot, match_spider_parallel, spider
 from .circuit import Circuit
-from .circuit.gates import Gate, ParityPhase, CNOT, HAD, ZPhase, XPhase, CZ, CX, SWAP, InitAncilla
+from .circuit.gates import Gate, ParityPhase, CNOT, HAD, ZPhase, XPhase, CZ, XCX, SWAP, InitAncilla
 
 from .graph.base import BaseGraph, VT, ET
 
@@ -767,7 +767,7 @@ def extract_simple(g: BaseGraph[VT, ET], up_to_perm: bool = True) -> Circuit:
                     elif g.type(v1) == VertexType.X and g.type(v2) == VertexType.X:
                         # conjugate CZ
                         progress = True
-                        circ.prepend_gate(CX(control=q1,target=q2))
+                        circ.prepend_gate(XCX(control=q1, target=q2))
                         g.remove_edge(g.edge(v1,v2))
 
     return graph_to_swaps(g, up_to_perm) + circ
