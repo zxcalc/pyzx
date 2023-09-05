@@ -21,9 +21,9 @@ from .base import BaseGraph
 
 from ..utils import VertexType, EdgeType, FractionLike, FloatInt
 
-class GraphS(BaseGraph[int,Tuple[int,int]]):
+class Multigraph(BaseGraph[int,Tuple[int,int]]):
     """Purely Pythonic implementation of :class:`~graph.base.BaseGraph`."""
-    backend = 'simple'
+    backend = 'multigraph'
 
     #The documentation of what these methods do 
     #can be found in base.BaseGraph
@@ -48,8 +48,8 @@ class GraphS(BaseGraph[int,Tuple[int,int]]):
         self._inputs: Tuple[int, ...]                   = tuple()
         self._outputs: Tuple[int, ...]                  = tuple()
         
-    def clone(self) -> 'GraphS':
-        cpy = GraphS()
+    def clone(self) -> 'Multigraph':
+        cpy = Multigraph()
         for v, d in self.graph.items():
             cpy.graph[v] = d.copy()
         cpy._vindex = self._vindex
