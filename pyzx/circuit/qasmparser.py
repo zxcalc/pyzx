@@ -33,6 +33,11 @@ class QASMParser(object):
         self.circuit: Optional[Circuit] = None
 
     def parse(self, s: str, strict:bool=True) -> Circuit:
+        self.gates = []
+        self.customgates = {}
+        self.registers = {}
+        self.qubit_count = 0
+        self.circuit = None
         lines = s.splitlines()
         r = []
         #strip comments
@@ -62,7 +67,6 @@ class QASMParser(object):
             data = data[:i] + data[j+1:]
         #parse the regular commands
         commands = [s.strip() for s in data.split(";") if s.strip()]
-        gates: List[Gate] = []
         for c in commands:
             self.gates.extend(self.parse_command(c, self.registers))
 
