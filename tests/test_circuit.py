@@ -122,5 +122,20 @@ class TestCircuit(unittest.TestCase):
         self.assertTrue(c1.verify_equality(c2,up_to_swaps=True))
         self.assertFalse(c1.verify_equality(c2,up_to_swaps=False))
 
+    def test_parser_state_reset(self):
+        from pyzx.circuit.qasmparser import QASMParser
+        s = """
+        OPENQASM 2.0;
+        include "qelib1.inc";
+        qreg q[1];
+        h q[0];
+        """
+        p = QASMParser()
+        c1 = p.parse(s)
+        c2 = p.parse(s)
+        self.assertEqual(c2.qubits, 1)
+        self.assertEqual(len(c2.gates), 1)
+        self.assertTrue(c1.verify_equality(c2))
+
 if __name__ == '__main__':
     unittest.main()
