@@ -17,6 +17,10 @@ PyZX
    representations
    api
 
+.. toctree::
+   :caption: Notebooks:
+
+   notebooks/gettingstarted
 
 Indices and tables
 ==================

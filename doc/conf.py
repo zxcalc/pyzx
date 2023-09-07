@@ -44,7 +44,8 @@ release = '0.7.3'
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
-extensions = ['sphinx.ext.autodoc',
+extensions = ['nbsphinx',
+              'sphinx.ext.autodoc',
               'sphinx.ext.mathjax',
               'sphinx.ext.napoleon',
               'sphinx_rtd_theme',
@@ -169,3 +170,16 @@ texinfo_documents = [
      author, 'pyzx', 'One line description of project.',
      'Miscellaneous'),
 ]
+
+# -- Options for nbsphinx ----------------------------------------------------
+nbsphinx_prolog = r"""
+{% set docname = env.doc2path(env.docname, base=None) %}
+
+.. raw:: html
+
+    <div class="admonition note">
+      This page was generated from
+      <a class="reference external" href="https://github.com/Quantomatic/pyzx/tree/v{{ env.config.release|e }}/doc/{{ docname|e }}">{{ docname|e }}</a>.
+      <a href="{{ env.docname.split('/')|last|e + '.ipynb' }}" class="reference download internal" download>Download this version</a>.
+    </div>
+"""
