@@ -126,6 +126,7 @@ class Settings(object): # namespace class
     topt_command: Optional[List[str]] = None # Argument-separated command to run TOpt such as ["wsl", "./TOpt"]
     show_labels: bool = False
     tikz_classes: Dict[str,str] = tikz_classes
+    default_qasm_version: int = 2
 
 settings = Settings()
 

@@ -16,25 +16,29 @@
 
 
 import math
+import re
 from fractions import Fraction
 from typing import List, Dict, Tuple, Optional
 
 from . import Circuit
-from .gates import Gate, qasm_gate_table, ZPhase, XPhase, CRZ, YPhase
+from .gates import Gate, qasm_gate_table, ZPhase, XPhase, CRZ, YPhase, NOT
+from ..utils import settings
 
 
 class QASMParser(object):
     """Class for parsing QASM source files into circuit descriptions."""
+
     def __init__(self) -> None:
+        self.qasm_version:int = settings.default_qasm_version
         self.gates: List[Gate] = []
-        self.customgates: Dict[str,Circuit] = {}
+        self.custom_gates: Dict[str,Circuit] = {}
         self.registers: Dict[str,Tuple[int,int]] = {}
         self.qubit_count: int = 0
         self.circuit: Optional[Circuit] = None
 
     def parse(self, s: str, strict:bool=True) -> Circuit:
         self.gates = []
-        self.customgates = {}
+        self.custom_gates = {}
         self.registers = {}
         self.qubit_count = 0
         self.circuit = None
@@ -47,12 +51,15 @@ class QASMParser(object):
             else: t = s.strip()
             if t: r.append(t)
 
-        if r[0].startswith("OPENQASM"):
+        match = re.fullmatch(r"OPENQASM ([23])(\.\d+)?;", r[0])
+        if match and match.group(1):
+            self.qasm_version = int(match.group(1))
             r.pop(0)
         elif strict:
-            raise TypeError("File does not start with OPENQASM descriptor")
+            raise TypeError("File does not start with supported OPENQASM descriptor.")
 
-        if r[0].startswith('include "qelib1.inc";'):
+        if self.qasm_version == 2 and r[0].startswith('include "qelib1.inc";') or \
+                self.qasm_version == 3 and r[0].startswith('include "stdgates.inc";'):
             r.pop(0)
         elif strict:
             raise TypeError("File is not importing standard library")
@@ -108,11 +115,19 @@ class QASMParser(object):
         for c in commands:
             for g in self.parse_command(c, registers):
                 circ.add_gate(g)
-        self.customgates[name] = circ
+        self.custom_gates[name] = circ
+
+    def extract_command_name(self, c: str) -> List[str]:
+        if self.qasm_version == 3:
+            # Convert some OpenQASM 3 commands into OpenQASM 2 format.
+            c = re.sub(r"^bit\[(\d+)] (\w+)$", r"creg \2[\1]", c)
+            c = re.sub(r"^qubit\[(\d+)] (\w+)$", r"qreg \2[\1]", c)
+            c = re.sub(r"^(\w+)\[(\d+)] = measure (\w+)\[(\d+)]$", r"measure \3[\4] -> \1[\2]", c)
+        return c.split(" ",1)
 
     def parse_command(self, c: str, registers: Dict[str,Tuple[int,int]]) -> List[Gate]:
         gates: List[Gate] = []
-        name, rest = c.split(" ",1)
+        name, rest = self.extract_command_name(c)
         if name in ("barrier","creg","measure", "id"): return gates
         if name in ("opaque", "if"):
             raise TypeError("Unsupported operation {}".format(c))
@@ -130,7 +145,7 @@ class QASMParser(object):
             if "[" in a:
                 regname, valp = a.split("[",1)
                 val = int(valp[:-1])
-                if not regname in registers: raise TypeError("Invalid register {}".format(regname))
+                if regname not in registers: raise TypeError("Invalid register {}".format(regname))
                 qubit_values.append([registers[regname][0]+val])
             else:
                 if is_range:
@@ -147,20 +162,20 @@ class QASMParser(object):
                     qubit_values[i] = [qubit_values[i][0]]*dim
         for j in range(dim):
             argset = [q[j] for q in qubit_values]
-            if name in self.customgates:
-                circ = self.customgates[name]
+            if name in self.custom_gates:
+                circ = self.custom_gates[name]
                 if len(argset) != circ.qubits:
                     raise TypeError("Argument amount does not match gate spec: {}".format(c))
                 for g in circ.gates:
                     gates.append(g.reposition(argset))
                 continue
             if name in ("x", "z", "s", "t", "h", "sdg", "tdg"):
-                if name in ("sdg", "tdg"): 
+                if name in ("sdg", "tdg"):
                     g = qasm_gate_table[name](argset[0],adjoint=True) # type: ignore # mypy can't handle -
                 else: g = qasm_gate_table[name](argset[0]) # type: ignore # - Gate subclasses with different numbers of parameters
                 gates.append(g)
                 continue
-            if name.startswith(("rx", "ry", "rz", "u1", "crz")):
+            if name.startswith(("rx", "ry", "rz", "p", "u1", "crz")):
                 i = name.find('(')
                 j = name.find(')')
                 if i == -1 or j == -1: raise TypeError("Invalid specification {}".format(name))
@@ -175,12 +190,19 @@ class QASMParser(object):
                 #     except: raise TypeError("Invalid specification {}".format(name))
                 # phase = Fraction(phasep).limit_denominator(100000000)
                 phase = self.parse_phase_arg(valp)
-                if name.startswith('rx'): g = XPhase(argset[0],phase=phase)
-                elif name.startswith('crz'): g = CRZ(argset[0],argset[1],phase=phase)
-                elif name.startswith('rz'): g = ZPhase(argset[0],phase=phase)
-                elif name.startswith("ry"): g = YPhase(argset[0],phase=phase)
+                if name.startswith('rx'): gates.append(XPhase(argset[0],phase=phase))
+                elif name.startswith('crz'): gates.append(CRZ(argset[0],argset[1],phase=phase))
+                elif self.qasm_version == 2 and name.startswith('rz') or \
+                        self.qasm_version == 3 and name.startswith('p') or \
+                        name.startswith('u1'):
+                    gates.append(ZPhase(argset[0],phase=phase))
+                elif self.qasm_version == 3 and name.startswith('rz'):
+                    gates.append(ZPhase(argset[0],phase=phase/2))
+                    gates.append(NOT(argset[0]))
+                    gates.append(ZPhase(argset[0],phase=-phase/2))
+                    gates.append(NOT(argset[0]))
+                elif name.startswith("ry"): gates.append(YPhase(argset[0],phase=phase))
                 else: raise TypeError("Invalid specification {}".format(name))
-                gates.append(g)
                 continue
             if name.startswith('u2') or name.startswith('u3'): # see https://arxiv.org/pdf/1707.03429.pdf
                 i = name.find('(')
@@ -238,6 +260,7 @@ class QASMParser(object):
             except: raise TypeError("Invalid specification {}".format(val))
         phase = Fraction(phase).limit_denominator(100000000)
         return phase
+
 
 def qasm(s: str) -> Circuit:
     """Parses a string representing a program in QASM, and outputs a `Circuit`."""
