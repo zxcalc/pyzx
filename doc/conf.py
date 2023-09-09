@@ -49,7 +49,8 @@ extensions = ['nbsphinx',
               'sphinx.ext.mathjax',
               'sphinx.ext.napoleon',
               'sphinx_rtd_theme',
-              'sphinx_autodoc_typehints'
+              'sphinx_autodoc_typehints',
+              'sphinxcontrib.rsvgconverter'
 ]
 
 add_function_parentheses = False
