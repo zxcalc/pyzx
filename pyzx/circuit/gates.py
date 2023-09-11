@@ -680,7 +680,7 @@ class FSim(Gate):
     name = 'FSim'
     qsim_name = 'fs'
     print_phase = True
-    def __init__(self, theta:FractionLike, phi:FractionLike, control:int, target:int):
+    def __init__(self, control:int, target:int, theta:FractionLike, phi:FractionLike):
         self.control = control
         self.target = target
         self.theta = theta
@@ -695,7 +695,7 @@ class FSim(Gate):
         return False
 
     def __str__(self) -> str:
-        return "FSim({!s}, {!s}, {!s}, {!s})".format(self.theta, self.phi, self.control, self.target)
+        return "FSim({!s}, {!s}, {!s}, {!s})".format(self.control, self.target, self.theta, self.phi)
 
     def reposition(self, mask, bit_mask = None):
         g = self.copy()
