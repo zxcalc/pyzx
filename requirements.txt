@@ -9,4 +9,5 @@ sphinx_rtd_theme>=0.4
 tqdm>=4.56.0
 types-tqdm~=4.66
 mypy>=0.990
+nbsphinx~=0.9.3
 sphinxcontrib-svg2pdfconverter>=1.2.2
