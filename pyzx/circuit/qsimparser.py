@@ -53,7 +53,7 @@ def parse_qsim(data: str) -> Circuit:
             q1 = int(gdesc[3])
             theta = float(gdesc[4]) / math.pi
             phi = float(gdesc[5]) / math.pi
-            gates.append(FSim(Fraction(theta), Fraction(phi), q, q1))
+            gates.append(FSim(q, q1, Fraction(theta), Fraction(phi)))
 
     c = Circuit(qcount)
     c.gates = gates
