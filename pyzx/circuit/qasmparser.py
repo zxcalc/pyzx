@@ -169,13 +169,13 @@ class QASMParser(object):
                 for g in circ.gates:
                     gates.append(g.reposition(argset))
                 continue
-            if name in ("x", "z", "s", "t", "h", "sdg", "tdg"):
-                if name in ("sdg", "tdg"):
+            if name in ('x', 'z', 's', 't', 'h', 'sdg', 'tdg'):
+                if name in ('sdg', 'tdg'):
                     g = qasm_gate_table[name](argset[0],adjoint=True) # type: ignore # mypy can't handle -
                 else: g = qasm_gate_table[name](argset[0]) # type: ignore # - Gate subclasses with different numbers of parameters
                 gates.append(g)
                 continue
-            if name.startswith(("rx", "ry", "rz", "p", "u1", "crz")):
+            if name.startswith(('rx', 'ry', 'rz', 'p', 'u1', 'crz')):
                 i = name.find('(')
                 j = name.find(')')
                 if i == -1 or j == -1: raise TypeError("Invalid specification {}".format(name))
@@ -201,7 +201,7 @@ class QASMParser(object):
                     gates.append(NOT(argset[0]))
                     gates.append(ZPhase(argset[0],phase=-phase/2))
                     gates.append(NOT(argset[0]))
-                elif name.startswith("ry"): gates.append(YPhase(argset[0],phase=phase))
+                elif name.startswith('ry'): gates.append(YPhase(argset[0],phase=phase))
                 else: raise TypeError("Invalid specification {}".format(name))
                 continue
             if name.startswith('u2') or name.startswith('u3'): # see https://arxiv.org/pdf/1707.03429.pdf
@@ -225,11 +225,11 @@ class QASMParser(object):
                     gates.append(XPhase(argset[0],phase=Fraction(1,2)))
                     gates.append(ZPhase(argset[0],phase=(phases[1]+3)%2))
                     continue
-            if name in ("cx","CX","cz","ch", "swap"):
+            if name in ('cx', 'CX', 'cz', 'ch', 'swap'):
                 g = qasm_gate_table[name](control=argset[0],target=argset[1]) # type: ignore
                 gates.append(g)
                 continue
-            if name in ("ccx", "ccz"):
+            if name in ('ccx', 'ccz'):
                 g = qasm_gate_table[name](ctrl1=argset[0],ctrl2=argset[1],target=argset[2]) # type: ignore
                 gates.append(g)
                 continue
