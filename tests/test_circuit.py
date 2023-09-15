@@ -32,6 +32,13 @@ try:
 except ImportError:
     np = None
 
+try:
+    from qiskit import quantum_info
+    from qiskit.circuit import QuantumCircuit
+    from qiskit.qasm3 import loads
+except ImportError:
+    QuantumCircuit = None
+
 from pyzx.generate import cliffordT, cliffords
 from pyzx.simplify import clifford_simp
 from pyzx.extract import extract_circuit
@@ -186,6 +193,47 @@ class TestCircuit(unittest.TestCase):
         self.assertTrue(compare_tensors(t2, t3, False))
         sqrt_half = math.sqrt(1/2)
         self.assertAlmostEqual(find_scalar_correction(t2, t3), complex(sqrt_half, sqrt_half))
+
+    @unittest.skipUnless(QuantumCircuit, "qiskit needs to be installed for this test")
+    def test_qasm_qiskit_semantics(self):
+        """Verify/document qasm gate semantics when imported into pyzx.
+
+        Currently, pyzx's handling of qasm files differs from qiskit, leading
+        to user confusion. This unit test documents those differences.
+        """
+
+        def compare_gate_matrix_with_qiskit(gates, num_qubits: int, num_angles: int, preserve_scalar):
+            for gate in gates:
+                for qasm_version in [2, 3]:
+                    header = "OPENQASM 2.0;\ninclude \"qelib1.inc\";\n" if qasm_version == 2 \
+                        else "OPENQASM 3;\ninclude \"stdgates.inc\";\n"
+                    params = "" if num_angles == 0 else "({})".format(",".join(["pi/2"] * num_angles))
+                    setup = header + f"qreg q[{num_qubits}];\n{gate}{params} "
+                    qasm = setup + ", ".join([f"q[{i}]" for i in range(num_qubits)]) + ";\n"
+                    c = Circuit.from_qasm(qasm)
+                    pyzx_matrix = c.to_matrix()
+
+                    # qiskit uses little-endian ordering
+                    qiskit_qasm = setup + ", ".join([f"q[{i}]" for i in reversed(range(num_qubits))]) + ";\n"
+                    qc = QuantumCircuit.from_qasm_str(qiskit_qasm) if qasm_version == 2 else loads(qiskit_qasm)
+                    qiskit_matrix = quantum_info.Operator(qc).data
+                    self.assertTrue(compare_tensors(pyzx_matrix, qiskit_matrix, preserve_scalar),
+                        f"Gate: {gate}\nqasm:\n{qasm}\npyzx_matrix:\n{pyzx_matrix}\nqiskit_matrix:\n{qiskit_matrix}")
+
+        # TODO(issue #116): Support all (or at least the most common) OpenQASM 3 gates.
+        simple_one_qubit_gates = ['x', 'z', 'h', 's', 'sdg', 't', 'tdg']  # 'y' fails (issue #90)
+        one_param_one_qubit_gates = ['u1', 'rx', 'rz']  # 'p' not supported in 2, 'rx' off by scalar, 'ry' fails (issue #90)
+        two_param_one_qubit_gates = ['u2']  # off by scalar
+        three_param_one_qubit_gates = ['u3']  # off by scalar
+        simple_two_qubit_gates = ['cx', 'CX', 'cz', 'ch', 'swap']  # 'cy' not supported, 'ch' off by scalar
+        one_param_two_qubit_gates = ['crz']  # 'cu1' and 'cp' not supported (issue #153)
+        # TODO(issue #102): Fix phases so that all of these tests pass with `preserve_scalar=True`.
+        compare_gate_matrix_with_qiskit(simple_one_qubit_gates, 1, 0, True)
+        compare_gate_matrix_with_qiskit(one_param_one_qubit_gates, 1, 1, False)
+        compare_gate_matrix_with_qiskit(two_param_one_qubit_gates, 1, 2, False)
+        compare_gate_matrix_with_qiskit(three_param_one_qubit_gates, 1, 3, False)
+        compare_gate_matrix_with_qiskit(simple_two_qubit_gates, 2, 0, False)
+        compare_gate_matrix_with_qiskit(one_param_two_qubit_gates, 2, 1, True)
 
 if __name__ == '__main__':
     unittest.main()
