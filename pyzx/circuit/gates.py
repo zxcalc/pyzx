@@ -465,6 +465,15 @@ class YPhase(Gate):
     def tcount(self):
         return 1 if self.phase.denominator > 2 else 0
 
+class Y(YPhase):
+    name = 'Y'
+    qasm_name = 'y'
+    qc_name = 'Y'
+    quipper_name = 'Y'
+    print_phase = False
+    def __init__(self, target: int) -> None:
+        super().__init__(target, phase = Fraction(1,1))
+
 class NOT(XPhase):
     name = 'NOT'
     qasm_name = 'x'
@@ -990,6 +999,7 @@ gate_types: Dict[str,Type[Gate]] = {
 
 qasm_gate_table: Dict[str, Type[Gate]] = {
     "x": NOT,
+    "y": Y,
     "z": Z,
     "s": S,
     "t": T,
