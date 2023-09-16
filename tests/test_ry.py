@@ -54,5 +54,5 @@ class TestCircuit(unittest.TestCase):
     def test_ry_preserves_graph_semantics(self):
         g = self.c.to_graph()
         t = tensor_to_matrix(tensorfy(g, False), 1, 1)
-        expected_t = np.asarray([[np.cos(np.pi/8), np.sin(np.pi/8)], [-np.sin(np.pi/8), np.cos(np.pi/8)]])
+        expected_t = np.asarray([[np.cos(np.pi/8), -np.sin(np.pi/8)], [np.sin(np.pi/8), np.cos(np.pi/8)]])
         self.assertTrue(compare_tensors(t, expected_t, False))
