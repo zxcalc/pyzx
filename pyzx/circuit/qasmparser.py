@@ -193,8 +193,7 @@ class QASMParser(object):
                 if name.startswith('rx'): gates.append(XPhase(argset[0],phase=phase))
                 elif name.startswith('crz'): gates.append(CRZ(argset[0],argset[1],phase=phase))
                 elif self.qasm_version == 2 and name.startswith('rz') or \
-                        self.qasm_version == 3 and name.startswith('p') or \
-                        name.startswith('u1'):
+                        name.startswith('p') or name.startswith('u1'):
                     gates.append(ZPhase(argset[0],phase=phase))
                 elif self.qasm_version == 3 and name.startswith('rz'):
                     gates.append(ZPhase(argset[0],phase=phase/2))

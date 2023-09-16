@@ -222,7 +222,7 @@ class TestCircuit(unittest.TestCase):
 
         # TODO(issue #116): Support all (or at least the most common) OpenQASM 3 gates.
         simple_one_qubit_gates = ['x', 'z', 'h', 's', 'sdg', 't', 'tdg']  # 'y' fails (issue #90)
-        one_param_one_qubit_gates = ['u1', 'rx', 'rz']  # 'p' not supported in 2, 'rx' off by scalar, 'ry' fails (issue #90)
+        one_param_one_qubit_gates = ['u1', 'p', 'rx', 'rz']  # 'rx' off by scalar, 'ry' fails (issue #90)
         two_param_one_qubit_gates = ['u2']  # off by scalar
         three_param_one_qubit_gates = ['u3']  # off by scalar
         simple_two_qubit_gates = ['cx', 'CX', 'cz', 'ch', 'swap']  # 'cy' not supported, 'ch' off by scalar
