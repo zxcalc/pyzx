@@ -169,7 +169,7 @@ class QASMParser(object):
                 for g in circ.gates:
                     gates.append(g.reposition(argset))
                 continue
-            if name in ('x', 'z', 's', 't', 'h', 'sdg', 'tdg'):
+            if name in ('x', 'y', 'z', 's', 't', 'h', 'sdg', 'tdg'):
                 if name in ('sdg', 'tdg'):
                     g = qasm_gate_table[name](argset[0],adjoint=True) # type: ignore # mypy can't handle -
                 else: g = qasm_gate_table[name](argset[0]) # type: ignore # - Gate subclasses with different numbers of parameters
