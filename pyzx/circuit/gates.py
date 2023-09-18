@@ -601,7 +601,6 @@ class SWAP(CZ):
 class CRZ(Gate):
     name = 'CRZ'
     qasm_name = 'crz'
-    quipper_name = 'undefined'
     print_phase = True
     def __init__(self, control: int, target: int, phase: FractionLike) -> None:
         self.target = target
@@ -621,10 +620,27 @@ class CRZ(Gate):
                 ZPhase(self.target, phase2),
                 CNOT(self.control, self.target)]
 
-
     def to_graph(self, g, q_mapper, c_mapper):
         for gate in self.to_basic_gates():
             gate.to_graph(g, q_mapper, c_mapper)
+
+class CPhase(CRZ):
+    name = 'CPhase'
+    qasm_name = 'cp'
+
+    def to_basic_gates(self):
+        phase1 = self.phase / 2
+        phase2 = -self.phase / 2
+        try:
+            phase1 = Fraction(phase1) % 2
+            phase2 = Fraction(phase2) % 2
+        except Exception:
+            pass
+        return [ZPhase(self.control, phase1),
+                CNOT(self.control, self.target),
+                ZPhase(self.target, phase2),
+                CNOT(self.control, self.target),
+                ZPhase(self.target, phase1)]
 
 class CHAD(Gate):
     name = 'CHAD'
@@ -1009,6 +1025,8 @@ qasm_gate_table: Dict[str, Type[Gate]] = {
     "rx": XPhase,
     "ry": YPhase,
     "rz": ZPhase,
+    "cp": CPhase,
+    "cphase": CPhase,
     "p": ZPhase,
     "u1": ZPhase,
     "cx": CNOT,

@@ -157,6 +157,50 @@ class TestCircuit(unittest.TestCase):
         self.assertEqual(self.c.qubits, qasm3.qubits)
         self.assertListEqual(self.c.gates, qasm3.gates)
 
+    def test_p_same_as_rz(self):
+        """Test that the `p` gate is identical to the `rz` gate.
+
+        In the OpenQASM 3 spec, they differ by a global phase. However,
+        they are treated in pyzx identically, since the global phase doesn't
+        matter.
+        """
+        p_qasm = Circuit.from_qasm("""
+        OPENQASM 2.0;
+        include "qelib1.inc";
+        qreg q[1];
+        p(pi/2) q[0];
+        """)
+        rz_qasm = Circuit.from_qasm("""
+        OPENQASM 2.0;
+        include "qelib1.inc";
+        qreg q[1];
+        rz(pi/2) q[0];
+        """)
+        self.assertEqual(p_qasm.qubits, rz_qasm.qubits)
+        self.assertListEqual(p_qasm.gates, rz_qasm.gates)
+
+    def test_cp_differs_from_crz(self):
+        """Test that the `cp` gate and the `crz` gates are different.
+
+        The difference in phase between `p` and `rz` matters when the gates are
+        controlled.
+        """
+        crz_qasm = Circuit.from_qasm("""
+        OPENQASM 2.0;
+        include "qelib1.inc";
+        qreg q[2];
+        crz(pi/2) q[0],q[1];
+        """)
+        cp_qasm = Circuit.from_qasm("""
+        OPENQASM 2.0;
+        include "qelib1.inc";
+        qreg q[2];
+        cp(pi/2) q[0],q[1];
+        """)
+        t2 = crz_qasm.to_matrix()
+        t3 = cp_qasm.to_matrix()
+        self.assertFalse(compare_tensors(t2, t3, False))
+
     @unittest.skipUnless(QuantumCircuit, "qiskit needs to be installed for this test")
     def test_qasm_qiskit_semantics(self):
         """Verify/document qasm gate semantics when imported into pyzx.
@@ -189,7 +233,7 @@ class TestCircuit(unittest.TestCase):
         two_param_one_qubit_gates = ['u2']  # off by scalar
         three_param_one_qubit_gates = ['u3']  # off by scalar
         simple_two_qubit_gates = ['cx', 'CX', 'cz', 'ch', 'swap']  # 'cy' not supported, 'ch' off by scalar
-        one_param_two_qubit_gates = ['crz']  # 'cu1' and 'cp' not supported (issue #153)
+        one_param_two_qubit_gates = ['crz', 'cp']  # 'cu1' not supported (issue #153)
         # TODO(issue #102): Fix phases so that all of these tests pass with `preserve_scalar=True`.
         compare_gate_matrix_with_qiskit(simple_one_qubit_gates, 1, 0, False)
         compare_gate_matrix_with_qiskit(one_param_one_qubit_gates, 1, 1, False)
