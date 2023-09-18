@@ -214,7 +214,7 @@ class QASMParser(object):
                 g = qasm_gate_table[name](control=argset[0],target=argset[1]) # type: ignore
                 gates.append(g)
                 continue
-            if name in ('crz', 'cp', 'cphase', 'cu1'):
+            if name in ('crz', 'cp', 'cphase', 'cu1', 'rzz'):
                 if len(phases) != 1: raise TypeError("Invalid specification {}".format(c))
                 g = qasm_gate_table[name](argset[0],argset[1],phase=phases[0])  # type: ignore
                 gates.append(g)

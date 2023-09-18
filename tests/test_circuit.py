@@ -201,6 +201,27 @@ class TestCircuit(unittest.TestCase):
         t3 = cp_qasm.to_matrix()
         self.assertFalse(compare_tensors(t2, t3, False))
 
+    def test_rzz(self):
+        """Regression test for issue #158.
+
+        The qiskit transpiler may rewrite `crz` into `rz` and `rzz` in some
+        situations. The following circuits should be equivalent."""
+        before = Circuit.from_qasm("""
+        OPENQASM 2.0;
+        include "qelib1.inc";
+        qreg q[2];
+        crz(pi/2) q[0],q[1];
+        """);
+
+        after = Circuit.from_qasm("""
+        OPENQASM 2.0;
+        include "qelib1.inc";
+        qreg q[2];
+        rz(pi/4) q[1];
+        rzz(-pi/4) q[0],q[1];
+        """);
+        self.assertTrue(compare_tensors(before.to_matrix(), after.to_matrix(), True))
+
     @unittest.skipUnless(QuantumCircuit, "qiskit needs to be installed for this test")
     def test_qasm_qiskit_semantics(self):
         """Verify/document qasm gate semantics when imported into pyzx.
@@ -249,7 +270,7 @@ class TestCircuit(unittest.TestCase):
         # Test standard gates removed from OpenQASM 3.
         compare_gate_matrix_with_qiskit(['sxdg'], 1, 0, [2])
         compare_gate_matrix_with_qiskit(['csx'], 2, 0, [2])
-        compare_gate_matrix_with_qiskit(['cu1'], 2, 1, [2])
+        compare_gate_matrix_with_qiskit(['cu1', 'rzz'], 2, 1, [2])
 
 if __name__ == '__main__':
     unittest.main()
