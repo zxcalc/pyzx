@@ -179,12 +179,12 @@ class QASMParser(object):
                 for g in circ.gates:
                     gates.append(g.reposition(argset))
                 continue
-            if name in ('x', 'y', 'z', 's', 't', 'h'):
+            if name in ('x', 'y', 'z', 's', 't', 'h', 'sx'):
                 if len(phases) != 0: raise TypeError("Invalid specification {}".format(c))
                 g = qasm_gate_table[name](argset[0])  # type: ignore # mypy can't handle Gate subclasses with different number of parameters
                 gates.append(g)
                 continue
-            if name in ('sdg', 'tdg'):
+            if name in ('sdg', 'tdg', 'sxdg'):
                 if len(phases) != 0: raise TypeError("Invalid specification {}".format(c))
                 g = qasm_gate_table[name](argset[0],adjoint=True)  # type: ignore
                 gates.append(g)
@@ -209,7 +209,7 @@ class QASMParser(object):
                     gates.append(XPhase(argset[0],phase=Fraction(1,2)))
                     gates.append(ZPhase(argset[0],phase=(phases[1]+3)%2))
                 continue
-            if name in ('cx', 'CX', 'cz', 'ch', 'swap'):
+            if name in ('cx', 'CX', 'cz', 'ch', 'csx', 'swap'):
                 if len(phases) != 0: raise TypeError("Invalid specification {}".format(c))
                 g = qasm_gate_table[name](control=argset[0],target=argset[1]) # type: ignore
                 gates.append(g)

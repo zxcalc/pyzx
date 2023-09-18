@@ -436,6 +436,30 @@ class XPhase(Gate):
         gates.append(HAD(self.target))
         return gates
 
+class SX(XPhase):
+    name = 'SX'
+    qasm_name = 'sx'
+    qasm_name_adjoint = 'sxdg'
+    def __init__(self, target: int, adjoint:bool=False) -> None:
+        super().__init__(target, Fraction(1,2)*(-1 if adjoint else 1))
+        self.adjoint = adjoint
+
+class CSX(Gate):
+    name = 'CSX'
+    qasm_name = 'csx'
+    def __init__(self, control: int, target: int) -> None:
+        self.target = target
+        self.control = control
+
+    def to_basic_gates(self):
+        return [HAD(self.target),
+                CPhase(self.control,self.target,Fraction(1,2)),
+                HAD(self.target)]
+
+    def to_graph(self, g, q_mapper, c_mapper):
+        for gate in self.to_basic_gates():
+            gate.to_graph(g, q_mapper, c_mapper)
+
 class YPhase(Gate):
     name = 'YPhase'
     qasm_name = 'ry'
@@ -1021,6 +1045,9 @@ qasm_gate_table: Dict[str, Type[Gate]] = {
     "t": T,
     "sdg": S,
     "tdg": T,
+    "sx": SX,
+    "sxdg": SX,
+    "csx": CSX,
     "h": HAD,
     "rx": XPhase,
     "ry": YPhase,
