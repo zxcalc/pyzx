@@ -248,21 +248,14 @@ class TestCircuit(unittest.TestCase):
                     self.assertTrue(compare_tensors(pyzx_matrix, qiskit_matrix, False),
                         f"Gate: {gate}\nqasm:\n{qasm}\npyzx_matrix:\n{pyzx_matrix}\nqiskit_matrix:\n{qiskit_matrix}")
 
-        # TODO(issue #116): Support all (or at least the most common) OpenQASM 3 gates.
-        simple_one_qubit_gates = ['x', 'y', 'z', 'h', 's', 'sdg', 't', 'tdg', 'sx']
-        one_param_one_qubit_gates = ['u1', 'p', 'rx', 'ry', 'rz']
-        two_param_one_qubit_gates = ['u2']
-        three_param_one_qubit_gates = ['u3']
-        simple_two_qubit_gates = ['cx', 'CX', 'cy', 'cz', 'ch', 'swap']
-        one_param_two_qubit_gates = ['crz', 'cp']
-
         # Test standard gates common to both OpenQASM 2 and 3.
-        compare_gate_matrix_with_qiskit(simple_one_qubit_gates, 1, 0)
-        compare_gate_matrix_with_qiskit(one_param_one_qubit_gates, 1, 1)
-        compare_gate_matrix_with_qiskit(two_param_one_qubit_gates, 1, 2)
-        compare_gate_matrix_with_qiskit(three_param_one_qubit_gates, 1, 3)
-        compare_gate_matrix_with_qiskit(simple_two_qubit_gates, 2, 0)
-        compare_gate_matrix_with_qiskit(one_param_two_qubit_gates, 2, 1)
+        compare_gate_matrix_with_qiskit(['x', 'y', 'z', 'h', 's', 'sdg', 't', 'tdg', 'sx'], 1, 0)
+        compare_gate_matrix_with_qiskit(['u1', 'p', 'rx', 'ry', 'rz'], 1, 1)
+        compare_gate_matrix_with_qiskit(['u2'], 1, 2)
+        compare_gate_matrix_with_qiskit(['u3'], 1, 3)
+        compare_gate_matrix_with_qiskit(['cx', 'CX', 'cy', 'cz', 'ch', 'swap'], 2, 0)
+        compare_gate_matrix_with_qiskit(['crz', 'cp'], 2, 1)
+        compare_gate_matrix_with_qiskit(['ccx', 'cswap'], 3, 0)  # 'ccz' not tested because not a standard qasm gate
 
         # Test standard gates added to OpenQASM 3.
         compare_gate_matrix_with_qiskit(['cphase'], 2, 1, [3])

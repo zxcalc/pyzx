@@ -961,6 +961,27 @@ class Tofolli(CCZ):
         CCZ.to_graph(self, g, q_mapper, c_mapper)
         HAD(t).to_graph(g, q_mapper, c_mapper)
 
+class CSWAP(CCZ):
+    name = 'CSWAP'
+    qasm_name = 'cswap'
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, CSWAP): return False
+        if self.index != other.index: return False
+        if self.ctrl1 != other.ctrl1: return False
+        if set([self.ctrl2,self.target]) == set([other.ctrl2,other.target]):
+            return True
+        return False
+
+    def to_basic_gates(self):
+        c, t1, t2 = self.ctrl1, self.ctrl2, self.target
+        return [CNOT(control=t2,target=t1),
+                Tofolli(c,t1,t2),
+                CNOT(control=t2,target=t1)]
+
+    def to_graph(self, g, q_mapper, c_mapper):
+        for gate in self.to_basic_gates():
+            gate.to_graph(g, q_mapper, c_mapper)
 
 class InitAncilla(Gate):
     name = 'InitAncilla'
@@ -1101,5 +1122,6 @@ qasm_gate_table: Dict[str, Type[Gate]] = {
     "ccx": Tofolli,
     "ccz": CCZ,
     "swap": SWAP,
+    "cswap": CSWAP,
     "measure": Measurement,
 }
