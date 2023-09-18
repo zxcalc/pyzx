@@ -1027,6 +1027,7 @@ qasm_gate_table: Dict[str, Type[Gate]] = {
     "rz": ZPhase,
     "cp": CPhase,
     "cphase": CPhase,
+    "cu1": CPhase,
     "p": ZPhase,
     "u1": ZPhase,
     "cx": CNOT,

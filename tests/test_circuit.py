@@ -209,9 +209,9 @@ class TestCircuit(unittest.TestCase):
         to user confusion. This unit test documents those differences.
         """
 
-        def compare_gate_matrix_with_qiskit(gates, num_qubits: int, num_angles: int, preserve_scalar):
+        def compare_gate_matrix_with_qiskit(gates, num_qubits: int, num_angles: int, qasm_versions = [2, 3]):
             for gate in gates:
-                for qasm_version in [2, 3]:
+                for qasm_version in qasm_versions:
                     header = "OPENQASM 2.0;\ninclude \"qelib1.inc\";\n" if qasm_version == 2 \
                         else "OPENQASM 3;\ninclude \"stdgates.inc\";\n"
                     params = "" if num_angles == 0 else "({})".format(",".join(["pi/2"] * num_angles))
@@ -224,23 +224,30 @@ class TestCircuit(unittest.TestCase):
                     qiskit_qasm = setup + ", ".join([f"q[{i}]" for i in reversed(range(num_qubits))]) + ";\n"
                     qc = QuantumCircuit.from_qasm_str(qiskit_qasm) if qasm_version == 2 else loads(qiskit_qasm)
                     qiskit_matrix = quantum_info.Operator(qc).data
-                    self.assertTrue(compare_tensors(pyzx_matrix, qiskit_matrix, preserve_scalar),
+                    self.assertTrue(compare_tensors(pyzx_matrix, qiskit_matrix, False),
                         f"Gate: {gate}\nqasm:\n{qasm}\npyzx_matrix:\n{pyzx_matrix}\nqiskit_matrix:\n{qiskit_matrix}")
 
         # TODO(issue #116): Support all (or at least the most common) OpenQASM 3 gates.
-        simple_one_qubit_gates = ['x', 'y', 'z', 'h', 's', 'sdg', 't', 'tdg']  # 'y' off by scalar
-        one_param_one_qubit_gates = ['u1', 'p', 'rx', 'ry', 'rz']  # 'rx' and 'ry' off by scalar
-        two_param_one_qubit_gates = ['u2']  # off by scalar
-        three_param_one_qubit_gates = ['u3']  # off by scalar
-        simple_two_qubit_gates = ['cx', 'CX', 'cz', 'ch', 'swap']  # 'cy' not supported, 'ch' off by scalar
-        one_param_two_qubit_gates = ['crz', 'cp']  # 'cu1' not supported (issue #153)
-        # TODO(issue #102): Fix phases so that all of these tests pass with `preserve_scalar=True`.
-        compare_gate_matrix_with_qiskit(simple_one_qubit_gates, 1, 0, False)
-        compare_gate_matrix_with_qiskit(one_param_one_qubit_gates, 1, 1, False)
-        compare_gate_matrix_with_qiskit(two_param_one_qubit_gates, 1, 2, False)
-        compare_gate_matrix_with_qiskit(three_param_one_qubit_gates, 1, 3, False)
-        compare_gate_matrix_with_qiskit(simple_two_qubit_gates, 2, 0, False)
-        compare_gate_matrix_with_qiskit(one_param_two_qubit_gates, 2, 1, True)
+        simple_one_qubit_gates = ['x', 'y', 'z', 'h', 's', 'sdg', 't', 'tdg']
+        one_param_one_qubit_gates = ['u1', 'p', 'rx', 'ry', 'rz']
+        two_param_one_qubit_gates = ['u2']
+        three_param_one_qubit_gates = ['u3']
+        simple_two_qubit_gates = ['cx', 'CX', 'cz', 'ch', 'swap']  # 'cy' not supported
+        one_param_two_qubit_gates = ['crz', 'cp']
+
+        # Test standard gates common to both OpenQASM 2 and 3.
+        compare_gate_matrix_with_qiskit(simple_one_qubit_gates, 1, 0)
+        compare_gate_matrix_with_qiskit(one_param_one_qubit_gates, 1, 1)
+        compare_gate_matrix_with_qiskit(two_param_one_qubit_gates, 1, 2)
+        compare_gate_matrix_with_qiskit(three_param_one_qubit_gates, 1, 3)
+        compare_gate_matrix_with_qiskit(simple_two_qubit_gates, 2, 0)
+        compare_gate_matrix_with_qiskit(one_param_two_qubit_gates, 2, 1)
+
+        # Test standard gates added to OpenQASM 3.
+        compare_gate_matrix_with_qiskit(['cphase'], 2, 1, [3])
+
+        # Test standard gates removed from OpenQASM 3.
+        compare_gate_matrix_with_qiskit(['cu1'], 2, 1, [2])
 
 if __name__ == '__main__':
     unittest.main()
