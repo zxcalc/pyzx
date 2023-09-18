@@ -254,7 +254,7 @@ class TestCircuit(unittest.TestCase):
         compare_gate_matrix_with_qiskit(['u2'], 1, 2)
         compare_gate_matrix_with_qiskit(['u3'], 1, 3)
         compare_gate_matrix_with_qiskit(['cx', 'CX', 'cy', 'cz', 'ch', 'swap'], 2, 0)
-        compare_gate_matrix_with_qiskit(['crz', 'cp'], 2, 1)
+        compare_gate_matrix_with_qiskit(['crx', 'cry', 'crz', 'cp'], 2, 1)
         compare_gate_matrix_with_qiskit(['ccx', 'cswap'], 3, 0)  # 'ccz' not tested because not a standard qasm gate
 
         # Test standard gates added to OpenQASM 3.
@@ -263,7 +263,7 @@ class TestCircuit(unittest.TestCase):
         # Test standard gates removed from OpenQASM 3.
         compare_gate_matrix_with_qiskit(['sxdg'], 1, 0, [2])
         compare_gate_matrix_with_qiskit(['csx'], 2, 0, [2])
-        compare_gate_matrix_with_qiskit(['cu1', 'rzz'], 2, 1, [2])
+        compare_gate_matrix_with_qiskit(['cu1', 'rxx', 'rzz'], 2, 1, [2])
 
 if __name__ == '__main__':
     unittest.main()
