@@ -568,7 +568,7 @@ class CZ(Gate):
 
 class XCX(CZ):
     '''This class represents the X-controlled-X gate.'''
-    name = 'CX'
+    name = 'XCX'
     qasm_name = 'undefined'
     qc_name = 'undefined'
     quipper_name = 'X'
@@ -1006,6 +1006,11 @@ qasm_gate_table: Dict[str, Type[Gate]] = {
     "sdg": S,
     "tdg": T,
     "h": HAD,
+    "rx": XPhase,
+    "ry": YPhase,
+    "rz": ZPhase,
+    "p": ZPhase,
+    "u1": ZPhase,
     "cx": CNOT,
     "CX": CNOT,
     "cz": CZ,

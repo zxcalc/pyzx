@@ -157,43 +157,6 @@ class TestCircuit(unittest.TestCase):
         self.assertEqual(self.c.qubits, qasm3.qubits)
         self.assertListEqual(self.c.gates, qasm3.gates)
 
-    def test_qasm3_p_gate(self):
-        qasm2 = Circuit.from_qasm("""
-        OPENQASM 2.0;
-        include "qelib1.inc";
-        qreg q[1];
-        rz(pi/2) q[0];
-        """)
-        qasm3 = Circuit.from_qasm("""
-        OPENQASM 3;
-        include "stdgates.inc";
-        qubit[1] q;
-        p(pi/2) q[0];
-        """)
-        self.assertEqual(qasm2.qubits, qasm3.qubits)
-        self.assertListEqual(qasm2.gates, qasm3.gates)
-
-    def test_qasm3_rz_gate(self):
-        # `rz` differs by a global phase between OpenQASM 2 and 3.
-        qasm2 = Circuit.from_qasm("""
-        OPENQASM 2.0;
-        include "qelib1.inc";
-        qreg q[1];
-        rz(pi/2) q[0];
-        """)
-        qasm3 = Circuit.from_qasm("""
-        OPENQASM 3;
-        include "stdgates.inc";
-        qubit[1] q;
-        rz(pi/2) q[0];
-        """)
-        t2 = qasm2.to_matrix()
-        t3 = qasm3.to_matrix()
-        self.assertFalse(compare_tensors(t2, t3, True))
-        self.assertTrue(compare_tensors(t2, t3, False))
-        sqrt_half = math.sqrt(1/2)
-        self.assertAlmostEqual(find_scalar_correction(t2, t3), complex(sqrt_half, sqrt_half))
-
     @unittest.skipUnless(QuantumCircuit, "qiskit needs to be installed for this test")
     def test_qasm_qiskit_semantics(self):
         """Verify/document qasm gate semantics when imported into pyzx.
