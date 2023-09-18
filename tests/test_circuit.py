@@ -33,14 +33,14 @@ except ImportError:
     np = None
 
 try:
-    from qiskit import quantum_info
+    from qiskit import quantum_info, transpile
     from qiskit.circuit import QuantumCircuit
     from qiskit.qasm3 import loads
 except ImportError:
     QuantumCircuit = None
 
 from pyzx.generate import cliffordT, cliffords
-from pyzx.simplify import clifford_simp
+from pyzx.simplify import clifford_simp, full_reduce
 from pyzx.extract import extract_circuit
 from pyzx.circuit import Circuit
 
@@ -264,6 +264,43 @@ class TestCircuit(unittest.TestCase):
         compare_gate_matrix_with_qiskit(['sxdg'], 1, 0, [2])
         compare_gate_matrix_with_qiskit(['csx'], 2, 0, [2])
         compare_gate_matrix_with_qiskit(['cu1', 'rxx', 'rzz'], 2, 1, [2])
+
+    @unittest.skipUnless(QuantumCircuit, "qiskit needs to be installed for this test")
+    def test_qiskit_transpile_pyzx_optimization_round_trip(self):
+        """Regression test for issue #102.
+
+        Transpile a circuit in qiskit, simplify it using pyzx, and verify that
+        it produces the same unitary in qiskit.
+        """
+        qc=QuantumCircuit(4)
+        qc.ccx(2,1,0)
+        qc.ccz(0,1,2)
+        qc.h(1)
+        qc.ccx(1,2,3)
+        qc.t(1)
+        qc.ccz(0,1,2)
+        qc.h(1)
+        qc.t(0)
+        qc.ccz(2,1,0)
+        qc.s(1)
+        qc.ccx(2,1,0)
+        qc.crz(0.2*np.pi,0,1)
+        qc.rz(0.8*np.pi,1)
+        qc.cry(0.4*np.pi,2,1)
+        qc.crx(0.02*np.pi,2,0)
+
+        qc1 = transpile(qc)
+        t1 = quantum_info.Operator(qc1).data
+
+        c=Circuit.from_qasm(qc1.qasm())
+        g = c.to_graph()
+        full_reduce(g)
+        qasm = extract_circuit(g).to_basic_gates().to_qasm()
+
+        qc2 = QuantumCircuit().from_qasm_str(qasm)
+        t2 = quantum_info.Operator(qc2).data
+
+        self.assertTrue(compare_tensors(t1, t2))
 
 if __name__ == '__main__':
     unittest.main()
