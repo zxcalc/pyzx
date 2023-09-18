@@ -983,6 +983,45 @@ class CSWAP(CCZ):
         for gate in self.to_basic_gates():
             gate.to_graph(g, q_mapper, c_mapper)
 
+class U2(Gate):  # See https://arxiv.org/pdf/1707.03429.pdf
+    name = 'U2'
+    qasm_name = 'u2'
+    print_phase = True
+    def __init__(self, target: int, theta: FractionLike, phi: FractionLike) -> None:
+        self.target = target
+        self.theta = theta
+        self.phi = phi
+
+    def to_basic_gates(self):
+        return [ZPhase(self.target,phase=(self.phi-Fraction(1,2))%2),
+                XPhase(self.target,phase=Fraction(1,2)),
+                ZPhase(self.target,phase=(self.theta+Fraction(1,2))%2)]
+
+    def to_graph(self, g, q_mapper, c_mapper):
+        for gate in self.to_basic_gates():
+            gate.to_graph(g, q_mapper, c_mapper)
+
+class U3(Gate):  # See equation (5) of https://arxiv.org/pdf/1707.03429.pdf
+    name = 'U3'
+    qasm_name = 'u3'
+    print_phase = True
+    def __init__(self, target: int, theta: FractionLike, phi: FractionLike, rho: FractionLike) -> None:
+        self.target = target
+        self.theta = theta
+        self.phi = phi
+        self.rho = rho
+
+    def to_basic_gates(self):
+        return [ZPhase(self.target,phase=self.rho),
+                XPhase(self.target,phase=Fraction(1,2)),
+                ZPhase(self.target,phase=(self.theta+1)%2),
+                XPhase(self.target,phase=Fraction(1,2)),
+                ZPhase(self.target,phase=(self.phi+3)%2)]
+
+    def to_graph(self, g, q_mapper, c_mapper):
+        for gate in self.to_basic_gates():
+            gate.to_graph(g, q_mapper, c_mapper)
+
 class InitAncilla(Gate):
     name = 'InitAncilla'
     def __init__(self, label):
@@ -1112,6 +1151,8 @@ qasm_gate_table: Dict[str, Type[Gate]] = {
     "cu1": CPhase,
     "p": ZPhase,
     "u1": ZPhase,
+    "u2": U2,
+    "u3": U3,
     "cx": CNOT,
     "CX": CNOT,  # needed for backwards compatibility with older versions of qiskit
     "cy": CY,

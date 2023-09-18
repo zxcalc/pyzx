@@ -21,7 +21,7 @@ from fractions import Fraction
 from typing import List, Dict, Tuple, Optional
 
 from . import Circuit
-from .gates import Gate, qasm_gate_table, ZPhase, XPhase, CRZ, YPhase, NOT
+from .gates import Gate, qasm_gate_table, XPhase, YPhase, ZPhase, NOT, U2, U3
 from ..utils import settings
 
 
@@ -194,20 +194,13 @@ class QASMParser(object):
                 g = qasm_gate_table[name](argset[0],phase=phases[0])  # type: ignore
                 gates.append(g)
                 continue
-            if name in ('u2', 'u3'):  # see https://arxiv.org/pdf/1707.03429.pdf
+            if name in ('u2', 'u3'):
                 if name == 'u2':
                     if len(phases) != 2: raise TypeError("Invalid specification {}".format(c))
-                    gates.append(ZPhase(argset[0],phase=(phases[1]-Fraction(1,2))%2))
-                    gates.append(XPhase(argset[0],phase=Fraction(1,2)))
-                    gates.append(ZPhase(argset[0],phase=(phases[0]+Fraction(1,2))%2))
+                    gates.append(U2(argset[0],phases[0],phases[1]))
                 else:
-                    # See equation (5) of https://arxiv.org/pdf/1707.03429.pdf
                     if len(phases) != 3: raise TypeError("Invalid specification {}".format(c))
-                    gates.append(ZPhase(argset[0],phase=phases[2]))
-                    gates.append(XPhase(argset[0],phase=Fraction(1,2)))
-                    gates.append(ZPhase(argset[0],phase=(phases[0]+1)%2))
-                    gates.append(XPhase(argset[0],phase=Fraction(1,2)))
-                    gates.append(ZPhase(argset[0],phase=(phases[1]+3)%2))
+                    gates.append(U3(argset[0],phases[0],phases[1],phases[2]))
                 continue
             if name in ('cx', 'CX', 'cy', 'cz', 'ch', 'csx', 'swap'):
                 if len(phases) != 0: raise TypeError("Invalid specification {}".format(c))
