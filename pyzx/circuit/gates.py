@@ -498,6 +498,22 @@ class Y(YPhase):
     def __init__(self, target: int) -> None:
         super().__init__(target, phase = Fraction(1,1))
 
+class CY(Gate):
+    name = 'CY'
+    qasm_name = 'cy'
+    def __init__(self, control: int, target: int) -> None:
+        self.target = target
+        self.control = control
+
+    def to_basic_gates(self):
+        return [S(self.target,adjoint=True),
+                CNOT(self.control,self.target),
+                S(self.target)]
+
+    def to_graph(self, g, q_mapper, c_mapper):
+        for gate in self.to_basic_gates():
+            gate.to_graph(g, q_mapper, c_mapper)
+
 class NOT(XPhase):
     name = 'NOT'
     qasm_name = 'x'
@@ -1058,7 +1074,8 @@ qasm_gate_table: Dict[str, Type[Gate]] = {
     "p": ZPhase,
     "u1": ZPhase,
     "cx": CNOT,
-    "CX": CNOT,
+    "CX": CNOT,  # needed for backwards compatibility with older versions of qiskit
+    "cy": CY,
     "cz": CZ,
     "ch": CHAD,
     "crz": CRZ,

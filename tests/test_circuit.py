@@ -232,7 +232,7 @@ class TestCircuit(unittest.TestCase):
         one_param_one_qubit_gates = ['u1', 'p', 'rx', 'ry', 'rz']
         two_param_one_qubit_gates = ['u2']
         three_param_one_qubit_gates = ['u3']
-        simple_two_qubit_gates = ['cx', 'CX', 'cz', 'ch', 'swap']  # 'cy' not supported
+        simple_two_qubit_gates = ['cx', 'CX', 'cy', 'cz', 'ch', 'swap']
         one_param_two_qubit_gates = ['crz', 'cp']
 
         # Test standard gates common to both OpenQASM 2 and 3.
