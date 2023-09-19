@@ -204,7 +204,7 @@ class QASMParser(object):
                 continue
             if name in ('cx', 'CX', 'cy', 'cz', 'ch', 'csx', 'swap'):
                 if len(phases) != 0: raise TypeError("Invalid specification {}".format(c))
-                g = qasm_gate_table[name](control=argset[0],target=argset[1]) # type: ignore
+                g = qasm_gate_table[name](control=argset[0],target=argset[1])  # type: ignore
                 gates.append(g)
                 continue
             if name in ('crx', 'cry', 'crz', 'cp', 'cphase', 'cu1', 'rxx', 'rzz'):
@@ -214,7 +214,17 @@ class QASMParser(object):
                 continue
             if name in ('ccx', 'ccz', 'cswap'):
                 if len(phases) != 0: raise TypeError("Invalid specification {}".format(c))
-                g = qasm_gate_table[name](ctrl1=argset[0],ctrl2=argset[1],target=argset[2]) # type: ignore
+                g = qasm_gate_table[name](ctrl1=argset[0],ctrl2=argset[1],target=argset[2])  # type: ignore
+                gates.append(g)
+                continue
+            if name == 'cu3':
+                if len(phases) != 3: raise TypeError("Invalid specification {}".format(c))
+                g = qasm_gate_table[name](control=argset[0],target=argset[1],theta=phases[0],phi=phases[1],rho=phases[2])  # type: ignore
+                gates.append(g)
+                continue
+            if name == 'cu':
+                if len(phases) != 4: raise TypeError("Invalid specification {}".format(c))
+                g = qasm_gate_table[name](control=argset[0],target=argset[1],theta=phases[0],phi=phases[1],rho=phases[2],gamma=phases[3])  # type: ignore
                 gates.append(g)
                 continue
             raise TypeError("Invalid specification: {}".format(c))

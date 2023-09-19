@@ -1083,6 +1083,53 @@ class U3(Gate):  # See equation (5) of https://arxiv.org/pdf/1707.03429.pdf
         for gate in self.to_basic_gates():
             gate.to_graph(g, q_mapper, c_mapper)
 
+class CU3(Gate):
+    name = 'CU3'
+    qasm_name = 'cu3'
+    print_phase = True
+
+    def __init__(self, control: int, target: int, theta: FractionLike, phi: FractionLike, rho: FractionLike) -> None:
+        self.control = control
+        self.target = target
+        self.theta = theta
+        self.phi = phi
+        self.rho = rho
+
+    def to_basic_gates(self):
+        return [ZPhase(self.control,phase=(self.rho+self.phi)/2),
+                ZPhase(self.target, phase=(self.rho-self.phi)/2),
+                CNOT(self.control,self.target)] + \
+               U3(self.target,-self.theta/2,0,-(self.phi+self.rho)/2).to_basic_gates() + \
+               [CNOT(self.control, self.target)] + \
+               U3(self.target,self.theta/2,self.phi,0).to_basic_gates()
+
+    def to_graph(self, g, q_mapper, c_mapper):
+        for gate in self.to_basic_gates():
+            gate.to_graph(g, q_mapper, c_mapper)
+
+
+class CU(Gate):
+    name = 'CU'
+    qasm_name = 'cu'
+    print_phase = True
+
+    def __init__(self, control: int, target: int, theta: FractionLike, phi: FractionLike, rho: FractionLike,
+            gamma: FractionLike) -> None:
+        self.control = control
+        self.target = target
+        self.theta = theta
+        self.phi = phi
+        self.rho = rho
+        self.gamma = gamma
+
+    def to_basic_gates(self):
+        return [ZPhase(self.control,phase=self.gamma)] + \
+               CU3(self.control,self.target,self.theta,self.phi,self.rho).to_basic_gates()
+
+    def to_graph(self, g, q_mapper, c_mapper):
+        for gate in self.to_basic_gates():
+            gate.to_graph(g, q_mapper, c_mapper)
+
 class InitAncilla(Gate):
     name = 'InitAncilla'
     def __init__(self, label):
@@ -1195,6 +1242,8 @@ gate_types: Dict[str,Type[Gate]] = {
     "CCZ": CCZ,
     "U2": U2,
     "U3": U3,
+    "CU3": CU3,
+    "CU": CU,
     "CRX": CRX,
     "CRY": CRY,
     "RZZ": RZZ,
@@ -1228,6 +1277,8 @@ qasm_gate_table: Dict[str, Type[Gate]] = {
     "u1": ZPhase,
     "u2": U2,
     "u3": U3,
+    "cu3": CU3,
+    "cu": CU,
     "cx": CNOT,
     "CX": CNOT,  # needed for backwards compatibility with older versions of qiskit
     "cy": CY,

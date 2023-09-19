@@ -261,6 +261,7 @@ class TestCircuit(unittest.TestCase):
         compare_gate_matrix_with_qiskit(['cx', 'CX', 'cy', 'cz', 'ch', 'swap'], 2, 0)
         compare_gate_matrix_with_qiskit(['crx', 'cry', 'crz', 'cp'], 2, 1)
         compare_gate_matrix_with_qiskit(['ccx', 'cswap'], 3, 0)  # 'ccz' not tested because not a standard qasm gate
+        compare_gate_matrix_with_qiskit(['cu'], 2, 4)
 
         # Test standard gates added to OpenQASM 3.
         compare_gate_matrix_with_qiskit(['cphase'], 2, 1, [3])
@@ -269,6 +270,7 @@ class TestCircuit(unittest.TestCase):
         compare_gate_matrix_with_qiskit(['sxdg'], 1, 0, [2])
         compare_gate_matrix_with_qiskit(['csx'], 2, 0, [2])
         compare_gate_matrix_with_qiskit(['cu1', 'rxx', 'rzz'], 2, 1, [2])
+        compare_gate_matrix_with_qiskit(['cu3'], 2, 3, [2])
 
     @unittest.skipUnless(QuantumCircuit, "qiskit needs to be installed for this test")
     def test_qiskit_transpile_pyzx_optimization_round_trip(self):
