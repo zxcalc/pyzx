@@ -241,6 +241,11 @@ class TestCircuit(unittest.TestCase):
                     c = Circuit.from_qasm(qasm)
                     pyzx_matrix = c.to_matrix()
 
+                    for g in c.gates:
+                        for b in g.to_basic_gates():
+                            self.assertListEqual(b.to_basic_gates(), [b],
+                                                 f"\n{gate}.to_basic_gates() contains non-basic gate")
+
                     # qiskit uses little-endian ordering
                     qiskit_qasm = setup + ", ".join([f"q[{i}]" for i in reversed(range(num_qubits))]) + ";\n"
                     qc = QuantumCircuit.from_qasm_str(qiskit_qasm) if qasm_version == 2 else loads(qiskit_qasm)

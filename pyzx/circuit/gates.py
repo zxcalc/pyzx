@@ -452,9 +452,9 @@ class CSX(Gate):
         self.control = control
 
     def to_basic_gates(self):
-        return [HAD(self.target),
-                CPhase(self.control,self.target,Fraction(1,2)),
-                HAD(self.target)]
+        return [HAD(self.target)] + \
+               CPhase(self.control,self.target,Fraction(1,2)).to_basic_gates() + \
+               [HAD(self.target)]
 
     def to_graph(self, g, q_mapper, c_mapper):
         for gate in self.to_basic_gates():
@@ -649,10 +649,10 @@ class CRX(Gate):
 
     def to_basic_gates(self):
         return [ZPhase(self.target,Fraction(1,2)),
-                CNOT(self.control,self.target),
-                U3(self.target,-self.phase/2,0,0),
-                CNOT(self.control,self.target),
-                U3(self.target,self.phase/2,Fraction(-1,2),0)]
+                CNOT(self.control,self.target)] + \
+               U3(self.target,-self.phase/2,0,0).to_basic_gates() + \
+               [CNOT(self.control,self.target)] + \
+               U3(self.target,self.phase/2,Fraction(-1,2),0).to_basic_gates()
 
     def to_graph(self, g, q_mapper, c_mapper):
         for gate in self.to_basic_gates():
@@ -668,10 +668,10 @@ class CRY(Gate):
         self.phase = phase
 
     def to_basic_gates(self):
-        return [YPhase(self.target,self.phase/2),
-                CNOT(self.control,self.target),
-                YPhase(self.target,-self.phase/2),
-                CNOT(self.control,self.target)]
+        return YPhase(self.target,self.phase/2).to_basic_gates() + \
+               [CNOT(self.control,self.target)] + \
+               YPhase(self.target,-self.phase/2).to_basic_gates() + \
+               [CNOT(self.control,self.target)]
 
     def to_graph(self, g, q_mapper, c_mapper):
         for gate in self.to_basic_gates():
@@ -703,6 +703,28 @@ class CRZ(Gate):
         for gate in self.to_basic_gates():
             gate.to_graph(g, q_mapper, c_mapper)
 
+class RXX(Gate):
+    name = 'RXX'
+    qasm_name = 'rxx'
+    print_phase = True
+    def __init__(self, control: int, target: int, phase: FractionLike) -> None:
+        self.target = target
+        self.control = control
+        self.phase = phase
+
+    def to_basic_gates(self):
+        return U3(self.control,Fraction(1,2),self.phase,0).to_basic_gates() + \
+               [HAD(self.target),
+                CNOT(self.control,self.target),
+                ZPhase(self.target,-self.phase),
+                CNOT(self.control,self.target),
+                HAD(self.target)] + \
+               U2(self.control,Fraction(-1,1),(Fraction(1,1)-self.phase)%2).to_basic_gates()
+
+    def to_graph(self, g, q_mapper, c_mapper):
+        for gate in self.to_basic_gates():
+            gate.to_graph(g, q_mapper, c_mapper)
+
 class RZZ(Gate):
     name = 'RZZ'
     qasm_name = 'rzz'
@@ -716,28 +738,6 @@ class RZZ(Gate):
         return [CNOT(control=self.control,target=self.target),
                 ZPhase(self.target,phase=self.phase),
                 CNOT(control=self.control,target=self.target)]
-
-    def to_graph(self, g, q_mapper, c_mapper):
-        for gate in self.to_basic_gates():
-            gate.to_graph(g, q_mapper, c_mapper)
-
-class RXX(Gate):
-    name = 'RXX'
-    qasm_name = 'rxx'
-    print_phase = True
-    def __init__(self, control: int, target: int, phase: FractionLike) -> None:
-        self.target = target
-        self.control = control
-        self.phase = phase
-
-    def to_basic_gates(self):
-        return [U3(self.control,Fraction(1,2),self.phase,0),
-                HAD(self.target),
-                CNOT(self.control,self.target),
-                ZPhase(self.target,-self.phase),
-                CNOT(self.control,self.target),
-                HAD(self.target),
-                U2(self.control,Fraction(-1,1),(Fraction(1,1)-self.phase)%2)]
 
     def to_graph(self, g, q_mapper, c_mapper):
         for gate in self.to_basic_gates():
@@ -1036,9 +1036,9 @@ class CSWAP(CCZ):
 
     def to_basic_gates(self):
         c, t1, t2 = self.ctrl1, self.ctrl2, self.target
-        return [CNOT(control=t2,target=t1),
-                Tofolli(c,t1,t2),
-                CNOT(control=t2,target=t1)]
+        return [CNOT(control=t2,target=t1)] + \
+               Tofolli(c,t1,t2).to_basic_gates() + \
+               [CNOT(control=t2,target=t1)]
 
     def to_graph(self, g, q_mapper, c_mapper):
         for gate in self.to_basic_gates():
@@ -1170,8 +1170,14 @@ class Measurement(Gate):
 gate_types: Dict[str,Type[Gate]] = {
     "XPhase": XPhase,
     "NOT": NOT,
-    "ZPhase": ZPhase,
+    "SX": SX,
+    "CSX": CSX,
     "YPhase": YPhase,
+    "Y": Y,
+    "CY": CY,
+    "ZPhase": ZPhase,
+    "CPhase": CPhase,
+    "CP": CPhase,
     "Z": Z,
     "S": S,
     "T": T,
@@ -1180,12 +1186,20 @@ gate_types: Dict[str,Type[Gate]] = {
     "ParityPhase": ParityPhase,
     "XCX": XCX,
     "SWAP": SWAP,
+    "CSWAP": CSWAP,
     "CRZ": CRZ,
     "HAD": HAD,
     "H": HAD,
     "CHAD": CHAD,
     "TOF": Tofolli,
     "CCZ": CCZ,
+    "U2": U2,
+    "U3": U3,
+    "CRX": CRX,
+    "CRY": CRY,
+    "RZZ": RZZ,
+    "RXX": RXX,
+    "FSim": FSim,
     "InitAncilla": InitAncilla,
     "PostSelect": PostSelect,
     "DiscardBit": DiscardBit,
