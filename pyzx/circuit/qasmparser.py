@@ -178,56 +178,46 @@ class QASMParser(object):
                     raise TypeError("Argument amount does not match gate spec: {}".format(c))
                 for g in circ.gates:
                     gates.append(g.reposition(argset))
-                continue
-            if name in ('x', 'y', 'z', 's', 't', 'h', 'sx'):
+            elif name in ('x', 'y', 'z', 's', 't', 'h', 'sx'):
                 if len(phases) != 0: raise TypeError("Invalid specification {}".format(c))
                 g = qasm_gate_table[name](argset[0])  # type: ignore # mypy can't handle Gate subclasses with different number of parameters
                 gates.append(g)
-                continue
-            if name in ('sdg', 'tdg', 'sxdg'):
+            elif name in ('sdg', 'tdg', 'sxdg'):
                 if len(phases) != 0: raise TypeError("Invalid specification {}".format(c))
                 g = qasm_gate_table[name](argset[0],adjoint=True)  # type: ignore
                 gates.append(g)
-                continue
-            if name in ('rx', 'ry', 'rz', 'p', 'u1'):
+            elif name in ('rx', 'ry', 'rz', 'p', 'u1'):
                 if len(phases) != 1: raise TypeError("Invalid specification {}".format(c))
                 g = qasm_gate_table[name](argset[0],phase=phases[0])  # type: ignore
                 gates.append(g)
-                continue
-            if name in ('u2', 'u3'):
-                if name == 'u2':
-                    if len(phases) != 2: raise TypeError("Invalid specification {}".format(c))
-                    gates.append(U2(argset[0],phases[0],phases[1]))
-                else:
-                    if len(phases) != 3: raise TypeError("Invalid specification {}".format(c))
-                    gates.append(U3(argset[0],phases[0],phases[1],phases[2]))
-                continue
-            if name in ('cx', 'CX', 'cy', 'cz', 'ch', 'csx', 'swap'):
+            elif name == 'u2':
+                if len(phases) != 2: raise TypeError("Invalid specification {}".format(c))
+                gates.append(U2(argset[0],phases[0],phases[1]))
+            elif name == 'u3':
+                if len(phases) != 3: raise TypeError("Invalid specification {}".format(c))
+                gates.append(U3(argset[0],phases[0],phases[1],phases[2]))
+            elif name in ('cx', 'CX', 'cy', 'cz', 'ch', 'csx', 'swap'):
                 if len(phases) != 0: raise TypeError("Invalid specification {}".format(c))
                 g = qasm_gate_table[name](control=argset[0],target=argset[1])  # type: ignore
                 gates.append(g)
-                continue
-            if name in ('crx', 'cry', 'crz', 'cp', 'cphase', 'cu1', 'rxx', 'rzz'):
+            elif name in ('crx', 'cry', 'crz', 'cp', 'cphase', 'cu1', 'rxx', 'rzz'):
                 if len(phases) != 1: raise TypeError("Invalid specification {}".format(c))
                 g = qasm_gate_table[name](argset[0],argset[1],phase=phases[0])  # type: ignore
                 gates.append(g)
-                continue
-            if name in ('ccx', 'ccz', 'cswap'):
+            elif name in ('ccx', 'ccz', 'cswap'):
                 if len(phases) != 0: raise TypeError("Invalid specification {}".format(c))
                 g = qasm_gate_table[name](ctrl1=argset[0],ctrl2=argset[1],target=argset[2])  # type: ignore
                 gates.append(g)
-                continue
-            if name == 'cu3':
+            elif name == 'cu3':
                 if len(phases) != 3: raise TypeError("Invalid specification {}".format(c))
                 g = qasm_gate_table[name](control=argset[0],target=argset[1],theta=phases[0],phi=phases[1],rho=phases[2])  # type: ignore
                 gates.append(g)
-                continue
-            if name == 'cu':
+            elif name == 'cu':
                 if len(phases) != 4: raise TypeError("Invalid specification {}".format(c))
                 g = qasm_gate_table[name](control=argset[0],target=argset[1],theta=phases[0],phi=phases[1],rho=phases[2],gamma=phases[3])  # type: ignore
                 gates.append(g)
-                continue
-            raise TypeError("Invalid specification: {}".format(c))
+            else:
+                raise TypeError("Invalid specification: {}".format(c))
         return gates
 
     def parse_phase_arg(self, val):
