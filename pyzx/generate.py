@@ -73,7 +73,7 @@ def spider(
     typ:Union[Literal["Z"], Literal["X"], Literal["H"], Literal["W"], Literal["ZBox"], VertexType.Type],
     inputs: int,
     outputs: int,
-    phase:Union[FractionLike, complex]=0
+    phase:Optional[Union[FractionLike, complex]]=None,
     ) -> BaseGraph:
     """Returns a Graph containing a single spider of the specified type 
     and with the specified number of inputs and outputs."""
@@ -85,6 +85,8 @@ def spider(
     else:
         if not isinstance(typ, int):
             raise TypeError("Wrong type for spider type: " + str(typ))
+    if phase is None:
+        phase = 1 if typ == VertexType.Z_BOX else 0
     g = Graph()
     if vertex_is_w(typ):
         if inputs != 1:
