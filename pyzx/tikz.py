@@ -27,7 +27,7 @@ import time
 from fractions import Fraction
 from typing import List, Dict, overload, Tuple, Union, Optional
 
-from .utils import settings, EdgeType, VertexType, FloatInt, FractionLike
+from .utils import get_z_box_label, set_z_box_label, settings, EdgeType, VertexType, FloatInt
 from .graph.base import BaseGraph, VT, ET
 from .graph.graph import Graph
 from .circuit import Circuit
@@ -61,8 +61,11 @@ def _to_tikz(g: BaseGraph[VT,ET], draw_scalar:bool = False,
     maxindex = idoffset
 
     for v in g.vertices():
-        p = g.phase(v)
         ty = g.type(v)
+        if ty == VertexType.Z_BOX:
+            p = get_z_box_label(g,v)
+        else:
+            p = g.phase(v)
         if ty == VertexType.BOUNDARY:
             style = settings.tikz_classes['boundary']
         elif ty == VertexType.H_BOX:
@@ -71,6 +74,8 @@ def _to_tikz(g: BaseGraph[VT,ET], draw_scalar:bool = False,
             style = settings.tikz_classes['W input']
         elif ty == VertexType.W_OUTPUT:
             style = settings.tikz_classes['W']
+        elif ty == VertexType.Z_BOX:
+            style = settings.tikz_classes['Z box']
         else:
             if p != 0:
                 if ty==VertexType.Z: style = settings.tikz_classes['Z phase']
@@ -78,13 +83,16 @@ def _to_tikz(g: BaseGraph[VT,ET], draw_scalar:bool = False,
             else:
                 if ty==VertexType.Z: style = settings.tikz_classes['Z']
                 else: style = settings.tikz_classes['X']
-        if (ty == VertexType.H_BOX and p == 1) or (ty != VertexType.H_BOX and p == 0):
+        if ((ty == VertexType.H_BOX or ty == VertexType.Z_BOX) and p == 1) or\
+            (ty != VertexType.H_BOX and p == 0):
             phase = ""
-        else:
+        elif type(p) == Fraction:
             ns = '' if p.numerator == 1 else str(p.numerator)
             dn = '' if p.denominator == 1 else str(p.denominator)
             if dn: phase = r"$\frac{%s\pi}{%s}$" % (ns, dn)
             else: phase = r"$%s\pi$" % ns
+        else:
+            phase = r"$%s$" % str(p)
         x = g.row(v) + xoffset
         y = - g.qubit(v) - yoffset
         s = "        \\node [style={}] ({:d}) at ({:.2f}, {:.2f}) {{{:s}}};".format(style,v+idoffset,x,y,phase)
@@ -181,6 +189,8 @@ synonyms_x = ['x dot', 'x spider', 'x', 'x phase dot',
 synonyms_hadamard = ['hadamard', 'h', 'small hadamard']
 synonyms_w_input = ['w input']
 synonyms_w_output = ['w output', 'w', 'w triangle']
+synonyms_z_box = ['z box', 'zbox', 'zbox phase', 'green box', 'green box phase',
+                  'green phase box', 'white box', 'white box phase', 'white phase box']
 
 synonyms_edge = ['empty', 'simple', 'none']
 synonyms_hedge = ['hadamard edge']
@@ -245,6 +255,7 @@ def tikz_to_graph(
         elif style.lower() in synonyms_hadamard: ty = VertexType.H_BOX
         elif style.lower() in synonyms_w_input: ty = VertexType.W_INPUT
         elif style.lower() in synonyms_w_output: ty = VertexType.W_OUTPUT
+        elif style.lower() in synonyms_z_box: ty = VertexType.Z_BOX
         else:
             if ignore_nonzx:
                 ty = VertexType.BOUNDARY
@@ -264,18 +275,22 @@ def tikz_to_graph(
             v = g.add_vertex(ty,-y,x)
         index_dict[vid] = v
 
+        if ty == VertexType.Z_BOX:
+            set_phase = lambda v, p: set_z_box_label(g, v, p)
+        else:
+            set_phase = g.set_phase
         if label == '0':
-            g.set_phase(v,0)
+            set_phase(v,0)
         elif label == r'\neg':
-            g.set_phase(v,1)
+            set_phase(v,1)
         elif label:
-            if label.find('pi') == -1:
+            if label.find('pi') == -1 and ty != VertexType.Z_BOX:
                 if not ignore_nonzx:
                     raise ValueError("Node definition %s has invalid phase label" % l)
             else:
                 label = label.replace(r'\pi','').strip()
                 if label == '' or label == '-' or label == '-1':
-                    g.set_phase(v,1)
+                    set_phase(v,1)
                 elif label.find(r'\frac') != -1:
                     label = label.replace(r'\frac','').strip()
                     if label.find('}{') == -1:
@@ -299,7 +314,7 @@ def tikz_to_graph(
                             m = int(denom)
                         except:
                             raise ValueError("Node definition %s has invalid phase label" % l)
-                    g.set_phase(v, Fraction(n,m))
+                    set_phase(v, Fraction(n,m))
                 elif label.find('/') != -1:
                     num, denom = label.split('/',1)
                     if num == '': n = 1
@@ -313,13 +328,16 @@ def tikz_to_graph(
                         m = int(denom)
                     except:
                         raise ValueError("Node definition %s has invalid phase label" % l)
-                    g.set_phase(v, Fraction(n,m))
+                    set_phase(v, Fraction(n,m))
                 else:
                     try:
-                        phase = int(label)
+                        if ty == VertexType.Z_BOX:
+                            phase = complex(label)
+                        else:
+                            phase = int(label)
                     except:
                         raise ValueError("Node definition %s has invalid phase label '%s'" % (l,label))
-                    g.set_phase(v, phase)
+                    set_phase(v, phase)
 
     # done parsing the vertices, now we parse the edges
     etab: Dict[ET, List[int]] = {} # type: ignore

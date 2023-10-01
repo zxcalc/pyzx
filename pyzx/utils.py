@@ -27,7 +27,7 @@ FractionLike = Union[Fraction,int]
 
 class VertexType:
     """Type of a vertex in the graph."""
-    Type = Literal[0, 1, 2, 3, 4, 5]
+    Type = Literal[0, 1, 2, 3, 4, 5, 6]
     BOUNDARY: Final = 0
     Z: Final = 1
     X: Final = 2
@@ -112,6 +112,7 @@ tikz_classes = {
     'X': 'X dot',
     'Z phase': 'Z phase dot',
     'X phase': 'X phase dot',
+    'Z box': 'Z box',
     'H': 'hadamard',
     'W': 'W triangle',
     'W input': 'W input',
