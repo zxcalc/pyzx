@@ -37,20 +37,23 @@ np.set_printoptions(suppress=True)
 
 # typing imports
 from typing import TYPE_CHECKING, List, Dict, Union
-from .utils import FractionLike, FloatInt, VertexType, EdgeType
+from .utils import FractionLike, FloatInt, VertexType, EdgeType, get_z_box_label
 if TYPE_CHECKING:
     from .graph.base import BaseGraph, VT, ET
     from .circuit import Circuit
 TensorConvertible = Union[np.ndarray, 'Circuit', 'BaseGraph']
 
-def Z_to_tensor(arity: int, phase: float) -> np.ndarray:
+def Z_box_to_tensor(arity: int, parameter: complex) -> np.ndarray:
     m = np.zeros([2]*arity, dtype = complex)
     if arity == 0:
-        m[()] = 1 + np.exp(1j*phase)
+        m[()] = 1 + parameter
         return m
     m[(0,)*arity] = 1
-    m[(1,)*arity] = np.exp(1j*phase)
+    m[(1,)*arity] = parameter
     return m
+
+def Z_to_tensor(arity: int, phase: float) -> np.ndarray:
+    return Z_box_to_tensor(arity, np.exp(1j*phase))
 
 def X_to_tensor(arity: int, phase: float) -> np.ndarray:
     m = np.ones(2**arity, dtype = complex)
@@ -147,6 +150,10 @@ def tensorfy(g: 'BaseGraph[VT,ET]', preserve_scalar:bool=True) -> np.ndarray:
                 elif types[v] == 4 or types[v] == 5:
                     if phase != 0: raise ValueError("Phase on W node")
                     t = W_to_tensor(d)
+                elif types[v] == 6:
+                    if phase != 0: raise ValueError("Phase on Z box")
+                    label = get_z_box_label(g, v)
+                    t = Z_box_to_tensor(d, label)
                 else:
                     raise ValueError("Vertex %s has non-ZXH type but is not an input or output" % str(v))
             nn = list(filter(lambda n: rows[n]<r or (rows[n]==r and n<v), neigh)) # TODO: allow ordering on vertex indices?
