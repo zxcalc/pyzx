@@ -284,7 +284,7 @@ def z_to_z_box(g: BaseGraph[VT,ET], matches: List[VT]) -> RewriteOutputType[ET,V
     """Converts a Z vertex to a Z-box."""
     for v in matches:
         g.set_type(v, VertexType.Z_BOX)
-        label = np.round(np.e**(1j * np.pi * g.phase(v)), 10)
+        label = np.round(np.e**(1j * np.pi * g.phase(v)), 8)
         set_z_box_label(g, v, label)
         g.set_phase(v, 0)
     return ({}, [], [], True)
