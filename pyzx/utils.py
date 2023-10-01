@@ -34,6 +34,7 @@ class VertexType:
     H_BOX: Final = 3
     W_INPUT: Final = 4
     W_OUTPUT: Final = 5
+    Z_BOX: Final = 6
 
 def vertex_is_zx(ty: VertexType.Type) -> bool:
     """Check if a vertex type corresponds to a green or red spider."""
@@ -214,9 +215,17 @@ def maxelements(seq, key=None, reverse=False):
 def is_pauli(phase):
     """
     Check whether phase is Pauli.
-    
+
     Compatible with zxlive symbols.
     """
     if phase == 0 or phase == 1:
         return True
     return getattr(phase, 'is_pauli', False)
+
+def get_z_box_label(g, v):
+    assert g.type(v) == VertexType.Z_BOX
+    return g.vdata(v, 'label', 1)
+
+def set_z_box_label(g, v, label):
+    assert g.type(v) == VertexType.Z_BOX
+    g.set_vdata(v, 'label', label)
