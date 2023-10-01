@@ -281,10 +281,12 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         vtab : Dict[VT,VT] = dict()
         for v in other.vertices():
             if not v in inputs:
-                vtab[v] = self.add_vertex(other.type(v),
+                w = self.add_vertex(other.type(v),
                         phase=other.phase(v),
                         qubit=other.qubit(v),
                         row=offset + other.row(v))
+                if v in other._vdata: self._vdata[w] = other._vdata[v]
+                vtab[v] = w
         for e in other.edges():
             s,t = other.edge_st(e)
             if not s in inputs and not t in inputs:
@@ -307,9 +309,11 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         height = max((self.qubits().values()), default=0) + 1
         rs = other.rows()
         phases = other.phases()
+        vdata = other._vdata
         vertex_map = dict()
         for v in other.vertices():
             w = g.add_vertex(ts[v],qs[v]+height,rs[v],phases[v],g.is_ground(v))
+            if v in vdata: g._vdata[w] = vdata[v]
             vertex_map[v] = w
         for e in other.edges():
             s,t = other.edge_st(e)
