@@ -53,7 +53,9 @@ from typing_extensions import Literal
 from fractions import Fraction
 import itertools
 
-from .utils import VertexType, EdgeType, get_w_partner, toggle_edge, vertex_is_w, vertex_is_zx, FloatInt, FractionLike, get_w_io
+import numpy as np
+
+from .utils import VertexType, EdgeType, get_w_partner, set_z_box_label, toggle_edge, vertex_is_w, vertex_is_zx, FloatInt, FractionLike, get_w_io
 from .graph.base import BaseGraph, VT, ET
 
 RewriteOutputType = Tuple[Dict[ET,List[int]], List[VT], List[ET], bool]
@@ -249,6 +251,33 @@ def unspider(g: BaseGraph[VT,ET], m: List[Any], qubit:FloatInt=-1, row:FloatInt=
         g.set_phase(v, g.phase(u))
         g.set_phase(u, 0)
     return v
+
+def match_z_to_z_box(g: BaseGraph[VT,ET]) -> List[VT]:
+    """Does the same as :func:`match_z_to_z_box_parallel` but with ``num=1``."""
+    return match_z_to_z_box_parallel(g, num=1)
+
+def match_z_to_z_box_parallel(
+        g: BaseGraph[VT,ET],
+        matchf:Optional[Callable[[VT],bool]]=None,
+        num:int=-1
+        ) -> List[VT]:
+    """Finds all vertices that can be converted to Z-boxes."""
+    if matchf is not None: candidates = set([v for v in g.vertices() if matchf(v)])
+    else: candidates = g.vertex_set()
+    types = g.types()
+    phases = g.phases()
+    for v in g.vertices():
+        if types[v] != VertexType.Z:
+            candidates.discard(v)
+    return list(candidates)
+
+def z_to_z_box(g: BaseGraph[VT,ET], matches: List[VT]) -> RewriteOutputType[ET,VT]:
+    """Converts a Z vertex to a Z-box."""
+    for v in matches:
+        g.set_type(v, VertexType.Z_BOX)
+        g.set_phase(v, 0)
+        set_z_box_label(g, v, np.e**(np.i * np.pi * g.phase(v)))
+    return ({}, [], [], True)
 
 MatchWType = Tuple[VT,VT]
 
