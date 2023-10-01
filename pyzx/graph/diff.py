@@ -41,6 +41,7 @@ class GraphDiff(Generic[VT, ET]):
 		self.changed_edge_types = {}
 		self.changed_phases = {}
 		self.changed_pos = {}
+		self.changed_vdata = {}
 
 		old_verts = g1.vertex_set()
 		new_verts = g2.vertex_set()
@@ -61,6 +62,8 @@ class GraphDiff(Generic[VT, ET]):
 					self.changed_vertex_types[v] = g2.type(v)
 				if g1.phase(v) != g2.phase(v):
 					self.changed_phases[v] = g2.phase(v)
+				if g1._vdata.get(v, None) != g2._vdata.get(v, None):
+					self.changed_vdata[v] = g2._vdata.get(v, None)
 				pos1 = g1.qubit(v), g1.row(v)
 				pos2 = g2.qubit(v), g2.row(v)
 				if pos1 != pos2:
@@ -94,6 +97,8 @@ class GraphDiff(Generic[VT, ET]):
 				g.set_type(v,VertexType.Z)
 			if v in self.changed_phases:
 				g.set_phase(v,self.changed_phases[v])
+			if v in self.changed_vdata:
+				g._vdata[v] = self.changed_vdata[v]
 		for e in self.new_edges:
 			ty:EdgeType.Type = EdgeType.HADAMARD
 			if e in self.changed_edge_types:
@@ -111,6 +116,10 @@ class GraphDiff(Generic[VT, ET]):
 		for v in self.changed_phases:
 			if v in self.new_verts: continue
 			g.set_phase(v,self.changed_phases[v])
+
+		for v in self.changed_vdata:
+			if v in self.new_verts: continue
+			g._vdata[v] = self.changed_vdata[v]
 
 		for e in self.changed_edge_types:
 			if e in self.new_edges: continue
@@ -132,6 +141,7 @@ class GraphDiff(Generic[VT, ET]):
 			"changed_edge_types": changed_edge_types_str_dict,
 			"changed_phases": changed_phases_str,
 			"changed_pos": self.changed_pos,
+			"changed_vdata": self.changed_vdata,
 		})
 
 	@staticmethod
@@ -146,6 +156,7 @@ class GraphDiff(Generic[VT, ET]):
 		gd.changed_edge_types = map_dict_keys(d["changed_edge_types"], lambda x: tuple(map(int, x.split(","))))
 		gd.changed_phases = {int(k): _quanto_value_to_phase(v) for k, v in d["changed_phases"].items()}
 		gd.changed_pos = map_dict_keys(d["changed_pos"], int)
+		gd.changed_vdata = map_dict_keys(d["changed_vdata"], int)
 		return gd
 
 def map_dict_keys(d: Dict[str, Any], f: Callable[[str], Any]) -> Dict[Any, Any]:
