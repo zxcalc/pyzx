@@ -238,10 +238,13 @@ def fuse_w(g: BaseGraph[VT,ET], v1: VT, v2: VT) -> bool:
     return True
 
 def check_remove_id(g: BaseGraph[VT,ET], v: VT) -> bool:
-    if not (g.vertex_degree(v) == 2 and g.phase(v) == 0):
+    if not g.vertex_degree(v) == 2:
         return False
-    else:
+    if g.type(v) == VertexType.Z_BOX and get_z_box_label(g, v) == 1:
         return True
+    elif g.type(v) != VertexType.Z_BOX and g.phase(v) == 0:
+        return True
+    return False
 
 def remove_id(g: BaseGraph[VT,ET], v: VT) -> bool:
     if not check_remove_id(g, v):
