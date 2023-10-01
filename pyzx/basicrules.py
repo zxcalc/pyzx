@@ -206,9 +206,9 @@ def fuse(g: BaseGraph[VT,ET], v1: VT, v2: VT) -> bool:
         return fuse_w(g, v1, v2)
     if g.type(v1) == VertexType.Z_BOX or g.type(v2) == VertexType.Z_BOX:
         if g.type(v1) == VertexType.Z:
-            z_to_z_box(g, v1)
+            z_to_z_box(g, [v1])
         if g.type(v2) == VertexType.Z:
-            z_to_z_box(g, v2)
+            z_to_z_box(g, [v2])
         set_z_box_label(g, v1, get_z_box_label(g, v1) * get_z_box_label(g, v2))
     else:
         g.add_to_phase(v1, g.phase(v2))
