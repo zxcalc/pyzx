@@ -55,7 +55,7 @@ import itertools
 
 import numpy as np
 
-from .utils import VertexType, EdgeType, get_w_partner, set_z_box_label, toggle_edge, vertex_is_w, vertex_is_zx, FloatInt, FractionLike, get_w_io
+from .utils import VertexType, EdgeType, get_w_partner, get_z_box_label, set_z_box_label, toggle_edge, vertex_is_w, vertex_is_zx, FloatInt, FractionLike, get_w_io, vertex_is_z_like
 from .graph.base import BaseGraph, VT, ET
 
 RewriteOutputType = Tuple[Dict[ET,List[int]], List[VT], List[ET], bool]
@@ -176,7 +176,8 @@ def match_spider_parallel(
         v0, v1 = g.edge_st(e)
         v0t = types[v0]
         v1t = types[v1]
-        if (v0t == v1t and vertex_is_zx(v0t)):
+        if (v0t == v1t and vertex_is_zx(v0t)) or \
+            (vertex_is_z_like(v0t) and vertex_is_z_like(v1t)):
             i += 1
             for v in g.neighbors(v0):
                 for c in g.incident_edges(v): candidates.discard(c)
@@ -203,6 +204,13 @@ def spider(g: BaseGraph[VT,ET], matches: List[MatchSpiderType[VT]]) -> RewriteOu
         if ground:
             g.set_phase(v0, 0)
             g.set_ground(v0)
+        elif g.type(v0) == VertexType.Z_BOX or g.type(v1) == VertexType.Z_BOX:
+            if g.type(v0) == VertexType.Z:
+                z_to_z_box(g, [v0])
+            if g.type(v1) == VertexType.Z:
+                z_to_z_box(g, [v1])
+            g.set_phase(v0, 0)
+            set_z_box_label(g, v0, get_z_box_label(g, v0) * get_z_box_label(g, v1))
         else:
             g.add_to_phase(v0, g.phase(v1))
 
