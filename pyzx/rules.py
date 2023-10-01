@@ -273,12 +273,13 @@ def match_z_to_z_box_parallel(
     if matchf is not None: candidates = set([v for v in g.vertices() if matchf(v)])
     else: candidates = g.vertex_set()
     types = g.types()
-    for v in g.vertices():
-        if types[v] != VertexType.Z:
+    m = []
+    for v in candidates:
+        if types[v] == VertexType.Z:
             if num == 0: break
-            candidates.discard(v)
+            m.append(v)
             num -= 1
-    return list(candidates)
+    return m
 
 def z_to_z_box(g: BaseGraph[VT,ET], matches: List[VT]) -> RewriteOutputType[ET,VT]:
     """Converts a Z vertex to a Z-box."""
