@@ -48,7 +48,8 @@ __all__ = ['color_change_diagram',
 from typing import Tuple, List
 from .graph.base import BaseGraph, VT, ET
 from .rules import apply_rule, w_fusion, z_to_z_box
-from .utils import VertexType, EdgeType, get_w_io, get_z_box_label, is_pauli, set_z_box_label, vertex_is_w
+from .utils import (EdgeType, VertexType, get_w_io, get_z_box_label, is_pauli,
+                    set_z_box_label, vertex_is_w, vertex_is_z_like)
 
 def color_change_diagram(g: BaseGraph[VT,ET]):
     """Color-change an entire diagram by applying Hadamards to the inputs and ouputs."""
@@ -194,8 +195,7 @@ def check_fuse(g: BaseGraph[VT,ET], v1: VT, v2: VT) -> bool:
         return True
     if not (g.connected(v1,v2) and
             ((g.type(v1) == VertexType.X and g.type(v2) == VertexType.X) or
-             (g.type(v1) in [VertexType.Z, VertexType.Z_BOX] and \
-              g.type(v2) in [VertexType.Z, VertexType.Z_BOX])) and
+             (vertex_is_z_like(g.type(v1)) and vertex_is_z_like(g.type(v2)))) and
             g.edge_type(g.edge(v1,v2)) == EdgeType.SIMPLE):
         return False
     return True

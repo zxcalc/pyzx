@@ -46,6 +46,10 @@ def toggle_vertex(ty: VertexType.Type) -> VertexType.Type:
         return ty
     return VertexType.Z if ty == VertexType.X else VertexType.X
 
+def vertex_is_z_like(ty: VertexType.Type) -> bool:
+    """Check if a vertex type corresponds to a Z spider or Z box."""
+    return ty == VertexType.Z or ty == VertexType.Z_BOX
+
 def vertex_is_w(ty: VertexType.Type) -> bool:
     return ty == VertexType.W_INPUT or ty == VertexType.W_OUTPUT
 
