@@ -24,7 +24,7 @@ from typing_extensions import Literal, GenericMeta # type: ignore # https://gith
 
 import numpy as np
 
-from ..utils import EdgeType, VertexType, toggle_edge, vertex_is_zx, toggle_vertex, vertex_is_w, get_w_partner
+from ..utils import EdgeType, VertexType, get_z_box_label, set_z_box_label, toggle_edge, vertex_is_z_like, vertex_is_zx, toggle_vertex, vertex_is_w, get_w_partner, vertex_is_zx_like
 from ..utils import FloatInt, FractionLike
 from ..tensor import tensorfy, tensor_to_matrix
 
@@ -718,24 +718,31 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
             # Hence, all the other cases have some kind of parallel edge
             elif t1 == VertexType.BOUNDARY or t2 == VertexType.BOUNDARY:
                 raise ValueError("Parallel edges to a boundary edge are not supported")
-            elif t1 == t2 and vertex_is_zx(t1): #types are ZX & equal,
+            elif (t1 == t2 and vertex_is_zx(t1)) or \
+                (vertex_is_z_like(t1) and vertex_is_z_like(t2)): #types are ZX & equal,
                 n1 = bool(n1)            #so normal edges fuse
                 pairs, n2 = divmod(n2,2) #while hadamard edges go modulo 2
                 self.scalar.add_power(-2*pairs)
                 if n1 != 0 and n2 != 0:  #reduction rule for when both edges appear
                     new_type = EdgeType.SIMPLE
-                    self.add_to_phase(v1, 1)
+                    if t1 == VertexType.Z_BOX:
+                        set_z_box_label(self, v1, get_z_box_label(self, v1) * -1)
+                    else:
+                        self.add_to_phase(v1, 1)
                     self.scalar.add_power(-1)
                 elif n1 != 0: new_type = EdgeType.SIMPLE
                 elif n2 != 0: new_type = EdgeType.HADAMARD
                 else: new_type = None
-            elif t1 != t2 and vertex_is_zx(t1) and vertex_is_zx(t2): #types are ZX & different
+            elif t1 != t2 and vertex_is_zx_like(t1) and vertex_is_zx_like(t2): #types are ZX & different
                 pairs, n1 = divmod(n1,2) #so normal edges go modulo 2
                 n2 = bool(n2)            #while hadamard edges fuse
                 self.scalar.add_power(-2*pairs)
                 if n1 != 0 and n2 != 0:  #reduction rule for when both edges appear
                     new_type = EdgeType.HADAMARD
-                    self.add_to_phase(v1, 1)
+                    if t1 == VertexType.Z_BOX:
+                        set_z_box_label(self, v1, get_z_box_label(self, v1) * -1)
+                    else:
+                        self.add_to_phase(v1, 1)
                     self.scalar.add_power(-1)
                 elif n1 != 0: new_type = EdgeType.SIMPLE
                 elif n2 != 0: new_type = EdgeType.HADAMARD
