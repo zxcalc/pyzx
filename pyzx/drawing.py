@@ -36,7 +36,7 @@ patches = None
 lines = None
 
 
-from .utils import settings, get_mode, phase_to_s, EdgeType, VertexType, FloatInt
+from .utils import settings, get_mode, phase_to_s, EdgeType, VertexType, FloatInt, get_z_box_label
 from .graph.base import BaseGraph, VT, ET
 from .circuit import Circuit
 
@@ -241,6 +241,7 @@ def draw_matplotlib(
         t = g.type(v)
         a = g.phase(v)
         a_offset = 0.5
+        phase_str = phase_to_s(a, t)
 
         if t == VertexType.Z:
             ax.add_patch(patches.Circle(p, 0.2, facecolor='#ccffcc', edgecolor='black', zorder=1))
@@ -253,11 +254,15 @@ def draw_matplotlib(
             ax.add_patch(patches.Circle(p, 0.05, facecolor='black', edgecolor='black', zorder=1))
         elif t == VertexType.W_OUTPUT:
             ax.add_patch(patches.Polygon([(p[0]-0.15, p[1]), (p[0]+0.15, p[1]+0.2), (p[0]+0.15, p[1]-0.2)], facecolor='black', edgecolor='black'))
+        elif t == VertexType.Z_BOX:
+            ax.add_patch(patches.Rectangle((p[0]-0.1, p[1]-0.1), 0.2, 0.2, facecolor='#ccffcc', edgecolor='black'))
+            a_offset = 0.25
+            phase_str = str(get_z_box_label(g, v))
         else:
             ax.add_patch(patches.Circle(p, 0.1, facecolor='black', edgecolor='black', zorder=1))
 
         if labels: plt.text(p[0]+0.25, p[1]+0.25, str(v), ha='center', color='gray', fontsize=5)
-        if a: plt.text(p[0], p[1]-a_offset, phase_to_s(a, t), ha='center', color='blue', fontsize=8)
+        if phase_str: plt.text(p[0], p[1]-a_offset, phase_str, ha='center', color='blue', fontsize=8)
 
     if show_scalar:
         x = min((g.row(v) for v in g.vertices()), default = 0)
@@ -326,7 +331,7 @@ def draw_d3(
               'x': (g.row(v)-minrow + 1) * scale,
               'y': (g.qubit(v)-minqub + 2) * scale,
               't': g.type(v),
-              'phase': phase_to_s(g.phase(v), g.type(v)),
+              'phase': phase_to_s(g.phase(v), g.type(v)) if g.type(v) != VertexType.Z_BOX else str(get_z_box_label(g, v)),
               'ground': g.is_ground(v),
               'vdata': [(key, g.vdata(v, key))
                   for key in vdata if g.vdata(v, key, None) is not None],
