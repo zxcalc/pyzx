@@ -21,7 +21,7 @@ import copy
 from ..utils import VertexType, EdgeType, FractionLike, FloatInt
 from .base import BaseGraph, VT, ET
 from .graph_s import GraphS
-from .jsonparser import _phase_to_quanto_value, _quanto_value_to_phase
+from .jsonparser import ComplexDecoder, ComplexEncoder, _phase_to_quanto_value, _quanto_value_to_phase
 
 class GraphDiff(Generic[VT, ET]):
 	removed_verts: List[VT]
@@ -142,11 +142,11 @@ class GraphDiff(Generic[VT, ET]):
 			"changed_phases": changed_phases_str,
 			"changed_pos": self.changed_pos,
 			"changed_vdata": self.changed_vdata,
-		})
+		},  cls=ComplexEncoder)
 
 	@staticmethod
 	def from_json(json_str: str) -> "GraphDiff":
-		d = json.loads(json_str)
+		d = json.loads(json_str, cls=ComplexDecoder)
 		gd = GraphDiff(GraphS(),GraphS())
 		gd.removed_verts = d["removed_verts"]
 		gd.new_verts = d["new_verts"]

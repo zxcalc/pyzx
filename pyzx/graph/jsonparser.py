@@ -49,7 +49,7 @@ def _phase_to_quanto_value(p: FractionLike) -> str:
 def json_to_graph(js: str, backend:Optional[str]=None) -> BaseGraph:
     """Converts the json representation of a .qgraph Quantomatic graph into
     a pyzx graph."""
-    j = json.loads(js)
+    j = json.loads(js, cls=ComplexDecoder)
     g = Graph(backend)
 
     names: Dict[str, Any] = {} # TODO: Any = VT
@@ -88,13 +88,8 @@ def json_to_graph(js: str, backend:Optional[str]=None) -> BaseGraph:
             if key == 'coord':
                 continue
             elif key == 'label':
-                try:
+                if type(value) != complex:
                     value = _quanto_value_to_phase(value)
-                except ValueError:
-                    try:
-                        value = complex(value)
-                    except ValueError:
-                        pass
             g.set_vdata(v, key, value)
 
     inputs = []
@@ -254,7 +249,7 @@ def graph_to_json(g: BaseGraph[VT,ET], include_scalar: bool=True) -> str:
     if include_scalar:
         d["scalar"] = g.scalar.to_json()
 
-    return json.dumps(d)
+    return json.dumps(d, cls=ComplexEncoder)
 
 def to_graphml(g: BaseGraph[VT,ET]) -> str:
     gml = """<?xml version="1.0" encoding="UTF-8" standalone="no"?>
@@ -301,3 +296,24 @@ def to_graphml(g: BaseGraph[VT,ET]) -> str:
 """
 
     return gml
+
+
+class ComplexEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, complex):
+            return str(obj)
+        return super().default(obj)
+
+class ComplexDecoder(json.JSONDecoder):
+    def __init__(self, *args, **kwargs):
+        json.JSONDecoder.__init__(self, object_hook=self.object_hook, *args, **kwargs)
+
+    def object_hook(self, dct):
+        for k, v in dct.items():
+            if isinstance(v, str):
+                try:
+                    dct[k] = complex(v)
+                except ValueError:
+                    pass
+        return dct
+
