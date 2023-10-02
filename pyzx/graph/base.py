@@ -85,6 +85,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         self.phase_master: Optional['simplify.Simplifier'] = None
         self.phase_mult: Dict[int,Literal[1,-1]] = dict()
         self.max_phase_index: int = -1
+        self._vdata: Dict[VT,Dict[str,Any]] = dict()
 
         # merge_vdata(v0,v1) is an optional, custom function for merging
         # vdata of v1 into v0 during spider fusion etc.

@@ -32,6 +32,7 @@ class GraphDiff(Generic[VT, ET]):
 	changed_edge_types: Dict[ET, EdgeType.Type]
 	changed_phases: Dict[VT, FractionLike]
 	changed_pos: Dict[VT, Tuple[FloatInt,FloatInt]]
+	changed_vdata: Dict[VT, Any]
 
 	def __init__(self, g1: BaseGraph[VT,ET], g2: BaseGraph[VT,ET]) -> None:
 		self.calculate_diff(g1,g2)

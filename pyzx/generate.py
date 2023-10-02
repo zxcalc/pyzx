@@ -99,6 +99,7 @@ def spider(
         set_z_box_label(g, v_in, phase)
         v_out = v_in
     else:
+        assert isinstance(phase, (int, Fraction))
         v_in = g.add_vertex(typ, (inputs-1)/2, 1, phase)
         v_out = v_in
     inp = []
