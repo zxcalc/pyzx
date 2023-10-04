@@ -1039,3 +1039,21 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
     def set_vdata(self, vertex: VT, key: str, val: Any) -> None:
         """Sets the vertex data associated to key to val."""
         raise NotImplementedError("Not implemented on backend" + type(self).backend)
+
+    def is_well_formed(self) -> bool:
+        """Returns whether the graph is a well-formed ZX-diagram.
+        This means that it has no isolated boundary vertices,
+        each boundary vertex has a unique neighbor,
+        W_input vertices have two neighbors: W_output and other,
+        and W_output vertices have at least two neighbors: W_input and other."""
+        for v in self.vertices():
+            if self.type(v) == VertexType.BOUNDARY:
+                if self.vertex_degree(v) != 1:
+                    return False
+            elif self.type(v) == VertexType.W_INPUT:
+                if self.vertex_degree(v) != 2:
+                    return False
+            elif self.type(v) == VertexType.W_OUTPUT:
+                if self.vertex_degree(v) < 2:
+                    return False
+        return True
