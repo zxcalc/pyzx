@@ -9,7 +9,7 @@ PyZX can be installed as a package using pip::
 
 If you wish to use the demo notebooks or benchmark circuits, then the repository can be cloned from `Github <https://github.com/Quantomatic/pyzx>`_.
 
-The best way to get started if you have cloned the repository is to run the `Getting Started notebook <https://github.com/Quantomatic/pyzx/blob/master/demos/gettingstarted.ipynb>`_ in Jupyter. This page contains the same general information as that notebook.
+The best way to get started if you have cloned the repository is to run the `Getting Started notebook <notebooks/gettingstarted.ipynb>`_ in Jupyter. This page contains the same general information as that notebook.
 
 .. warning::
 	The newer JupyterLab as opposed to the older Jupyter Notebook uses a different framework for widgets which is currently not compatible with the widgets used in PyZX. It is therefore recommended that you use the classic notebook interface. If you are using JupyterLab you can find this interface by going to 'Help -> Launch Classic Notebook'.

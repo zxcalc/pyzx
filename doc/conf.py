@@ -44,11 +44,13 @@ release = '0.7.3'
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
-extensions = ['sphinx.ext.autodoc',
+extensions = ['nbsphinx',
+              'sphinx.ext.autodoc',
               'sphinx.ext.mathjax',
               'sphinx.ext.napoleon',
               'sphinx_rtd_theme',
-              'sphinx_autodoc_typehints'
+              'sphinx_autodoc_typehints',
+              'sphinxcontrib.rsvgconverter'
 ]
 
 add_function_parentheses = False
@@ -101,7 +103,7 @@ html_theme = 'sphinx_rtd_theme'
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = ['_static','../demos']
+html_static_path = ['_static']
 
 # Custom sidebar templates, must be a dictionary that maps document names
 # to template names.
@@ -169,3 +171,16 @@ texinfo_documents = [
      author, 'pyzx', 'One line description of project.',
      'Miscellaneous'),
 ]
+
+# -- Options for nbsphinx ----------------------------------------------------
+nbsphinx_prolog = r"""
+{% set docname = env.doc2path(env.docname, base=None) %}
+
+.. raw:: html
+
+    <div class="admonition note">
+      This page was generated from
+      <a class="reference external" href="https://github.com/Quantomatic/pyzx/tree/v{{ env.config.release|e }}/doc/{{ docname|e }}">{{ docname|e }}</a>
+      [<a href="{{ env.docname.split('/')|last|e + '.ipynb' }}" class="reference download internal" download>download</a>].
+    </div>
+"""

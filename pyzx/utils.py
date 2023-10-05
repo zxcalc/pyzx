@@ -158,7 +158,10 @@ def get_mode():
             import IPython # type: ignore
             ipython_instance = IPython.get_ipython()
             if ipython_instance is None: raise Exception
-            if 'IPKernelApp' in ipython_instance.config: settings.mode = "notebook"
+            if 'IPKernelApp' in ipython_instance.config:
+                settings.mode = "notebook"
+                if os.environ.get('SPHINXTARGET') == 'latexpdf':
+                    settings.drawing_backend = "matplotlib"
             ipython_instance.config.InlineBackend.figure_format = 'svg'
         except:
             try:
