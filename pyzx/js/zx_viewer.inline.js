@@ -22,6 +22,7 @@ function nodeColor(t) {
     else if (t == 3) return "yellow";
     else if (t == 4) return "black";
     else if (t == 5) return "black";
+    else if (t == 6) return "#ccffcc";
 }
 
 function edgeColor(t) {
@@ -128,7 +129,7 @@ function showGraph(tag, graph, width, height, scale, node_size, auto_hbox, show_
         .attr("transform", "translate(0,"+groundOffset+")")
         .attr("class", "selectable");
 
-    node.filter(function(d) { return d.t != 3 && d.t != 5; })
+    node.filter(function(d) { return d.t != 3 && d.t != 5 && d.t != 6; })
         .append("circle")
         .attr("r", function(d) {
             if (d.t == 0) return 0.5 * node_size;
@@ -156,6 +157,15 @@ function showGraph(tag, graph, width, height, scale, node_size, auto_hbox, show_
         .attr("stroke", "black")
         .attr("class", "selectable")
         .attr("transform", "translate(" + (-node_size/2) + ", 0) rotate(-90)");
+
+    // draw a square for Z box: d.t == 6
+    node.filter(function(d) { return d.t == 6; })
+        .append("rect")
+        .attr("x", -0.75 * node_size).attr("y", -0.75 * node_size)
+        .attr("width", node_size * 1.5).attr("height", node_size * 1.5)
+        .attr("fill", function(d) { return nodeColor(d.t); })
+        .attr("stroke", "black")
+        .attr("class", "selectable");
 
     node.filter(function(d) { return d.phase != ''; })
         .append("text")

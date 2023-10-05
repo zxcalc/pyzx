@@ -49,7 +49,7 @@ def _phase_to_quanto_value(p: FractionLike) -> str:
 def json_to_graph(js: str, backend:Optional[str]=None) -> BaseGraph:
     """Converts the json representation of a .qgraph Quantomatic graph into
     a pyzx graph."""
-    j = json.loads(js)
+    j = json.loads(js, cls=ComplexDecoder)
     g = Graph(backend)
 
     names: Dict[str, Any] = {} # TODO: Any = VT
@@ -73,6 +73,7 @@ def json_to_graph(js: str, backend:Optional[str]=None) -> BaseGraph:
             elif d['type'] == 'hadamard': g.set_type(v,VertexType.H_BOX)
             elif d['type'] == 'W_input': g.set_type(v,VertexType.W_INPUT)
             elif d['type'] == 'W_output': g.set_type(v,VertexType.W_OUTPUT)
+            elif d['type'] == 'Z_box': g.set_type(v,VertexType.Z_BOX)
             else: raise TypeError("unsupported type '{}'".format(d['type']))
             if 'value' in d:
                 g.set_phase(v,_quanto_value_to_phase(d['value']))
@@ -86,10 +87,10 @@ def json_to_graph(js: str, backend:Optional[str]=None) -> BaseGraph:
         for key, value in attr['annotation'].items():
             if key == 'coord':
                 continue
+            elif key == 'label':
+                if type(value) != complex:
+                    value = _quanto_value_to_phase(value)
             g.set_vdata(v, key, value)
-
-        #g.set_vdata(v, 'x', c[0])
-        #g.set_vdata(v, 'y', c[1])
 
     inputs = []
     outputs = []
@@ -200,6 +201,12 @@ def graph_to_json(g: BaseGraph[VT,ET], include_scalar: bool=True) -> str:
                 node_vs[name]["data"]["type"] = "W_input"
             elif t==VertexType.W_OUTPUT:
                 node_vs[name]["data"]["type"] = "W_output"
+            elif t==VertexType.Z_BOX:
+                node_vs[name]["data"]["type"] = "Z_box"
+                zbox_label = g.vdata(v, 'label', 1)
+                if type(zbox_label) == Fraction:
+                    zbox_label = _phase_to_quanto_value(zbox_label)
+                node_vs[name]["annotation"]["label"] = zbox_label
             else: raise Exception("Unkown vertex type "+ str(t))
             phase = _phase_to_quanto_value(g.phase(v))
             if phase: node_vs[name]["data"]["value"] = phase
@@ -242,7 +249,7 @@ def graph_to_json(g: BaseGraph[VT,ET], include_scalar: bool=True) -> str:
     if include_scalar:
         d["scalar"] = g.scalar.to_json()
 
-    return json.dumps(d)
+    return json.dumps(d, cls=ComplexEncoder)
 
 def to_graphml(g: BaseGraph[VT,ET]) -> str:
     gml = """<?xml version="1.0" encoding="UTF-8" standalone="no"?>
@@ -289,3 +296,24 @@ def to_graphml(g: BaseGraph[VT,ET]) -> str:
 """
 
     return gml
+
+
+class ComplexEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, complex):
+            return str(obj)
+        return super().default(obj)
+
+class ComplexDecoder(json.JSONDecoder):
+    def __init__(self, *args, **kwargs):
+        json.JSONDecoder.__init__(self, object_hook=self.object_hook, *args, **kwargs)
+
+    def object_hook(self, dct):
+        for k, v in dct.items():
+            if isinstance(v, str):
+                try:
+                    dct[k] = complex(v)
+                except ValueError:
+                    pass
+        return dct
+

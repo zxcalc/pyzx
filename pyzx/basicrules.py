@@ -47,8 +47,9 @@ __all__ = ['color_change_diagram',
 
 from typing import Tuple, List
 from .graph.base import BaseGraph, VT, ET
-from .rules import apply_rule, w_fusion
-from .utils import VertexType, EdgeType, get_w_io, is_pauli, vertex_is_w
+from .rules import apply_rule, w_fusion, z_to_z_box
+from .utils import (EdgeType, VertexType, get_w_io, get_z_box_label, is_pauli,
+                    set_z_box_label, vertex_is_w, vertex_is_z_like)
 
 def color_change_diagram(g: BaseGraph[VT,ET]):
     """Color-change an entire diagram by applying Hadamards to the inputs and ouputs."""
@@ -193,8 +194,8 @@ def check_fuse(g: BaseGraph[VT,ET], v1: VT, v2: VT) -> bool:
     if check_fuse_w(g, v1, v2):
         return True
     if not (g.connected(v1,v2) and
-            ((g.type(v1) == VertexType.Z and g.type(v2) == VertexType.Z) or
-             (g.type(v1) == VertexType.X and g.type(v2) == VertexType.X)) and
+            ((g.type(v1) == VertexType.X and g.type(v2) == VertexType.X) or
+             (vertex_is_z_like(g.type(v1)) and vertex_is_z_like(g.type(v2)))) and
             g.edge_type(g.edge(v1,v2)) == EdgeType.SIMPLE):
         return False
     return True
@@ -203,7 +204,14 @@ def fuse(g: BaseGraph[VT,ET], v1: VT, v2: VT) -> bool:
     if not check_fuse(g, v1, v2): return False
     if vertex_is_w(g.type(v1)):
         return fuse_w(g, v1, v2)
-    g.add_to_phase(v1, g.phase(v2))
+    if g.type(v1) == VertexType.Z_BOX or g.type(v2) == VertexType.Z_BOX:
+        if g.type(v1) == VertexType.Z:
+            z_to_z_box(g, [v1])
+        if g.type(v2) == VertexType.Z:
+            z_to_z_box(g, [v2])
+        set_z_box_label(g, v1, get_z_box_label(g, v1) * get_z_box_label(g, v2))
+    else:
+        g.add_to_phase(v1, g.phase(v2))
     for v3 in g.neighbors(v2):
         if v3 != v1:
             g.add_edge_smart(g.edge(v1,v3), edgetype=g.edge_type(g.edge(v2,v3)))
@@ -230,10 +238,13 @@ def fuse_w(g: BaseGraph[VT,ET], v1: VT, v2: VT) -> bool:
     return True
 
 def check_remove_id(g: BaseGraph[VT,ET], v: VT) -> bool:
-    if not (g.vertex_degree(v) == 2 and g.phase(v) == 0):
+    if not g.vertex_degree(v) == 2:
         return False
-    else:
+    if g.type(v) == VertexType.Z_BOX and get_z_box_label(g, v) == 1:
         return True
+    elif g.type(v) != VertexType.Z_BOX and g.phase(v) == 0:
+        return True
+    return False
 
 def remove_id(g: BaseGraph[VT,ET], v: VT) -> bool:
     if not check_remove_id(g, v):

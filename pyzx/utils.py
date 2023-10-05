@@ -27,13 +27,14 @@ FractionLike = Union[Fraction,int]
 
 class VertexType:
     """Type of a vertex in the graph."""
-    Type = Literal[0, 1, 2, 3, 4, 5]
+    Type = Literal[0, 1, 2, 3, 4, 5, 6]
     BOUNDARY: Final = 0
     Z: Final = 1
     X: Final = 2
     H_BOX: Final = 3
     W_INPUT: Final = 4
     W_OUTPUT: Final = 5
+    Z_BOX: Final = 6
 
 def vertex_is_zx(ty: VertexType.Type) -> bool:
     """Check if a vertex type corresponds to a green or red spider."""
@@ -44,6 +45,14 @@ def toggle_vertex(ty: VertexType.Type) -> VertexType.Type:
     if not vertex_is_zx(ty):
         return ty
     return VertexType.Z if ty == VertexType.X else VertexType.X
+
+def vertex_is_z_like(ty: VertexType.Type) -> bool:
+    """Check if a vertex type corresponds to a Z spider or Z box."""
+    return ty == VertexType.Z or ty == VertexType.Z_BOX
+
+def vertex_is_zx_like(ty: VertexType.Type) -> bool:
+    """Check if a vertex type corresponds to a Z or X spider or Z box."""
+    return vertex_is_z_like(ty) or ty == VertexType.X
 
 def vertex_is_w(ty: VertexType.Type) -> bool:
     return ty == VertexType.W_INPUT or ty == VertexType.W_OUTPUT
@@ -107,6 +116,7 @@ tikz_classes = {
     'X': 'X dot',
     'Z phase': 'Z phase dot',
     'X phase': 'X phase dot',
+    'Z box': 'Z box',
     'H': 'hadamard',
     'W': 'W triangle',
     'W input': 'W input',
@@ -217,9 +227,17 @@ def maxelements(seq, key=None, reverse=False):
 def is_pauli(phase):
     """
     Check whether phase is Pauli.
-    
+
     Compatible with zxlive symbols.
     """
     if phase == 0 or phase == 1:
         return True
     return getattr(phase, 'is_pauli', False)
+
+def get_z_box_label(g, v):
+    assert g.type(v) == VertexType.Z_BOX
+    return g.vdata(v, 'label', 1)
+
+def set_z_box_label(g, v, label):
+    assert g.type(v) == VertexType.Z_BOX
+    g.set_vdata(v, 'label', label)

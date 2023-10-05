@@ -24,7 +24,7 @@ from typing_extensions import Literal, GenericMeta # type: ignore # https://gith
 
 import numpy as np
 
-from ..utils import EdgeType, VertexType, toggle_edge, vertex_is_zx, toggle_vertex, vertex_is_w, get_w_partner
+from ..utils import EdgeType, VertexType, get_z_box_label, set_z_box_label, toggle_edge, vertex_is_z_like, vertex_is_zx, toggle_vertex, vertex_is_w, get_w_partner, vertex_is_zx_like
 from ..utils import FloatInt, FractionLike
 from ..tensor import tensorfy, tensor_to_matrix
 
@@ -85,6 +85,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         self.phase_master: Optional['simplify.Simplifier'] = None
         self.phase_mult: Dict[int,Literal[1,-1]] = dict()
         self.max_phase_index: int = -1
+        self._vdata: Dict[VT,Dict[str,Any]] = dict()
 
         # merge_vdata(v0,v1) is an optional, custom function for merging
         # vdata of v1 into v0 during spider fusion etc.
@@ -281,10 +282,12 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         vtab : Dict[VT,VT] = dict()
         for v in other.vertices():
             if not v in inputs:
-                vtab[v] = self.add_vertex(other.type(v),
+                w = self.add_vertex(other.type(v),
                         phase=other.phase(v),
                         qubit=other.qubit(v),
                         row=offset + other.row(v))
+                if v in other._vdata: self._vdata[w] = other._vdata[v]
+                vtab[v] = w
         for e in other.edges():
             s,t = other.edge_st(e)
             if not s in inputs and not t in inputs:
@@ -307,9 +310,11 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         height = max((self.qubits().values()), default=0) + 1
         rs = other.rows()
         phases = other.phases()
+        vdata = other._vdata
         vertex_map = dict()
         for v in other.vertices():
             w = g.add_vertex(ts[v],qs[v]+height,rs[v],phases[v],g.is_ground(v))
+            if v in vdata: g._vdata[w] = vdata[v]
             vertex_map[v] = w
         for e in other.edges():
             s,t = other.edge_st(e)
@@ -714,24 +719,31 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
             # Hence, all the other cases have some kind of parallel edge
             elif t1 == VertexType.BOUNDARY or t2 == VertexType.BOUNDARY:
                 raise ValueError("Parallel edges to a boundary edge are not supported")
-            elif t1 == t2 and vertex_is_zx(t1): #types are ZX & equal,
+            elif (t1 == t2 and vertex_is_zx(t1)) or \
+                (vertex_is_z_like(t1) and vertex_is_z_like(t2)): #types are ZX & equal,
                 n1 = bool(n1)            #so normal edges fuse
                 pairs, n2 = divmod(n2,2) #while hadamard edges go modulo 2
                 self.scalar.add_power(-2*pairs)
                 if n1 != 0 and n2 != 0:  #reduction rule for when both edges appear
                     new_type = EdgeType.SIMPLE
-                    self.add_to_phase(v1, 1)
+                    if t1 == VertexType.Z_BOX:
+                        set_z_box_label(self, v1, get_z_box_label(self, v1) * -1)
+                    else:
+                        self.add_to_phase(v1, 1)
                     self.scalar.add_power(-1)
                 elif n1 != 0: new_type = EdgeType.SIMPLE
                 elif n2 != 0: new_type = EdgeType.HADAMARD
                 else: new_type = None
-            elif t1 != t2 and vertex_is_zx(t1) and vertex_is_zx(t2): #types are ZX & different
+            elif t1 != t2 and vertex_is_zx_like(t1) and vertex_is_zx_like(t2): #types are ZX & different
                 pairs, n1 = divmod(n1,2) #so normal edges go modulo 2
                 n2 = bool(n2)            #while hadamard edges fuse
                 self.scalar.add_power(-2*pairs)
                 if n1 != 0 and n2 != 0:  #reduction rule for when both edges appear
                     new_type = EdgeType.HADAMARD
-                    self.add_to_phase(v1, 1)
+                    if t1 == VertexType.Z_BOX:
+                        set_z_box_label(self, v1, get_z_box_label(self, v1) * -1)
+                    else:
+                        self.add_to_phase(v1, 1)
                     self.scalar.add_power(-1)
                 elif n1 != 0: new_type = EdgeType.SIMPLE
                 elif n2 != 0: new_type = EdgeType.HADAMARD

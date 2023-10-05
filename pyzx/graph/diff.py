@@ -21,7 +21,7 @@ import copy
 from ..utils import VertexType, EdgeType, FractionLike, FloatInt
 from .base import BaseGraph, VT, ET
 from .graph_s import GraphS
-from .jsonparser import _phase_to_quanto_value, _quanto_value_to_phase
+from .jsonparser import ComplexDecoder, ComplexEncoder, _phase_to_quanto_value, _quanto_value_to_phase
 
 class GraphDiff(Generic[VT, ET]):
 	removed_verts: List[VT]
@@ -32,6 +32,7 @@ class GraphDiff(Generic[VT, ET]):
 	changed_edge_types: Dict[ET, EdgeType.Type]
 	changed_phases: Dict[VT, FractionLike]
 	changed_pos: Dict[VT, Tuple[FloatInt,FloatInt]]
+	changed_vdata: Dict[VT, Any]
 
 	def __init__(self, g1: BaseGraph[VT,ET], g2: BaseGraph[VT,ET]) -> None:
 		self.calculate_diff(g1,g2)
@@ -41,6 +42,7 @@ class GraphDiff(Generic[VT, ET]):
 		self.changed_edge_types = {}
 		self.changed_phases = {}
 		self.changed_pos = {}
+		self.changed_vdata = {}
 
 		old_verts = g1.vertex_set()
 		new_verts = g2.vertex_set()
@@ -61,6 +63,8 @@ class GraphDiff(Generic[VT, ET]):
 					self.changed_vertex_types[v] = g2.type(v)
 				if g1.phase(v) != g2.phase(v):
 					self.changed_phases[v] = g2.phase(v)
+				if g1._vdata.get(v, None) != g2._vdata.get(v, None):
+					self.changed_vdata[v] = g2._vdata.get(v, None)
 				pos1 = g1.qubit(v), g1.row(v)
 				pos2 = g2.qubit(v), g2.row(v)
 				if pos1 != pos2:
@@ -94,6 +98,8 @@ class GraphDiff(Generic[VT, ET]):
 				g.set_type(v,VertexType.Z)
 			if v in self.changed_phases:
 				g.set_phase(v,self.changed_phases[v])
+			if v in self.changed_vdata:
+				g._vdata[v] = self.changed_vdata[v]
 		for e in self.new_edges:
 			ty:EdgeType.Type = EdgeType.HADAMARD
 			if e in self.changed_edge_types:
@@ -111,6 +117,10 @@ class GraphDiff(Generic[VT, ET]):
 		for v in self.changed_phases:
 			if v in self.new_verts: continue
 			g.set_phase(v,self.changed_phases[v])
+
+		for v in self.changed_vdata:
+			if v in self.new_verts: continue
+			g._vdata[v] = self.changed_vdata[v]
 
 		for e in self.changed_edge_types:
 			if e in self.new_edges: continue
@@ -132,11 +142,12 @@ class GraphDiff(Generic[VT, ET]):
 			"changed_edge_types": changed_edge_types_str_dict,
 			"changed_phases": changed_phases_str,
 			"changed_pos": self.changed_pos,
-		})
+			"changed_vdata": self.changed_vdata,
+		},  cls=ComplexEncoder)
 
 	@staticmethod
 	def from_json(json_str: str) -> "GraphDiff":
-		d = json.loads(json_str)
+		d = json.loads(json_str, cls=ComplexDecoder)
 		gd = GraphDiff(GraphS(),GraphS())
 		gd.removed_verts = d["removed_verts"]
 		gd.new_verts = d["new_verts"]
@@ -146,6 +157,7 @@ class GraphDiff(Generic[VT, ET]):
 		gd.changed_edge_types = map_dict_keys(d["changed_edge_types"], lambda x: tuple(map(int, x.split(","))))
 		gd.changed_phases = {int(k): _quanto_value_to_phase(v) for k, v in d["changed_phases"].items()}
 		gd.changed_pos = map_dict_keys(d["changed_pos"], int)
+		gd.changed_vdata = map_dict_keys(d["changed_vdata"], int)
 		return gd
 
 def map_dict_keys(d: Dict[str, Any], f: Callable[[str], Any]) -> Dict[Any, Any]:

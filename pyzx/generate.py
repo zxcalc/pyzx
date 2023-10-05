@@ -39,7 +39,7 @@ from pyzx.linalg import Mat2, MatLike
 from pyzx.routing.parity_maps import CNOT_tracker, Parity
 from pyzx.routing.phase_poly import PhasePoly, mat22partition
 
-from .utils import EdgeType, VertexType, FloatInt, FractionLike, vertex_is_w
+from .utils import EdgeType, VertexType, FloatInt, FractionLike, vertex_is_w, set_z_box_label
 from .graph import Graph
 from .graph.base import BaseGraph
 from .circuit import Circuit
@@ -70,10 +70,10 @@ def identity(qubits: int, depth: FloatInt=1,backend:Optional[str]=None) -> BaseG
     return g
 
 def spider(
-    typ:Union[Literal["Z"], Literal["X"], Literal["H"], Literal["W"], VertexType.Type],
+    typ:Union[Literal["Z"], Literal["X"], Literal["H"], Literal["W"], Literal["ZBox"], VertexType.Type],
     inputs: int,
     outputs: int,
-    phase:FractionLike=0
+    phase:Optional[Union[FractionLike, complex]]=None,
     ) -> BaseGraph:
     """Returns a Graph containing a single spider of the specified type 
     and with the specified number of inputs and outputs."""
@@ -81,9 +81,12 @@ def spider(
     elif typ == "X": typ = VertexType.X
     elif typ == "H": typ = VertexType.H_BOX
     elif typ == "W": typ = VertexType.W_OUTPUT
+    elif typ == "ZBox": typ = VertexType.Z_BOX
     else:
         if not isinstance(typ, int):
             raise TypeError("Wrong type for spider type: " + str(typ))
+    if phase is None:
+        phase = 1 if typ == VertexType.Z_BOX else 0
     g = Graph()
     if vertex_is_w(typ):
         if inputs != 1:
@@ -91,7 +94,12 @@ def spider(
         v_in = g.add_vertex(VertexType.W_INPUT, (outputs-1)/2, 0.8)
         v_out = g.add_vertex(VertexType.W_OUTPUT, (outputs-1)/2, 1)
         g.add_edge(g.edge(v_in, v_out), EdgeType.W_IO)
+    elif typ == VertexType.Z_BOX:
+        v_in = g.add_vertex(typ, (inputs-1)/2, 1)
+        set_z_box_label(g, v_in, phase)
+        v_out = v_in
     else:
+        assert isinstance(phase, (int, Fraction))
         v_in = g.add_vertex(typ, (inputs-1)/2, 1, phase)
         v_out = v_in
     inp = []
