@@ -21,7 +21,7 @@ from fractions import Fraction
 from typing import List, Dict, Tuple, Optional
 
 from . import Circuit
-from .gates import Gate, qasm_gate_table, ZPhase, XPhase, CRZ, YPhase, NOT
+from .gates import Gate, qasm_gate_table, XPhase, YPhase, ZPhase, NOT, U2, U3
 from ..utils import settings
 
 
@@ -72,7 +72,7 @@ class QASMParser(object):
             j = data.find("}", i)
             self.parse_custom_gate(data[i:j+1])
             data = data[:i] + data[j+1:]
-        #parse the regular commands
+        # parse the regular commands
         commands = [s.strip() for s in data.split(";") if s.strip()]
         for c in commands:
             self.gates.extend(self.parse_command(c, self.registers))
@@ -117,21 +117,31 @@ class QASMParser(object):
                 circ.add_gate(g)
         self.custom_gates[name] = circ
 
-    def extract_command_name(self, c: str) -> List[str]:
+    def extract_command_parts(self, c: str) -> Tuple[str,List[Fraction],List[str]]:
         if self.qasm_version == 3:
             # Convert some OpenQASM 3 commands into OpenQASM 2 format.
             c = re.sub(r"^bit\[(\d+)] (\w+)$", r"creg \2[\1]", c)
             c = re.sub(r"^qubit\[(\d+)] (\w+)$", r"qreg \2[\1]", c)
             c = re.sub(r"^(\w+)\[(\d+)] = measure (\w+)\[(\d+)]$", r"measure \3[\4] -> \1[\2]", c)
-        return c.split(" ",1)
+        name, rest = c.split(" ",1)
+        args = [s.strip() for s in rest.split(",") if s.strip()]
+        left_bracket = name.find('(')
+        phases = []
+        if left_bracket != -1:
+            right_bracket = name.find(')')
+            if right_bracket == -1:
+                raise TypeError(f"Mismatched bracket: {name}.")
+            vals = name[left_bracket+1:right_bracket].split(',')
+            phases = [self.parse_phase_arg(val) for val in vals]
+            name = name[:left_bracket]
+        return name, phases, args
 
     def parse_command(self, c: str, registers: Dict[str,Tuple[int,int]]) -> List[Gate]:
         gates: List[Gate] = []
-        name, rest = self.extract_command_name(c)
+        name, phases, args = self.extract_command_parts(c)
         if name in ("barrier","creg","measure", "id"): return gates
         if name in ("opaque", "if"):
             raise TypeError("Unsupported operation {}".format(c))
-        args = [s.strip() for s in rest.split(",") if s.strip()]
         if name == "qreg":
             regname, sizep = args[0].split("[",1)
             size = int(sizep[:-1])
@@ -168,72 +178,46 @@ class QASMParser(object):
                     raise TypeError("Argument amount does not match gate spec: {}".format(c))
                 for g in circ.gates:
                     gates.append(g.reposition(argset))
-                continue
-            if name in ('x', 'y', 'z', 's', 't', 'h', 'sdg', 'tdg'):
-                if name in ('sdg', 'tdg'):
-                    g = qasm_gate_table[name](argset[0],adjoint=True) # type: ignore # mypy can't handle -
-                else: g = qasm_gate_table[name](argset[0]) # type: ignore # - Gate subclasses with different numbers of parameters
+            elif name in ('x', 'y', 'z', 's', 't', 'h', 'sx'):
+                if len(phases) != 0: raise TypeError("Invalid specification {}".format(c))
+                g = qasm_gate_table[name](argset[0])  # type: ignore # mypy can't handle Gate subclasses with different number of parameters
                 gates.append(g)
-                continue
-            if name.startswith(('rx', 'ry', 'rz', 'p', 'u1', 'crz')):
-                i = name.find('(')
-                j = name.find(')')
-                if i == -1 or j == -1: raise TypeError("Invalid specification {}".format(name))
-                valp = name[i+1:j]
-                # try:
-                #     phasep = float(valp)/math.pi
-                # except ValueError:
-                #     if valp.find('pi') == -1: raise TypeError("Invalid specification {}".format(name))
-                #     valp = valp.replace('pi', '')
-                #     valp = valp.replace('*','')
-                #     try: phasep = float(valp)
-                #     except: raise TypeError("Invalid specification {}".format(name))
-                # phase = Fraction(phasep).limit_denominator(100000000)
-                phase = self.parse_phase_arg(valp)
-                if name.startswith('rx'): gates.append(XPhase(argset[0],phase=phase))
-                elif name.startswith('crz'): gates.append(CRZ(argset[0],argset[1],phase=phase))
-                elif self.qasm_version == 2 and name.startswith('rz') or \
-                        self.qasm_version == 3 and name.startswith('p') or \
-                        name.startswith('u1'):
-                    gates.append(ZPhase(argset[0],phase=phase))
-                elif self.qasm_version == 3 and name.startswith('rz'):
-                    gates.append(ZPhase(argset[0],phase=phase/2))
-                    gates.append(NOT(argset[0]))
-                    gates.append(ZPhase(argset[0],phase=-phase/2))
-                    gates.append(NOT(argset[0]))
-                elif name.startswith('ry'): gates.append(YPhase(argset[0],phase=phase))
-                else: raise TypeError("Invalid specification {}".format(name))
-                continue
-            if name.startswith('u2') or name.startswith('u3'): # see https://arxiv.org/pdf/1707.03429.pdf
-                i = name.find('(')
-                j = name.find(')')
-                if i == -1 or j == -1: raise TypeError("Invalid specification {}".format(name))
-                vals = name[i+1:j].split(',')
-                phases = [self.parse_phase_arg(val) for val in vals]
-                if name.startswith('u2'):
-                    if len(phases) != 2: raise TypeError("Invalid specification {}".format(name))
-                    gates.append(ZPhase(argset[0],phase=(phases[1]-Fraction(1,2))%2))
-                    gates.append(XPhase(argset[0],phase=Fraction(1,2)))
-                    gates.append(ZPhase(argset[0],phase=(phases[0]+Fraction(1,2))%2))
-                    continue
-                else:
-                    # See equation (5) of https://arxiv.org/pdf/1707.03429.pdf
-                    if len(phases) != 3: raise TypeError("Invalid specification {}".format(name))
-                    gates.append(ZPhase(argset[0],phase=phases[2]))
-                    gates.append(XPhase(argset[0],phase=Fraction(1,2)))
-                    gates.append(ZPhase(argset[0],phase=(phases[0]+1)%2))
-                    gates.append(XPhase(argset[0],phase=Fraction(1,2)))
-                    gates.append(ZPhase(argset[0],phase=(phases[1]+3)%2))
-                    continue
-            if name in ('cx', 'CX', 'cz', 'ch', 'swap'):
-                g = qasm_gate_table[name](control=argset[0],target=argset[1]) # type: ignore
+            elif name in ('sdg', 'tdg', 'sxdg'):
+                if len(phases) != 0: raise TypeError("Invalid specification {}".format(c))
+                g = qasm_gate_table[name](argset[0],adjoint=True)  # type: ignore
                 gates.append(g)
-                continue
-            if name in ('ccx', 'ccz'):
-                g = qasm_gate_table[name](ctrl1=argset[0],ctrl2=argset[1],target=argset[2]) # type: ignore
+            elif name in ('rx', 'ry', 'rz', 'p', 'u1'):
+                if len(phases) != 1: raise TypeError("Invalid specification {}".format(c))
+                g = qasm_gate_table[name](argset[0],phase=phases[0])  # type: ignore
                 gates.append(g)
-                continue
-            raise TypeError("Unknown gate name: {}".format(c))
+            elif name == 'u2':
+                if len(phases) != 2: raise TypeError("Invalid specification {}".format(c))
+                gates.append(U2(argset[0],phases[0],phases[1]))
+            elif name == 'u3':
+                if len(phases) != 3: raise TypeError("Invalid specification {}".format(c))
+                gates.append(U3(argset[0],phases[0],phases[1],phases[2]))
+            elif name in ('cx', 'CX', 'cy', 'cz', 'ch', 'csx', 'swap'):
+                if len(phases) != 0: raise TypeError("Invalid specification {}".format(c))
+                g = qasm_gate_table[name](control=argset[0],target=argset[1])  # type: ignore
+                gates.append(g)
+            elif name in ('crx', 'cry', 'crz', 'cp', 'cphase', 'cu1', 'rxx', 'rzz'):
+                if len(phases) != 1: raise TypeError("Invalid specification {}".format(c))
+                g = qasm_gate_table[name](argset[0],argset[1],phase=phases[0])  # type: ignore
+                gates.append(g)
+            elif name in ('ccx', 'ccz', 'cswap'):
+                if len(phases) != 0: raise TypeError("Invalid specification {}".format(c))
+                g = qasm_gate_table[name](ctrl1=argset[0],ctrl2=argset[1],target=argset[2])  # type: ignore
+                gates.append(g)
+            elif name == 'cu3':
+                if len(phases) != 3: raise TypeError("Invalid specification {}".format(c))
+                g = qasm_gate_table[name](control=argset[0],target=argset[1],theta=phases[0],phi=phases[1],rho=phases[2])  # type: ignore
+                gates.append(g)
+            elif name == 'cu':
+                if len(phases) != 4: raise TypeError("Invalid specification {}".format(c))
+                g = qasm_gate_table[name](control=argset[0],target=argset[1],theta=phases[0],phi=phases[1],rho=phases[2],gamma=phases[3])  # type: ignore
+                gates.append(g)
+            else:
+                raise TypeError("Invalid specification: {}".format(c))
         return gates
 
     def parse_phase_arg(self, val):

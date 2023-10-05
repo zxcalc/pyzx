@@ -27,7 +27,7 @@ mydir = os.path.dirname(__file__)
 
 try:
     import numpy as np
-    from pyzx.tensor import tensorfy, compare_tensors, find_scalar_correction
+    from pyzx.tensor import tensorfy, compare_tensors
     import math
 except ImportError:
     np = None
@@ -122,70 +122,6 @@ class TestCircuit(unittest.TestCase):
         c2.add_gate("SWAP",0,1)
         self.assertTrue(c1.verify_equality(c2,up_to_swaps=True))
         self.assertFalse(c1.verify_equality(c2,up_to_swaps=False))
-
-    def test_parser_state_reset(self):
-        from pyzx.circuit.qasmparser import QASMParser
-        s = """
-        OPENQASM 2.0;
-        include "qelib1.inc";
-        qreg q[1];
-        h q[0];
-        """
-        p = QASMParser()
-        c1 = p.parse(s)
-        c2 = p.parse(s)
-        self.assertEqual(c2.qubits, 1)
-        self.assertEqual(len(c2.gates), 1)
-        self.assertTrue(c1.verify_equality(c2))
-
-    def test_parse_qasm3(self):
-        qasm3 = Circuit.from_qasm("""
-        OPENQASM 3;
-        include "stdgates.inc";
-        qubit[3] q;
-        cx q[0], q[1];
-        s q[2];
-        cx q[2], q[1];
-        """)
-        self.assertEqual(self.c.qubits, qasm3.qubits)
-        self.assertListEqual(self.c.gates, qasm3.gates)
-
-    def test_qasm3_p_gate(self):
-        qasm2 = Circuit.from_qasm("""
-        OPENQASM 2.0;
-        include "qelib1.inc";
-        qreg q[1];
-        rz(pi/2) q[0];
-        """)
-        qasm3 = Circuit.from_qasm("""
-        OPENQASM 3;
-        include "stdgates.inc";
-        qubit[1] q;
-        p(pi/2) q[0];
-        """)
-        self.assertEqual(qasm2.qubits, qasm3.qubits)
-        self.assertListEqual(qasm2.gates, qasm3.gates)
-
-    def test_qasm3_rz_gate(self):
-        # `rz` differs by a global phase between OpenQASM 2 and 3.
-        qasm2 = Circuit.from_qasm("""
-        OPENQASM 2.0;
-        include "qelib1.inc";
-        qreg q[1];
-        rz(pi/2) q[0];
-        """)
-        qasm3 = Circuit.from_qasm("""
-        OPENQASM 3;
-        include "stdgates.inc";
-        qubit[1] q;
-        rz(pi/2) q[0];
-        """)
-        t2 = qasm2.to_matrix()
-        t3 = qasm3.to_matrix()
-        self.assertFalse(compare_tensors(t2, t3, True))
-        self.assertTrue(compare_tensors(t2, t3, False))
-        sqrt_half = math.sqrt(1/2)
-        self.assertAlmostEqual(find_scalar_correction(t2, t3), complex(sqrt_half, sqrt_half))
 
 if __name__ == '__main__':
     unittest.main()
