@@ -806,12 +806,15 @@ def remove_ids(g: BaseGraph[VT,ET], matches: List[MatchIdType[VT]]) -> RewriteOu
 
 MatchGadgetType = Tuple[VT,VT,FractionLike,List[VT],List[VT]]
 
-def match_phase_gadgets(g: BaseGraph[VT,ET]) -> List[MatchGadgetType[VT]]:
+def match_phase_gadgets(g: BaseGraph[VT,ET],vertexf:Optional[Callable[[VT],bool]]=None) -> List[MatchGadgetType[VT]]:
     """Determines which phase gadgets act on the same vertices, so that they can be fused together.
 
     :param g: An instance of a ZX-graph.
     :rtype: List of 5-tuples ``(axel,leaf, total combined phase, other axels with same targets, other leafs)``.
     """
+    if vertexf is not None: candidates = set([v for v in g.vertices() if vertexf(v)])
+    else: candidates = g.vertex_set()
+
     phases = g.phases()
 
     parities: Dict[FrozenSet[VT], List[VT]] = dict()
@@ -819,7 +822,7 @@ def match_phase_gadgets(g: BaseGraph[VT,ET]) -> List[MatchGadgetType[VT]]:
     inputs = g.inputs()
     outputs = g.outputs()
     # First we find all the phase-gadgets, and the list of vertices they act on
-    for v in g.vertices():
+    for v in candidates:
         non_clifford = phases[v] != 0 and getattr(phases[v], 'denominator', 1) > 2
         try: # symbol check
             float(phases[v])
@@ -872,13 +875,14 @@ def merge_phase_gadgets(g: BaseGraph[VT,ET], matches: List[MatchGadgetType[VT]])
 
 MatchSupplementarityType = Tuple[VT,VT,Literal[1,2],FrozenSet[VT]]
 
-def match_supplementarity(g: BaseGraph[VT,ET]) -> List[MatchSupplementarityType[VT]]:
+def match_supplementarity(g: BaseGraph[VT,ET], vertexf:Optional[Callable[[VT],bool]]=None) -> List[MatchSupplementarityType[VT]]:
     """Finds pairs of non-Clifford spiders that are connected to exactly the same set of vertices.
 
     :param g: An instance of a ZX-graph.
     :rtype: List of 4-tuples ``(vertex1, vertex2, type of supplementarity, neighbors)``.
     """
-    candidates = g.vertex_set()
+    if vertexf is not None: candidates = set([v for v in g.vertices() if vertexf(v)])
+    else: candidates = g.vertex_set()
     phases = g.phases()
 
     parities: Dict[FrozenSet[VT],List[VT]] = dict()
