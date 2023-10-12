@@ -608,6 +608,12 @@ def extract_circuit(
         optimize_cnots: (0,1,2,3) Level of CNOT optimization to apply.
         up_to_perm: If true, returns a circuit that is equivalent to the given graph up to a permutation of the inputs.
         quiet: Whether to print detailed output of the extraction process.
+
+    Warning:
+        Note that this function changes the graph `g` in place. 
+        In particular, if the extraction fails, the modified `g` shows 
+        how far the extraction got. If you want to keep the original `g`
+        then input `g.copy()` into `extract_circuit`.
     """
 
     gadgets = {}
