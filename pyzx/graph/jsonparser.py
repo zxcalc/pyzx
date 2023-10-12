@@ -92,8 +92,8 @@ def json_to_graph(js: str, backend:Optional[str]=None) -> BaseGraph:
                     value = _quanto_value_to_phase(value)
             g.set_vdata(v, key, value)
 
-    inputs = []
-    outputs = []
+    inputs = {}
+    outputs = {}
 
     for name,attr in j.get('wire_vertices',{}).items():
         ann = attr['annotation']
@@ -104,17 +104,15 @@ def json_to_graph(js: str, backend:Optional[str]=None) -> BaseGraph:
         v = g.add_vertex(VertexType.BOUNDARY,q,r)
         g.set_vdata(v,'name',name)
         names[name] = v
-        if "input" in ann and ann["input"]: inputs.append(v)
-        if "output" in ann and ann["output"]: outputs.append(v)
-        #g.set_vdata(v, 'x', c[0])
-        #g.set_vdata(v, 'y', c[1])
+        if "input" in ann: inputs[v] = ann["input"]
+        if "output" in ann: outputs[v] = ann["output"]
         for key, value in attr['annotation'].items():
             if key in ('boundary','coord','input','output'):
                 continue
             g.set_vdata(v, key, value)
 
-    g.set_inputs(tuple(inputs))
-    g.set_outputs(tuple(outputs))
+    g.set_inputs(tuple(sorted(inputs.keys(),key=lambda v:inputs[v])))
+    g.set_outputs(tuple(sorted(outputs.keys(),key=lambda v:outputs[v])))
 
     edges: Dict[Any, List[int]] = {} # TODO: Any = ET
     for edge in j.get('undir_edges',{}).values():
@@ -182,8 +180,12 @@ def graph_to_json(g: BaseGraph[VT,ET], include_scalar: bool=True) -> str:
 
         names[v] = name
         if t == VertexType.BOUNDARY:
-            wire_vs[name] = {"annotation":{"boundary":True,"coord":coord,
-                                           "input":(v in inputs), "output":(v in outputs)}}
+            wire_vs[name] = {"annotation":{"boundary":True,"coord":coord}}
+            if v in inputs:
+                wire_vs[name]["annotation"]["input"] = inputs.index(v)
+            if v in outputs:
+                wire_vs[name]["annotation"]["output"] = outputs.index(v)
+
             for key in g.vdata_keys(v):
                 if key in wire_vs[name]["annotation"]:
                     continue

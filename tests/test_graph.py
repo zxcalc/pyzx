@@ -456,20 +456,16 @@ test_graph = {'node_vertices': {
                  'e9': {'src': 'v4', 'tgt': 'v19'}},
  'wire_vertices': {'b0': {'annotation': {'boundary': True,
                                          'coord': [0.0, -2.0],
-                                         'input': False,
-                                         'output': False}},
+                                         'input': 0}},
                    'b1': {'annotation': {'boundary': True,
                                          'coord': [18.0, -2.0],
-                                         'input': False,
-                                         'output': False}},
+                                         'output': 0}},
                    'b2': {'annotation': {'boundary': True,
                                          'coord': [0.0, -5.0],
-                                         'input': False,
-                                         'output': False}},
+                                         'input': 1}},
                    'b3': {'annotation': {'boundary': True,
                                          'coord': [18.0, -5.0],
-                                         'input': False,
-                                         'output': False}}}}
+                                         'output': 1}}}}
 
 
 class TestGraphIO(unittest.TestCase):
