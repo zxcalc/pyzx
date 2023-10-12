@@ -115,14 +115,14 @@ def tensorfy(g: 'BaseGraph[VT,ET]', preserve_scalar:bool=True) -> np.ndarray:
     outputs = g.outputs()
     if not inputs and not outputs:
         if any(g.type(v)==VertexType.BOUNDARY for v in g.vertices()):
-            raise ValueError("Diagram contains BOUNDARY-type vertices, but has no inputs or outputs set. Perhaps call g.auto_detect_inputs() first?")
+            raise ValueError("Diagram contains BOUNDARY-type vertices, but has no inputs or outputs set. Perhaps call g.auto_detect_io() first?")
 
     had = 1/sqrt(2)*np.array([[1,1],[1,-1]])
     id2 = np.identity(2)
     tensor = np.array(1.0,dtype='complex128')
     qubits = len(inputs)
     for i in range(qubits): tensor = np.tensordot(tensor,id2,axes=0)
-    inputs = tuple(sorted(inputs,key=g.qubit))
+    inputs = tuple(inputs)
     indices = {}
     for i, v in enumerate(inputs):
         indices[v] = [1 + 2*i]
@@ -170,7 +170,7 @@ def tensorfy(g: 'BaseGraph[VT,ET]', preserve_scalar:bool=True) -> np.ndarray:
                 if np.abs(tensor).max() < 10**-6: # Values are becoming too small
                     tensor *= 10**4 # So scale all the numbers up
     perm = []
-    for o in sorted(outputs,key=g.qubit):
+    for o in outputs:
         perm.append(indices[o][0])
     for i in range(len(inputs)):
         perm.append(i)
