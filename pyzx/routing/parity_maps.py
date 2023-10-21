@@ -106,8 +106,8 @@ class CNOT_tracker(Circuit):
             gate = gate_class(*args, **kwargs)
         self.gates.insert(0, gate)
 
-    def to_qasm(self) -> str:
-        qasm = super().to_qasm()
+    def to_qasm(self, version: int = 2) -> str:
+        qasm = super().to_qasm(version)
         initial_perm = "// Initial wiring: " + str(self.row_perm)
         end_perm = "// Resulting wiring: " + str(self.col_perm)
         return "\n".join([initial_perm, end_perm, qasm])
