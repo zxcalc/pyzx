@@ -1,4 +1,4 @@
-# PyZX - Python library for quantum circuit rewriting 
+# PyZX - Python library for quantum circuit rewriting
 #        and optimization using the ZX-calculus
 # Copyright (C) 2018 - Aleks Kissinger and John van de Wetering
 
@@ -93,7 +93,7 @@ class TargetMapper(Generic[VT]):
         """
         for l in self._rows.keys():
             self._rows[l] = n
-    
+
     def max_row(self) -> int:
         """
         Returns the highest 'next row' number.
@@ -152,8 +152,11 @@ class Gate(object):
         attribs = []
         if hasattr(self, "control"): attribs.append(str(self.control))
         if hasattr(self, "target"): attribs.append(str(self.target))
-        if hasattr(self, "phase") and self.print_phase:
-            attribs.append("phase={!s}".format(self.phase))
+        if self.print_phase:
+            if hasattr(self, "phase"):
+                attribs.append("phase={!s}".format(self.phase))
+            elif hasattr(self, "phases"):
+                attribs.append("phases={}".format(",".join(str(p) for p in self.phases)))
         return "{}{}({})".format(
                         self.name,
                         ("*" if (hasattr(self,"adjoint") and self.adjoint) else ""),
@@ -248,8 +251,11 @@ class Gate(object):
         for a in ["ctrl1","ctrl2", "control", "target"]:
             if hasattr(self, a): args.append("q[{:d}]".format(getattr(self,a)))
         param = ""
-        if hasattr(self, "phase") and self.print_phase:
-            param = "({}*pi)".format(float(self.phase))
+        if self.print_phase:
+            if hasattr(self, "phase"):
+                param = "({}*pi)".format(float(self.phase))
+            elif hasattr(self, "phases"):
+                param = "({})".format(",".join("{}*pi".format(float(p)) for p in self.phases))
         return "{}{} {};".format(n, param, ", ".join(args))
 
     def to_qc(self) -> str:
@@ -261,7 +267,7 @@ class Gate(object):
                 bg = self.split_phases()
                 if any(g.qc_name == 'undefined' for g in bg):
                     raise TypeError("Gate {} doesn't have a .qc description".format(str(self)))
-            else: 
+            else:
                 bg = self.to_basic_gates()
                 if len(bg) == 1:
                     raise TypeError("Gate {} doesn't have a .qc description".format(str(self)))
@@ -269,7 +275,7 @@ class Gate(object):
         args = []
         for a in ["ctrl1","ctrl2", "control", "target"]:
             if hasattr(self, a): args.append("q{:d}".format(getattr(self,a)))
-        
+
         # if hasattr(self, "phase") and self.print_phase:
         #     args.insert(0, phase_to_s(self.phase))
         return "{} {}".format(n, " ".join(args))
@@ -284,12 +290,12 @@ class Gate(object):
         """
         raise NotImplementedError("to_graph() must be implemented by each Gate subclass.")
 
-    def graph_add_node(self, 
-                g: BaseGraph[VT,ET], 
+    def graph_add_node(self,
+                g: BaseGraph[VT,ET],
                 mapper: TargetMapper[VT],
-                t: VertexType.Type, 
-                l: int, r: int, 
-                phase: FractionLike=0, 
+                t: VertexType.Type,
+                l: int, r: int,
+                phase: FractionLike=0,
                 etype: EdgeType.Type=EdgeType.SIMPLE,
                 ground: bool = False) -> VT:
         v = g.add_vertex(t, mapper.to_qubit(l), r, phase, ground)
@@ -339,7 +345,7 @@ class ZPhase(Gate):
                 return [S(self.target)]
             else: return [S(self.target, adjoint=True)]
         elif self.phase.denominator == 4:
-            gates: List['ZPhase'] = [] 
+            gates: List['ZPhase'] = []
             n = self.phase.numerator % 8
             if n == 3 or n == 5:
                 gates.append(Z(self.target))
@@ -440,6 +446,7 @@ class SX(XPhase):
     name = 'SX'
     qasm_name = 'sx'
     qasm_name_adjoint = 'sxdg'
+    print_phase = False
     def __init__(self, target: int, adjoint:bool=False) -> None:
         super().__init__(target, Fraction(1,2)*(-1 if adjoint else 1))
         self.adjoint = adjoint
@@ -562,7 +569,7 @@ class CNOT(Gate):
         mi = min([c,t])
         ma = max([c,t])
         r = max([len(s) for s in strings[mi:ma+1]])
-        for s in (strings[mi:ma+1]): 
+        for s in (strings[mi:ma+1]):
                 s.extend([':W_:']*(r-len(s)))
         for i in range(mi+1,ma): strings[i].append(':Wud:')
         if c<t:
@@ -829,6 +836,7 @@ class FSim(Gate):
         self.target = target
         self.theta = theta
         self.phi = phi
+        self.phases = [theta, phi]
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, FSim): return False
@@ -886,7 +894,7 @@ class FSim(Gate):
         # t1 = self.graph_add_node(g, q_mapper, VertexType.Z, self.target,r)
         # c2 = self.graph_add_node(g, q_mapper, VertexType.Z, self.control,r+1)
         # t2 = self.graph_add_node(g, q_mapper, VertexType.Z, self.target,r+1)
-        
+
         # pg1 = g.add_vertex(VertexType.Z,qmin-0.5,r+1)
         # pg1b = g.add_vertex(VertexType.Z,qmin-1.5,r+1, phase=self.theta)
         # g.add_edge((c1,pg1),EdgeType.HADAMARD)
@@ -921,7 +929,7 @@ class FSim(Gate):
         #g.add_edge((t,h),EdgeType.SIMPLE)
         #g.add_edge((c1,h),EdgeType.SIMPLE)
         #g.add_edge((c2,h),EdgeType.SIMPLE)
-        
+
         #rs[self.target] = r+4
         #rs[self.control] = r+4
 
@@ -1052,6 +1060,7 @@ class U2(Gate):  # See https://arxiv.org/pdf/1707.03429.pdf
         self.target = target
         self.theta = theta
         self.phi = phi
+        self.phases = [theta, phi]
 
     def to_basic_gates(self):
         return [ZPhase(self.target,phase=(self.phi-Fraction(1,2))%2),
@@ -1071,6 +1080,7 @@ class U3(Gate):  # See equation (5) of https://arxiv.org/pdf/1707.03429.pdf
         self.theta = theta
         self.phi = phi
         self.rho = rho
+        self.phases = [theta, phi, rho]
 
     def to_basic_gates(self):
         return [ZPhase(self.target,phase=self.rho),
@@ -1094,6 +1104,7 @@ class CU3(Gate):
         self.theta = theta
         self.phi = phi
         self.rho = rho
+        self.phases = [theta, phi, rho]
 
     def to_basic_gates(self):
         return [ZPhase(self.control,phase=(self.rho+self.phi)/2),
@@ -1121,6 +1132,7 @@ class CU(Gate):
         self.phi = phi
         self.rho = rho
         self.gamma = gamma
+        self.phases = [theta, phi, rho, gamma]
 
     def to_basic_gates(self):
         return [ZPhase(self.control,phase=self.gamma)] + \
