@@ -780,8 +780,9 @@ def extract_simple(g: BaseGraph[VT, ET], up_to_perm: bool = True) -> Circuit:
 
 
 def graph_to_swaps(g: BaseGraph[VT, ET], no_swaps: bool = False) -> Circuit:
-    """Converts a graph containing only normal and Hadamard edges into a circuit of Hadamard
-    and SWAP gates. If 'no_swaps' is True, only add Hadamards where needed"""
+    """Converts a graph containing only normal and Hadamard edges (i.e., no vertices other than
+    inputs and outputs) into a circuit of Hadamard and SWAP gates. If 'no_swaps' is True, only add
+    Hadamards where needed"""
     swap_map = {}
     leftover_swaps = False
     inputs = g.inputs()
