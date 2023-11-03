@@ -12,6 +12,7 @@ set BUILDDIR=_build
 set SPHINXPROJ=PyZX
 
 if "%1" == "" goto help
+set SPHINXTARGET=%1
 
 %SPHINXBUILD% >NUL 2>NUL
 if errorlevel 9009 (
