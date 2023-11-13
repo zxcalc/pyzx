@@ -124,6 +124,19 @@ class Term:
     def __eq__(self, other: object) -> bool:
         return self.__hash__() == other.__hash__()
 
+    def substitute(self, var_map: dict[Var, Union[float, complex, 'Fraction']]) -> tuple[Union[float, complex, 'Fraction'], 'Term']:
+        """Substitute variables in the term with the given values. Returns a tuple
+        of the coefficient and the new term.
+        """
+        coeff = 1
+        new_vars = []
+        for v, c in self.vars:
+            if v in var_map:
+                coeff *= var_map[v] ** c
+            else:
+                new_vars.append((v, c))
+        return (coeff, Term(new_vars))
+
 
 class Poly:
     terms: list[tuple[Union[int, float, Fraction], Term]]
@@ -222,6 +235,14 @@ class Poly:
                 if c*2 % 1 != 0: # Variable-free term with weight not equal to 1/2
                     return False
         return True
+
+    def substitute(self, var_map: dict[Var, Union[float, complex, 'Fraction']]) -> 'Poly':
+        """Substitute variables in the polynomial with the given values."""
+        p = Poly([])
+        for c, t in self.terms:
+            coeff, term = t.substitute(var_map)
+            p += Poly([(c * coeff, term)])
+        return p
 
 def new_var(name: str, types_dict: Union[bool, dict[str, bool]]) -> Poly:
     return Poly([(1, Term([(Var(name, types_dict), 1)]))])
