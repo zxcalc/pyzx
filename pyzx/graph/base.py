@@ -293,11 +293,10 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         for e in other.edges():
             s,t = other.edge_st(e)
             if not s in inputs and not t in inputs:
-                self.add_edge(self.edge(vtab[s],vtab[t]),
-                        edgetype=other.edge_type(e))
+                self.add_edge((vtab[s],vtab[t]), edgetype=other.edge_type(e))
 
         for (no,ni,et) in plugs:
-            self.add_edge_smart(self.edge(no,vtab[ni]), edgetype=et)
+            self.add_edge((no,vtab[ni]), edgetype=et)
         self.set_outputs(tuple(vtab[v] for v in other.outputs()))
 
 
@@ -372,7 +371,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
             vert_map[v] = w
         for e in other.edges():
             s,t = other.edge_st(e)
-            f = self.edge(vert_map[s],vert_map[t])
+            f = (vert_map[s],vert_map[t])
             self.add_edge(f,other.edge_type(e))
             edges.append(e)
         return (list(vert_map.values()),edges)
@@ -593,8 +592,8 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
                 t = self.edge_type(e)
                 self.remove_edge(e)
                 v = self.add_vertex(VertexType.Z,q,1)
-                self.add_edge(self.edge(i,v),toggle_edge(t))
-                self.add_edge(self.edge(v,n),EdgeType.HADAMARD)
+                self.add_edge((i,v),toggle_edge(t))
+                self.add_edge((v,n),EdgeType.HADAMARD)
                 claimed.append(v)
         for q, o in enumerate(sorted(self.outputs(),key=self.qubit)):
             #q = self.qubit(o)
@@ -609,8 +608,8 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
                 t = self.edge_type(e)
                 self.remove_edge(e)
                 v = self.add_vertex(VertexType.Z,q,max_r)
-                self.add_edge(self.edge(o,v),toggle_edge(t))
-                self.add_edge(self.edge(v,n),EdgeType.HADAMARD)
+                self.add_edge((o,v),toggle_edge(t))
+                self.add_edge((v,n),EdgeType.HADAMARD)
 
         self.pack_circuit_rows()
 
@@ -798,10 +797,10 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         # self.add_edges(add[EdgeType.SIMPLE],EdgeType.SIMPLE)
         # self.add_edges(add[EdgeType.HADAMARD],EdgeType.HADAMARD)
 
-    def add_edge_smart(self, edge_desc: Tuple[VT,VT], edgetype: EdgeType.Type):
-        """Like add_edge, but does the right thing if there is an existing edge."""
-        # TODO: implement these on backend
-        raise NotImplementedError("Not implemented on backend " + type(self).backend)
+    # def add_edge_smart(self, edge_desc: Tuple[VT,VT], edgetype: EdgeType.Type):
+    #     """Like add_edge, but does the right thing if there is an existing edge."""
+    #     # TODO: implement these on backend
+    #     raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
     def set_phase_master(self, m: 'simplify.Simplifier') -> None:
         """Points towards an instance of the class :class:`~pyzx.simplify.Simplifier`.

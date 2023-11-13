@@ -269,7 +269,7 @@ class GraphS(BaseGraph[int,Tuple[int,int,EdgeType.Type]]):
     def edge_set(self):
         return set(self.edges())
     def edge_st(self, edge):
-        return edge
+        return (edge[0], edge[1])
 
     def neighbors(self, vertex):
         return self.graph[vertex].keys()

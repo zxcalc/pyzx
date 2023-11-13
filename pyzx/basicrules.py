@@ -214,7 +214,7 @@ def fuse(g: BaseGraph[VT,ET], v1: VT, v2: VT) -> bool:
         g.add_to_phase(v1, g.phase(v2))
     for v3 in g.neighbors(v2):
         if v3 != v1:
-            g.add_edge_smart(g.edge(v1,v3), edgetype=g.edge_type(g.edge(v2,v3)))
+            g.add_edge((v1,v3), edgetype=g.edge_type(g.edge(v2,v3)))
     g.remove_vertex(v2)
     return True
 
@@ -251,7 +251,7 @@ def remove_id(g: BaseGraph[VT,ET], v: VT) -> bool:
         return False
 
     v1, v2 = tuple(g.neighbors(v))
-    g.add_edge_smart(g.edge(v1,v2), edgetype=EdgeType.SIMPLE
+    g.add_edge((v1,v2), edgetype=EdgeType.SIMPLE
             if g.edge_type(g.edge(v,v1)) == g.edge_type(g.edge(v,v2))
             else EdgeType.HADAMARD)
     g.remove_vertex(v)
