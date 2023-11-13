@@ -214,6 +214,9 @@ class Poly:
         assert isinstance(other, Poly)
         return set(self.terms) == set(other.terms)
 
+    def __hash__(self) -> int:
+        return hash(tuple(sorted(self.terms)))
+
     @property
     def is_pauli(self) -> bool:
         for c, t in self.terms:
