@@ -1,4 +1,4 @@
-# PyZX - Python library for quantum circuit rewriting 
+# PyZX - Python library for quantum circuit rewriting
 #        and optimization using the ZX-calculus
 # Copyright (C) 2018 - Aleks Kissinger and John van de Wetering
 
@@ -49,13 +49,13 @@ def _phase_to_quanto_value(p: FractionLike) -> str:
 def json_to_graph(js: str, backend:Optional[str]=None) -> BaseGraph:
     """Converts the json representation of a .qgraph Quantomatic graph into
     a pyzx graph."""
-    j = json.loads(js)
+    j = json.loads(js, cls=ComplexDecoder)
     g = Graph(backend)
 
     names: Dict[str, Any] = {} # TODO: Any = VT
     hadamards: Dict[str, List[Any]] = {}
     for name,attr in j.get('node_vertices',{}).items():
-        if ('data' in attr and 'type' in attr['data'] and attr['data']['type'] == "hadamard" 
+        if ('data' in attr and 'type' in attr['data'] and attr['data']['type'] == "hadamard"
             and 'is_edge' in attr['data'] and attr['data']['is_edge'] == 'true'):
             hadamards[name] = []
             continue
@@ -71,6 +71,9 @@ def json_to_graph(js: str, backend:Optional[str]=None) -> BaseGraph:
             if not 'type' in d or d['type'] == 'Z': g.set_type(v,VertexType.Z)
             elif d['type'] == 'X': g.set_type(v,VertexType.X)
             elif d['type'] == 'hadamard': g.set_type(v,VertexType.H_BOX)
+            elif d['type'] == 'W_input': g.set_type(v,VertexType.W_INPUT)
+            elif d['type'] == 'W_output': g.set_type(v,VertexType.W_OUTPUT)
+            elif d['type'] == 'Z_box': g.set_type(v,VertexType.Z_BOX)
             else: raise TypeError("unsupported type '{}'".format(d['type']))
             if 'value' in d:
                 g.set_phase(v,_quanto_value_to_phase(d['value']))
@@ -84,13 +87,13 @@ def json_to_graph(js: str, backend:Optional[str]=None) -> BaseGraph:
         for key, value in attr['annotation'].items():
             if key == 'coord':
                 continue
+            elif key == 'label':
+                if type(value) != complex:
+                    value = _quanto_value_to_phase(value)
             g.set_vdata(v, key, value)
-        
-        #g.set_vdata(v, 'x', c[0])
-        #g.set_vdata(v, 'y', c[1])
 
-    inputs = []
-    outputs = []
+    inputs = {}
+    outputs = {}
 
     for name,attr in j.get('wire_vertices',{}).items():
         ann = attr['annotation']
@@ -101,22 +104,20 @@ def json_to_graph(js: str, backend:Optional[str]=None) -> BaseGraph:
         v = g.add_vertex(VertexType.BOUNDARY,q,r)
         g.set_vdata(v,'name',name)
         names[name] = v
-        if "input" in ann and ann["input"]: inputs.append(v)
-        if "output" in ann and ann["output"]: outputs.append(v)
-        #g.set_vdata(v, 'x', c[0])
-        #g.set_vdata(v, 'y', c[1])
+        if "input" in ann: inputs[v] = ann["input"]
+        if "output" in ann: outputs[v] = ann["output"]
         for key, value in attr['annotation'].items():
             if key in ('boundary','coord','input','output'):
                 continue
             g.set_vdata(v, key, value)
 
-    g.set_inputs(tuple(inputs))
-    g.set_outputs(tuple(outputs))
+    g.set_inputs(tuple(sorted(inputs.keys(),key=lambda v:inputs[v])))
+    g.set_outputs(tuple(sorted(outputs.keys(),key=lambda v:outputs[v])))
 
     edges: Dict[Any, List[int]] = {} # TODO: Any = ET
     for edge in j.get('undir_edges',{}).values():
         n1, n2 = edge['src'], edge['tgt']
-        if n1 in hadamards and n2 in hadamards: #Both 
+        if n1 in hadamards and n2 in hadamards: #Both
             v = g.add_vertex(VertexType.Z)
             name = "v"+str(len(names))
             g.set_vdata(v, 'name',name)
@@ -124,11 +125,14 @@ def json_to_graph(js: str, backend:Optional[str]=None) -> BaseGraph:
             hadamards[n1].append(v)
             hadamards[n2].append(v)
             continue
-        if n1 in hadamards: 
+        if n1 in hadamards:
             hadamards[n1].append(names[n2])
             continue
         if n2 in hadamards:
             hadamards[n2].append(names[n1])
+            continue
+        if 'type' in edge and edge['type'] == 'w_io':
+            g.add_edge(g.edge(names[n1],names[n2]), EdgeType.W_IO)
             continue
 
         amount = edges.get(g.edge(names[n1],names[n2]),[0,0])
@@ -150,7 +154,7 @@ def json_to_graph(js: str, backend:Optional[str]=None) -> BaseGraph:
 
 def graph_to_json(g: BaseGraph[VT,ET], include_scalar: bool=True) -> str:
     """Converts a PyZX graph into JSON output compatible with Quantomatic.
-    If include_scalar is set to True (the default), then this includes the value 
+    If include_scalar is set to True (the default), then this includes the value
     of g.scalar with the json, which will also be loaded by the ``from_json`` method."""
     node_vs: Dict[str, Dict[str, Any]] = {}
     wire_vs: Dict[str, Dict[str, Any]] = {}
@@ -167,17 +171,21 @@ def graph_to_json(g: BaseGraph[VT,ET], include_scalar: bool=True) -> str:
         if not name:
             if t == VertexType.BOUNDARY: name = freenamesb.pop(0)
             else: name = freenamesv.pop(0)
-        else: 
+        else:
             try:
                 freenamesb.remove(name) if t==VertexType.BOUNDARY else freenamesv.remove(name)
             except:
                 pass
                 #print("couldn't remove name '{}'".format(name))
-        
+
         names[v] = name
         if t == VertexType.BOUNDARY:
-            wire_vs[name] = {"annotation":{"boundary":True,"coord":coord,
-                                           "input":(v in inputs), "output":(v in outputs)}}
+            wire_vs[name] = {"annotation":{"boundary":True,"coord":coord}}
+            if v in inputs:
+                wire_vs[name]["annotation"]["input"] = inputs.index(v)
+            if v in outputs:
+                wire_vs[name]["annotation"]["output"] = outputs.index(v)
+
             for key in g.vdata_keys(v):
                 if key in wire_vs[name]["annotation"]:
                     continue
@@ -191,6 +199,16 @@ def graph_to_json(g: BaseGraph[VT,ET], include_scalar: bool=True) -> str:
             elif t==VertexType.H_BOX:
                 node_vs[name]["data"]["type"] = "hadamard"
                 node_vs[name]["data"]["is_edge"] = "false"
+            elif t==VertexType.W_INPUT:
+                node_vs[name]["data"]["type"] = "W_input"
+            elif t==VertexType.W_OUTPUT:
+                node_vs[name]["data"]["type"] = "W_output"
+            elif t==VertexType.Z_BOX:
+                node_vs[name]["data"]["type"] = "Z_box"
+                zbox_label = g.vdata(v, 'label', 1)
+                if type(zbox_label) == Fraction:
+                    zbox_label = _phase_to_quanto_value(zbox_label)
+                node_vs[name]["annotation"]["label"] = zbox_label
             else: raise Exception("Unkown vertex type "+ str(t))
             phase = _phase_to_quanto_value(g.phase(v))
             if phase: node_vs[name]["data"]["value"] = phase
@@ -209,7 +227,7 @@ def graph_to_json(g: BaseGraph[VT,ET], include_scalar: bool=True) -> str:
         if t == EdgeType.SIMPLE:
             edges["e"+ str(i)] = {"src": names[src],"tgt": names[tgt]}
             i += 1
-        elif t==EdgeType.HADAMARD:
+        elif t == EdgeType.HADAMARD:
             x1,y1 = g.row(src), -g.qubit(src)
             x2,y2 = g.row(tgt), -g.qubit(tgt)
             hadname = freenamesv.pop(0)
@@ -219,18 +237,21 @@ def graph_to_json(g: BaseGraph[VT,ET], include_scalar: bool=True) -> str:
             i += 1
             edges["e"+str(i)] = {"src": names[tgt],"tgt": hadname}
             i += 1
+        elif t == EdgeType.W_IO:
+            edges["e"+str(i)] = {"src": names[src],"tgt": names[tgt], "type": "w_io"}
+            i += 1
         else:
             raise TypeError("Edge of type 0")
 
     d: Dict[str,Any] = {
-        "wire_vertices": wire_vs, 
-        "node_vertices": node_vs, 
+        "wire_vertices": wire_vs,
+        "node_vertices": node_vs,
         "undir_edges": edges
     }
     if include_scalar:
         d["scalar"] = g.scalar.to_json()
 
-    return json.dumps(d)
+    return json.dumps(d, cls=ComplexEncoder)
 
 def to_graphml(g: BaseGraph[VT,ET]) -> str:
     gml = """<?xml version="1.0" encoding="UTF-8" standalone="no"?>
@@ -277,3 +298,24 @@ def to_graphml(g: BaseGraph[VT,ET]) -> str:
 """
 
     return gml
+
+
+class ComplexEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, complex):
+            return str(obj)
+        return super().default(obj)
+
+class ComplexDecoder(json.JSONDecoder):
+    def __init__(self, *args, **kwargs):
+        json.JSONDecoder.__init__(self, object_hook=self.object_hook, *args, **kwargs)
+
+    def object_hook(self, dct):
+        for k, v in dct.items():
+            if isinstance(v, str):
+                try:
+                    dct[k] = complex(v)
+                except ValueError:
+                    pass
+        return dct
+

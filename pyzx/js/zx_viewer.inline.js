@@ -20,11 +20,15 @@ function nodeColor(t) {
     else if (t == 1) return "#ccffcc";
     else if (t == 2) return "#ff8888";
     else if (t == 3) return "yellow";
+    else if (t == 4) return "black";
+    else if (t == 5) return "black";
+    else if (t == 6) return "#ccffcc";
 }
 
 function edgeColor(t) {
     if (t == 1) return "black";
     else if (t == 2) return "#08f";
+    else if (t == 3) return "gray";
 }
 
 function nodeStyle(selected) {
@@ -125,10 +129,11 @@ function showGraph(tag, graph, width, height, scale, node_size, auto_hbox, show_
         .attr("transform", "translate(0,"+groundOffset+")")
         .attr("class", "selectable");
 
-    node.filter(function(d) { return d.t != 3; })
+    node.filter(function(d) { return d.t != 3 && d.t != 5 && d.t != 6; })
         .append("circle")
         .attr("r", function(d) {
             if (d.t == 0) return 0.5 * node_size;
+            else if (d.t == 4) return 0.25 * node_size;
             else return node_size;
         })
         .attr("fill", function(d) { return nodeColor(d.t); })
@@ -138,6 +143,24 @@ function showGraph(tag, graph, width, height, scale, node_size, auto_hbox, show_
     var hbox = node.filter(function(d) { return d.t == 3; });
 
     hbox.append("rect")
+        .attr("x", -0.75 * node_size).attr("y", -0.75 * node_size)
+        .attr("width", node_size * 1.5).attr("height", node_size * 1.5)
+        .attr("fill", function(d) { return nodeColor(d.t); })
+        .attr("stroke", "black")
+        .attr("class", "selectable");
+
+    // draw a triangle for d.t == 5
+    node.filter(function(d) { return d.t == 5; })
+        .append("path")
+        .attr("d", "M 0 0 L "+node_size+" "+node_size+" L -"+node_size+" "+node_size+" Z")
+        .attr("fill", function(d) { return nodeColor(d.t); })
+        .attr("stroke", "black")
+        .attr("class", "selectable")
+        .attr("transform", "translate(" + (-node_size/2) + ", 0) rotate(-90)");
+
+    // draw a square for Z box: d.t == 6
+    node.filter(function(d) { return d.t == 6; })
+        .append("rect")
         .attr("x", -0.75 * node_size).attr("y", -0.75 * node_size)
         .attr("width", node_size * 1.5).attr("height", node_size * 1.5)
         .attr("fill", function(d) { return nodeColor(d.t); })

@@ -1,4 +1,4 @@
-# PyZX - Python library for quantum circuit rewriting 
+# PyZX - Python library for quantum circuit rewriting
 #       and optimization using the ZX-calculus
 # Copyright (C) 2018 - Aleks Kissinger and John van de Wetering
 
@@ -25,7 +25,7 @@ class GraphS(BaseGraph[int,Tuple[int,int]]):
     """Purely Pythonic implementation of :class:`~graph.base.BaseGraph`."""
     backend = 'simple'
 
-    #The documentation of what these methods do 
+    #The documentation of what these methods do
     #can be found in base.BaseGraph
     def __init__(self) -> None:
         BaseGraph.__init__(self)
@@ -43,7 +43,7 @@ class GraphS(BaseGraph[int,Tuple[int,int]]):
         self._vdata: Dict[int,Any]                      = dict()
         self._inputs: Tuple[int, ...]                   = tuple()
         self._outputs: Tuple[int, ...]                  = tuple()
-        
+
     def clone(self) -> 'GraphS':
         cpy = GraphS()
         for v, d in self.graph.items():
@@ -68,11 +68,11 @@ class GraphS(BaseGraph[int,Tuple[int,int]]):
         return cpy
 
     def vindex(self): return self._vindex
-    def depth(self): 
+    def depth(self):
         if self._rindex: self._maxr = max(self._rindex.values())
         else: self._maxr = -1
         return self._maxr
-    def qubit_count(self): 
+    def qubit_count(self):
         if self._qindex: self._maxq = max(self._qindex.values())
         else: self._maxq = -1
         return self._maxq + 1
@@ -188,8 +188,8 @@ class GraphS(BaseGraph[int,Tuple[int,int]]):
                 if v1 > v0: yield (v0,v1)
 
     def edges_in_range(self, start, end, safe=False):
-        """like self.edges, but only returns edges that belong to vertices 
-        that are only directly connected to other vertices with 
+        """like self.edges, but only returns edges that belong to vertices
+        that are only directly connected to other vertices with
         index between start and end.
         If safe=True then it also checks that every neighbour is only connected to vertices with the right index"""
         if not safe:

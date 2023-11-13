@@ -27,11 +27,14 @@ FractionLike = Union[Fraction,int]
 
 class VertexType:
     """Type of a vertex in the graph."""
-    Type = Literal[0,1,2,3]
+    Type = Literal[0, 1, 2, 3, 4, 5, 6]
     BOUNDARY: Final = 0
     Z: Final = 1
     X: Final = 2
     H_BOX: Final = 3
+    W_INPUT: Final = 4
+    W_OUTPUT: Final = 5
+    Z_BOX: Final = 6
 
 def vertex_is_zx(ty: VertexType.Type) -> bool:
     """Check if a vertex type corresponds to a green or red spider."""
@@ -43,11 +46,38 @@ def toggle_vertex(ty: VertexType.Type) -> VertexType.Type:
         return ty
     return VertexType.Z if ty == VertexType.X else VertexType.X
 
+def vertex_is_z_like(ty: VertexType.Type) -> bool:
+    """Check if a vertex type corresponds to a Z spider or Z box."""
+    return ty == VertexType.Z or ty == VertexType.Z_BOX
+
+def vertex_is_zx_like(ty: VertexType.Type) -> bool:
+    """Check if a vertex type corresponds to a Z or X spider or Z box."""
+    return vertex_is_z_like(ty) or ty == VertexType.X
+
+def vertex_is_w(ty: VertexType.Type) -> bool:
+    return ty == VertexType.W_INPUT or ty == VertexType.W_OUTPUT
+
+def get_w_partner(g, v):
+    assert vertex_is_w(g.type(v))
+    for u in g.neighbors(v):
+        if g.edge_type((u, v)) == EdgeType.W_IO:
+            assert vertex_is_w(g.type(u))
+            return u
+    assert False
+
+def get_w_io(g, v):
+    v2 = get_w_partner(g, v)
+    if g.type(v) == VertexType.W_INPUT:
+        return v, v2
+    return v2, v
+
+
 class EdgeType:
     """Type of an edge in the graph."""
-    Type = Literal[1,2]
+    Type = Literal[1, 2, 3]
     SIMPLE: Final = 1
     HADAMARD: Final = 2
+    W_IO: Final = 3
 
 def toggle_edge(ty: EdgeType.Type) -> EdgeType.Type:
     """Swap the regular and Hadamard edge types."""
@@ -86,9 +116,13 @@ tikz_classes = {
     'X': 'X dot',
     'Z phase': 'Z phase dot',
     'X phase': 'X phase dot',
+    'Z box': 'Z box',
     'H': 'hadamard',
+    'W': 'W triangle',
+    'W input': 'W input',
     'edge': '',
-    'H-edge': 'hadamard edge'
+    'H-edge': 'hadamard edge',
+    'W-io-edge': 'W io edge'
 }
 
 class Settings(object): # namespace class
@@ -102,6 +136,7 @@ class Settings(object): # namespace class
     topt_command: Optional[List[str]] = None # Argument-separated command to run TOpt such as ["wsl", "./TOpt"]
     show_labels: bool = False
     tikz_classes: Dict[str,str] = tikz_classes
+    default_qasm_version: int = 2
 
 settings = Settings()
 
@@ -133,7 +168,10 @@ def get_mode():
             import IPython # type: ignore
             ipython_instance = IPython.get_ipython()
             if ipython_instance is None: raise Exception
-            if 'IPKernelApp' in ipython_instance.config: settings.mode = "notebook"
+            if 'IPKernelApp' in ipython_instance.config:
+                settings.mode = "notebook"
+                if os.environ.get('SPHINXTARGET') == 'latexpdf':
+                    settings.drawing_backend = "matplotlib"
             ipython_instance.config.InlineBackend.figure_format = 'svg'
         except:
             try:
@@ -143,7 +181,7 @@ def get_mode():
                 settings.mode = "shell"
 
     return settings.mode
-        
+
 
 
 def restricted_float(x):
@@ -184,3 +222,22 @@ def maxelements(seq, key=None, reverse=False):
                     indices = [i]
 
     return indices
+
+
+def is_pauli(phase):
+    """
+    Check whether phase is Pauli.
+
+    Compatible with zxlive symbols.
+    """
+    if phase == 0 or phase == 1:
+        return True
+    return getattr(phase, 'is_pauli', False)
+
+def get_z_box_label(g, v):
+    assert g.type(v) == VertexType.Z_BOX
+    return g.vdata(v, 'label', 1)
+
+def set_z_box_label(g, v, label):
+    assert g.type(v) == VertexType.Z_BOX
+    g.set_vdata(v, 'label', label)

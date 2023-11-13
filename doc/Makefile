@@ -8,6 +8,9 @@ SPHINXPROJ    = pyzx
 SOURCEDIR     = .
 BUILDDIR      = _build
 
+# Pass the target into pyzx when it is called from sphinx.
+export SPHINXTARGET=$@
+
 # Put it first so that "make" without argument is like "make help".
 help:
 	@$(SPHINXBUILD) -M help "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)

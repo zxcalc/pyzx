@@ -568,10 +568,10 @@ def route_circuit(
             and (gate.name == "CNOT" or gate.name == "CZ")
             and not (
                 architecture.graph.connected(
-                    qubit_lookup[gate.target], qubit_lookup[gate.control] # type: ignore
+                    qubit_lookup[gate.target], qubit_lookup[gate.control]
                 )
                 or architecture.graph.connected(
-                    qubit_lookup[gate.control], qubit_lookup[gate.target] # type: ignore
+                    qubit_lookup[gate.control], qubit_lookup[gate.target]
                 )
             )
         ]
@@ -1204,7 +1204,7 @@ def sequential_map_cnot_circuits(
                                         n_iterations=iteration,
                                         crossover_prob=crossover_prob,
                                         mutate_prob=mutation_prob,
-                                    ) # type: ignore
+                                    )
                                     end_time = time.time()
                                     print("score:", score)
                                     print("time (s):", end_time - start_time)

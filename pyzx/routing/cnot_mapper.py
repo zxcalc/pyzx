@@ -429,7 +429,7 @@ def sequential_gauss(
             n_steps,
             quiet=True,
         )
-        circuits, permutations = best_solution  # type: ignore # Assumes the PSO never returns None
+        circuits, permutations = best_solution
     return (
         circuits,
         permutations,

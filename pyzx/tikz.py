@@ -27,7 +27,7 @@ import time
 from fractions import Fraction
 from typing import List, Dict, overload, Tuple, Union, Optional
 
-from .utils import settings, EdgeType, VertexType, FloatInt, FractionLike
+from .utils import get_z_box_label, set_z_box_label, settings, EdgeType, VertexType, FloatInt
 from .graph.base import BaseGraph, VT, ET
 from .graph.graph import Graph
 from .circuit import Circuit
@@ -61,12 +61,21 @@ def _to_tikz(g: BaseGraph[VT,ET], draw_scalar:bool = False,
     maxindex = idoffset
 
     for v in g.vertices():
-        p = g.phase(v)
         ty = g.type(v)
+        if ty == VertexType.Z_BOX:
+            p = get_z_box_label(g,v)
+        else:
+            p = g.phase(v)
         if ty == VertexType.BOUNDARY:
             style = settings.tikz_classes['boundary']
         elif ty == VertexType.H_BOX:
             style = settings.tikz_classes['H']
+        elif ty == VertexType.W_INPUT:
+            style = settings.tikz_classes['W input']
+        elif ty == VertexType.W_OUTPUT:
+            style = settings.tikz_classes['W']
+        elif ty == VertexType.Z_BOX:
+            style = settings.tikz_classes['Z box']
         else:
             if p != 0:
                 if ty==VertexType.Z: style = settings.tikz_classes['Z phase']
@@ -74,13 +83,16 @@ def _to_tikz(g: BaseGraph[VT,ET], draw_scalar:bool = False,
             else:
                 if ty==VertexType.Z: style = settings.tikz_classes['Z']
                 else: style = settings.tikz_classes['X']
-        if (ty == VertexType.H_BOX and p == 1) or (ty != VertexType.H_BOX and p == 0):
+        if ((ty == VertexType.H_BOX or ty == VertexType.Z_BOX) and p == 1) or\
+            (ty != VertexType.H_BOX and p == 0):
             phase = ""
-        else:
+        elif type(p) == Fraction:
             ns = '' if p.numerator == 1 else str(p.numerator)
             dn = '' if p.denominator == 1 else str(p.denominator)
             if dn: phase = r"$\frac{%s\pi}{%s}$" % (ns, dn)
             else: phase = r"$%s\pi$" % ns
+        else:
+            phase = r"$%s$" % str(p)
         x = g.row(v) + xoffset
         y = - g.qubit(v) - yoffset
         s = "        \\node [style={}] ({:d}) at ({:.2f}, {:.2f}) {{{:s}}};".format(style,v+idoffset,x,y,phase)
@@ -91,7 +103,7 @@ def _to_tikz(g: BaseGraph[VT,ET], draw_scalar:bool = False,
         v,w = g.edge_st(e)
         ty = g.edge_type(e)
         s = "        \\draw "
-        if ty == EdgeType.HADAMARD: 
+        if ty == EdgeType.HADAMARD:
             if g.type(v) != VertexType.BOUNDARY and g.type(w) != VertexType.BOUNDARY:
                 style = settings.tikz_classes['H-edge']
                 if style: s += "[style={:s}] ".format(style)
@@ -101,12 +113,15 @@ def _to_tikz(g: BaseGraph[VT,ET], draw_scalar:bool = False,
                 t = "        \\node [style={:s}] ({:d}) at ({:.2f}, {:.2f}) {{}};".format(settings.tikz_classes['H'],maxindex+1, x,y)
                 verts.append(t)
                 maxindex += 1
+        elif ty == EdgeType.W_IO:
+            style = settings.tikz_classes['W-io-edge']
+            if style: s += "[style={:s}] ".format(style)
         else:
             style = settings.tikz_classes['edge']
             if style: s += "[style={:s}] ".format(style)
         s += "({:d}) to ({:d});".format(v+idoffset,w+idoffset)
         edges.append(s)
-    
+
     return (verts, edges)
 
 def to_tikz(g: BaseGraph[VT,ET], draw_scalar:bool=False) -> str:
@@ -164,27 +179,32 @@ def tikzit(g: Union[BaseGraph[VT,ET],Circuit,str], draw_scalar:bool=False) -> No
 
 
 synonyms_boundary = ['none', 'empty', 'boundary']
-synonyms_z = ['z dot', 'z spider', 'z', 'z phase dot', 
+synonyms_z = ['z dot', 'z spider', 'z', 'z phase dot',
               'white spider', 'white phase spider', 'white dot', 'white phase dot',
               'green dot', 'green node', 'green phase node']
-synonyms_x = ['x dot', 'x spider', 'x', 'x phase dot', 
+synonyms_x = ['x dot', 'x spider', 'x', 'x phase dot',
               'grey spider', 'grey phase spider', 'grey dot', 'grey phase dot',
               'gray spider', 'gray phase spider', 'gray dot', 'gray phase dot',
               'red dot', 'red node', 'red phase node']
 synonyms_hadamard = ['hadamard', 'h', 'small hadamard']
+synonyms_w_input = ['w input']
+synonyms_w_output = ['w output', 'w', 'w triangle']
+synonyms_z_box = ['z box', 'zbox', 'zbox phase', 'green box', 'green box phase',
+                  'green phase box', 'white box', 'white box phase', 'white phase box']
 
 synonyms_edge = ['empty', 'simple', 'none']
 synonyms_hedge = ['hadamard edge']
+synonyms_wedge = ['w edge', 'w io edge']
 
 tikz_error_message = "Not a valid tikz picture. Please use Tikzit to generate correct output."
 def tikz_to_graph(
-    s: str, 
-    warn_overlap:bool= True, 
-    fuse_overlap:bool = True, 
+    s: str,
+    warn_overlap:bool= True,
+    fuse_overlap:bool = True,
     ignore_nonzx:bool = False,
     backend:Optional[str]=None) -> BaseGraph:
-    """Converts a tikz diagram into a pyzx Graph. 
-    The tikz diagram is assumed to be one generated by Tikzit, 
+    """Converts a tikz diagram into a pyzx Graph.
+    The tikz diagram is assumed to be one generated by Tikzit,
     and hence should have a nodelayer and a edgelayer..
 
     Args:
@@ -211,9 +231,9 @@ def tikz_to_graph(
     position_dict: Dict[str,List[int]] = {}
     for c,l in enumerate(lines[2:]):
         if l == r'\end{pgfonlayer}': break
-        # l should look like 
+        # l should look like
         # \node [style=stylename] (integer_id) at (x_float, y_float) {$phase$};
-        if not l.startswith(r'\node'): 
+        if not l.startswith(r'\node'):
             raise ValueError(r"Node definition does not start with '\node': %s" % l)
         l = l[6:]
         i = l.find('[')
@@ -233,6 +253,9 @@ def tikz_to_graph(
         elif style.lower() in synonyms_z: ty = VertexType.Z
         elif style.lower() in synonyms_x: ty = VertexType.X
         elif style.lower() in synonyms_hadamard: ty = VertexType.H_BOX
+        elif style.lower() in synonyms_w_input: ty = VertexType.W_INPUT
+        elif style.lower() in synonyms_w_output: ty = VertexType.W_OUTPUT
+        elif style.lower() in synonyms_z_box: ty = VertexType.Z_BOX
         else:
             if ignore_nonzx:
                 ty = VertexType.BOUNDARY
@@ -252,18 +275,22 @@ def tikz_to_graph(
             v = g.add_vertex(ty,-y,x)
         index_dict[vid] = v
 
+        if ty == VertexType.Z_BOX:
+            set_phase = lambda v, p: set_z_box_label(g, v, p)
+        else:
+            set_phase = g.set_phase
         if label == '0':
-            g.set_phase(v,0)
+            set_phase(v,0)
         elif label == r'\neg':
-            g.set_phase(v,1)
+            set_phase(v,1)
         elif label:
-            if label.find('pi') == -1:
+            if label.find('pi') == -1 and ty != VertexType.Z_BOX:
                 if not ignore_nonzx:
                     raise ValueError("Node definition %s has invalid phase label" % l)
             else:
                 label = label.replace(r'\pi','').strip()
                 if label == '' or label == '-' or label == '-1':
-                    g.set_phase(v,1)
+                    set_phase(v,1)
                 elif label.find(r'\frac') != -1:
                     label = label.replace(r'\frac','').strip()
                     if label.find('}{') == -1:
@@ -287,7 +314,7 @@ def tikz_to_graph(
                             m = int(denom)
                         except:
                             raise ValueError("Node definition %s has invalid phase label" % l)
-                    g.set_phase(v, Fraction(n,m))
+                    set_phase(v, Fraction(n,m))
                 elif label.find('/') != -1:
                     num, denom = label.split('/',1)
                     if num == '': n = 1
@@ -301,13 +328,16 @@ def tikz_to_graph(
                         m = int(denom)
                     except:
                         raise ValueError("Node definition %s has invalid phase label" % l)
-                    g.set_phase(v, Fraction(n,m))
+                    set_phase(v, Fraction(n,m))
                 else:
                     try:
-                        phase = int(label)
+                        if ty == VertexType.Z_BOX:
+                            phase = complex(label)
+                        else:
+                            phase = int(label)
                     except:
                         raise ValueError("Node definition %s has invalid phase label '%s'" % (l,label))
-                    g.set_phase(v, phase)
+                    set_phase(v, phase)
 
     # done parsing the vertices, now we parse the edges
     etab: Dict[ET, List[int]] = {} # type: ignore
@@ -316,11 +346,11 @@ def tikz_to_graph(
         raise ValueError(tikz_error_message)
     for c,l in enumerate(lines[c+4:]):
         if l == r'\end{pgfonlayer}': break
-        if not l.startswith(r'\draw'): 
+        if not l.startswith(r'\draw'):
             raise ValueError(r"Edge definition does not start with '\draw': %s" % l)
         l = l[6:]
         i = l.find('style')
-        if i == -1: 
+        if i == -1:
             style = "empty"
             j = l.find(']')
         else:
@@ -328,7 +358,7 @@ def tikz_to_graph(
             if j1 == -1:
                 raise ValueError(r"Faulty edge definition %s" % l)
             j2 = l.find(',',i)
-            if j2 != -1 and j2 < j1: 
+            if j2 != -1 and j2 < j1:
                 style = l[i+5:j2].replace("=","").strip()
             else:
                 style = l[i+5:j1].replace("=","").strip()
@@ -339,16 +369,18 @@ def tikz_to_graph(
 
         e = g.edge(index_dict[int(src)],index_dict[int(tgt)])
 
-        if style.lower() in synonyms_edge: 
+        if style.lower() in synonyms_edge:
             if e in etab:
                 etab[e][0] += 1
             else:
                 etab[e] = [1,0]
-        elif style.lower() in synonyms_hedge: 
+        elif style.lower() in synonyms_hedge:
             if e in etab:
                 etab[e][1] += 1
             else:
                 etab[e] = [0,1]
+        elif style.lower() in synonyms_wedge:
+            g.add_edge(e, EdgeType.W_IO)
         else:
             if ignore_nonzx:
                 if e in etab:
@@ -357,6 +389,6 @@ def tikz_to_graph(
                     etab[e] = [1,0]
             else:
                 raise ValueError("Unknown edge style '%s' in edge definition %s" % (style, l))
-        
+
     g.add_edge_table(etab)
     return g

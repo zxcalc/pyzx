@@ -1,4 +1,4 @@
-# PyZX - Python library for quantum circuit rewriting 
+# PyZX - Python library for quantum circuit rewriting
 #        and optimization using the ZX-calculus
 # Copyright (C) 2018 - Aleks Kissinger and John van de Wetering
 
@@ -28,6 +28,7 @@ mydir = os.path.dirname(__file__)
 try:
     import numpy as np
     from pyzx.tensor import tensorfy, compare_tensors
+    import math
 except ImportError:
     np = None
 
