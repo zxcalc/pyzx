@@ -170,6 +170,14 @@ class Poly:
 
     __rmul__ = __mul__
 
+    def __pow__(self, other: int) -> 'Poly':
+        assert other >= 0
+        if other == 0:
+            return Poly([(1, Term([]))])
+        if other == 1:
+            return self
+        return self * (self ** (other - 1))
+
     def __repr__(self) -> str:
         return f'Poly({str(self)})'
 
