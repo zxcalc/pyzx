@@ -915,11 +915,11 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
 
     def edge_set(self) -> Set[ET]:
         """Returns the edges of the graph as a Python set.
-        Should be overloaded if the backend supplies a cheaper version than this."""
+        Should be overloaded if the backend supplies a cheaper version than this. Note this ignores parallel edges."""
         return set(self.edges())
 
-    def edge(self, s:VT, t:VT) -> ET:
-        """Returns the name of the first edge with the given source/target. Behaviour is undefined if the vertices are not connected."""
+    def edge(self, s:VT, t:VT, et: EdgeType.Type=EdgeType.SIMPLE) -> ET:
+        """Returns the name of the first edge with the given source/target and type. Behaviour is undefined if the vertices are not connected."""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
     def edge_st(self, edge: ET) -> Tuple[VT, VT]:
