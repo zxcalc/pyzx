@@ -31,6 +31,8 @@ from math import pi, sqrt
 
 from typing import Optional
 
+from .symbolic import Poly
+
 
 import numpy as np
 np.set_printoptions(suppress=True)
@@ -140,6 +142,8 @@ def tensorfy(g: 'BaseGraph[VT,ET]', preserve_scalar:bool=True) -> np.ndarray:
                 d += 1
                 t = id2
             else:
+                if isinstance(v, Poly):
+                    raise ValueError(f"Can't convert diagram with parameters to tensor: {str(v)}")
                 phase = pi*phases[v]
                 if types[v] == VertexType.Z:
                     t = Z_to_tensor(d,phase)

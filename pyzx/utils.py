@@ -93,10 +93,9 @@ def phase_to_s(a: FractionLike, t:VertexType.Type=VertexType.Z) -> str:
 def phase_fraction_to_s(a: FractionLike, t:VertexType.Type=VertexType.Z) -> str:
     if (a == 0 and t != VertexType.H_BOX): return ''
     if (a == 1 and t == VertexType.H_BOX): return ''
-    try:
-        a = Fraction(a)
-    except Exception:
+    if isinstance(a, Poly):
         return str(a)
+    a = Fraction(a)
 
     if a == 0: return '0'
     simstr = ''

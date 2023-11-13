@@ -57,6 +57,7 @@ import numpy as np
 
 from .utils import VertexType, EdgeType, get_w_partner, get_z_box_label, set_z_box_label, toggle_edge, vertex_is_w, vertex_is_zx, FloatInt, FractionLike, get_w_io, vertex_is_z_like
 from .graph.base import BaseGraph, VT, ET
+from .symbolic import Poly
 
 RewriteOutputType = Tuple[Dict[ET,List[int]], List[VT], List[ET], bool]
 MatchObject = TypeVar('MatchObject')
@@ -273,9 +274,10 @@ def match_z_to_z_box_parallel(
     if matchf is not None: candidates = set([v for v in g.vertices() if matchf(v)])
     else: candidates = g.vertex_set()
     types = g.types()
+    phases = g.phases()
     m = []
     for v in candidates:
-        if types[v] == VertexType.Z:
+        if types[v] == VertexType.Z and not isinstance(phases[v],Poly):
             if num == 0: break
             m.append(v)
             num -= 1
@@ -285,7 +287,9 @@ def z_to_z_box(g: BaseGraph[VT,ET], matches: List[VT]) -> RewriteOutputType[ET,V
     """Converts a Z vertex to a Z-box."""
     for v in matches:
         g.set_type(v, VertexType.Z_BOX)
-        label = np.round(np.e**(1j * np.pi * g.phase(v)), 8)
+        phase = g.phase(v)
+        assert not isinstance(phase, Poly)
+        label = np.round(np.e**(1j * np.pi * phase), 8)
         set_z_box_label(g, v, label)
         g.set_phase(v, 0)
     return ({}, [], [], True)
@@ -729,6 +733,7 @@ def lcomp(g: BaseGraph[VT,ET], matches: List[MatchLcompType[VT]]) -> RewriteOutp
     for m in matches:
         a = g.phase(m[0])
         rem.append(m[0])
+        assert isinstance(a,Fraction)  # For mypy
         if a.numerator == 1: g.scalar.add_phase(Fraction(1,4))
         else: g.scalar.add_phase(Fraction(7,4))
         n = len(m[1])
