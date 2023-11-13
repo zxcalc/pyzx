@@ -479,7 +479,6 @@ class TestGraphIO(unittest.TestCase):
         js = json.dumps(test_graph)
         g = Graph.from_json(js)
         tikz = g.to_tikz()
-        print(tikz)
         g2 = Graph.from_tikz(tikz, warn_overlap=False)
 
 if __name__ == '__main__':

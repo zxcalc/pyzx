@@ -24,6 +24,7 @@ from typing import List
 import json
 
 from ..utils import FloatInt, FractionLike
+from ..symbolic import Poly
 
 __all__ = ['Scalar']
 
@@ -217,6 +218,9 @@ class Scalar(object):
         elif p1 == 1:
             self.add_power(1)
             self.add_phase(p2)
+            return
+        if isinstance(p1, Poly) or isinstance(p2, Poly):
+            self.set_unknown()
             return
         if p2.denominator == 2:
             p1, p2 = p2, p1

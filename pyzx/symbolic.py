@@ -154,7 +154,7 @@ class Poly:
             output.update(term.free_vars())
         return output
 
-    def __add__(self, other: 'Poly') -> 'Poly':
+    def __add__(self, other: Union['Poly',Fraction,int,float]) -> 'Poly':
         if isinstance(other, (int, float, Fraction)):
             other = Poly([(other, Term([]))])
         counter = dict()
@@ -172,8 +172,8 @@ class Poly:
 
     __radd__ = __add__
 
-    def __mul__(self, other: 'Poly') -> 'Poly':
-        if isinstance(other, (int, float)):
+    def __mul__(self, other: Union['Poly',Fraction,int,float]) -> 'Poly':
+        if isinstance(other, (int, float,Fraction)):
             other = Poly([(other, Term([]))])
         p = Poly([])
         for c1, t1 in self.terms:
@@ -190,6 +190,9 @@ class Poly:
         if other == 1:
             return self
         return self * (self ** (other - 1))
+
+    def __mod__(self, other: int) -> 'Poly':
+        return Poly([(c % other, t) for c, t in self.terms])
 
     def __repr__(self) -> str:
         return f'Poly({str(self)})'
@@ -211,7 +214,7 @@ class Poly:
                 other = Poly([])
             else:
                 other = Poly([(other, Term([]))])
-        assert isinstance(other, Poly)
+        if not isinstance(other, Poly): return False
         return set(self.terms) == set(other.terms)
 
     def __hash__(self) -> int:
