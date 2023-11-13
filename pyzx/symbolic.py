@@ -148,7 +148,7 @@ class Poly:
         for c, t in self.terms + other.terms:
             if t not in counter: counter[t] = c
             else: counter[t] += c
-            if all(tt[0].is_bool for tt in t.vars):
+            if len(t.vars) > 0 and all(tt[0].is_bool for tt in t.vars):
                 counter[t] = counter[t] % 2
 
         # remove terms with coefficient 0
