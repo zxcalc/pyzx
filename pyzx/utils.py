@@ -20,9 +20,10 @@ from fractions import Fraction
 from typing import Union, Optional, List, Dict, Any
 from typing_extensions import Literal, Final
 
+from .symbolic import Poly
 
 FloatInt = Union[float,int]
-FractionLike = Union[Fraction,int]
+FractionLike = Union[Fraction,int,Poly]
 
 
 class VertexType:
@@ -83,8 +84,13 @@ def toggle_edge(ty: EdgeType.Type) -> EdgeType.Type:
     """Swap the regular and Hadamard edge types."""
     return EdgeType.HADAMARD if ty == EdgeType.SIMPLE else EdgeType.SIMPLE
 
+def phase_to_s(a: FractionLike, t:VertexType.Type=VertexType.Z) -> str:
+    if isinstance(a, Fraction) or isinstance(a, int):
+        return phase_fraction_to_s(a, t)
+    else: # a is a Poly
+        return str(a)
 
-def phase_to_s(a: FractionLike, t:VertexType.Type=VertexType.Z):
+def phase_fraction_to_s(a: FractionLike, t:VertexType.Type=VertexType.Z) -> str:
     if (a == 0 and t != VertexType.H_BOX): return ''
     if (a == 1 and t == VertexType.H_BOX): return ''
     try:
@@ -105,10 +111,16 @@ def phase_to_s(a: FractionLike, t:VertexType.Type=VertexType.Z):
     return simstr + ns + '\u03c0' + ds
 
 def phase_is_clifford(phase: FractionLike):
-    return phase in [Fraction(i, 2) for i in range(4)]
+    if isinstance(phase, (Fraction, int)):
+        return phase in [Fraction(i, 2) for i in range(4)]
+    else:
+        return phase.is_clifford
 
 def phase_is_pauli(phase: FractionLike):
-    return phase in (0, 1)
+    if isinstance(phase, (Fraction, int)):
+        return phase in (0, 1)
+    else:
+        return phase.is_pauli
 
 tikz_classes = {
     'boundary': 'none',

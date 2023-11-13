@@ -90,6 +90,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         # merge_vdata(v0,v1) is an optional, custom function for merging
         # vdata of v1 into v0 during spider fusion etc.
         self.merge_vdata: Optional[Callable[[VT,VT], None]] = None
+        self.variable_types: Dict[str,bool] = dict() # mapping of variable names to their type (bool or continuous)
 
     def __str__(self) -> str:
         return "Graph({} vertices, {} edges)".format(

@@ -18,10 +18,10 @@ import json
 from typing import Any, Callable, Generic, Optional, List, Dict, Tuple
 import copy
 
-from ..utils import VertexType, EdgeType, FractionLike, FloatInt
+from ..utils import VertexType, EdgeType, FractionLike, FloatInt, phase_to_s
 from .base import BaseGraph, VT, ET
 from .graph_s import GraphS
-from .jsonparser import ComplexDecoder, ComplexEncoder, _phase_to_quanto_value, _quanto_value_to_phase
+from .jsonparser import ComplexDecoder, ComplexEncoder, string_to_phase
 
 class GraphDiff(Generic[VT, ET]):
 	removed_verts: List[VT]
@@ -33,6 +33,7 @@ class GraphDiff(Generic[VT, ET]):
 	changed_phases: Dict[VT, FractionLike]
 	changed_pos: Dict[VT, Tuple[FloatInt,FloatInt]]
 	changed_vdata: Dict[VT, Any]
+	variable_types: Dict[str,bool]
 
 	def __init__(self, g1: BaseGraph[VT,ET], g2: BaseGraph[VT,ET]) -> None:
 		self.calculate_diff(g1,g2)
@@ -43,6 +44,8 @@ class GraphDiff(Generic[VT, ET]):
 		self.changed_phases = {}
 		self.changed_pos = {}
 		self.changed_vdata = {}
+		self.variable_types = g1.variable_types.copy()
+		self.variable_types.update(g2.variable_types)
 
 		old_verts = g1.vertex_set()
 		new_verts = g2.vertex_set()
@@ -132,7 +135,7 @@ class GraphDiff(Generic[VT, ET]):
 		changed_edge_types_str_dict = {}
 		for key, value in self.changed_edge_types.items():
 			changed_edge_types_str_dict[f"{key[0]},{key[1]}"] = value # type: ignore
-		changed_phases_str = {k: _phase_to_quanto_value(v) for k, v in self.changed_phases.items()}
+		changed_phases_str = {k: phase_to_s(v) for k, v in self.changed_phases.items()}
 		return json.dumps({
 			"removed_verts": self.removed_verts,
 			"new_verts": self.new_verts,
@@ -143,6 +146,7 @@ class GraphDiff(Generic[VT, ET]):
 			"changed_phases": changed_phases_str,
 			"changed_pos": self.changed_pos,
 			"changed_vdata": self.changed_vdata,
+			"variable_types": self.variable_types
 		},  cls=ComplexEncoder)
 
 	@staticmethod
@@ -155,7 +159,7 @@ class GraphDiff(Generic[VT, ET]):
 		gd.new_edges = list(map(tuple, d["new_edges"])) # type: ignore
 		gd.changed_vertex_types = map_dict_keys(d["changed_vertex_types"], int)
 		gd.changed_edge_types = map_dict_keys(d["changed_edge_types"], lambda x: tuple(map(int, x.split(","))))
-		gd.changed_phases = {int(k): _quanto_value_to_phase(v) for k, v in d["changed_phases"].items()}
+		gd.changed_phases = {int(k): string_to_phase(v,gd) for k, v in d["changed_phases"].items()}
 		gd.changed_pos = map_dict_keys(d["changed_pos"], int)
 		gd.changed_vdata = map_dict_keys(d["changed_vdata"], int)
 		return gd
