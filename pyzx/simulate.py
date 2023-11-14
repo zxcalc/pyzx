@@ -24,7 +24,6 @@ import math
 sq2 = math.sqrt(2)
 omega = (1+1j)/sq2
 from fractions import Fraction
-import itertools
 from typing import List, Optional, Dict, Tuple, Any
 
 import numpy as np
@@ -32,7 +31,6 @@ import numpy as np
 from .utils import EdgeType, VertexType, toggle_edge
 from . import simplify
 from .circuit import Circuit
-from .graph import Graph
 from .graph.base import BaseGraph,VT,ET
 
 MAGIC_GLOBAL = -(7+5*sq2)/(2+2j)
@@ -357,10 +355,11 @@ def replace_magic_states(g: BaseGraph[VT,ET], pick_random:Any=False) -> SumGraph
     graphs = []
     if num_replace == 6:
         replace_functions = [replace_B60, replace_B66, replace_E6, replace_O6, replace_K6, replace_phi1, replace_phi2]
-    if num_replace == 2:
+    elif num_replace == 2:
         replace_functions = [replace_2_S, replace_2_N]
-    if num_replace == 1:
+    else:
         replace_functions = [replace_1_0, replace_1_1]
+
     for func in replace_functions:
         h = func(g.copy(), candidates)
         if num_replace == 6: h.scalar.add_float(MAGIC_GLOBAL)
@@ -394,7 +393,7 @@ def replace_E6(g: BaseGraph[VT,ET], verts: List[VT]) -> BaseGraph[VT,ET]:
         g.add_to_phase(v, Fraction(1,2))
         av += g.row(v)
     w = g.add_vertex(VertexType.Z,-1,av/6,Fraction(1))
-    g.add_edges([g.edge(v,w) for v in verts],EdgeType.HADAMARD)
+    g.add_edges([(v,w) for v in verts],EdgeType.HADAMARD)
     return g
 
 def replace_O6(g: BaseGraph[VT,ET], verts: List[VT]) -> BaseGraph[VT,ET]:
@@ -407,7 +406,7 @@ def replace_O6(g: BaseGraph[VT,ET], verts: List[VT]) -> BaseGraph[VT,ET]:
         g.add_to_phase(v, Fraction(1,2))
         av += g.row(v)
     w = g.add_vertex(VertexType.Z,-1,av/6,Fraction(0))
-    g.add_edges([g.edge(v,w) for v in verts],EdgeType.HADAMARD)
+    g.add_edges([(v,w) for v in verts],EdgeType.HADAMARD)
     return g
 
 def replace_K6(g: BaseGraph[VT,ET], verts: List[VT]) -> BaseGraph[VT,ET]:
@@ -419,7 +418,7 @@ def replace_K6(g: BaseGraph[VT,ET], verts: List[VT]) -> BaseGraph[VT,ET]:
         g.add_to_phase(v,Fraction(-1,4))
         av += g.row(v)
     w = g.add_vertex(VertexType.Z,-1,av/6,Fraction(3,2))
-    g.add_edges([g.edge(v,w) for v in verts],EdgeType.SIMPLE)
+    g.add_edges([(v,w) for v in verts],EdgeType.SIMPLE)
     return g
 
 def replace_phi1(g: BaseGraph[VT,ET], verts: List[VT]) -> BaseGraph[VT,ET]:
@@ -428,15 +427,15 @@ def replace_phi1(g: BaseGraph[VT,ET], verts: List[VT]) -> BaseGraph[VT,ET]:
     g.scalar.add_phase(Fraction(3,2))
     w6 = g.add_vertex(VertexType.Z,-1, g.row(verts[5])+0.5, Fraction(1))
     g.add_to_phase(verts[5],Fraction(-1,4))
-    g.add_edge(g.edge(verts[5],w6))
+    g.add_edge((verts[5],w6))
     ws = []
     for v in verts[:-1]:
         g.add_to_phase(v,Fraction(-1,4))
         w = g.add_vertex(VertexType.Z,-1, g.row(v)+0.5)
-        g.add_edges([g.edge(w6,w),g.edge(v,w)],EdgeType.HADAMARD)
+        g.add_edges([(w6,w),(v,w)],EdgeType.HADAMARD)
         ws.append(w)
     w1,w2,w3,w4,w5 = ws
-    g.add_edges([g.edge(*e) for e in [(w1,w3),(w1,w4),(w2,w4),(w2,w5),(w3,w5)]],EdgeType.HADAMARD)
+    g.add_edges([(w1,w3),(w1,w4),(w2,w4),(w2,w5),(w3,w5)],EdgeType.HADAMARD)
     return g
 
 def replace_phi2(g: BaseGraph[VT,ET], verts: List[VT]) -> BaseGraph[VT,ET]:
@@ -447,7 +446,7 @@ def replace_phi2(g: BaseGraph[VT,ET], verts: List[VT]) -> BaseGraph[VT,ET]:
 
 def replace_2_S(g: BaseGraph[VT,ET], verts: List[VT]) -> BaseGraph[VT,ET]:
     w = g.add_vertex(VertexType.Z,g.qubit(verts[0])-0.5, g.row(verts[0])-0.5, Fraction(1,2))
-    g.add_edges([g.edge(verts[0],w),g.edge(verts[1],w)],EdgeType.SIMPLE)
+    g.add_edges([(verts[0],w),(verts[1],w)],EdgeType.SIMPLE)
     for v in verts: g.add_to_phase(v,Fraction(-1,4))
     return g
 
@@ -455,14 +454,14 @@ def replace_2_S(g: BaseGraph[VT,ET], verts: List[VT]) -> BaseGraph[VT,ET]:
 def replace_2_N(g: BaseGraph[VT,ET], verts: List[VT]) -> BaseGraph[VT,ET]:
     g.scalar.add_phase(Fraction(1,4))
     w = g.add_vertex(VertexType.Z,g.qubit(verts[0])-0.5, g.row(verts[0])-0.5, Fraction(1,1))
-    g.add_edges([g.edge(verts[0],w),g.edge(verts[1],w)],EdgeType.HADAMARD)
+    g.add_edges([(verts[0],w),(verts[1],w)],EdgeType.HADAMARD)
     for v in verts: g.add_to_phase(v,Fraction(-1,4))
     return g
 
 def replace_1_0(g: BaseGraph[VT,ET], verts: List[VT]) -> BaseGraph[VT,ET]:
     g.scalar.add_power(-1)
     w = g.add_vertex(VertexType.Z,g.qubit(verts[0])-0.5, g.row(verts[0])-0.5, 0)
-    g.add_edge(g.edge(verts[0],w),EdgeType.HADAMARD)
+    g.add_edge((verts[0],w),EdgeType.HADAMARD)
     for v in verts: g.add_to_phase(v,Fraction(-1,4))
     return g
 
@@ -470,6 +469,6 @@ def replace_1_1(g: BaseGraph[VT,ET], verts: List[VT]) -> BaseGraph[VT,ET]:
     g.scalar.add_phase(Fraction(1,4))
     g.scalar.add_power(-1)
     w = g.add_vertex(VertexType.Z,g.qubit(verts[0])-0.5, g.row(verts[0])-0.5, Fraction(1,1))
-    g.add_edge(g.edge(verts[0],w),EdgeType.HADAMARD) 
+    g.add_edge((verts[0],w),EdgeType.HADAMARD) 
     for v in verts: g.add_to_phase(v,Fraction(-1,4))
     return g
