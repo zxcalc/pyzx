@@ -54,7 +54,7 @@ class Scalar(object):
     """Represents a global scalar for a Graph instance."""
     def __init__(self) -> None:
         self.power2: int = 0 # Stores power of square root of two
-        self.phase: Fraction = Fraction(0) # Stores complex phase of the number
+        self.phase: FractionLike = Fraction(0) # Stores complex phase of the number
         self.phasenodes: List[FractionLike] = [] # Stores list of legless spiders, by their phases.
         self.floatfactor: complex = 1.0
         self.is_unknown: bool = False # Whether this represents an unknown scalar value
@@ -115,7 +115,10 @@ class Scalar(object):
         if self.power2 != 0:
             s += r"\sqrt{{2}}^{{{:d}}}".format(self.power2)
         if self.phase not in (0,1):
-            s += r"\exp(i~\frac{{{:d}\pi}}{{{:d}}})".format(self.phase.numerator,self.phase.denominator)
+            if isinstance(self.phase, Poly):
+                s += r"\exp(i~%s)".format(str(self.phase))
+            else:
+                s += r"\exp(i~\frac{{{:d}\pi}}{{{:d}}})".format(self.phase.numerator,self.phase.denominator)
         s += "$"
         if s == "$$": return ""
         return s
