@@ -128,7 +128,7 @@ class Term:
         """Substitute variables in the term with the given values. Returns a tuple
         of the coefficient and the new term.
         """
-        coeff = 1
+        coeff: Union[float, complex, 'Fraction'] = 1.
         new_vars = []
         for v, c in self.vars:
             if v in var_map:
@@ -139,9 +139,9 @@ class Term:
 
 
 class Poly:
-    terms: list[tuple[Union[int, float, Fraction], Term]]
+    terms: list[tuple[Union[int, float, complex, Fraction], Term]]
 
-    def __init__(self, terms: list[tuple[Union[int, float, Fraction], Term]]) -> None:
+    def __init__(self, terms: list[tuple[Union[int, float, complex, Fraction], Term]]) -> None:
         self.terms = terms
 
     def freeze(self) -> None:
@@ -154,15 +154,16 @@ class Poly:
             output.update(term.free_vars())
         return output
 
-    def __add__(self, other: Union['Poly',Fraction,int,float]) -> 'Poly':
-        if isinstance(other, (int, float, Fraction)):
+    def __add__(self, other: Union['Poly', Fraction, int, float, complex]) -> 'Poly':
+        if isinstance(other, (int, float, complex, Fraction)):
             other = Poly([(other, Term([]))])
         counter = dict()
         for c, t in self.terms + other.terms:
             if t not in counter: counter[t] = c
             else: counter[t] += c
-            if len(t.vars) > 0 and all(tt[0].is_bool for tt in t.vars):
-                counter[t] = counter[t] % 2
+            counter_t = counter[t] # need to assign to variable to avoid type errors
+            if not isinstance(counter_t, complex) and len(t.vars) > 0 and all(tt[0].is_bool for tt in t.vars):
+                counter[t] = counter_t % 2
 
         # remove terms with coefficient 0
         for t in list(counter.keys()):
@@ -175,14 +176,14 @@ class Poly:
     def __neg__(self) -> 'Poly':
         return Poly([(-c, t) for c, t in self.terms])
 
-    def __sub__(self, other: Union['Poly',Fraction,int,float]) -> 'Poly':
+    def __sub__(self, other: Union['Poly', Fraction, int, float, complex]) -> 'Poly':
         return self + (-other)
 
-    def __rsub__(self, other: Union['Poly',Fraction,int,float]) -> 'Poly':
+    def __rsub__(self, other: Union['Poly', Fraction, int, float, complex]) -> 'Poly':
         return other + (-self)
 
-    def __mul__(self, other: Union['Poly',Fraction,int,float]) -> 'Poly':
-        if isinstance(other, (int, float,Fraction)):
+    def __mul__(self, other: Union['Poly', Fraction, int, float, complex]) -> 'Poly':
+        if isinstance(other, (int, float, complex, Fraction)):
             other = Poly([(other, Term([]))])
         p = Poly([])
         for c1, t1 in self.terms:
@@ -201,7 +202,7 @@ class Poly:
         return self * (self ** (other - 1))
 
     def __mod__(self, other: int) -> 'Poly':
-        return Poly([(c % other, t) for c, t in self.terms])
+        return Poly([(c % other, t) for c, t in self.terms if not isinstance(c, complex)])
 
     def __repr__(self) -> str:
         return f'Poly({str(self)})'
@@ -232,6 +233,8 @@ class Poly:
     @property
     def is_pauli(self) -> bool:
         for c, t in self.terms:
+            if isinstance(c, complex):
+                return False
             if not all(v.is_bool for v, _ in t.vars):
                 return False
             if c % 1 != 0:
@@ -241,6 +244,8 @@ class Poly:
     @property
     def is_clifford(self) -> bool:
         for c, t in self.terms:
+            if isinstance(c, complex):
+                return False
             if not all(v.is_bool for v, _ in t.vars):
                 return False
             if t.vars: # Contains a Boolean variable
