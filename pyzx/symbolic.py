@@ -172,6 +172,15 @@ class Poly:
 
     __radd__ = __add__
 
+    def __neg__(self) -> 'Poly':
+        return Poly([(-c, t) for c, t in self.terms])
+
+    def __sub__(self, other: Union['Poly',Fraction,int,float]) -> 'Poly':
+        return self + (-other)
+
+    def __rsub__(self, other: Union['Poly',Fraction,int,float]) -> 'Poly':
+        return other + (-self)
+
     def __mul__(self, other: Union['Poly',Fraction,int,float]) -> 'Poly':
         if isinstance(other, (int, float,Fraction)):
             other = Poly([(other, Term([]))])
