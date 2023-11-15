@@ -124,6 +124,14 @@ class Term:
     def __eq__(self, other: object) -> bool:
         return self.__hash__() == other.__hash__()
 
+    def __lt__(self, other: 'Term') -> bool:
+        if len(self.vars) != len(other.vars):
+            return len(self.vars) < len(other.vars)
+        for (v1, c1), (v2, c2) in zip(sorted(self.vars), sorted(other.vars)):
+            if v1 != v2: return v1 < v2
+            if c1 != c2: return c1 < c2
+        return False
+
     def substitute(self, var_map: dict[Var, Union[float, complex, 'Fraction']]) -> tuple[Union[float, complex, 'Fraction'], 'Term']:
         """Substitute variables in the term with the given values. Returns a tuple
         of the coefficient and the new term.
@@ -239,6 +247,26 @@ class Poly:
         if not isinstance(other, Poly): return False
         return set(self.terms) == set(other.terms)
 
+    def __lt__(self, other: Union['Poly', Fraction, int, float, complex]) -> bool:
+        if isinstance(other, (int, float, complex, Fraction)):
+            other = Poly([(other, Term([]))])
+        if len(self.terms) != len(other.terms):
+            return len(self.terms) < len(other.terms)
+        for (c1, t1), (c2, t2) in zip(sorted(self.terms), sorted(other.terms)):
+            if t1 != t2: return t1 < t2
+            if c1 != c2 and not isinstance(c1, complex) and not isinstance(c2, complex):
+                return c1 < c2
+        return False
+
+    def __le__(self, other: Union['Poly', Fraction, int, float, complex]) -> bool:
+        return self == other or self < other
+
+    def __gt__(self, other: Union['Poly', Fraction, int, float, complex]) -> bool:
+        return not self <= other
+
+    def __ge__(self, other: Union['Poly', Fraction, int, float, complex]) -> bool:
+        return not self < other
+
     def __hash__(self) -> int:
         return hash(tuple(sorted(self.terms)))
 
@@ -274,6 +302,14 @@ class Poly:
                 if c*2 % 1 != 0: # Variable-free term with weight not equal to 1/2
                     return False
         return True
+
+    @property
+    def numerator(self) -> int:
+        raise NotImplementedError('numerator not implemented for symbolic Poly')
+
+    @property
+    def denominator(self) -> int:
+        raise NotImplementedError('denominator not implemented for symbolic Poly')
 
     def substitute(self, var_map: dict[Var, Union[float, complex, 'Fraction']]) -> 'Poly':
         """Substitute variables in the polynomial with the given values."""
