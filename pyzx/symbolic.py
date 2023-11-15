@@ -193,8 +193,20 @@ class Poly:
 
     __rmul__ = __mul__
 
+    # this long division algorithm is written by copilot; I am not sure if it is correct
+    def __truediv__(self, other: Union['Poly', Fraction, int, float, complex]) -> 'Poly':
+        if isinstance(other, (int, float, complex, Fraction)):
+            other = Poly([(other, Term([]))])
+        result = Poly([])
+        while len(self.terms) != 0 and self.degree >= other.degree:
+            leading_term_ratio = self.terms[0][0] / other.terms[0][0]
+            self -= other * leading_term_ratio
+            result += Poly([(leading_term_ratio, Term([]))])
+        return result
+
     def __pow__(self, other: int) -> 'Poly':
-        assert other >= 0
+        if other < 0:
+            return Poly([(1, Term([]))]) / (self ** (-other))
         if other == 0:
             return Poly([(1, Term([]))])
         if other == 1:
@@ -229,6 +241,13 @@ class Poly:
 
     def __hash__(self) -> int:
         return hash(tuple(sorted(self.terms)))
+
+    @property
+    def degree(self) -> int:
+        powers = [sum(c for _, c in t.vars) for coeff, t in self.terms if coeff != 0]
+        if powers:
+            return max(powers)
+        return 0
 
     @property
     def is_pauli(self) -> bool:
