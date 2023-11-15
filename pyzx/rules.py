@@ -653,7 +653,7 @@ def pivot(g: BaseGraph[VT,ET], matches: List[MatchPivotType[VT]]) -> RewriteOutp
                 # and point it at the other vertex
                 e = (m[i], m[i+2][0]) # type: ignore
                 new_e = (m[1-i], m[i+2][0]) # type: ignore
-                ne,nhe = etab.get(new_e, [0,0])
+                ne,nhe = etab.get(new_e) or (0,0)
                 if g.edge_type(e) == EdgeType.SIMPLE: nhe += 1
                 elif g.edge_type(e) == EdgeType.HADAMARD: ne += 1
                 etab[new_e] = [ne,nhe]

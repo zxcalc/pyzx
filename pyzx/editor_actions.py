@@ -49,7 +49,7 @@ def match_Z_spiders(
     return [v for v in candidates if types[v] == VertexType.Z]
 
 
-def color_change(g: BaseGraph[VT,ET], matches: List[VT]) -> rules.RewriteOutputType[ET,VT]:
+def color_change(g: BaseGraph[VT,ET], matches: List[VT]) -> rules.RewriteOutputType[VT,ET]:
     for v in matches:
         g.set_type(v, toggle_vertex(g.type(v)))
         for e in g.incident_edges(v):
@@ -92,7 +92,7 @@ def pauli_matcher(
 
 def pauli_push(g: BaseGraph[VT,ET], 
                matches: List[Tuple[VT,VT]]
-               ) -> rules.RewriteOutputType[ET,VT]:
+               ) -> rules.RewriteOutputType[VT,ET]:
     """Pushes a Pauli (i.e. a pi phase) through another spider."""
     rem_verts = []
     rem_edges = []
@@ -160,7 +160,7 @@ def match_edge(
 
 def euler_expansion(g: BaseGraph[VT,ET], 
                     matches: List[ET]
-                    ) -> rules.RewriteOutputType[ET,VT]:
+                    ) -> rules.RewriteOutputType[VT,ET]:
     """Expands the given Hadamard-edges into pi/2 phases using its Euler decomposition."""
     types = g.types()
     phases = g.phases()
@@ -206,7 +206,7 @@ def euler_expansion(g: BaseGraph[VT,ET],
 
 def add_Z_identity(g: BaseGraph[VT,ET], 
         matches: List[ET]
-        ) -> rules.RewriteOutputType[ET,VT]:
+        ) -> rules.RewriteOutputType[VT,ET]:
     rem_edges = []
     etab = {}
     for e in matches:
@@ -253,7 +253,7 @@ def match_bialgebra(g: BaseGraph[VT,ET],
 
 def bialgebra(g: BaseGraph[VT,ET], 
         matches: List[Tuple[VT,VT]]
-        ) -> rules.RewriteOutputType[ET,VT]:
+        ) -> rules.RewriteOutputType[VT,ET]:
     rem_verts = []
     etab = {}
     for v,w in matches:
