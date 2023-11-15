@@ -22,6 +22,7 @@ from .utils import FractionLike
 from .graph import Graph, EdgeType, VertexType
 from .graph.base import BaseGraph, VT, ET
 from .simplify import id_simp
+from .symbolic import Poly
 
 __all__ = ['json_to_graph', 'graph_to_json', 'to_graphml']
 
@@ -39,6 +40,8 @@ def _quanto_value_to_phase(s: str) -> Fraction:
 
 def _phase_to_quanto_value(p: FractionLike) -> str:
     if not p: return ""
+    if isinstance(p, Poly):
+        raise ValueError("Symbolic phases not supported")
     p = Fraction(p)
     if p.numerator == -1: v = "-"
     elif p.numerator == 1: v = ""

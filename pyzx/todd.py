@@ -38,6 +38,7 @@ from .graph.base import BaseGraph, VT, ET
 from .linalg import Mat2, MatLike, Z2
 from .extract import permutation_as_swaps, column_optimal_swap
 from .parity_network import parity_network
+from .symbolic import Poly
 
 USE_REED_MULLER: bool = False
 
@@ -180,11 +181,14 @@ def phase_gates_to_poly(gates: List[Gate], qubits: int) -> Tuple[ParityPolynomia
     expression_polys = []
     for i in range(qubits):
         expression_polys.append(ParitySingle(i))
-    
+
     for g in gates:
         if isinstance(g, ZPhase):
             par = expression_polys[g.target].par
-            phase_poly.add_term(par, int(float(g.phase*4)))
+            g_phase = g.phase
+            if isinstance(g_phase, Poly):
+                raise NotImplementedError("Symbolic phases not supported")
+            phase_poly.add_term(par, int(float(g_phase*4)))
         elif isinstance(g, CZ):
             tgt, ctrl = g.target, g.control
             par1 = expression_polys[tgt].par

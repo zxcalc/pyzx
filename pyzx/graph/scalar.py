@@ -24,6 +24,7 @@ from typing import List
 import json
 
 from ..utils import FloatInt, FractionLike
+from ..symbolic import Poly
 
 __all__ = ['Scalar']
 
@@ -53,7 +54,7 @@ class Scalar(object):
     """Represents a global scalar for a Graph instance."""
     def __init__(self) -> None:
         self.power2: int = 0 # Stores power of square root of two
-        self.phase: Fraction = Fraction(0) # Stores complex phase of the number
+        self.phase: FractionLike = Fraction(0) # Stores complex phase of the number
         self.phasenodes: List[FractionLike] = [] # Stores list of legless spiders, by their phases.
         self.floatfactor: complex = 1.0
         self.is_unknown: bool = False # Whether this represents an unknown scalar value
@@ -114,7 +115,10 @@ class Scalar(object):
         if self.power2 != 0:
             s += r"\sqrt{{2}}^{{{:d}}}".format(self.power2)
         if self.phase not in (0,1):
-            s += r"\exp(i~\frac{{{:d}\pi}}{{{:d}}})".format(self.phase.numerator,self.phase.denominator)
+            if isinstance(self.phase, Poly):
+                s += fr"\exp(i~{str(self.phase)})".format(str(self.phase))
+            else:
+                s += r"\exp(i~\frac{{{:d}\pi}}{{{:d}}})".format(self.phase.numerator,self.phase.denominator)
         s += "$"
         if s == "$$": return ""
         return s
@@ -127,6 +131,8 @@ class Scalar(object):
         f = self.floatfactor
         for node in self.phasenodes:
             f *= 1+cexp(node)
+        if isinstance(self.phase, Poly):
+            raise NotImplementedError("Unicode representation of Poly not implemented")
         phase = Fraction(self.phase)
         if self.phase >= 1:
             f *= -1
@@ -217,6 +223,9 @@ class Scalar(object):
         elif p1 == 1:
             self.add_power(1)
             self.add_phase(p2)
+            return
+        if isinstance(p1, Poly) or isinstance(p2, Poly):
+            self.set_unknown()
             return
         if p2.denominator == 2:
             p1, p2 = p2, p1
