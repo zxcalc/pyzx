@@ -31,6 +31,7 @@ qtn = None
 from .utils import EdgeType, VertexType
 from .graph.base import BaseGraph
 from .simplify import to_gh
+from .symbolic import Poly
 
 
 def to_quimb_tensor(g: BaseGraph) -> "qtn.TensorNetwork": # type:ignore
@@ -56,7 +57,10 @@ def to_quimb_tensor(g: BaseGraph) -> "qtn.TensorNetwork": # type:ignore
     # Here we have phase tensors corresponding to Z-spiders with only one output and no input.
     for v in g.vertices():
         if g.type(v) == VertexType.Z and g.phase(v) != 0:
-            tensors.append(qtn.Tensor(data = [1, np.exp(1j * np.pi * g.phase(v))],
+            phase = g.phase(v)
+            if isinstance(phase, Poly):
+                raise NotImplementedError("Quimb does not support symbolic phases")
+            tensors.append(qtn.Tensor(data = [1, np.exp(1j * np.pi * phase)],
                                       inds = (f'{v}',),
                                       tags = ("V",)))
     
@@ -74,8 +78,13 @@ def to_quimb_tensor(g: BaseGraph) -> "qtn.TensorNetwork": # type:ignore
     # In particular, it doesn't check g.scalar.phasenodes
     # TODO: This will give the wrong tensor when g.scalar.is_zero == True.
     # Grab the float factor and exponent from the scalar
-    scalar_float = np.exp(1j * np.pi * g.scalar.phase) * g.scalar.floatfactor
+    phase = g.scalar.phase
+    if isinstance(phase, Poly):
+        raise NotImplementedError("Quimb does not support symbolic phases")
+    scalar_float = np.exp(1j * np.pi * phase) * g.scalar.floatfactor
     for node in g.scalar.phasenodes:    # Each node is a Fraction
+        if isinstance(node, Poly):
+            raise NotImplementedError("Quimb does not support symbolic phases")
         scalar_float *= 1 + np.exp(1j * np.pi * node)
     scalar_exp = math.log10(math.sqrt(2)) * g.scalar.power2
 

@@ -24,7 +24,6 @@ import math
 sq2 = math.sqrt(2)
 omega = (1+1j)/sq2
 from fractions import Fraction
-import itertools
 from typing import List, Optional, Dict, Tuple, Any
 
 import numpy as np
@@ -34,6 +33,7 @@ from . import simplify
 from .circuit import Circuit
 from .graph import Graph
 from .graph.base import BaseGraph,VT,ET
+from .symbolic import Poly
 
 MAGIC_GLOBAL = -(7+5*sq2)/(2+2j)
 MAGIC_B60 = -16 + 12*sq2
@@ -241,13 +241,22 @@ def calculate_path_sum(g: BaseGraph[VT,ET]) -> complex:
                     if t == v: continue
                     if t not in variable_dict:
                         variable_dict[t] = len(variables)
-                        variables.append(int(float(phases[t]*4)))
+                        phase_t = phases[t]
+                        if isinstance(phase_t, Poly):
+                            raise NotImplementedError("Symbolic phases not supported")
+                        variables.append(int(float(phase_t*4)))
                     targets.add(variable_dict[t])
                 prefactor += len(targets)-1
-                xors[frozenset(targets)] = int(float(phases[v]*4))
+                phase_v = phases[v]
+                if isinstance(phase_v, Poly):
+                    raise NotImplementedError("Symbolic phases not supported")
+                xors[frozenset(targets)] = int(float(phase_v*4))
                 continue
         variable_dict[v] = len(variables)
-        variables.append(int(float(phases[v]*4)))
+        phase_v = phases[v]
+        if isinstance(phase_v, Poly):
+            raise NotImplementedError("Symbolic phases not supported")
+        variables.append(int(float(phase_v*4)))
     verts = sorted(list(variable_dict.keys()), key=lambda x: variable_dict[x])
     n = len(verts)
     for i in range(n):

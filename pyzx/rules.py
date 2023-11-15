@@ -829,10 +829,7 @@ def match_phase_gadgets(g: BaseGraph[VT,ET],vertexf:Optional[Callable[[VT],bool]
     # First we find all the phase-gadgets, and the list of vertices they act on
     for v in candidates:
         non_clifford = phases[v] != 0 and getattr(phases[v], 'denominator', 1) > 2
-        try: # symbol check
-            float(phases[v])
-        except:
-            non_clifford = True
+        if isinstance(phases[v], Poly): non_clifford = True
         if non_clifford and len(list(g.neighbors(v)))==1:
             n = list(g.neighbors(v))[0]
             if phases[n] not in (0,1): continue # Not a real phase gadget (happens for scalar diagrams)
