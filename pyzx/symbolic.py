@@ -201,16 +201,21 @@ class Poly:
 
     __rmul__ = __mul__
 
-    # this long division algorithm is written by copilot; I am not sure if it is correct
     def __truediv__(self, other: Union['Poly', Fraction, int, float, complex]) -> 'Poly':
         if isinstance(other, (int, float, complex, Fraction)):
             other = Poly([(other, Term([]))])
-        result = Poly([])
-        while len(self.terms) != 0 and self.degree >= other.degree:
-            leading_term_ratio = self.terms[0][0] / other.terms[0][0]
-            self -= other * leading_term_ratio
-            result += Poly([(leading_term_ratio, Term([]))])
-        return result
+        if len(other.terms) == 0:
+            raise ZeroDivisionError("division by zero")
+        quotient = Poly([])
+        while len(self.terms) > 0 and self.degree >= other.degree:
+            leading_term_dividend = sorted(self.terms)[0][1]
+            leading_term_divisor = sorted(other.terms)[0][1]
+            coeff = sorted(self.terms)[0][0] / sorted(other.terms)[0][0]
+            new_term_quotient_vars = [(var, exp - dict(leading_term_divisor.vars).get(var, 0)) for var, exp in leading_term_dividend.vars]
+            new_term_quotient = (coeff, Term(new_term_quotient_vars))
+            quotient.terms.append(new_term_quotient)
+            self -= other * Poly([new_term_quotient])
+        return quotient
 
     def __pow__(self, other: int) -> 'Poly':
         if other < 0:
@@ -310,6 +315,9 @@ class Poly:
     @property
     def denominator(self) -> int:
         raise NotImplementedError('denominator not implemented for symbolic Poly')
+
+    def copy(self) -> 'Poly':
+        return Poly([(c, t) for c, t in self.terms])
 
     def substitute(self, var_map: dict[Var, Union[float, complex, 'Fraction']]) -> 'Poly':
         """Substitute variables in the polynomial with the given values."""
