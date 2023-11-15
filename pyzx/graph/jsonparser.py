@@ -15,36 +15,60 @@
 # limitations under the License.
 
 import json
+import re
 from fractions import Fraction
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Callable, Union, TYPE_CHECKING
 
-from ..utils import FractionLike, EdgeType, VertexType
+from ..utils import FractionLike, EdgeType, VertexType, phase_to_s
 from .graph import Graph
 from .scalar import Scalar
 from .base import BaseGraph, VT, ET
 from ..simplify import id_simp
+from ..symbolic import parse, Poly, new_var
+if TYPE_CHECKING:
+    from .diff import GraphDiff
 
-def _quanto_value_to_phase(s: str) -> Fraction:
-    if not s: return Fraction(0)
-    if r'\pi' in s:
+
+#def _phase_to_quanto_value(p: FractionLike) -> str:
+#    if not p: return ""
+#    try:
+#        p = Fraction(p)
+#        if p.numerator == -1: v = "-"
+#        elif p.numerator == 1: v = ""
+#        else: v = str(p.numerator)
+#        d = "/"+str(p.denominator) if p.denominator!=1 else ""
+#        return r"{}\pi{}".format(v,d)
+#    except TypeError:
+
+
+def string_to_phase(string: str, g: Union[BaseGraph,'GraphDiff']) -> Union[Fraction, Poly]:
+    if not string:
+        return Fraction(0)
+    try:
+        s = string.lower().replace(' ', '')
+        s = re.sub(r'\\?(pi|\u04c0)', '', s)
+        if s == '': return Fraction(1)
+        if s == '-': return Fraction(-1)
+        if '.' in s or 'e' in s:
+            return Fraction(float(s))
+        elif '/' in s:
+            a, b = s.split("/", 2)
+            if not a:
+                return Fraction(1, int(b))
+            if a == '-':
+                a = '-1'
+            return Fraction(int(a), int(b))
+        else:
+            return Fraction(int(s))
+    except ValueError:
+        def _new_var(name: str) -> Poly:
+            if name not in g.variable_types:
+                g.variable_types[name] = False
+            return new_var(name, g.variable_types)
         try:
-            r = s.replace(r'\pi','').strip()
-            if r.startswith('-'): r = "-1"+r[1:]
-            if r.startswith('/'): r = "1"+r
-            return Fraction(str(r)) if r else Fraction(1)
-        except ValueError:
-            raise ValueError("Invalid phase '{}'".format(s))
-    return Fraction(s)
-
-def _phase_to_quanto_value(p: FractionLike) -> str:
-    if not p: return ""
-    p = Fraction(p)
-    if p.numerator == -1: v = "-"
-    elif p.numerator == 1: v = ""
-    else: v = str(p.numerator)
-    d = "/"+str(p.denominator) if p.denominator!=1 else ""
-    return r"{}\pi{}".format(v,d)
-
+            return parse(string, _new_var)
+        except Exception as e:
+            raise ValueError(e)
 
 def json_to_graph(js: str, backend:Optional[str]=None) -> BaseGraph:
     """Converts the json representation of a .qgraph Quantomatic graph into
@@ -76,7 +100,7 @@ def json_to_graph(js: str, backend:Optional[str]=None) -> BaseGraph:
             elif d['type'] == 'Z_box': g.set_type(v,VertexType.Z_BOX)
             else: raise TypeError("unsupported type '{}'".format(d['type']))
             if 'value' in d:
-                g.set_phase(v,_quanto_value_to_phase(d['value']))
+                g.set_phase(v,string_to_phase(d['value'],g))
             else:
                 g.set_phase(v,Fraction(0,1))
             if d.get('ground', False):
@@ -89,7 +113,7 @@ def json_to_graph(js: str, backend:Optional[str]=None) -> BaseGraph:
                 continue
             elif key == 'label':
                 if type(value) != complex:
-                    value = _quanto_value_to_phase(value)
+                    value = string_to_phase(value,g)
             g.set_vdata(v, key, value)
 
     inputs = {}
@@ -207,10 +231,10 @@ def graph_to_json(g: BaseGraph[VT,ET], include_scalar: bool=True) -> str:
                 node_vs[name]["data"]["type"] = "Z_box"
                 zbox_label = g.vdata(v, 'label', 1)
                 if type(zbox_label) == Fraction:
-                    zbox_label = _phase_to_quanto_value(zbox_label)
+                    zbox_label = phase_to_s(zbox_label)
                 node_vs[name]["annotation"]["label"] = zbox_label
             else: raise Exception("Unkown vertex type "+ str(t))
-            phase = _phase_to_quanto_value(g.phase(v))
+            phase = phase_to_s(g.phase(v))
             if phase: node_vs[name]["data"]["value"] = phase
             if g.is_ground(v):
                 node_vs[name]["data"]["ground"] = True
