@@ -124,11 +124,32 @@ class Term:
     def __eq__(self, other: object) -> bool:
         return self.__hash__() == other.__hash__()
 
+    def __lt__(self, other: 'Term') -> bool:
+        if len(self.vars) != len(other.vars):
+            return len(self.vars) < len(other.vars)
+        for (v1, c1), (v2, c2) in zip(sorted(self.vars), sorted(other.vars)):
+            if v1 != v2: return v1 < v2
+            if c1 != c2: return c1 < c2
+        return False
+
+    def substitute(self, var_map: dict[Var, Union[float, complex, 'Fraction']]) -> tuple[Union[float, complex, 'Fraction'], 'Term']:
+        """Substitute variables in the term with the given values. Returns a tuple
+        of the coefficient and the new term.
+        """
+        coeff: Union[float, complex, 'Fraction'] = 1.
+        new_vars = []
+        for v, c in self.vars:
+            if v in var_map:
+                coeff *= var_map[v] ** c
+            else:
+                new_vars.append((v, c))
+        return (coeff, Term(new_vars))
+
 
 class Poly:
-    terms: list[tuple[Union[int, float, Fraction], Term]]
+    terms: list[tuple[Union[int, float, complex, Fraction], Term]]
 
-    def __init__(self, terms: list[tuple[Union[int, float, Fraction], Term]]) -> None:
+    def __init__(self, terms: list[tuple[Union[int, float, complex, Fraction], Term]]) -> None:
         self.terms = terms
 
     def freeze(self) -> None:
@@ -141,15 +162,16 @@ class Poly:
             output.update(term.free_vars())
         return output
 
-    def __add__(self, other: Union['Poly',Fraction,int,float]) -> 'Poly':
-        if isinstance(other, (int, float, Fraction)):
+    def __add__(self, other: Union['Poly', Fraction, int, float, complex]) -> 'Poly':
+        if isinstance(other, (int, float, complex, Fraction)):
             other = Poly([(other, Term([]))])
         counter = dict()
         for c, t in self.terms + other.terms:
             if t not in counter: counter[t] = c
             else: counter[t] += c
-            if all(tt[0].is_bool for tt in t.vars):
-                counter[t] = counter[t] % 2
+            counter_t = counter[t] # need to assign to variable to avoid type errors
+            if not isinstance(counter_t, complex) and len(t.vars) > 0 and all(tt[0].is_bool for tt in t.vars):
+                counter[t] = counter_t % 2
 
         # remove terms with coefficient 0
         for t in list(counter.keys()):
@@ -159,8 +181,17 @@ class Poly:
 
     __radd__ = __add__
 
-    def __mul__(self, other: Union['Poly',Fraction,int,float]) -> 'Poly':
-        if isinstance(other, (int, float,Fraction)):
+    def __neg__(self) -> 'Poly':
+        return Poly([(-c, t) for c, t in self.terms])
+
+    def __sub__(self, other: Union['Poly', Fraction, int, float, complex]) -> 'Poly':
+        return self + (-other)
+
+    def __rsub__(self, other: Union['Poly', Fraction, int, float, complex]) -> 'Poly':
+        return other + (-self)
+
+    def __mul__(self, other: Union['Poly', Fraction, int, float, complex]) -> 'Poly':
+        if isinstance(other, (int, float, complex, Fraction)):
             other = Poly([(other, Term([]))])
         p = Poly([])
         for c1, t1 in self.terms:
@@ -170,8 +201,33 @@ class Poly:
 
     __rmul__ = __mul__
 
+    def __truediv__(self, other: Union['Poly', Fraction, int, float, complex]) -> 'Poly':
+        if isinstance(other, (int, float, complex, Fraction)):
+            other = Poly([(other, Term([]))])
+        if len(other.terms) == 0:
+            raise ZeroDivisionError("division by zero")
+        quotient = Poly([])
+        while len(self.terms) > 0 and self.degree >= other.degree:
+            leading_term_dividend = sorted(self.terms)[0][1]
+            leading_term_divisor = sorted(other.terms)[0][1]
+            coeff = sorted(self.terms)[0][0] / sorted(other.terms)[0][0]
+            new_term_quotient_vars = [(var, exp - dict(leading_term_divisor.vars).get(var, 0)) for var, exp in leading_term_dividend.vars]
+            new_term_quotient = (coeff, Term(new_term_quotient_vars))
+            quotient.terms.append(new_term_quotient)
+            self -= other * Poly([new_term_quotient])
+        return quotient
+
+    def __pow__(self, other: int) -> 'Poly':
+        if other < 0:
+            return Poly([(1, Term([]))]) / (self ** (-other))
+        if other == 0:
+            return Poly([(1, Term([]))])
+        if other == 1:
+            return self
+        return self * (self ** (other - 1))
+
     def __mod__(self, other: int) -> 'Poly':
-        return Poly([(c % other, t) for c, t in self.terms])
+        return Poly([(c % other, t) for c, t in self.terms if not isinstance(c, complex)])
 
     def __repr__(self) -> str:
         return f'Poly({str(self)})'
@@ -196,9 +252,41 @@ class Poly:
         if not isinstance(other, Poly): return False
         return set(self.terms) == set(other.terms)
 
+    def __lt__(self, other: Union['Poly', Fraction, int, float, complex]) -> bool:
+        if isinstance(other, (int, float, complex, Fraction)):
+            other = Poly([(other, Term([]))])
+        if len(self.terms) != len(other.terms):
+            return len(self.terms) < len(other.terms)
+        for (c1, t1), (c2, t2) in zip(sorted(self.terms), sorted(other.terms)):
+            if t1 != t2: return t1 < t2
+            if c1 != c2 and not isinstance(c1, complex) and not isinstance(c2, complex):
+                return c1 < c2
+        return False
+
+    def __le__(self, other: Union['Poly', Fraction, int, float, complex]) -> bool:
+        return self == other or self < other
+
+    def __gt__(self, other: Union['Poly', Fraction, int, float, complex]) -> bool:
+        return not self <= other
+
+    def __ge__(self, other: Union['Poly', Fraction, int, float, complex]) -> bool:
+        return not self < other
+
+    def __hash__(self) -> int:
+        return hash(tuple(sorted(self.terms)))
+
+    @property
+    def degree(self) -> int:
+        powers = [sum(c for _, c in t.vars) for coeff, t in self.terms if coeff != 0]
+        if powers:
+            return max(powers)
+        return 0
+
     @property
     def is_pauli(self) -> bool:
         for c, t in self.terms:
+            if isinstance(c, complex):
+                return False
             if not all(v.is_bool for v, _ in t.vars):
                 return False
             if c % 1 != 0:
@@ -208,6 +296,8 @@ class Poly:
     @property
     def is_clifford(self) -> bool:
         for c, t in self.terms:
+            if isinstance(c, complex):
+                return False
             if not all(v.is_bool for v, _ in t.vars):
                 return False
             if t.vars: # Contains a Boolean variable
@@ -217,6 +307,25 @@ class Poly:
                 if c*2 % 1 != 0: # Variable-free term with weight not equal to 1/2
                     return False
         return True
+
+    @property
+    def numerator(self) -> int:
+        raise NotImplementedError('numerator not implemented for symbolic Poly')
+
+    @property
+    def denominator(self) -> int:
+        raise NotImplementedError('denominator not implemented for symbolic Poly')
+
+    def copy(self) -> 'Poly':
+        return Poly([(c, t) for c, t in self.terms])
+
+    def substitute(self, var_map: dict[Var, Union[float, complex, 'Fraction']]) -> 'Poly':
+        """Substitute variables in the polynomial with the given values."""
+        p = Poly([])
+        for c, t in self.terms:
+            coeff, term = t.substitute(var_map)
+            p += Poly([(c * coeff, term)])
+        return p
 
 def new_var(name: str, types_dict: Union[bool, dict[str, bool]]) -> Poly:
     return Poly([(1, Term([(Var(name, types_dict), 1)]))])

@@ -116,7 +116,7 @@ class Scalar(object):
             s += r"\sqrt{{2}}^{{{:d}}}".format(self.power2)
         if self.phase not in (0,1):
             if isinstance(self.phase, Poly):
-                s += r"\exp(i~%s)".format(str(self.phase))
+                s += fr"\exp(i~{str(self.phase)})".format(str(self.phase))
             else:
                 s += r"\exp(i~\frac{{{:d}\pi}}{{{:d}}})".format(self.phase.numerator,self.phase.denominator)
         s += "$"
@@ -131,6 +131,8 @@ class Scalar(object):
         f = self.floatfactor
         for node in self.phasenodes:
             f *= 1+cexp(node)
+        if isinstance(self.phase, Poly):
+            raise NotImplementedError("Unicode representation of Poly not implemented")
         phase = Fraction(self.phase)
         if self.phase >= 1:
             f *= -1

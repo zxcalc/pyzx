@@ -1,5 +1,6 @@
 from . import Graph
 from .graph.base import BaseGraph
+from .symbolic import Poly
 from .utils import VertexType, EdgeType, FractionLike
 
 from fractions import Fraction
@@ -35,6 +36,8 @@ def measure(g:BaseGraph, pos:Tuple[int,int], t:VertexType.Type=VertexType.Z, pha
     q = 2*pos[0]-0.8
     r = 2*pos[1]+0.8
     found = False
+    if isinstance(phase, Poly):
+        raise ValueError("Symbolic phases not supported")
     if not isinstance(phase, Fraction): phase = Fraction(phase)
     outputs = list(g.outputs())
     for v in g.vertices():
