@@ -11,3 +11,4 @@ types-tqdm~=4.66
 mypy>=0.990
 nbsphinx~=0.9.3
 sphinxcontrib-svg2pdfconverter>=1.2.2
+lark~=1.1.7
