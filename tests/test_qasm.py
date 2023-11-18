@@ -34,6 +34,8 @@ except ImportError:
 from pyzx.simplify import full_reduce
 from pyzx.extract import extract_circuit
 from pyzx.circuit import Circuit
+from fractions import Fraction
+import os
 
 
 @unittest.skipUnless(np, "numpy needs to be installed for this to run")
@@ -69,6 +71,13 @@ class TestQASM(unittest.TestCase):
         c.add_gate("CNOT", 2, 1)
         self.assertEqual(c.qubits, qasm3.qubits)
         self.assertListEqual(c.gates, qasm3.gates)
+
+    def test_load_qasm_from_file(self):
+        c = Circuit(1)
+        c.add_gate("YPhase", 0, Fraction(1, 4))
+        c1 = Circuit.from_qasm_file(os.path.join(os.path.dirname(__file__), "ry.qasm"))
+        self.assertEqual(c1.qubits, c.qubits)
+        self.assertListEqual(c1.gates,c.gates)
 
     def test_p_same_as_rz(self):
         """Test that the `p` gate is identical to the `rz` gate.
