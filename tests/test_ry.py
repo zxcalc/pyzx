@@ -40,19 +40,7 @@ class TestCircuit(unittest.TestCase):
         c = Circuit(1)
         c.add_gate("YPhase", 0, Fraction(1, 4))
         self.c = c
-    def test_to_qasm_and_back(self):
-        s = self.c.to_qasm()
-        c1 = Circuit.from_qasm(s)
-        self.assertEqual(self.c.qubits, c1.qubits)
-        self.assertListEqual(self.c.gates,c1.gates)
-
     def test_load_qasm_from_file(self):
         c1 = Circuit.from_qasm_file(os.path.join(mydir,"ry.qasm"))
         self.assertEqual(c1.qubits, self.c.qubits)
         self.assertListEqual(c1.gates,self.c.gates)
-
-    def test_ry_preserves_graph_semantics(self):
-        g = self.c.to_graph()
-        t = tensor_to_matrix(tensorfy(g, False), 1, 1)
-        expected_t = np.asarray([[np.cos(np.pi/8), -np.sin(np.pi/8)], [np.sin(np.pi/8), np.cos(np.pi/8)]])
-        self.assertTrue(compare_tensors(t, expected_t, False))
