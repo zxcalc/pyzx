@@ -144,7 +144,7 @@ def tensorfy(g: 'BaseGraph[VT,ET]', preserve_scalar:bool=True) -> np.ndarray:
             else:
                 p = phases[v]
                 if isinstance(p, Poly):
-                    raise ValueError(f"Can't convert diagram with parameters to tensor: {str(v)}")
+                    raise ValueError(f"Can't convert diagram with parameters to tensor: {str(p)}")
                 phase = pi*p
                 if types[v] == VertexType.Z:
                     t = Z_to_tensor(d,phase)
