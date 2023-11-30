@@ -23,10 +23,11 @@ Hence, occasionally changes will be backwards incompatible (although they will a
 ### Changed
 - Class `CX`, which refers to an X-controlled X gate, renamed to `XCX` for clarity.
 - Parameters for `FSim` changed to put control and target before angles, for consistency with other gates.
+- json format correctly remembers input/output ordering (older json no longer parsible)
 
 ### Fixed
 - A bunch of mypy issues.
-- Variable types now saved in json.
+- json export and import supports Poly phases
 - Grounds being dropped during composition and other operations (#177 courtesy of @ABorgna).
 - The `tensorfy` function used the visual ordering of inputs and outputs, instead of the correct ordering (#168).
 - Several qasmparser bugs (courtesy of @dlyongemallo).
