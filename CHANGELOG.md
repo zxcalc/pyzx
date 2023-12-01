@@ -6,6 +6,35 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 Right now this project is in Beta and does not yet follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html). 
 Hence, occasionally changes will be backwards incompatible (although they will all be documented here).
 
+## [0.x.x] - xxxx-xx-xx
+
+
+### Added
+- Support for W nodes and Z boxes (courtesy of @RazinShaikh).
+- Support for poly phases (courtesy of @RazinShaikh)
+- Support for Jupyter notebooks in documentation using nbsphinx (courtesy of @dlyongemallo).
+- Support for OpenQASM 3.0; added Jupyter notebook documenting supported qasm gates (courtesy of @dlyongemallo).
+- A function `is_well_formed` to check that a graph is a well-formed ZX-diagram (courtesy of @RazinShaikh).
+- A function `is_pauli` to check whether a phase is Pauli (courtesy of @y-richie-y)
+- A function `GraphDiff` that calculates what actions are needed to bring one graph to another (used in ZXLive).
+- Functions `simplify.to_clifford_normal_form_graph` and `extract.extract_clifford_normal_form`.
+- Lazy import of some dependencies.
+
+### Changed
+- Class `CX`, which refers to an X-controlled X gate, renamed to `XCX` for clarity.
+- Parameters for `FSim` changed to put control and target before angles, for consistency with other gates.
+- json format correctly remembers input/output ordering (older json no longer parsible)
+
+### Fixed
+- A bunch of mypy issues.
+- json export and import supports Poly phases
+- Grounds being dropped during composition and other operations (#177 courtesy of @ABorgna).
+- The `tensorfy` function used the visual ordering of inputs and outputs, instead of the correct ordering (#168).
+- Several qasmparser bugs (courtesy of @dlyongemallo).
+- Incorrect gate name when optimization combines phases into single gate (#134 courtesy of @bichselb).
+- The gflow function returned a gflow when it shouldn't (#114 courtesy of @mafaldaramoa).
+- Error in qasmparser when importing a gate with a negative phase (#112).
+
 
 ## [0.7.3] - 2023-02-22
 Hotfix for bug `Graph.compose()` function
