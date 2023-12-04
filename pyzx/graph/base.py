@@ -23,6 +23,7 @@ from typing import List, Dict, Set, Tuple, Mapping, Iterable, Callable, ClassVar
 from typing_extensions import Literal, GenericMeta # type: ignore # https://github.com/python/mypy/issues/5753
 
 import numpy as np
+import random
 
 from ..utils import EdgeType, VertexType, get_z_box_label, set_z_box_label, toggle_edge, vertex_is_z_like, vertex_is_zx, toggle_vertex, vertex_is_w, get_w_partner, vertex_is_zx_like
 from ..utils import FloatInt, FractionLike
@@ -65,7 +66,7 @@ def pack_indices(lst: List[FloatInt]) -> Mapping[FloatInt,int]:
     return d
 
 VT = TypeVar('VT', bound=int) # The type that is used for representing vertices (e.g. an integer)
-ET = TypeVar('ET') # The type used for representing edges (e.g. a pair of integers)
+ET = TypeVar('ET', bound=Tuple[int,int]) # The type used for representing edges (e.g. a pair of integers)
 
 class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
     """Base class for letting graph backends interact with PyZX.
@@ -77,18 +78,21 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
 
     def __init__(self) -> None:
         self.scalar: Scalar = Scalar()
-        # self.inputs: List[VT] = []
-        # self.outputs: List[VT] = []
-        #Data necessary for phase tracking for phase teleportation
-        self.track_phases: bool = False
-        self.phase_index : Dict[VT,int] = dict() # {vertex:index tracking its phase for phase teleportation}
-        self.phase_master: Optional['simplify.Simplifier'] = None
-        self.phase_mult: Dict[int,Literal[1,-1]] = dict()
-        self.max_phase_index: int = -1
-        self._vdata: Dict[VT,Dict[str,Any]] = dict()
+        
+        # Tracker for phase teleportation and simplifications
+        self.phase_tracking: bool = False
+        self.phase_teleporter: Optional['simplify.PhaseTeleporter'] = None
+        self.parent_vertex: Dict[VT, VT] = {}
+        self.vertex_groups: Dict[VT, int] = {}
+        self.group_data: Dict[int, Set[VT]] = {}
+        self.phase_sum: Dict[int, FractionLike] = {}
+        self.phase_mult: Dict[VT, int] = {}
+        self.vertex_rank: Dict[VT, int] = {}
+        self.vertices_to_update: List[VT] = []
 
         # merge_vdata(v0,v1) is an optional, custom function for merging
         # vdata of v1 into v0 during spider fusion etc.
+        self._vdata: Dict[VT,Dict[str,Any]] = dict()
         self.merge_vdata: Optional[Callable[[VT,VT], None]] = None
         self.variable_types: Dict[str,bool] = dict() # mapping of variable names to their type (bool or continuous)
 
@@ -136,13 +140,11 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         if (backend is None):
             backend = type(self).backend
         g = Graph(backend = backend)
-        g.track_phases = self.track_phases
         g.scalar = self.scalar.copy()
         g.merge_vdata = self.merge_vdata
         mult:int = 1
         if adjoint: mult = -1
 
-        #g.add_vertices(self.num_vertices())
         ty = self.types()
         ph = self.phases()
         qs = self.qubits()
@@ -182,14 +184,10 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
 
     def clone(self) -> 'BaseGraph':
         """
-        This method should return an identical copy of the graph, without any relabeling
-
-        FIXME: this currently *does* change lables.
-
-        Used in lookahead extraction.
+        Returns an identical copy of the graph, without any relabeling
         """
-        return self.copy()
-
+        raise NotImplementedError("Not implemented on backend " + type(self).backend)
+    
     def map_qubits(self, qubit_map:Mapping[int,Tuple[float,float]]) -> None:
         for v in self.vertices():
             q = self.qubit(v)
@@ -671,10 +669,6 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
             self.set_phase(v, phase)
         if ground:
             self.set_ground(v, True)
-        if self.track_phases:
-            self.max_phase_index += 1
-            self.phase_index[v] = self.max_phase_index
-            self.phase_mult[self.max_phase_index] = 1
         return v
 
     def add_vertex_indexed(self,v:VT) -> None:
@@ -825,38 +819,241 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         """Like add_edge, but does the right thing if there is an existing edge."""
         self.add_edge_table({e : [1,0] if edgetype == EdgeType.SIMPLE else [0,1]})
 
-    def set_phase_master(self, m: 'simplify.Simplifier') -> None:
-        """Points towards an instance of the class :class:`~pyzx.simplify.Simplifier`.
-        Used for phase teleportation."""
-        self.phase_master = m
+    def set_phase_teleporter(self, teleporter: 'simplify.PhaseTeleporter', fusing_mode: bool = True) -> None:
+        """Used for phase teleportation.
+        If ``fusing_mode`` is True then phases will be tracked as the graph is simplified.
+        Otherwise info about previously teleported phases from ``teleporter`` is stored, but not placed on the graph yet.
+        They will then be placed throughout simplification when required, or through the function :func:`place_tracked_phases`
 
-    def update_phase_index(self, old:VT, new:VT) -> None:
-        """When a phase is moved from a vertex to another vertex,
-        we need to tell the phase_teleportation algorithm that this has happened.
-        This function does that. Used in some of the rules in `simplify`."""
-        if not self.track_phases: return
-        i = self.phase_index[old]
-        self.phase_index[old] = self.phase_index[new]
-        self.phase_index[new] = i
-
-    def fuse_phases(self, p1: VT, p2: VT) -> None:
-        if p1 not in self.phase_index or p2 not in self.phase_index:
+        :param teleporter: Instance of the class :class:`~pyzx.simplify.PhaseTeleporter`
+        :param fusing_mode: Defaults to True
+        """
+        self.phase_tracking = True
+        
+        if fusing_mode:
+            self.phase_teleporter = teleporter
             return
-        if self.phase_master is not None:
-            self.phase_master.fuse_phases(self.phase_index[p1],self.phase_index[p2])
-        self.phase_index[p2] = self.phase_index[p1]
+        
+        for group_num, group in enumerate(teleporter.get_vertex_groups()):
+            if len(group) == 1: continue
+            self.group_data[group_num] = set(group) # Groups of vertices fused throughout teleportation
+            phase_sum = Fraction(0)
+            for v in group:
+                self.vertex_rank[v] = teleporter.vertex_rank[v]
+                self.vertex_groups[v] = group_num
+                mult = teleporter.phase_mult[v]
+                self.phase_mult[v] = mult # Associated teleportation phase multiplier
+                phase_sum += self.phase(v) * mult
+                self.set_phase(v, 0) # Set all stored phases to zero for now
+            self.phase_sum[group_num] = phase_sum # Phase sum for each group
+    
+    def remove_vertex_from_group(self, v: VT, group: int) -> None:
+        """Used for post phase teleportation simplifications.
+        Removes ``v`` from ``group`` then updates group when required.
 
+        :param v:
+        :param group:
+        """
+        del self.vertex_groups[v]
+        del self.phase_mult[v]
+        
+        group_data = self.group_data[group]
+        group_data.remove(v)
+        group_len = len(group_data)
+        
+        if group_len == 1:
+            u = next(iter(group_data))
+            phase = self.phase_sum[group] * self.phase_mult[u]
+            child_u = self.leaf_vertex(u)
+            
+            self.add_to_phase(child_u, phase)
+            
+            del self.vertex_groups[u]
+            del self.phase_mult[u]
+            del self.phase_sum[group]
+            del self.group_data[group]
+            self.vertices_to_update.append(child_u)
+            
+            if not self.group_data: self.phase_tracking = False # Turn off phase tracking
+            
+        elif group_len == 2:
+            self.vertices_to_update.extend(self.leaf_vertex(u) for u in group_data) # Some pivots may need to be rechecked
+    
+    def place_tracked_phases(self, allow_jumping=False) -> None:
+        """Used for phase teleportation.
+        Places any stored phases onto the graph.
+        ``allow_jumping`` defines whether any additional phases are permitted to teleport around during simplification.
+        """
+        for group, vertices in list(self.group_data.items()):
+            v = max(vertices, key = self.vertex_rank.__getitem__)
+            phase = self.phase_sum[group] * self.phase_mult[v]
+            child_v = self.leaf_vertex(v)
+            if not allow_jumping:
+                self.add_to_phase(child_v, phase)
+                continue
+            current_phase = self.phase(child_v)
+            self.fix_phase(child_v, current_phase, current_phase + phase)
+        
+        if allow_jumping: return
+        self.vertex_groups.clear()
+        self.group_data.clear()
+        self.phase_sum.clear()
+        self.phase_mult.clear()
+        self.phase_tracking = False
+    
+    def root_vertex(self, v: VT) -> VT:
+        """Used for phase teleportation.
+        Returns the root vertex from the original graph.
+
+        :param v:
+        :return: Either the vertex itself or the vertex from the original graph which it points to.
+        """
+        while v in self.parent_vertex: v = self.parent_vertex[v]
+        return v
+    
+    def leaf_vertex(self, v: VT) -> VT:
+        """Used for phase teleportation.
+        Returns the child vertex of a vertex in the current graph.
+
+        :param v:
+        :return: Either the vertex itself or the vertex in the current graph which points to it.
+        """
+        for child, parent in self.parent_vertex.items():
+            if parent == v: return self.leaf_vertex(child)
+        return v
+    
+    def fuse_phases(self, v1: VT, v2: VT) -> None:
+        """Used for phase teleportation.
+        Tracks the fusing of vertex ``v2`` into ``v1``.
+
+        :param v1: Surviving vertex
+        :param v2: Vertex to be deleted
+        """
+        root_v1 = self.root_vertex(v1)
+        root_v2 = self.root_vertex(v2)
+        
+        if self.phase_teleporter: # Fusing mode
+            if root_v2 in self.phase_teleporter.non_clifford_vertices:
+                if root_v1 in self.phase_teleporter.non_clifford_vertices:
+                    self.phase_teleporter.fuse_phases(root_v1,root_v2)
+                else: self.parent_vertex[v1] = v2 # v1 now points to v2 (a non-Clifford vertex)
+            return
+        
+        group_1 = self.vertex_groups.get(root_v1)
+        group_2 = self.vertex_groups.get(root_v2)
+        if group_2 is not None:
+            if group_1 is not None:
+                if group_1 == group_2: self.remove_vertex_from_group(root_v2, group_2)
+                # The below handling of the case when group_1 != group_2 is not optimal
+                elif len(self.group_data[group_1]) <= len(self.group_data[group_2]):
+                    print('group_1 != group_2')
+                    self.remove_vertex_from_group(root_v2, group_2)
+                else:
+                    print('group_1 != group_2')
+                    self.remove_vertex_from_group(root_v1, group_1)
+                    rem_v = v1
+                    while rem_v in self.parent_vertex:
+                        parent = self.parent_vertex[rem_v]
+                        del self.parent_vertex[rem_v]
+                        rem_v = parent
+                    self.parent_vertex[v1] = v2
+            else:
+                self.parent_vertex[v1] = v2 # v1 now points to v2 (a phase variable)
+    
+    def unfuse_vertex(self, new_vertex: VT, old_vertex: VT) -> None:
+        """Used for phase teleportation.
+        Tracks the unfusing of ``old_vertex`` onto ``new_vertex``.
+
+        :param new_vertex:
+        :param old_vertex:
+        """
+        root_old_vertex = self.root_vertex(old_vertex)
+        if root_old_vertex in (self.phase_teleporter.non_clifford_vertices if self.phase_teleporter else self.vertex_groups):
+            self.parent_vertex[new_vertex] = old_vertex
+    
     def phase_negate(self, v: VT) -> None:
-        if v not in self.phase_index: return
-        index = self.phase_index[v]
-        mult = self.phase_mult[index]
-        if mult == 1: self.phase_mult[index] = -1
-        else: self.phase_mult[index] = 1
-        #self.phase_mult[index] = -1*mult
+        """Used for phase teleportation.
+        Tracks when the sign of a phase has been negated (usually as a gadget).
 
-    def vertex_from_phase_index(self, i: int) -> VT:
-        return list(self.phase_index.keys())[list(self.phase_index.values()).index(i)]
+        :param v: Vertex whose sign has been negated
+        """
+        root_v = self.root_vertex(v)
+        
+        if self.phase_teleporter: # Fusing mode
+            if root_v in self.phase_teleporter.non_clifford_vertices:
+                self.phase_teleporter.phase_negate(root_v)
+            return
+        
+        if root_v in self.vertex_groups:
+            self.phase_mult[root_v] *= -1
+    
+    def fix_phase(self, v: VT, current_phase: FractionLike, target_phase: FractionLike) -> None:
+        """Used for post phase teleportation simplifications.
+        Sets the phase of ``v`` to ``target_phase``, updating the rest of the vertex_group where necessary
 
+        :param v:
+        :param current_phase:
+        :param target_phase:
+        """
+        root_v = self.root_vertex(v)
+        
+        if root_v not in self.vertex_groups:
+            assert current_phase == target_phase # In this case the current phase should be the target phase
+            return
+        
+        group = self.vertex_groups[root_v]
+        self.phase_sum[group] -= self.phase_mult[root_v] * (target_phase - current_phase)
+        self.set_phase(v, target_phase)
+        self.remove_vertex_from_group(root_v, group)
+    
+    def check_phase(self, v: VT, current_phase: FractionLike, target_phase: FractionLike) -> bool:
+        """Used for post phase teleportation simplifications.
+        Returns a boolean representing whether ``v`` can be fixed to have a phase of ``target_phase``.
+
+        :param v:
+        :param current_phase: The current phase of ``v`` in the graph
+        :param target_phase:
+        :return:
+        """
+        root_v = self.root_vertex(v)
+        if root_v not in self.vertex_groups: return current_phase == target_phase
+        return True
+    
+    def check_two_pauli_phases(self, v1: VT, v1p: FractionLike, v2: VT, v2p: FractionLike) -> Optional[List[Optional[FractionLike]]]:
+        """Used for post phase teleportation simplifications.
+        Checks whether both ``v1`` and ``v2`` can have their phases fixed to a Pauli phase (i.e. for pivoting)
+
+        :param v1:
+        :param v1p: The current phase of ``v1`` in the graph
+        :param v2:
+        :param v2p: The current phase of ``v2`` in the graph
+        :return: List of the two Pauli phases which the vertices can be fixed to. 
+                If either cannot be fixed then the value of that list element is None. 
+                If either `but only one` vertex can be fixed to Pauli then returns None.
+        """
+        PAULI = {0,1}
+        
+        root_v1 = self.root_vertex(v1)
+        root_v2 = self.root_vertex(v2)
+        group_1 = self.vertex_groups.get(root_v1)
+        group_2 = self.vertex_groups.get(root_v2)
+        
+        if not group_1 and not group_2: return [v1p if v1p in PAULI else None, v2p if v2p in PAULI else None]
+        if not group_1: return [v1p if v1p in PAULI else None, 0]
+        if not group_2: return [0, v2p if v2p in PAULI else None]
+        
+        if group_1 == group_2:
+            if len(self.group_data[group_1]) > 2: return [0,0] # Can place phase on another vertex in group
+            else: # Calculate the resultant phase v2 would have if v1 was fixed to 0
+                new_phase_v2 = v2p + self.phase_mult[root_v2] * (self.phase_sum[group_1] + self.phase_mult[root_v1] * v1p)
+                if new_phase_v2 in PAULI: return [0, new_phase_v2]
+                else: return None # Will get identical result if v2 was fixed to 0 and the resultant phase of v1 was calculated
+                
+        return [0,0]
+    
+    def replace(self, g2) -> None:
+        """Replaces the metadata in the current graph object with the metadata of ``g2``"""
+        raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
     def remove_vertices(self, vertices: Iterable[VT]) -> None:
         """Removes the list of vertices from the graph."""

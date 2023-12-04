@@ -60,14 +60,44 @@ class GraphS(BaseGraph[int,Tuple[int,int]]):
         cpy.scalar = self.scalar.copy()
         cpy._inputs = tuple(list(self._inputs))
         cpy._outputs = tuple(list(self._outputs))
-        cpy.track_phases = self.track_phases
-        cpy.phase_index = self.phase_index.copy()
-        cpy.phase_master = self.phase_master
+        cpy.phase_teleporter = self.phase_teleporter
+        cpy.phase_tracking = self.phase_tracking
+        cpy.parent_vertex = self.parent_vertex.copy()
+        cpy.vertex_groups = self.vertex_groups.copy()
+        cpy.group_data = {group: set(vertices) for group, vertices in self.group_data.items()}
+        cpy.phase_sum = self.phase_sum.copy()
         cpy.phase_mult = self.phase_mult.copy()
-        cpy.max_phase_index = self.max_phase_index
+        cpy.vertex_rank = self.vertex_rank.copy()
+        cpy.vertices_to_update = self.vertices_to_update.copy()
         return cpy
+    
+    def replace(self, g: 'GraphS') -> None:
+        self.graph = g.graph.copy()
+        self._vindex = g._vindex
+        self.nedges = g.nedges
+        self.ty = g.ty.copy()
+        self._phase = g._phase.copy()
+        self._qindex = g._qindex.copy()
+        self._maxq = g._maxq
+        self._rindex = g._rindex.copy()
+        self._maxr = g._maxr
+        self._vdata = g._vdata.copy()
+        self.scalar = g.scalar.copy()
+        self._inputs = tuple(list(g._inputs))
+        self._outputs = tuple(list(g._outputs))
+        self.phase_teleporter = g.phase_teleporter
+        self.phase_tracking = g.phase_tracking
+        self.parent_vertex = g.parent_vertex.copy()
+        self.vertex_groups = g.vertex_groups.copy()
+        self.group_data = {group: set(vertices) for group, vertices in g.group_data.items()}
+        self.phase_sum = g.phase_sum.copy()
+        self.phase_mult = g.phase_mult.copy()
+        self.vertex_rank = g.vertex_rank.copy()
+        self.vertices_to_update = g.vertices_to_update.copy()
 
-    def vindex(self): return self._vindex
+    def vindex(self): 
+        return self._vindex
+    
     def depth(self):
         if self._rindex: self._maxr = max(self._rindex.values())
         else: self._maxr = -1

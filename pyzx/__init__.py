@@ -40,6 +40,8 @@ from . import rules
 from . import hrules
 from . import optimize
 from . import simplify
+from . import heuristics
+from . import flow
 from . import hsimplify
 from . import d3
 from . import tikz

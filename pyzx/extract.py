@@ -15,12 +15,12 @@
 # limitations under the License.
 
 __all__ = ['extract_circuit', 'extract_simple', 'graph_to_swaps', 'extract_clifford_normal_form',
-           'lookahead_extract_base', 'lookahead_full', 'lookahead_fast', 'lookahead_extract']
+           'lookahead_extract_base', 'lookahead_full', 'lookahead_fast', 'lookahead_extract', 'phase_poly_synth']
 
 from fractions import Fraction
 import itertools
 
-from .utils import EdgeType, VertexType, toggle_edge
+from .utils import EdgeType, VertexType, toggle_edge, FractionLike
 from .linalg import Mat2, Z2
 from .simplify import id_simp, tcount,full_reduce
 from .rules import apply_rule, pivot, match_spider_parallel, spider
@@ -30,6 +30,7 @@ from .circuit.gates import Gate, ParityPhase, CNOT, HAD, ZPhase, XPhase, CZ, XCX
 from .graph.base import BaseGraph, VT, ET
 
 from typing import List, Optional, Tuple, Dict, Set, Union, Iterator
+from typing_extensions import Literal
 
 
 def bi_adj(g: BaseGraph[VT,ET], vs:List[VT], ws:List[VT]) -> Mat2:
@@ -710,73 +711,158 @@ def extract_circuit(
     return graph_to_swaps(g, up_to_perm) + c
 
 
-def extract_simple(g: BaseGraph[VT, ET], up_to_perm: bool = True) -> Circuit:
-    """A simplified circuit extractor that works on graphs with a causal flow (e.g. graphs arising
-    from circuits via spider fusion).
+def extract_simple(g: BaseGraph[VT, ET], up_to_perm: bool = True, phase_poly_synth: bool = False) -> Circuit:
+    """A simplified circuit extractor that only works on graphs with causal flow.
+    Also works with an extension of causal flow that allows phase gadgets under certain conditions.
+    Phase gadgets are extracted using :func:`phase_poly_synth`
 
-    Args:
-        g: The graph to extract
-        up_to_perm: If true, returns a circuit that is equivalent to the given graph up to a permutation of the inputs.
+    :param g: The ZX-diagram to be extracted as a circuit
+    :param up_to_perm: If True, returns a circuit that is equivalent to the given graph up to a permutation of the inputs, defaults to True
+    :param phase_poly_synth: If True, synthesises any extractable phase gadgets as phase polynmolials
+    :return:
     """
-    
-    progress = True
+    n_qubits = g.qubit_count()
+    circ = Circuit(n_qubits)
     outputs = g.outputs()
-    circ = Circuit(len(outputs))
-    while progress:
-        progress = False
+    inputs = g.inputs()
+    phases = g.phases()
+    
+    while True:
+        progress_made = False
         
+        # Extracting output nodes
         for q, o in enumerate(outputs):
-            if g.vertex_degree(o) != 1:
+            on = list(g.neighbors(o))
+            if len(on) != 1:
                 raise ValueError("Bad output degree")
-            v = list(g.neighbors(o))[0]
+            
+            v = on[0]
             e = g.edge(o, v)
             
             if g.edge_type(e) == EdgeType.HADAMARD:
-                progress = True
                 circ.prepend_gate(HAD(q))
                 g.set_edge_type(e, EdgeType.SIMPLE)
-            elif (g.type(v) == VertexType.Z or g.type(v) == VertexType.X) and g.vertex_degree(v) == 2:
-                ns = list(g.neighbors(v))
-                w = ns[0] if ns[1] == o else ns[1]
-                progress = True
-
-                if g.phase(v) != 0:
-                    gate = (ZPhase(q, g.phase(v)) if g.type(v) == VertexType.Z else
-                            XPhase(q, g.phase(v)))
-                    circ.prepend_gate(gate)
-
-                g.add_edge(g.edge(w,o), edgetype=g.edge_type(g.edge(w,v)))
+                progress_made = True
+            elif g.type(v) in [VertexType.Z, VertexType.X] and g.vertex_degree(v) == 2:
+                vn = list(g.neighbors(v))
+                w = vn[0] if vn[1] == o else vn[1]
+                if g.phase(v) != 0: circ.prepend_gate(ZPhase(q, g.phase(v)) if g.type(v) == VertexType.Z else XPhase(q, g.phase(v)))
+                g.add_edge(g.edge(w, o), edgetype=g.edge_type(g.edge(w, v)))
                 g.remove_vertex(v)
-                
-        if progress: continue
+                progress_made = True
         
-        for q1,o1 in enumerate(outputs):
-            for q2,o2 in enumerate(outputs):
-                if o1 == o2: continue
-                v1 = list(g.neighbors(o1))[0]
-                v2 = list(g.neighbors(o2))[0]
-                if g.connected(v1,v2):
-                    if ((g.type(v1) == g.type(v2) and g.edge_type(g.edge(v1,v2)) == EdgeType.SIMPLE) or
-                        (g.type(v1) != g.type(v2) and g.edge_type(g.edge(v1,v2)) == EdgeType.HADAMARD)):
-                        raise ValueError("ZX diagram is not unitary")
-                    
-                    if g.type(v1) == VertexType.Z and g.type(v2) == VertexType.X:
-                        # CNOT
-                        progress = True
-                        circ.prepend_gate(CNOT(control=q1,target=q2))
-                        g.remove_edge(g.edge(v1,v2))
-                    elif g.type(v1) == VertexType.Z and g.type(v2) == VertexType.Z:
-                        # CZ
-                        progress = True
-                        circ.prepend_gate(CZ(control=q1,target=q2))
-                        g.remove_edge(g.edge(v1,v2))
-                    elif g.type(v1) == VertexType.X and g.type(v2) == VertexType.X:
-                        # conjugate CZ
-                        progress = True
-                        circ.prepend_gate(XCX(control=q1, target=q2))
-                        g.remove_edge(g.edge(v1,v2))
+        if progress_made: continue
 
+        # Extracting pairs of output nodes
+        for q1, o1 in enumerate(outputs):
+            for q2, o2 in [(q, o) for q, o in enumerate(outputs) if q > q1]:
+                v1, v2 = list(g.neighbors(o1))[0], list(g.neighbors(o2))[0]
+                
+                if not g.connected(v1, v2): continue
+                
+                gate_map = {
+                    (VertexType.Z, VertexType.Z, EdgeType.HADAMARD): CZ,
+                    (VertexType.X, VertexType.X, EdgeType.HADAMARD): XCX,
+                    (VertexType.Z, VertexType.X, EdgeType.SIMPLE): CNOT
+                }
+                
+                gate = gate_map.get((g.type(v1), g.type(v2), g.edge_type(g.edge(v1, v2))))
+                
+                if gate:
+                    circ.prepend_gate(gate(control=q1, target=q2))
+                    g.remove_edge(g.edge(v1, v2))
+                    progress_made = True
+                else: raise ValueError("ZX-diagram is not unitary")
+                
+        if progress_made: continue
+        if not phase_poly_synth: break
+        
+        # Extracting phase gadgets
+        front = {list(g.neighbors(o))[0]: q for q, o in enumerate(outputs)}
+        gadgets, zphases = [], []
+        parity_matrix_T: List[List[Literal[0,1]]] = []
+
+        for v in g.vertices():
+            if v in outputs or v in inputs or g.vertex_degree(v) != 1: continue
+            
+            n = list(g.neighbors(v))[0]
+            if not (g.type(v) == VertexType.Z and g.type(n) == VertexType.Z): continue
+            if phases[n] not in (0,1): continue
+            if n in gadgets: continue
+            if n in outputs or n in inputs: continue
+            
+            connected_vertices = set(g.neighbors(n)).difference({v})
+            if not connected_vertices.issubset(front): continue
+            
+            gadgets.extend([n, v])
+            zphases.append(-phases[v] if phases[n] == 1 else phases[v])
+            connected_qubits = [front[vertex] for vertex in connected_vertices]
+            parity_matrix_T.append([1 if q in connected_qubits else 0 for q in range(n_qubits)])
+            progress_made = True
+        
+        if gadgets:
+            phase_poly_circ = phase_poly_synth(n_qubits, parity_matrix_T, zphases)
+            g.remove_vertices(gadgets)
+            circ = phase_poly_circ + circ
+
+        if not progress_made: break
     return graph_to_swaps(g, up_to_perm) + circ
+
+
+def phase_poly_synth(n_qubits: int, parity_matrix_T: List[List[Literal[0, 1]]], zphases: List[FractionLike]) -> Circuit:
+    """Converts a series of phase polynomials into a circuit, utilising Gray codes.
+    Based on pseudocode in https://arxiv.org/abs/2004.06052.
+
+    :param n_qubits: Number of qubits
+    :param parity_matrix_T: Transpose of parity matrix describing support of phase polynomials
+    :param zphases: List of phases belonging to each phase polynomial
+    :return:
+    """
+    circ = Circuit(n_qubits)
+    undo_circ = Circuit(n_qubits)
+    parity_matrix = [list(e) for e in zip(*parity_matrix_T)]
+
+    def reduce_columns(columns: List[int]) -> List[int]:
+        reduced_cols = []
+        for col in columns:
+            if len([row for row in parity_matrix if row[col]==1])==1:
+                qubit = max(range(len(parity_matrix)), key=lambda q: parity_matrix[q][col])
+                circ.add_gate(ZPhase(qubit, zphases[col]))
+            else: reduced_cols.append(col)
+        return reduced_cols
+
+    def base_recursion_step(cols: List[int], rows: List[int]) -> None:
+        if not cols or not rows: return
+        chosen_row = max(rows, key=lambda row: max([len([col for col in cols if parity_matrix[row][col]==0]),len([col for col in cols if parity_matrix[row][col]==1])]))
+        cols0 = [col for col in cols if parity_matrix[chosen_row][col]==0]
+        cols1 = [col for col in cols if parity_matrix[chosen_row][col]==1]
+        base_recursion_step(cols0, [row for row in rows if row != chosen_row])
+        ones_recursion_step(cols1, rows, chosen_row)
+
+    def ones_recursion_step(cols: List[int], rows: List[int], chosen_row: int) -> None:
+        if not cols: return
+        if len(rows)==1 and chosen_row in rows: return
+        other_rows = [row for row in rows if row != chosen_row]
+        n = max(other_rows, key=lambda row: len([col for col in cols if parity_matrix[row][col]==1]))
+        if len([col for col in cols if parity_matrix[n][col]==1]) > 0:
+            place_CNOT(chosen_row, n)
+            cols = reduce_columns(cols)
+        else:
+            place_CNOT(n, chosen_row)
+            place_CNOT(chosen_row, n)
+        cols0 = [col for col in cols if parity_matrix[chosen_row][col]==0]
+        cols1 = [col for col in cols if parity_matrix[chosen_row][col]==1]
+        base_recursion_step(cols0, other_rows)
+        ones_recursion_step(cols1, rows, chosen_row)
+            
+    def place_CNOT(control: int, target: int) -> None:
+        circ.add_gate(CNOT(control, target))
+        undo_circ.prepend_gate(CNOT(control, target))
+        parity_matrix[control] = [sum(x)%2 for x in zip(parity_matrix[control], parity_matrix[target])]
+    
+    columns = reduce_columns(list(range(len(parity_matrix[0]))))
+    base_recursion_step(columns, list(range(n_qubits)))
+    return circ + undo_circ
 
 
 def graph_to_swaps(g: BaseGraph[VT, ET], no_swaps: bool = False) -> Circuit:
