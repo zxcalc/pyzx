@@ -369,6 +369,7 @@ def flow_2Q_simp(
     max_p_unfusions: int = 0
     ) -> int:
     """Simplification strategy which aims to minimise the number of two qubit gates in the extracted circuit by selecting matches based on the heuristic |edges removed| - |vertices removed|.
+    See https://arxiv.org/abs/2312.02793 for details.
 
     :param g: The graph to be simplified, for optimal performance should be put into graph-like form prior using ::func::`to_graph_like`.
     :param matchf: An optional filtering function for candidate vertices and edges.
