@@ -824,6 +824,8 @@ class FSim(Gate):
     qsim_name = 'fs'
     print_phase = True
     def __init__(self, control:int, target:int, theta:FractionLike, phi:FractionLike):
+        # TODO: this version assumes theta is always (pi/2)
+        assert theta == Fraction(1, 2)
         self.control = control
         self.target = target
         self.theta = theta
