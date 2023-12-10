@@ -3,7 +3,7 @@
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
-Right now this project is in Beta and does not yet follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html). 
+Right now this project is in Beta and does not yet follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Hence, occasionally changes will be backwards incompatible (although they will all be documented here).
 
 ## [0.x.x] - xxxx-xx-xx
@@ -13,7 +13,8 @@ Hence, occasionally changes will be backwards incompatible (although they will a
 - Support for W nodes and Z boxes (courtesy of @RazinShaikh).
 - Support for poly phases (courtesy of @RazinShaikh)
 - Support for Jupyter notebooks in documentation using nbsphinx (courtesy of @dlyongemallo).
-- Support for OpenQASM 3.0; added Jupyter notebook documenting supported qasm gates (courtesy of @dlyongemallo).
+- Jupyter notebook documenting all supported gates (courtesy of @dlyongemallo).
+- Support for OpenQASM 3.0 (courtesy of @dlyongemallo).
 - A function `is_well_formed` to check that a graph is a well-formed ZX-diagram (courtesy of @RazinShaikh).
 - A function `is_pauli` to check whether a phase is Pauli (courtesy of @y-richie-y)
 - A function `GraphDiff` that calculates what actions are needed to bring one graph to another (used in ZXLive).
@@ -76,7 +77,7 @@ This release adds several new features: support for evaluating ZX-diagrams as te
 There is one small breaking change, which is that `Graph.inputs` and `Graph.outputs` are now methods  that return a list, instead of being lists themselves.
 
 ### Added
-- Added support for evaluating ZX-diagrams as tensor networks in [quimb](https://quimb.readthedocs.io/en/latest/index.html) (courtesy of 
+- Added support for evaluating ZX-diagrams as tensor networks in [quimb](https://quimb.readthedocs.io/en/latest/index.html) (courtesy of
 Paul Tirlisan).
 - Added [quizx](https://github.com/Quantomatic/quizx) backend for the `Graph` class.
 - `Graph` vertices can now carry a `ground` generator. This makes it possible to represent measurements and classical control in the diagrams. See the accompanying [paper](https://arxiv.org/abs/2109.06071) (courtesy of ABorgna).
