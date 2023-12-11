@@ -1174,7 +1174,10 @@ class Measurement(Gate):
     result_bit: Optional[int]
 
     quipper_name = 'measure'
-    # This gate has special syntax in qasm: https://qiskit.github.io/openqasm/language/insts.html
+    # This gate has special syntax in qasm: https://openqasm.com/language/insts.html#measurement
+    # PyZX supports the following subset of the syntax:
+    # * (OpenQASM 2) measure q[0] -> c[0]
+    # * (OpenQASM 3) c[0] = measure q[0]
 
     def __init__(self, target: int, result_bit: Optional[int]) -> None:
         self.target = target
