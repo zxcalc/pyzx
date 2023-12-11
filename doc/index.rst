@@ -21,7 +21,7 @@ PyZX
    :caption: Notebooks:
 
    notebooks/gettingstarted
-   notebooks/qasm
+   notebooks/gates
 
 Indices and tables
 ==================
