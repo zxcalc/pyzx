@@ -837,7 +837,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         for group_num, group in enumerate(teleporter.get_vertex_groups()):
             if len(group) == 1: continue
             self.group_data[group_num] = set(group) # Groups of vertices fused throughout teleportation
-            phase_sum = Fraction(0)
+            phase_sum: FractionLike = Fraction(0)
             for v in group:
                 self.vertex_rank[v] = teleporter.vertex_rank[v]
                 self.vertex_groups[v] = group_num

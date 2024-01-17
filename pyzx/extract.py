@@ -711,14 +711,14 @@ def extract_circuit(
     return graph_to_swaps(g, up_to_perm) + c
 
 
-def extract_simple(g: BaseGraph[VT, ET], up_to_perm: bool = True, phase_poly_synth: bool = False) -> Circuit:
+def extract_simple(g: BaseGraph[VT, ET], up_to_perm: bool = True, synth_phase_polys: bool = False) -> Circuit:
     """A simplified circuit extractor that only works on graphs with causal flow.
     Also works with an extension of causal flow that allows phase gadgets under certain conditions.
     Phase gadgets are extracted using :func:`phase_poly_synth`
 
     :param g: The ZX-diagram to be extracted as a circuit
     :param up_to_perm: If True, returns a circuit that is equivalent to the given graph up to a permutation of the inputs, defaults to True
-    :param phase_poly_synth: If True, synthesises any extractable phase gadgets as phase polynmolials
+    :param synth_phase_polys: If True, synthesises any extractable phase gadgets as phase polynmolials
     :return:
     """
     n_qubits = g.qubit_count()
@@ -775,7 +775,7 @@ def extract_simple(g: BaseGraph[VT, ET], up_to_perm: bool = True, phase_poly_syn
                 else: raise ValueError("ZX-diagram is not unitary")
                 
         if progress_made: continue
-        if not phase_poly_synth: break
+        if not synth_phase_polys: break
         
         # Extracting phase gadgets
         front = {list(g.neighbors(o))[0]: q for q, o in enumerate(outputs)}

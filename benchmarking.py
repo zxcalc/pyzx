@@ -17,7 +17,7 @@ pd.set_option('display.max_columns', None)
 pd.set_option('display.max_rows', None)
 pd.set_option('display.max_colwidth', None)
 
-class benchmark:
+class Benchmark:
     """Class for benchmarking circuit simplification functions"""
     def __init__(self, dirpath: Optional[str] = None):
         # callable functions which take simplify a circuit: {func_name: func}

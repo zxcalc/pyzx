@@ -28,7 +28,7 @@ __all__ = ['bialg_simp','spider_simp', 'id_simp', 'phase_free_simp', 'pivot_simp
         'id_fuse_simp', 'to_graph_like', 'is_graph_like', 'basic_simp', 'flow_2Q_simp',
         'to_clifford_normal_form_graph']
 
-from typing import List, Callable, Optional, Union, Generic, Tuple, Dict, Iterator, Any, cast
+from typing import List, Callable, Optional, Union, Generic, Tuple, Dict, Iterator, Any, cast, DefaultDict
 from collections import defaultdict
 
 from .utils import EdgeType, VertexType, toggle_edge, vertex_is_zx, toggle_vertex
@@ -256,7 +256,7 @@ class PhaseTeleporter(Generic[VT, ET]):
         return self.parent_vertex[v]
     
     def get_vertex_groups(self) -> List[List[VT]]:
-        vertex_groups: defaultdict[VT,List[VT]] = defaultdict(list)
+        vertex_groups: DefaultDict[VT,List[VT]] = defaultdict(list)
         for v in self.non_clifford_vertices:
             root = self.parent(v)
             vertex_groups[root].append(v)
