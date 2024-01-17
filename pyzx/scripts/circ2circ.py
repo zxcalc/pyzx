@@ -73,7 +73,7 @@ def main(args):
     g = c.to_graph()
     if options.verbose: print("Running simplification algorithm...")
     if options.simp == 'tele':
-        g = simplify.teleport_reduce(g,quiet=(not options.verbose))
+        simplify.teleport_reduce(g)
         c2 = Circuit.from_graph(g)
         c2 = c2.split_phase_gates()
     else:
