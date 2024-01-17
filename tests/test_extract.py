@@ -18,9 +18,12 @@
 import unittest
 import random
 import sys
+import json
 if __name__ == '__main__':
     sys.path.append('..')
     sys.path.append('.')
+
+mydir = os.path.dirname(__file__)
 
 try:
     import numpy as np
@@ -28,11 +31,13 @@ try:
 except ImportError:
     np = None
 
+from pyzx.graph import Graph
 from pyzx.circuit import Circuit
 from pyzx.circuit.gates import CNOT
 from pyzx.generate import cliffordT, cliffords
 from pyzx.simplify import clifford_simp
-from pyzx.extract import extract_circuit
+from pyzx.extract import extract_circuit, extract_simple
+from pyzx.flow import cflow, full_cflow
 
 SEED = 1337
 
@@ -68,6 +73,15 @@ class TestExtract(unittest.TestCase):
         self.assertTrue(cnot_count==4)
         self.assertTrue(c.verify_equality(c2))
         
+    def test_extract_simple_phase_poly_synth(self):
+        with open(os.path.join(mydir,"test_phase_gadget_graph.json"), 'r') as file:
+            g_json = json.load(file)
+        g = Graph.from_json(g_json)
+        self.assertTrue(cflow(g) is None)
+        self.assertTrue(full_cflow(g) is not None)
+        c = extract_circuit(g.copy())
+        c2 = extract_simple(g.copy(), synth_phase_polys=True)
+        self.assertTrue(c.verify_equality(c2))
 
 
 if __name__ == '__main__':
