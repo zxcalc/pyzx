@@ -365,8 +365,8 @@ def flow_2Q_simp(
     cFlow: bool = True,
     rewrites: List[str] = ['id_fuse','lcomp','pivot'],
     score_weights: List[float] = [1,1,1],
-    max_lc_unfusions: int = 0,
-    max_p_unfusions: int = 0
+    max_lc_unfusions: int = 2,
+    max_p_unfusions: int = 2
     ) -> int:
     """Simplification strategy which aims to minimise the number of two qubit gates in the extracted circuit by selecting matches based on the heuristic |edges removed| - |vertices removed|.
     See https://arxiv.org/abs/2312.02793 for details.
@@ -377,8 +377,8 @@ def flow_2Q_simp(
     :param cFlow: Whether the existence of a causal flow should be preserved throughout simplification, defaults to True
     :param rewrites: Which rewrites to apply, defaults to ['id_fuse','lcomp','pivot']
     :param score_weights: Weighting factor for each of the three rewrites, defaults to [1,1,1]
-    :param max_lc_unfusions: Maximum number of neighbours to unfuse for local complementation, defaults to 0
-    :param max_p_unfusions: Maximum number of neighbours to unfuse on each vertex for pivoting, defaults to 0
+    :param max_lc_unfusions: Maximum number of neighbours to unfuse for local complementation, defaults to 2
+    :param max_p_unfusions: Maximum number of neighbours to unfuse on each vertex for pivoting, defaults to 2
     :return: The number of succeessful rewrites performed.
     """
     g.vertices_to_update = []
