@@ -345,13 +345,14 @@ class Benchmark:
         if any('Gates' in col for col in cols): border_col = 'Gates'
         elif any('2Q Count' in col for col in cols): border_col = '2Q Count'
         elif any('T Count' in col for col in cols): border_col = 'T Count'
+        elif any('t_opt' in col for col in cols): border_col = 't_opt'
         styler.set_table_styles(dict.fromkeys([col for col in cols if border_col in col or ('Original' in col and 'Qubits' in col)], [{'selector': 'th', 'props': 'border-left: 1px solid white !important'},
                                                                                         {'selector': 'td', 'props': 'border-left: 1px solid white !important'}]), overwrite=False, axis=0)
         styler.apply(lambda s: np.where(s==np.nanmin(s.values),'color:green',''), axis=1, subset=[col for col in cols if 'Gates' in col])
         styler.apply(lambda s: np.where(s==np.nanmin(s.values),'color:green',''), axis=1, subset=[col for col in cols if '2Q Count' in col])  
         styler.apply(lambda s: np.where(s==np.nanmin(s.values),'color:green',''), axis=1, subset=[col for col in cols if 'T Count' in col])
-        styler.format(subset=[col for col in cols if 't_opt' or 't_simp' in col],precision=2, na_rep='-', thousands=",")
-        styler.format(subset=[col for col in cols if 't_opt' not in col and 't_simp' not in col],precision=0, na_rep='-', thousands=",")
+        styler.format(subset=[col for col in cols if 't_opt' in col],precision=2, na_rep='-', thousands=",")
+        styler.format(subset=[col for col in cols if 't_opt' not in col],precision=0, na_rep='-', thousands=",")
         return(styler)
                 
     def df(self, groups: List[str] = ['all'], routines: List[str] = ['all'], funcs: List[str] = ['all'], atts: List[str] = ['all']) -> pd.DataFrame:
