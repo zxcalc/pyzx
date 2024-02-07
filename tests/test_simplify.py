@@ -35,6 +35,7 @@ from fractions import Fraction
 from pyzx.generate import cliffordT
 from pyzx.simplify import *
 from pyzx.simplify import supplementarity_simp
+from pyzx.extract import extract_simple
 
 SEED = 1337
 
