@@ -30,6 +30,7 @@ __all__ = ['bialg_simp','spider_simp', 'id_simp', 'phase_free_simp', 'pivot_simp
 
 from typing import List, Callable, Optional, Union, Generic, Tuple, Dict, Iterator, Any, cast, DefaultDict
 from collections import defaultdict
+from .symbolic import Poly
 
 from .utils import EdgeType, VertexType, toggle_edge, vertex_is_zx, toggle_vertex
 from .rules import *
@@ -244,7 +245,7 @@ class PhaseTeleporter(Generic[VT, ET]):
         self.phase_mult: Dict[VT,int] = {}
         self.non_clifford_vertices: Set[VT] = set()
         for v in self.original_graph.vertices():
-            if self.original_graph.phase(v).denominator > 2:
+            if self.original_graph.phase(v).denominator > 2 or isinstance(self.original_graph.phase(v), Poly):
                 self.parent_vertex[v] = v
                 self.vertex_rank[v] = 0
                 self.phase_mult[v] = 1
