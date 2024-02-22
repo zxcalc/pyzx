@@ -6,29 +6,38 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 Right now this project is in Beta and does not yet follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Hence, occasionally changes will be backwards incompatible (although they will all be documented here).
 
-## [0.x.x] - xxxx-xx-xx
+## [0.8.0] - 2024-02-14
 
+This release includes breaking changes!
+
+Major new features are support for W-spiders and Z-boxes, which are generators used in certain extensions of the ZX-calculus, such as in [this paper](https://arxiv.org/abs/2302.12135) which served as the motivation.
+It also adds more formal support for symbolic phases through the addition of a `Poly` class that can represented polynomial expressions containing Boolean and continuous variables.
+
+These features were implemented to support the development of [ZXLive](https://github.com/Quantomatic/zxlive), a new graphical proof assistant for ZX-diagrams.
+
+This release includes some changes that are not backwards compatible. The most important of which is changing how inputs and outputs are stored in the json format. This means that json files produced by `Graph.to_json()` are not parsible by older versions, and older versions are no longer parsible by this newer version.
+In addition, the gate `CX` has been renamed to `XCX` to make it more clear that it is in fact not an alternative name for the `CNOT` gate. Finally, the `FSim` gate now takes as first arguments the control and target, and only then the angles, in order to be consistent with the other gate definitions.
 
 ### Added
 - Support for W nodes and Z boxes (courtesy of @RazinShaikh).
-- Support for poly phases (courtesy of @RazinShaikh)
+- Support for symbolic phases that can either be Boolean or continuous variables. This is implemented through the new `Poly` class (standing for Polynomial) (courtesy of @RazinShaikh).
 - Support for Jupyter notebooks in documentation using nbsphinx (courtesy of @dlyongemallo).
 - Jupyter notebook documenting all supported gates (courtesy of @dlyongemallo).
 - Support for OpenQASM 3.0 (courtesy of @dlyongemallo).
 - A function `is_well_formed` to check that a graph is a well-formed ZX-diagram (courtesy of @RazinShaikh).
-- A function `is_pauli` to check whether a phase is Pauli (courtesy of @y-richie-y)
+- A function `is_pauli` to check whether a phase is Pauli (courtesy of @y-richie-y).
 - A function `GraphDiff` that calculates what actions are needed to bring one graph to another (used in ZXLive).
 - Functions `simplify.to_clifford_normal_form_graph` and `extract.extract_clifford_normal_form`.
-- Lazy import of some dependencies.
+- Lazy import of some dependencies to improve start-up time.
 
 ### Changed
 - Class `CX`, which refers to an X-controlled X gate, renamed to `XCX` for clarity.
 - Parameters for `FSim` changed to put control and target before angles, for consistency with other gates.
-- json format correctly remembers input/output ordering (older json no longer parsible)
+- json format correctly remembers input/output ordering (older json no longer parsible).
 
 ### Fixed
 - A bunch of mypy issues.
-- json export and import supports Poly phases
+- json export and import supports Poly phases.
 - Grounds being dropped during composition and other operations (#177 courtesy of @ABorgna).
 - The `tensorfy` function used the visual ordering of inputs and outputs, instead of the correct ordering (#168).
 - Several qasmparser bugs (courtesy of @dlyongemallo).

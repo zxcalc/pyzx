@@ -147,6 +147,12 @@ class TestSimplify(unittest.TestCase):
                 c2 = extract_simple(g, up_to_perm=False).to_basic_gates()
                 self.assertTrue(c.verify_equality(c2))
 
+    def test_to_graph_like_introduce_boundary_vertices(self):
+        c = qasm(qasm_5)
+        g = c.to_graph()
+        to_graph_like(g)
+        self.assertTrue(compare_tensors(c,g))
+
 qasm_1 = """OPENQASM 2.0;
 include "qelib1.inc";
 qreg q[3];
@@ -197,6 +203,14 @@ ccx q[0], q[1], q[2];
 ccx q[0], q[2], q[1];
 ccx q[2], q[0], q[1];
 cx q[1], q[2];
+"""
+
+qasm_5 = """OPENQASM 2.0;
+include "qelib1.inc";
+qreg q[2];
+h q[0];
+h q[1];
+cz q[0],q[1];
 """
 
 

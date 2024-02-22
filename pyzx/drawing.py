@@ -58,8 +58,6 @@ def draw(g: Union[BaseGraph[VT,ET], Circuit], labels: bool=False, **kwargs) -> A
     labels = labels or settings.show_labels
 
     if get_mode() == "shell":
-        if plt is None: 
-            raise ImportError("This function requires matplotlib.")
         return draw_matplotlib(g, labels, **kwargs)
     elif get_mode() == "browser":
         return draw_d3(g, labels, **kwargs)
