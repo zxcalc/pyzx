@@ -480,14 +480,14 @@ def to_graph_like(g: BaseGraph[VT,ET], assert_bound_connections: bool = True) ->
     for b in [v for v in g.vertices() if g.type(v) == VertexType.BOUNDARY]:
         for n in list(g.neighbors(b)):
             if g.edge_type(g.edge(b,n)) == EdgeType.HADAMARD:
-                z = g.add_vertex(VertexType.Z)
+                z = g.add_vertex(ty=VertexType.Z,row=0.5*g.row(n)+0.5*g.row(b),qubit=0.5*g.qubit(n)+0.5*g.qubit(b))
                 g.add_edge(g.edge(b,z), edgetype=EdgeType.SIMPLE)
                 g.add_edge(g.edge(z,n), edgetype=EdgeType.HADAMARD)
                 g.remove_edge(g.edge(b,n))
             elif g.type(n) == VertexType.BOUNDARY:
-                z1 = g.add_vertex(VertexType.Z)
-                z2 = g.add_vertex(VertexType.Z)
-                z3 = g.add_vertex(VertexType.Z)
+                z1 = g.add_vertex(ty=VertexType.Z,row=0.25*g.row(n)+0.75*g.row(b),qubit=0.25*g.qubit(n)+0.75*g.qubit(b))
+                z2 = g.add_vertex(ty=VertexType.Z,row=0.5*g.row(n)+0.5*g.row(b),qubit=0.5*g.qubit(n)+0.5*g.qubit(b))
+                z3 = g.add_vertex(ty=VertexType.Z,row=0.75*g.row(n)+0.25*g.row(b),qubit=0.75*g.qubit(n)+0.25*g.qubit(b))
                 g.add_edge(g.edge(b,z1), edgetype=EdgeType.SIMPLE)
                 g.add_edge(g.edge(z1,z2), edgetype=EdgeType.HADAMARD)
                 g.add_edge(g.edge(z2,z3), edgetype=EdgeType.HADAMARD)
@@ -498,8 +498,8 @@ def to_graph_like(g: BaseGraph[VT,ET], assert_bound_connections: bool = True) ->
         boundary_ns = [n for n in g.neighbors(v) if g.type(n)==VertexType.BOUNDARY]
         if len(boundary_ns) <= 1: continue
         for b in boundary_ns[:-1]:
-            z1 = g.add_vertex(VertexType.Z)
-            z2 = g.add_vertex(VertexType.Z)
+            z1 = g.add_vertex(ty=VertexType.Z,row=0.3*g.row(v)+0.7*g.row(b),qubit=0.3*g.qubit(v)+0.7*g.qubit(b))
+            z2 = g.add_vertex(ty=VertexType.Z,row=0.7*g.row(v)+0.3*g.row(b),qubit=0.7*g.qubit(v)+0.3*g.qubit(b))
             g.add_edge(g.edge(b,z1), edgetype=EdgeType.SIMPLE)
             g.add_edge(g.edge(z1,z2), edgetype=EdgeType.HADAMARD)
             g.add_edge(g.edge(z2,v), edgetype=EdgeType.HADAMARD)
