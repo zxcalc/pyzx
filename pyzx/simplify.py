@@ -471,7 +471,12 @@ def to_rg(g: BaseGraph[VT,ET], select: Optional[Callable[[VT], bool]] = None) ->
 
 def to_graph_like(g: BaseGraph[VT,ET], assert_bound_connections: bool = True) -> None:
     """Puts a ZX-diagram in graph-like form. 
+    The graph should contain no hboxes, only hadamard edges. Convert arity-2 hboxes to hadamard edges using ``hsimplify.from_hypergraph_form(g)``.
     If ``assert_bound_connections`` is False, the conditions on inputs/output connections are not enforced."""
+    
+    if any(g.type(v) == VertexType.H_BOX for v in g.vertices()):
+        raise ValueError("Graph contains hboxes. Try converting arity-2 hboxes to hadamard edges first by running hsimplify.from_hypergraph_form(g).")
+    
     to_gh(g)
     spider_simp(g, quiet=True)
     
@@ -504,6 +509,8 @@ def to_graph_like(g: BaseGraph[VT,ET], assert_bound_connections: bool = True) ->
             g.add_edge(g.edge(z1,z2), edgetype=EdgeType.HADAMARD)
             g.add_edge(g.edge(z2,v), edgetype=EdgeType.HADAMARD)
             g.remove_edge(g.edge(b,v))
+    
+    assert(is_graph_like(g))
 
 def is_graph_like(g, assert_bound_connections: bool = True):
     """Returns True if a ZX-diagram is graph-like.
