@@ -77,7 +77,7 @@ def do_tests(qubits, depth, iterations, test_clifford_graph=True):
             #to_gh(g)
             #id_simp(g,quiet=True)
             #spider_simp(g,quiet=True)
-            g = teleport_reduce(g)
+            teleport_reduce(g)
             steps.append("teleport_reduce")
             compare(t,g, False)
             #c1 = zx.Circuit.from_graph(g,split_phases=True).to_basic_gates()

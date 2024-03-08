@@ -35,6 +35,7 @@ from fractions import Fraction
 from pyzx.generate import cliffordT
 from pyzx.simplify import *
 from pyzx.simplify import supplementarity_simp
+from pyzx.extract import extract_simple
 
 SEED = 1337
 
@@ -66,6 +67,9 @@ class TestSimplify(unittest.TestCase):
 
     def test_id_simp(self):
         self.func_test(id_simp)
+        
+    def test_id_fuse_simp(self):
+        self.func_test(id_fuse_simp)
 
     def test_to_gh(self):
         self.func_test(to_gh)
@@ -96,11 +100,51 @@ class TestSimplify(unittest.TestCase):
 
     def test_teleport_reduce(self):
         """Tests whether teleport_reduce preserves semantics on a set of circuits that have been broken before."""
+        for i,s in enumerate([qasm_1,qasm_2,qasm_3,qasm_4]): 
+            with self.subTest(i=i):
+                c = qasm(s)
+                g = c.to_graph()
+                teleport_reduce(g)
+                c2 = Circuit.from_graph(g)
+                self.assertTrue(c.verify_equality(c2))
+    
+    def test_teleport_reduce_phase_storing(self):
+        """Tests whether teleport_reduce preserves semantics with phases being stored then randomly placed."""
+        for i,s in enumerate([qasm_1,qasm_2,qasm_3,qasm_4]): 
+            with self.subTest(i=i):
+                c = qasm(s)
+                g = c.to_graph()
+                teleport_reduce(g, store=True)
+                for group, vertices in list(g.group_data.items()):
+                    v = random.choice(list(vertices)) # Choose a random vertex to place the phase on
+                    phase = g.phase_sum[group] * g.phase_mult[v]
+                    child_v = g.leaf_vertex(v)
+                    g.add_to_phase(child_v, phase)
+                c2 = Circuit.from_graph(g)
+                self.assertTrue(c.verify_equality(c2))
+    
+    def test_flow_opt(self):
+        """Tests whether flow_2Q_simp preserves semantics."""
+        for i,g in enumerate(self.circuits):
+            with self.subTest(i=i):
+                c = Circuit.from_graph(g)
+                teleport_reduce(g)
+                to_graph_like(g, assert_bound_connections=False)
+                flow_2Q_simp(g, cFlow=True, rewrites=['id_fuse','lcomp','pivot'], max_lc_unfusions=2, max_p_unfusions=2)
+                c2 = extract_simple(g, up_to_perm=False).to_basic_gates()
+                self.assertTrue(c.verify_equality(c2))
+    
+    def test_flow_opt_with_phase_jumping(self):
+        """Tests whether flow_2Q_simp preserves semantics when phase jumping is allowed."""
         for i,s in enumerate([qasm_1,qasm_2,qasm_3,qasm_4]):
             with self.subTest(i=i):
                 c = qasm(s)
                 g = c.to_graph()
-                c2 = Circuit.from_graph(teleport_reduce(g))
+                teleport_reduce(g, store=True)
+                to_graph_like(g, assert_bound_connections=False)
+                flow_2Q_simp(g, cFlow=True, rewrites=['id_fuse','lcomp','pivot'], max_lc_unfusions=2, max_p_unfusions=2)
+                g.place_tracked_phases()
+                c2 = extract_simple(g, up_to_perm=False).to_basic_gates()
                 self.assertTrue(c.verify_equality(c2))
 
     def test_to_graph_like_introduce_boundary_vertices(self):

@@ -413,7 +413,7 @@ def route_circuit(
         compiled_circuit.compile()
     else:
         g = c.to_graph()
-        g = teleport_reduce(g)
+        teleport_reduce(g)
         interior_clifford_simp(g)
         g = g.copy()  # reduces the number of gates when extracting.
         if type(architecture) == type(""):
@@ -486,7 +486,7 @@ def route_circuit(
             for gate in reversed(c.gates):
                 rev_c.add_gate(gate)
             rev_g = rev_c.to_graph()
-            rev_g = teleport_reduce(rev_g)
+            teleport_reduce(rev_g)
             interior_clifford_simp(rev_g)
             rev_g = rev_g.copy()  # reduces the number of gates when extracting.
 
