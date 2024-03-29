@@ -18,21 +18,25 @@
 import unittest
 import random
 import sys
+from types import ModuleType
+from typing import Optional
+
 if __name__ == '__main__':
     sys.path.append('..')
     sys.path.append('.')
+from pyzx.circuit import Circuit
+from pyzx.circuit.gates import CNOT
+from pyzx.generate import cliffordT
+from pyzx.simplify import clifford_simp
+from pyzx.extract import extract_circuit
 
+np: Optional[ModuleType]
 try:
     import numpy as np
     from pyzx.tensor import tensorfy, compare_tensors
 except ImportError:
     np = None
 
-from pyzx.circuit import Circuit
-from pyzx.circuit.gates import CNOT
-from pyzx.generate import cliffordT, cliffords
-from pyzx.simplify import clifford_simp
-from pyzx.extract import extract_circuit
 
 SEED = 1337
 

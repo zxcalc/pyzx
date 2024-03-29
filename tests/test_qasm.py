@@ -16,7 +16,20 @@
 
 
 import unittest
+import os
+import sys
+from types import ModuleType
+from typing import Optional
 
+if __name__ == '__main__':
+    sys.path.append('..')
+    sys.path.append('.')
+from pyzx.simplify import full_reduce
+from pyzx.extract import extract_circuit
+from pyzx.circuit import Circuit
+from fractions import Fraction
+
+np: Optional[ModuleType]
 try:
     import numpy as np
     from pyzx.tensor import compare_tensors
@@ -30,12 +43,6 @@ try:
     from qiskit.qasm3 import loads
 except ImportError:
     QuantumCircuit = None
-
-from pyzx.simplify import full_reduce
-from pyzx.extract import extract_circuit
-from pyzx.circuit import Circuit
-from fractions import Fraction
-import os
 
 
 @unittest.skipUnless(np, "numpy needs to be installed for this to run")
