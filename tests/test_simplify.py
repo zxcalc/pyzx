@@ -18,16 +18,12 @@
 import unittest
 import random
 import sys
+from types import ModuleType
+from typing import Optional
+
 if __name__ == '__main__':
     sys.path.append('..')
     sys.path.append('.')
-
-try:
-    import numpy as np
-    from pyzx.tensor import tensorfy, compare_tensors
-except ImportError:
-    np = None
-
 from pyzx.graph import Graph
 from pyzx.circuit import Circuit
 from pyzx.circuit.qasmparser import qasm
@@ -36,7 +32,15 @@ from pyzx.generate import cliffordT
 from pyzx.simplify import *
 from pyzx.simplify import supplementarity_simp
 
+np: Optional[ModuleType]
+try:
+    import numpy as np
+    from pyzx.tensor import tensorfy, compare_tensors
+except ImportError:
+    np = None
+
 SEED = 1337
+
 
 @unittest.skipUnless(np, "numpy needs to be installed for this to run")
 class TestSimplify(unittest.TestCase):
@@ -108,6 +112,7 @@ class TestSimplify(unittest.TestCase):
         g = c.to_graph()
         to_graph_like(g)
         self.assertTrue(compare_tensors(c,g))
+
 
 qasm_1 = """OPENQASM 2.0;
 include "qelib1.inc";
