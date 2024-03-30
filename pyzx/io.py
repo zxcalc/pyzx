@@ -49,7 +49,7 @@ def _phase_to_quanto_value(p: FractionLike) -> str:
     return r"{}\pi{}".format(v,d)
 
 
-def json_to_graph(js: str, force_deprecated_behavior=True) -> BaseGraph:
+def json_to_graph(js: str, force_deprecated_behavior=False) -> BaseGraph:
     """Converts the json representation of a .qgraph Quantomatic graph into
     a pyzx graph."""
     print("json_to_graph(js) is deprecated. Please use zx.Graph.from_json(js) instead.")
@@ -140,7 +140,7 @@ def json_to_graph(js: str, force_deprecated_behavior=True) -> BaseGraph:
 
     return g
 
-def graph_to_json(g: BaseGraph[VT,ET], force_deprecated_behavior=True) -> str:
+def graph_to_json(g: BaseGraph[VT,ET], force_deprecated_behavior=False) -> str:
     """Converts a PyZX graph into JSON output compatible with Quantomatic."""
     print("graph_to_json(g) is deprecated. Please use g.to_json() instead (for a given graph g).")
     if not force_deprecated_behavior:
@@ -212,7 +212,7 @@ def graph_to_json(g: BaseGraph[VT,ET], force_deprecated_behavior=True) -> str:
             "node_vertices": node_vs,
             "undir_edges": edges})
 
-def to_graphml(g: BaseGraph[VT,ET], force_deprecated_behavior=True) -> str:
+def to_graphml(g: BaseGraph[VT,ET], force_deprecated_behavior=False) -> str:
     gml = """<?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <graphml xmlns="http://graphml.graphdrawing.org/xmlns">
     <key attr.name="type" attr.type="int" for="node" id="type">
