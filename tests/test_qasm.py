@@ -40,6 +40,7 @@ except ImportError:
 try:
     from qiskit import quantum_info, transpile
     from qiskit.circuit import QuantumCircuit
+    from qiskit.qasm2 import dumps
     from qiskit.qasm3 import loads
 except ImportError:
     QuantumCircuit = None
@@ -244,7 +245,7 @@ class TestQASM(unittest.TestCase):
         qc1 = transpile(qc)
         t1 = quantum_info.Operator(qc1).data
 
-        c = Circuit.from_qasm(qc1.qasm())
+        c = Circuit.from_qasm(dumps(qc1))
         g = c.to_graph()
         full_reduce(g)
         qasm = extract_circuit(g).to_basic_gates().to_qasm()
