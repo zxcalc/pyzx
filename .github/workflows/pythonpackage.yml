@@ -33,4 +33,4 @@ jobs:
         mypy pyzx/ tests/
     - name: Test with unittest
       run: |
-        python -m unittest discover -s "tests" -t "."
+        python -m unittest discover -s "tests" -t "." --verbose
