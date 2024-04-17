@@ -196,6 +196,9 @@ def reduce_scalar(g: BaseGraph[VT,ET], quiet:bool=True, stats:Optional[Stats]=No
 def full_reduce(g: BaseGraph[VT,ET], quiet:bool=True, stats:Optional[Stats]=None) -> None:
     """The main simplification routine of PyZX. It uses a combination of :func:`clifford_simp` and
     the gadgetization strategies :func:`pivot_gadget_simp` and :func:`gadget_simp`."""
+    if any(g.types()[h] == VertexType.H_BOX for h in g.vertices()):
+        raise ValueError("Input graph is not a ZX-diagram as it contains an H-box. "
+                         "Maybe call pyzx.hsimplify.from_hypergraph_form(g) first?")
     interior_clifford_simp(g, quiet=quiet, stats=stats)
     pivot_gadget_simp(g,quiet=quiet, stats=stats)
     while True:
