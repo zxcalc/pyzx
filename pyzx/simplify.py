@@ -144,7 +144,7 @@ def phase_free_simp(g: BaseGraph[VT,ET], quiet:bool=False, stats:Optional[Stats]
     i2 = bialg_simp(g, quiet=quiet, stats=stats)
     return i1+i2
 
-def interior_clifford_simp(g: BaseGraph[VT,ET], matchf: Optional[Callable[[VT],bool]]=None, quiet:bool=False, stats:Optional[Stats]=None) -> int:
+def interior_clifford_simp(g: BaseGraph[VT,ET], matchf: Optional[Callable[[Union[VT, ET]],bool]]=None, quiet:bool=False, stats:Optional[Stats]=None) -> int:
     """Keeps doing the simplifications ``id_simp``, ``spider_simp``,
     ``pivot_simp`` and ``lcomp_simp`` until none of them can be applied anymore."""
     spider_simp(g, matchf=matchf, quiet=quiet, stats=stats)
@@ -159,7 +159,7 @@ def interior_clifford_simp(g: BaseGraph[VT,ET], matchf: Optional[Callable[[VT],b
         i += 1
     return i
 
-def clifford_simp(g: BaseGraph[VT,ET], matchf: Optional[Callable[[VT],bool]]=None, quiet:bool=True, stats:Optional[Stats]=None) -> int:
+def clifford_simp(g: BaseGraph[VT,ET], matchf: Optional[Callable[[Union[VT, ET]],bool]]=None, quiet:bool=True, stats:Optional[Stats]=None) -> int:
     """Keeps doing rounds of :func:`interior_clifford_simp` and
     :func:`pivot_boundary_simp` until they can't be applied anymore."""
     i = 0
@@ -193,7 +193,7 @@ def reduce_scalar(g: BaseGraph[VT,ET], quiet:bool=True, stats:Optional[Stats]=No
     return i
 
 
-def full_reduce(g: BaseGraph[VT,ET], matchf: Optional[Callable[[VT],bool]]=None, quiet:bool=True, stats:Optional[Stats]=None) -> None:
+def full_reduce(g: BaseGraph[VT,ET], matchf: Optional[Callable[[Union[VT, ET]],bool]]=None, quiet:bool=True, stats:Optional[Stats]=None) -> None:
     """The main simplification routine of PyZX. It uses a combination of :func:`clifford_simp` and
     the gadgetization strategies :func:`pivot_gadget_simp` and :func:`gadget_simp`."""
     if any(g.types()[h] == VertexType.H_BOX for h in g.vertices()):
