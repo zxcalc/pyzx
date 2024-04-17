@@ -512,9 +512,9 @@ class Optimizer(object):
             else: # Only the control has a hadamard gate in front of it
                 self.add_hadamard(c)
                 self.add_cnot(g)
-        
+
         else:
-            raise TypeError("Unknown gate {}".format(str(g)))
+            raise TypeError("Unknown gate {}. Maybe simplify the gates with circuit.to_basic_gates()?".format(str(g)))
 
 
 

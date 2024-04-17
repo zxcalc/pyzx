@@ -824,6 +824,8 @@ class FSim(Gate):
     qsim_name = 'fs'
     print_phase = True
     def __init__(self, control:int, target:int, theta:FractionLike, phi:FractionLike):
+        # TODO: this version assumes theta is always (pi/2)
+        assert theta == Fraction(1, 2)
         self.control = control
         self.target = target
         self.theta = theta
@@ -1174,7 +1176,10 @@ class Measurement(Gate):
     result_bit: Optional[int]
 
     quipper_name = 'measure'
-    # This gate has special syntax in qasm: https://qiskit.github.io/openqasm/language/insts.html
+    # This gate has special syntax in qasm: https://openqasm.com/language/insts.html#measurement
+    # PyZX supports the following subset of the syntax:
+    # * (OpenQASM 2) measure q[0] -> c[0]
+    # * (OpenQASM 3) c[0] = measure q[0]
 
     def __init__(self, target: int, result_bit: Optional[int]) -> None:
         self.target = target

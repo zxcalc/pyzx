@@ -16,7 +16,20 @@
 
 
 import unittest
+import os
+import sys
+from types import ModuleType
+from typing import Optional
 
+if __name__ == '__main__':
+    sys.path.append('..')
+    sys.path.append('.')
+from pyzx.simplify import full_reduce
+from pyzx.extract import extract_circuit
+from pyzx.circuit import Circuit
+from fractions import Fraction
+
+np: Optional[ModuleType]
 try:
     import numpy as np
     from pyzx.tensor import compare_tensors
@@ -27,15 +40,10 @@ except ImportError:
 try:
     from qiskit import quantum_info, transpile
     from qiskit.circuit import QuantumCircuit
+    from qiskit.qasm2 import dumps
     from qiskit.qasm3 import loads
 except ImportError:
     QuantumCircuit = None
-
-from pyzx.simplify import full_reduce
-from pyzx.extract import extract_circuit
-from pyzx.circuit import Circuit
-from fractions import Fraction
-import os
 
 
 @unittest.skipUnless(np, "numpy needs to be installed for this to run")
@@ -237,7 +245,7 @@ class TestQASM(unittest.TestCase):
         qc1 = transpile(qc)
         t1 = quantum_info.Operator(qc1).data
 
-        c = Circuit.from_qasm(qc1.qasm())
+        c = Circuit.from_qasm(dumps(qc1))
         g = c.to_graph()
         full_reduce(g)
         qasm = extract_circuit(g).to_basic_gates().to_qasm()

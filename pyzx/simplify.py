@@ -25,7 +25,7 @@ __all__ = ['bialg_simp','spider_simp', 'id_simp', 'phase_free_simp', 'pivot_simp
         'pivot_gadget_simp', 'pivot_boundary_simp', 'gadget_simp',
         'lcomp_simp', 'clifford_simp', 'tcount', 'to_gh', 'to_rg',
         'full_reduce', 'teleport_reduce', 'reduce_scalar', 'supplementarity_simp',
-        'to_clifford_normal_form_graph']
+        'to_clifford_normal_form_graph', 'to_graph_like', 'is_graph_like']
 
 from optparse import Option
 from typing import List, Callable, Optional, Union, Generic, Tuple, Dict, Iterator, cast
@@ -196,6 +196,9 @@ def reduce_scalar(g: BaseGraph[VT,ET], quiet:bool=True, stats:Optional[Stats]=No
 def full_reduce(g: BaseGraph[VT,ET], matchf: Optional[Callable[[VT],bool]]=None, quiet:bool=True, stats:Optional[Stats]=None) -> None:
     """The main simplification routine of PyZX. It uses a combination of :func:`clifford_simp` and
     the gadgetization strategies :func:`pivot_gadget_simp` and :func:`gadget_simp`."""
+    if any(g.types()[h] == VertexType.H_BOX for h in g.vertices()):
+        raise ValueError("Input graph is not a ZX-diagram as it contains an H-box. "
+                         "Maybe call pyzx.hsimplify.from_hypergraph_form(g) first?")
     interior_clifford_simp(g, matchf=matchf, quiet=quiet, stats=stats)
     pivot_gadget_simp(g, matchf=matchf, quiet=quiet, stats=stats)
     while True:
@@ -492,13 +495,20 @@ def to_graph_like(g: BaseGraph[VT,ET]) -> None:
 
         # add dummy spiders for all but one
         for b in boundary_ns[:-1]:
-            z1 = g.add_vertex(ty=VertexType.Z)
-            z2 = g.add_vertex(ty=VertexType.Z)
+            e = g.edge(v,b)
+            if g.edge_type(e) == EdgeType.SIMPLE:
+                z1 = g.add_vertex(ty=VertexType.Z,row=0.3*g.row(v)+0.7*g.row(b),qubit=0.3*g.qubit(v)+0.7*g.qubit(b))
+                z2 = g.add_vertex(ty=VertexType.Z,row=0.7*g.row(v)+0.3*g.row(b),qubit=0.7*g.qubit(v)+0.3*g.qubit(b))
 
-            g.remove_edge(g.edge(v, b))
-            g.add_edge(g.edge(z1, z2), edgetype=EdgeType.HADAMARD)
-            g.add_edge(g.edge(b, z1), edgetype=EdgeType.SIMPLE)
-            g.add_edge(g.edge(z2, v), edgetype=EdgeType.HADAMARD)
+                g.remove_edge(e)
+                g.add_edge(g.edge(z1, z2), edgetype=EdgeType.HADAMARD)
+                g.add_edge(g.edge(b, z1), edgetype=EdgeType.SIMPLE)
+                g.add_edge(g.edge(z2, v), edgetype=EdgeType.HADAMARD)
+            elif g.edge_type(e) == EdgeType.HADAMARD:
+                z = g.add_vertex(ty=VertexType.Z,row=0.5*g.row(v)+0.5*g.row(b),qubit=0.5*g.qubit(v)+0.5*g.qubit(b))
+                g.remove_edge(e)
+                g.add_edge(g.edge(b,z),EdgeType.SIMPLE)
+                g.add_edge(g.edge(z,v),EdgeType.HADAMARD)
 
     assert(is_graph_like(g))
 

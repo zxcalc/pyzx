@@ -17,23 +17,26 @@
 
 import unittest
 import random
-from fractions import Fraction
 import sys
+from types import ModuleType
+from typing import Optional
+
 if __name__ == '__main__':
     sys.path.append('..')
     sys.path.append('.')
+from pyzx.graph import Graph
+from pyzx.generate import cliffords
+from pyzx.circuit import Circuit
 
+np: Optional[ModuleType]
 try:
     import numpy as np
     from pyzx.tensor import tensorfy, compare_tensors, compose_tensors, adjoint
 except ImportError:
     np = None
 
-from pyzx.graph import Graph
-from pyzx.generate import cliffords
-from pyzx.circuit import Circuit
-
 SEED = 1337
+
 
 @unittest.skipUnless(np, "numpy needs to be installed for this to run")
 class TestTensor(unittest.TestCase):

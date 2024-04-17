@@ -3,6 +3,7 @@ local-scratchpads
 venv
 .venv
 .idea
+.vs
 notebooks/.ipynb_checkpoints
 doc/_build
 build

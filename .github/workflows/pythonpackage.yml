@@ -27,9 +27,10 @@ jobs:
         python -m pip install --upgrade pip
         pip install mypy==1.5.1
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+        if [ -f test_requirements.txt ]; then pip install -r test_requirements.txt; fi
     - name: mypy
       run: |
-        mypy pyzx/
+        mypy pyzx/ tests/
     - name: Test with unittest
       run: |
-        python -m unittest discover -s "tests" -t "."
+        python -m unittest discover -s "tests" -t "." --verbose

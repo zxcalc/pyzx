@@ -1,4 +1,4 @@
-# PyZX - Python library for quantum circuit rewriting 
+# PyZX - Python library for quantum circuit rewriting
 #        and optimization using the ZX-calculus
 # Copyright (C) 2018 - Aleks Kissinger and John van de Wetering
 
@@ -21,7 +21,6 @@ from typing import List, Dict, Any
 from .utils import FractionLike
 from .graph import Graph, EdgeType, VertexType
 from .graph.base import BaseGraph, VT, ET
-from .simplify import id_simp
 from .symbolic import Poly
 
 __all__ = ['json_to_graph', 'graph_to_json', 'to_graphml']
@@ -50,10 +49,12 @@ def _phase_to_quanto_value(p: FractionLike) -> str:
     return r"{}\pi{}".format(v,d)
 
 
-def json_to_graph(js: str) -> BaseGraph:
+def json_to_graph(js: str, force_deprecated_behavior=False) -> BaseGraph:
     """Converts the json representation of a .qgraph Quantomatic graph into
     a pyzx graph."""
-    print("Deprecated. Please use zx.Graph.from_json() instead.")
+    print("json_to_graph(js) is deprecated. Please use zx.Graph.from_json(js) instead.")
+    if not force_deprecated_behavior:
+        return Graph.from_json(js)  # type: ignore
     j = json.loads(js)
     g = Graph()
 
@@ -63,7 +64,7 @@ def json_to_graph(js: str) -> BaseGraph:
     inputs = []
     outputs = []
     for name,attr in j.get('node_vertices',{}).items():
-        if ('data' in attr and 'type' in attr['data'] and attr['data']['type'] == "hadamard" 
+        if ('data' in attr and 'type' in attr['data'] and attr['data']['type'] == "hadamard"
             and 'is_edge' in attr['data'] and attr['data']['is_edge'] == 'true'):
             hadamards[name] = []
             continue
@@ -87,7 +88,7 @@ def json_to_graph(js: str) -> BaseGraph:
         else:
             g.set_type(v,VertexType.Z)
             g.set_phase(v,Fraction(0,1))
-        
+
         #g.set_vdata(v, 'x', c[0])
         #g.set_vdata(v, 'y', c[1])
     for name,attr in j.get('wire_vertices',{}).items():
@@ -110,7 +111,7 @@ def json_to_graph(js: str) -> BaseGraph:
     edges: Dict[Any, List[int]] = {} # TODO: Any = ET
     for edge in j.get('undir_edges',{}).values():
         n1, n2 = edge['src'], edge['tgt']
-        if n1 in hadamards and n2 in hadamards: #Both 
+        if n1 in hadamards and n2 in hadamards: #Both
             v = g.add_vertex(VertexType.Z)
             name = "v"+str(len(names))
             g.set_vdata(v, 'name',name)
@@ -118,7 +119,7 @@ def json_to_graph(js: str) -> BaseGraph:
             hadamards[n1].append(v)
             hadamards[n2].append(v)
             continue
-        if n1 in hadamards: 
+        if n1 in hadamards:
             hadamards[n1].append(names[n2])
             continue
         if n2 in hadamards:
@@ -139,9 +140,11 @@ def json_to_graph(js: str) -> BaseGraph:
 
     return g
 
-def graph_to_json(g: BaseGraph[VT,ET]) -> str:
+def graph_to_json(g: BaseGraph[VT,ET], force_deprecated_behavior=False) -> str:
     """Converts a PyZX graph into JSON output compatible with Quantomatic."""
-    print("Deprecated. Please use g.to_json() instead (for a given graph g).")
+    print("graph_to_json(g) is deprecated. Please use g.to_json() instead (for a given graph g).")
+    if not force_deprecated_behavior:
+        return g.to_json()
     node_vs: Dict[str, Dict[str, Any]] = {}
     wire_vs: Dict[str, Dict[str, Any]] = {}
     edges: Dict[str, Dict[str, str]] = {}
@@ -159,13 +162,13 @@ def graph_to_json(g: BaseGraph[VT,ET]) -> str:
         if not name:
             if t == VertexType.BOUNDARY: name = freenamesb.pop(0)
             else: name = freenamesv.pop(0)
-        else: 
+        else:
             try:
                 freenamesb.remove(name) if t==VertexType.BOUNDARY else freenamesv.remove(name)
             except:
                 pass
                 #print("couldn't remove name '{}'".format(name))
-        
+
         names[v] = name
         if t == VertexType.BOUNDARY:
             wire_vs[name] = {"annotation":{"boundary":True,"coord":coord,
@@ -205,11 +208,11 @@ def graph_to_json(g: BaseGraph[VT,ET]) -> str:
             raise TypeError("Edge of type 0")
 
 
-    return json.dumps({"wire_vertices": wire_vs, 
-            "node_vertices": node_vs, 
+    return json.dumps({"wire_vertices": wire_vs,
+            "node_vertices": node_vs,
             "undir_edges": edges})
 
-def to_graphml(g: BaseGraph[VT,ET]) -> str:
+def to_graphml(g: BaseGraph[VT,ET], force_deprecated_behavior=False) -> str:
     gml = """<?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <graphml xmlns="http://graphml.graphdrawing.org/xmlns">
     <key attr.name="type" attr.type="int" for="node" id="type">
@@ -229,7 +232,9 @@ def to_graphml(g: BaseGraph[VT,ET]) -> str:
     </key>
     <graph edgedefault="undirected">
 """
-    print("Deprecated. Please use g.to_graphml() instead (where g is a Graph instance).")
+    print("to_graphml(g) is deprecated. Please use g.to_graphml() instead (where g is a Graph instance).")
+    if not force_deprecated_behavior:
+        return g.to_graphml()
 
     for v in g.vertices():
         gml += (
