@@ -708,7 +708,7 @@ def phase_block_optimize(circuit: Circuit, pre_optimize:bool=True, quiet:bool=Tr
             if not isinstance(g, ZPhase):
                 raise TypeError("Unknown gate {}. Maybe simplify the gates with circuit.to_basic_gates()?".format(str(g)))
             elif g.phase.denominator not in (1,2,4):
-                raise TypeError("This method only works on Clifford+T circuits. This circuit contains a {}".format(str(g)))
+                raise TypeError("This method only works on Clifford+T circuits. This circuit contains a {}. For these circuits, stick to basic_optimization().".format(str(g)))
             gates[g.target].append(g)
         else:
             gates[g.target].append(g)
