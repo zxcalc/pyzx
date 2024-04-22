@@ -28,7 +28,7 @@ from typing import List, Optional, Dict, Tuple, Any
 
 import numpy as np
 
-from .utils import EdgeType, VertexType, toggle_edge
+from .utils import EdgeType, VertexType, toggle_edge, ave_pos
 from . import simplify
 from .circuit import Circuit
 from .graph import Graph
