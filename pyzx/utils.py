@@ -252,3 +252,6 @@ def get_z_box_label(g, v):
 def set_z_box_label(g, v, label):
     assert g.type(v) == VertexType.Z_BOX
     g.set_vdata(v, 'label', label)
+
+# Return position 'perc'%-distance between 2 points:
+def ave_pos(a,b,perc=1/2): return (abs(a-b))*(perc) + min(a,b)
