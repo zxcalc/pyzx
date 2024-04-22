@@ -482,3 +482,65 @@ def replace_1_1(g: BaseGraph[VT,ET], verts: List[VT]) -> BaseGraph[VT,ET]:
     g.add_edge(g.edge(verts[0],w),EdgeType.HADAMARD) 
     for v in verts: g.add_to_phase(v,Fraction(-1,4))
     return g
+
+def cut_vertex(g,v):
+    g  = g.copy()
+    g0 = g.copy()
+    g1 = g.copy()
+    g0.remove_vertex(v)
+    g1.remove_vertex(v)
+
+    n = len(g.neighbors(v))
+    g0.scalar.add_power(-n)
+    g1.scalar.add_power(-n)
+    g1.scalar.add_phase(g.phase(v)) # account for e^(i*pi*alpha) on right branch
+    
+    vtype = -1
+    match g.type(v):
+        case 1: vtype = 2
+        case 2: vtype = 1
+        case _: raise ValueError("Attempted illegal cut on boundary vertex "+str(v))
+
+    for i in g.neighbors(v):
+        etype = g.edge_type((v,i)) # maintain edge type
+        qubit = ave_pos(g.qubit(v),g.qubit(i),1/2)
+        row   = ave_pos(g.row(v),g.row(i),1/2)
+        
+        newV = g0.add_vertex(vtype,qubit,row,0) # add and connect the new vertices
+        g0.add_edge((newV,i),etype)
+        newV = g1.add_vertex(vtype,qubit,row,1)
+        g1.add_edge((newV,i),etype)
+
+    return (g0,g1)
+
+def cut_edge(g,e,ty=1):
+    g  = g.copy()
+    g0 = g.copy()
+    g1 = g.copy()
+    g0.remove_edge(e)
+    g1.remove_edge(e)
+
+    etype = g.edge_type(e)
+
+    g0.scalar.add_power(-2)
+    g1.scalar.add_power(-2)
+
+    x0,x1 = g.row(e[0]), g.row(e[1])
+    y0,y1 = g.qubit(e[0]), g.qubit(e[1])
+
+    qubit1 = ave_pos(y0,y1,1/3)
+    row1   = ave_pos(x0,x1,1/3)
+    qubit2 = ave_pos(y0,y1,2/3)
+    row2   = ave_pos(x0,x1,2/3)
+    
+    v = g0.add_vertex(ty=ty,qubit=qubit1,row=row1,phase=0)
+    g0.add_edge((v,e[0]),1)
+    v = g0.add_vertex(ty=ty,qubit=qubit2,row=row2,phase=0)
+    g0.add_edge((v,e[1]),etype)
+
+    v = g1.add_vertex(ty=ty,qubit=qubit1,row=row1,phase=1)
+    g1.add_edge((v,e[0]),1)
+    v = g1.add_vertex(ty=ty,qubit=qubit2,row=row2,phase=1)
+    g1.add_edge((v,e[1]),etype)
+    
+    return (g0,g1)
