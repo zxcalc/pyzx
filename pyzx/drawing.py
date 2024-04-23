@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__all__ = ['draw', 'arrange_scalar_diagram', 'draw_matplotlib', 'draw_d3', 
+__all__ = ['draw', 'arrange_scalar_diagram', 'draw_matplotlib', 'draw_d3',
             'matrix_to_latex', 'print_matrix', 'graphs_to_gif']
 
 import os
@@ -588,18 +588,19 @@ def matrix_to_latex(m: np.ndarray) -> str:
     out += "\n\\end{pmatrix}\n\\end{equation}"
     return out
 
-def print_matrix(m: Union[np.ndarray,BaseGraph,Circuit]) -> 'Label':
-    """Returns a Label() Jupyter widget
-    that displays a pretty latex representation of the given matrix.
+
+def print_matrix(m: Union[np.ndarray,BaseGraph,Circuit]) -> None:
+    """Display a Label() Jupyter widget with a pretty LaTeX representation of the given matrix.
     Instead of a matrix, can also give a Circuit or Graph.
     """
+    if get_mode() != "notebook":
+        raise TypeError("Unsupported mode for print_matrix: '{}'".format(get_mode()))
+
     from ipywidgets import Label
-    if isinstance(m,BaseGraph) or isinstance(m,Circuit):
+    if isinstance(m, BaseGraph) or isinstance(m, Circuit):
         m = m.to_matrix()
 
-    return Label(matrix_to_latex(m))
-
-
+    display(Label(matrix_to_latex(m)))
 
 
 def graphs_to_gif(graphs: List[BaseGraph], filename: str, frame_duration: float=0.5):
