@@ -343,7 +343,7 @@ def draw_d3(
     with open(os.path.join(settings.javascript_location, 'zx_viewer.inline.js'), 'r') as f:
         library_code = f.read() + '\n'
 
-    text = """<div style="overflow:auto" id="graph-output-{id}"></div>
+    text = """<div style="overflow:auto; background-color: white" id="graph-output-{id}"></div>
 <script type="module">
 var d3;
 if (d3 == null) {{ d3 = await import("https://cdn.skypack.dev/d3@5"); }}
@@ -361,7 +361,7 @@ showGraph('#graph-output-{id}',
     if get_mode() == "notebook":
         display(HTML(text))
     else:
-        d = html.DIV(style={"overflow": "auto"}, id="graph-output-{}".format(graph_id))
+        d = html.DIV(style={"overflow": "auto", "background-color": "white"}, id="graph-output-{}".format(graph_id))
         source = """
         require(['zx_viewer'], function(zx_viewer) {{
             zx_viewer.showGraph('#graph-output-{0}',
