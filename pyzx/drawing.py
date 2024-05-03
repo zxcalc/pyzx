@@ -30,10 +30,10 @@ from typing_extensions import Literal
 import numpy as np
 
 # matplotlib is lazy-imported on the first call to draw_matplotlib
-plt = None
-path = None
-patches = None
-lines = None
+plt: Any = None
+path: Any = None
+patches: Any = None
+lines: Any = None
 
 
 from .utils import settings, get_mode, phase_to_s, EdgeType, VertexType, FloatInt, get_z_box_label

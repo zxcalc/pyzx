@@ -157,7 +157,7 @@ def match_copy(
             else:
                 continue
         else:
-        	continue
+            continue
         neigh = [n for n in g.neighbors(w) if n != v]
         m.append((v,w,copy_type,phases[v],phases[w],neigh))
         candidates.discard(w)
@@ -187,10 +187,10 @@ def apply_copy(
             if copy_type == VertexType.Z:
                 g.scalar.add_power(1)
             else:
-            	g.scalar.add_power(-(len(neigh)-2))
-            	if alpha != 1:
-            		g.scalar.add_power(-2)
-            		g.scalar.add_node(alpha+1)
+                g.scalar.add_power(-(len(neigh)-2))
+                if alpha != 1:
+                    g.scalar.add_power(-2)
+                    g.scalar.add_node(alpha+1)
         for n in neigh: 
             r = 0.7*g.row(w) + 0.3*g.row(n)
             q = 0.7*g.qubit(w) + 0.3*g.qubit(n)

@@ -25,8 +25,8 @@ import importlib
 # except ImportError:
 
 # load quimb modules on first call to to_quimb_tensor
-qu = None
-qtn = None
+qu: Any = None
+qtn: Any = None
 
 from .utils import EdgeType, VertexType
 from .graph.base import BaseGraph
