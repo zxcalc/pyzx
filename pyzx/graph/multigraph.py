@@ -19,7 +19,7 @@ from typing import Tuple, Dict, Set, Any
 
 from .base import BaseGraph
 
-from ..utils import VertexType, EdgeType, FractionLike, FloatInt
+from ..utils import VertexType, EdgeType, FractionLike, FloatInt, vertex_is_zx_like, vertex_is_z_like, set_z_box_label, get_z_box_label
 
 class Edge:
     """A structure for storing the number of simple and number of Hadamard edges
@@ -38,6 +38,9 @@ class Edge:
 
     def remove(self, s: int=0, h: int=0):
         self.add(s=-s, h=-h)
+    
+    def is_empty(self) -> bool:
+        return self.s == 0 and self.h == 0
 
 class Multigraph(BaseGraph[int,Tuple[int,int,EdgeType.Type]]):
     """Purely Pythonic multigraph implementation of :class:`~graph.base.BaseGraph`."""
@@ -45,10 +48,10 @@ class Multigraph(BaseGraph[int,Tuple[int,int,EdgeType.Type]]):
 
     #The documentation of what these methods do
     #can be found in base.BaseGraph
-    def __init__(self, simple=True) -> None:
+    def __init__(self) -> None:
         BaseGraph.__init__(self)
         self.graph: Dict[int,Dict[int,Edge]]   = dict()
-        self._simple: bool                              = simple
+        self._auto_simplify: bool                       = True
         self._vindex: int                               = 0
         self.nedges: int                                = 0
         self.ty: Dict[int,VertexType.Type]              = dict()
@@ -85,6 +88,13 @@ class Multigraph(BaseGraph[int,Tuple[int,int,EdgeType.Type]]):
         cpy.phase_mult = self.phase_mult.copy()
         cpy.max_phase_index = self.max_phase_index
         return cpy
+    
+    def set_auto_simplify(self, s: bool):
+        """Automatically remove parallel edges as edges are added"""
+        self._auto_simplify = s
+    
+    def multigraph(self):
+        return False
 
     def vindex(self): return self._vindex
     def depth(self):
@@ -148,20 +158,31 @@ class Multigraph(BaseGraph[int,Tuple[int,int,EdgeType.Type]]):
         if edgetype == EdgeType.SIMPLE: e.add(s=1)
         else: e.add(h=1)
 
-        if self._simple:
+        if self._auto_simplify:
             t1 = self.ty[s]
             t2 = self.ty[t]
-            if (t1 in (VertexType.Z, VertexType.X) and
-                t2 in (VertexType.Z, VertexType.X)):
-                if t1 == t2:
-                    e.s = 1 if e.s > 0 else 0
-                    e.h = e.h % 2
-                else:
-                    e.h = 1 if e.h > 0 else 0
-                    e.s = e.s % 2
-
-            if e.s > 1 or e.h > 1:
-                raise ValueError(f'Attempted to add unreducible parallel edge to simple graph: {edge_pair}')
+            if (vertex_is_zx_like(t1) and vertex_is_zx_like(t2)):
+                if s == t: # turn self-loops in pi phases
+                    e.s = 0
+                    if e.h % 2 == 1:
+                        if t1 == VertexType.Z_BOX:
+                            set_z_box_label(self, s, get_z_box_label(self, s) * -1)
+                        else:
+                            self.add_to_phase(s, 1)
+                    self.scalar.add_power(-e.h)
+                    e.h = 0
+                else: # apply spider and hopf to merge/cancel parallel edges
+                    if t1 == t2:
+                        e.s = 1 if e.s > 0 else 0
+                        self.scalar.add_power(-2 * (e.h - (e.h % 2)))
+                        e.h = e.h % 2
+                    else:
+                        e.h = 1 if e.h > 0 else 0
+                        self.scalar.add_power(-2 * (e.s - (e.s % 2)))
+                        e.s = e.s % 2
+            if e.is_empty():
+                del self.graph[s][t]
+                del self.graph[t][s]
 
         return (s,t, edgetype) if s <= t else (t,s,edgetype)
 
@@ -275,7 +296,11 @@ class Multigraph(BaseGraph[int,Tuple[int,int,EdgeType.Type]]):
         return self.graph[vertex].keys()
 
     def vertex_degree(self, vertex):
-        return len(self.graph[vertex])
+        d = 0
+        for e in self.graph[vertex].values():
+            d += e.s
+            d += e.h
+        return d
 
     def incident_edges(self, vertex):
         return [(vertex, v1) if v1 > vertex else (v1, vertex) for v1 in self.graph[vertex]]
