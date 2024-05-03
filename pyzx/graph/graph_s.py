@@ -19,7 +19,7 @@ from typing import Tuple, Dict, Set, Any
 
 from .base import BaseGraph
 
-from ..utils import VertexType, EdgeType, FractionLike, FloatInt
+from ..utils import VertexType, EdgeType, FractionLike, FloatInt, vertex_is_zx_like, vertex_is_z_like, set_z_box_label, get_z_box_label
 
 class GraphS(BaseGraph[int,Tuple[int,int]]):
     """Purely Pythonic implementation of :class:`~graph.base.BaseGraph`."""
@@ -113,11 +113,53 @@ class GraphS(BaseGraph[int,Tuple[int,int]]):
         self.ty[v] = VertexType.BOUNDARY
         self._phase[v] = 0
 
-    def add_edges(self, edges, edgetype=EdgeType.SIMPLE, smart=False):
-        for s,t in edges:
+    def add_edges(self, edge_pairs, edgetype=EdgeType.SIMPLE):
+        for s,t in edge_pairs:
             self.nedges += 1
             self.graph[s][t] = edgetype
             self.graph[t][s] = edgetype
+    
+    def add_edge(self, edge_pair, edgetype=EdgeType.SIMPLE):
+        s,t = edge_pair
+        if not t in self.graph[s]:
+            self.nedges += 1
+            self.graph[s][t] = edgetype
+            self.graph[t][s] = edgetype
+        else:
+            t1 = self.ty[s]
+            t2 = self.ty[t]
+            if (vertex_is_zx_like(t1) and vertex_is_zx_like(t2)):
+                et1 = self.graph[s][t]
+
+                # set the roles of simple or hadamard edges, depending on whether the colours match
+                if vertex_is_z_like(t1) == vertex_is_z_like(t2): # same colour
+                    fuse, hopf = (EdgeType.SIMPLE, EdgeType.HADAMARD)
+                else:
+                    fuse, hopf = (EdgeType.HADAMARD, EdgeType.SIMPLE)
+
+                # handle parallel edges for all possible combinations of fuse/hopf type edges
+                if edgetype == fuse and et1 == fuse:
+                    pass # no-op
+                elif ((edgetype == fuse and et1 == hopf) or (edgetype == hopf and et1 == fuse)):
+                    # ensure the remaining edge is 'fuse' type
+                    self.set_edge_type((s,t), fuse)
+                    # add a pi phase to one of the neighbours
+                    if t1 == VertexType.Z_BOX:
+                        set_z_box_label(self, s, get_z_box_label(self, s) * -1)
+                    else:
+                        self.add_to_phase(s, 1)
+                    self.scalar.add_power(-1)
+                elif edgetype == hopf and et1 == hopf:
+                    # remove the edge (reducing mod 2)
+                    self.remove_edge((s,t))
+                    self.scalar.add_power(-2)
+                else:
+                    raise ValueError(f'Got unexpected edge types: {t1}, {t2}')
+            else:
+                raise ValueError(f'Attempted to add unreducible parallel edge {edge_pair}, types: {t1}, {t2}')
+
+
+        return edge_pair
 
     def remove_vertices(self, vertices):
         for v in vertices:
@@ -246,13 +288,13 @@ class GraphS(BaseGraph[int,Tuple[int,int]]):
         return self._phase
     def set_phase(self, vertex, phase):
         try:
-            self._phase[vertex] = Fraction(phase) % 2
+            self._phase[vertex] = phase % 2
         except Exception:
             self._phase[vertex] = phase
     def add_to_phase(self, vertex, phase):
         old_phase = self._phase.get(vertex, Fraction(1))
         try:
-            self._phase[vertex] = (old_phase + Fraction(phase)) % 2
+            self._phase[vertex] = (old_phase + phase) % 2
         except Exception:
             self._phase[vertex] = old_phase + phase
     def qubit(self, vertex):
