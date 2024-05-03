@@ -35,7 +35,7 @@ while the second and third should be fed to
 :meth:`~graph.base.BaseGraph.remove_vertices` and :meth:`~pyzx.graph.base.BaseGraph.remove_edges`.
 The last parameter is a Boolean that when true means that the rewrite rule can introduce
 isolated vertices that should be removed by
-:meth:`~pyzx.graph.base.BaseGraph.remove_isolated_vertices`\ .
+:meth:`~pyzx.graph.base.BaseGraph.remove_isolated_vertices`.
 
 Dealing with this output is done using either :func:`apply_rule` or :func:`pyzx.simplify.simp`.
 
@@ -367,7 +367,7 @@ def w_fusion(g: BaseGraph[VT,ET], matches: List[MatchSpiderType[VT]]) -> Rewrite
     return (etab, rem_verts, [], True)
 
 
-MatchPivotType = Tuple[VT,VT,List[VT],List[VT]]
+MatchPivotType = Tuple[Tuple[VT,VT],Tuple[List[VT],List[VT]]]
 
 def match_pivot(g: BaseGraph[VT,ET]) -> List[MatchPivotType[VT]]:
     """Does the same as :func:`match_pivot_parallel` but with ``num=1``."""
@@ -513,7 +513,7 @@ def match_pivot_gadget(
         g.update_phase_index(v1,v)
         edge_list.append(g.edge(v,v1))
 
-        m.append((v0,v1,[],[v]))
+        m.append(((v0,v1),([],[v])))
         i += 1
         for c in discard_edges: candidates.discard(c)
     g.add_edges(edge_list,EdgeType.SIMPLE)
@@ -586,7 +586,7 @@ def match_pivot_boundary(
         for n in g.neighbors(v): consumed_vertices.add(n)
         for n in g.neighbors(w): consumed_vertices.add(n)
         assert bound is not None
-        m.append((v,w,[],[bound]))
+        m.append(((v,w),([],[bound])))
         i += 1
         for n in g.neighbors(v): candidates.discard(n)
         for n in g.neighbors(w): candidates.discard(n)
@@ -613,17 +613,17 @@ def pivot(g: BaseGraph[VT,ET], matches: List[MatchPivotType[VT]]) -> RewriteOutp
         #  n[0] <- non-boundary neighbors of m[0] only
         #  n[1] <- non-boundary neighbors of m[1] only
         #  n[2] <- non-boundary neighbors of m[0] and m[1]
-        g.update_phase_index(m[0],m[1])
-        n = [set(g.neighbors(m[0])), set(g.neighbors(m[1]))]
+        g.update_phase_index(m[0][0],m[0][1])
+        n = [set(g.neighbors(m[0][0])), set(g.neighbors(m[0][1]))]
         for i in range(2):
-            n[i].remove(m[1-i]) # type: ignore # Really complex typing situation
-            if len(m[i+2]) == 1: n[i].remove(m[i+2][0]) # type: ignore
+            n[i].remove(m[0][1-i])
+            if len(m[1][i]) == 1: n[i].remove(m[1][i][0])
         n.append(n[0] & n[1])
         n[0] = n[0] - n[2]
         n[1] = n[1] - n[2]
-        es = ([g.edge(s,t) for s in n[0] for t in n[1]] +
-              [g.edge(s,t) for s in n[1] for t in n[2]] +
-              [g.edge(s,t) for s in n[0] for t in n[2]])
+        es = ([(s,t) for s in n[0] for t in n[1]] +
+              [(s,t) for s in n[1] for t in n[2]] +
+              [(s,t) for s in n[0] for t in n[2]])
         k0, k1, k2 = len(n[0]), len(n[1]), len(n[2])
         g.scalar.add_power(k0*k2 + k1*k2 + k0*k1)
 
@@ -631,16 +631,16 @@ def pivot(g: BaseGraph[VT,ET], matches: List[MatchPivotType[VT]]) -> RewriteOutp
             if not g.is_ground(v):
                 g.add_to_phase(v, 1)
 
-        if g.phase(m[0]) and g.phase(m[1]): g.scalar.add_phase(Fraction(1))
-        if not m[2] and not m[3]:
+        if g.phase(m[0][0]) and g.phase(m[0][1]): g.scalar.add_phase(Fraction(1))
+        if not m[1][0] and not m[1][1]:
             g.scalar.add_power(-(k0+k1+2*k2-1))
-        elif not m[2]:
+        elif not m[1][0]:
             g.scalar.add_power(-(k1+k2))
         else: g.scalar.add_power(-(k0+k2))
 
-        for i in range(2):
+        for i in 0, 1:
             # if m[i] has a phase, it will get copied on to the neighbors of m[1-i]:
-            a = g.phase(m[i]) # type: ignore
+            a = g.phase(m[0][i])
             if a:
                 for v in n[1-i]:
                     if not g.is_ground(v):
@@ -649,19 +649,19 @@ def pivot(g: BaseGraph[VT,ET], matches: List[MatchPivotType[VT]]) -> RewriteOutp
                     if not g.is_ground(v):
                         g.add_to_phase(v, a)
 
-            if not m[i+2]:
+            if not m[1][i]:
                 # if there is no boundary, the other vertex is destroyed
-                rem_verts.append(m[1-i]) # type: ignore
+                rem_verts.append(m[0][1-i])
             else:
                 # if there is a boundary, toggle whether it is an h-edge or a normal edge
                 # and point it at the other vertex
-                e = (m[i], m[i+2][0]) # type: ignore
-                new_e = (m[1-i], m[i+2][0]) # type: ignore
-                ne,nhe = etab.get(new_e) or (0,0)
-                if g.edge_type(e) == EdgeType.SIMPLE: nhe += 1
-                elif g.edge_type(e) == EdgeType.HADAMARD: ne += 1
+                e = (m[0][i], m[1][i][0])
+                new_e = (m[0][1-i], m[1][i][0])
+                ne,nhe = etab.get(new_e) or [0,0]
+                if g.edge_type(g.edge(e[0],e[1])) == EdgeType.SIMPLE: nhe += 1
+                elif g.edge_type(g.edge(e[0],e[1])) == EdgeType.HADAMARD: ne += 1
                 etab[new_e] = [ne,nhe]
-                rem_edges.append(e)
+                rem_edges.append(g.edge(e[0], e[1]))
 
 
         for e in es:
