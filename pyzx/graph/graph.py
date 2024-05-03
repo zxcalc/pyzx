@@ -18,6 +18,7 @@ from typing import Optional
 
 from .base import BaseGraph
 from .graph_s import GraphS
+from .multigraph import Multigraph
 
 try:
 	import quizx # type: ignore
@@ -43,7 +44,7 @@ def Graph(backend:Optional[str]=None) -> BaseGraph:
 	if backend not in backends:
 		raise KeyError("Unavailable backend '{}'".format(backend))
 	if backend == 'simple': return GraphS()
-	# if backend == 'multi': return Multigraph()
+	if backend == 'multigraph': return Multigraph()
 	if backend == 'graph_tool': 
 		return GraphGT()
 	if backend == 'igraph': return GraphIG()
