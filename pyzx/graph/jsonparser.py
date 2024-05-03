@@ -46,7 +46,7 @@ def string_to_phase(string: str, g: Union[BaseGraph,'GraphDiff']) -> Union[Fract
         return Fraction(0)
     try:
         s = string.lower().replace(' ', '')
-        s = re.sub(r'\\?(pi|\u04c0)', '', s)
+        s = re.sub(r'\\?(pi|\u03c0)', '', s)
         if s == '': return Fraction(1)
         if s == '-': return Fraction(-1)
         if '.' in s or 'e' in s:
@@ -75,6 +75,7 @@ def json_to_graph(js: str, backend:Optional[str]=None) -> BaseGraph:
     a pyzx graph."""
     j = json.loads(js, cls=ComplexDecoder)
     g = Graph(backend)
+    g.variable_types = j.get('variable_types',{})
 
     names: Dict[str, Any] = {} # TODO: Any = VT
     hadamards: Dict[str, List[Any]] = {}
@@ -200,7 +201,6 @@ def graph_to_json(g: BaseGraph[VT,ET], include_scalar: bool=True) -> str:
                 freenamesb.remove(name) if t==VertexType.BOUNDARY else freenamesv.remove(name)
             except:
                 pass
-                #print("couldn't remove name '{}'".format(name))
 
         names[v] = name
         if t == VertexType.BOUNDARY:
@@ -270,7 +270,8 @@ def graph_to_json(g: BaseGraph[VT,ET], include_scalar: bool=True) -> str:
     d: Dict[str,Any] = {
         "wire_vertices": wire_vs,
         "node_vertices": node_vs,
-        "undir_edges": edges
+        "undir_edges": edges,
+        "variable_types": g.variable_types,
     }
     if include_scalar:
         d["scalar"] = g.scalar.to_json()

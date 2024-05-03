@@ -21,7 +21,7 @@ and Poly is a sum of terms.
 Lark is used to define a parser that can translate a string into a Poly.
 """
 
-from typing import Any, Callable, Union, Optional
+from typing import Any, Callable, Union, Optional, Dict, List, Tuple, Set
 from lark import Lark, Transformer
 from functools import reduce
 from operator import add, mul
@@ -31,9 +31,9 @@ from fractions import Fraction
 class Var:
     name: str
     _is_bool: bool
-    _types_dict: Optional[Union[bool, dict[str, bool]]]
+    _types_dict: Optional[Union[bool, Dict[str, bool]]]
 
-    def __init__(self, name: str, data: Union[bool, dict[str, bool]]):
+    def __init__(self, name: str, data: Union[bool, Dict[str, bool]]):
         self.name = name
         if isinstance(data, dict):
             self._types_dict = data
@@ -87,16 +87,16 @@ class Var:
         return self.__copy__()
 
 class Term:
-    vars: list[tuple[Var, int]]
+    vars: List[Tuple[Var, int]]
 
-    def __init__(self, vars: list[tuple[Var,int]]) -> None:
+    def __init__(self, vars: List[Tuple[Var,int]]) -> None:
         self.vars = vars
 
     def freeze(self) -> None:
         for var, _ in self.vars:
             var.freeze()
 
-    def free_vars(self) -> set[Var]:
+    def free_vars(self) -> Set[Var]:
         return set(var for var, _ in self.vars)
 
     def __repr__(self) -> str:
@@ -132,7 +132,7 @@ class Term:
             if c1 != c2: return c1 < c2
         return False
 
-    def substitute(self, var_map: dict[Var, Union[float, complex, 'Fraction']]) -> tuple[Union[float, complex, 'Fraction'], 'Term']:
+    def substitute(self, var_map: Dict[Var, Union[float, complex, 'Fraction']]) -> Tuple[Union[float, complex, 'Fraction'], 'Term']:
         """Substitute variables in the term with the given values. Returns a tuple
         of the coefficient and the new term.
         """
@@ -147,16 +147,16 @@ class Term:
 
 
 class Poly:
-    terms: list[tuple[Union[int, float, complex, Fraction], Term]]
+    terms: List[Tuple[Union[int, float, complex, Fraction], Term]]
 
-    def __init__(self, terms: list[tuple[Union[int, float, complex, Fraction], Term]]) -> None:
+    def __init__(self, terms: List[Tuple[Union[int, float, complex, Fraction], Term]]) -> None:
         self.terms = terms
 
     def freeze(self) -> None:
         for _, term in self.terms:
             term.freeze()
 
-    def free_vars(self) -> set[Var]:
+    def free_vars(self) -> Set[Var]:
         output = set()
         for _, term in self.terms:
             output.update(term.free_vars())
@@ -319,7 +319,7 @@ class Poly:
     def copy(self) -> 'Poly':
         return Poly([(c, t) for c, t in self.terms])
 
-    def substitute(self, var_map: dict[Var, Union[float, complex, 'Fraction']]) -> 'Poly':
+    def substitute(self, var_map: Dict[Var, Union[float, complex, 'Fraction']]) -> 'Poly':
         """Substitute variables in the polynomial with the given values."""
         p = Poly([])
         for c, t in self.terms:
@@ -327,7 +327,7 @@ class Poly:
             p += Poly([(c * coeff, term)])
         return p
 
-def new_var(name: str, types_dict: Union[bool, dict[str, bool]]) -> Poly:
+def new_var(name: str, types_dict: Union[bool, Dict[str, bool]]) -> Poly:
     return Poly([(1, Term([(Var(name, types_dict), 1)]))])
 
 def new_const(coeff: Union[int, Fraction]) -> Poly:
@@ -358,26 +358,26 @@ class PolyTransformer(Transformer):
 
         self._new_var = new_var
 
-    def start(self, items: list[Poly]) -> Poly:
+    def start(self, items: List[Poly]) -> Poly:
         return reduce(add, items)
 
-    def term(self, items: list[Poly]) -> Poly:
+    def term(self, items: List[Poly]) -> Poly:
         return reduce(mul, items)
 
-    def var(self, items: list[Any]) -> Poly:
+    def var(self, items: List[Any]) -> Poly:
         v = str(items[0])
         return self._new_var(v)
 
-    def pi(self, _: list[Any]) -> Poly:
+    def pi(self, _: List[Any]) -> Poly:
         return new_const(1)
 
-    def intf(self, items: list[Any]) -> Poly:
+    def intf(self, items: List[Any]) -> Poly:
         return new_const(int(items[0]))
 
-    def frac(self, items: list[Any]) -> Poly:
+    def frac(self, items: List[Any]) -> Poly:
         return new_const(Fraction(int(items[0]), int(items[1])))
 
-    def pifrac(self, items: list[Any]) -> Poly:
+    def pifrac(self, items: List[Any]) -> Poly:
         numerator = int(items[0]) if items[0] else 1
         return new_const(Fraction(numerator, int(items[2])))
 

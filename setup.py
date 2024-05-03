@@ -10,7 +10,7 @@ setup(
     name="pyzx",
     author="Quantomatic",
     author_email="john@vdwetering.name",
-    version="0.7.4",
+    version="0.8.0",
     url="https://github.com/Quantomatic/pyzx.git",
     description="Library for quantum circuit rewriting and optimisation using the ZX-calculus",
     long_description=README,
@@ -19,7 +19,6 @@ setup(
     classifiers=[
         "License :: OSI Approved :: Apache Software License",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
@@ -39,7 +38,7 @@ setup(
                       "numpy>=1.14",
                       "pyperclip>=1.8.1",
                       "tqdm>=4.56.0",
-                      "ipywidgets>=7.5,<8"
+                      "ipywidgets>=7.5,<8",
                       "lark~=1.1.7"],
     include_package_data=True,
 )

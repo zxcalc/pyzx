@@ -19,12 +19,19 @@ import unittest
 import random
 import sys
 import os
+from types import ModuleType
+from typing import Optional
+
 if __name__ == '__main__':
     sys.path.append('..')
     sys.path.append('.')
-
 mydir = os.path.dirname(__file__)
+from pyzx.generate import cliffordT, cliffords
+from pyzx.simplify import clifford_simp
+from pyzx.extract import extract_circuit
+from pyzx.circuit import Circuit
 
+np: Optional[ModuleType]
 try:
     import numpy as np
     from pyzx.tensor import tensorfy, compare_tensors
@@ -32,12 +39,8 @@ try:
 except ImportError:
     np = None
 
-from pyzx.generate import cliffordT, cliffords
-from pyzx.simplify import clifford_simp
-from pyzx.extract import extract_circuit
-from pyzx.circuit import Circuit
-
 SEED = 1337
+
 
 @unittest.skipUnless(np, "numpy needs to be installed for this to run")
 class TestCircuit(unittest.TestCase):

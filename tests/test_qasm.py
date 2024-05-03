@@ -16,7 +16,20 @@
 
 
 import unittest
+import os
+import sys
+from types import ModuleType
+from typing import Optional
 
+if __name__ == '__main__':
+    sys.path.append('..')
+    sys.path.append('.')
+from pyzx.simplify import full_reduce
+from pyzx.extract import extract_circuit
+from pyzx.circuit import Circuit
+from fractions import Fraction
+
+np: Optional[ModuleType]
 try:
     import numpy as np
     from pyzx.tensor import compare_tensors
@@ -27,13 +40,10 @@ except ImportError:
 try:
     from qiskit import quantum_info, transpile
     from qiskit.circuit import QuantumCircuit
+    from qiskit.qasm2 import dumps
     from qiskit.qasm3 import loads
 except ImportError:
     QuantumCircuit = None
-
-from pyzx.simplify import full_reduce
-from pyzx.extract import extract_circuit
-from pyzx.circuit import Circuit
 
 
 @unittest.skipUnless(np, "numpy needs to be installed for this to run")
@@ -69,6 +79,13 @@ class TestQASM(unittest.TestCase):
         c.add_gate("CNOT", 2, 1)
         self.assertEqual(c.qubits, qasm3.qubits)
         self.assertListEqual(c.gates, qasm3.gates)
+
+    def test_load_qasm_from_file(self):
+        c = Circuit(1)
+        c.add_gate("YPhase", 0, Fraction(1, 4))
+        c1 = Circuit.from_qasm_file(os.path.join(os.path.dirname(__file__), "ry.qasm"))
+        self.assertEqual(c1.qubits, c.qubits)
+        self.assertListEqual(c1.gates,c.gates)
 
     def test_p_same_as_rz(self):
         """Test that the `p` gate is identical to the `rz` gate.
@@ -228,7 +245,7 @@ class TestQASM(unittest.TestCase):
         qc1 = transpile(qc)
         t1 = quantum_info.Operator(qc1).data
 
-        c = Circuit.from_qasm(qc1.qasm())
+        c = Circuit.from_qasm(dumps(qc1))
         g = c.to_graph()
         full_reduce(g)
         qasm = extract_circuit(g).to_basic_gates().to_qasm()

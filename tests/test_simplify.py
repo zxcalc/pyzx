@@ -1,4 +1,4 @@
-# PyZX - Python library for quantum circuit rewriting 
+# PyZX - Python library for quantum circuit rewriting
 #        and optimization using the ZX-calculus
 # Copyright (C) 2018 - Aleks Kissinger and John van de Wetering
 
@@ -18,16 +18,14 @@
 import unittest
 import random
 import sys
+from types import ModuleType
+from typing import Optional
+
+from pyzx import VertexType
+
 if __name__ == '__main__':
     sys.path.append('..')
     sys.path.append('.')
-
-try:
-    import numpy as np
-    from pyzx.tensor import tensorfy, compare_tensors
-except ImportError:
-    np = None
-
 from pyzx.graph import Graph
 from pyzx.circuit import Circuit
 from pyzx.circuit.qasmparser import qasm
@@ -36,7 +34,15 @@ from pyzx.generate import cliffordT
 from pyzx.simplify import *
 from pyzx.simplify import supplementarity_simp
 
+np: Optional[ModuleType]
+try:
+    import numpy as np
+    from pyzx.tensor import tensorfy, compare_tensors
+except ImportError:
+    np = None
+
 SEED = 1337
+
 
 @unittest.skipUnless(np, "numpy needs to be installed for this to run")
 class TestSimplify(unittest.TestCase):
@@ -103,6 +109,28 @@ class TestSimplify(unittest.TestCase):
                 c2 = Circuit.from_graph(teleport_reduce(g))
                 self.assertTrue(c.verify_equality(c2))
 
+    def test_to_graph_like_introduce_boundary_vertices(self):
+        c = qasm(qasm_5)
+        g = c.to_graph()
+        to_graph_like(g)
+        self.assertTrue(compare_tensors(c,g))
+
+    def test_full_reduce_with_h_box(self):
+        """Test that calls to :func:`full_reduce` with a graph containing H-boxes raises an error.
+        This is a common mistake made by users (e.g., see issues #161 and #200).
+        """
+        g = Graph()
+        v0 = g.add_vertex(VertexType.BOUNDARY, 0, 0)
+        v1 = g.add_vertex(VertexType.H_BOX, 0, 1)
+        v2 = g.add_vertex(VertexType.BOUNDARY, 0, 2)
+        g.add_edge((v0, v1))
+        g.add_edge((v1, v2))
+
+        with self.assertRaises(ValueError) as context:
+            full_reduce(g)
+        self.assertTrue("Input graph is not a ZX-diagram" in str(context.exception))
+
+
 qasm_1 = """OPENQASM 2.0;
 include "qelib1.inc";
 qreg q[3];
@@ -153,6 +181,14 @@ ccx q[0], q[1], q[2];
 ccx q[0], q[2], q[1];
 ccx q[2], q[0], q[1];
 cx q[1], q[2];
+"""
+
+qasm_5 = """OPENQASM 2.0;
+include "qelib1.inc";
+qreg q[2];
+h q[0];
+h q[1];
+cz q[0],q[1];
 """
 
 

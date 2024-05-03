@@ -17,18 +17,21 @@
 
 import unittest
 import sys
+from types import ModuleType
+from typing import Optional
+
 if __name__ == '__main__':
     sys.path.append('..')
     sys.path.append('.')
+from pyzx.circuit import Circuit
+from pyzx.simulate import replace_magic_states
 
+np: Optional[ModuleType]
 try:
     import numpy as np
-    from pyzx.tensor import tensorfy, compare_tensors
 except ImportError:
     np = None
 
-from pyzx.circuit import Circuit
-from pyzx.simulate import replace_magic_states
 
 @unittest.skipUnless(np, "numpy needs to be installed for this to run")
 class TestSimulate(unittest.TestCase):
@@ -36,10 +39,11 @@ class TestSimulate(unittest.TestCase):
     def test_magic_state_decomposition_is_correct(self):
         c = Circuit(6)
         for i in range(6):
-            c.add_gate("T",i)
+            c.add_gate("T", i)
         g = c.to_graph()
         gsum = replace_magic_states(g)
-        self.assertTrue(np.allclose(g.to_tensor(),gsum.to_tensor()))
+        self.assertTrue(np.allclose(g.to_tensor(), gsum.to_tensor()))
+
 
 if __name__ == '__main__':
     unittest.main()

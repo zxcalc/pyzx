@@ -25,8 +25,9 @@ __all__ = ['bialg_simp','spider_simp', 'id_simp', 'phase_free_simp', 'pivot_simp
         'pivot_gadget_simp', 'pivot_boundary_simp', 'gadget_simp',
         'lcomp_simp', 'clifford_simp', 'tcount', 'to_gh', 'to_rg',
         'full_reduce', 'teleport_reduce', 'reduce_scalar', 'supplementarity_simp',
-        'to_clifford_normal_form_graph']
+        'to_clifford_normal_form_graph', 'to_graph_like', 'is_graph_like']
 
+from optparse import Option
 from typing import List, Callable, Optional, Union, Generic, Tuple, Dict, Iterator, cast
 
 from .utils import EdgeType, VertexType, toggle_edge, vertex_is_zx, toggle_vertex
@@ -125,8 +126,8 @@ def spider_simp(g: BaseGraph[VT,ET], matchf:Optional[Callable[[VT],bool]]=None, 
 def id_simp(g: BaseGraph[VT,ET], matchf:Optional[Callable[[VT],bool]]=None, quiet:bool=False, stats:Optional[Stats]=None) -> int:
     return simp(g, 'id_simp', match_ids_parallel, remove_ids, matchf=matchf, quiet=quiet, stats=stats)
 
-def gadget_simp(g: BaseGraph[VT,ET], quiet:bool=False, stats:Optional[Stats]=None) -> int:
-    return simp(g, 'gadget_simp', match_phase_gadgets, merge_phase_gadgets, quiet=quiet, stats=stats)
+def gadget_simp(g: BaseGraph[VT,ET], matchf: Optional[Callable[[VT],bool]]=None, quiet:bool=False, stats:Optional[Stats]=None) -> int:
+    return simp(g, 'gadget_simp', match_phase_gadgets, merge_phase_gadgets, matchf=matchf, quiet=quiet, stats=stats)
 
 def supplementarity_simp(g: BaseGraph[VT,ET], quiet:bool=False, stats:Optional[Stats]=None) -> int:
     return simp(g, 'supplementarity_simp', match_supplementarity, apply_supplementarity, quiet=quiet, stats=stats)
@@ -143,28 +144,28 @@ def phase_free_simp(g: BaseGraph[VT,ET], quiet:bool=False, stats:Optional[Stats]
     i2 = bialg_simp(g, quiet=quiet, stats=stats)
     return i1+i2
 
-def interior_clifford_simp(g: BaseGraph[VT,ET], quiet:bool=False, stats:Optional[Stats]=None) -> int:
+def interior_clifford_simp(g: BaseGraph[VT,ET], matchf: Optional[Callable[[Union[VT, ET]],bool]]=None, quiet:bool=False, stats:Optional[Stats]=None) -> int:
     """Keeps doing the simplifications ``id_simp``, ``spider_simp``,
     ``pivot_simp`` and ``lcomp_simp`` until none of them can be applied anymore."""
-    spider_simp(g, quiet=quiet, stats=stats)
+    spider_simp(g, matchf=matchf, quiet=quiet, stats=stats)
     to_gh(g)
     i = 0
     while True:
-        i1 = id_simp(g, quiet=quiet, stats=stats)
-        i2 = spider_simp(g, quiet=quiet, stats=stats)
-        i3 = pivot_simp(g, quiet=quiet, stats=stats)
-        i4 = lcomp_simp(g, quiet=quiet, stats=stats)
+        i1 = id_simp(g, matchf=matchf, quiet=quiet, stats=stats)
+        i2 = spider_simp(g, matchf=matchf, quiet=quiet, stats=stats)
+        i3 = pivot_simp(g, matchf=matchf, quiet=quiet, stats=stats)
+        i4 = lcomp_simp(g, matchf=matchf, quiet=quiet, stats=stats)
         if i1+i2+i3+i4==0: break
         i += 1
     return i
 
-def clifford_simp(g: BaseGraph[VT,ET], quiet:bool=True, stats:Optional[Stats]=None) -> int:
+def clifford_simp(g: BaseGraph[VT,ET], matchf: Optional[Callable[[Union[VT, ET]],bool]]=None, quiet:bool=True, stats:Optional[Stats]=None) -> int:
     """Keeps doing rounds of :func:`interior_clifford_simp` and
     :func:`pivot_boundary_simp` until they can't be applied anymore."""
     i = 0
     while True:
-        i += interior_clifford_simp(g, quiet=quiet, stats=stats)
-        i2 = pivot_boundary_simp(g, quiet=quiet, stats=stats)
+        i += interior_clifford_simp(g, matchf=matchf, quiet=quiet, stats=stats)
+        i2 = pivot_boundary_simp(g, matchf=matchf, quiet=quiet, stats=stats)
         if i2 == 0:
             break
     return i
@@ -192,17 +193,19 @@ def reduce_scalar(g: BaseGraph[VT,ET], quiet:bool=True, stats:Optional[Stats]=No
     return i
 
 
-
-def full_reduce(g: BaseGraph[VT,ET], quiet:bool=True, stats:Optional[Stats]=None) -> None:
+def full_reduce(g: BaseGraph[VT,ET], matchf: Optional[Callable[[Union[VT, ET]],bool]]=None, quiet:bool=True, stats:Optional[Stats]=None) -> None:
     """The main simplification routine of PyZX. It uses a combination of :func:`clifford_simp` and
     the gadgetization strategies :func:`pivot_gadget_simp` and :func:`gadget_simp`."""
-    interior_clifford_simp(g, quiet=quiet, stats=stats)
-    pivot_gadget_simp(g,quiet=quiet, stats=stats)
+    if any(g.types()[h] == VertexType.H_BOX for h in g.vertices()):
+        raise ValueError("Input graph is not a ZX-diagram as it contains an H-box. "
+                         "Maybe call pyzx.hsimplify.from_hypergraph_form(g) first?")
+    interior_clifford_simp(g, matchf=matchf, quiet=quiet, stats=stats)
+    pivot_gadget_simp(g, matchf=matchf, quiet=quiet, stats=stats)
     while True:
-        clifford_simp(g,quiet=quiet, stats=stats)
-        i = gadget_simp(g, quiet=quiet, stats=stats)
-        interior_clifford_simp(g,quiet=quiet, stats=stats)
-        j = pivot_gadget_simp(g,quiet=quiet, stats=stats)
+        clifford_simp(g, matchf=matchf, quiet=quiet, stats=stats)
+        i = gadget_simp(g, matchf=matchf, quiet=quiet, stats=stats)
+        interior_clifford_simp(g, matchf=matchf, quiet=quiet, stats=stats)
+        j = pivot_gadget_simp(g, matchf=matchf, quiet=quiet, stats=stats)
         if i+j == 0:
             break
 
@@ -492,13 +495,20 @@ def to_graph_like(g: BaseGraph[VT,ET]) -> None:
 
         # add dummy spiders for all but one
         for b in boundary_ns[:-1]:
-            z1 = g.add_vertex(ty=VertexType.Z)
-            z2 = g.add_vertex(ty=VertexType.Z)
+            e = g.edge(v,b)
+            if g.edge_type(e) == EdgeType.SIMPLE:
+                z1 = g.add_vertex(ty=VertexType.Z,row=0.3*g.row(v)+0.7*g.row(b),qubit=0.3*g.qubit(v)+0.7*g.qubit(b))
+                z2 = g.add_vertex(ty=VertexType.Z,row=0.7*g.row(v)+0.3*g.row(b),qubit=0.7*g.qubit(v)+0.3*g.qubit(b))
 
-            g.remove_edge(g.edge(v, b))
-            g.add_edge(g.edge(z1, z2), edgetype=EdgeType.HADAMARD)
-            g.add_edge(g.edge(b, z1), edgetype=EdgeType.SIMPLE)
-            g.add_edge(g.edge(z2, v), edgetype=EdgeType.HADAMARD)
+                g.remove_edge(e)
+                g.add_edge(g.edge(z1, z2), edgetype=EdgeType.HADAMARD)
+                g.add_edge(g.edge(b, z1), edgetype=EdgeType.SIMPLE)
+                g.add_edge(g.edge(z2, v), edgetype=EdgeType.HADAMARD)
+            elif g.edge_type(e) == EdgeType.HADAMARD:
+                z = g.add_vertex(ty=VertexType.Z,row=0.5*g.row(v)+0.5*g.row(b),qubit=0.5*g.qubit(v)+0.5*g.qubit(b))
+                g.remove_edge(e)
+                g.add_edge(g.edge(b,z),EdgeType.SIMPLE)
+                g.add_edge(g.edge(z,v),EdgeType.HADAMARD)
 
     assert(is_graph_like(g))
 

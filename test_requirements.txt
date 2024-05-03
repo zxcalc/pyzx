@@ -1,0 +1,2 @@
+qiskit~=1.0.0
+qiskit_qasm3_import~=0.4.2
