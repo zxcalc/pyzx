@@ -19,7 +19,7 @@ from itertools import combinations
 from typing import Dict, List, Tuple, Callable, Optional, Set, FrozenSet
 from .utils import EdgeType, VertexType, toggle_edge, toggle_vertex, FractionLike, FloatInt, vertex_is_zx
 from .simplify import *
-from .graph.base import BaseGraph, ET, VT
+from .graph.base import BaseGraph, ET, VT, upair
 from . import rules
 
 
@@ -43,19 +43,19 @@ def match_hadamards(g: BaseGraph[VT,ET],
 
     return list(m)
 
-def hadamard_to_h_edge(g: BaseGraph[VT,ET], matches: List[VT]) -> rules.RewriteOutputType[ET,VT]:
+def hadamard_to_h_edge(g: BaseGraph[VT,ET], matches: List[VT]) -> rules.RewriteOutputType[VT,ET]:
     """Converts a matching of H-boxes with arity 2 and phase 1, i.e. Hadamard gates, to Hadamard edges."""
     rem_verts = []
-    etab = {}
+    etab: Dict[Tuple[VT,VT], List[int]] = {}
     for v in matches:
         rem_verts.append(v)
         w1,w2 = list(g.neighbors(v))
         et1 = g.edge_type(g.edge(w1,v))
         et2 = g.edge_type(g.edge(w2,v))
         if et1 == et2:
-            etab[g.edge(w1,w2)] = [0,1]
+            etab[upair(w1,w2)] = [0,1]
         else:
-            etab[g.edge(w1,w2)] = [1,0]
+            etab[upair(w1,w2)] = [1,0]
     g.scalar.add_power(len(matches)) # Correct for the sqrt(2) difference in H-boxes and H-edges
     return (etab, rem_verts, [], True)
 
@@ -79,11 +79,11 @@ def match_connected_hboxes(g: BaseGraph[VT,ET],
         candidates.difference_update(g.incident_edges(v2))
     return list(m)
 
-def fuse_hboxes(g: BaseGraph[VT,ET], matches: List[ET]) -> rules.RewriteOutputType[ET,VT]:
+def fuse_hboxes(g: BaseGraph[VT,ET], matches: List[ET]) -> rules.RewriteOutputType[VT,ET]:
     """Fuses two neighboring H-boxes together. 
     See rule (HS1) of https://arxiv.org/pdf/1805.02175.pdf."""
     rem_verts = []
-    etab = {}
+    etab: Dict[Tuple[VT,VT], List[int]] = {}
     for e in matches:
         v1, v2 = g.edge_st(e)
         if g.phase(v2) != 1: # at most one of v1 and v2 has a phase different from 1
@@ -94,9 +94,9 @@ def fuse_hboxes(g: BaseGraph[VT,ET], matches: List[ET]) -> rules.RewriteOutputTy
             if n == v1: continue
             e2 = g.edge(v2,n)
             if g.edge_type(e2) == EdgeType.SIMPLE:
-                etab[g.edge(v1,n)] = [1,0]
+                etab[upair(v1,n)] = [1,0]
             else:
-                etab[g.edge(v1,n)] = [0,1]
+                etab[upair(v1,n)] = [0,1]
     
     return (etab, rem_verts, [], True)
 
@@ -170,7 +170,7 @@ def match_copy(
 def apply_copy(
         g: BaseGraph[VT,ET], 
         matches: List[MatchCopyType[VT]]
-        ) -> rules.RewriteOutputType[ET,VT]:
+        ) -> rules.RewriteOutputType[VT,ET]:
     """Copy arity-1 spider through their neighbor."""
     rem = []
     types = g.types()
@@ -198,7 +198,7 @@ def apply_copy(
             u = g.add_vertex(copy_type, q, r, a)
             e = g.edge(n,w)
             et = g.edge_type(e)
-            g.add_edge(g.edge(n,u), et)
+            g.add_edge((n,u), et)
 
     return ({}, rem, [], True)
 
@@ -247,10 +247,10 @@ def match_hbox_parallel_not(
 
 def hbox_parallel_not_remove(g: BaseGraph[VT,ET], 
         matches: List[Tuple[VT,VT,VT]]
-        ) -> rules.RewriteOutputType[ET,VT]:
+        ) -> rules.RewriteOutputType[VT,ET]:
     """If a Z-spider is connected to an H-box via a regular wire and a NOT, then they disconnect, and the H-box is turned into a Z-spider."""
     rem = []
-    etab = {}
+    etab: Dict[Tuple[VT,VT], List[int]] = {}
     types = g.types()
     for h, v, n in matches:
         rem.append(h)
@@ -264,8 +264,8 @@ def hbox_parallel_not_remove(g: BaseGraph[VT,ET],
             r = 0.6*g.row(h) + 0.4*g.row(w)
             z = g.add_vertex(VertexType.Z,q,r)
             if et == EdgeType.SIMPLE:
-                etab[g.edge(z,w)] = [1,0]
-            else: etab[g.edge(z,w)] = [0,1]
+                etab[upair(z,w)] = [1,0]
+            else: etab[upair(z,w)] = [0,1]
     return (etab, rem, [], True)
 
 
@@ -328,7 +328,7 @@ def match_par_hbox(
         m.append((hs, firstNOTs, NOTs))
     return m
 
-def par_hbox(g: BaseGraph[VT,ET], matches: List[TYPE_MATCH_PAR_HBOX]) -> rules.RewriteOutputType[ET,VT]:
+def par_hbox(g: BaseGraph[VT,ET], matches: List[TYPE_MATCH_PAR_HBOX]) -> rules.RewriteOutputType[VT,ET]:
     """Implements the `multiply rule' (M) from https://arxiv.org/abs/1805.02175"""
     rem_verts = []
     for hs, firstNOTs, NOTs in matches:
@@ -417,7 +417,7 @@ def match_par_hbox_intro(
         return [(h,h2,v,NOTs2,neighbors_single2)]
     return []
 
-def par_hbox_intro(g: BaseGraph[VT,ET], matches: List[TYPE_MATCH_PAR_HBOX_INTRO]) -> rules.RewriteOutputType[ET,VT]:
+def par_hbox_intro(g: BaseGraph[VT,ET], matches: List[TYPE_MATCH_PAR_HBOX_INTRO]) -> rules.RewriteOutputType[VT,ET]:
     """Removes an H-box according to the Intro rule (See Section 3.2 of arxiv:2103.06610)."""
     rem_verts = []
     rem_edges = []
@@ -581,6 +581,6 @@ def hpivot(g: BaseGraph[VT,ET], m: hpivot_match_output) -> None:
                 for u in us:
                     q += g.qubit(u)
                     r += g.row(u)
-                    g.add_edge(g.edge(h0,u))
+                    g.add_edge((h0,u))
                 g.set_qubit(h0, q / len(us) - 0.4)
                 g.set_row(h0, r / len(us) + 0.4)

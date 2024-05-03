@@ -54,8 +54,8 @@ def to_hypergraph_form(g: BaseGraph[VT,ET]) -> None:
     Finally, to ensure H-boxes are only connected to white spiders, 
     additional identities are introduced"""
     to_gh(g)
-    del_e = []
-    add_e = []
+    del_e: List[ET] = []
+    add_e: List[Tuple[VT,VT]] = []
     types = g.types()
     phases = g.phases()
     es = list(g.edges())
@@ -63,7 +63,7 @@ def to_hypergraph_form(g: BaseGraph[VT,ET]) -> None:
     for v in vs:
         if types[v] == VertexType.Z and phases[v] != 0:
             h = g.add_vertex(VertexType.H_BOX)
-            g.add_edge(g.edge(h,v))
+            g.add_edge((h,v))
             g.set_qubit(h, g.qubit(v) - 0.5)
             g.set_row(h, g.row(v) + 0.5)
             g.set_phase(h, phases[v])
@@ -78,8 +78,8 @@ def to_hypergraph_form(g: BaseGraph[VT,ET]) -> None:
             if types[s] == VertexType.BOUNDARY or types[t] == VertexType.BOUNDARY: continue
             h = g.add_vertex(VertexType.H_BOX)
             del_e.append(e)
-            add_e.append(g.edge(s, h))
-            add_e.append(g.edge(h, t))
+            add_e.append((s, h))
+            add_e.append((h, t))
             g.scalar.add_power(-1) # Correct for sqrt(2) scalar difference in H-edge and H-box.
             if qs == qt:
                 g.set_qubit(h, qs)
@@ -102,8 +102,8 @@ def to_hypergraph_form(g: BaseGraph[VT,ET]) -> None:
             g.set_row(w, (g.row(v)+g.row(n))/2)
             g.set_qubit(w,(g.qubit(v)+g.qubit(n))/2)
             del_e.append(g.edge(v,n))
-            add_e.append(g.edge(v,w))
-            add_e.append(g.edge(w,n))
+            add_e.append((v,w))
+            add_e.append((w,n))
         g.remove_edges(del_e)
         g.add_edges(add_e)
 

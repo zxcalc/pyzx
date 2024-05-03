@@ -69,7 +69,10 @@ ET = TypeVar('ET') # The type used for representing edges (e.g. a pair of intege
 
 
 def upair(v1: VT, v2: VT) -> Tuple[VT, VT]:
-    """Unordered pair: takes a pair of vertices and returns them in a standard order."""
+    """Returns the unordered pair associated to the pair of vertices.
+    This method takes a pair of vertices and returns them in a canonical order. Use this
+    whenever a pair of vertices is used to reference the location of an undirected edge, 
+    e.g. as a key in an edge table."""
     return (v1, v2) if v1 <= v2 else (v2, v1)
 
 
