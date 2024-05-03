@@ -18,11 +18,11 @@
 import json
 from fractions import Fraction
 
-from typing import Callable, Optional, List, Tuple
+from typing import Callable, Optional, List, Dict, Tuple
 
 from .utils import EdgeType, VertexType, FractionLike
 from .utils import toggle_edge, vertex_is_zx, toggle_vertex
-from .graph.base import BaseGraph, VT, ET
+from .graph.base import BaseGraph, VT, ET, upair
 from . import rules
 from . import hrules
 
@@ -94,9 +94,9 @@ def pauli_push(g: BaseGraph[VT,ET],
                matches: List[Tuple[VT,VT]]
                ) -> rules.RewriteOutputType[VT,ET]:
     """Pushes a Pauli (i.e. a pi phase) through another spider."""
-    rem_verts = []
-    rem_edges = []
-    etab = {}
+    rem_verts: List[VT] = []
+    rem_edges: List[ET] = []
+    etab: Dict[Tuple[VT,VT], List[int]] = dict()
     for w,v in matches:  # w is a Pauli and v is the spider we are gonna push it through
         if g.vertex_degree(w) == 2:
             rem_verts.append(w)
@@ -105,7 +105,7 @@ def pauli_push(g: BaseGraph[VT,ET],
             v2 = l[0]
             et1 = g.edge_type(g.edge(v,w))
             et2 = g.edge_type(g.edge(v2,w))
-            etab[g.edge(v,v2)] = [1,0] if et1 == et2 else [0,1]
+            etab[upair(v,v2)] = [1,0] if et1 == et2 else [0,1]
         else:
             g.set_phase(w,0)
 
@@ -126,17 +126,17 @@ def pauli_push(g: BaseGraph[VT,ET],
             et = g.edge_type(e)
             rem_edges.append(e)
             w2 = g.add_vertex(t,q,r,p)
-            etab[g.edge(v,w2)] = [1,0]
-            etab[g.edge(n,w2)] = [1,0] if et == EdgeType.SIMPLE else [0,1]
+            etab[upair(v,w2)] = [1,0]
+            etab[upair(n,w2)] = [1,0] if et == EdgeType.SIMPLE else [0,1]
             new_verts.append(w2)
         if not vertex_is_zx(g.type(v)): # v is H_BOX
             if len(new_verts) == 2:
-                etab[g.edge(new_verts[0],new_verts[1])] = [0,1]
+                etab[upair(new_verts[0],new_verts[1])] = [0,1]
             else:
                 r = (g.row(v) + sum(g.row(n) for n in new_verts)) / (len(new_verts) + 1)
                 q = (g.qubit(v) + sum(g.qubit(n) for n in new_verts))/(len(new_verts)+1)
                 h = g.add_vertex(VertexType.H_BOX,q,r,Fraction(1))
-                for n in new_verts: etab[g.edge(h,n)] = [1,0]
+                for n in new_verts: etab[upair(h,n)] = [1,0]
     return (etab, rem_verts, rem_edges, False)
 
 
@@ -174,8 +174,8 @@ def euler_expansion(g: BaseGraph[VT,ET],
             q = 0.5*(g.qubit(v1) + g.qubit(v2))
             t = toggle_vertex(types[v1])
             v = g.add_vertex(t,q,r)
-            etab[g.edge(v,v1)] = [1,0]
-            etab[g.edge(v,v2)] = [1,0]
+            etab[upair(v,v1)] = [1,0]
+            etab[upair(v,v2)] = [1,0]
             if phases[v1] == Fraction(1,2) or phases[v2] == Fraction(1,2):
                 g.add_to_phase(v1,Fraction(3,2))
                 g.add_to_phase(v2,Fraction(3,2))
@@ -190,16 +190,16 @@ def euler_expansion(g: BaseGraph[VT,ET],
             r = 0.25*g.row(v1) + 0.75*g.row(v2)
             q = 0.25*g.qubit(v1) + 0.75*g.qubit(v2)
             w1 = g.add_vertex(VertexType.Z,q,r,Fraction(1,2))
-            etab[g.edge(v2,w1)] = [1,0]
+            etab[upair(v2,w1)] = [1,0]
             r = 0.5*g.row(v1) + 0.5*g.row(v2)
             q = 0.5*g.qubit(v1) + 0.5*g.qubit(v2)
             w2 = g.add_vertex(VertexType.X,q,r,Fraction(1,2))
-            etab[g.edge(w1,w2)] = [1,0]
+            etab[upair(w1,w2)] = [1,0]
             r = 0.75*g.row(v1) + 0.25*g.row(v2)
             q = 0.75*g.qubit(v1) + 0.25*g.qubit(v2)
             w3 = g.add_vertex(VertexType.Z,q,r,Fraction(1,2))
-            etab[g.edge(w2,w3)] = [1,0]
-            etab[g.edge(w3,v1)] = [1,0]
+            etab[upair(w2,w3)] = [1,0]
+            etab[upair(w3,v1)] = [1,0]
             g.scalar.add_phase(Fraction(7,4))
             
     return (etab, [], rem_edges, False)
@@ -216,8 +216,8 @@ def add_Z_identity(g: BaseGraph[VT,ET],
         r = 0.5*(g.row(v1) + g.row(v2))
         q = 0.5*(g.qubit(v1) + g.qubit(v2))
         w = g.add_vertex(VertexType.Z, q,r, 0)
-        etab[g.edge(v1,w)] = [1,0] if et == EdgeType.SIMPLE else [0,1]
-        etab[g.edge(v2,w)] = [1,0]
+        etab[upair(v1,w)] = [1,0] if et == EdgeType.SIMPLE else [0,1]
+        etab[upair(v2,w)] = [1,0]
     return (etab, [], rem_edges, False)
 
 def match_bialgebra(g: BaseGraph[VT,ET], 
@@ -267,7 +267,7 @@ def bialgebra(g: BaseGraph[VT,ET],
             r = 0.6*g.row(v) + 0.4*g.row(n)
             q = 0.6*g.qubit(v) + 0.4*g.qubit(n)
             v2 = g.add_vertex(t,q,r)
-            etab[g.edge(n,v2)] = [1,0] if g.edge_type(g.edge(n,v)) == EdgeType.SIMPLE else [0,1]
+            etab[upair(n,v2)] = [1,0] if g.edge_type(g.edge(n,v)) == EdgeType.SIMPLE else [0,1]
             new_verts.append(v2)
         if g.type(w) == VertexType.Z:
             t = VertexType.X
@@ -280,9 +280,9 @@ def bialgebra(g: BaseGraph[VT,ET],
             r = 0.6*g.row(w) + 0.4*g.row(n)
             q = 0.6*g.qubit(w) + 0.4*g.qubit(n)
             w2 = g.add_vertex(t,q,r)
-            etab[g.edge(n,w2)] = [1,0] if g.edge_type(g.edge(n,w)) == EdgeType.SIMPLE else [0,1]
+            etab[upair(n,w2)] = [1,0] if g.edge_type(g.edge(n,w)) == EdgeType.SIMPLE else [0,1]
             for v2 in new_verts:
-                etab[g.edge(w2,v2)] = [1,0]
+                etab[upair(w2,v2)] = [1,0]
     return (etab, rem_verts, [], False)
             
 

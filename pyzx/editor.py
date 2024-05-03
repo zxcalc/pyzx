@@ -130,7 +130,7 @@ def s_to_phase(s: str, t:VertexType.Type=VertexType.Z) -> Fraction:
 	if not s: return Fraction(1)
 	return Fraction(int(s))
 
-def graph_to_json(g: GraphS, scale:FloatInt, verts:Optional[List[int]]=None,edges:Optional[List[Tuple[int,int,EdgeType.Type]]]=None) -> str:
+def graph_to_json(g: GraphS, scale:FloatInt, verts:Optional[List[int]]=None,edges:Optional[List[Tuple[int,int]]]=None) -> str:
 	if verts is None:
 		verts = list(g.vertices())
 	if edges is None:

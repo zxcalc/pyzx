@@ -67,6 +67,12 @@ def pack_indices(lst: List[FloatInt]) -> Mapping[FloatInt,int]:
 VT = TypeVar('VT', bound=int) # The type that is used for representing vertices (e.g. an integer)
 ET = TypeVar('ET') # The type used for representing edges (e.g. a pair of integers)
 
+
+def upair(v1: VT, v2: VT) -> Tuple[VT, VT]:
+    """Unordered pair: takes a pair of vertices and returns them in a standard order."""
+    return (v1, v2) if v1 <= v2 else (v2, v1)
+
+
 class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
     """Base class for letting graph backends interact with PyZX.
     For a backend to work with PyZX, there should be a class that implements
