@@ -299,7 +299,7 @@ class Gate(object):
                 etype: EdgeType.Type=EdgeType.SIMPLE,
                 ground: bool = False) -> VT:
         v = g.add_vertex(t, mapper.to_qubit(l), r, phase, ground)
-        g.add_edge(g.edge(mapper.prev_vertex(l), v), etype)
+        g.add_edge((mapper.prev_vertex(l), v), etype)
         mapper.set_prev_vertex(l, v)
         return v
 

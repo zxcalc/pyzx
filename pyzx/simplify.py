@@ -57,7 +57,7 @@ def simp(
     g: BaseGraph[VT,ET],
     name: str,
     match: Callable[..., List[MatchObject]],
-    rewrite: Callable[[BaseGraph[VT,ET],List[MatchObject]],RewriteOutputType[ET,VT]],
+    rewrite: Callable[[BaseGraph[VT,ET],List[MatchObject]],RewriteOutputType[VT,ET]],
     matchf:Optional[Union[Callable[[ET],bool], Callable[[VT],bool]]]=None,
     quiet:bool=False,
     stats:Optional[Stats]=None) -> int:
@@ -318,7 +318,7 @@ def simp_iter(
         g: BaseGraph[VT,ET],
         name: str,
         match: Callable[..., List[MatchObject]],
-        rewrite: Callable[[BaseGraph[VT,ET],List[MatchObject]],RewriteOutputType[ET,VT]]
+        rewrite: Callable[[BaseGraph[VT,ET],List[MatchObject]],RewriteOutputType[VT,ET]]
         ) -> Iterator[Tuple[BaseGraph[VT,ET],str]]:
     """Version of :func:`simp` that instead of performing all rewrites at once, returns an iterator."""
     i = 0
@@ -474,15 +474,15 @@ def to_graph_like(g: BaseGraph[VT,ET]) -> None:
                 z2 = g.add_vertex(ty=VertexType.Z)
                 z3 = g.add_vertex(ty=VertexType.Z)
                 g.remove_edge(g.edge(v, n))
-                g.add_edge(g.edge(v, z1), edgetype=EdgeType.SIMPLE)
-                g.add_edge(g.edge(z1, z2), edgetype=EdgeType.HADAMARD)
-                g.add_edge(g.edge(z2, z3), edgetype=EdgeType.HADAMARD)
-                g.add_edge(g.edge(z3, n), edgetype=EdgeType.SIMPLE)
+                g.add_edge((v, z1), edgetype=EdgeType.SIMPLE)
+                g.add_edge((z1, z2), edgetype=EdgeType.HADAMARD)
+                g.add_edge((z2, z3), edgetype=EdgeType.HADAMARD)
+                g.add_edge((z3, n), edgetype=EdgeType.SIMPLE)
             else: # g.type(n) == VertexType.H_BOX
                 z = g.add_vertex(ty=VertexType.Z)
                 g.remove_edge(g.edge(v, n))
-                g.add_edge(g.edge(v, z), edgetype=EdgeType.SIMPLE)
-                g.add_edge(g.edge(z, n), edgetype=EdgeType.SIMPLE)
+                g.add_edge((v, z), edgetype=EdgeType.SIMPLE)
+                g.add_edge((z, n), edgetype=EdgeType.SIMPLE)
 
     # each Z-spider can only be connected to at most 1 I/O
     vs = list(g.vertices())
@@ -501,14 +501,14 @@ def to_graph_like(g: BaseGraph[VT,ET]) -> None:
                 z2 = g.add_vertex(ty=VertexType.Z,row=0.7*g.row(v)+0.3*g.row(b),qubit=0.7*g.qubit(v)+0.3*g.qubit(b))
 
                 g.remove_edge(e)
-                g.add_edge(g.edge(z1, z2), edgetype=EdgeType.HADAMARD)
-                g.add_edge(g.edge(b, z1), edgetype=EdgeType.SIMPLE)
-                g.add_edge(g.edge(z2, v), edgetype=EdgeType.HADAMARD)
+                g.add_edge((z1, z2), edgetype=EdgeType.HADAMARD)
+                g.add_edge((b, z1), edgetype=EdgeType.SIMPLE)
+                g.add_edge((z2, v), edgetype=EdgeType.HADAMARD)
             elif g.edge_type(e) == EdgeType.HADAMARD:
                 z = g.add_vertex(ty=VertexType.Z,row=0.5*g.row(v)+0.5*g.row(b),qubit=0.5*g.qubit(v)+0.5*g.qubit(b))
                 g.remove_edge(e)
-                g.add_edge(g.edge(b,z),EdgeType.SIMPLE)
-                g.add_edge(g.edge(z,v),EdgeType.HADAMARD)
+                g.add_edge((b,z),EdgeType.SIMPLE)
+                g.add_edge((z,v),EdgeType.HADAMARD)
 
     assert(is_graph_like(g))
 
@@ -544,8 +544,8 @@ def to_clifford_normal_form_graph(g: BaseGraph[VT,ET]) -> None:
         e = g.edge(v,i)
         if g.edge_type(e) == EdgeType.HADAMARD or g.phase(v) != 0:
             h = g.add_vertex(VertexType.Z, q, row=1, phase=g.phase(v))
-            g.add_edge(g.edge(i,h),EdgeType.HADAMARD)
-            g.add_edge(g.edge(h,v),EdgeType.SIMPLE)
+            g.add_edge((i,h),EdgeType.HADAMARD)
+            g.add_edge((h,v),EdgeType.SIMPLE)
             g.remove_edge(e)
             g.set_phase(v,0)
             inputs[q] = h
@@ -556,8 +556,8 @@ def to_clifford_normal_form_graph(g: BaseGraph[VT,ET]) -> None:
         e = g.edge(v,o)
         if g.edge_type(e) == EdgeType.HADAMARD or g.phase(v) != 0:
             h = g.add_vertex(VertexType.Z, q, row=7, phase=g.phase(v))
-            g.add_edge(g.edge(h,o),EdgeType.HADAMARD)
-            g.add_edge(g.edge(v,h),EdgeType.SIMPLE)
+            g.add_edge((h,o),EdgeType.HADAMARD)
+            g.add_edge((v,h),EdgeType.SIMPLE)
             g.remove_edge(e)
             g.set_phase(v,0)
             outputs[q] = h
@@ -576,11 +576,11 @@ def to_clifford_normal_form_graph(g: BaseGraph[VT,ET]) -> None:
     for q in cz_qubits:
         w = g.add_vertex(VertexType.Z,q,row=2)
         g.remove_edge(g.edge(inputs[q],v_inputs[q]))
-        g.add_edge(g.edge(inputs[q],w))
-        g.add_edge(g.edge(w,v_inputs[q]))
+        g.add_edge((inputs[q],w))
+        g.add_edge((w,v_inputs[q]))
         cz_v[q] = w
     for q1,q2 in czs:
-        g.add_edge(g.edge(cz_v[q1],cz_v[q2]),EdgeType.HADAMARD)
+        g.add_edge((cz_v[q1],cz_v[q2]),EdgeType.HADAMARD)
     
     # Unfuse the czs on the outputs
     czs = []
@@ -596,10 +596,10 @@ def to_clifford_normal_form_graph(g: BaseGraph[VT,ET]) -> None:
     for q in cz_qubits:
         w = g.add_vertex(VertexType.Z,q,row=6)
         g.remove_edge(g.edge(v_outputs[q],outputs[q]))
-        g.add_edge(g.edge(w,outputs[q]))
-        g.add_edge(g.edge(v_outputs[q],w))
+        g.add_edge((w,outputs[q]))
+        g.add_edge((v_outputs[q],w))
         cz_v[q] = w
     for q1,q2 in czs:
-        g.add_edge(g.edge(cz_v[q1],cz_v[q2]),EdgeType.HADAMARD)
+        g.add_edge((cz_v[q1],cz_v[q2]),EdgeType.HADAMARD)
     
     to_rg(g,select=lambda v: v in v_outputs)

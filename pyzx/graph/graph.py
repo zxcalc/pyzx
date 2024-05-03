@@ -43,7 +43,7 @@ def Graph(backend:Optional[str]=None) -> BaseGraph:
 	if backend not in backends:
 		raise KeyError("Unavailable backend '{}'".format(backend))
 	if backend == 'simple': return GraphS()
-	if backend == 'multi': return GraphS(simple=False)
+	# if backend == 'multi': return Multigraph()
 	if backend == 'graph_tool': 
 		return GraphGT()
 	if backend == 'igraph': return GraphIG()

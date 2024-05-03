@@ -39,9 +39,9 @@ class Edge:
     def remove(self, s: int=0, h: int=0):
         self.add(s=-s, h=-h)
 
-class GraphS(BaseGraph[int,Tuple[int,int,EdgeType.Type]]):
-    """Purely Pythonic implementation of :class:`~graph.base.BaseGraph`."""
-    backend = 'simple'
+class Multigraph(BaseGraph[int,Tuple[int,int,EdgeType.Type]]):
+    """Purely Pythonic multigraph implementation of :class:`~graph.base.BaseGraph`."""
+    backend = 'multigraph'
 
     #The documentation of what these methods do
     #can be found in base.BaseGraph
