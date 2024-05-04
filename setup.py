@@ -1,5 +1,5 @@
 #!/usr/bin/python
-
+# type: ignore
 import pathlib
 from setuptools import setup
 
