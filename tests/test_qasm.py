@@ -153,6 +153,33 @@ class TestQASM(unittest.TestCase):
         self.assertTrue(compare_tensors(
             before.to_matrix(), after.to_matrix(), True))
 
+    def test_custom_gates(self):
+        from pyzx.circuit.qasmparser import QASMParser
+        s1 = """
+        OPENQASM 2.0;
+        include "qelib1.inc";
+        gate majority a,b,c {
+            cx c,b;
+            cx c,a;
+            ccx a,b,c;
+        }
+        qreg q[3];
+        majority q[0],q[1],q[2];
+        """
+        s2 = """
+        OPENQASM 2.0;
+        include "qelib1.inc";
+        qreg q[3];
+        cx q[2],q[1];
+        cx q[2],q[0];
+        ccx q[0],q[1],q[2];
+        """
+        p = QASMParser()
+        c1 = p.parse(s1)
+        c2 = p.parse(s2)
+        self.assertEqual(c1.qubits, c2.qubits)
+        self.assertListEqual(c1.gates, c2.gates)
+
     @unittest.skipUnless(QuantumCircuit, "qiskit needs to be installed for this test")
     def test_qasm_qiskit_semantics(self):
         """Verify/document qasm gate semantics when imported into pyzx.
