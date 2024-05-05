@@ -252,14 +252,15 @@ function showGraph(tag, graph, width, height, scale, node_size, auto_hbox, show_
     var link_curve = function(d) {
         var x1 = d.source.x, x2 = d.target.x, y1 = d.source.y, y2 = d.target.y;
         if (d.num_parallel == 1) {
-            return `M ${x1} ${x2} L ${y1} ${y2}`;
+            return `M ${x1} ${y1} L ${x2} ${y2}`;
         } else {
             var dx = x2 - x1, dy = y2 - y1;
             var midx = 0.5 * (x1 + x2), midy = 0.5 * (y1 + y2);
-            var pos = d.index / d.num_parallel;
-            var cx = midx + pos * dy;
-            var cy = midy - pos * dx;
-            return `M ${x1} ${x2} Q ${cx} ${cy}, ${y1} ${y2}`;
+            var pos = (d.index / (d.num_parallel-1)) - 0.5;
+            var cx = midx - pos * dy;
+            var cy = midy + pos * dx;
+            return `M ${x1} ${y1} Q ${cx} ${cy}, ${x2} ${y2}`;
+            // return `M ${x1} ${y1} L ${x2} ${y2}`;
         }
     };
     link.attr("d", link_curve);
