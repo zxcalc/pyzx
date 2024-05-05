@@ -175,8 +175,9 @@ def draw_matplotlib(
 
     if isinstance(g, Circuit):
         g = g.to_graph(zh=True)
-    fig1 = plt.figure(figsize=figsize)
-    ax = fig1.add_axes([0, 0, 1, 1], frameon=False)
+    fig1, ax = plt.subplots(figsize=figsize)
+    ax.set_frame_on(False)
+    ax.set(xlim=(0, 1), ylim=(0, 1))
     ax.xaxis.set_visible(False)
     ax.yaxis.set_visible(False)
     vs_on_row: Dict[FloatInt, int] = {} # count the vertices on each row
