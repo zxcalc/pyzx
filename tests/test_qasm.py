@@ -87,6 +87,38 @@ class TestQASM(unittest.TestCase):
         self.assertEqual(c1.qubits, c.qubits)
         self.assertListEqual(c1.gates,c.gates)
 
+    def test_broadcasting(self):
+        """Test that broadcasting is handled correctly.
+
+        If any arguments of a gate are quantum registers instead of qubits, it is a shorthand for broadcasting
+        over the qubits of the register."""
+        c1 = Circuit.from_qasm("""
+        OPENQASM 3;
+        include "stdgates.inc";
+        qubit[1] q0;
+        qubit[3] q1;
+        cx q0[0], q1;
+        """)
+        c2 = Circuit(4)
+        c2.add_gate("CNOT", 0, 1)
+        c2.add_gate("CNOT", 0, 2)
+        c2.add_gate("CNOT", 0, 3)
+        self.assertEqual(c1.qubits, c2.qubits)
+        self.assertListEqual(c1.gates, c2.gates)
+
+    def test_catch_broadcasting_error(self):
+        """Test that all registers are of the same length when broadcasting."""
+        with self.assertRaises(TypeError) as context:
+            Circuit.from_qasm("""
+            OPENQASM 3;
+            include "stdgates.inc";
+            qubit[1] q0;
+            qubit[2] q1;
+            qubit[3] q2;
+            ccx q0[0], q1, q2;
+            """)
+        self.assertTrue("Register sizes do not match" in str(context.exception))
+
     def test_p_same_as_rz(self):
         """Test that the `p` gate is identical to the `rz` gate.
 
