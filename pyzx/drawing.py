@@ -335,9 +335,22 @@ def draw_d3(
                   for key in vdata if g.vdata(v, key, None) is not None],
               }
              for v in g.vertices()]
-    links = [{'source': str(g.edge_s(e)),
-              'target': str(g.edge_t(e)),
-              't': g.edge_type(e) } for e in g.edges()]
+
+    # keep track of the number of parallel edges seen for a source/target pair
+    counts: Dict[Tuple[str,str], int] = dict()
+    links = []
+    for e in g.edges():
+        s = str(g.edge_s(e))
+        t = str(g.edge_t(e))
+        i = counts.get((s,t), 0)
+        links.append({'source': s,
+                      'target': t,
+                      't': g.edge_type(e),
+                      'index': i })
+        counts[(s,t)] = i + 1
+    for link in links:
+        s,t = (str(link['source']), str(link['target']))
+        link['num_parallel'] = counts[(s,t)]
     graphj = json.dumps({'nodes': nodes, 'links': links})
 
     with open(os.path.join(settings.javascript_location, 'zx_viewer.inline.js'), 'r') as f:

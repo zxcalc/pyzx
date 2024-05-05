@@ -25,7 +25,7 @@ try:
 except ImportError:
 	quizx = None
 
-backends = { 'simple': True, 'quizx-vec': False if quizx is None else True }
+backends = { 'simple': True, 'multigraph': True, 'quizx-vec': False if quizx is None else True }
 
 def Graph(backend:Optional[str]=None) -> BaseGraph:
 	"""Returns an instance of an implementation of :class:`~pyzx.graph.base.BaseGraph`. 
