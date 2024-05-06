@@ -196,7 +196,7 @@ class TestQASM(unittest.TestCase):
                     self.assertEqual(c.qubits, round_trip.qubits)
                     self.assertListEqual(c.gates, round_trip.gates)
 
-        # Test standard gates common to both OpenQASM 2 and 3.
+        # Test standard gates common to both qelib1.inc (OpenQASM 2) and stdgates.inc (OpenQASM 3).
         compare_gate_matrix_with_qiskit(
             ['x', 'y', 'z', 'h', 's', 'sdg', 't', 'tdg', 'sx'], 1, 0)
         compare_gate_matrix_with_qiskit(['u1', 'p', 'rx', 'ry', 'rz'], 1, 1)
@@ -209,14 +209,15 @@ class TestQASM(unittest.TestCase):
         compare_gate_matrix_with_qiskit(['ccx', 'cswap'], 3, 0)
         compare_gate_matrix_with_qiskit(['cu'], 2, 4)
 
-        # Test standard gates added to OpenQASM 3.
+        # Test standard gates added to stdgates.inc.
         compare_gate_matrix_with_qiskit(['cphase'], 2, 1, [3])
 
-        # Test standard gates removed from OpenQASM 3.
+        # Test standard gates removed from stdgates.inc.
         compare_gate_matrix_with_qiskit(['sxdg'], 1, 0, [2])
         compare_gate_matrix_with_qiskit(['csx'], 2, 0, [2])
         compare_gate_matrix_with_qiskit(['cu1', 'rxx', 'rzz'], 2, 1, [2])
         compare_gate_matrix_with_qiskit(['cu3'], 2, 3, [2])
+        compare_gate_matrix_with_qiskit(['u'], 1, 3, [2])
 
     @unittest.skipUnless(QuantumCircuit, "qiskit needs to be installed for this test")
     def test_qiskit_transpile_pyzx_optimization_round_trip(self):

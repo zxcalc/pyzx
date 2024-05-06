@@ -21,7 +21,7 @@ from fractions import Fraction
 from typing import List, Dict, Tuple, Optional
 
 from . import Circuit
-from .gates import Gate, qasm_gate_table, XPhase, YPhase, ZPhase, NOT, U2, U3
+from .gates import Gate, qasm_gate_table, U2, U3
 from ..utils import settings
 
 
@@ -193,7 +193,7 @@ class QASMParser(object):
             elif name == 'u2':
                 if len(phases) != 2: raise TypeError("Invalid specification {}".format(c))
                 gates.append(U2(argset[0],phases[0],phases[1]))
-            elif name == 'u3':
+            elif name in ('u3', 'u'):
                 if len(phases) != 3: raise TypeError("Invalid specification {}".format(c))
                 gates.append(U3(argset[0],phases[0],phases[1],phases[2]))
             elif name in ('cx', 'CX', 'cy', 'cz', 'ch', 'csx', 'swap'):
