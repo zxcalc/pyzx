@@ -40,8 +40,8 @@ except ImportError:
 try:
     from qiskit import quantum_info, transpile
     from qiskit.circuit import QuantumCircuit
-    from qiskit.qasm2 import dumps
-    from qiskit.qasm3 import loads
+    from qiskit.qasm2 import dumps as dumps2
+    from qiskit.qasm3 import loads as loads3, dumps as dumps3
 except ImportError:
     QuantumCircuit = None
 
@@ -232,10 +232,10 @@ class TestQASM(unittest.TestCase):
                     qasm = setup + \
                         ", ".join(
                             [f"q[{i}]" for i in range(num_qubits)]) + ";\n"
-                    c = Circuit.from_qasm(qasm)
-                    pyzx_matrix = c.to_matrix()
+                    pyzx_circuit = Circuit.from_qasm(qasm)
+                    pyzx_matrix = pyzx_circuit.to_matrix()
 
-                    for g in c.gates:
+                    for g in pyzx_circuit.gates:
                         for b in g.to_basic_gates():
                             self.assertListEqual(b.to_basic_gates(), [b],
                                                  f"\n{gate}.to_basic_gates() contains non-basic gate")
@@ -244,16 +244,28 @@ class TestQASM(unittest.TestCase):
                     qiskit_qasm = setup + \
                         ", ".join([f"q[{i}]" for i in reversed(
                             range(num_qubits))]) + ";\n"
-                    qc = QuantumCircuit.from_qasm_str(
-                        qiskit_qasm) if qasm_version == 2 else loads(qiskit_qasm)
+                    qc = QuantumCircuit.from_qasm_str(qiskit_qasm) if qasm_version == 2 else loads3(qiskit_qasm)
                     qiskit_matrix = quantum_info.Operator(qc).data
+
+                    # Check that pyzx and qiskit produce the same tensor from the same qasm, modulo qubit endianness.
                     self.assertTrue(compare_tensors(pyzx_matrix, qiskit_matrix, False),
                                     f"Gate: {gate}\nqasm:\n{qasm}\npyzx_matrix:\n{pyzx_matrix}\nqiskit_matrix:\n{qiskit_matrix}")
 
-                    s = c.to_qasm(qasm_version)
-                    round_trip = Circuit.from_qasm(s)
-                    self.assertEqual(c.qubits, round_trip.qubits)
-                    self.assertListEqual(c.gates, round_trip.gates)
+                    # Check internal round-trip (pyzx to qasm to pyzx) results in the same circuit.
+                    qasm_from_pyzx = pyzx_circuit.to_qasm(qasm_version)
+                    pyzx_round_trip = Circuit.from_qasm(qasm_from_pyzx)
+                    self.assertEqual(pyzx_circuit.qubits, pyzx_round_trip.qubits)
+                    self.assertListEqual(pyzx_circuit.gates, pyzx_round_trip.gates)
+
+                    # Check external round-trip (pyzx to qasm to qiskit to qasm to pyzx) results in the same circuit.
+                    # Note that the endianness is reversed when going out and again when coming back in, so the overall
+                    # result is no change.
+                    qiskit_from_qasm = (QuantumCircuit.from_qasm_str(qasm_from_pyzx) if qasm_version == 2
+                                        else loads3(qasm_from_pyzx))
+                    pyzx_from_qiskit = Circuit.from_qasm(dumps2(qiskit_from_qasm) if qasm_version == 2
+                                                         else dumps3(qiskit_from_qasm))
+                    self.assertEqual(pyzx_circuit.qubits, pyzx_from_qiskit.qubits)
+                    self.assertListEqual(pyzx_circuit.gates, pyzx_from_qiskit.gates)
 
         # Test standard gates common to both qelib1.inc (OpenQASM 2) and stdgates.inc (OpenQASM 3).
         compare_gate_matrix_with_qiskit(
@@ -305,15 +317,27 @@ class TestQASM(unittest.TestCase):
         qc1 = transpile(qc)
         t1 = quantum_info.Operator(qc1).data
 
-        c = Circuit.from_qasm(dumps(qc1))
-        g = c.to_graph()
-        full_reduce(g)
-        qasm = extract_circuit(g).to_basic_gates().to_qasm()
+        # Test round-trip for OpenQASM 2.
+        c2 = Circuit.from_qasm(dumps2(qc1))
+        g2 = c2.to_graph()
+        full_reduce(g2)
+        qasm2 = extract_circuit(g2).to_basic_gates().to_qasm(2)
 
-        qc2 = QuantumCircuit().from_qasm_str(qasm)
+        qc2 = QuantumCircuit().from_qasm_str(qasm2)
         t2 = quantum_info.Operator(qc2).data
 
         self.assertTrue(compare_tensors(t1, t2))
+
+        # Test round-trip for OpenQASM 3.
+        c3 = Circuit.from_qasm(dumps3(qc1))
+        g3 = c3.to_graph()
+        full_reduce(g3)
+        qasm3 = extract_circuit(g3).to_basic_gates().to_qasm(3)
+
+        qc3 = loads3(qasm3)
+        t3 = quantum_info.Operator(qc3).data
+
+        self.assertTrue(compare_tensors(t1, t3))
 
 
 if __name__ == '__main__':

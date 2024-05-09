@@ -123,12 +123,13 @@ class QASMParser(object):
             c = re.sub(r"^bit\[(\d+)] (\w+)$", r"creg \2[\1]", c)
             c = re.sub(r"^qubit\[(\d+)] (\w+)$", r"qreg \2[\1]", c)
             c = re.sub(r"^(\w+)\[(\d+)] = measure (\w+)\[(\d+)]$", r"measure \3[\4] -> \1[\2]", c)
-        name, rest = c.split(" ",1)
+        right_bracket = c.find(")")
+        name, rest = c.split(" ", 1) if right_bracket == -1\
+            else [c[:right_bracket+1], c[right_bracket+1:]]
         args = [s.strip() for s in rest.split(",") if s.strip()]
         left_bracket = name.find('(')
         phases = []
         if left_bracket != -1:
-            right_bracket = name.find(')')
             if right_bracket == -1:
                 raise TypeError(f"Mismatched bracket: {name}.")
             vals = name[left_bracket+1:right_bracket].split(',')
