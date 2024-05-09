@@ -290,6 +290,9 @@ class TestQASM(unittest.TestCase):
         compare_gate_matrix_with_qiskit(['cu3'], 2, 3, [2])
         compare_gate_matrix_with_qiskit(['u'], 1, 3, [2])
 
+        # Test native OpenQASM 3 gate.
+        compare_gate_matrix_with_qiskit(['U'], 1, 3, [3])
+
     @unittest.skipUnless(QuantumCircuit, "qiskit needs to be installed for this test")
     def test_qiskit_transpile_pyzx_optimization_round_trip(self):
         """Regression test for issue #102.

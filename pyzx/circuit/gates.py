@@ -1288,6 +1288,7 @@ qasm_gate_table: Dict[str, Type[Gate]] = {
     "u2": U2,
     "u3": U3,
     "u": U3,
+    "U": U3,  # needed for OpenQASM 3 in Qiskit 1.0 and up
     "cu3": CU3,
     "cu": CU,
     "cx": CNOT,
