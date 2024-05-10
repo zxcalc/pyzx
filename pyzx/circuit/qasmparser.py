@@ -21,7 +21,7 @@ from fractions import Fraction
 from typing import List, Dict, Tuple, Optional
 
 from . import Circuit
-from .gates import Gate, qasm_gate_table, U2, U3
+from .gates import Gate, qasm_gate_table
 from ..utils import settings
 
 
@@ -123,12 +123,13 @@ class QASMParser(object):
             c = re.sub(r"^bit\[(\d+)] (\w+)$", r"creg \2[\1]", c)
             c = re.sub(r"^qubit\[(\d+)] (\w+)$", r"qreg \2[\1]", c)
             c = re.sub(r"^(\w+)\[(\d+)] = measure (\w+)\[(\d+)]$", r"measure \3[\4] -> \1[\2]", c)
-        name, rest = c.split(" ",1)
+        right_bracket = c.find(")")
+        name, rest = c.split(" ", 1) if right_bracket == -1\
+            else [c[:right_bracket+1], c[right_bracket+1:]]
         args = [s.strip() for s in rest.split(",") if s.strip()]
         left_bracket = name.find('(')
         phases = []
         if left_bracket != -1:
-            right_bracket = name.find(')')
             if right_bracket == -1:
                 raise TypeError(f"Mismatched bracket: {name}.")
             vals = name[left_bracket+1:right_bracket].split(',')
@@ -192,10 +193,10 @@ class QASMParser(object):
                 gates.append(g)
             elif name == 'u2':
                 if len(phases) != 2: raise TypeError("Invalid specification {}".format(c))
-                gates.append(U2(argset[0],phases[0],phases[1]))
-            elif name in ('u3', 'u'):
+                gates.append(qasm_gate_table[name](argset[0], phases[0], phases[1]))  # type: ignore
+            elif name in ('u3', 'u', 'U'):
                 if len(phases) != 3: raise TypeError("Invalid specification {}".format(c))
-                gates.append(U3(argset[0],phases[0],phases[1],phases[2]))
+                gates.append(qasm_gate_table[name](argset[0], phases[0], phases[1], phases[2]))  # type: ignore
             elif name in ('cx', 'CX', 'cy', 'cz', 'ch', 'csx', 'swap'):
                 if len(phases) != 0: raise TypeError("Invalid specification {}".format(c))
                 g = qasm_gate_table[name](control=argset[0],target=argset[1])  # type: ignore
