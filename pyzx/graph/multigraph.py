@@ -21,15 +21,37 @@ from .base import BaseGraph
 
 from ..utils import VertexType, EdgeType, FractionLike, FloatInt, vertex_is_zx_like, vertex_is_z_like, set_z_box_label, get_z_box_label
 
-class GraphS(BaseGraph[int,Tuple[int,int]]):
-    """Purely Pythonic implementation of :class:`~graph.base.BaseGraph`."""
-    backend = 'simple'
+class Edge:
+    """A structure for storing the number of simple and number of Hadamard edges
+    between two vertices"""
+    s: int
+    h: int
+    def __init__(self, s: int=0, h: int=0):
+        self.s = s
+        self.h = h
+
+    def add(self, s: int=0, h: int=0):
+        self.s += s
+        self.h += h
+        if self.s < 0 or self.h < 0:
+            raise ValueError('Cannot have negative edges')
+
+    def remove(self, s: int=0, h: int=0):
+        self.add(s=-s, h=-h)
+    
+    def is_empty(self) -> bool:
+        return self.s == 0 and self.h == 0
+
+class Multigraph(BaseGraph[int,Tuple[int,int,EdgeType.Type]]):
+    """Purely Pythonic multigraph implementation of :class:`~graph.base.BaseGraph`."""
+    backend = 'multigraph'
 
     #The documentation of what these methods do
     #can be found in base.BaseGraph
     def __init__(self) -> None:
         BaseGraph.__init__(self)
-        self.graph: Dict[int,Dict[int,EdgeType.Type]]   = dict()
+        self.graph: Dict[int,Dict[int,Edge]]   = dict()
+        self._auto_simplify: bool                       = True
         self._vindex: int                               = 0
         self.nedges: int                                = 0
         self.ty: Dict[int,VertexType.Type]              = dict()
@@ -38,14 +60,14 @@ class GraphS(BaseGraph[int,Tuple[int,int]]):
         self._maxq: FloatInt                            = -1
         self._rindex: Dict[int, FloatInt]               = dict()
         self._maxr: FloatInt                            = -1
-        self._grounds: Set[int] = set()
+        self._grounds: Set[int]                         = set()
 
         self._vdata: Dict[int,Any]                      = dict()
         self._inputs: Tuple[int, ...]                   = tuple()
         self._outputs: Tuple[int, ...]                  = tuple()
 
-    def clone(self) -> 'GraphS':
-        cpy = GraphS()
+    def clone(self) -> 'Multigraph':
+        cpy = Multigraph()
         for v, d in self.graph.items():
             cpy.graph[v] = d.copy()
         cpy._vindex = self._vindex
@@ -66,6 +88,13 @@ class GraphS(BaseGraph[int,Tuple[int,int]]):
         cpy.phase_mult = self.phase_mult.copy()
         cpy.max_phase_index = self.max_phase_index
         return cpy
+    
+    def set_auto_simplify(self, s: bool):
+        """Automatically remove parallel edges as edges are added"""
+        self._auto_simplify = s
+    
+    def multigraph(self):
+        return False
 
     def vindex(self): return self._vindex
     def depth(self):
@@ -114,59 +143,56 @@ class GraphS(BaseGraph[int,Tuple[int,int]]):
         self._phase[v] = 0
 
     def add_edges(self, edge_pairs, edgetype=EdgeType.SIMPLE):
-        for s,t in edge_pairs:
-            self.nedges += 1
-            self.graph[s][t] = edgetype
-            self.graph[t][s] = edgetype
-    
+        for ep in edge_pairs: self.add_edge(ep, edgetype)
+
     def add_edge(self, edge_pair, edgetype=EdgeType.SIMPLE):
+        self.nedges += 1
         s,t = edge_pair
         if not t in self.graph[s]:
-            self.nedges += 1
-            self.graph[s][t] = edgetype
-            self.graph[t][s] = edgetype
+            e = Edge()
+            self.graph[s][t] = e
+            self.graph[t][s] = e
         else:
+            e = self.graph[s][t]
+
+        if edgetype == EdgeType.SIMPLE: e.add(s=1)
+        else: e.add(h=1)
+
+        if self._auto_simplify:
             t1 = self.ty[s]
             t2 = self.ty[t]
             if (vertex_is_zx_like(t1) and vertex_is_zx_like(t2)):
-                et1 = self.graph[s][t]
-
-                # set the roles of simple or hadamard edges, depending on whether the colours match
-                if vertex_is_z_like(t1) == vertex_is_z_like(t2): # same colour
-                    fuse, hopf = (EdgeType.SIMPLE, EdgeType.HADAMARD)
-                else:
-                    fuse, hopf = (EdgeType.HADAMARD, EdgeType.SIMPLE)
-
-                # handle parallel edges for all possible combinations of fuse/hopf type edges
-                if edgetype == fuse and et1 == fuse:
-                    pass # no-op
-                elif ((edgetype == fuse and et1 == hopf) or (edgetype == hopf and et1 == fuse)):
-                    # ensure the remaining edge is 'fuse' type
-                    self.set_edge_type((s,t), fuse)
-                    # add a pi phase to one of the neighbours
-                    if t1 == VertexType.Z_BOX:
-                        set_z_box_label(self, s, get_z_box_label(self, s) * -1)
+                if s == t: # turn self-loops in pi phases
+                    e.s = 0
+                    if e.h % 2 == 1:
+                        if t1 == VertexType.Z_BOX:
+                            set_z_box_label(self, s, get_z_box_label(self, s) * -1)
+                        else:
+                            self.add_to_phase(s, 1)
+                    self.scalar.add_power(-e.h)
+                    e.h = 0
+                else: # apply spider and hopf to merge/cancel parallel edges
+                    if t1 == t2:
+                        e.s = 1 if e.s > 0 else 0
+                        self.scalar.add_power(-2 * (e.h - (e.h % 2)))
+                        e.h = e.h % 2
                     else:
-                        self.add_to_phase(s, 1)
-                    self.scalar.add_power(-1)
-                elif edgetype == hopf and et1 == hopf:
-                    # remove the edge (reducing mod 2)
-                    self.remove_edge((s,t))
-                    self.scalar.add_power(-2)
-                else:
-                    raise ValueError(f'Got unexpected edge types: {t1}, {t2}')
-            else:
-                raise ValueError(f'Attempted to add unreducible parallel edge {edge_pair}, types: {t1}, {t2}')
+                        e.h = 1 if e.h > 0 else 0
+                        self.scalar.add_power(-2 * (e.s - (e.s % 2)))
+                        e.s = e.s % 2
+            if e.is_empty():
+                del self.graph[s][t]
+                del self.graph[t][s]
 
-
-        return edge_pair
+        return (s,t, edgetype) if s <= t else (t,s,edgetype)
 
     def remove_vertices(self, vertices):
         for v in vertices:
             vs = list(self.graph[v])
             # remove all edges
             for v1 in vs:
-                self.nedges -= 1
+                e = self.graph[v][v1]
+                self.nedges -= e.s + e.h
                 del self.graph[v][v1]
                 del self.graph[v1][v]
             # remove the vertex
@@ -191,20 +217,27 @@ class GraphS(BaseGraph[int,Tuple[int,int]]):
         self.remove_vertices([vertex])
 
     def remove_edges(self, edges):
-        for s,t in edges:
-            self.nedges -= 1
+        for e in edges:
+            self.remove_edge(e)
+
+    def remove_edge(self, edge):
+        s,t,ty = edge
+        e = self.graph[s][t]
+        if ty == EdgeType.SIMPLE: e.remove(s=1)
+        else: e.remove(h=1)
+
+        if e.s == 0 and e.h == 0:
             del self.graph[s][t]
             del self.graph[t][s]
 
-    def remove_edge(self, edge):
-        self.remove_edges([edge])
+        self.nedges -= 1
 
     def num_vertices(self):
         return len(self.graph)
 
     def num_edges(self):
-        #return self.nedges
-        return len(self.edge_set())
+        return self.nedges
+        #return len(self.edge_set())
 
     def vertices(self):
         return self.graph.keys()
@@ -217,45 +250,57 @@ class GraphS(BaseGraph[int,Tuple[int,int]]):
             if all(start<v2<end for v2 in self.graph[v]):
                 yield v
 
-    def edges(self):
-        for v0,adj in self.graph.items():
-            for v1 in adj:
-                if v1 > v0: yield (v0,v1)
+    def edges(self, s=None, t=None):
+        if s == None:
+            for v0,adj in self.graph.items():
+                for v1, e in adj.items():
+                    if v1 > v0:
+                        for _ in range(e.s): yield (v0, v1, EdgeType.SIMPLE)
+                        for _ in range(e.h): yield (v0, v1, EdgeType.HADAMARD)
+        elif t != None:
+            s, t = (s, t) if s < t else (t, s)
+            e = self.graph[s][t]
+            for _ in range(e.s): yield (s, t, EdgeType.SIMPLE)
+            for _ in range(e.h): yield (s, t, EdgeType.HADAMARD)
 
-    def edges_in_range(self, start, end, safe=False):
-        """like self.edges, but only returns edges that belong to vertices
-        that are only directly connected to other vertices with
-        index between start and end.
-        If safe=True then it also checks that every neighbour is only connected to vertices with the right index"""
-        if not safe:
-            for v0,adj in self.graph.items():
-                if not (start<v0<end): continue
-                #verify that all neighbours are in range
-                if all(start<v1<end for v1 in adj):
-                    for v1 in adj:
-                        if v1 > v0: yield (v0,v1)
-        else:
-            for v0,adj in self.graph.items():
-                if not (start<v0<end): continue
-                #verify that all neighbours are in range, and that each neighbour
-                # is only connected to vertices that are also in range
-                if all(start<v1<end for v1 in adj) and all(all(start<v2<end for v2 in self.graph[v1]) for v1 in adj):
-                    for v1 in adj:
-                        if v1 > v0:
-                            yield (v0,v1)
+    # def edges_in_range(self, start, end, safe=False):
+    #    """like self.edges, but only returns edges that belong to vertices
+    #    that are only directly connected to other vertices with
+    #    index between start and end.
+    #    If safe=True then it also checks that every neighbour is only connected to vertices with the right index"""
+    #    if not safe:
+    #        for v0,adj in self.graph.items():
+    #            if not (start<v0<end): continue
+    #            #verify that all neighbours are in range
+    #            if all(start<v1<end for v1 in adj):
+    #                for v1 in adj:
+    #                    if v1 > v0: yield (v0,v1)
+    #    else:
+    #        for v0,adj in self.graph.items():
+    #            if not (start<v0<end): continue
+    #            #verify that all neighbours are in range, and that each neighbour
+    #            # is only connected to vertices that are also in range
+    #            if all(start<v1<end for v1 in adj) and all(all(start<v2<end for v2 in self.graph[v1]) for v1 in adj):
+    #                for v1 in adj:
+    #                    if v1 > v0:
+    #                        yield (v0,v1)
 
     def edge(self, s, t):
         return (s,t) if s < t else (t,s)
     def edge_set(self):
         return set(self.edges())
     def edge_st(self, edge):
-        return edge
+        return (edge[0], edge[1])
 
     def neighbors(self, vertex):
         return self.graph[vertex].keys()
 
     def vertex_degree(self, vertex):
-        return len(self.graph[vertex])
+        d = 0
+        for e in self.graph[vertex].values():
+            d += e.s
+            d += e.h
+        return d
 
     def incident_edges(self, vertex):
         return [(vertex, v1) if v1 > vertex else (v1, vertex) for v1 in self.graph[vertex]]
@@ -264,16 +309,14 @@ class GraphS(BaseGraph[int,Tuple[int,int]]):
         return v2 in self.graph[v1]
 
     def edge_type(self, e):
-        v1,v2 = e
-        try:
-            return self.graph[v1][v2]
-        except KeyError:
-            return 0
+        return e[2]
 
-    def set_edge_type(self, e, t):
-        v1,v2 = e
-        self.graph[v1][v2] = t
-        self.graph[v2][v1] = t
+    def set_edge_type(self, edge, t):
+        v1,v2,ty = edge
+        if ty != t:
+            e = self.graph[v1][v2]
+            if t == EdgeType.SIMPLE: e.add(s=1,h=-1)
+            else: e.add(s=-1,h=1)
 
     def type(self, vertex):
         return self.ty[vertex]
@@ -288,13 +331,13 @@ class GraphS(BaseGraph[int,Tuple[int,int]]):
         return self._phase
     def set_phase(self, vertex, phase):
         try:
-            self._phase[vertex] = phase % 2
+            self._phase[vertex] = Fraction(phase) % 2
         except Exception:
             self._phase[vertex] = phase
     def add_to_phase(self, vertex, phase):
         old_phase = self._phase.get(vertex, Fraction(1))
         try:
-            self._phase[vertex] = (old_phase + phase) % 2
+            self._phase[vertex] = (old_phase + Fraction(phase)) % 2
         except Exception:
             self._phase[vertex] = old_phase + phase
     def qubit(self, vertex):

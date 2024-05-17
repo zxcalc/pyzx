@@ -35,7 +35,7 @@ while the second and third should be fed to
 :meth:`~graph.base.BaseGraph.remove_vertices` and :meth:`~pyzx.graph.base.BaseGraph.remove_edges`.
 The last parameter is a Boolean that when true means that the rewrite rule can introduce
 isolated vertices that should be removed by
-:meth:`~pyzx.graph.base.BaseGraph.remove_isolated_vertices`\ .
+:meth:`~pyzx.graph.base.BaseGraph.remove_isolated_vertices`.
 
 Dealing with this output is done using either :func:`apply_rule` or :func:`pyzx.simplify.simp`.
 
@@ -59,16 +59,17 @@ from .utils import VertexType, EdgeType, get_w_partner, get_z_box_label, set_z_b
 from .graph.base import BaseGraph, VT, ET
 from .symbolic import Poly
 
-RewriteOutputType = Tuple[Dict[ET,List[int]], List[VT], List[ET], bool]
+RewriteOutputType = Tuple[Dict[Tuple[VT,VT],List[int]], List[VT], List[ET], bool]
 MatchObject = TypeVar('MatchObject')
 
 def apply_rule(
         g: BaseGraph[VT,ET],
-        rewrite: Callable[[BaseGraph[VT,ET], List[MatchObject]],RewriteOutputType[ET,VT]],
+        rewrite: Callable[[BaseGraph[VT,ET], List[MatchObject]],RewriteOutputType[VT,ET]],
         m: List[MatchObject],
         check_isolated_vertices:bool=True
         ) -> None:
     etab, rem_verts, rem_edges, check_isolated_vertices = rewrite(g, m)
+
     g.add_edge_table(etab)
     g.remove_edges(rem_edges)
     g.remove_vertices(rem_verts)
@@ -104,7 +105,7 @@ def match_bialg_parallel(
     types = g.types()
 
     i = 0
-    m = []
+    m: List[MatchBialgType[VT]] = []
     while (num == -1 or i < num) and len(candidates) > 0:
         v0, v1 = g.edge_st(candidates.pop())
         if g.is_ground(v0) or g.is_ground(v1):
@@ -129,15 +130,15 @@ def match_bialg_parallel(
     return m
 
 
-def bialg(g: BaseGraph[VT,ET], matches: List[MatchBialgType[VT]]) -> RewriteOutputType[ET,VT]:
+def bialg(g: BaseGraph[VT,ET], matches: List[MatchBialgType[VT]]) -> RewriteOutputType[VT,ET]:
     """Performs a certain type of bialgebra rewrite given matchings supplied by
     ``match_bialg(_parallel)``."""
-    rem_verts = []
-    etab: Dict[ET, List[int]] = dict()
+    rem_verts: List[VT] = []
+    etab: Dict[Tuple[VT,VT], List[int]] = dict()
     for m in matches:
         rem_verts.append(m[0])
         rem_verts.append(m[1])
-        es = [g.edge(i,j) for i in m[2] for j in m[3]]
+        es = [(i,j) for i in m[2] for j in m[3]]
         for e in es:
             if e in etab: etab[e][0] += 1
             else: etab[e] = [1,0]
@@ -170,7 +171,7 @@ def match_spider_parallel(
     types = g.types()
 
     i = 0
-    m = []
+    m: List[MatchSpiderType[VT]] = []
     while (num == -1 or i < num) and len(candidates) > 0:
         e = candidates.pop()
         if g.edge_type(e) != EdgeType.SIMPLE: continue
@@ -188,11 +189,11 @@ def match_spider_parallel(
     return m
 
 
-def spider(g: BaseGraph[VT,ET], matches: List[MatchSpiderType[VT]]) -> RewriteOutputType[ET,VT]:
+def spider(g: BaseGraph[VT,ET], matches: List[MatchSpiderType[VT]]) -> RewriteOutputType[VT,ET]:
     '''Performs spider fusion given a list of matchings from ``match_spider(_parallel)``
     '''
-    rem_verts = []
-    etab: Dict[ET,List[int]] = dict()
+    rem_verts: List[VT] = []
+    etab: Dict[Tuple[VT,VT],List[int]] = dict()
 
     for m in matches:
         if g.row(m[0]) == 0:
@@ -224,7 +225,7 @@ def spider(g: BaseGraph[VT,ET], matches: List[MatchSpiderType[VT]]) -> RewriteOu
         # edges from the second vertex are transferred to the first
         for w in g.neighbors(v1):
             if v0 == w: continue
-            e = g.edge(v0,w)
+            e = (v0,w)
             if e not in etab: etab[e] = [0,0]
             etab[e][g.edge_type(g.edge(v1,w))-1] += 1
     return (etab, rem_verts, [], True)
@@ -247,10 +248,10 @@ def unspider(g: BaseGraph[VT,ET], m: List[Any], qubit:FloatInt=-1, row:FloatInt=
     g.set_qubit(v, qubit if qubit != -1 else g.qubit(u))
     g.set_row(v, row if row != -1 else g.row(u))
 
-    g.add_edge(g.edge(u, v))
+    g.add_edge((u, v))
     for n in m[1]:
         e = g.edge(u,n)
-        g.add_edge(g.edge(v,n), edgetype=g.edge_type(e))
+        g.add_edge((v,n), edgetype=g.edge_type(e))
         g.remove_edge(e)
     if len(m) >= 3:
         g.add_to_phase(v, m[2])
@@ -275,7 +276,7 @@ def match_z_to_z_box_parallel(
     else: candidates = g.vertex_set()
     types = g.types()
     phases = g.phases()
-    m = []
+    m: List[VT] = []
     for v in candidates:
         if types[v] == VertexType.Z and not isinstance(phases[v],Poly):
             if num == 0: break
@@ -283,7 +284,7 @@ def match_z_to_z_box_parallel(
             num -= 1
     return m
 
-def z_to_z_box(g: BaseGraph[VT,ET], matches: List[VT]) -> RewriteOutputType[ET,VT]:
+def z_to_z_box(g: BaseGraph[VT,ET], matches: List[VT]) -> RewriteOutputType[VT,ET]:
     """Converts a Z vertex to a Z-box."""
     for v in matches:
         g.set_type(v, VertexType.Z_BOX)
@@ -320,7 +321,7 @@ def match_w_fusion_parallel(
     types = g.types()
 
     i = 0
-    m = []
+    m: List[MatchWType[VT]] = []
     while (num == -1 or i < num) and len(candidates) > 0:
         e = candidates.pop()
         if g.edge_type(e) != EdgeType.SIMPLE: continue
@@ -329,7 +330,7 @@ def match_w_fusion_parallel(
         v1t = types[v1]
         if vertex_is_w(v0t) and vertex_is_w(v1t):
             i += 1
-            candidates_to_remove = []
+            candidates_to_remove: List[VT] = []
             candidates_to_remove.extend(list(g.neighbors(v0)))
             candidates_to_remove.extend(list(g.neighbors(v1)))
             candidates_to_remove.extend(list(g.neighbors(get_w_partner(g, v0))))
@@ -339,11 +340,11 @@ def match_w_fusion_parallel(
             m.append((v0,v1))
     return m
 
-def w_fusion(g: BaseGraph[VT,ET], matches: List[MatchSpiderType[VT]]) -> RewriteOutputType[ET,VT]:
+def w_fusion(g: BaseGraph[VT,ET], matches: List[MatchSpiderType[VT]]) -> RewriteOutputType[VT,ET]:
     '''Performs W fusion given a list of matchings from ``match_w_fusion(_parallel)``
     '''
-    rem_verts = []
-    etab: Dict[ET,List[int]] = dict()
+    rem_verts: List[VT] = []
+    etab: Dict[Tuple[VT,VT],List[int]] = dict()
 
     for v0, v1 in matches:
         v0_in, v0_out = get_w_io(g, v0)
@@ -360,13 +361,13 @@ def w_fusion(g: BaseGraph[VT,ET], matches: List[MatchSpiderType[VT]]) -> Rewrite
                 continue
             if w == v1_out:
                 w = v0_out
-            e = g.edge(v0_out, w)
+            e = (v0_out, w)
             if e not in etab: etab[e] = [0,0]
             etab[e][g.edge_type(g.edge(v1_out, w)) - 1] += 1
     return (etab, rem_verts, [], True)
 
 
-MatchPivotType = Tuple[VT,VT,List[VT],List[VT]]
+MatchPivotType = Tuple[Tuple[VT,VT],Tuple[List[VT],List[VT]]]
 
 def match_pivot(g: BaseGraph[VT,ET]) -> List[MatchPivotType[VT]]:
     """Does the same as :func:`match_pivot_parallel` but with ``num=1``."""
@@ -397,7 +398,7 @@ def match_pivot_parallel(
     phases = g.phases()
 
     i = 0
-    m = []
+    m: List[MatchPivotType[VT]] = []
     while (num == -1 or i < num) and len(candidates) > 0:
         e = candidates.pop()
         if check_edge_types and g.edge_type(e) != EdgeType.HADAMARD: continue
@@ -414,7 +415,7 @@ def match_pivot_parallel(
         invalid_edge = False
 
         v0n = list(g.neighbors(v0))
-        v0b = []
+        v0b: List[VT] = []
         for n in v0n:
             et = g.edge_type(g.edge(v0,n))
             if types[n] == VertexType.Z and et == EdgeType.HADAMARD: pass
@@ -426,7 +427,7 @@ def match_pivot_parallel(
         if invalid_edge: continue
 
         v1n = list(g.neighbors(v1))
-        v1b = []
+        v1b: List[VT] = []
         for n in v1n:
             et = g.edge_type(g.edge(v1,n))
             if types[n] == VertexType.Z and et == EdgeType.HADAMARD: pass
@@ -445,7 +446,7 @@ def match_pivot_parallel(
             for c in g.incident_edges(v): candidates.discard(c)
         b0 = list(v0b)
         b1 = list(v1b)
-        m.append((v0,v1,b0,b1))
+        m.append(((v0,v1),(b0,b1)))
     return m
 
 def match_pivot_gadget(
@@ -461,7 +462,7 @@ def match_pivot_gadget(
     phases = g.phases()
     rs = g.rows()
 
-    edge_list = []
+    edge_list: List[Tuple[VT,VT]] = []
     i = 0
     m: List[MatchPivotType[VT]] = []
     while (num == -1 or i < num) and len(candidates) > 0:
@@ -488,7 +489,7 @@ def match_pivot_gadget(
         v1n = list(g.neighbors(v1))
         if len(v1n) == 1: continue # It is a phase gadget
         bad_match = False
-        discard_edges = []
+        discard_edges: List[ET] = []
         for i,l in enumerate((v0n, v1n)):
             for n in l:
                 if types[n] != VertexType.Z:
@@ -510,9 +511,9 @@ def match_pivot_gadget(
         g.set_phase(v1, 0)
         g.set_qubit(v0,-1)
         g.update_phase_index(v1,v)
-        edge_list.append(g.edge(v,v1))
+        edge_list.append((v,v1))
 
-        m.append((v0,v1,[],[v]))
+        m.append(((v0,v1),([],[v])))
         i += 1
         for c in discard_edges: candidates.discard(c)
     g.add_edges(edge_list,EdgeType.SIMPLE)
@@ -532,7 +533,7 @@ def match_pivot_boundary(
     phases = g.phases()
     rs = g.rows()
 
-    edge_list = []
+    edge_list: List[Tuple[VT,VT]] = []
     consumed_vertices : Set[VT] = set()
     i = 0
     m: List[MatchPivotType[VT]] = []
@@ -558,7 +559,7 @@ def match_pivot_boundary(
             if g.is_ground(n) in consumed_vertices:
                 good_vert = False
                 break
-            boundaries = []
+            boundaries: List[VT] = []
             wrong_match = False
             for b in g.neighbors(n):
                 if types[b] == VertexType.BOUNDARY:
@@ -580,12 +581,12 @@ def match_pivot_boundary(
         v2 = g.add_vertex(VertexType.Z,-1,rs[w]+mod,0)
         g.set_phase(w, 0)
         g.update_phase_index(w,v1)
-        edge_list.append(g.edge(w,v2))
-        edge_list.append(g.edge(v1,v2))
+        edge_list.append((w,v2))
+        edge_list.append((v1,v2))
         for n in g.neighbors(v): consumed_vertices.add(n)
         for n in g.neighbors(w): consumed_vertices.add(n)
         assert bound is not None
-        m.append((v,w,[],[bound]))
+        m.append(((v,w),([],[bound])))
         i += 1
         for n in g.neighbors(v): candidates.discard(n)
         for n in g.neighbors(w): candidates.discard(n)
@@ -593,18 +594,18 @@ def match_pivot_boundary(
     g.add_edges(edge_list, EdgeType.HADAMARD)
     return m
 
-def pivot(g: BaseGraph[VT,ET], matches: List[MatchPivotType[VT]]) -> RewriteOutputType[ET,VT]:
+def pivot(g: BaseGraph[VT,ET], matches: List[MatchPivotType[VT]]) -> RewriteOutputType[VT,ET]:
     """Perform a pivoting rewrite, given a list of matches as returned by
     ``match_pivot(_parallel)``. A match is itself a list where:
 
-    ``m[0]`` : first vertex in pivot.
-    ``m[1]`` : second vertex in pivot.
-    ``m[2]`` : list of zero or one boundaries adjacent to ``m[0]``.
-    ``m[3]`` : list of zero or one boundaries adjacent to ``m[1]``.
+    ``m[0][0]`` : first vertex in pivot.
+    ``m[0][1]`` : second vertex in pivot.
+    ``m[1][0]`` : list of zero or one boundaries adjacent to ``m[0]``.
+    ``m[1][1]`` : list of zero or one boundaries adjacent to ``m[1]``.
     """
     rem_verts: List[VT] = []
     rem_edges: List[ET] = []
-    etab: Dict[ET,List[int]] = dict()
+    etab: Dict[Tuple[VT,VT],List[int]] = dict()
 
 
     for m in matches:
@@ -612,17 +613,17 @@ def pivot(g: BaseGraph[VT,ET], matches: List[MatchPivotType[VT]]) -> RewriteOutp
         #  n[0] <- non-boundary neighbors of m[0] only
         #  n[1] <- non-boundary neighbors of m[1] only
         #  n[2] <- non-boundary neighbors of m[0] and m[1]
-        g.update_phase_index(m[0],m[1])
-        n = [set(g.neighbors(m[0])), set(g.neighbors(m[1]))]
+        g.update_phase_index(m[0][0],m[0][1])
+        n = [set(g.neighbors(m[0][0])), set(g.neighbors(m[0][1]))]
         for i in range(2):
-            n[i].remove(m[1-i]) # type: ignore # Really complex typing situation
-            if len(m[i+2]) == 1: n[i].remove(m[i+2][0]) # type: ignore
+            n[i].remove(m[0][1-i])
+            if len(m[1][i]) == 1: n[i].remove(m[1][i][0])
         n.append(n[0] & n[1])
         n[0] = n[0] - n[2]
         n[1] = n[1] - n[2]
-        es = ([g.edge(s,t) for s in n[0] for t in n[1]] +
-              [g.edge(s,t) for s in n[1] for t in n[2]] +
-              [g.edge(s,t) for s in n[0] for t in n[2]])
+        es = ([(s,t) for s in n[0] for t in n[1]] +
+              [(s,t) for s in n[1] for t in n[2]] +
+              [(s,t) for s in n[0] for t in n[2]])
         k0, k1, k2 = len(n[0]), len(n[1]), len(n[2])
         g.scalar.add_power(k0*k2 + k1*k2 + k0*k1)
 
@@ -630,16 +631,16 @@ def pivot(g: BaseGraph[VT,ET], matches: List[MatchPivotType[VT]]) -> RewriteOutp
             if not g.is_ground(v):
                 g.add_to_phase(v, 1)
 
-        if g.phase(m[0]) and g.phase(m[1]): g.scalar.add_phase(Fraction(1))
-        if not m[2] and not m[3]:
+        if g.phase(m[0][0]) and g.phase(m[0][1]): g.scalar.add_phase(Fraction(1))
+        if not m[1][0] and not m[1][1]:
             g.scalar.add_power(-(k0+k1+2*k2-1))
-        elif not m[2]:
+        elif not m[1][0]:
             g.scalar.add_power(-(k1+k2))
         else: g.scalar.add_power(-(k0+k2))
 
-        for i in range(2):
+        for i in 0, 1:
             # if m[i] has a phase, it will get copied on to the neighbors of m[1-i]:
-            a = g.phase(m[i]) # type: ignore
+            a = g.phase(m[0][i])
             if a:
                 for v in n[1-i]:
                     if not g.is_ground(v):
@@ -648,19 +649,19 @@ def pivot(g: BaseGraph[VT,ET], matches: List[MatchPivotType[VT]]) -> RewriteOutp
                     if not g.is_ground(v):
                         g.add_to_phase(v, a)
 
-            if not m[i+2]:
+            if not m[1][i]:
                 # if there is no boundary, the other vertex is destroyed
-                rem_verts.append(m[1-i]) # type: ignore
+                rem_verts.append(m[0][1-i])
             else:
                 # if there is a boundary, toggle whether it is an h-edge or a normal edge
                 # and point it at the other vertex
-                e = g.edge(m[i], m[i+2][0]) # type: ignore
-                new_e = g.edge(m[1-i], m[i+2][0]) # type: ignore
-                ne,nhe = etab.get(new_e, [0,0])
-                if g.edge_type(e) == EdgeType.SIMPLE: nhe += 1
-                elif g.edge_type(e) == EdgeType.HADAMARD: ne += 1
+                e = (m[0][i], m[1][i][0])
+                new_e = (m[0][1-i], m[1][i][0])
+                ne,nhe = etab.get(new_e) or [0,0]
+                if g.edge_type(g.edge(e[0],e[1])) == EdgeType.SIMPLE: nhe += 1
+                elif g.edge_type(g.edge(e[0],e[1])) == EdgeType.HADAMARD: ne += 1
                 etab[new_e] = [ne,nhe]
-                rem_edges.append(e)
+                rem_edges.append(g.edge(e[0], e[1]))
 
 
         for e in es:
@@ -699,7 +700,7 @@ def match_lcomp_parallel(
     phases = g.phases()
 
     i = 0
-    m = []
+    m: List[MatchLcompType[VT]] = []
     while (num == -1 or i < num) and len(candidates) > 0:
         v = candidates.pop()
         vt = types[v]
@@ -723,13 +724,13 @@ def match_lcomp_parallel(
         m.append((v,vn))
     return m
 
-def lcomp(g: BaseGraph[VT,ET], matches: List[MatchLcompType[VT]]) -> RewriteOutputType[ET,VT]:
+def lcomp(g: BaseGraph[VT,ET], matches: List[MatchLcompType[VT]]) -> RewriteOutputType[VT,ET]:
     """Performs a local complementation based rewrite rule on the given graph with the
     given ``matches`` returned from ``match_lcomp(_parallel)``. See "Graph Theoretic
     Simplification of Quantum Circuits using the ZX calculus" (arXiv:1902.03178)
     for more details on the rewrite"""
-    etab: Dict[ET,List[int]] = dict()
-    rem = []
+    etab: Dict[Tuple[VT,VT],List[int]] = dict()
+    rem: List[VT] = []
     for m in matches:
         a = g.phase(m[0])
         rem.append(m[0])
@@ -742,7 +743,7 @@ def lcomp(g: BaseGraph[VT,ET], matches: List[MatchLcompType[VT]]) -> RewriteOutp
             if not g.is_ground(m[1][i]):
                 g.add_to_phase(m[1][i], -a)
             for j in range(i+1, n):
-                e = g.edge(m[1][i],m[1][j])
+                e = (m[1][i],m[1][j])
                 he = etab.get(e, [0,0])[1]
                 etab[e] = [0, he+1]
 
@@ -796,14 +797,14 @@ def match_ids_parallel(
         i += 1
     return m
 
-def remove_ids(g: BaseGraph[VT,ET], matches: List[MatchIdType[VT]]) -> RewriteOutputType[ET,VT]:
+def remove_ids(g: BaseGraph[VT,ET], matches: List[MatchIdType[VT]]) -> RewriteOutputType[VT,ET]:
     """Given the output of ``match_ids(_parallel)``, returns a list of edges to add,
     and vertices to remove."""
-    etab : Dict[ET,List[int]] = dict()
-    rem = []
+    etab : Dict[Tuple[VT,VT],List[int]] = dict()
+    rem: List[VT] = []
     for v,v0,v1,et in matches:
         rem.append(v)
-        e = g.edge(v0,v1)
+        e = (v0,v1)
         if not e in etab: etab[e] = [0,0]
         if et == EdgeType.SIMPLE: etab[e][0] += 1
         else: etab[e][1] += 1
@@ -861,9 +862,9 @@ def match_phase_gadgets(g: BaseGraph[VT,ET],vertexf:Optional[Callable[[VT],bool]
             m.append((v,n,totphase, gad, [gadgets[n] for n in gad]))
     return m
 
-def merge_phase_gadgets(g: BaseGraph[VT,ET], matches: List[MatchGadgetType[VT]]) -> RewriteOutputType[ET,VT]:
+def merge_phase_gadgets(g: BaseGraph[VT,ET], matches: List[MatchGadgetType[VT]]) -> RewriteOutputType[VT,ET]:
     """Given the output of :func:``match_phase_gadgets``, removes phase gadgets that act on the same set of targets."""
-    rem = []
+    rem: List[VT] = []
     for v, n, phase, othergadgets, othertargets in matches:
         g.set_phase(v, phase)
         g.set_phase(n, 0)
@@ -923,9 +924,9 @@ def match_supplementarity(g: BaseGraph[VT,ET], vertexf:Optional[Callable[[VT],bo
 def apply_supplementarity(
         g: BaseGraph[VT,ET],
         matches: List[MatchSupplementarityType[VT]]
-        ) -> RewriteOutputType[ET,VT]:
+        ) -> RewriteOutputType[VT,ET]:
     """Given the output of :func:``match_supplementarity``, removes non-Clifford spiders that act on the same set of targets trough supplementarity."""
-    rem = []
+    rem: List[VT] = []
     for v, w, t, neigh in matches:
         rem.append(v)
         rem.append(w)
@@ -964,7 +965,7 @@ def match_copy(
         candidates = g.vertex_set()
     phases = g.phases()
     types = g.types()
-    m = []
+    m: List[MatchCopyType[VT]] = []
 
     while len(candidates) > 0:
         v = candidates.pop()
@@ -978,8 +979,8 @@ def match_copy(
 
     return m
 
-def apply_copy(g: BaseGraph[VT,ET], matches: List[MatchCopyType[VT]]) -> RewriteOutputType[ET,VT]:
-    rem = []
+def apply_copy(g: BaseGraph[VT,ET], matches: List[MatchCopyType[VT]]) -> RewriteOutputType[VT,ET]:
+    rem: List[VT] = []
     types = g.types()
     outputs = g.outputs()
     for v,w,a,alpha, neigh in matches:
@@ -993,7 +994,7 @@ def apply_copy(g: BaseGraph[VT,ET], matches: List[MatchCopyType[VT]]) -> Rewrite
                 u = g.add_vertex(VertexType.Z, g.qubit(n), r, a)
                 e = g.edge(w,n)
                 et = g.edge_type(e)
-                g.add_edge(g.edge(n,u), toggle_edge(et))
+                g.add_edge((n,u), toggle_edge(et))
             g.add_to_phase(n, a)
     return ({}, rem, [], True)
 
@@ -1073,7 +1074,7 @@ def apply_gadget_phasepoly(g: BaseGraph[VT,ET], matches: List[MatchPhasePolyType
                     n = g.add_vertex(VertexType.Z,-1, rs[v2]+0.5)
                     v = g.add_vertex(VertexType.Z,-2, rs[v2]+0.5)
                     phase = 0
-                    g.add_edges([g.edge(n,v),g.edge(v1,n),g.edge(v2,n)],EdgeType.HADAMARD)
+                    g.add_edges([(n,v),(v1,n),(v2,n)],EdgeType.HADAMARD)
                 g.set_phase(v, phase + Fraction(3,4))
 
                 for k in range(j+1,4):
@@ -1089,7 +1090,7 @@ def apply_gadget_phasepoly(g: BaseGraph[VT,ET], matches: List[MatchPhasePolyType
                         n = g.add_vertex(VertexType.Z,-1, rs[v3]+0.5)
                         v = g.add_vertex(VertexType.Z,-2, rs[v3]+0.5)
                         phase = 0
-                        g.add_edges([g.edge(*e) for e in [(n,v),(v1,n),(v2,n),(v3,n)]],EdgeType.HADAMARD)
+                        g.add_edges([(n,v),(v1,n),(v2,n),(v3,n)],EdgeType.HADAMARD)
                     g.set_phase(v, phase + Fraction(1,4))
         f = frozenset(group)
         if f in gadgets:
@@ -1102,5 +1103,5 @@ def apply_gadget_phasepoly(g: BaseGraph[VT,ET], matches: List[MatchPhasePolyType
             n = g.add_vertex(1,-1, rs[group[0]]+0.5)
             v = g.add_vertex(1,-2, rs[group[0]]+0.5)
             phase = 0
-            g.add_edges([g.edge(n,v)]+[g.edge(n,w) for w in group],EdgeType.HADAMARD)
+            g.add_edges([(n,v)]+[(n,w) for w in group],EdgeType.HADAMARD)
         g.set_phase(v, phase + Fraction(7,4))

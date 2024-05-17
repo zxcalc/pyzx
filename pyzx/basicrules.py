@@ -109,13 +109,13 @@ def strong_comp(g: BaseGraph[VT,ET], v1: VT, v2: VT) -> bool:
                 q = 0.4*g.qubit(vn) + 0.6*g.qubit(v[i])
                 r = 0.4*g.row(vn) + 0.6*g.row(v[i])
                 newv = g.add_vertex(g.type(v[j]), qubit=q, row=r)
-                g.add_edge(g.edge(newv,vn), edgetype=g.edge_type(g.edge(v[i],vn)))
+                g.add_edge((newv,vn), edgetype=g.edge_type(g.edge(v[i],vn)))
                 g.set_phase(newv, g.phase(v[j]))
                 nhd[i].append(newv)
 
     for n1 in nhd[0]:
         for n2 in nhd[1]:
-            g.add_edge(g.edge(n1,n2))
+            g.add_edge((n1,n2))
 
     g.scalar.add_power((len(nhd[0]) - 1) * (len(nhd[1]) - 1))
     if g.phase(v1) == 1 and g.phase(v2) == 1:
@@ -162,8 +162,8 @@ def pi_commute_Z(g: BaseGraph[VT, ET], v: VT) -> bool:
             c = g.add_vertex(VertexType.X,
                     qubit=0.5*(g.qubit(v) + g.qubit(w)),
                     row=0.5*(g.row(v) + g.row(w)))
-            g.add_edge(g.edge(v, c))
-            g.add_edge(g.edge(c, w), edgetype=et)
+            g.add_edge((v, c))
+            g.add_edge((c, w), edgetype=et)
     return True
 
 def check_pi_commute_X(g: BaseGraph[VT,ET], v: VT) -> bool:
@@ -214,7 +214,7 @@ def fuse(g: BaseGraph[VT,ET], v1: VT, v2: VT) -> bool:
         g.add_to_phase(v1, g.phase(v2))
     for v3 in g.neighbors(v2):
         if v3 != v1:
-            g.add_edge_smart(g.edge(v1,v3), edgetype=g.edge_type(g.edge(v2,v3)))
+            g.add_edge((v1,v3), edgetype=g.edge_type(g.edge(v2,v3)))
     g.remove_vertex(v2)
     return True
 
@@ -251,7 +251,7 @@ def remove_id(g: BaseGraph[VT,ET], v: VT) -> bool:
         return False
 
     v1, v2 = tuple(g.neighbors(v))
-    g.add_edge_smart(g.edge(v1,v2), edgetype=EdgeType.SIMPLE
+    g.add_edge((v1,v2), edgetype=EdgeType.SIMPLE
             if g.edge_type(g.edge(v,v1)) == g.edge_type(g.edge(v,v2))
             else EdgeType.HADAMARD)
     g.remove_vertex(v)

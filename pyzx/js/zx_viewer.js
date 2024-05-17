@@ -97,7 +97,8 @@ define('zx_viewer', ['d3'], function(d3) {
             .attr("class", "link")
             .selectAll("line")
             .data(graph.links)
-            .enter().append("line")
+            .enter().append("path")
+            // .enter().append("line")
             .attr("stroke", function(d) { return edgeColor(d.t); })
             .attr("style", "stroke-width: 1.5px");
 
@@ -230,10 +231,24 @@ define('zx_viewer', ['d3'], function(d3) {
 
         update_hboxes();
 
-        link.attr("x1", function(d) { return d.source.x; })
-            .attr("y1", function(d) { return d.source.y; })
-            .attr("x2", function(d) { return d.target.x; })
-            .attr("y2", function(d) { return d.target.y; });
+        var link_curve = function(d) {
+            var x1, x2, y1, y2 = [d.source.x, d.source.y, d.target.x, d.target.y];
+            if (d.num_parallel == 1) {
+                return `M ${x1} ${x2} L ${y1} ${y2}`;
+            } else {
+                var dx, dy, midx, midy = [x2 - x1, y2 - y1, 0.5 * (x1 + x2), 0.5 * (y1 + y2)]
+                var pos = d.index / d.num_parallel;
+                var cx = midx + pos * dy;
+                var cy = midy - pos * dx;
+                return `M ${x1} ${x2} Q ${cx} ${cy}, ${y1} ${y2}`;
+            }
+        };
+
+        link.attr("d", link_curve);
+        // link.attr("x1", function(d) { return d.source.x; })
+        //     .attr("y1", function(d) { return d.source.y; })
+        //     .attr("x2", function(d) { return d.target.x; })
+        //     .attr("y2", function(d) { return d.target.y; });
 
         // EVENTS FOR DRAGGING AND SELECTION
 
@@ -260,15 +275,18 @@ define('zx_viewer', ['d3'], function(d3) {
 
                 update_hboxes();
 
-                link.filter(function(d) { return d.source.selected ||
+                link.filter(function(d) { return d.source.selected || d.target.selected ||
                                             (auto_hbox && d.source.t == 3); })
-                    .attr("x1", function(d) { return d.source.x; })
-                    .attr("y1", function(d) { return d.source.y; });
+                    .attr("d", link_curve);
+                // link.filter(function(d) { return d.source.selected ||
+                //                             (auto_hbox && d.source.t == 3); })
+                //     .attr("x1", function(d) { return d.source.x; })
+                //     .attr("y1", function(d) { return d.source.y; });
 
-                link.filter(function(d) { return d.target.selected ||
-                                            (auto_hbox && d.target.t == 3); })
-                    .attr("x2", function(d) { return d.target.x; })
-                    .attr("y2", function(d) { return d.target.y; });
+                // link.filter(function(d) { return d.target.selected ||
+                //                             (auto_hbox && d.target.t == 3); })
+                //     .attr("x2", function(d) { return d.target.x; })
+                //     .attr("y2", function(d) { return d.target.y; });
 
                 // text.filter(function(d) { return d.selected; })
                 //     .attr("x", function(d) { return d.x; })

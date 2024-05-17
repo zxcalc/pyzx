@@ -27,7 +27,7 @@ class GraphDiff(Generic[VT, ET]):
 	removed_verts: List[VT]
 	new_verts: List[VT]
 	removed_edges: List[ET]
-	new_edges: List[ET]
+	new_edges: List[Tuple[Tuple[VT,VT],EdgeType.Type]]
 	changed_vertex_types: Dict[VT,VertexType.Type]
 	changed_edge_types: Dict[ET, EdgeType.Type]
 	changed_phases: Dict[VT, FractionLike]
@@ -53,8 +53,12 @@ class GraphDiff(Generic[VT, ET]):
 		self.new_verts = list(new_verts - old_verts)
 		old_edges = g1.edge_set()
 		new_edges = g2.edge_set()
-		self.new_edges = list(new_edges - old_edges)
+		self.new_edges = []
 		self.removed_edges = []
+
+		for e in (new_edges - old_edges):
+			self.new_edges.append((g2.edge_st(e), g2.edge_type(e)))
+
 		for e in (old_edges - new_edges):
 			s,t = g1.edge_st(e)
 			if s in self.removed_verts or t in self.removed_verts: continue
@@ -80,13 +84,13 @@ class GraphDiff(Generic[VT, ET]):
 				pos2 = g2.qubit(v), g2.row(v)
 				self.changed_pos[v] = pos2
 
-		for e in new_edges:
-			if e in old_edges:
-				if g1.edge_type(e) != g2.edge_type(e):
-					self.changed_edge_types[e] = g2.edge_type(e)
-			else:
-				if g2.edge_type(e) != EdgeType.HADAMARD: # We take Hadamard edges to be the default
-					self.changed_edge_types[e] = g2.edge_type(e)
+		# for e in new_edges:
+		# 	if e in old_edges:
+		# 		if g1.edge_type(e) != g2.edge_type(e):
+		# 			self.changed_edge_types[e] = g2.edge_type(e)
+		# 	else:
+		# 		if g2.edge_type(e) != EdgeType.HADAMARD: # We take Hadamard edges to be the default
+		# 			self.changed_edge_types[e] = g2.edge_type(e)
 
 	def apply_diff(self,g: BaseGraph[VT,ET]) -> BaseGraph[VT,ET]:
 		g = copy.deepcopy(g)
@@ -103,11 +107,8 @@ class GraphDiff(Generic[VT, ET]):
 				g.set_phase(v,self.changed_phases[v])
 			if v in self.changed_vdata:
 				g._vdata[v] = self.changed_vdata[v]
-		for e in self.new_edges:
-			ty:EdgeType.Type = EdgeType.HADAMARD
-			if e in self.changed_edge_types:
-				ty = self.changed_edge_types[e]
-			g.add_edge(e,ty)
+		for st, ty in self.new_edges:
+			g.add_edge(st,ty)
 
 		for v in self.changed_pos:
 			if v in self.new_verts: continue
@@ -126,7 +127,6 @@ class GraphDiff(Generic[VT, ET]):
 			g._vdata[v] = self.changed_vdata[v]
 
 		for e in self.changed_edge_types:
-			if e in self.new_edges: continue
 			g.set_edge_type(e,self.changed_edge_types[e])
 
 		return g

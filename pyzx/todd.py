@@ -34,7 +34,7 @@ import numpy as np
 
 from .circuit.gates import Gate, T, S, Z, ZPhase, CZ, CNOT, ParityPhase
 from .utils import settings, EdgeType, VertexType, FractionLike
-from .graph.base import BaseGraph, VT, ET
+from .graph.base import BaseGraph, VT, ET, upair
 from .linalg import Mat2, MatLike, Z2
 from .extract import permutation_as_swaps, column_optimal_swap
 from .parity_network import parity_network
@@ -500,7 +500,7 @@ def todd_on_graph(g: BaseGraph[VT,ET]) -> None:
     p.add_par_matrix(parmatrix,False)
     p.add_par_matrix(m2,True)
     correction = p.to_clifford()
-    add_czs = {}
+    add_czs: Dict[Tuple[VT,VT], List[int]] = {}
     for clif in correction:
         if isinstance(clif, ZPhase):
             v = targets[clif.target]
@@ -513,7 +513,7 @@ def todd_on_graph(g: BaseGraph[VT,ET]) -> None:
                     phases[v] = g.phase(v) + clif.phase
         elif clif.name == 'CZ':
             v1,v2 = targets[clif.control], targets[clif.target] # type: ignore
-            add_czs[g.edge(v1,v2)] = [0,1]
+            add_czs[upair(v1,v2)] = [0,1]
         else:
             raise ValueError("Unknown clifford correction:", str(clif))
     
@@ -536,13 +536,13 @@ def todd_on_graph(g: BaseGraph[VT,ET]) -> None:
         else:
             g.remove_vertices((n,v))
     
-    edges = []
+    edges: List[Tuple[VT,VT]] = []
     for par in newgadgets:
         pos = sum(rs[t] for t in par)/len(par) + 0.5
         while pos in positions: pos += 0.5
         n = g.add_vertex(VertexType.Z, -1, pos)
         v = g.add_vertex(VertexType.Z, -2, pos, phase=Fraction(1,4))
-        edges.append(g.edge(n,v))
+        edges.append((n,v))
         positions.add(pos)
-        for t in par: edges.append(g.edge(n,t))
+        for t in par: edges.append((n,t))
     g.add_edges(edges, EdgeType.HADAMARD)

@@ -48,7 +48,7 @@ def connectivity_from_biadj(
     for i in range(len(right)):
         for j in range(len(left)):
             if m.data[i][j] and not g.connected(right[i],left[j]):
-                g.add_edge(g.edge(right[i],left[j]),edgetype)
+                g.add_edge((right[i],left[j]),edgetype)
             elif not m.data[i][j] and g.connected(right[i],left[j]):
                 g.remove_edge(g.edge(right[i],left[j]))
 
@@ -477,7 +477,7 @@ def apply_cnots(g: BaseGraph[VT, ET], c: Circuit, frontier: List[VT], qubit_map:
         qubit_map[w] = qubit_map[v]
         b = [o for o in g.neighbors(v) if o in outputs][0]
         g.remove_vertex(v)
-        g.add_edge(g.edge(w, b))
+        g.add_edge((w, b))
         frontier.remove(v)
         frontier.append(w)
 
@@ -563,8 +563,8 @@ def neighbors_of_frontier(g: BaseGraph[VT, ET], frontier: List[VT]) -> Set[VT]:
             e = g.edge(v, b)
             et = g.edge_type(e)
             g.remove_edge(e)
-            g.add_edge(g.edge(v, w), EdgeType.HADAMARD)
-            g.add_edge(g.edge(w, b), toggle_edge(et))
+            g.add_edge((v, w), EdgeType.HADAMARD)
+            g.add_edge((w, b), toggle_edge(et))
             d.remove(b)
             d.append(w)
         neighbor_set.update(d)
@@ -580,7 +580,7 @@ def remove_gadget(g: BaseGraph[VT, ET], frontier: List[VT], qubit_map: Dict[VT, 
         if w not in gadgets: continue
         for v in g.neighbors(w):
             if v in frontier:
-                apply_rule(g, pivot, [(w, v, [], [o for o in g.neighbors(v) if o in outputs])])  # type: ignore
+                apply_rule(g, pivot, [((w, v), ([], [o for o in g.neighbors(v) if o in outputs]))])  # type: ignore
                 frontier.remove(v)
                 del gadgets[w]
                 frontier.append(w)
@@ -745,7 +745,7 @@ def extract_simple(g: BaseGraph[VT, ET], up_to_perm: bool = True) -> Circuit:
                             XPhase(q, g.phase(v)))
                     circ.prepend_gate(gate)
 
-                g.add_edge(g.edge(w,o), edgetype=g.edge_type(g.edge(w,v)))
+                g.add_edge((w,o), edgetype=g.edge_type(g.edge(w,v)))
                 g.remove_vertex(v)
                 
         if progress: continue

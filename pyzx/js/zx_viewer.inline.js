@@ -96,8 +96,9 @@ function showGraph(tag, graph, width, height, scale, node_size, auto_hbox, show_
         .attr("class", "link")
         .selectAll("line")
         .data(graph.links)
-        .enter().append("line")
+        .enter().append("path")
         .attr("stroke", function(d) { return edgeColor(d.t); })
+        .attr("fill", "transparent")
         .attr("style", "stroke-width: 1.5px");
 
     var brush = svg.append("g")
@@ -248,10 +249,21 @@ function showGraph(tag, graph, width, height, scale, node_size, auto_hbox, show_
 
     update_hboxes();
 
-    link.attr("x1", function(d) { return d.source.x; })
-        .attr("y1", function(d) { return d.source.y; })
-        .attr("x2", function(d) { return d.target.x; })
-        .attr("y2", function(d) { return d.target.y; });
+    var link_curve = function(d) {
+        var x1 = d.source.x, x2 = d.target.x, y1 = d.source.y, y2 = d.target.y;
+        if (d.num_parallel == 1) {
+            return `M ${x1} ${y1} L ${x2} ${y2}`;
+        } else {
+            var dx = x2 - x1, dy = y2 - y1;
+            var midx = 0.5 * (x1 + x2), midy = 0.5 * (y1 + y2);
+            var pos = (d.index / (d.num_parallel-1)) - 0.5;
+            var cx = midx - pos * dy;
+            var cy = midy + pos * dx;
+            return `M ${x1} ${y1} Q ${cx} ${cy}, ${x2} ${y2}`;
+            // return `M ${x1} ${y1} L ${x2} ${y2}`;
+        }
+    };
+    link.attr("d", link_curve);
 
     // EVENTS FOR DRAGGING AND SELECTION
 
@@ -278,19 +290,9 @@ function showGraph(tag, graph, width, height, scale, node_size, auto_hbox, show_
 
             update_hboxes();
 
-            link.filter(function(d) { return d.source.selected ||
+            link.filter(function(d) { return d.source.selected || d.target.selected ||
                     (auto_hbox && d.source.t == 3); })
-                .attr("x1", function(d) { return d.source.x; })
-                .attr("y1", function(d) { return d.source.y; });
-
-            link.filter(function(d) { return d.target.selected ||
-                    (auto_hbox && d.target.t == 3); })
-                .attr("x2", function(d) { return d.target.x; })
-                .attr("y2", function(d) { return d.target.y; });
-
-            // text.filter(function(d) { return d.selected; })
-            //     .attr("x", function(d) { return d.x; })
-            //     .attr("y", function(d) { return d.y + 0.7 * node_size + 14; });
+                .attr("d", link_curve);
         }));
 
     brush.call(d3.brush().keyModifiers(false)

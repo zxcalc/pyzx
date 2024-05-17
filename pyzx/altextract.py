@@ -33,8 +33,9 @@ def ones_in_pos(m, pos):
             break
     m1 = m.copy()
 
-    for i in range(m.rows()):
-        m[perm[i],:] = m1[i,:]
+    if not perm is None:
+        for i in range(m.rows()):
+            m[perm[i],:] = m1[i,:]
 
 # produce a parity matrix that extracts all of the extractable
 # vertices in convenient places and ignores the rest
@@ -177,8 +178,8 @@ def alt_extract_circuit(
                 e = g.edge(v,b)
                 et = g.edge_type(e)
                 g.remove_edge(e)
-                g.add_edge(g.edge(v,w),2)
-                g.add_edge(g.edge(w,b),toggle_edge(et))
+                g.add_edge((v,w),2)
+                g.add_edge((w,b),toggle_edge(et))
                 d.remove(b)
                 d.append(w)
             neighbor_set.update(d)
@@ -238,7 +239,7 @@ def alt_extract_circuit(
             qubit_map[w] = qubit_map[v]
             b = [o for o in g.neighbors(v) if o in outputs][0]
             g.remove_vertex(v)
-            g.add_edge(g.edge(w,b))
+            g.add_edge((w,b))
             frontier.remove(v)
             frontier.append(w)
         if not quiet: print("Vertices extracted:", len(good_verts))
