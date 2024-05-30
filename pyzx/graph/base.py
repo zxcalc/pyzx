@@ -178,6 +178,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         else:
             g.set_inputs(new_outputs)
             g.set_outputs(new_inputs)
+            g.scalar.add_phase(- 2 * g.scalar.phase)
         
         for e in self.edges():
             s, t = self.edge_st(e)
