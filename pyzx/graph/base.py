@@ -149,7 +149,9 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         g.scalar = self.scalar.copy()
         g.merge_vdata = self.merge_vdata
         mult:int = 1
-        if adjoint: mult = -1
+        if adjoint:
+            mult = -1
+            g.scalar.phase *= -1
 
         #g.add_vertices(self.num_vertices())
         ty = self.types()
@@ -178,7 +180,6 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         else:
             g.set_inputs(new_outputs)
             g.set_outputs(new_inputs)
-            g.scalar.add_phase(- 2 * g.scalar.phase)
         
         for e in self.edges():
             s, t = self.edge_st(e)
