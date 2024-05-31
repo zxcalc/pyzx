@@ -79,15 +79,27 @@ class Scalar(object):
     def __complex__(self) -> complex:
         return self.to_number()
 
-    def copy(self) -> 'Scalar':
+    def copy(self, conjugate: bool = False) -> 'Scalar':
+        """Create a copy of the Scalar. If ``conjugate`` is set, the copy will be complex conjugated.
+
+        Args:
+            conjugate: set to True to return a complex-conjugated copy
+
+        Returns:
+            A copy of the Scalar
+        """
         s = Scalar()
         s.power2 = self.power2
-        s.phase = self.phase
-        s.phasenodes = copy.copy(self.phasenodes)
-        s.floatfactor = self.floatfactor
+        s.phase = self.phase if not conjugate else -self.phase
+        s.phasenodes = copy.copy(self.phasenodes) if not conjugate else [-p for p in self.phasenodes]
+        s.floatfactor = self.floatfactor if not conjugate else self.floatfactor.conjugate()
         s.is_unknown = self.is_unknown
         s.is_zero = self.is_zero
         return s
+    
+    def conjugate(self) -> 'Scalar':
+        """Returns a new Scalar equal to the complex conjugate"""
+        return self.copy(conjugate=True)
 
     def to_number(self) -> complex:
         if self.is_zero: return 0

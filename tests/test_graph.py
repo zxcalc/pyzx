@@ -30,6 +30,7 @@ from pyzx.generate import identity
 
 import numpy as np
 from pyzx.tensor import compare_tensors
+from pyzx.graph.scalar import Scalar
 
 
 
@@ -130,6 +131,17 @@ class TestGraphBasicMethods(unittest.TestCase):
         self.assertEqual(g.num_edges(),g2.num_edges())
         v1, v2 = list(g2.vertices())
         self.assertEqual(g.edge_type(g.edge(v1,v2)),EdgeType.HADAMARD)
+        
+    def test_adjoint_scalar(self):
+        g = Graph()
+        scalar = Scalar()
+        scalar.phase = Fraction(1, 4)
+        scalar.phasenodes = [Fraction(1, 2), Fraction(1, 4)]
+        scalar.floatfactor = 1.3 + 0.1*1j
+        scalar.power2 = 2
+        g.scalar = scalar
+        g_adj = g.adjoint()
+        self.assertAlmostEqual(g_adj.scalar.to_number(), scalar.to_number().conjugate())
 
     @unittest.skipUnless(np, "numpy needs to be installed for this to run")
     def test_remove_isolated_vertex_preserves_semantics(self):
@@ -176,6 +188,7 @@ class TestGraphCircuitMethods(unittest.TestCase):
         g.set_outputs((o1, o2))
         g.add_edges([(i1,v),(i2,w),(v,w),(v,o1),(w,o2)])
         self.i1, self.i2, self.v, self.w, self.o1, self.o2 = i1, i2, v, w, o1, o2
+        print(self.graph.scalar.to_number())
 
     def test_qubit_index_and_depth(self):
         g = self.graph
