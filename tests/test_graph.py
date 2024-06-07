@@ -188,7 +188,6 @@ class TestGraphCircuitMethods(unittest.TestCase):
         g.set_outputs((o1, o2))
         g.add_edges([(i1,v),(i2,w),(v,w),(v,o1),(w,o2)])
         self.i1, self.i2, self.v, self.w, self.o1, self.o2 = i1, i2, v, w, o1, o2
-        print(self.graph.scalar.to_number())
 
     def test_qubit_index_and_depth(self):
         g = self.graph
