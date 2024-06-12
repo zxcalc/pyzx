@@ -84,13 +84,13 @@ class GraphDiff(Generic[VT, ET]):
 				pos2 = g2.qubit(v), g2.row(v)
 				self.changed_pos[v] = pos2
 
-		# for e in new_edges:
-		# 	if e in old_edges:
-		# 		if g1.edge_type(e) != g2.edge_type(e):
-		# 			self.changed_edge_types[e] = g2.edge_type(e)
-		# 	else:
-		# 		if g2.edge_type(e) != EdgeType.HADAMARD: # We take Hadamard edges to be the default
-		# 			self.changed_edge_types[e] = g2.edge_type(e)
+		for e in new_edges:
+			if e in old_edges:
+				if g1.edge_type(e) != g2.edge_type(e):
+					self.changed_edge_types[e] = g2.edge_type(e)
+			else:
+				if g2.edge_type(e) != EdgeType.HADAMARD: # We take Hadamard edges to be the default
+					self.changed_edge_types[e] = g2.edge_type(e)
 
 	def apply_diff(self,g: BaseGraph[VT,ET]) -> BaseGraph[VT,ET]:
 		g = copy.deepcopy(g)
