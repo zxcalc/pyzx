@@ -829,8 +829,10 @@ def match_phase_gadgets(g: BaseGraph[VT,ET],vertexf:Optional[Callable[[VT],bool]
     outputs = g.outputs()
     # First we find all the phase-gadgets, and the list of vertices they act on
     for v in candidates:
-        non_clifford = phases[v] != 0 and getattr(phases[v], 'denominator', 1) > 2
-        if isinstance(phases[v], Poly): non_clifford = True
+        if isinstance(phases[v], Poly):
+            non_clifford = True
+        else:
+            non_clifford = phases[v] != 0 and getattr(phases[v], 'denominator', 1) > 2
         if non_clifford and len(list(g.neighbors(v)))==1:
             n = list(g.neighbors(v))[0]
             if phases[n] not in (0,1): continue # Not a real phase gadget (happens for scalar diagrams)
@@ -894,7 +896,7 @@ def match_supplementarity(g: BaseGraph[VT,ET], vertexf:Optional[Callable[[VT],bo
     # First we find all the non-Clifford vertices and their list of neighbors
     while len(candidates) > 0:
         v = candidates.pop()
-        if phases[v] == 0 or phases[v].denominator <= 2: continue # Skip Clifford vertices
+        if phases[v] == 0 or (not isinstance(phases[v], Poly) and phases[v].denominator <= 2): continue # Skip Clifford vertices
         neigh = set(g.neighbors(v))
         if not neigh.isdisjoint(taken): continue
         par = frozenset(neigh)
@@ -910,7 +912,7 @@ def match_supplementarity(g: BaseGraph[VT,ET], vertexf:Optional[Callable[[VT],bo
             if v in taken: continue
         else: parities[par] = [v]
         for w in neigh:
-            if phases[w] == 0 or phases[w].denominator <= 2 or w in taken: continue
+            if phases[w] == 0 or (not isinstance(phases[w], Poly) and phases[w].denominator <= 2) or w in taken: continue
             diff = neigh.symmetric_difference(g.neighbors(w))
             if len(diff) == 2: # Perfect overlap
                 if (phases[v] + phases[w]) % 2 == 0 or (phases[v] - phases[w]) % 2 == 1:
