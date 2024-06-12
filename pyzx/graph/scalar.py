@@ -79,6 +79,14 @@ class Scalar(object):
     def __complex__(self) -> complex:
         return self.to_number()
 
+    def polar_str(self) -> str:
+        """Returns a human-readable string of the scalar in polar format"""
+        r,th = cmath.polar(self.to_number())
+        s = "{:.3}".format(r)
+        if th != 0:
+            s += " * exp(i pi * {:.3})".format(th/math.pi)
+        return s
+
     def copy(self, conjugate: bool = False) -> 'Scalar':
         """Create a copy of the Scalar. If ``conjugate`` is set, the copy will be complex conjugated.
 
@@ -211,6 +219,8 @@ class Scalar(object):
             self.phasenodes.append(node)
         if node == 1: self.is_zero = True
     def add_float(self,f: complex) -> None:
+        if f == 0.0:
+            self.is_zero = True
         self.floatfactor *= f
 
     def mult_with_scalar(self, other: 'Scalar') -> None:
