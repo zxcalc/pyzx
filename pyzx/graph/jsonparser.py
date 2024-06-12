@@ -46,6 +46,7 @@ def string_to_phase(string: str, g: Union[BaseGraph,'GraphDiff']) -> Union[Fract
         return Fraction(0)
     try:
         s = string.lower().replace(' ', '')
+        s = s.replace('*', '')
         s = re.sub(r'\\?(pi|\u03c0)', '', s)
         if s == '': return Fraction(1)
         if s == '-': return Fraction(-1)
@@ -54,7 +55,7 @@ def string_to_phase(string: str, g: Union[BaseGraph,'GraphDiff']) -> Union[Fract
         elif '/' in s:
             a, b = s.split("/", 2)
             if not a:
-                return Fraction(1, int(b))
+                return Fraction(int(1), int(b))
             if a == '-':
                 a = '-1'
             return Fraction(int(a), int(b))
