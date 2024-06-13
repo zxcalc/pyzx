@@ -26,21 +26,29 @@ class Edge:
     between two vertices"""
     s: int
     h: int
-    def __init__(self, s: int=0, h: int=0):
+    w_io: int
+
+    def __init__(self, s: int=0, h: int=0, w_io: int=0):
         self.s = s
         self.h = h
+        self.w_io = w_io
 
-    def add(self, s: int=0, h: int=0):
+    def add(self, s: int=0, h: int=0, w_io: int=0):
         self.s += s
         self.h += h
+        self.w_io += w_io
         if self.s < 0 or self.h < 0:
             raise ValueError('Cannot have negative edges')
+        if self.w_io not in (0,1):
+            raise ValueError('Invalid number of W-IO edges')
+        if self.w_io == 1 and self.s + self.h > 0:
+            raise ValueError('Cannot have W-IO edge and other edges')
 
-    def remove(self, s: int=0, h: int=0):
-        self.add(s=-s, h=-h)
-    
+    def remove(self, s: int=0, h: int=0, w_io: int=0):
+        self.add(s=-s, h=-h, w_io=-w_io)
+
     def is_empty(self) -> bool:
-        return self.s == 0 and self.h == 0
+        return self.s == 0 and self.h == 0 and self.w_io == 0
 
 class Multigraph(BaseGraph[int,Tuple[int,int,EdgeType.Type]]):
     """Purely Pythonic multigraph implementation of :class:`~graph.base.BaseGraph`."""
@@ -156,7 +164,8 @@ class Multigraph(BaseGraph[int,Tuple[int,int,EdgeType.Type]]):
             e = self.graph[s][t]
 
         if edgetype == EdgeType.SIMPLE: e.add(s=1)
-        else: e.add(h=1)
+        elif edgetype == EdgeType.HADAMARD: e.add(h=1)
+        else: e.add(w_io=1)
 
         if self._auto_simplify:
             t1 = self.ty[s]
@@ -224,9 +233,10 @@ class Multigraph(BaseGraph[int,Tuple[int,int,EdgeType.Type]]):
         s,t,ty = edge
         e = self.graph[s][t]
         if ty == EdgeType.SIMPLE: e.remove(s=1)
-        else: e.remove(h=1)
+        elif ty == EdgeType.HADAMARD: e.remove(h=1)
+        else: e.remove(w_io=1)
 
-        if e.s == 0 and e.h == 0:
+        if e.is_empty():
             del self.graph[s][t]
             del self.graph[t][s]
 
@@ -257,11 +267,13 @@ class Multigraph(BaseGraph[int,Tuple[int,int,EdgeType.Type]]):
                     if v1 > v0:
                         for _ in range(e.s): yield (v0, v1, EdgeType.SIMPLE)
                         for _ in range(e.h): yield (v0, v1, EdgeType.HADAMARD)
+                        for _ in range(e.w_io): yield (v0, v1, EdgeType.W_IO)
         elif t != None:
             s, t = (s, t) if s < t else (t, s)
             e = self.graph[s][t]
             for _ in range(e.s): yield (s, t, EdgeType.SIMPLE)
             for _ in range(e.h): yield (s, t, EdgeType.HADAMARD)
+            for _ in range(e.w_io): yield (s, t, EdgeType.W_IO)
 
     # def edges_in_range(self, start, end, safe=False):
     #    """like self.edges, but only returns edges that belong to vertices
@@ -315,8 +327,13 @@ class Multigraph(BaseGraph[int,Tuple[int,int,EdgeType.Type]]):
         v1,v2,ty = edge
         if ty != t:
             e = self.graph[v1][v2]
-            if t == EdgeType.SIMPLE: e.add(s=1,h=-1)
-            else: e.add(s=-1,h=1)
+            # decrement the old type and increment the new type
+            if ty == EdgeType.SIMPLE: e.add(s=-1)
+            elif ty == EdgeType.HADAMARD: e.add(h=-1)
+            else: e.add(w_io=-1)
+            if t == EdgeType.SIMPLE: e.add(s=1)
+            elif t == EdgeType.HADAMARD: e.add(h=1)
+            else: e.add(w_io=1)
 
     def type(self, vertex):
         return self.ty[vertex]
