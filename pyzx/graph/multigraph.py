@@ -50,6 +50,11 @@ class Edge:
     def is_empty(self) -> bool:
         return self.s == 0 and self.h == 0 and self.w_io == 0
 
+    def get_edge_count(self, ty: EdgeType.Type) -> int:
+        if ty == EdgeType.SIMPLE: return self.s
+        elif ty == EdgeType.HADAMARD: return self.h
+        else: return self.w_io
+
 class Multigraph(BaseGraph[int,Tuple[int,int,EdgeType.Type]]):
     """Purely Pythonic multigraph implementation of :class:`~graph.base.BaseGraph`."""
     backend = 'multigraph'
