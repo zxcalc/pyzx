@@ -60,7 +60,7 @@ class GraphDiff(Generic[VT, ET]):
 			self.new_edges.append((g2.edge_st(e), g2.edge_type(e)))
 
 		g2_edges = list(g2.edges())
-		removed_edges = [i for i in g1.edges() if not i in g2_edges]
+		removed_edges = [i for i in g1.edges() if not i in g2_edges or g2_edges.remove(i)]
 		for e in (removed_edges):
 			s,t = g1.edge_st(e)
 			if s in self.removed_verts or t in self.removed_verts: continue
