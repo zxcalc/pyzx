@@ -394,7 +394,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         from .graph import Graph # imported here to prevent circularity
         g = Graph(backend=type(self).backend)
         if type(self).backend == 'multigraph':
-            g.setself._auto_simplify(self._auto_simplify)
+            g.set_auto_simplify(self._auto_simplify)
         ty = self.types()
         rs = self.rows()
         qs = self.qubits()
