@@ -14,9 +14,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import json
-from typing import Any, Callable, Generic, Optional, List, Dict, Tuple
 import copy
+import json
+from collections import Counter
+from typing import Any, Callable, Generic, Optional, List, Dict, Tuple
 
 from ..utils import VertexType, EdgeType, FractionLike, FloatInt, phase_to_s
 from .base import BaseGraph, VT, ET
@@ -56,10 +57,10 @@ class GraphDiff(Generic[VT, ET]):
 		self.new_edges = []
 		self.removed_edges = []
 
-		for e in (new_edges - old_edges):
+		for e in Counter(new_edges - old_edges).elements():
 			self.new_edges.append((g2.edge_st(e), g2.edge_type(e)))
 
-		for e in (old_edges - new_edges):
+		for e in Counter(old_edges - new_edges).elements():
 			s,t = g1.edge_st(e)
 			if s in self.removed_verts or t in self.removed_verts: continue
 			self.removed_edges.append(e)
