@@ -407,8 +407,11 @@ def full_reduce_iter(g: BaseGraph[VT,ET]) -> Iterator[Tuple[BaseGraph[VT,ET],str
             ok = True
             yield g, f"pivot_gadget -> {step}"
 
-def is_graph_like(g: BaseGraph[VT,ET]) -> bool:
-    """Checks if a ZX-diagram is graph-like."""
+def is_graph_like(g: BaseGraph[VT,ET], strict:bool=False) -> bool:
+    """Checks if a ZX-diagram is graph-like: 
+    only contains Z-spiders which are connected by Hadamard edges.
+    If `strict` is True, then also checks that each boundary vertex is connected to a Z-spider,
+    and that each Z-spider is connected to at most one boundary."""
 
     # checks that all spiders are Z-spiders
     for v in g.vertices():
@@ -431,18 +434,19 @@ def is_graph_like(g: BaseGraph[VT,ET]) -> bool:
         if g.connected(v, v):
             return False
 
-    # every I/O is connected to a Z-spider
-    bs = [v for v in g.vertices() if g.type(v) == VertexType.BOUNDARY]
-    for b in bs:
-        if g.vertex_degree(b) != 1 or g.type(list(g.neighbors(b))[0]) != VertexType.Z:
-            return False
+    if strict:
+        # every I/O is connected to a Z-spider
+        bs = [v for v in g.vertices() if g.type(v) == VertexType.BOUNDARY]
+        for b in bs:
+            if g.vertex_degree(b) != 1 or g.type(list(g.neighbors(b))[0]) != VertexType.Z:
+                return False
 
-    # every Z-spider is connected to at most one I/O
-    zs = [v for v in g.vertices() if g.type(v) == VertexType.Z]
-    for z in zs:
-        b_neighbors = [n for n in g.neighbors(z) if g.type(n) == VertexType.BOUNDARY]
-        if len(b_neighbors) > 1:
-            return False
+        # every Z-spider is connected to at most one I/O
+        zs = [v for v in g.vertices() if g.type(v) == VertexType.Z]
+        for z in zs:
+            b_neighbors = [n for n in g.neighbors(z) if g.type(n) == VertexType.BOUNDARY]
+            if len(b_neighbors) > 1:
+                return False
 
     return True
 
@@ -510,7 +514,7 @@ def to_graph_like(g: BaseGraph[VT,ET]) -> None:
                 g.add_edge((b,z),EdgeType.SIMPLE)
                 g.add_edge((z,v),EdgeType.HADAMARD)
 
-    assert(is_graph_like(g))
+    assert(is_graph_like(g,strict=True))
 
 def to_clifford_normal_form_graph(g: BaseGraph[VT,ET]) -> None:
     """Converts a graph that is Clifford into the form described by the right-hand side of eq. (11) of

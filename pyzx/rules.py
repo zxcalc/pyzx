@@ -526,7 +526,7 @@ def match_pivot_boundary(
         num:int=-1) -> List[MatchPivotType[VT]]:
     """Like :func:`match_pivot_parallel`, but except for pairings of
     Pauli vertices, it looks for a pair of an interior Pauli vertex and a
-    boundary non-Pauli vertex in order to gadgetize the non-Pauli vertex."""
+    boundary non-Pauli Clifford vertex in order to gadgetize the non-Pauli vertex."""
     if matchf is not None: candidates = set([v for v in g.vertices() if matchf(v)])
     else: candidates = g.vertex_set()
     types = g.types()
