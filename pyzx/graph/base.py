@@ -145,6 +145,8 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         if (backend is None):
             backend = type(self).backend
         g = Graph(backend = backend)
+        if backend == 'multigraph':
+            g.set_auto_simplify(self._auto_simplify)
         g.track_phases = self.track_phases
         g.scalar = self.scalar.copy(conjugate=adjoint)
         g.merge_vdata = self.merge_vdata
@@ -391,13 +393,16 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         """Returns the subgraph consisting of the specified vertices."""
         from .graph import Graph # imported here to prevent circularity
         g = Graph(backend=type(self).backend)
+        if type(self).backend == 'multigraph':
+            g.setself._auto_simplify(self._auto_simplify)
         ty = self.types()
         rs = self.rows()
         qs = self.qubits()
         phase = self.phases()
         grounds = self.grounds()
 
-        edges = [self.edge(v,w) for v in verts for w in verts if self.connected(v,w)]
+        edges = [e for e in self.edges() \
+            if self.edge_st(e)[0] in verts and self.edge_st(e)[1] in verts]
 
         vert_map = dict()
         for v in verts:
