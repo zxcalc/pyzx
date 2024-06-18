@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from collections import Counter
 from fractions import Fraction
 from typing import Tuple, Dict, Set, Any
 
@@ -304,8 +305,10 @@ class Multigraph(BaseGraph[int,Tuple[int,int,EdgeType.Type]]):
 
     def edge(self, s, t):
         return (s,t) if s < t else (t,s)
+
     def edge_set(self):
-        return set(self.edges())
+        return Counter(self.edges())
+
     def edge_st(self, edge):
         return (edge[0], edge[1])
 

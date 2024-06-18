@@ -51,17 +51,15 @@ class GraphDiff(Generic[VT, ET]):
 		new_verts = g2.vertex_set()
 		self.removed_verts = list(old_verts - new_verts)
 		self.new_verts = list(new_verts - old_verts)
+		old_edges = g1.edge_set()
+		new_edges = g2.edge_set()
 		self.new_edges = []
 		self.removed_edges = []
 
-		g1_edges = list(g1.edges())
-		new_edges = [i for i in g2.edges() if not i in g1_edges or g1_edges.remove(i)]
-		for e in (new_edges):
+		for e in (new_edges - old_edges):
 			self.new_edges.append((g2.edge_st(e), g2.edge_type(e)))
 
-		g2_edges = list(g2.edges())
-		removed_edges = [i for i in g1.edges() if not i in g2_edges or g2_edges.remove(i)]
-		for e in (removed_edges):
+		for e in (old_edges - new_edges):
 			s,t = g1.edge_st(e)
 			if s in self.removed_verts or t in self.removed_verts: continue
 			self.removed_edges.append(e)
@@ -86,8 +84,8 @@ class GraphDiff(Generic[VT, ET]):
 				pos2 = g2.qubit(v), g2.row(v)
 				self.changed_pos[v] = pos2
 
-		for e in g2.edges():
-			if e in g1.edges():
+		for e in new_edges:
+			if e in old_edges:
 				if g1.edge_type(e) != g2.edge_type(e):
 					self.changed_edge_types[e] = g2.edge_type(e)
 			else:
