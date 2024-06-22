@@ -19,7 +19,7 @@ from typing import Tuple, Dict, Set, Any
 
 from .base import BaseGraph
 
-from ..utils import VertexType, EdgeType, FractionLike, FloatInt, vertex_is_zx_like, vertex_is_z_like, set_z_box_label, get_z_box_label
+from ..utils import VertexType, EdgeType, FractionLike, FloatInt, vertex_is_zx_like, vertex_is_z_like, set_z_box_label, get_z_box_label, toggle_edge
 
 class GraphS(BaseGraph[int,Tuple[int,int]]):
     """Purely Pythonic implementation of :class:`~graph.base.BaseGraph`."""
@@ -274,6 +274,10 @@ class GraphS(BaseGraph[int,Tuple[int,int]]):
         v1,v2 = e
         self.graph[v1][v2] = t
         self.graph[v2][v1] = t
+
+    def toggle_edge_type(self, e):
+        if edge_type := self.edge_type(e):
+            self.set_edge_type(e, toggle_edge(edge_type))
 
     def type(self, vertex):
         return self.ty[vertex]

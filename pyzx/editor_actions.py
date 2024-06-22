@@ -53,8 +53,7 @@ def color_change(g: BaseGraph[VT,ET], matches: List[VT]) -> rules.RewriteOutputT
     for v in matches:
         g.set_type(v, toggle_vertex(g.type(v)))
         for e in g.incident_edges(v):
-            et = g.edge_type(e)
-            g.set_edge_type(e, toggle_edge(et))
+            g.toggle_edge_type(e)
     return ({}, [],[],False)
 
 

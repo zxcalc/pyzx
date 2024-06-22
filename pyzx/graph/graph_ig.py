@@ -21,6 +21,7 @@ except ImportError:
 	ig = None
 
 from .base import BaseGraph, VertexType, EdgeType
+from ..utils import toggle_edge
 
 class GraphIG(BaseGraph):
 	"""Implementation of :class:`~graph.base.BaseGraph` using ``python-igraph`` 
@@ -115,6 +116,8 @@ class GraphIG(BaseGraph):
 	def set_edge_type(self, e, t):
 		self.graph.es[e]['_t'] = t
 
+	def toggle_edge_type(self, e):
+		self.set_edge_type(e, toggle_edge(self.graph.es[e]['_t']))
 
 	def type(self, v):
 		t = self.graph.vs[v]['_t']

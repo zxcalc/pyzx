@@ -348,6 +348,11 @@ class Multigraph(BaseGraph[int,Tuple[int,int,EdgeType.Type]]):
             elif t == EdgeType.HADAMARD: e.add(h=1)
             else: e.add(w_io=1)
 
+    def toggle_edge_type(self, edge):
+        v1,v2 = edge
+        e = self.graph[v1][v2]
+        e.h, e.s = e.s, e.h
+
     def type(self, vertex):
         return self.ty[vertex]
     def types(self):

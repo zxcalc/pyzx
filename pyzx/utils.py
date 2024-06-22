@@ -82,7 +82,11 @@ class EdgeType:
 
 def toggle_edge(ty: EdgeType.Type) -> EdgeType.Type:
     """Swap the regular and Hadamard edge types."""
-    return EdgeType.HADAMARD if ty == EdgeType.SIMPLE else EdgeType.SIMPLE
+    if ty == EdgeType.SIMPLE:
+        return EdgeType.HADAMARD
+    if ty == EdgeType.HADAMARD:
+        return EdgeType.SIMPLE
+    return ty
 
 def phase_to_s(a: FractionLike, t:VertexType.Type=VertexType.Z) -> str:
     if isinstance(a, Fraction) or isinstance(a, int):

@@ -872,6 +872,12 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         """Sets the type of the given edge."""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
+    def toggle_edge_type(self, e: ET) -> None:
+        """Toggles the type of the edge between ``EdgeType.SIMPLE`` and ``EdgeType.HADAMARD``.
+        Does nothing if the edge is empty.
+        """
+        raise NotImplementedError("Not implemented on backend " + type(self).backend)
+
     def type(self, vertex: VT) -> VertexType.Type:
         """Returns the type of the given vertex:
         VertexType.BOUNDARY if it is a boundary, VertexType.Z if it is a Z node,
