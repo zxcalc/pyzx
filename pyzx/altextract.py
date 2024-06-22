@@ -127,7 +127,7 @@ def alt_extract_circuit(
             e = g.edge(v,b)
             if g.edge_type(e) == 2: # Hadamard edge
                 c.add_gate("HAD",q)
-                g.set_edge_type(e,1)
+                g.set_edge_type(e, EdgeType.SIMPLE)
             if phases[v]: 
                 c.add_gate("ZPhase", q, phases[v])
                 g.set_phase(v,0)
@@ -174,11 +174,11 @@ def alt_extract_circuit(
                 b = [w for w in d if w in inputs][0]
                 q = qs[b]
                 r = rs[b]
-                w = g.add_vertex(1,q,r+1)
+                w = g.add_vertex(VertexType.Z, q, r+1)
                 e = g.edge(v,b)
                 et = g.edge_type(e)
                 g.remove_edge(e)
-                g.add_edge((v,w),2)
+                g.add_edge((v, w), EdgeType.HADAMARD)
                 g.add_edge((w,b),toggle_edge(et))
                 d.remove(b)
                 d.append(w)

@@ -267,7 +267,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         if len(outputs) != len(inputs):
             raise TypeError("Outputs of first graph must match inputs of second.")
 
-        plugs: List[Tuple[VT,VT,EdgeType.Type]] = []
+        plugs: List[Tuple[VT,VT,EdgeType]] = []
         for k in range(len(outputs)):
             o = outputs[k]
             i = inputs[k]
@@ -664,7 +664,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
     def add_vertex(self,
-                   ty:VertexType.Type=VertexType.BOUNDARY,
+                   ty:VertexType=VertexType.BOUNDARY,
                    qubit:FloatInt=-1,
                    row:FloatInt=-1,
                    phase:Optional[FractionLike]=None,
@@ -697,11 +697,11 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         which requires vertices to preserve their index."""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
-    def add_edges(self, edge_pairs: Iterable[Tuple[VT,VT]], edgetype:EdgeType.Type=EdgeType.SIMPLE) -> None:
+    def add_edges(self, edge_pairs: Iterable[Tuple[VT,VT]], edgetype:EdgeType=EdgeType.SIMPLE) -> None:
         """Adds a list of edges to the graph."""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
-    def add_edge(self, edge_pair: Tuple[VT,VT], edgetype:EdgeType.Type=EdgeType.SIMPLE) -> ET:
+    def add_edge(self, edge_pair: Tuple[VT,VT], edgetype:EdgeType=EdgeType.SIMPLE) -> ET:
         """Adds a single edge of the given type and return its id"""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
@@ -831,7 +831,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         Should be overloaded if the backend supplies a cheaper version than this. Note this ignores parallel edges."""
         return set(self.edges())
 
-    def edge(self, s:VT, t:VT, et: EdgeType.Type=EdgeType.SIMPLE) -> ET:
+    def edge(self, s:VT, t:VT, et: EdgeType=EdgeType.SIMPLE) -> ET:
         """Returns the name of the first edge with the given source/target and type. Behaviour is undefined if the vertices are not connected."""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
@@ -863,26 +863,26 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         """Returns whether vertices v1 and v2 share an edge."""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
-    def edge_type(self, e: ET) -> EdgeType.Type:
+    def edge_type(self, e: ET) -> EdgeType:
         """Returns the type of the given edge:
         ``EdgeType.SIMPLE`` if it is regular, ``EdgeType.HADAMARD`` if it is a Hadamard edge,
         0 if the edge is not in the graph."""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
-    def set_edge_type(self, e: ET, t: EdgeType.Type) -> None:
+    def set_edge_type(self, e: ET, t: EdgeType) -> None:
         """Sets the type of the given edge."""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
-    def type(self, vertex: VT) -> VertexType.Type:
+    def type(self, vertex: VT) -> VertexType:
         """Returns the type of the given vertex:
         VertexType.BOUNDARY if it is a boundary, VertexType.Z if it is a Z node,
         VertexType.X if it is a X node, VertexType.H_BOX if it is an H-box."""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
-    def types(self) -> Mapping[VT, VertexType.Type]:
+    def types(self) -> Mapping[VT, VertexType]:
         """Returns a mapping of vertices to their types."""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
-    def set_type(self, vertex: VT, t: VertexType.Type) -> None:
+    def set_type(self, vertex: VT, t: VertexType) -> None:
         """Sets the type of the given vertex to t."""
         raise NotImplementedError("Not implemented on backend" + type(self).backend)
 

@@ -190,11 +190,11 @@ def graph_to_json(g: BaseGraph[VT,ET], force_deprecated_behavior=False) -> str:
     i = 0
     for e in g.edges():
         src,tgt = g.edge_st(e)
-        t = g.edge_type(e)
-        if t == EdgeType.SIMPLE:
+        et = g.edge_type(e)
+        if et == EdgeType.SIMPLE:
             edges["e"+ str(i)] = {"src": names[src],"tgt": names[tgt]}
             i += 1
-        elif t==EdgeType.HADAMARD:
+        elif et==EdgeType.HADAMARD:
             x1,y1 = g.row(src), -g.qubit(src)
             x2,y2 = g.row(tgt), -g.qubit(tgt)
             hadname = freenamesv.pop(0)
