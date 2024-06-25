@@ -163,7 +163,7 @@ def tensorfy(g: 'BaseGraph[VT,ET]', preserve_scalar:bool=True) -> np.ndarray:
                     raise ValueError("Vertex %s has non-ZXH type but is not an input or output" % str(v))
             nn = list(filter(lambda n: rows[n]<r or (rows[n]==r and n<v), neigh)) # TODO: allow ordering on vertex indices?
             ety = {n:g.edge_type(g.edge(v,n)) for n in nn}
-            nn.sort(key=lambda n: ety[n].value)
+            nn.sort(key=lambda n: ety[n])
             for n in nn:
                 if ety[n] == EdgeType.HADAMARD:
                     t = np.tensordot(t,had,(0,0)) # Hadamard edges are moved to the last index of t

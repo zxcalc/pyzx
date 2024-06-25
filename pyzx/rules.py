@@ -227,7 +227,7 @@ def spider(g: BaseGraph[VT,ET], matches: List[MatchSpiderType[VT]]) -> RewriteOu
             if v0 == w: continue
             e = (v0,w)
             if e not in etab: etab[e] = [0,0]
-            etab[e][g.edge_type(g.edge(v1,w)).value - 1] += 1
+            etab[e][g.edge_type(g.edge(v1,w)) - 1] += 1
     return (etab, rem_verts, [], True)
 
 def unspider(g: BaseGraph[VT,ET], m: List[Any], qubit:FloatInt=-1, row:FloatInt=-1) -> VT:
@@ -363,7 +363,7 @@ def w_fusion(g: BaseGraph[VT,ET], matches: List[MatchSpiderType[VT]]) -> Rewrite
                 w = v0_out
             e = (v0_out, w)
             if e not in etab: etab[e] = [0,0]
-            etab[e][g.edge_type(g.edge(v1_out, w)).value - 1] += 1
+            etab[e][g.edge_type(g.edge(v1_out, w)) - 1] += 1
     return (etab, rem_verts, [], True)
 
 
