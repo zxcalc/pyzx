@@ -34,6 +34,12 @@ class Edge:
         self.h = h
         self.w_io = w_io
 
+    def __repr__(self):
+        s = f"s={self.s}" if self.s else ""
+        h = f"h={self.h}" if self.h else ""
+        w_io = f"w_io={self.w_io}" if self.w_io else ""
+        return f"Edge({', '.join([s, h, w_io])})"
+
     def add(self, s: int=0, h: int=0, w_io: int=0):
         self.s += s
         self.h += h
@@ -348,9 +354,11 @@ class Multigraph(BaseGraph[int,Tuple[int,int,EdgeType.Type]]):
             elif t == EdgeType.HADAMARD: e.add(h=1)
             else: e.add(w_io=1)
 
-    def toggle_edge_type(self, edge):
-        v1,v2 = edge
+    def toggle_edge_type(self, edge: Edge) -> None:
+        v1, v2 = edge
         e = self.graph[v1][v2]
+        if e.w_io:
+            raise ValueError(f'Cannot toggle {repr(e)}')
         e.h, e.s = e.s, e.h
 
     def type(self, vertex):

@@ -86,7 +86,7 @@ def toggle_edge(ty: EdgeType.Type) -> EdgeType.Type:
         return EdgeType.HADAMARD
     if ty == EdgeType.HADAMARD:
         return EdgeType.SIMPLE
-    return ty
+    raise ValueError(f'Cannot toggle {repr(ty)}')
 
 def phase_to_s(a: FractionLike, t:VertexType.Type=VertexType.Z) -> str:
     if isinstance(a, Fraction) or isinstance(a, int):
