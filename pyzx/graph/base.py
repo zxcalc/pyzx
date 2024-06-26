@@ -147,7 +147,8 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
             backend = type(self).backend
         g = Graph(backend = backend)
         if isinstance(self, Multigraph) and isinstance(g, Multigraph):
-            g.set_auto_simplify(self._auto_simplify)
+            g.set_auto_simplify(self._auto_simplify) # type: ignore
+            # mypy issue https://github.com/python/mypy/issues/16413
         g.track_phases = self.track_phases
         g.scalar = self.scalar.copy(conjugate=adjoint)
         g.merge_vdata = self.merge_vdata
@@ -396,7 +397,8 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         from .multigraph import Multigraph
         g = Graph(backend=type(self).backend)
         if isinstance(self, Multigraph) and isinstance(g, Multigraph):
-            g.set_auto_simplify(self._auto_simplify)
+            g.set_auto_simplify(self._auto_simplify) # type: ignore
+            # mypy issue https://github.com/python/mypy/issues/16413
         ty = self.types()
         rs = self.rows()
         qs = self.qubits()
