@@ -142,10 +142,11 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
             graph did not.
         """
         from .graph import Graph # imported here to prevent circularity
+        from .multigraph import Multigraph
         if (backend is None):
             backend = type(self).backend
         g = Graph(backend = backend)
-        if backend == 'multigraph':
+        if isinstance(self, Multigraph) and isinstance(g, Multigraph):
             g.set_auto_simplify(self._auto_simplify)
         g.track_phases = self.track_phases
         g.scalar = self.scalar.copy(conjugate=adjoint)
@@ -394,7 +395,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         from .graph import Graph # imported here to prevent circularity
         from .multigraph import Multigraph
         g = Graph(backend=type(self).backend)
-        if isinstance(self, Multigraph):
+        if isinstance(self, Multigraph) and isinstance(g, Multigraph):
             g.set_auto_simplify(self._auto_simplify)
         ty = self.types()
         rs = self.rows()

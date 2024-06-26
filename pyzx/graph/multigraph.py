@@ -102,11 +102,11 @@ class Multigraph(BaseGraph[int,Tuple[int,int,EdgeType.Type]]):
         cpy.phase_mult = self.phase_mult.copy()
         cpy.max_phase_index = self.max_phase_index
         return cpy
-    
+
     def set_auto_simplify(self, s: bool):
         """Automatically remove parallel edges as edges are added"""
         self._auto_simplify = s
-    
+
     def multigraph(self):
         return False
 
