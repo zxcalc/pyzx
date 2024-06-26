@@ -62,7 +62,6 @@ class GraphDiff(Generic[VT, ET]):
 
 		for e in Counter(old_edges - new_edges).elements():
 			s,t = g1.edge_st(e)
-			if s in self.removed_verts or t in self.removed_verts: continue
 			self.removed_edges.append(e)
 
 		for v in new_verts:
@@ -95,8 +94,8 @@ class GraphDiff(Generic[VT, ET]):
 
 	def apply_diff(self,g: BaseGraph[VT,ET]) -> BaseGraph[VT,ET]:
 		g = copy.deepcopy(g)
-		g.remove_vertices(self.removed_verts)
 		g.remove_edges(self.removed_edges)
+		g.remove_vertices(self.removed_verts)
 		for v in self.new_verts:
 			g.add_vertex_indexed(v)
 			g.set_position(v,*self.changed_pos[v])
