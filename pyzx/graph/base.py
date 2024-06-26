@@ -392,8 +392,9 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
     def subgraph_from_vertices(self,verts: List[VT]) -> 'BaseGraph':
         """Returns the subgraph consisting of the specified vertices."""
         from .graph import Graph # imported here to prevent circularity
+        from .multigraph import Multigraph
         g = Graph(backend=type(self).backend)
-        if type(self).backend == 'multigraph':
+        if isinstance(self, Multigraph):
             g.set_auto_simplify(self._auto_simplify)
         ty = self.types()
         rs = self.rows()
