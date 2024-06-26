@@ -244,7 +244,7 @@ class Multigraph(BaseGraph[int,Tuple[int,int,EdgeType.Type]]):
 
         if e.is_empty():
             del self.graph[s][t]
-            del self.graph[t][s]
+            if s != t: del self.graph[t][s]
 
         self.nedges -= 1
 
