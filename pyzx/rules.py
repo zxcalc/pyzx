@@ -780,7 +780,7 @@ def match_ids_parallel(
 
     while (num == -1 or i < num) and len(candidates) > 0:
         v = candidates.pop()
-        if phases[v] != 0 or not vertex_is_zx(types[v]) or g.is_ground(v):
+        if phases[v] != 0 or not vertex_is_zx(types[v]) or g.is_ground(v) or g.vertex_degree(v) != 2:
             continue
         neigh = g.neighbors(v)
         if len(neigh) != 2: continue
