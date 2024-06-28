@@ -49,7 +49,7 @@ from typing import Tuple, List
 from .graph.base import BaseGraph, VT, ET
 from .rules import apply_rule, w_fusion, z_to_z_box
 from .utils import (EdgeType, VertexType, get_w_io, get_z_box_label, is_pauli,
-                    set_z_box_label, vertex_is_w, vertex_is_z_like)
+                    set_z_box_label, vertex_is_w, vertex_is_z_like, toggle_vertex, toggle_edge)
 
 def color_change_diagram(g: BaseGraph[VT,ET]):
     """Color-change an entire diagram by applying Hadamards to the inputs and ouputs."""
@@ -77,12 +77,10 @@ def color_change(g: BaseGraph[VT,ET], v: VT) -> bool:
     if not (g.type(v) == VertexType.Z or g.type(v) == VertexType.X):
         return False
 
-    g.set_type(v, VertexType.Z if g.type(v) == VertexType.X else VertexType.X)
-    for v1 in g.neighbors(v):
-        e = g.edge(v,v1)
-        g.set_edge_type(e, EdgeType.SIMPLE
-                if g.edge_type(e) == EdgeType.HADAMARD
-                else EdgeType.HADAMARD)
+    g.set_type(v, toggle_vertex(g.type(v)))
+    for e in g.incident_edges(v):
+        et = g.edge_type(e)
+        g.set_edge_type(e, toggle_edge(et))
 
     return True
 
