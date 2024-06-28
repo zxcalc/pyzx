@@ -188,7 +188,7 @@ def check_fuse(g: BaseGraph[VT,ET], v1: VT, v2: VT) -> bool:
     if not (g.connected(v1,v2) and
             ((g.type(v1) == VertexType.X and g.type(v2) == VertexType.X) or
              (vertex_is_z_like(g.type(v1)) and vertex_is_z_like(g.type(v2)))) and
-            g.edge_type(g.edge(v1,v2)) == EdgeType.SIMPLE):
+            EdgeType.SIMPLE in [g.edge_type(edge) for edge in g.edges(v1,v2)]):
         return False
     return True
 
