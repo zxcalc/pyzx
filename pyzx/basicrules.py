@@ -57,15 +57,10 @@ def color_change_diagram(g: BaseGraph[VT,ET]):
         if g.type(v) == VertexType.BOUNDARY:
             if g.vertex_degree(v) != 1:
                 raise ValueError("Boundary should only have 1 neighbor.")
-            v1 = next(iter(g.neighbors(v)))
-            e = g.edge(v,v1)
-            g.set_edge_type(e, EdgeType.SIMPLE
-                    if g.edge_type(e) == EdgeType.HADAMARD
-                    else EdgeType.HADAMARD)
-        elif g.type(v) == VertexType.Z:
-            g.set_type(v, VertexType.X)
-        elif g.type(v) == VertexType.X:
-            g.set_type(v, VertexType.Z)
+            for e in g.incident_edges(v):
+                g.set_edge_type(e, toggle_edge(g.edge_type(e)))
+        elif check_color_change(g, v):
+            color_change(g, v)
 
 def check_color_change(g: BaseGraph[VT,ET], v: VT) -> bool:
     if not (g.type(v) == VertexType.Z or g.type(v) == VertexType.X):
@@ -79,8 +74,7 @@ def color_change(g: BaseGraph[VT,ET], v: VT) -> bool:
 
     g.set_type(v, toggle_vertex(g.type(v)))
     for e in g.incident_edges(v):
-        et = g.edge_type(e)
-        g.set_edge_type(e, toggle_edge(et))
+        g.set_edge_type(e, toggle_edge(g.edge_type(e)))
 
     return True
 
