@@ -70,7 +70,7 @@ def identity(qubits: int, depth: FloatInt=1,backend:Optional[str]=None) -> BaseG
     return g
 
 def spider(
-    typ:Union[Literal["Z"], Literal["X"], Literal["H"], Literal["W"], Literal["ZBox"], VertexType.Type],
+    typ:Union[Literal["Z"], Literal["X"], Literal["H"], Literal["W"], Literal["ZBox"], VertexType],
     inputs: int,
     outputs: int,
     phase:Optional[Union[FractionLike, complex]]=None,
@@ -176,7 +176,7 @@ def cnots(qubits: int, depth: int, backend:Optional[str]=None) -> BaseGraph:
 
     q: List[int] = list(range(qubits))                          # qubit index, initialised with input
     r: int = 1                                                  # current rank
-    ty: List[VertexType.Type] = [VertexType.BOUNDARY] * qubits  # types of vertices
+    ty: List[VertexType] = [VertexType.BOUNDARY] * qubits  # types of vertices
     qs: List[int] = list(range(qubits))                         # tracks qubit indices of vertices
     rs: List[int] = [0] * qubits                                # tracks rank of vertices
     v = qubits                                                  # next vertex to add
@@ -425,7 +425,7 @@ def cliffords(
 
     q = list(range(qubits))   # qubit index, initialised with input
     r = 1                     # current rank
-    ty: List[VertexType.Type] = [VertexType.BOUNDARY] * qubits         # types of vertices
+    ty: List[VertexType] = [VertexType.BOUNDARY] * qubits         # types of vertices
     qs = list(range(qubits))  # tracks qubit indices of vertices
     rs = [0] * qubits         # tracks rank of vertices
     v = qubits                # next vertex to add
@@ -439,7 +439,7 @@ def cliffords(
         q[i] = v
         rs.append(r)
         qs.append(i)
-        ty.append(1)
+        ty.append(VertexType.Z)
         v += 1
     r += 1
 
@@ -454,7 +454,7 @@ def cliffords(
                 ty += [VertexType.Z, VertexType.X]
             else: 
                 es2.append((v,v+1))
-                typ: VertexType.Type = random.choice([VertexType.Z, VertexType.X])
+                typ: VertexType = random.choice([VertexType.Z, VertexType.X])
                 ty += [typ, typ]
             if accept(p_phase): phases[v] = random_phase(t_gates)
             if accept(p_phase): phases[v+1] = random_phase(t_gates)

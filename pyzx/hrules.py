@@ -102,7 +102,7 @@ def fuse_hboxes(g: BaseGraph[VT,ET], matches: List[ET]) -> rules.RewriteOutputTy
 
 
 
-MatchCopyType = Tuple[VT,VT,VertexType.Type,FractionLike,FractionLike,List[VT]]
+MatchCopyType = Tuple[VT,VT,VertexType,FractionLike,FractionLike,List[VT]]
 
 def match_copy(
         g: BaseGraph[VT,ET], 
@@ -128,7 +128,7 @@ def match_copy(
         if tw == VertexType.BOUNDARY: continue
         e = g.edge(v,w)
         et = g.edge_type(e)
-        copy_type: VertexType.Type = VertexType.Z
+        copy_type: VertexType = VertexType.Z
         if vertex_is_zx(tv):
             if vertex_is_zx(tw):
                 if et == EdgeType.HADAMARD:

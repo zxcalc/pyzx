@@ -52,12 +52,12 @@ class Edge:
     def is_empty(self) -> bool:
         return self.s == 0 and self.h == 0 and self.w_io == 0
 
-    def get_edge_count(self, ty: EdgeType.Type) -> int:
+    def get_edge_count(self, ty: EdgeType) -> int:
         if ty == EdgeType.SIMPLE: return self.s
         elif ty == EdgeType.HADAMARD: return self.h
         else: return self.w_io
 
-class Multigraph(BaseGraph[int,Tuple[int,int,EdgeType.Type]]):
+class Multigraph(BaseGraph[int,Tuple[int,int,EdgeType]]):
     """Purely Pythonic multigraph implementation of :class:`~graph.base.BaseGraph`."""
     backend = 'multigraph'
 
@@ -69,7 +69,7 @@ class Multigraph(BaseGraph[int,Tuple[int,int,EdgeType.Type]]):
         self._auto_simplify: bool                       = True
         self._vindex: int                               = 0
         self.nedges: int                                = 0
-        self.ty: Dict[int,VertexType.Type]              = dict()
+        self.ty: Dict[int,VertexType]              = dict()
         self._phase: Dict[int, FractionLike]            = dict()
         self._qindex: Dict[int, FloatInt]               = dict()
         self._maxq: FloatInt                            = -1

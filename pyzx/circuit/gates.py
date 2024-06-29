@@ -293,10 +293,10 @@ class Gate(object):
     def graph_add_node(self,
                 g: BaseGraph[VT,ET],
                 mapper: TargetMapper[VT],
-                t: VertexType.Type,
+                t: VertexType,
                 l: int, r: int,
                 phase: FractionLike=0,
-                etype: EdgeType.Type=EdgeType.SIMPLE,
+                etype: EdgeType=EdgeType.SIMPLE,
                 ground: bool = False) -> VT:
         v = g.add_vertex(t, mapper.to_qubit(l), r, phase, ground)
         g.add_edge((mapper.prev_vertex(l), v), etype)
