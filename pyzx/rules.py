@@ -177,6 +177,7 @@ def match_spider_parallel(
         e = candidates.pop()
         if g.edge_type(e) != EdgeType.SIMPLE: continue
         v0, v1 = g.edge_st(e)
+        if v0 == v1: continue
         v0t = types[v0]
         v1t = types[v1]
         if (v0t == v1t and vertex_is_zx(v0t)) or \
