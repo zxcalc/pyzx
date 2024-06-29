@@ -103,11 +103,11 @@ class Multigraph(BaseGraph[int,Tuple[int,int,EdgeType.Type]]):
         cpy.phase_mult = self.phase_mult.copy()
         cpy.max_phase_index = self.max_phase_index
         return cpy
-    
+
     def set_auto_simplify(self, s: bool):
         """Automatically remove parallel edges as edges are added"""
         self._auto_simplify = s
-    
+
     def multigraph(self):
         return False
 
@@ -210,7 +210,7 @@ class Multigraph(BaseGraph[int,Tuple[int,int,EdgeType.Type]]):
                 e = self.graph[v][v1]
                 self.nedges -= e.s + e.h
                 del self.graph[v][v1]
-                del self.graph[v1][v]
+                if v != v1: del self.graph[v1][v]
             # remove the vertex
             del self.graph[v]
             del self.ty[v]
@@ -245,7 +245,7 @@ class Multigraph(BaseGraph[int,Tuple[int,int,EdgeType.Type]]):
 
         if e.is_empty():
             del self.graph[s][t]
-            del self.graph[t][s]
+            if s != t: del self.graph[t][s]
 
         self.nedges -= 1
 
@@ -271,7 +271,7 @@ class Multigraph(BaseGraph[int,Tuple[int,int,EdgeType.Type]]):
         if s == None:
             for v0,adj in self.graph.items():
                 for v1, e in adj.items():
-                    if v1 > v0:
+                    if v1 >= v0:
                         for _ in range(e.s): yield (v0, v1, EdgeType.SIMPLE)
                         for _ in range(e.h): yield (v0, v1, EdgeType.HADAMARD)
                         for _ in range(e.w_io): yield (v0, v1, EdgeType.W_IO)
