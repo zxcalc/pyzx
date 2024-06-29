@@ -225,8 +225,8 @@ def spider(g: BaseGraph[VT,ET], matches: List[MatchSpiderType[VT]]) -> RewriteOu
 
         # edges from the second vertex are transferred to the first
         for e in g.incident_edges(v1):
-            edge_st = g.edge_st(e)
-            other_vertex = edge_st[0] if edge_st[1] == v1 else edge_st[1]
+            source, target = g.edge_st(e)
+            other_vertex = source if source != v1 else target
             new_e = (v0, other_vertex)
             if new_e not in etab: etab[new_e] = [0,0]
             etab[new_e][g.edge_type(e)-1] += 1

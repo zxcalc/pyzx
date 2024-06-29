@@ -204,9 +204,12 @@ def fuse(g: BaseGraph[VT,ET], v1: VT, v2: VT) -> bool:
         set_z_box_label(g, v1, get_z_box_label(g, v1) * get_z_box_label(g, v2))
     else:
         g.add_to_phase(v1, g.phase(v2))
-    for v3 in g.neighbors(v2):
-        if v3 != v1:
-            g.add_edge((v1,v3), edgetype=g.edge_type(g.edge(v2,v3)))
+    for e in g.incident_edges(v2):
+        source, target = g.edge_st(e)
+        other_vertex = source if source != v2 else target
+        if other_vertex == v1 and g.edge_type(e) == EdgeType.SIMPLE:
+            continue
+        g.add_edge((v1,other_vertex), edgetype=g.edge_type(e))
     g.remove_vertex(v2)
     return True
 
