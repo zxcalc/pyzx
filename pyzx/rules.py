@@ -168,6 +168,7 @@ def match_spider_parallel(
     """
     if matchf is not None: candidates = set([e for e in g.edges() if matchf(e)])
     else: candidates = g.edge_set()
+    candidates = set(candidates)
     types = g.types()
 
     i = 0
@@ -223,11 +224,13 @@ def spider(g: BaseGraph[VT,ET], matches: List[MatchSpiderType[VT]]) -> RewriteOu
         rem_verts.append(v1)
 
         # edges from the second vertex are transferred to the first
-        for w in g.neighbors(v1):
-            if v0 == w: continue
-            e = (v0,w)
-            if e not in etab: etab[e] = [0,0]
-            etab[e][g.edge_type(g.edge(v1,w))-1] += 1
+        for e in g.incident_edges(v1):
+            edge_st = g.edge_st(e)
+            other_vertex = edge_st[0] if edge_st[1] == v1 else edge_st[1]
+            new_e = (v0, other_vertex)
+            if new_e not in etab: etab[new_e] = [0,0]
+            etab[new_e][g.edge_type(e)-1] += 1
+        etab[(v0,v0)][0] = 0 # remove simple edge loops
     return (etab, rem_verts, [], True)
 
 def unspider(g: BaseGraph[VT,ET], m: List[Any], qubit:FloatInt=-1, row:FloatInt=-1) -> VT:
