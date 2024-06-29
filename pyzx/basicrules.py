@@ -207,6 +207,12 @@ def fuse(g: BaseGraph[VT,ET], v1: VT, v2: VT) -> bool:
     for e in g.incident_edges(v2):
         source, target = g.edge_st(e)
         other_vertex = source if source != v2 else target
+        if source != v2:
+            other_vertex = source
+        elif target != v2:
+            other_vertex = target
+        else: #self-loop
+            other_vertex = v1
         if other_vertex == v1 and g.edge_type(e) == EdgeType.SIMPLE:
             continue
         g.add_edge((v1,other_vertex), edgetype=g.edge_type(e))
