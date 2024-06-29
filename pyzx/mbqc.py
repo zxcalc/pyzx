@@ -31,7 +31,7 @@ def cluster_state(m: int, n: int, inputs: List[Tuple[int,int]]=[]) -> BaseGraph:
     g.set_outputs(tuple(outp))
     return g
 
-def measure(g:BaseGraph, pos:Tuple[int,int], t:VertexType.Type=VertexType.Z, phase:FractionLike=0):
+def measure(g:BaseGraph, pos:Tuple[int,int], t:VertexType=VertexType.Z, phase:FractionLike=0):
     """Measure the qubit at the given grid position, basis, and phase."""
     q = 2*pos[0]-0.8
     r = 2*pos[1]+0.8
@@ -53,7 +53,7 @@ def measure(g:BaseGraph, pos:Tuple[int,int], t:VertexType.Type=VertexType.Z, pha
     if not found:
         raise ValueError("Couldn't find a qubit at that position")
 
-def apply_pauli(g:BaseGraph, pos:Tuple[int,int], t:VertexType.Type=VertexType.Z, phase:FractionLike=1):
+def apply_pauli(g:BaseGraph, pos:Tuple[int,int], t:VertexType=VertexType.Z, phase:FractionLike=1):
     """Measure the qubit at the given grid position, basis, and phase."""
 
     if phase == 0:
