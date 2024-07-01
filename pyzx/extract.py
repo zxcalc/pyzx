@@ -42,7 +42,7 @@ def connectivity_from_biadj(
         m: Mat2, 
         left:List[VT], 
         right: List[VT], 
-        edgetype:EdgeType.Type=EdgeType.HADAMARD):
+        edgetype:EdgeType=EdgeType.HADAMARD):
     """Replace the connectivity in ``g`` between the vertices in ``left`` and ``right``
     by the biadjacency matrix ``m``. The edges will be of type ``edgetype``."""
     for i in range(len(right)):

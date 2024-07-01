@@ -117,7 +117,7 @@ def load_js() -> None:
 			</script>""".format(settings.d3_load_string,data1,data2)
 	display(HTML(text))
 
-def s_to_phase(s: str, t:VertexType.Type=VertexType.Z) -> Fraction:
+def s_to_phase(s: str, t:VertexType=VertexType.Z) -> Fraction:
 	if not s: 
 		if t!= VertexType.H_BOX: return Fraction(0)
 		else: return Fraction(1)

@@ -16,6 +16,7 @@
 
 import os
 from argparse import ArgumentTypeError
+from enum import IntEnum
 from fractions import Fraction
 from typing import Union, Optional, List, Dict, Any
 from typing_extensions import Literal, Final
@@ -26,36 +27,35 @@ FloatInt = Union[float,int]
 FractionLike = Union[Fraction,int,Poly]
 
 
-class VertexType:
+class VertexType(IntEnum):
     """Type of a vertex in the graph."""
-    Type = Literal[0, 1, 2, 3, 4, 5, 6]
-    BOUNDARY: Final = 0
-    Z: Final = 1
-    X: Final = 2
-    H_BOX: Final = 3
-    W_INPUT: Final = 4
-    W_OUTPUT: Final = 5
-    Z_BOX: Final = 6
+    BOUNDARY = 0
+    Z = 1
+    X = 2
+    H_BOX = 3
+    W_INPUT = 4
+    W_OUTPUT = 5
+    Z_BOX = 6
 
-def vertex_is_zx(ty: VertexType.Type) -> bool:
+def vertex_is_zx(ty: VertexType) -> bool:
     """Check if a vertex type corresponds to a green or red spider."""
     return ty in (VertexType.Z, VertexType.X)
 
-def toggle_vertex(ty: VertexType.Type) -> VertexType.Type:
+def toggle_vertex(ty: VertexType) -> VertexType:
     """Swap the X and Z vertex types."""
     if not vertex_is_zx(ty):
         return ty
     return VertexType.Z if ty == VertexType.X else VertexType.X
 
-def vertex_is_z_like(ty: VertexType.Type) -> bool:
+def vertex_is_z_like(ty: VertexType) -> bool:
     """Check if a vertex type corresponds to a Z spider or Z box."""
     return ty == VertexType.Z or ty == VertexType.Z_BOX
 
-def vertex_is_zx_like(ty: VertexType.Type) -> bool:
+def vertex_is_zx_like(ty: VertexType) -> bool:
     """Check if a vertex type corresponds to a Z or X spider or Z box."""
     return vertex_is_z_like(ty) or ty == VertexType.X
 
-def vertex_is_w(ty: VertexType.Type) -> bool:
+def vertex_is_w(ty: VertexType) -> bool:
     return ty == VertexType.W_INPUT or ty == VertexType.W_OUTPUT
 
 def get_w_partner(g, v):
@@ -73,24 +73,23 @@ def get_w_io(g, v):
     return v2, v
 
 
-class EdgeType:
+class EdgeType(IntEnum):
     """Type of an edge in the graph."""
-    Type = Literal[1, 2, 3]
-    SIMPLE: Final = 1
-    HADAMARD: Final = 2
-    W_IO: Final = 3
+    SIMPLE = 1
+    HADAMARD = 2
+    W_IO = 3
 
-def toggle_edge(ty: EdgeType.Type) -> EdgeType.Type:
+def toggle_edge(ty: EdgeType) -> EdgeType:
     """Swap the regular and Hadamard edge types."""
     return EdgeType.HADAMARD if ty == EdgeType.SIMPLE else EdgeType.SIMPLE
 
-def phase_to_s(a: FractionLike, t:VertexType.Type=VertexType.Z) -> str:
+def phase_to_s(a: FractionLike, t:VertexType=VertexType.Z) -> str:
     if isinstance(a, Fraction) or isinstance(a, int):
         return phase_fraction_to_s(a, t)
     else: # a is a Poly
         return str(a)
 
-def phase_fraction_to_s(a: FractionLike, t:VertexType.Type=VertexType.Z) -> str:
+def phase_fraction_to_s(a: FractionLike, t:VertexType=VertexType.Z) -> str:
     if (a == 0 and t != VertexType.H_BOX): return ''
     if (a == 1 and t == VertexType.H_BOX): return ''
     if isinstance(a, Poly):

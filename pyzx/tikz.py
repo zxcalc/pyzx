@@ -101,9 +101,9 @@ def _to_tikz(g: BaseGraph[VT,ET], draw_scalar:bool = False,
     edges = []
     for e in g.edges():
         v,w = g.edge_st(e)
-        ty = g.edge_type(e)
+        et = g.edge_type(e)
         s = "        \\draw "
-        if ty == EdgeType.HADAMARD:
+        if et == EdgeType.HADAMARD:
             if g.type(v) != VertexType.BOUNDARY and g.type(w) != VertexType.BOUNDARY:
                 style = settings.tikz_classes['H-edge']
                 if style: s += "[style={:s}] ".format(style)
@@ -113,7 +113,7 @@ def _to_tikz(g: BaseGraph[VT,ET], draw_scalar:bool = False,
                 t = "        \\node [style={:s}] ({:d}) at ({:.2f}, {:.2f}) {{}};".format(settings.tikz_classes['H'],maxindex+1, x,y)
                 verts.append(t)
                 maxindex += 1
-        elif ty == EdgeType.W_IO:
+        elif et == EdgeType.W_IO:
             style = settings.tikz_classes['W-io-edge']
             if style: s += "[style={:s}] ".format(style)
         else:
@@ -248,7 +248,7 @@ def tikz_to_graph(
         x,y = [float(z) for z in pos.split(",")]
         label = label[:-2].replace('$','').replace(r'\ ','').replace('~','').strip()
 
-        ty: VertexType.Type
+        ty: VertexType
         if style.lower() in synonyms_boundary: ty = VertexType.BOUNDARY
         elif style.lower() in synonyms_z: ty = VertexType.Z
         elif style.lower() in synonyms_x: ty = VertexType.X

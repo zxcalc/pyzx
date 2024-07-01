@@ -179,6 +179,7 @@ def match_spider_parallel(
         e = candidates.pop()
         if g.edge_type(e) != EdgeType.SIMPLE: continue
         v0, v1 = g.edge_st(e)
+        if v0 == v1: continue
         v0t = types[v0]
         v1t = types[v1]
         if (v0t == v1t and vertex_is_zx(v0t)) or \
@@ -759,7 +760,7 @@ def lcomp(g: BaseGraph[VT,ET], matches: List[MatchLcompType[VT]]) -> RewriteOutp
 
     return (etab, rem, [], True)
 
-MatchIdType = Tuple[VT,VT,VT,EdgeType.Type]
+MatchIdType = Tuple[VT,VT,VT,EdgeType]
 
 def match_ids(g: BaseGraph[VT,ET]) -> List[MatchIdType[VT]]:
     """Finds a single identity node. See :func:`match_ids_parallel`."""
@@ -1110,8 +1111,8 @@ def apply_gadget_phasepoly(g: BaseGraph[VT,ET], matches: List[MatchPhasePolyType
                 phase = -phase
                 g.set_phase(n,0)
         else:
-            n = g.add_vertex(1,-1, rs[group[0]]+0.5)
-            v = g.add_vertex(1,-2, rs[group[0]]+0.5)
+            n = g.add_vertex(VertexType.Z, -1, rs[group[0]]+0.5)
+            v = g.add_vertex(VertexType.Z, -2, rs[group[0]]+0.5)
             phase = 0
             g.add_edges([(n,v)]+[(n,w) for w in group],EdgeType.HADAMARD)
         g.set_phase(v, phase + Fraction(7,4))

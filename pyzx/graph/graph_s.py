@@ -29,10 +29,10 @@ class GraphS(BaseGraph[int,Tuple[int,int]]):
     #can be found in base.BaseGraph
     def __init__(self) -> None:
         BaseGraph.__init__(self)
-        self.graph: Dict[int,Dict[int,EdgeType.Type]]   = dict()
+        self.graph: Dict[int,Dict[int,EdgeType]]   = dict()
         self._vindex: int                               = 0
         self.nedges: int                                = 0
-        self.ty: Dict[int,VertexType.Type]              = dict()
+        self.ty: Dict[int,VertexType]              = dict()
         self._phase: Dict[int, FractionLike]            = dict()
         self._qindex: Dict[int, FloatInt]               = dict()
         self._maxq: FloatInt                            = -1
