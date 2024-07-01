@@ -100,9 +100,9 @@ def match_bialg_parallel(
        tries to find as many as possible.
     :rtype: List of 4-tuples ``(v1, v2, neighbors_of_v1,neighbors_of_v2)``
     """
-    if matchf is not None: candidates = set([e for e in g.edges() if matchf(e)])
-    else: candidates = g.edge_set()
-    candidates = list(Counter(candidates).elements())
+    if matchf is not None: candidates_set = set([e for e in g.edges() if matchf(e)])
+    else: candidates_set = g.edge_set()
+    candidates = list(Counter(candidates_set).elements())
     phases = g.phases()
     types = g.types()
 
