@@ -217,10 +217,16 @@ class GraphS(BaseGraph[int,Tuple[int,int]]):
             if all(start<v2<end for v2 in self.graph[v]):
                 yield v
 
-    def edges(self):
-        for v0,adj in self.graph.items():
-            for v1 in adj:
-                if v1 > v0: yield (v0,v1)
+    def edges(self, s=None, t=None):
+        if s is not None and t is not None:
+                yield (s,t) if s < t else (t,s)
+        elif s is not None:
+            for t in self.graph[s]:
+                yield (s,t) if s < t else (t,s)
+        else:
+            for v0,adj in self.graph.items():
+                for v1 in adj:
+                    if v1 > v0: yield (v0,v1)
 
     def edges_in_range(self, start, end, safe=False):
         """like self.edges, but only returns edges that belong to vertices

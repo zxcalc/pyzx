@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import itertools
 from collections import Counter
 from fractions import Fraction
 from typing import Tuple, Dict, Set, Any
@@ -323,7 +324,9 @@ class Multigraph(BaseGraph[int,Tuple[int,int,EdgeType]]):
         return d
 
     def incident_edges(self, vertex):
-        return [(vertex, v1) if v1 > vertex else (v1, vertex) for v1 in self.graph[vertex]]
+        return list(itertools.chain.from_iterable(
+            self.edges(vertex, v1) for v1 in self.graph[vertex]
+        ))
 
     def connected(self,v1,v2):
         return v2 in self.graph[v1]

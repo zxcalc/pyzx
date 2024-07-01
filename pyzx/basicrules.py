@@ -49,7 +49,7 @@ from typing import Tuple, List
 from .graph.base import BaseGraph, VT, ET
 from .rules import apply_rule, w_fusion, z_to_z_box
 from .utils import (EdgeType, VertexType, get_w_io, get_z_box_label, is_pauli,
-                    set_z_box_label, vertex_is_w, vertex_is_z_like)
+                    set_z_box_label, vertex_is_w, vertex_is_z_like, toggle_vertex, toggle_edge)
 
 def color_change_diagram(g: BaseGraph[VT,ET]):
     """Color-change an entire diagram by applying Hadamards to the inputs and ouputs."""
@@ -57,15 +57,10 @@ def color_change_diagram(g: BaseGraph[VT,ET]):
         if g.type(v) == VertexType.BOUNDARY:
             if g.vertex_degree(v) != 1:
                 raise ValueError("Boundary should only have 1 neighbor.")
-            v1 = next(iter(g.neighbors(v)))
-            e = g.edge(v,v1)
-            g.set_edge_type(e, EdgeType.SIMPLE
-                    if g.edge_type(e) == EdgeType.HADAMARD
-                    else EdgeType.HADAMARD)
-        elif g.type(v) == VertexType.Z:
-            g.set_type(v, VertexType.X)
-        elif g.type(v) == VertexType.X:
-            g.set_type(v, VertexType.Z)
+            for e in g.incident_edges(v):
+                g.set_edge_type(e, toggle_edge(g.edge_type(e)))
+        elif check_color_change(g, v):
+            color_change(g, v)
 
 def check_color_change(g: BaseGraph[VT,ET], v: VT) -> bool:
     if not (g.type(v) == VertexType.Z or g.type(v) == VertexType.X):
@@ -77,12 +72,9 @@ def color_change(g: BaseGraph[VT,ET], v: VT) -> bool:
     if not (g.type(v) == VertexType.Z or g.type(v) == VertexType.X):
         return False
 
-    g.set_type(v, VertexType.Z if g.type(v) == VertexType.X else VertexType.X)
-    for v1 in g.neighbors(v):
-        e = g.edge(v,v1)
-        g.set_edge_type(e, EdgeType.SIMPLE
-                if g.edge_type(e) == EdgeType.HADAMARD
-                else EdgeType.HADAMARD)
+    g.set_type(v, toggle_vertex(g.type(v)))
+    for e in g.incident_edges(v):
+        g.set_edge_type(e, toggle_edge(g.edge_type(e)))
 
     return True
 
@@ -196,7 +188,7 @@ def check_fuse(g: BaseGraph[VT,ET], v1: VT, v2: VT) -> bool:
     if not (g.connected(v1,v2) and
             ((g.type(v1) == VertexType.X and g.type(v2) == VertexType.X) or
              (vertex_is_z_like(g.type(v1)) and vertex_is_z_like(g.type(v2)))) and
-            g.edge_type(g.edge(v1,v2)) == EdgeType.SIMPLE):
+            EdgeType.SIMPLE in [g.edge_type(edge) for edge in g.edges(v1,v2)]):
         return False
     return True
 
@@ -212,9 +204,18 @@ def fuse(g: BaseGraph[VT,ET], v1: VT, v2: VT) -> bool:
         set_z_box_label(g, v1, get_z_box_label(g, v1) * get_z_box_label(g, v2))
     else:
         g.add_to_phase(v1, g.phase(v2))
-    for v3 in g.neighbors(v2):
-        if v3 != v1:
-            g.add_edge((v1,v3), edgetype=g.edge_type(g.edge(v2,v3)))
+    for e in g.incident_edges(v2):
+        source, target = g.edge_st(e)
+        other_vertex = source if source != v2 else target
+        if source != v2:
+            other_vertex = source
+        elif target != v2:
+            other_vertex = target
+        else: #self-loop
+            other_vertex = v1
+        if other_vertex == v1 and g.edge_type(e) == EdgeType.SIMPLE:
+            continue
+        g.add_edge((v1,other_vertex), edgetype=g.edge_type(e))
     g.remove_vertex(v2)
     return True
 
