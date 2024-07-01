@@ -96,16 +96,19 @@ def strong_comp(g: BaseGraph[VT,ET], v1: VT, v2: VT) -> bool:
 
     for i in range(2):
         j = (i + 1) % 2
+        multi_edge_found = False
         for e in g.incident_edges(v[i]):
             source, target = g.edge_st(e)
             other_vertex = source if source != v[i] else target
-            if other_vertex != v[j]:
+            if other_vertex != v[j] or (multi_edge_found and i == 0): # i==0 to only add new vertex once
                 q = 0.4*g.qubit(other_vertex) + 0.6*g.qubit(v[i])
                 r = 0.4*g.row(other_vertex) + 0.6*g.row(v[i])
                 newv = g.add_vertex(g.type(v[j]), qubit=q, row=r)
                 g.add_edge((newv, other_vertex), edgetype=g.edge_type(e))
                 g.set_phase(newv, g.phase(v[j]))
                 nhd[i].append(newv)
+            elif other_vertex == v[j]:
+                multi_edge_found = True
 
     for n1 in nhd[0]:
         for n2 in nhd[1]:
