@@ -274,16 +274,18 @@ def bialgebra(g: BaseGraph[VT,ET],
         else: #g.type(w) == VertexType.H_BOX
             t = VertexType.Z
             g.scalar.add_power(g.vertex_degree(v)-2)
-        for n in g.neighbors(w):
+        for e in g.incident_edges(w):
+            source, target = g.edge_st(e)
+            n = source if source != w else target
             if n == v: continue
             r = 0.6*g.row(w) + 0.4*g.row(n)
             q = 0.6*g.qubit(w) + 0.4*g.qubit(n)
             w2 = g.add_vertex(t,q,r)
-            etab[upair(n,w2)] = [1,0] if g.edge_type(g.edge(n,w)) == EdgeType.SIMPLE else [0,1]
+            etab[upair(n,w2)] = [1,0] if g.edge_type(e) == EdgeType.SIMPLE else [0,1]
             for v2 in new_verts:
                 etab[upair(w2,v2)] = [1,0]
     return (etab, rem_verts, [], False)
-            
+
 
 MATCHES_VERTICES = 1
 MATCHES_EDGES = 2
