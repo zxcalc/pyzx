@@ -84,7 +84,7 @@ def check_strong_comp(g: BaseGraph[VT,ET], v1: VT, v2: VT) -> bool:
             is_pauli(g.phase(v1)) and
             is_pauli(g.phase(v2)) and
             g.connected(v1,v2) and
-            g.edge_type(g.edge(v1,v2)) == EdgeType.SIMPLE):
+            EdgeType.SIMPLE in [g.edge_type(edge) for edge in g.edges(v1,v2)]):
         return False
     return True
 
@@ -96,12 +96,14 @@ def strong_comp(g: BaseGraph[VT,ET], v1: VT, v2: VT) -> bool:
 
     for i in range(2):
         j = (i + 1) % 2
-        for vn in g.neighbors(v[i]):
-            if vn != v[j]:
-                q = 0.4*g.qubit(vn) + 0.6*g.qubit(v[i])
-                r = 0.4*g.row(vn) + 0.6*g.row(v[i])
+        for e in g.incident_edges(v[i]):
+            source, target = g.edge_st(e)
+            other_vertex = source if source != v[i] else target
+            if other_vertex != v[j]:
+                q = 0.4*g.qubit(other_vertex) + 0.6*g.qubit(v[i])
+                r = 0.4*g.row(other_vertex) + 0.6*g.row(v[i])
                 newv = g.add_vertex(g.type(v[j]), qubit=q, row=r)
-                g.add_edge((newv,vn), edgetype=g.edge_type(g.edge(v[i],vn)))
+                g.add_edge((newv, other_vertex), edgetype=g.edge_type(e))
                 g.set_phase(newv, g.phase(v[j]))
                 nhd[i].append(newv)
 
