@@ -251,7 +251,11 @@ def remove_id(g: BaseGraph[VT,ET], v: VT) -> bool:
     if not check_remove_id(g, v):
         return False
 
-    v1, v2 = tuple(g.neighbors(v))
+    neighbors = list(g.neighbors(v))
+    if len(neighbors) == 2:
+        v1, v2 = neighbors[0], neighbors[0]
+    else: # self loop
+        v1, v2 = neighbors[0], neighbors[0]
     g.add_edge((v1,v2), edgetype=EdgeType.SIMPLE
             if g.edge_type(g.edge(v,v1)) == g.edge_type(g.edge(v,v2))
             else EdgeType.HADAMARD)

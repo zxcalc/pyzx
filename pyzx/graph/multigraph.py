@@ -334,8 +334,12 @@ class Multigraph(BaseGraph[int,Tuple[int,int,EdgeType]]):
     def edge_type(self, e):
         if len(e) == 2:
             edges = list(self.edges(e[0],e[1]))
-            if len(edges) != 1:
-                raise ValueError('Cannot determine edge type')
+            if len(edges) > 1:
+                # if all edges are of the same type, return that type
+                if all(e[2] == edges[0][2] for e in edges):
+                    return edges[0][2]
+                else:
+                    raise ValueError('Cannot determine edge type')
             e = edges[0]
         return e[2]
 
