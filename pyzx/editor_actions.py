@@ -261,7 +261,9 @@ def bialgebra(g: BaseGraph[VT,ET],
         new_verts = []
         # v is an X-spider, but w is either a Z-spider or an H-box
         t = g.type(w)
-        for n in g.neighbors(v):
+        for e in g.incident_edges(v):
+            source, target = g.edge_st(e)
+            n = source if source != v else target
             if n == w: continue
             r = 0.6*g.row(v) + 0.4*g.row(n)
             q = 0.6*g.qubit(v) + 0.4*g.qubit(n)
