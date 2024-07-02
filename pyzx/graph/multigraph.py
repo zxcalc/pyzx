@@ -319,8 +319,8 @@ class Multigraph(BaseGraph[int,Tuple[int,int,EdgeType]]):
     def vertex_degree(self, vertex):
         d = 0
         for e in self.graph[vertex].values():
-            d += e.s
-            d += e.h
+            for ty in EdgeType:
+                d += e.get_edge_count(ty)
         return d
 
     def incident_edges(self, vertex):
