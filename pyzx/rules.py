@@ -791,9 +791,12 @@ def match_ids_parallel(
         v = candidates.pop()
         if phases[v] != 0 or not vertex_is_zx(types[v]) or g.is_ground(v) or g.vertex_degree(v) != 2:
             continue
+        if len(g.incident_edges(v)) != 2: continue
         neigh = g.neighbors(v)
-        if len(neigh) != 2: continue
-        v0, v1 = neigh
+        if len(neigh) == 2:
+            v0, v1 = neigh
+        else:
+            v0, v1 = list(neigh)[0], list(neigh)[0]
         if (g.is_ground(v0) and types[v1] == VertexType.BOUNDARY or
                 g.is_ground(v1) and types[v0] == VertexType.BOUNDARY):
             # Do not put ground spiders on the boundary
