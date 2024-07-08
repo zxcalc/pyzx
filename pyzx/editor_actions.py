@@ -261,8 +261,7 @@ def bialgebra(g: BaseGraph[VT,ET],
         v = (v1,v2)
         nhd: Tuple[List[VT],List[VT]] = ([],[])
 
-        for i in range(2):
-            j = (i + 1) % 2
+        for i, j in [(0, 1), (1, 0)]:
             multi_edge_found = False
             for e in g.incident_edges(v[i]):
                 source, target = g.edge_st(e)

@@ -94,8 +94,7 @@ def strong_comp(g: BaseGraph[VT,ET], v1: VT, v2: VT) -> bool:
     nhd: Tuple[List[VT],List[VT]] = ([],[])
     v = (v1,v2)
 
-    for i in range(2):
-        j = (i + 1) % 2
+    for i, j in [(0, 1), (1, 0)]:
         multi_edge_found = False
         for e in g.incident_edges(v[i]):
             source, target = g.edge_st(e)
