@@ -268,7 +268,7 @@ def bialgebra(g: BaseGraph[VT,ET],
             r = 0.6*g.row(v) + 0.4*g.row(n)
             q = 0.6*g.qubit(v) + 0.4*g.qubit(n)
             v2 = g.add_vertex(t,q,r)
-            etab[upair(n,v2)] = [1,0] if g.edge_type(g.edge(n,v)) == EdgeType.SIMPLE else [0,1]
+            etab[upair(n,v2)] = [1,0] if g.edge_type(e) == EdgeType.SIMPLE else [0,1]
             new_verts.append(v2)
         if g.type(w) == VertexType.Z:
             t = VertexType.X
