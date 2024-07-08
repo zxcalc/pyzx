@@ -253,7 +253,7 @@ def remove_id(g: BaseGraph[VT,ET], v: VT) -> bool:
 
     neighbors = list(g.neighbors(v))
     if len(neighbors) == 2:
-        v1, v2 = neighbors[0], neighbors[0]
+        v1, v2 = neighbors[0], neighbors[1]
     else: # self loop
         v1, v2 = neighbors[0], neighbors[0]
     g.add_edge((v1,v2), edgetype=EdgeType.SIMPLE
