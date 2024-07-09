@@ -120,9 +120,11 @@ def match_bialg_parallel(
         ((v0t == VertexType.Z and v1t == VertexType.X) or (v0t == VertexType.X and v1t == VertexType.Z))):
             v0n = [n for n in g.neighbors(v0) if not n == v1]
             v1n = [n for n in g.neighbors(v1) if not n == v0]
-            if (
-                all([types[n] == v1t and phases[n] == 0 for n in v0n]) and
-                all([types[n] == v0t and phases[n] == 0 for n in v1n])):
+            if (all([types[n] == v1t and phases[n] == 0 for n in v0n]) and # all neighbors of v0 are of the same type as v1
+                all([types[n] == v0t and phases[n] == 0 for n in v1n]) and # all neighbors of v1 are of the same type as v0
+                len(g.edges(v0, v1)) == 1 and # there is exactly one edge between v0 and v1
+                len(g.edges(v0, v0)) == 0 and # there are no self-loops on v0
+                len(g.edges(v1, v1)) == 0): # there are no self-loops on v1
                 i += 1
                 for vn in [v0n, v1n]:
                     for v in vn:
