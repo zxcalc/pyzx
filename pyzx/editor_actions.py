@@ -255,35 +255,50 @@ def bialgebra(g: BaseGraph[VT,ET],
         ) -> rules.RewriteOutputType[VT,ET]:
     rem_verts = []
     etab = {}
-    for v,w in matches:
-        rem_verts.append(v)
-        rem_verts.append(w)
-        new_verts = []
-        # v is an X-spider, but w is either a Z-spider or an H-box
-        t = g.type(w)
-        for n in g.neighbors(v):
-            if n == w: continue
-            r = 0.6*g.row(v) + 0.4*g.row(n)
-            q = 0.6*g.qubit(v) + 0.4*g.qubit(n)
-            v2 = g.add_vertex(t,q,r)
-            etab[upair(n,v2)] = [1,0] if g.edge_type(g.edge(n,v)) == EdgeType.SIMPLE else [0,1]
-            new_verts.append(v2)
-        if g.type(w) == VertexType.Z:
+    for v1, v2 in matches:
+        rem_verts.append(v1)
+        rem_verts.append(v2)
+        v = (v1,v2)
+        new_verts: Tuple[List[VT],List[VT]] = ([],[]) # new vertices for v1 and v2
+
+        for i, j in [(0, 1), (1, 0)]:
+            multi_edge_found = False
+            for e in g.incident_edges(v[i]):
+                source, target = g.edge_st(e)
+                other_vertex = source if source != v[i] else target
+                if other_vertex != v[j] or multi_edge_found:
+                    q = 0.4*g.qubit(other_vertex) + 0.6*g.qubit(v[i])
+                    r = 0.4*g.row(other_vertex) + 0.6*g.row(v[i])
+                    newv = g.add_vertex(g.type(v[j]), qubit=q, row=r)
+                    g.set_phase(newv, g.phase(v[j]))
+                    new_verts[i].append(newv)
+                    if other_vertex == v[j]:
+                        q = 0.4*g.qubit(v[i]) + 0.6*g.qubit(other_vertex)
+                        r = 0.4*g.row(v[i]) + 0.6*g.row(other_vertex)
+                        newv2 = g.add_vertex(g.type(v[i]), qubit=q, row=r)
+                        new_verts[j].append(newv2)
+                        other_vertex = newv2
+                    if upair(newv, other_vertex) not in etab:
+                        etab[upair(newv, other_vertex)] = [0, 0]
+                    type_index = 0 if g.edge_type(e) == EdgeType.SIMPLE else 1
+                    etab[upair(newv, other_vertex)][type_index] += 1
+                elif i == 0: # only add new vertex once
+                    multi_edge_found = True
+
+        for n1 in new_verts[0]:
+            for n2 in new_verts[1]:
+                if upair(n1,n2) not in etab:
+                    etab[upair(n1,n2)] = [0, 0]
+                etab[upair(n1,n2)][0] += 1
+
+        if g.type(v2) == VertexType.Z:
             t = VertexType.X
-            g.scalar.add_power((g.vertex_degree(v)-2)*(g.vertex_degree(w)-2))
+            g.scalar.add_power((g.vertex_degree(v1)-2)*(g.vertex_degree(v2)-2))
         else: #g.type(w) == VertexType.H_BOX
             t = VertexType.Z
-            g.scalar.add_power(g.vertex_degree(v)-2)
-        for n in g.neighbors(w):
-            if n == v: continue
-            r = 0.6*g.row(w) + 0.4*g.row(n)
-            q = 0.6*g.qubit(w) + 0.4*g.qubit(n)
-            w2 = g.add_vertex(t,q,r)
-            etab[upair(n,w2)] = [1,0] if g.edge_type(g.edge(n,w)) == EdgeType.SIMPLE else [0,1]
-            for v2 in new_verts:
-                etab[upair(w2,v2)] = [1,0]
+            g.scalar.add_power(g.vertex_degree(v1)-2)
     return (etab, rem_verts, [], False)
-            
+
 
 MATCHES_VERTICES = 1
 MATCHES_EDGES = 2

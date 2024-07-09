@@ -50,6 +50,7 @@ from typing import Tuple, List, Dict, Set, FrozenSet
 from typing import Any, Callable, TypeVar, Optional, Union
 from typing_extensions import Literal
 
+from collections import Counter
 from fractions import Fraction
 import itertools
 
@@ -99,8 +100,9 @@ def match_bialg_parallel(
        tries to find as many as possible.
     :rtype: List of 4-tuples ``(v1, v2, neighbors_of_v1,neighbors_of_v2)``
     """
-    if matchf is not None: candidates = set([e for e in g.edges() if matchf(e)])
-    else: candidates = g.edge_set()
+    if matchf is not None: candidates_set = set([e for e in g.edges() if matchf(e)])
+    else: candidates_set = g.edge_set()
+    candidates = list(Counter(candidates_set).elements())
     phases = g.phases()
     types = g.types()
 
@@ -118,14 +120,17 @@ def match_bialg_parallel(
         ((v0t == VertexType.Z and v1t == VertexType.X) or (v0t == VertexType.X and v1t == VertexType.Z))):
             v0n = [n for n in g.neighbors(v0) if not n == v1]
             v1n = [n for n in g.neighbors(v1) if not n == v0]
-            if (
-                all([types[n] == v1t and phases[n] == 0 for n in v0n]) and
-                all([types[n] == v0t and phases[n] == 0 for n in v1n])):
+            if (all([types[n] == v1t and phases[n] == 0 for n in v0n]) and # all neighbors of v0 are of the same type as v1
+                all([types[n] == v0t and phases[n] == 0 for n in v1n]) and # all neighbors of v1 are of the same type as v0
+                len(g.edges(v0, v1)) == 1 and # there is exactly one edge between v0 and v1
+                len(g.edges(v0, v0)) == 0 and # there are no self-loops on v0
+                len(g.edges(v1, v1)) == 0): # there are no self-loops on v1
                 i += 1
-                for v in v0n:
-                    for c in g.incident_edges(v): candidates.discard(c)
-                for v in v1n:
-                    for c in g.incident_edges(v): candidates.discard(c)
+                for vn in [v0n, v1n]:
+                    for v in vn:
+                        for c in g.incident_edges(v):
+                            if c in candidates:
+                                candidates.remove(c)
                 m.append((v0,v1,v0n,v1n))
     return m
 
@@ -401,8 +406,9 @@ def match_pivot_parallel(
        consider all edges.
     :rtype: List of 4-tuples. See :func:`pivot` for the details.
     """
-    if matchf is not None: candidates = set([e for e in g.edges() if matchf(e)])
-    else: candidates = g.edge_set()
+    if matchf is not None: candidates_set = set([e for e in g.edges() if matchf(e)])
+    else: candidates_set = g.edge_set()
+    candidates = list(Counter(candidates_set).elements())
     types = g.types()
     phases = g.phases()
 
@@ -426,6 +432,9 @@ def match_pivot_parallel(
         v0n = list(g.neighbors(v0))
         v0b: List[VT] = []
         for n in v0n:
+            if len(list(g.edges(v0,n))) != 1:
+                invalid_edge = True
+                break
             et = g.edge_type(g.edge(v0,n))
             if types[n] == VertexType.Z and et == EdgeType.HADAMARD: pass
             elif types[n] == VertexType.BOUNDARY: v0b.append(n)
@@ -449,10 +458,11 @@ def match_pivot_parallel(
         if len(v0b) + len(v1b) > 1: continue
 
         i += 1
-        for v in v0n:
-            for c in g.incident_edges(v): candidates.discard(c)
-        for v in v1n:
-            for c in g.incident_edges(v): candidates.discard(c)
+        for vn in [v0n, v1n]:
+            for v in vn:
+                for c in g.incident_edges(v):
+                    if c in candidates:
+                        candidates.remove(c)
         b0 = list(v0b)
         b1 = list(v1b)
         m.append(((v0,v1),(b0,b1)))
@@ -465,8 +475,9 @@ def match_pivot_gadget(
     """Like :func:`match_pivot_parallel`, but except for pairings of
     Pauli vertices, it looks for a pair of an interior Pauli vertex and an
     interior non-Clifford vertex in order to gadgetize the non-Clifford vertex."""
-    if matchf is not None: candidates = set([e for e in g.edges() if matchf(e)])
-    else: candidates = g.edge_set()
+    if matchf is not None: candidates_set = set([e for e in g.edges() if matchf(e)])
+    else: candidates_set = g.edge_set()
+    candidates = list(Counter(candidates_set).elements())
     types = g.types()
     phases = g.phases()
     rs = g.rows()
@@ -524,7 +535,9 @@ def match_pivot_gadget(
 
         m.append(((v0,v1),([],[v])))
         i += 1
-        for c in discard_edges: candidates.discard(c)
+        for c in discard_edges:
+            if c in candidates:
+                candidates.remove(c)
     g.add_edges(edge_list,EdgeType.SIMPLE)
     return m
 

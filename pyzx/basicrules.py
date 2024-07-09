@@ -46,6 +46,7 @@ __all__ = ['color_change_diagram',
         'remove_id']
 
 from typing import Tuple, List
+from .editor_actions import bialgebra
 from .graph.base import BaseGraph, VT, ET
 from .rules import apply_rule, w_fusion, z_to_z_box
 from .utils import (EdgeType, VertexType, get_w_io, get_z_box_label, is_pauli,
@@ -84,38 +85,17 @@ def check_strong_comp(g: BaseGraph[VT,ET], v1: VT, v2: VT) -> bool:
             is_pauli(g.phase(v1)) and
             is_pauli(g.phase(v2)) and
             g.connected(v1,v2) and
-            g.edge_type(g.edge(v1,v2)) == EdgeType.SIMPLE):
+            EdgeType.SIMPLE in [g.edge_type(edge) for edge in g.edges(v1,v2)]):
         return False
     return True
 
 def strong_comp(g: BaseGraph[VT,ET], v1: VT, v2: VT) -> bool:
     if not check_strong_comp(g, v1, v2): return False
 
-    nhd: Tuple[List[VT],List[VT]] = ([],[])
-    v = (v1,v2)
-
-    for i in range(2):
-        j = (i + 1) % 2
-        for vn in g.neighbors(v[i]):
-            if vn != v[j]:
-                q = 0.4*g.qubit(vn) + 0.6*g.qubit(v[i])
-                r = 0.4*g.row(vn) + 0.6*g.row(v[i])
-                newv = g.add_vertex(g.type(v[j]), qubit=q, row=r)
-                g.add_edge((newv,vn), edgetype=g.edge_type(g.edge(v[i],vn)))
-                g.set_phase(newv, g.phase(v[j]))
-                nhd[i].append(newv)
-
-    for n1 in nhd[0]:
-        for n2 in nhd[1]:
-            g.add_edge((n1,n2))
-
-    g.scalar.add_power((len(nhd[0]) - 1) * (len(nhd[1]) - 1))
-    if g.phase(v1) == 1 and g.phase(v2) == 1:
-        g.scalar.add_phase(1)
-
-    g.remove_vertex(v1)
-    g.remove_vertex(v2)
-
+    etab, rem_verts, rem_edges, check_isolated_vertices = bialgebra(g, [(v1, v2)])
+    g.remove_edges(rem_edges)
+    g.remove_vertices(rem_verts)
+    g.add_edge_table(etab)
     return True
 
 def check_copy_X(g: BaseGraph[VT,ET], v: VT) -> bool:
