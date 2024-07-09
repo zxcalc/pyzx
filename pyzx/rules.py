@@ -124,10 +124,11 @@ def match_bialg_parallel(
                 all([types[n] == v1t and phases[n] == 0 for n in v0n]) and
                 all([types[n] == v0t and phases[n] == 0 for n in v1n])):
                 i += 1
-                for v in v0n:
-                    for c in g.incident_edges(v): candidates.remove(c)
-                for v in v1n:
-                    for c in g.incident_edges(v): candidates.remove(c)
+                for vn in [v0n, v1n]:
+                    for v in vn:
+                        for c in g.incident_edges(v):
+                            if c in candidates:
+                                candidates.remove(c)
                 m.append((v0,v1,v0n,v1n))
     return m
 
