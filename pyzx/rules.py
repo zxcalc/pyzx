@@ -432,6 +432,9 @@ def match_pivot_parallel(
         v0n = list(g.neighbors(v0))
         v0b: List[VT] = []
         for n in v0n:
+            if len(list(g.edges(v0,n))) != 1:
+                invalid_edge = True
+                break
             et = g.edge_type(g.edge(v0,n))
             if types[n] == VertexType.Z and et == EdgeType.HADAMARD: pass
             elif types[n] == VertexType.BOUNDARY: v0b.append(n)
