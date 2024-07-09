@@ -259,7 +259,7 @@ def bialgebra(g: BaseGraph[VT,ET],
         rem_verts.append(v1)
         rem_verts.append(v2)
         v = (v1,v2)
-        nhd: Tuple[List[VT],List[VT]] = ([],[])
+        new_verts: Tuple[List[VT],List[VT]] = ([],[]) # new vertices for v1 and v2
 
         for i, j in [(0, 1), (1, 0)]:
             multi_edge_found = False
@@ -271,12 +271,12 @@ def bialgebra(g: BaseGraph[VT,ET],
                     r = 0.4*g.row(other_vertex) + 0.6*g.row(v[i])
                     newv = g.add_vertex(g.type(v[j]), qubit=q, row=r)
                     g.set_phase(newv, g.phase(v[j]))
-                    nhd[i].append(newv)
+                    new_verts[i].append(newv)
                     if other_vertex == v[j]:
                         q = 0.4*g.qubit(v[i]) + 0.6*g.qubit(other_vertex)
                         r = 0.4*g.row(v[i]) + 0.6*g.row(other_vertex)
                         newv2 = g.add_vertex(g.type(v[i]), qubit=q, row=r)
-                        nhd[j].append(newv2)
+                        new_verts[j].append(newv2)
                         other_vertex = newv2
                     if upair(newv, other_vertex) not in etab:
                         etab[upair(newv, other_vertex)] = [0, 0]
@@ -285,8 +285,8 @@ def bialgebra(g: BaseGraph[VT,ET],
                 elif i == 0: # only add new vertex once
                     multi_edge_found = True
 
-        for n1 in nhd[0]:
-            for n2 in nhd[1]:
+        for n1 in new_verts[0]:
+            for n2 in new_verts[1]:
                 if upair(n1,n2) not in etab:
                     etab[upair(n1,n2)] = [0, 0]
                 etab[upair(n1,n2)][0] += 1
