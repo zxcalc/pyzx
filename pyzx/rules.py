@@ -406,8 +406,9 @@ def match_pivot_parallel(
        consider all edges.
     :rtype: List of 4-tuples. See :func:`pivot` for the details.
     """
-    if matchf is not None: candidates = set([e for e in g.edges() if matchf(e)])
-    else: candidates = g.edge_set()
+    if matchf is not None: candidates_set = set([e for e in g.edges() if matchf(e)])
+    else: candidates_set = g.edge_set()
+    candidates = list(Counter(candidates_set).elements())
     types = g.types()
     phases = g.phases()
 
@@ -454,10 +455,11 @@ def match_pivot_parallel(
         if len(v0b) + len(v1b) > 1: continue
 
         i += 1
-        for v in v0n:
-            for c in g.incident_edges(v): candidates.discard(c)
-        for v in v1n:
-            for c in g.incident_edges(v): candidates.discard(c)
+        for vn in [v0n, v1n]:
+            for v in vn:
+                for c in g.incident_edges(v):
+                    if c in candidates:
+                        candidates.remove(c)
         b0 = list(v0b)
         b1 = list(v1b)
         m.append(((v0,v1),(b0,b1)))
@@ -470,8 +472,9 @@ def match_pivot_gadget(
     """Like :func:`match_pivot_parallel`, but except for pairings of
     Pauli vertices, it looks for a pair of an interior Pauli vertex and an
     interior non-Clifford vertex in order to gadgetize the non-Clifford vertex."""
-    if matchf is not None: candidates = set([e for e in g.edges() if matchf(e)])
-    else: candidates = g.edge_set()
+    if matchf is not None: candidates_set = set([e for e in g.edges() if matchf(e)])
+    else: candidates_set = g.edge_set()
+    candidates = list(Counter(candidates_set).elements())
     types = g.types()
     phases = g.phases()
     rs = g.rows()
@@ -529,7 +532,9 @@ def match_pivot_gadget(
 
         m.append(((v0,v1),([],[v])))
         i += 1
-        for c in discard_edges: candidates.discard(c)
+        for c in discard_edges:
+            if c in candidates:
+                candidates.remove(c)
     g.add_edges(edge_list,EdgeType.SIMPLE)
     return m
 
