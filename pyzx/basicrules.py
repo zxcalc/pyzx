@@ -46,6 +46,7 @@ __all__ = ['color_change_diagram',
         'remove_id']
 
 from typing import Tuple, List
+from .editor_actions import bialgebra
 from .graph.base import BaseGraph, VT, ET
 from .rules import apply_rule, w_fusion, z_to_z_box
 from .utils import (EdgeType, VertexType, get_w_io, get_z_box_label, is_pauli,
@@ -91,35 +92,10 @@ def check_strong_comp(g: BaseGraph[VT,ET], v1: VT, v2: VT) -> bool:
 def strong_comp(g: BaseGraph[VT,ET], v1: VT, v2: VT) -> bool:
     if not check_strong_comp(g, v1, v2): return False
 
-    nhd: Tuple[List[VT],List[VT]] = ([],[])
-    v = (v1,v2)
-
-    for i, j in [(0, 1), (1, 0)]:
-        multi_edge_found = False
-        for e in g.incident_edges(v[i]):
-            source, target = g.edge_st(e)
-            other_vertex = source if source != v[i] else target
-            if other_vertex != v[j] or (multi_edge_found and i == 0): # i==0 to only add new vertex once
-                q = 0.4*g.qubit(other_vertex) + 0.6*g.qubit(v[i])
-                r = 0.4*g.row(other_vertex) + 0.6*g.row(v[i])
-                newv = g.add_vertex(g.type(v[j]), qubit=q, row=r)
-                g.add_edge((newv, other_vertex), edgetype=g.edge_type(e))
-                g.set_phase(newv, g.phase(v[j]))
-                nhd[i].append(newv)
-            elif other_vertex == v[j]:
-                multi_edge_found = True
-
-    for n1 in nhd[0]:
-        for n2 in nhd[1]:
-            g.add_edge((n1,n2))
-
-    g.scalar.add_power((len(nhd[0]) - 1) * (len(nhd[1]) - 1))
-    if g.phase(v1) == 1 and g.phase(v2) == 1:
-        g.scalar.add_phase(1)
-
-    g.remove_vertex(v1)
-    g.remove_vertex(v2)
-
+    etab, rem_verts, rem_edges, check_isolated_vertices = bialgebra(g, [(v1, v2)])
+    g.remove_edges(rem_edges)
+    g.remove_vertices(rem_verts)
+    g.add_edge_table(etab)
     return True
 
 def check_copy_X(g: BaseGraph[VT,ET], v: VT) -> bool:
