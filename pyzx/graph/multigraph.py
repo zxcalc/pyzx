@@ -277,6 +277,9 @@ class Multigraph(BaseGraph[int,Tuple[int,int,EdgeType]]):
                         for _ in range(e.w_io): yield (v0, v1, EdgeType.W_IO)
         elif t != None:
             s, t = (s, t) if s < t else (t, s)
+            if t not in self.graph[s]:
+                return
+                yield
             e = self.graph[s][t]
             for _ in range(e.s): yield (s, t, EdgeType.SIMPLE)
             for _ in range(e.h): yield (s, t, EdgeType.HADAMARD)
