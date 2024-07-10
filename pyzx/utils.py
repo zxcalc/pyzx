@@ -60,8 +60,9 @@ def vertex_is_w(ty: VertexType) -> bool:
 
 def get_w_partner(g, v):
     assert vertex_is_w(g.type(v))
-    for u in g.neighbors(v):
-        if g.edge_type((u, v)) == EdgeType.W_IO:
+    for edge in g.incident_edges(v):
+        if g.edge_type(edge) == EdgeType.W_IO:
+            u = edge[0] if edge[1] == v else edge[1]
             assert vertex_is_w(g.type(u))
             return u
     assert False
