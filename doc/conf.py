@@ -181,7 +181,7 @@ nbsphinx_prolog = r"""
 
     <div class="admonition note">
       This page was generated from
-      <a class="reference external" href="https://github.com/Quantomatic/pyzx/tree/v{{ env.config.release|e }}/doc/{{ docname|e }}">{{ docname|e }}</a>
+      <a class="reference external" href="https://github.com/zxcalc/pyzx/tree/v{{ env.config.release|e }}/doc/{{ docname|e }}">{{ docname|e }}</a>
       [<a href="{{ env.docname.split('/')|last|e + '.ipynb' }}" class="reference download internal" download>download</a>].
     </div>
 """

@@ -32,21 +32,21 @@ A bunch of things! Below I list just the things related to quantum computing whe
 - Using this same rewrite strategy, all the Clifford measurements in a measurement-based quantum computation can be `removed <https://arxiv.org/abs/2003.01664>`_.
 - Using this same rewrite strategy, we can optimise the `T-count <https://arxiv.org/abs/1903.10477>`_ of a circuit.
 - Using ZX-diagrams, `several <https://arxiv.org/abs/1812.01238>`_ surface code `constructions <https://arxiv.org/abs/1905.08916>`_ have `succesfully <https://arxiv.org/abs/1912.11503>`_ been `optimised <https://arxiv.org/abs/2206.12780>`_.
-- Using ZX-diagrams, the simulation technique of `stabilizer decompositions <https://quantum-journal.org/papers/q-2019-09-02-181/>`_ can be `interleaved with diagrammatic simplifications <https://arxiv.org/abs/2109.01076>`_ to speed these up by a `considerable amount <https://arxiv.org/abs/2202.09202>`_. These techniques are implemented in a Rust port of PyZX: `quizx <https://github.com/Quantomatic/quizx>`_.
+- Using ZX-diagrams, the simulation technique of `stabilizer decompositions <https://quantum-journal.org/papers/q-2019-09-02-181/>`_ can be `interleaved with diagrammatic simplifications <https://arxiv.org/abs/2109.01076>`_ to speed these up by a `considerable amount <https://arxiv.org/abs/2202.09202>`_. These techniques are implemented in a Rust port of PyZX: `quizx <https://github.com/zxcalc/quizx>`_.
 
 
 
 Where do I go to ask questions about PyZX and the ZX-calculus?
 ------------------------------------------------------------------
 
-Check out the `ZX-calculus Discord channel <https://discord.gg/6shbsEQ3FC>`_. Otherwise you could go to the `Quantum Computing Stack Exchange <https://quantumcomputing.stackexchange.com/>`_ and tag your question with ``zx-calculus``. If you have a feature request or something you think might be a bug, feel free to create an `issue on Github <https://github.com/Quantomatic/pyzx/issues>`_.
+Check out the `ZX-calculus Discord channel <https://discord.gg/6shbsEQ3FC>`_. Otherwise you could go to the `Quantum Computing Stack Exchange <https://quantumcomputing.stackexchange.com/>`_ and tag your question with ``zx-calculus``. If you have a feature request or something you think might be a bug, feel free to create an `issue on Github <https://github.com/zxcalc/pyzx/issues>`_.
 
 
 
 I don't like Python. Can I do ZX-calculus things in different languages?
 ------------------------------------------------------------------------------
 
-Some of the functionality of PyZX has been ported to the `ZXCalculus.jl <https://juliapackages.com/p/zxcalculus>`_ Julia package. A port to the Rust language, `quizx <https://github.com/Quantomatic/quizx>`_, is also available. These packages have the benefit of being a lot faster, but the drawback of been less feature-rich, for instance having less capabilities of visualising the results.
+Some of the functionality of PyZX has been ported to the `ZXCalculus.jl <https://juliapackages.com/p/zxcalculus>`_ Julia package. A port to the Rust language, `quizx <https://github.com/zxcalc/quizx>`_, is also available. These packages have the benefit of being a lot faster, but the drawback of been less feature-rich, for instance having less capabilities of visualising the results.
 
 
 What are some things people have done with PyZX?
@@ -83,4 +83,4 @@ PyZX was originally built to optimize T-count. It is not so good at optimizing t
 
 PyZX also doesn't implement any of the tricks to optimally compile one and two-qubit circuits, such as using the Euler Decomposition to combine adjacent single-qubit rotations, or the KAK decomposition to reduce every two-qubit circuit to have at most three CNOTs.
 
-PyZX is quite fast, but it is still written in Python, and as such has its limits. If you have a circuit with tens of thousands of gates it should run quickly enough, but if you go to millions of gates, it will start to lag. If speed is your concern, check out `quizx <https://github.com/Quantomatic/quizx>`_.
+PyZX is quite fast, but it is still written in Python, and as such has its limits. If you have a circuit with tens of thousands of gates it should run quickly enough, but if you go to millions of gates, it will start to lag. If speed is your concern, check out `quizx <https://github.com/zxcalc/quizx>`_.

@@ -7,7 +7,7 @@ PyZX can be installed as a package using pip::
 
 	pip install pyzx
 
-If you wish to use the demo notebooks or benchmark circuits, then the repository can be cloned from `Github <https://github.com/Quantomatic/pyzx>`_.
+If you wish to use the demo notebooks or benchmark circuits, then the repository can be cloned from `Github <https://github.com/zxcalc/pyzx>`_.
 
 The best way to get started if you have cloned the repository is to run the `Getting Started notebook <notebooks/gettingstarted.ipynb>`_ in Jupyter. This page contains the same general information as that notebook.
 

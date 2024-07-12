@@ -1,7 +1,7 @@
 ## PyZX
 
 [![Unitary Fund](https://img.shields.io/badge/Supported%20By-UNITARY%20FUND-brightgreen.svg?style=for-the-badge)](http://unitary.fund)
-[![CQC Support](https://github.com/Quantomatic/pyzx/raw/master/images/cqc-banner-small.png)](https://cambridgequantum.com/)
+[![CQC Support](https://github.com/zxcalc/pyzx/raw/master/images/cqc-banner-small.png)](https://cambridgequantum.com/)
 [![PyPI version](https://badge.fury.io/py/pyzx.svg)](https://badge.fury.io/py/pyzx)
 
 PyZX (pronounce as *Pisics*) is a **Py**thon tool implementing the theory of **ZX**-calculus for the creation, visualisation, and automated rewriting of large-scale quantum circuits. Please watch [this 2-minute video](https://www.youtube.com/watch?v=iC-KVdB8pf0) for a short introduction.
@@ -79,4 +79,4 @@ If you wish to cite PyZX in an academic work, please cite the [accompanying pape
 </pre>
 
 Here's a plane that says PYZX:
-![PYZX](https://github.com/Quantomatic/pyzx/raw/master/images/F-PYZX.jpg)
+![PYZX](https://github.com/zxcalc/pyzx/raw/master/images/F-PYZX.jpg)

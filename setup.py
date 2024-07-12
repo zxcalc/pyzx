@@ -11,7 +11,7 @@ setup(
     author="Quantomatic",
     author_email="john@vdwetering.name",
     version="0.8.0",
-    url="https://github.com/Quantomatic/pyzx.git",
+    url="https://github.com/zxcalc/pyzx.git",
     description="Library for quantum circuit rewriting and optimisation using the ZX-calculus",
     long_description=README,
     long_description_content_type="text/markdown",

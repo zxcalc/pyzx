@@ -13,7 +13,7 @@ This release includes breaking changes!
 Major new features are support for W-spiders and Z-boxes, which are generators used in certain extensions of the ZX-calculus, such as in [this paper](https://arxiv.org/abs/2302.12135) which served as the motivation.
 It also adds more formal support for symbolic phases through the addition of a `Poly` class that can represented polynomial expressions containing Boolean and continuous variables.
 
-These features were implemented to support the development of [ZXLive](https://github.com/Quantomatic/zxlive), a new graphical proof assistant for ZX-diagrams.
+These features were implemented to support the development of [ZXLive](https://github.com/zxcalc/zxlive), a new graphical proof assistant for ZX-diagrams.
 
 This release includes some changes that are not backwards compatible. The most important of which is changing how inputs and outputs are stored in the json format. This means that json files produced by `Graph.to_json()` are not parsible by older versions, and older versions are no longer parsible by this newer version.
 In addition, the gate `CX` has been renamed to `XCX` to make it more clear that it is in fact not an alternative name for the `CNOT` gate. Finally, the `FSim` gate now takes as first arguments the control and target, and only then the angles, in order to be consistent with the other gate definitions.
@@ -81,14 +81,14 @@ The way that the D3 library is loaded is also changed, meaning that the D3 visua
 
 ## [0.7.0] - 2022-02-19
 
-This release adds several new features: support for evaluating ZX-diagrams as tensor networks using the hypergraph contraction methods of [quimb](https://quimb.readthedocs.io/en/latest/index.html), basic support for interacting with the Rust port of PyZX [quizx](https://github.com/Quantomatic/quizx), support for 'hybrid' ZX-diagrams that contain classical wires and measurements, as well as several heuristics for trying to optimise the CNOT count of a circuit that is to be extracted from a ZX-diagram.
+This release adds several new features: support for evaluating ZX-diagrams as tensor networks using the hypergraph contraction methods of [quimb](https://quimb.readthedocs.io/en/latest/index.html), basic support for interacting with the Rust port of PyZX [quizx](https://github.com/zxcalc/quizx), support for 'hybrid' ZX-diagrams that contain classical wires and measurements, as well as several heuristics for trying to optimise the CNOT count of a circuit that is to be extracted from a ZX-diagram.
 
 There is one small breaking change, which is that `Graph.inputs` and `Graph.outputs` are now methods  that return a list, instead of being lists themselves.
 
 ### Added
 - Added support for evaluating ZX-diagrams as tensor networks in [quimb](https://quimb.readthedocs.io/en/latest/index.html) (courtesy of
 Paul Tirlisan).
-- Added [quizx](https://github.com/Quantomatic/quizx) backend for the `Graph` class.
+- Added [quizx](https://github.com/zxcalc/quizx) backend for the `Graph` class.
 - `Graph` vertices can now carry a `ground` generator. This makes it possible to represent measurements and classical control in the diagrams. See the accompanying [paper](https://arxiv.org/abs/2109.06071) (courtesy of ABorgna).
 - Added `extract.lookahead_extract` that uses heuristics to extract circuit with less CNOT gates (courtesy of VladMoldoveanu).
 - Added `local_search` submodule for doing simulated annealing on rewrites of a ZX-diagram to try to get it to be extracted with less CNOTS (courtesy of Ryan Krueger).
