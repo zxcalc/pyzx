@@ -291,12 +291,11 @@ def bialgebra(g: BaseGraph[VT,ET],
                     etab[upair(n1,n2)] = [0, 0]
                 etab[upair(n1,n2)][0] += 1
 
-        if g.type(v2) == VertexType.Z:
-            t = VertexType.X
+        if g.type(v1) == VertexType.H_BOX or g.type(v2) == VertexType.H_BOX: # x-h bialgebra
+            x_vertex = v1 if g.type(v2) == VertexType.H_BOX else v2
+            g.scalar.add_power(g.vertex_degree(x_vertex)-2)
+        else: # z-x bialgebra
             g.scalar.add_power((g.vertex_degree(v1)-2)*(g.vertex_degree(v2)-2))
-        else: #g.type(w) == VertexType.H_BOX
-            t = VertexType.Z
-            g.scalar.add_power(g.vertex_degree(v1)-2)
     return (etab, rem_verts, [], False)
 
 
