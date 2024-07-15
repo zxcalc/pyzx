@@ -21,10 +21,12 @@ import sys
 from types import ModuleType
 from typing import Optional
 
+
 if __name__ == '__main__':
     sys.path.append('..')
     sys.path.append('.')
 from pyzx.graph import Graph
+from pyzx.graph.multigraph import Multigraph
 from pyzx.generate import cliffords
 from pyzx.circuit import Circuit
 
@@ -131,6 +133,22 @@ class TestTensor(unittest.TestCase):
         t_adj = adjoint(t)
         circ_adj = tensorfy(circ.adjoint())
         self.assertTrue(compare_tensors(t_adj,circ_adj))
+
+    def test_multiedge_scalar(self):
+        g = Multigraph()
+        g._auto_simplify = False
+        i1 = g.add_vertex(1,0,0)
+        i2 = g.add_vertex(2,1,0)
+        g.add_edges([(i1, i2)] * 3)
+        self.assertTrue(compare_tensors(g, np.array([np.sqrt(2)**(-1)]), preserve_scalar=True))
+
+    def test_self_loop_scalar(self):
+        g = Multigraph()
+        g.set_auto_simplify(False)
+        i1 = g.add_vertex(1,0,0)
+        g.add_edge((i1, i1))
+        self.assertTrue(compare_tensors(g, np.array([0]), preserve_scalar=True))
+
 
 
 if __name__ == '__main__':

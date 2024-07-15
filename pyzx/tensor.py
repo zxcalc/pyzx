@@ -85,9 +85,7 @@ def W_to_tensor(arity: int) -> np.ndarray:
     return m
 
 def pop_and_shift(verts, indices):
-    res = []
-    for v in verts:
-        res.append(indices[v].pop())
+    res = [indices[v].pop() for v in verts]
     for i in sorted(res,reverse=True):
         for w,l in indices.items():
             l2 = []
@@ -131,7 +129,7 @@ def tensorfy(g: 'BaseGraph[VT,ET]', preserve_scalar:bool=True) -> np.ndarray:
 
     for i,r in enumerate(sorted(verts_row.keys())):
         for v in sorted(verts_row[r]):
-            neigh = list(g.neighbors(v))
+            neigh = [list(set(g.edge_st(e)) - {v})[0] for e in g.incident_edges(v)]
             d = len(neigh)
             if v in inputs:
                 if types[v] != VertexType.BOUNDARY: raise ValueError("Wrong type for input:", v, types[v])
