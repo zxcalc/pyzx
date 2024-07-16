@@ -27,6 +27,7 @@ __all__ = ['tensorfy', 'compare_tensors', 'compose_tensors',
             'adjoint', 'is_unitary','tensor_to_matrix',
             'find_scalar_correction']
 
+import itertools
 from math import pi, sqrt
 
 from typing import Optional
@@ -85,9 +86,7 @@ def W_to_tensor(arity: int) -> np.ndarray:
     return m
 
 def pop_and_shift(verts, indices):
-    res = []
-    for v in verts:
-        res.append(indices[v].pop())
+    res = [indices[v].pop() for v in verts if v in indices]
     for i in sorted(res,reverse=True):
         for w,l in indices.items():
             l2 = []
@@ -131,8 +130,11 @@ def tensorfy(g: 'BaseGraph[VT,ET]', preserve_scalar:bool=True) -> np.ndarray:
 
     for i,r in enumerate(sorted(verts_row.keys())):
         for v in sorted(verts_row[r]):
-            neigh = list(g.neighbors(v))
-            d = len(neigh)
+            neigh = list(itertools.chain.from_iterable(
+                set(g.edge_st(e)) - {v} for e in g.incident_edges(v)
+            ))
+            self_loops = [e for e in g.incident_edges(v) if g.edge_s(e) == g.edge_t(e)]
+            d = len(neigh) + len(self_loops) * 2
             if v in inputs:
                 if types[v] != VertexType.BOUNDARY: raise ValueError("Wrong type for input:", v, types[v])
                 continue # inputs already taken care of
@@ -161,6 +163,13 @@ def tensorfy(g: 'BaseGraph[VT,ET]', preserve_scalar:bool=True) -> np.ndarray:
                     t = Z_box_to_tensor(d, label)
                 else:
                     raise ValueError("Vertex %s has non-ZXH type but is not an input or output" % str(v))
+            for sl in self_loops:
+                if g.edge_type(sl) == EdgeType.HADAMARD:
+                    t = np.tensordot(t,had)
+                elif g.edge_type(sl) == EdgeType.SIMPLE:
+                    t = np.trace(t)
+                else:
+                    raise NotImplementedError(f"Tensor contraction with {repr(sl)} self-loops is not implemented.")
             nn = list(filter(lambda n: rows[n]<r or (rows[n]==r and n<v), neigh)) # TODO: allow ordering on vertex indices?
             ety = {n:g.edge_type(g.edge(v,n)) for n in nn}
             nn.sort(key=lambda n: ety[n])
