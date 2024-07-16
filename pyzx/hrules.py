@@ -199,8 +199,7 @@ def apply_copy(
             q = 0.7*g.qubit(w) + 0.3*g.qubit(n)
 
             u = g.add_vertex(copy_type, q, r, a)
-            e = g.edge(n,w)
-            et = g.edge_type(e)
+            et = g.edge_type(edge)
             g.add_edge((n,u), et)
 
     return ({}, rem, [], True)
