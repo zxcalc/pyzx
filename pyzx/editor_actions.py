@@ -89,7 +89,7 @@ def pauli_matcher(
     return m
 
 
-def pauli_push(g: BaseGraph[VT,ET], 
+def pauli_push(g: BaseGraph[VT,ET],
                matches: List[Tuple[VT,VT]]
                ) -> rules.RewriteOutputType[VT,ET]:
     """Pushes a Pauli (i.e. a pi phase) through another spider."""
@@ -109,21 +109,22 @@ def pauli_push(g: BaseGraph[VT,ET],
             g.set_phase(w,0)
 
         new_verts = []
-        if vertex_is_zx(g.type(v)): 
+        if vertex_is_zx(g.type(v)):
             g.scalar.add_phase(g.phase(v))
             g.set_phase(v,(-g.phase(v)) % 2)
             t = toggle_vertex(g.type(v))
             p: FractionLike = Fraction(1)
-        else: 
+        else:
             t = VertexType.Z
             p = 0
-        for n in g.neighbors(v):
+        for edge in g.incident_edges(v):
+            st = g.edge_st(edge)
+            n = st[0] if st[1] == v else st[1]
             if n == w: continue
             r = 0.5*(g.row(n) + g.row(v))
             q = 0.5*(g.qubit(n) + g.qubit(v))
-            e = g.edge(n,v)
-            et = g.edge_type(e)
-            rem_edges.append(e)
+            et = g.edge_type(edge)
+            rem_edges.append(edge)
             w2 = g.add_vertex(t,q,r,p)
             etab[upair(v,w2)] = [1,0]
             etab[upair(n,w2)] = [1,0] if et == EdgeType.SIMPLE else [0,1]
