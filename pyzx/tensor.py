@@ -169,7 +169,7 @@ def tensorfy(g: 'BaseGraph[VT,ET]', preserve_scalar:bool=True) -> np.ndarray:
                 elif g.edge_type(sl) == EdgeType.SIMPLE:
                     t = np.trace(t)
                 else:
-                    raise NotImplementedError(f"Tensor contraction for {repr(sl)} self loops are not implemented.")
+                    raise NotImplementedError(f"Tensor contraction with {repr(sl)} self-loops is not implemented.")
             nn = list(filter(lambda n: rows[n]<r or (rows[n]==r and n<v), neigh)) # TODO: allow ordering on vertex indices?
             ety = {n:g.edge_type(g.edge(v,n)) for n in nn}
             nn.sort(key=lambda n: ety[n])
