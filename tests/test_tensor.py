@@ -21,7 +21,6 @@ import sys
 from types import ModuleType
 from typing import Optional
 
-
 if __name__ == '__main__':
     sys.path.append('..')
     sys.path.append('.')
@@ -136,7 +135,7 @@ class TestTensor(unittest.TestCase):
 
     def test_multiedge_scalar(self):
         g = Multigraph()
-        g._auto_simplify = False
+        g.set_auto_simplify(False)
         i1 = g.add_vertex(1,0,0)
         i2 = g.add_vertex(2,1,0)
         g.add_edges([(i1, i2)] * 3)
@@ -147,9 +146,33 @@ class TestTensor(unittest.TestCase):
         g.set_auto_simplify(False)
         i1 = g.add_vertex(1,0,0)
         g.add_edge((i1, i1))
+        self.assertTrue(compare_tensors(g, np.array([2]), preserve_scalar=True))
+        g.add_edge((i1, i1), 2)
         self.assertTrue(compare_tensors(g, np.array([0]), preserve_scalar=True))
 
+    def test_self_loop_state(self):
+        g = Multigraph()
+        g.set_auto_simplify(False)
+        i0 = g.add_vertex(0,0,0)
+        i1 = g.add_vertex(2,0,1)
+        g.set_inputs((i0,))
+        g.add_edge((i0, i1))
+        self.assertTrue(compare_tensors(g, np.array([1,0])))
+        g.add_edge((i1, i1), 2)
+        self.assertTrue(compare_tensors(g, np.array([0,1])))
 
+    def test_self_loop_and_parallel_edge_map(self):
+        g = Multigraph()
+        g.set_auto_simplify(False)
+        i0 = g.add_vertex(0,0,0)
+        i1 = g.add_vertex(2,0,1)
+        i2 = g.add_vertex(1,0,2)
+        i3 = g.add_vertex(0,0,3)
+        g.set_inputs((i0,))
+        g.set_outputs((i3,))
+        g.add_edges([(i0, i1), (i1, i1)] + [(i1, i2)] * 2)
+        g.add_edges([(i2, i2), (i2, i3)], 2)
+        self.assertTrue(compare_tensors(g, np.array([[0,0],[1,0]])))
 
 if __name__ == '__main__':
     unittest.main()
