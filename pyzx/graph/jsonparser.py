@@ -55,7 +55,7 @@ def string_to_phase(string: str, g: Union[BaseGraph,'GraphDiff']) -> Union[Fract
         elif '/' in s:
             a, b = s.split("/", 2)
             if not a:
-                return Fraction(int(1), int(b))
+                return Fraction(int(1), int(b)) # For some weird reason this int(1) is needed. See PR #234.
             if a == '-':
                 a = '-1'
             return Fraction(int(a), int(b))
