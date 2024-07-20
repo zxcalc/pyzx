@@ -336,7 +336,8 @@ def bialgebra_op(g: BaseGraph[VT,ET],
                 if neighbor in type2_vertices:
                     continue
                 elif neighbor in type1_vertices:
-                    loops.append(g.edge_type(edge))
+                    if v1 > neighbor:
+                        loops.append(g.edge_type(edge))
                 else:
                     neighbors.append((neighbor, g.edge_type(edge)))
         return neighbors, loops
