@@ -303,7 +303,8 @@ def bialgebra(g: BaseGraph[VT,ET],
 
 def match_bialgebra_op(g: BaseGraph[VT,ET],
         vertexf: Optional[Callable[[VT], bool]] = None,
-        vertex_type: Optional[Tuple[VertexType, VertexType]] = None
+        vertex_type: Optional[Tuple[VertexType, VertexType]] = None,
+        edge_type: Optional[EdgeType] = None
         ) -> Optional[Tuple[List[VT], List[VT]]]:
     if vertexf is not None: candidates = set([v for v in g.vertices() if vertexf(v)])
     else: candidates = g.vertex_set()
@@ -311,20 +312,23 @@ def match_bialgebra_op(g: BaseGraph[VT,ET],
         vtype1, vtype2 = vertex_type
     else:
         vtype1, vtype2 = VertexType.Z, VertexType.X
+    if edge_type is None:
+        edge_type = EdgeType.SIMPLE
     type1_vertices = [v for v in candidates if g.type(v) == vtype1]
     type2_vertices = [v for v in candidates if g.type(v) == vtype2]
-    if len(type1_vertices) == 0 or len(type2_vertices) == 0:
+    if len(type1_vertices) <= 0 or len(type2_vertices) <= 0:
         return None
     # if all type1 vertices are connected to all type2 vertices with a simple edge, then they are a match
     for v1 in type1_vertices:
         for v2 in type2_vertices:
             edges = list(g.edges(v1, v2))
-            if not (len(edges) == 1 and g.edge_type(edges[0]) == EdgeType.SIMPLE):
+            if not (len(edges) == 1 and g.edge_type(edges[0]) == edge_type):
                 return None
     return type1_vertices, type2_vertices
 
 def bialgebra_op(g: BaseGraph[VT,ET],
-        matches: Tuple[List[VT], List[VT]]
+        matches: Tuple[List[VT], List[VT]],
+        edge_type: Optional[EdgeType] = EdgeType.SIMPLE
         ) -> rules.RewriteOutputType[VT,ET]:
     def get_neighbors_and_loops(type1_vertices: List[VT], type2_vertices: List[VT]) -> Tuple[List[Tuple[VT, EdgeType]], List[EdgeType]]:
         neighbors: List[Tuple[VT, EdgeType]] = []
@@ -359,7 +363,10 @@ def bialgebra_op(g: BaseGraph[VT,ET],
     new_vertex2 = add_vertex_with_averages(type2_vertices, g, g.type(type1_vertices[0]))
 
     etab: dict = defaultdict(lambda: [0, 0])
-    etab[upair(new_vertex1, new_vertex2)] = [1, 0]
+    if edge_type == EdgeType.SIMPLE:
+        etab[upair(new_vertex1, new_vertex2)] = [1, 0]
+    else:
+        etab[upair(new_vertex1, new_vertex2)] = [0, 1]
     update_etab(etab, new_vertex1, neighbors1, loops1)
     update_etab(etab, new_vertex2, neighbors2, loops2)
 
