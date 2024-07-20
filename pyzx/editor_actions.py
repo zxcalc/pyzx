@@ -300,7 +300,6 @@ def bialgebra(g: BaseGraph[VT,ET],
             g.scalar.add_power((g.vertex_degree(v1)-2)*(g.vertex_degree(v2)-2))
     return (etab, rem_verts, [], False)
 
-
 def match_bialgebra_op(g: BaseGraph[VT,ET],
         vertexf: Optional[Callable[[VT], bool]] = None,
         vertex_type: Optional[Tuple[VertexType, VertexType]] = None,
@@ -380,6 +379,7 @@ def bialgebra_op(g: BaseGraph[VT,ET],
     g.scalar.add_power(-(len(neighbors1)-1)*(len(neighbors2)-1)) #TODO: not sure if this is correct
 
     return (etab, type1_vertices + type2_vertices, [], False)
+
 
 MATCHES_VERTICES = 1
 MATCHES_EDGES = 2
