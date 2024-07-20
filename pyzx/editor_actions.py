@@ -348,7 +348,7 @@ def bialgebra_op(g: BaseGraph[VT,ET],
 
     def update_etab(etab, new_vertex, neighbors, loops):
         for n, et in neighbors + [(new_vertex, et) for et in loops]:
-            etab[upair(new_vertex, n)][0 if et == EdgeType.SIMPLE else 1] = 1
+            etab[upair(new_vertex, n)][0 if et == EdgeType.SIMPLE else 1] += 1
 
     type1_vertices, type2_vertices = matches
     neighbors1, loops1 = get_neighbors_and_loops(type1_vertices, type2_vertices)
