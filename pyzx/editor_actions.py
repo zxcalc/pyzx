@@ -318,6 +318,13 @@ def match_bialgebra_op(g: BaseGraph[VT,ET],
     type2_vertices = [v for v in candidates if g.type(v) == vtype2]
     if len(type1_vertices) <= 1 or len(type2_vertices) <= 1:
         return None
+    # the vertices must have one external edge
+    for v1 in type1_vertices:
+        if g.vertex_degree(v1) != len(type2_vertices) + 1:
+            return None
+    for v2 in type2_vertices:
+        if g.vertex_degree(v2) != len(type1_vertices) + 1:
+            return None
     # if all type1 vertices are connected to all type2 vertices with a simple edge, then they are a match
     for v1 in type1_vertices:
         for v2 in type2_vertices:
