@@ -341,10 +341,10 @@ def bialgebra_op(g: BaseGraph[VT,ET],
                     neighbors.append((neighbor, g.edge_type(edge)))
         return neighbors, loops
 
-    def add_vertex_with_averages(vertices, g):
+    def add_vertex_with_averages(vertices, g, vtype):
         average_row = sum(g.row(v) for v in vertices) / len(vertices)
         average_qubit = sum(g.qubit(v) for v in vertices) / len(vertices)
-        return g.add_vertex(g.type(vertices[0]), average_qubit, average_row)
+        return g.add_vertex(vtype, average_qubit, average_row)
 
     def update_etab(etab, new_vertex, neighbors, loops):
         for n, et in neighbors + [(new_vertex, et) for et in loops]:
@@ -354,17 +354,15 @@ def bialgebra_op(g: BaseGraph[VT,ET],
     neighbors1, loops1 = get_neighbors_and_loops(type1_vertices, type2_vertices)
     neighbors2, loops2 = get_neighbors_and_loops(type2_vertices, type1_vertices)
 
-    new_vertex1 = add_vertex_with_averages(type1_vertices, g)
-    new_vertex2 = add_vertex_with_averages(type2_vertices, g)
+    new_vertex1 = add_vertex_with_averages(type1_vertices, g, g.type(type2_vertices[0]))
+    new_vertex2 = add_vertex_with_averages(type2_vertices, g, g.type(type1_vertices[0]))
 
     etab: dict = defaultdict(lambda: [0, 0])
     etab[upair(new_vertex1, new_vertex2)] = [1, 0]
-
     update_etab(etab, new_vertex1, neighbors1, loops1)
     update_etab(etab, new_vertex2, neighbors2, loops2)
 
-    rem_verts = type1_vertices + type2_vertices
-    return (etab, rem_verts, [], False)
+    return (etab, type1_vertices + type2_vertices, [], False)
 
 MATCHES_VERTICES = 1
 MATCHES_EDGES = 2
