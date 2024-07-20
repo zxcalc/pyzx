@@ -16,6 +16,7 @@
 
 
 import json
+from collections import defaultdict
 from fractions import Fraction
 
 from typing import Callable, Optional, List, Dict, Tuple
@@ -339,33 +340,29 @@ def bialgebra_op(g: BaseGraph[VT,ET],
                 else:
                     neighbors.append((neighbor, g.edge_type(edge)))
         return neighbors, loops
+
+    def add_vertex_with_averages(vertices, g):
+        average_row = sum(g.row(v) for v in vertices) / len(vertices)
+        average_qubit = sum(g.qubit(v) for v in vertices) / len(vertices)
+        return g.add_vertex(g.type(vertices[0]), average_qubit, average_row)
+
+    def update_etab(etab, new_vertex, neighbors, loops):
+        for n, et in neighbors + [(new_vertex, et) for et in loops]:
+            etab[upair(new_vertex, n)][0 if et == EdgeType.SIMPLE else 1] = 1
+
     type1_vertices, type2_vertices = matches
     neighbors1, loops1 = get_neighbors_and_loops(type1_vertices, type2_vertices)
     neighbors2, loops2 = get_neighbors_and_loops(type2_vertices, type1_vertices)
-    average_row1 = sum(g.row(v) for v in type1_vertices) / len(type1_vertices)
-    average_qubit1 = sum(g.qubit(v) for v in type1_vertices) / len(type1_vertices)
-    average_row2 = sum(g.row(v) for v in type2_vertices) / len(type2_vertices)
-    average_qubit2 = sum(g.qubit(v) for v in type2_vertices) / len(type2_vertices)
-    new_vertex1 = g.add_vertex(g.type(type2_vertices[0]), average_qubit1, average_row1)
-    new_vertex2 = g.add_vertex(g.type(type1_vertices[0]), average_qubit2, average_row2)
-    etab = {}
+
+    new_vertex1 = add_vertex_with_averages(type1_vertices, g)
+    new_vertex2 = add_vertex_with_averages(type2_vertices, g)
+
+    etab: dict = defaultdict(lambda: [0, 0])
     etab[upair(new_vertex1, new_vertex2)] = [1, 0]
-    for n, et in neighbors1:
-        if upair(new_vertex1, n) not in etab:
-            etab[upair(new_vertex1, n)] = [0, 0]
-        etab[upair(new_vertex1, n)] = [1, 0] if et == EdgeType.SIMPLE else [0, 1]
-    for n, et in neighbors2:
-        if upair(new_vertex2, n) not in etab:
-            etab[upair(new_vertex2, n)] = [0, 0]
-        etab[upair(new_vertex2, n)] = [1, 0] if et == EdgeType.SIMPLE else [0, 1]
-    for et in loops1:
-        if upair(new_vertex1, new_vertex1) not in etab:
-            etab[upair(new_vertex1, new_vertex1)] = [0, 0]
-        etab[upair(new_vertex1, new_vertex1)] = [1, 0] if et == EdgeType.SIMPLE else [0, 1]
-    for et in loops2:
-        if upair(new_vertex2, new_vertex2) not in etab:
-            etab[upair(new_vertex2, new_vertex2)] = [0, 0]
-        etab[upair(new_vertex2, new_vertex2)] = [1, 0] if et == EdgeType.SIMPLE else [0, 1]
+
+    update_etab(etab, new_vertex1, neighbors1, loops1)
+    update_etab(etab, new_vertex2, neighbors2, loops2)
+
     rem_verts = type1_vertices + type2_vertices
     return (etab, rem_verts, [], False)
 
