@@ -221,7 +221,7 @@ def add_Z_identity(g: BaseGraph[VT,ET],
         etab[upair(v2,w)] = [1,0]
     return (etab, [], rem_edges, False)
 
-def match_bialgebra(g: BaseGraph[VT,ET], 
+def match_bialgebra_op(g: BaseGraph[VT,ET], 
         edgef: Optional[Callable[[ET],bool]] = None
         ) -> List[Tuple[VT,VT]]:
     if edgef is not None: candidates = set([e for e in g.edges() if edgef(e)])
@@ -252,7 +252,7 @@ def match_bialgebra(g: BaseGraph[VT,ET],
                 candidates.difference_update(g.incident_edges(n))
     return m
 
-def bialgebra(g: BaseGraph[VT,ET], 
+def bialgebra_op(g: BaseGraph[VT,ET],
         matches: List[Tuple[VT,VT]]
         ) -> rules.RewriteOutputType[VT,ET]:
     rem_verts = []
@@ -300,7 +300,7 @@ def bialgebra(g: BaseGraph[VT,ET],
             g.scalar.add_power((g.vertex_degree(v1)-2)*(g.vertex_degree(v2)-2))
     return (etab, rem_verts, [], False)
 
-def match_bialgebra_op(g: BaseGraph[VT,ET],
+def match_bialgebra(g: BaseGraph[VT,ET],
         vertexf: Optional[Callable[[VT], bool]] = None,
         vertex_type: Optional[Tuple[VertexType, VertexType]] = None,
         edge_type: Optional[EdgeType] = None
@@ -332,7 +332,7 @@ def match_bialgebra_op(g: BaseGraph[VT,ET],
                 return None
     return type1_vertices, type2_vertices
 
-def bialgebra_op(g: BaseGraph[VT,ET],
+def bialgebra(g: BaseGraph[VT,ET],
         matches: Tuple[List[VT], List[VT]],
         edge_type: Optional[EdgeType] = EdgeType.SIMPLE
         ) -> rules.RewriteOutputType[VT,ET]:
@@ -450,7 +450,7 @@ operations = {
                "matcher": match_bialgebra,
                "rule": bialgebra,
                "type": MATCHES_EDGES},
-    "bialgebra_op": {"text": "bialgebra_op",
+    "bialgebra_op": {"text": "bialgebra (inverse)",
                "tooltip": "Applies the bialgebra rule to a connected pair of Z and X spiders in the opposite direction",
                "matcher": match_bialgebra_op,
                "rule": bialgebra_op,
