@@ -288,7 +288,7 @@ def cliffordTmeas(
     else: rest -= p_s
     if p_hsh is None: num += 1.0
     else: rest -= p_hsh
-    if p_cnot is None: num += 1.0
+    if p_cnot is None: num += 1.0 if qubits > 1 else 0.0
     else: rest -= p_cnot
     if p_meas is None: num += 1.0
     else: rest -= p_meas
@@ -298,13 +298,15 @@ def cliffordTmeas(
     if p_t is None: p_t = rest / num
     if p_s is None: p_s = rest / num
     if p_hsh is None: p_hsh = rest / num
-    if p_cnot is None: p_cnot = rest / num
+    if p_cnot is None: p_cnot = rest / num if qubits > 1 else 0.0
     if p_meas is None: p_meas = rest / num
+
+    if p_cnot > 0 and qubits <= 1: raise ValueError("Cannot have p_cnot > 0 with a single qubit.")
 
     #p_s = (1 - p_t) / 3.0
     #p_hsh = (1 - p_t) / 3.0
     #p_cnot = (1 - p_t) / 3.0
-    
+
     inputs = []
     outputs = []
 

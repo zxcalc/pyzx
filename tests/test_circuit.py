@@ -83,13 +83,18 @@ class TestCircuit(unittest.TestCase):
         self.assertListEqual(c2.gates,c2.gates)
 
     def test_cliffordT_preserves_graph_semantics(self):
-        random.seed(SEED)
-        g = cliffordT(4,20,0.2)
-        c = Circuit.from_graph(g)
-        g2 = c.to_graph()
-        t = tensorfy(g,False)
-        t2 = tensorfy(g2,False)
-        self.assertTrue(compare_tensors(t,t2, False))
+        for i in range(1,5):
+            with self.subTest(i):
+                random.seed(SEED)
+                g = cliffordT(i,20,0.2)
+                c = Circuit.from_graph(g)
+                g2 = c.to_graph()
+                t = tensorfy(g,False)
+                t2 = tensorfy(g2,False)
+                self.assertTrue(compare_tensors(t,t2, False))
+
+    def test_cliffordT_raises_exception_with_pcnot(self):
+        self.assertRaises(ValueError, cliffordT, 1, 1, p_cnot=0.1)
 
     def test_cliffords_preserves_graph_semantics(self):
         random.seed(SEED)
