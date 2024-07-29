@@ -484,7 +484,7 @@ def replace_1_1(g: BaseGraph[VT,ET], verts: List[VT]) -> BaseGraph[VT,ET]:
     return g
 
 def cut_vertex(g,v):
-    '''Applies the "cutting" decomposition to a vertex, as used in, for example: https://arxiv.org/pdf/2403.10964.'''
+    """Applies the ``cutting'' decomposition to a vertex, as used in, for example: https://arxiv.org/pdf/2403.10964."""
     g  = g.copy()
     g0 = g.copy()
     g1 = g.copy()
@@ -515,7 +515,7 @@ def cut_vertex(g,v):
     return (g0,g1)
 
 def cut_edge(g,e,ty=1):
-    '''Applies the "cutting" decomposition to an edge, as used in, for example: https://arxiv.org/pdf/2403.10964. The type ty decides whether to cut with Z- branches or X- branches.'''
+    """Applies the ``cutting'' decomposition to an edge, as used in, for example: https://arxiv.org/pdf/2403.10964. The type ty decides whether to cut with Z- branches or X- branches."""
     g  = g.copy()
     g0 = g.copy()
     g1 = g.copy()
