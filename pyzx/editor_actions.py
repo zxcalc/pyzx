@@ -376,7 +376,7 @@ def bialgebra_op(g: BaseGraph[VT,ET],
     update_etab(etab, new_vertex1, neighbors1, loops1)
     update_etab(etab, new_vertex2, neighbors2, loops2)
 
-    g.scalar.add_power(-(len(neighbors1)-1)*(len(neighbors2)-1)) #TODO: not sure if this is correct
+    g.scalar.add_power(-(len(neighbors1)-1)*(len(neighbors2)-1))
 
     return (etab, type1_vertices + type2_vertices, [], False)
 
