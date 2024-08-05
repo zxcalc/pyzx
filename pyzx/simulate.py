@@ -28,7 +28,7 @@ from typing import List, Optional, Dict, Tuple, Any
 
 import numpy as np
 
-from .utils import EdgeType, VertexType, toggle_edge, ave_pos
+from .utils import EdgeType, VertexType, toggle_vertex, toggle_edge, ave_pos
 from . import simplify
 from .circuit import Circuit
 from .graph import Graph
@@ -485,9 +485,9 @@ def replace_1_1(g: BaseGraph[VT,ET], verts: List[VT]) -> BaseGraph[VT,ET]:
 
 def cut_vertex(g,v):
     """Applies the ``cutting'' decomposition to a vertex, as used in, for example: https://arxiv.org/pdf/2403.10964."""
-    g  = g.copy()
-    g0 = g.copy()
-    g1 = g.copy()
+    g  = g.clone()
+    g0 = g.clone()
+    g1 = g.clone()
     g0.remove_vertex(v)
     g1.remove_vertex(v)
 
@@ -496,11 +496,7 @@ def cut_vertex(g,v):
     g1.scalar.add_power(-n)
     g1.scalar.add_phase(g.phase(v)) # account for e^(i*pi*alpha) on right branch
     
-    vtype = -1
-    match g.type(v):
-        case 1: vtype = 2
-        case 2: vtype = 1
-        case _: raise ValueError("Attempted illegal cut on boundary vertex "+str(v))
+    vtype = toggle_vertex(g.type(v))
 
     for i in g.neighbors(v):
         etype = g.edge_type((v,i)) # maintain edge type
@@ -516,9 +512,9 @@ def cut_vertex(g,v):
 
 def cut_edge(g,e,ty=1):
     """Applies the ``cutting'' decomposition to an edge, as used in, for example: https://arxiv.org/pdf/2403.10964. The type ty decides whether to cut with Z- branches or X- branches."""
-    g  = g.copy()
-    g0 = g.copy()
-    g1 = g.copy()
+    g  = g.clone()
+    g0 = g.clone()
+    g1 = g.clone()
     g0.remove_edge(e)
     g1.remove_edge(e)
 
