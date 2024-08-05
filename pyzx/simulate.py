@@ -542,3 +542,35 @@ def cut_edge(g,e,ty=1):
     g1.add_edge((v,e[1]),etype)
     
     return (g0,g1)
+
+def cut_wishbone(g,v,neighs,ph):
+    """Applies the ``wishbone cut'' (or ``separator cut'') decomposition to vertex v of graph g, pulling out the neighbours ``neighs'' and a phase ``ph'', as used in: [PAPER UPCOMING]."""
+    g = g.clone()
+    
+    for i in neighs:
+        if not i in g.neighbors(v):
+            raise ValueError("Attempted illegal wishbone cut. Vertex " + str(i) + " is not a neighbor of target vertex " + str(v) + ".")
+    
+    neighs_left  = set(g.neighbors(v)).symmetric_difference(neighs)
+    neighs_right = neighs
+    
+    phase_left  = g.phase(v) - ph
+    phase_right = ph
+    
+    v_left  = g.add_vertex(qubit=g.qubit(v),row=g.row(v)-0.5,ty=g.type(v),phase=phase_left)
+    v_right = g.add_vertex(qubit=g.qubit(v),row=g.row(v)+0.5,ty=g.type(v),phase=phase_right)
+    
+    for i in neighs_left:  g.add_edge((v_left,i),g.edge_type((v,i)))
+    for i in neighs_right: g.add_edge((v_right,i),g.edge_type((v,i)))
+    
+    g.remove_vertex(v)
+    
+    #--
+    
+    gLeft  = g.clone()
+    gRight = g.clone()
+    
+    gRight.add_to_phase(v_left,1)
+    gRight.add_to_phase(v_right,1)
+    
+    return (gLeft,gRight)
