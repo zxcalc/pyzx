@@ -203,8 +203,8 @@ def check_fuse_w(g: BaseGraph[VT,ET], v1: VT, v2: VT) -> bool:
     if vertex_is_w(g.type(v1)) and vertex_is_w(g.type(v2)):
         v1_in, v1_out = get_w_io(g, v1)
         v2_in, v2_out = get_w_io(g, v2)
-        if g.edge_type(g.edge(v1_in, v2_out)) == EdgeType.SIMPLE or \
-           g.edge_type(g.edge(v2_in, v1_out)) == EdgeType.SIMPLE:
+        if (g.connected(v1_in, v2_out) and g.edge_type(g.edge(v1_in, v2_out)) == EdgeType.SIMPLE) or \
+           (g.connected(v2_in, v1_out) and g.edge_type(g.edge(v2_in, v1_out)) == EdgeType.SIMPLE):
             return True
     return False
 
