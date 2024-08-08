@@ -624,7 +624,7 @@ def apply_magic5(g: BaseGraph[VT,ET], verts: List[VT]) -> SumGraph:
     g_B = gen_catlike_term(g, verts, 0,              0,              Fraction(-1,4), EdgeType.HADAMARD, EdgeType.HADAMARD, True,  3, Fraction(3,4))
     g_C = gen_catlike_term(g, verts, Fraction(1,2),  0,              Fraction(1,4),  EdgeType.HADAMARD, EdgeType.HADAMARD, False, 3, Fraction(1,4))
     
-    return [g_A, g_B, g_C]
+    return SumGraph([g_A, g_B, g_C])
 
 # TODO: the cat decomps should be updated to work even if the central phase is pi (i.e. not just zero)
 def apply_cat3(g: BaseGraph[VT,ET], vert: VT) -> SumGraph:
@@ -635,7 +635,7 @@ def apply_cat3(g: BaseGraph[VT,ET], vert: VT) -> SumGraph:
     g_B = gen_catlike_term(g, verts, 0, 0,              0, EdgeType.HADAMARD, EdgeType.SIMPLE,   True,  0, Fraction(1,2))
     g_A.remove_vertex(vert)
     g_B.remove_vertex(vert)
-    return [g_A, g_B]
+    return SumGraph([g_A, g_B])
 
 def apply_cat4(g: BaseGraph[VT,ET], vert: VT) -> SumGraph:
     """Apply the cat4 decomposition to vertex verts of graph g. See: https://arxiv.org/pdf/2202.09202."""
@@ -645,7 +645,7 @@ def apply_cat4(g: BaseGraph[VT,ET], vert: VT) -> SumGraph:
     g_B = gen_catlike_term(g, verts, 0, 0,              0, EdgeType.HADAMARD, EdgeType.SIMPLE, True,  0, Fraction(1,2))
     g_A.remove_vertex(vert)
     g_B.remove_vertex(vert)
-    return [g_A, g_B]
+    return SumGraph([g_A, g_B])
 
 def apply_cat5(g: BaseGraph[VT,ET], vert: VT) -> SumGraph:
     """Apply the cat5 decomposition to vertex verts of graph g. See: https://arxiv.org/pdf/2202.09202."""
@@ -657,7 +657,7 @@ def apply_cat5(g: BaseGraph[VT,ET], vert: VT) -> SumGraph:
     g_A.remove_vertex(vert)
     g_B.remove_vertex(vert)
     g_C.remove_vertex(vert)
-    return [g_A, g_B, g_C]
+    return SumGraph([g_A, g_B, g_C])
 
 def apply_cat6(g: BaseGraph[VT,ET], vert: VT) -> SumGraph:
     """Apply the cat6 decomposition to vertex verts of graph g. See: https://arxiv.org/pdf/2202.09202."""
@@ -669,4 +669,4 @@ def apply_cat6(g: BaseGraph[VT,ET], vert: VT) -> SumGraph:
     g_A.remove_vertex(vert)
     g_B.remove_vertex(vert)
     g_C.remove_vertex(vert)
-    return [g_A, g_B, g_C]
+    return SumGraph([g_A, g_B, g_C])
