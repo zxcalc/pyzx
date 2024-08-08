@@ -574,3 +574,99 @@ def cut_wishbone(g,v,neighs,ph):
     gRight.add_to_phase(v_right,1)
     
     return (gLeft,gRight)
+
+def gen_catlike_term(gInit: BaseGraph[VT,ET], verts: List[VT], ph_base, ph_central, ph_appendix, eType_base, eType_appendix, scal_positive, scal_power, scal_phase):
+    """
+    Used for constructing graph terms with local structure of the form of the right-hand side terms of the cat (and magic5) decompositions seen in: https://arxiv.org/pdf/2202.09202.
+    For example, consider the magic5 decomposition in this above paper. Here, we exchange 5 T-spiders (verts) of our graph (gInit) for three catlike terms.
+    The third and final such term has:
+        Phase of pi/2 on each of the 5 outgoing edges, i.e. ph_base=Fraction(1,2);
+        Phase of 0 on the inner central spider to which the others are connected, i.e. ph_central=0;
+        Phase of pi/4 on the outstanding one-legged 'appendix' spider, i.e. ph_appendix=Fraction(1,4);
+        Hadamard edges connecting each of the outgoing spiders to the inner central spider, i.e. eType_base=EdgeType.HADAMARD;
+        Hadamard edge connecting the appendix spider to the central spider, i.e. eType_appendix=EdgeType.HADAMARD;
+        Negative sign on the scalar factor, i.e. scal_positive=False;
+        sqrt(2)^3 factor in its scalar, i.e. scal_power=3;
+        e^{i*pi/4} factor in its scalar, i.e. scal_phase=Fraction(1,4).
+    """
+    g = gInit.clone()
+    g.scalar.add_power(scal_power)
+    if not scal_positive: g.scalar.add_power(1)
+    g.scalar.add_phase(scal_phase)
+    
+    new_v1 = g.add_vertex(qubit=-1,row=-1,ty=1,phase=ph_central)
+    new_v2 = g.add_vertex(qubit=-2,row=-1,ty=1,phase=ph_appendix)
+    g.add_edge((new_v1,new_v2),eType_appendix)
+    for v in verts:
+        g.add_to_phase(v,ph_base-Fraction(1,4))
+        g.add_edge((v,new_v1),eType_base)
+    
+    return g
+
+def check_catn(g: BaseGraph[VT,ET], vert: VT, n):
+    """Runs assertion checks to ensure the cat_n decomposition is applicable to vertex v of graph g. See: https://arxiv.org/pdf/2202.09202."""
+    assert n in [3,4,5,6], "Cat"+str(n)+" decomposition not implemented. Try cat3, cat4, cat5, or cat6 instead."
+    assert vert in g.vertices(), "Vertex "+str(vert)+" does not exist in graph"
+    assert g.phase(vert) == 0, "The cat"+str(n)+" decomposition acts on a phaseless spider but specified vertex has phase "+str(g.phase(vert)) # TODO: the cat decomps should be updated to work even if the central phase is pi (i.e. not just zero)
+    assert len(g.neighbors(vert)) == n, "The cat"+str(n)+" decomposition acts on a "+str(n)+"-degree spider but specified vertex has degree "+str(len(g.neighbors(vert)))
+    for v in g.neighbors(vert):
+        assert (g.edge_type((vert,v)) == EdgeType.HADAMARD and g.type(v) == g.type(vert)) or \
+               (g.edge_type((vert,v)) == EdgeType.SIMPLE   and g.type(v) == toggle_vertex(g.type(vert))), \
+               "The cat"+str(n)+" decomposition must act on a spider with "+str(n)+" opposite colour neighbours (or like-coloured with Hadamard edges)"
+    return True
+
+def apply_magic5(g: BaseGraph[VT,ET], verts: List[VT]) -> SumGraph:
+    """Apply the magic5 decomposition to vertices verts of graph g. See: https://arxiv.org/pdf/2202.09202."""
+    assert len(verts) == 5, "The magic5 decomposition acts on 5 spiders but you specified "+str(len(verts))
+    for v in verts: assert v in g.vertices(), "Vertex "+str(v)+" does not exist in graph"
+    
+    g_A = gen_catlike_term(g, verts, 0,              Fraction(-1,2), Fraction(-1,4), EdgeType.SIMPLE,   EdgeType.SIMPLE,   True,  2, 0)
+    g_B = gen_catlike_term(g, verts, 0,              0,              Fraction(-1,4), EdgeType.HADAMARD, EdgeType.HADAMARD, True,  3, Fraction(3,4))
+    g_C = gen_catlike_term(g, verts, Fraction(1,2),  0,              Fraction(1,4),  EdgeType.HADAMARD, EdgeType.HADAMARD, False, 3, Fraction(1,4))
+    
+    return [g_A, g_B, g_C]
+
+# TODO: the cat decomps should be updated to work even if the central phase is pi (i.e. not just zero)
+def apply_cat3(g: BaseGraph[VT,ET], vert: VT) -> SumGraph:
+    """Apply the cat3 decomposition to vertex verts of graph g. See: https://arxiv.org/pdf/2202.09202."""
+    check_catn(g,vert,3)
+    verts = g.neighbors(vert)
+    g_A = gen_catlike_term(g, verts, 0, Fraction(-1,2), 0, EdgeType.SIMPLE,   EdgeType.HADAMARD, True, -1, Fraction(-1,4))
+    g_B = gen_catlike_term(g, verts, 0, 0,              0, EdgeType.HADAMARD, EdgeType.SIMPLE,   True,  0, Fraction(1,2))
+    g_A.remove_vertex(vert)
+    g_B.remove_vertex(vert)
+    return [g_A, g_B]
+
+def apply_cat4(g: BaseGraph[VT,ET], vert: VT) -> SumGraph:
+    """Apply the cat4 decomposition to vertex verts of graph g. See: https://arxiv.org/pdf/2202.09202."""
+    check_catn(g,vert,4)
+    verts = g.neighbors(vert)
+    g_A = gen_catlike_term(g, verts, 0, Fraction(-1,2), 0, EdgeType.SIMPLE,   EdgeType.SIMPLE, True, -1, Fraction(-1,4))
+    g_B = gen_catlike_term(g, verts, 0, 0,              0, EdgeType.HADAMARD, EdgeType.SIMPLE, True,  0, Fraction(1,2))
+    g_A.remove_vertex(vert)
+    g_B.remove_vertex(vert)
+    return [g_A, g_B]
+
+def apply_cat5(g: BaseGraph[VT,ET], vert: VT) -> SumGraph:
+    """Apply the cat5 decomposition to vertex verts of graph g. See: https://arxiv.org/pdf/2202.09202."""
+    check_catn(g,vert,5)
+    verts = g.neighbors(vert)
+    g_A = gen_catlike_term(g, verts, 0,             Fraction(-1,2), 0, EdgeType.SIMPLE,   EdgeType.HADAMARD, True,  -2, 0)
+    g_B = gen_catlike_term(g, verts, 0,             0,              0, EdgeType.HADAMARD, EdgeType.SIMPLE,   True,  -1, Fraction(3,4))
+    g_C = gen_catlike_term(g, verts, Fraction(1,2), 0,              0, EdgeType.HADAMARD, EdgeType.SOLID,    False, -1, Fraction(1,4))
+    g_A.remove_vertex(vert)
+    g_B.remove_vertex(vert)
+    g_C.remove_vertex(vert)
+    return [g_A, g_B, g_C]
+
+def apply_cat6(g: BaseGraph[VT,ET], vert: VT) -> SumGraph:
+    """Apply the cat6 decomposition to vertex verts of graph g. See: https://arxiv.org/pdf/2202.09202."""
+    check_catn(g,vert,6)
+    verts = g.neighbors(vert)
+    g_A = gen_catlike_term(g, verts, 0,             Fraction(-1,2), 0, EdgeType.SIMPLE,   EdgeType.SIMPLE, True,  -2, 0)
+    g_B = gen_catlike_term(g, verts, 0,             0,              0, EdgeType.HADAMARD, EdgeType.SIMPLE, True,  -1, Fraction(3,4))
+    g_C = gen_catlike_term(g, verts, Fraction(1,2), 0,              0, EdgeType.HADAMARD, EdgeType.SIMPLE, False, -1, Fraction(1,4))
+    g_A.remove_vertex(vert)
+    g_B.remove_vertex(vert)
+    g_C.remove_vertex(vert)
+    return [g_A, g_B, g_C]
