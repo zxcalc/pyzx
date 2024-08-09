@@ -610,8 +610,8 @@ def check_catn(g: BaseGraph[VT,ET], vert: VT, n):
     assert g.phase(vert) == 0, "The cat"+str(n)+" decomposition acts on a phaseless spider but specified vertex has phase "+str(g.phase(vert)) # TODO: the cat decomps should be updated to work even if the central phase is pi (i.e. not just zero)
     assert len(g.neighbors(vert)) == n, "The cat"+str(n)+" decomposition acts on a "+str(n)+"-degree spider but specified vertex has degree "+str(len(g.neighbors(vert)))
     for v in g.neighbors(vert):
-        assert (g.edge_type((vert,v)) == EdgeType.HADAMARD and g.type(v) == g.type(vert)) or \
-               (g.edge_type((vert,v)) == EdgeType.SIMPLE   and g.type(v) == toggle_vertex(g.type(vert))), \
+        assert (g.edge_type(g.edge(vert,v)) == EdgeType.HADAMARD and g.type(v) == g.type(vert)) or \
+               (g.edge_type(g.edge(vert,v)) == EdgeType.SIMPLE   and g.type(v) == toggle_vertex(g.type(vert))), \
                "The cat"+str(n)+" decomposition must act on a spider with "+str(n)+" opposite colour neighbours (or like-coloured with Hadamard edges)"
     return True
 
