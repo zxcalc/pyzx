@@ -24,6 +24,7 @@ __all__ = [
     "phase_poly",
     "phase_poly_approximate",
     "phase_poly_from_gadgets",
+    "qft",
 ]
 
 import random
@@ -706,3 +707,17 @@ def build_random_parity_map(qubits: int, n_cnots: int, circuit=None) -> MatLike:
         for c in circuit:
             c.row_add(gate.control, gate.target)
     return matrix.data
+
+
+def qft(qubits: int) -> Circuit:
+    """Returns a quantum Fourier transform circuit
+
+    This returns the unoptimised Fourier transform circuit. This is the version with O(n^2) gates
+    which reverses the order of logical qubits."""
+    c = Circuit(qubits)
+
+    for i in range(qubits):
+        c.add_gate('H', i)
+        for j in range(i+1, qubits):
+            c.add_gate('CPhase', j, i, Fraction(1, 2**(j-i+1)))
+    return c
