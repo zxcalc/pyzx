@@ -32,7 +32,9 @@ from pyzx.circuit.qasmparser import qasm
 from fractions import Fraction
 from pyzx.generate import cliffordT
 from pyzx.simplify import *
-from pyzx.simplify import supplementarity_simp
+from pyzx.simplify import supplementarity_simp, to_clifford_normal_form_graph
+from pyzx import compare_tensors
+from pyzx.generate import cliffordT
 
 np: Optional[ModuleType]
 try:
@@ -129,6 +131,13 @@ class TestSimplify(unittest.TestCase):
         with self.assertRaises(ValueError) as context:
             full_reduce(g)
         self.assertTrue("Input graph is not a ZX-diagram" in str(context.exception))
+
+    def test_to_clifford_normal_form_graph(self):
+        for _ in range(10):
+            g = cliffordT(4, 20, p_t=0)
+            g0 = g.copy()
+            to_clifford_normal_form_graph(g)
+            self.assertTrue(compare_tensors(g0, g, preserve_scalar=True))
 
 
 qasm_1 = """OPENQASM 2.0;
