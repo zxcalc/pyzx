@@ -546,9 +546,10 @@ def to_clifford_normal_form_graph(g: BaseGraph[VT,ET]) -> None:
         v = v_inputs[q]
         i = inputs[q]
         e = g.edge(v,i)
-        if g.edge_type(e) == EdgeType.HADAMARD or g.phase(v) != 0:
+        e_type = g.edge_type(e)
+        if e_type == EdgeType.HADAMARD or g.phase(v) != 0:
             h = g.add_vertex(VertexType.Z, q, row=1, phase=g.phase(v))
-            g.add_edge((i,h),EdgeType.HADAMARD)
+            g.add_edge((i,h),e_type)
             g.add_edge((h,v),EdgeType.SIMPLE)
             g.remove_edge(e)
             g.set_phase(v,0)
@@ -558,9 +559,10 @@ def to_clifford_normal_form_graph(g: BaseGraph[VT,ET]) -> None:
         v = v_outputs[q]
         o = outputs[q]
         e = g.edge(v,o)
-        if g.edge_type(e) == EdgeType.HADAMARD or g.phase(v) != 0:
+        e_type = g.edge_type(e)
+        if e_type == EdgeType.HADAMARD or g.phase(v) != 0:
             h = g.add_vertex(VertexType.Z, q, row=7, phase=g.phase(v))
-            g.add_edge((h,o),EdgeType.HADAMARD)
+            g.add_edge((h,o),e_type)
             g.add_edge((v,h),EdgeType.SIMPLE)
             g.remove_edge(e)
             g.set_phase(v,0)
