@@ -630,7 +630,7 @@ def apply_magic5(g: BaseGraph[VT,ET], verts: List[VT]) -> SumGraph:
 def apply_cat3(g: BaseGraph[VT,ET], vert: VT) -> SumGraph:
     """Apply the cat3 decomposition to vertex verts of graph g. See: https://arxiv.org/pdf/2202.09202."""
     check_catn(g,vert,3)
-    verts = List(g.neighbors(vert))
+    verts = list(g.neighbors(vert))
     g_A = gen_catlike_term(g, verts, 0, Fraction(-1,2), 0, EdgeType.SIMPLE,   EdgeType.HADAMARD, True, -1, Fraction(-1,4))
     g_B = gen_catlike_term(g, verts, 0, 0,              0, EdgeType.HADAMARD, EdgeType.SIMPLE,   True,  0, Fraction(1,2))
     g_A.remove_vertex(vert)
@@ -640,7 +640,7 @@ def apply_cat3(g: BaseGraph[VT,ET], vert: VT) -> SumGraph:
 def apply_cat4(g: BaseGraph[VT,ET], vert: VT) -> SumGraph:
     """Apply the cat4 decomposition to vertex verts of graph g. See: https://arxiv.org/pdf/2202.09202."""
     check_catn(g,vert,4)
-    verts = List(g.neighbors(vert))
+    verts = list(g.neighbors(vert))
     g_A = gen_catlike_term(g, verts, 0, Fraction(-1,2), 0, EdgeType.SIMPLE,   EdgeType.SIMPLE, True, -1, Fraction(-1,4))
     g_B = gen_catlike_term(g, verts, 0, 0,              0, EdgeType.HADAMARD, EdgeType.SIMPLE, True,  0, Fraction(1,2))
     g_A.remove_vertex(vert)
@@ -650,7 +650,7 @@ def apply_cat4(g: BaseGraph[VT,ET], vert: VT) -> SumGraph:
 def apply_cat5(g: BaseGraph[VT,ET], vert: VT) -> SumGraph:
     """Apply the cat5 decomposition to vertex verts of graph g. See: https://arxiv.org/pdf/2202.09202."""
     check_catn(g,vert,5)
-    verts = List(g.neighbors(vert))
+    verts = list(g.neighbors(vert))
     g_A = gen_catlike_term(g, verts, 0,             Fraction(-1,2), 0, EdgeType.SIMPLE,   EdgeType.HADAMARD, True,  -2, 0)
     g_B = gen_catlike_term(g, verts, 0,             0,              0, EdgeType.HADAMARD, EdgeType.SIMPLE,   True,  -1, Fraction(3,4))
     g_C = gen_catlike_term(g, verts, Fraction(1,2), 0,              0, EdgeType.HADAMARD, EdgeType.SIMPLE,   False, -1, Fraction(1,4))
@@ -662,7 +662,7 @@ def apply_cat5(g: BaseGraph[VT,ET], vert: VT) -> SumGraph:
 def apply_cat6(g: BaseGraph[VT,ET], vert: VT) -> SumGraph:
     """Apply the cat6 decomposition to vertex verts of graph g. See: https://arxiv.org/pdf/2202.09202."""
     check_catn(g,vert,6)
-    verts = List(g.neighbors(vert))
+    verts = list(g.neighbors(vert))
     g_A = gen_catlike_term(g, verts, 0,             Fraction(-1,2), 0, EdgeType.SIMPLE,   EdgeType.SIMPLE, True,  -2, 0)
     g_B = gen_catlike_term(g, verts, 0,             0,              0, EdgeType.HADAMARD, EdgeType.SIMPLE, True,  -1, Fraction(3,4))
     g_C = gen_catlike_term(g, verts, Fraction(1,2), 0,              0, EdgeType.HADAMARD, EdgeType.SIMPLE, False, -1, Fraction(1,4))
