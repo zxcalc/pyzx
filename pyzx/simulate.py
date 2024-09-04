@@ -577,7 +577,7 @@ def cut_wishbone(g,v,neighs,ph):
 
 
 def gen_catlike_term(g_initial: BaseGraph[VT, ET],
-                     vertices: list[VT],
+                     vertices: List[VT],
                      ph_base: FractionLike,
                      ph_central: FractionLike,
                      ph_appendix: FractionLike,
