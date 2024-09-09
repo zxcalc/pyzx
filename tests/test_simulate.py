@@ -91,9 +91,9 @@ class TestSimulate(unittest.TestCase):
         g = Graph()
 
         # Generate random scalar parameters
-        phase = Fraction(np.random.randint(1, 10), np.random.randint(1, 10))
-        power = np.random.randint(1, 10)
-        positive = np.random.randint(0, 1)
+        phase = Fraction(random.randint(1, 10), random.randint(1, 10))
+        power = random.randint(1, 10)
+        positive = random.randint(0, 1)
 
         # Generate cat-like term with random scalar parameters
         G = gen_catlike_term(g, [],
