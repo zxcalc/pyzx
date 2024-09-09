@@ -115,7 +115,7 @@ class TestSimulate(unittest.TestCase):
             s.add_phase(1)
 
         # Check if the scalar from generated term is correct
-        self.assertTrue(np.allclose(G.scalar.to_number(), s.to_number()))
+        self.assertTrue(G.scalar.to_number() == s.to_number())
 
 
 if __name__ == '__main__':
