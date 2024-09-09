@@ -93,7 +93,7 @@ class TestSimulate(unittest.TestCase):
         # Generate random scalar parameters
         phase = Fraction(random.randint(1, 10), random.randint(1, 10))
         power = random.randint(1, 10)
-        positive = random.randint(0, 1)
+        positive = bool(random.randint(0, 1))
 
         # Generate cat-like term with random scalar parameters
         G = gen_catlike_term(g, [],
