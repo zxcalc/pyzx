@@ -13,8 +13,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-
+from fractions import Fraction
 import unittest
 import sys
 import random
@@ -25,7 +24,13 @@ if __name__ == '__main__':
     sys.path.append('..')
     sys.path.append('.')
 from pyzx.circuit import Circuit
-from pyzx.simulate import replace_magic_states, cut_vertex, cut_edge
+from pyzx.graph import Graph, EdgeType, Scalar
+from pyzx.simulate import (
+    replace_magic_states,
+    cut_vertex,
+    cut_edge,
+    gen_catlike_term
+)
 from pyzx.generate import cliffords
 from pyzx.simplify import full_reduce
 
@@ -80,6 +85,37 @@ class TestSimulate(unittest.TestCase):
             scal    = round_complex(g.scalar.to_number(),3) # the scalar from fully reducing g
             scalCut = round_complex(g0.scalar.to_number()+g1.scalar.to_number(),3) # the sum of scalars from the cut graph
             assert(scal == scalCut)
+
+    def test_cat_decomp_scalar(self) -> None:
+        """Test the scalars of generated cat-like terms are correct."""
+        g = Graph()
+
+        # Generate random scalar parameters
+        phase = Fraction(np.random.randint(1, 10), np.random.randint(1, 10))
+        power = np.random.randint(1, 10)
+        positive = np.random.randint(0, 1)
+
+        # Generate cat-like term with random scalar parameters
+        G = gen_catlike_term(g, [],
+                             Fraction(1, 1),
+                             Fraction(1, 1),
+                             Fraction(1, 1),
+                             EdgeType.SIMPLE,
+                             EdgeType.SIMPLE,
+                             positive,
+                             power,
+                             phase,
+                             False)
+
+        # Create expected scalar
+        s = Scalar()
+        s.add_power(power)
+        s.add_phase(phase)
+        if not positive:
+            s.add_phase(1)
+
+        # Check if the scalar from generated term is correct
+        self.assertTrue(np.allclose(G.scalar.to_number(), s.to_number()))
 
 
 if __name__ == '__main__':
