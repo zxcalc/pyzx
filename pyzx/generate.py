@@ -130,7 +130,7 @@ def CNOT_HAD_PHASE_circuit(
         clifford:bool=False
         ) -> Circuit:
     """Construct a Circuit consisting of CNOT, HAD and phase gates.
-    The default phase gate is the T gate, but if ``clifford=True``\ , then
+    The default phase gate is the T gate, but if ``clifford=True``, then
     this is replaced by the S gate.
 
     Args:
