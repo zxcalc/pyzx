@@ -199,7 +199,7 @@ class Scalar(object):
             d = json.loads(s)
         else:
             d = s
-        print('scalar from json', repr(d))
+        # print('scalar from json', repr(d))
         scalar = Scalar()
         scalar.phase = Fraction(d["phase"]) # TODO support parameters
         scalar.power2 = int(d["power2"])
