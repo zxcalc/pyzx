@@ -178,8 +178,8 @@ def json_to_graph(js: str, backend:Optional[str]=None) -> BaseGraph:
 
     return g
 
-def graph_to_json(g: BaseGraph[VT,ET], include_scalar: bool=True) -> str:
-    """Converts a PyZX graph into JSON output compatible with Quantomatic.
+def graph_to_dict(g: BaseGraph[VT,ET], include_scalar: bool=True) -> dict[str, Any]:
+    """Converts a PyZX graph into Python dict for JSON output.
     If include_scalar is set to True (the default), then this includes the value
     of g.scalar with the json, which will also be loaded by the ``from_json`` method."""
     node_vs: Dict[str, Dict[str, Any]] = {}
@@ -275,9 +275,15 @@ def graph_to_json(g: BaseGraph[VT,ET], include_scalar: bool=True) -> str:
         "variable_types": g.variable_types,
     }
     if include_scalar:
-        d["scalar"] = g.scalar.to_json()
+        d["scalar"] = g.scalar.to_dict()
 
-    return json.dumps(d, cls=ComplexEncoder)
+    return d
+
+def graph_to_json(g: BaseGraph[VT,ET], include_scalar: bool=True) -> str:
+    """Converts a PyZX graph into JSON output compatible with Quantomatic.
+    If include_scalar is set to True (the default), then this includes the value
+    of g.scalar with the json, which will also be loaded by the ``from_json`` method."""
+    return json.dumps(graph_to_dict(g, include_scalar), cls=ComplexEncoder)
 
 def to_graphml(g: BaseGraph[VT,ET]) -> str:
     gml = """<?xml version="1.0" encoding="UTF-8" standalone="no"?>

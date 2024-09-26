@@ -480,6 +480,12 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         """Returns a representation of the graph as a matrix using :func:`~pyzx.tensor.tensorfy`"""
         return tensor_to_matrix(tensorfy(self, preserve_scalar), self.num_inputs(), self.num_outputs())
 
+    def to_dict(self, include_scalar:bool=True) -> dict[str, Any]:
+        """Returns a json representation of the graph that follows the Quantomatic .qgraph format.
+        Convert back into a graph using :meth:`from_json`."""
+        from .jsonparser import graph_to_dict
+        return graph_to_dict(self, include_scalar)
+
     def to_json(self, include_scalar:bool=True) -> str:
         """Returns a json representation of the graph that follows the Quantomatic .qgraph format.
         Convert back into a graph using :meth:`from_json`."""
