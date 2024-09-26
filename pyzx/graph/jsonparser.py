@@ -71,10 +71,13 @@ def string_to_phase(string: str, g: Union[BaseGraph,'GraphDiff']) -> Union[Fract
         except Exception as e:
             raise ValueError(e)
 
-def json_to_graph(js: str, backend:Optional[str]=None) -> BaseGraph:
+def json_to_graph(js: str|dict[str,Any], backend:Optional[str]=None) -> BaseGraph:
     """Converts the json representation of a .qgraph Quantomatic graph into
-    a pyzx graph."""
-    j = json.loads(js, cls=ComplexDecoder)
+    a pyzx graph. If JSON is given as a string, parse it first."""
+    if isinstance(js, str):
+        j = json.loads(js, cls=ComplexDecoder)
+    else:
+        j = js
     g = Graph(backend)
     g.variable_types = j.get('variable_types',{})
 
