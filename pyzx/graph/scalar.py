@@ -199,14 +199,18 @@ class Scalar(object):
             d = json.loads(s)
         else:
             d = s
-        # print('scalar from json', repr(d))
+        print('scalar from json', repr(d))
         scalar = Scalar()
         scalar.phase = Fraction(d["phase"]) # TODO support parameters
         scalar.power2 = int(d["power2"])
-        scalar.floatfactor = complex(d["floatfactor"])
-        scalar.phasenodes = [Fraction(p) for p in d["phasenodes"]]
-        scalar.is_zero = bool(d["is_zero"])
-        scalar.is_unknown = bool(d["is_unknown"])
+        if "floatfactor" in d:
+            scalar.floatfactor = complex(d["floatfactor"])
+        if "phasenodes" in d:
+            scalar.phasenodes = [Fraction(p) for p in d["phasenodes"]]
+        if "is_zero" in d:
+            scalar.is_zero = bool(d["is_zero"])
+        if "is_unknown" in d:
+            scalar.is_unknown = bool(d["is_unknown"])
         return scalar
 
     def set_unknown(self) -> None:
