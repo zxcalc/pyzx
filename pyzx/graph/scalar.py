@@ -194,8 +194,11 @@ class Scalar(object):
         return json.dumps(self.to_dict())
 
     @classmethod
-    def from_json(cls, s: str) -> 'Scalar':
-        d = json.loads(s)
+    def from_json(cls, s: str|dict[str,Any]) -> 'Scalar':
+        if isinstance(s, str):
+            d = json.loads(s)
+        else:
+            d = s
         d["phase"] = Fraction(d["phase"])
         if "phasenodes" in d:
             d["phasenodes"] = [Fraction(p) for p in d["phasenodes"]]
