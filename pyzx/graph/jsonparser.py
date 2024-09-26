@@ -75,7 +75,7 @@ def json_to_graph(js: Union[str,Dict[str,Any]], backend:Optional[str]=None) -> B
     """Converts the json representation of a .qgraph Quantomatic graph into
     a pyzx graph. If JSON is given as a string, parse it first."""
     if isinstance(js, str):
-        j = json.loads(js, cls=ComplexDecoder)
+        j = json.loads(js)
     else:
         j = js
     g = Graph(backend)
@@ -286,7 +286,7 @@ def graph_to_json(g: BaseGraph[VT,ET], include_scalar: bool=True) -> str:
     """Converts a PyZX graph into JSON output compatible with Quantomatic.
     If include_scalar is set to True (the default), then this includes the value
     of g.scalar with the json, which will also be loaded by the ``from_json`` method."""
-    return json.dumps(graph_to_dict(g, include_scalar), cls=ComplexEncoder)
+    return json.dumps(graph_to_dict(g, include_scalar))
 
 def to_graphml(g: BaseGraph[VT,ET]) -> str:
     gml = """<?xml version="1.0" encoding="UTF-8" standalone="no"?>
@@ -335,22 +335,22 @@ def to_graphml(g: BaseGraph[VT,ET]) -> str:
     return gml
 
 
-class ComplexEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, complex):
-            return str(obj)
-        return super().default(obj)
+# class ComplexEncoder(json.JSONEncoder):
+#     def default(self, obj):
+#         if isinstance(obj, complex):
+#             return str(obj)
+#         return super().default(obj)
 
-class ComplexDecoder(json.JSONDecoder):
-    def __init__(self, *args, **kwargs):
-        json.JSONDecoder.__init__(self, object_hook=self.object_hook, *args, **kwargs)
+# class ComplexDecoder(json.JSONDecoder):
+#     def __init__(self, *args, **kwargs):
+#         json.JSONDecoder.__init__(self, object_hook=self.object_hook, *args, **kwargs)
 
-    def object_hook(self, dct):
-        for k, v in dct.items():
-            if isinstance(v, str):
-                try:
-                    dct[k] = complex(v)
-                except ValueError:
-                    pass
-        return dct
+#     def object_hook(self, dct):
+#         for k, v in dct.items():
+#             if isinstance(v, str):
+#                 try:
+#                     dct[k] = complex(v)
+#                 except ValueError:
+#                     pass
+#         return dct
 

@@ -181,7 +181,7 @@ class Scalar(object):
     def to_dict(self) -> Dict[str, Any]:
         d = {"power2": self.power2, "phase": str(self.phase)}
         if abs(self.floatfactor - 1) > 0.00001:
-            d["floatfactor"] =  self.floatfactor
+            d["floatfactor"] =  str(self.floatfactor)
         if self.phasenodes:
             d["phasenodes"] = [str(p) for p in self.phasenodes]
         if self.is_zero:
@@ -199,11 +199,14 @@ class Scalar(object):
             d = json.loads(s)
         else:
             d = s
-        d["phase"] = Fraction(d["phase"])
-        if "phasenodes" in d:
-            d["phasenodes"] = [Fraction(p) for p in d["phasenodes"]]
+        # print('scalar from json', repr(d))
         scalar = Scalar()
-        scalar.__dict__.update(d)
+        scalar.phase = Fraction(d["phase"]) # TODO support parameters
+        scalar.power2 = int(d["power2"])
+        scalar.floatfactor = complex(d["floatfactor"])
+        scalar.phasenodes = [Fraction(p) for p in d["phasenodes"]]
+        scalar.is_zero = bool(d["is_zero"])
+        scalar.is_unknown = bool(d["is_unknown"])
         return scalar
 
     def set_unknown(self) -> None:

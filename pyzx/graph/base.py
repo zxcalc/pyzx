@@ -503,7 +503,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         return to_tikz(self,draw_scalar)
 
     @classmethod
-    def from_json(cls, js) -> 'BaseGraph':
+    def from_json(cls, js:str|dict[str,Any]) -> 'BaseGraph':
         """Converts the given .qgraph json string into a Graph.
         Works with the output of :meth:`to_json`."""
         from .jsonparser import json_to_graph
