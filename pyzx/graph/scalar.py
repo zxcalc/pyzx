@@ -194,7 +194,7 @@ class Scalar(object):
         return json.dumps(self.to_dict())
 
     @classmethod
-    def from_json(cls, s: Union[str,dict[str,Any]]) -> 'Scalar':
+    def from_json(cls, s: Union[str,Dict[str,Any]]) -> 'Scalar':
         if isinstance(s, str):
             d = json.loads(s)
         else:
