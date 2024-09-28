@@ -20,7 +20,7 @@ import math
 import cmath
 import copy
 from fractions import Fraction
-from typing import List, Any
+from typing import Dict, List, Any, Union
 import json
 
 from ..utils import FloatInt, FractionLike
@@ -178,7 +178,7 @@ class Scalar(object):
                 s += "{:d}/{:d}π)".format(phase.numerator,phase.denominator)
         return s
 
-    def to_dict(self) -> dict[str, Any]:
+    def to_dict(self) -> Dict[str, Any]:
         d = {"power2": self.power2, "phase": str(self.phase)}
         if abs(self.floatfactor - 1) > 0.00001:
             d["floatfactor"] =  self.floatfactor
@@ -194,7 +194,7 @@ class Scalar(object):
         return json.dumps(self.to_dict())
 
     @classmethod
-    def from_json(cls, s: str|dict[str,Any]) -> 'Scalar':
+    def from_json(cls, s: Union[str,dict[str,Any]]) -> 'Scalar':
         if isinstance(s, str):
             d = json.loads(s)
         else:
