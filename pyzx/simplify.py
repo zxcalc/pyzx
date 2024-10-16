@@ -144,6 +144,19 @@ def phase_free_simp(g: BaseGraph[VT,ET], quiet:bool=False, stats:Optional[Stats]
     i2 = bialg_simp(g, quiet=quiet, stats=stats)
     return i1+i2
 
+def basic_simp(g: BaseGraph[VT,ET], matchf: Optional[Callable[[Union[VT, ET]],bool]]=None, quiet:bool=False, stats:Optional[Stats]=None) -> int:
+    """Keeps doing the simplifications ``id_simp`` and ``spider_simp`` until none of them can be applied anymore. If
+    starting from a circuit, the result should still have causal flow."""
+    spider_simp(g, matchf=matchf, quiet=quiet, stats=stats)
+    to_gh(g)
+    i = 0
+    while True:
+        i1 = id_simp(g, matchf=matchf, quiet=quiet, stats=stats)
+        i2 = spider_simp(g, matchf=matchf, quiet=quiet, stats=stats)
+        if i1+i2==0: break
+        i += 1
+    return i
+
 def interior_clifford_simp(g: BaseGraph[VT,ET], matchf: Optional[Callable[[Union[VT, ET]],bool]]=None, quiet:bool=False, stats:Optional[Stats]=None) -> int:
     """Keeps doing the simplifications ``id_simp``, ``spider_simp``,
     ``pivot_simp`` and ``lcomp_simp`` until none of them can be applied anymore."""
