@@ -131,7 +131,7 @@ class GraphDiff(Generic[VT, ET]):
 
         return g
 
-    def to_dict(self) -> dict[str, Any]:
+    def to_dict(self) -> Dict[str, Any]:
         changed_edge_types_str_dict = {}
         for key, value in self.changed_edge_types.items():
             changed_edge_types_str_dict[f"{key[0]},{key[1]}"] = value # type: ignore
