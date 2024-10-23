@@ -22,6 +22,54 @@ from .simplify import *
 from .graph.base import BaseGraph, ET, VT, upair
 from . import rules
 
+def is_hadamard(g: BaseGraph[VT,ET], v: VT) -> bool:
+    """Returns whether the vertex v in graph g is a Hadamard gate."""
+    if g.type(v) != VertexType.H_BOX: return False
+    if g.phase(v) != 1: return False
+    if g.vertex_degree(v) != 2: return False
+    return True
+
+def replace_hadamard(g: BaseGraph[VT,ET], v: VT) -> bool:
+    """Replaces a Hadamard gate with a Hadamard edge."""
+    if not is_hadamard(g, v): return False
+    n1,n2 = g.neighbors(v)
+    et1 = g.edge_type(g.edge(v,n1))
+    et2 = g.edge_type(g.edge(v,n2))
+    if et1 == et2: # both connecting edges are HADAMARD or SIMPLE
+        g.add_edge((n1,n2), EdgeType.HADAMARD)
+    else:
+        g.add_edge((n1,n2), EdgeType.SIMPLE)
+    g.remove_vertex(v)
+    g.scalar.add_power(1) # Correct for the sqrt(2) difference in H-boxes and H-edges
+    return True
+
+def had_edge_to_hbox(g: BaseGraph[VT,ET], e: ET) -> bool:
+    """Converts a Hadamard edge to a Hadamard gate.
+    Note that while this works with multigraphs, it will put the new H-box in the middle of the vertices,
+    so that the diagram might look wrong.
+    """
+    et = g.edge_type(e)
+    if et != EdgeType.HADAMARD: return False
+    s,t = g.edge_st(e)
+    rs = g.row(s)
+    rt = g.row(t)
+    qs = g.qubit(s)
+    qt = g.qubit(t)
+    g.remove_edge(e)
+    h = g.add_vertex(VertexType.H_BOX)
+    g.scalar.add_power(-1) # Correct for sqrt(2) scalar difference in H-edge and H-box.
+    g.add_edge((s, h),EdgeType.SIMPLE)
+    g.add_edge((h, t),EdgeType.SIMPLE)
+    
+    if qs == qt:
+        g.set_qubit(h, qs)
+    else:
+        q = (qs + qt) / 2
+        if round(q) == q: q += 0.5
+        g.set_qubit(h, q)
+    g.set_row(h, (rs + rt) / 2)
+    return True
+    
 
 def match_hadamards(g: BaseGraph[VT,ET],
         vertexf: Optional[Callable[[VT],bool]] = None
