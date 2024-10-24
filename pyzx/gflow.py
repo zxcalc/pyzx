@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""
+r"""
  Based on algorithm by Perdrix and Mhalla. Here is the pseudocode from
 dx.doi.org/10.1007/978-3-540-70575-8_70
 
