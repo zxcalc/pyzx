@@ -207,7 +207,7 @@ def phase_gates_to_poly(gates: List[Gate], qubits: int) -> Tuple[ParityPolynomia
 
 
 def xi(m: Mat2, z: List[Z2]) -> Mat2:
-    """Constructs the \chi matrix from the TOpt paper."""
+    """Constructs the \\chi matrix from the TOpt paper."""
     arr = np.asarray(m.data)
     rows = m.rows()
     data = []

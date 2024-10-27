@@ -543,7 +543,7 @@ def pretty_complex(z: complex) -> str:
                 else:
                     out += f"{r:.2f}".rstrip("0").rstrip(".")
                 if abs(f) > 1:
-                    out += f"\cdot 10^{{{-f}}}"
+                    out += f"\\cdot 10^{{{-f}}}"
     
     minus = ""
     if arg < 0:
