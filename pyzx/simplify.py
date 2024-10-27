@@ -84,7 +84,7 @@ def simp(
     Returns:
         Number of iterations of ``rewrite`` that had to be applied before no more matches were found."""
 
-    if auto_simplify_parallel_edges and isinstance(g, Multigraph):
+    if auto_simplify_parallel_edges:
         auto_simp_value = g.get_auto_simplify()
         g.set_auto_simplify(True)
     i = 0
@@ -110,7 +110,7 @@ def simp(
             new_matches = True
             if stats is not None: stats.count_rewrites(name, len(m))
     if not quiet and i>0: print(' {!s} iterations'.format(i))
-    if auto_simplify_parallel_edges and isinstance(g, Multigraph):
+    if auto_simplify_parallel_edges:
         g.set_auto_simplify(auto_simp_value)
     return i
 

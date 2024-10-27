@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""This module implements several optimization methods on ``Circuit``\ s. 
+"""This module implements several optimization methods on ``Circuit``\\ s. 
 The function :func:`basic_optimization` runs a set of back-and-forth gate commutation and cancellation routines.
 :func:`phase_block_optimize` does phase polynomial optimization using the TODD algorithm,
 and :func:`full_optimize` combines these two methods."""

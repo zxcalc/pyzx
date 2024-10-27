@@ -996,3 +996,15 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
                 if self.vertex_degree(v) < 2:
                     return False
         return True
+
+    def get_auto_simplify(self) -> bool:
+        """Returns whether this graph auto-simplifies parallel edges
+        
+        For multigraphs, this parameter might change, but simple graphs should always return True."""
+        return True
+
+    def set_auto_simplify(self, s: bool) -> None:
+        """Set whether this graph auto-simplifies parallel edges
+        
+        Simple graphs should always auto-simplify, so this method is a no-op."""
+        pass
