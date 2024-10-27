@@ -28,6 +28,7 @@ __all__ = ['bialg_simp','spider_simp', 'id_simp', 'phase_free_simp', 'pivot_simp
         'to_clifford_normal_form_graph', 'to_graph_like', 'is_graph_like']
 
 from ast import Mult
+from functools import reduce
 from optparse import Option
 from typing import List, Callable, Optional, Union, Generic, Tuple, Dict, Iterator, cast
 
@@ -311,23 +312,55 @@ def to_gh(g: BaseGraph[VT,ET],quiet:bool=True) -> None:
                 et = g.edge_type(e)
                 g.set_edge_type(e, toggle_edge(et))
 
-def to_rg(g: BaseGraph[VT,ET], select:Optional[Callable[[VT],bool]]=None) -> None:
-    """Turn green nodes into red nodes by color-changing vertices which satisfy the predicate ``select``.
-    By default, the predicate is set to greedily reducing the number of Hadamard-edges.
+def to_rg(g: BaseGraph[VT,ET], select:Optional[Callable[[VT],bool]]=None, change_gadgets: bool=True) -> None:
+    """Try to eliminate H-edges by turning green nodes red
+
+    By default, this does a breadth-first search starting at an arbitrary node, flipping the
+    color of alternating layers. For a ZX-diagram that is graph-like and 2-colorable, this will
+    eliminate all of the interior H-edges.
+    
+    Alternatively, the function `select` can be provided instructing the method where to flip colors.
+
     :param g: A ZX-graph.
-    :param select: A function taking in vertices and returning ``True`` or ``False``."""
-    if select is None:
-        select = lambda v: (
-            len([e for e in g.incident_edges(v) if g.edge_type(e) == EdgeType.SIMPLE]) <
-            len([e for e in g.incident_edges(v) if g.edge_type(e) == EdgeType.HADAMARD])
-            )
+    :param select: A function taking in vertices and returning ``True`` or ``False``.
+    :param change_gadgets: A flag saying always change gadgets to X."""
 
     ty = g.types()
-    for v in g.vertices():
-        if select(v) and vertex_is_zx(ty[v]):
-            g.set_type(v, toggle_vertex(ty[v]))
-            for e in g.incident_edges(v):
-                g.set_edge_type(e, toggle_edge(g.edge_type(e)))
+    if select is None:
+        remaining = set()
+        for w in g.vertices():
+            if change_gadgets and g.is_phase_gadget(w):
+                if vertex_is_zx(ty[w]):
+                    g.set_type(w, toggle_vertex(ty[w]))
+                    for e in g.incident_edges(w):
+                        g.set_edge_type(e, toggle_edge(g.edge_type(e)))
+            else:
+                remaining.add(w)
+        while len(remaining) > 0:
+            v = next(iter(remaining))
+            # if v is a boundary, set `flip` such that its adjacent edge will not be an H-edge afterwards
+            if ty[v] == VertexType.BOUNDARY and g.incident_edges(v)[0] == EdgeType.SIMPLE:
+                flip = True
+            else:
+                flip = False
+            nhd = set([v])
+            while len(nhd) > 0:
+                for w in nhd:
+                    if flip and vertex_is_zx(ty[w]):
+                        g.set_type(w, toggle_vertex(ty[w]))
+                        for e in g.incident_edges(w):
+                            g.set_edge_type(e, toggle_edge(g.edge_type(e)))
+                flip = not flip
+                remaining -= nhd
+                nhd = set.union(*(set(g.neighbors(w)) for w in nhd)).intersection(remaining)
+
+    else:
+        for v in g.vertices():
+            if g.is_phase_gadget(v) and select(v) and vertex_is_zx(ty[v]):
+                g.set_type(v, toggle_vertex(ty[v]))
+                for e in g.incident_edges(v):
+                    g.set_edge_type(e, toggle_edge(g.edge_type(e)))
+
 
 def tcount(g: Union[BaseGraph[VT,ET], Circuit]) -> int:
     """Returns the amount of nodes in g that have a non-Clifford phase."""
