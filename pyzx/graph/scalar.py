@@ -20,7 +20,7 @@ import math
 import cmath
 import copy
 from fractions import Fraction
-from typing import List
+from typing import Dict, List, Any, Union
 import json
 
 from ..utils import FloatInt, FractionLike
@@ -178,26 +178,39 @@ class Scalar(object):
                 s += "{:d}/{:d}π)".format(phase.numerator,phase.denominator)
         return s
 
-    def to_json(self) -> str:
+    def to_dict(self) -> Dict[str, Any]:
         d = {"power2": self.power2, "phase": str(self.phase)}
         if abs(self.floatfactor - 1) > 0.00001:
-            d["floatfactor"] =  self.floatfactor
+            d["floatfactor"] =  str(self.floatfactor)
         if self.phasenodes:
             d["phasenodes"] = [str(p) for p in self.phasenodes]
         if self.is_zero:
             d["is_zero"] = self.is_zero
         if self.is_unknown:
             d["is_unknown"] = self.is_unknown,
-        return json.dumps(d)
+        return d
+
+    def to_json(self) -> str:
+        return json.dumps(self.to_dict())
 
     @classmethod
-    def from_json(cls, s: str) -> 'Scalar':
-        d = json.loads(s)
-        d["phase"] = Fraction(d["phase"])
-        if "phasenodes" in d:
-            d["phasenodes"] = [Fraction(p) for p in d["phasenodes"]]
+    def from_json(cls, s: Union[str,Dict[str,Any]]) -> 'Scalar':
+        if isinstance(s, str):
+            d = json.loads(s)
+        else:
+            d = s
+        # print('scalar from json', repr(d))
         scalar = Scalar()
-        scalar.__dict__.update(d)
+        scalar.phase = Fraction(d["phase"]) # TODO support parameters
+        scalar.power2 = int(d["power2"])
+        if "floatfactor" in d:
+            scalar.floatfactor = complex(d["floatfactor"])
+        if "phasenodes" in d:
+            scalar.phasenodes = [Fraction(p) for p in d["phasenodes"]]
+        if "is_zero" in d:
+            scalar.is_zero = bool(d["is_zero"])
+        if "is_unknown" in d:
+            scalar.is_unknown = bool(d["is_unknown"])
         return scalar
 
     def set_unknown(self) -> None:

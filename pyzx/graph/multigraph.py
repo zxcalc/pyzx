@@ -69,7 +69,7 @@ class Multigraph(BaseGraph[int,Tuple[int,int,EdgeType]]):
         self._auto_simplify: bool                       = True
         self._vindex: int                               = 0
         self.nedges: int                                = 0
-        self.ty: Dict[int,VertexType]              = dict()
+        self.ty: Dict[int,VertexType]                   = dict()
         self._phase: Dict[int, FractionLike]            = dict()
         self._qindex: Dict[int, FloatInt]               = dict()
         self._maxq: FloatInt                            = -1
@@ -107,6 +107,9 @@ class Multigraph(BaseGraph[int,Tuple[int,int,EdgeType]]):
     def set_auto_simplify(self, s: bool):
         """Automatically remove parallel edges as edges are added"""
         self._auto_simplify = s
+
+    def get_auto_simplify(self):
+        return self._auto_simplify
 
     def multigraph(self):
         return False

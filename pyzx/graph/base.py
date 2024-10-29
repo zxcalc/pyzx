@@ -480,6 +480,12 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         """Returns a representation of the graph as a matrix using :func:`~pyzx.tensor.tensorfy`"""
         return tensor_to_matrix(tensorfy(self, preserve_scalar), self.num_inputs(), self.num_outputs())
 
+    def to_dict(self, include_scalar:bool=True) -> Dict[str, Any]:
+        """Returns a json representation of the graph that follows the Quantomatic .qgraph format.
+        Convert back into a graph using :meth:`from_json`."""
+        from .jsonparser import graph_to_dict
+        return graph_to_dict(self, include_scalar)
+
     def to_json(self, include_scalar:bool=True) -> str:
         """Returns a json representation of the graph that follows the Quantomatic .qgraph format.
         Convert back into a graph using :meth:`from_json`."""
@@ -497,7 +503,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         return to_tikz(self,draw_scalar)
 
     @classmethod
-    def from_json(cls, js) -> 'BaseGraph':
+    def from_json(cls, js:Union[str,Dict[str,Any]]) -> 'BaseGraph':
         """Converts the given .qgraph json string into a Graph.
         Works with the output of :meth:`to_json`."""
         from .jsonparser import json_to_graph
@@ -990,3 +996,27 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
                 if self.vertex_degree(v) < 2:
                     return False
         return True
+
+    def get_auto_simplify(self) -> bool:
+        """Returns whether this graph auto-simplifies parallel edges
+        
+        For multigraphs, this parameter might change, but simple graphs should always return True."""
+        return True
+
+    def set_auto_simplify(self, s: bool) -> None:
+        """Set whether this graph auto-simplifies parallel edges
+        
+        Simple graphs should always auto-simplify, so this method is a no-op."""
+        pass
+    
+    def is_phase_gadget(self, v: VT) -> bool:
+        """Returns True if the vertex is the 'hub' of a phase gadget"""
+        if self.phase(v) != 0 or self.vertex_degree(v) < 2:
+            return False
+        for w in self.neighbors(v):
+            if self.vertex_degree(w) == 1:
+                return True
+        return False
+
+
+

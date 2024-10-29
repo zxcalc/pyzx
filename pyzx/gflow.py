@@ -33,8 +33,8 @@ end
 gFlowaux (V,Gamma,In,Out,k) =
 begin
   C := {}
-  for all u in V \ Out do
-    Solve in F2 : Gamma[V \ Out, Out \ In] * I[X] = I[{u}]
+  for all u in V \\ Out do
+    Solve in F2 : Gamma[V \\ Out, Out \\ In] * I[X] = I[{u}]
     if there is a solution X0 then
       C := C union {u}
       g(u) := X0

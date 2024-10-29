@@ -27,12 +27,15 @@ __all__ = ['bialg_simp','spider_simp', 'id_simp', 'phase_free_simp', 'pivot_simp
         'full_reduce', 'teleport_reduce', 'reduce_scalar', 'supplementarity_simp',
         'to_clifford_normal_form_graph', 'to_graph_like', 'is_graph_like']
 
+from ast import Mult
+from functools import reduce
 from optparse import Option
 from typing import List, Callable, Optional, Union, Generic, Tuple, Dict, Iterator, cast
 
 from .utils import EdgeType, VertexType, toggle_edge, vertex_is_zx, toggle_vertex
 from .rules import *
 from .graph.base import BaseGraph, VT, ET
+from .graph.multigraph import Multigraph
 from .circuit import Circuit
 
 class Stats(object):
@@ -58,6 +61,7 @@ def simp(
     name: str,
     match: Callable[..., List[MatchObject]],
     rewrite: Callable[[BaseGraph[VT,ET],List[MatchObject]],RewriteOutputType[VT,ET]],
+    auto_simplify_parallel_edges: bool = False,
     matchf:Optional[Union[Callable[[ET],bool], Callable[[VT],bool]]]=None,
     quiet:bool=False,
     stats:Optional[Stats]=None) -> int:
@@ -73,6 +77,7 @@ def simp(
         str name: The name to display if ``quiet`` is set to False.
         match: One of the ``match_*`` functions of rules_.
         rewrite: One of the rewrite functions of rules_.
+        auto_simplify_parallel_edges: whether to automatically combine parallel edges between vertices if the graph is a Multigraph
         matchf: An optional filtering function on candidate vertices or edges, which
            is passed as the second argument to the match function.
         quiet: Suppress output on numbers of matches found during simplification.
@@ -80,6 +85,9 @@ def simp(
     Returns:
         Number of iterations of ``rewrite`` that had to be applied before no more matches were found."""
 
+    if auto_simplify_parallel_edges:
+        auto_simp_value = g.get_auto_simplify()
+        g.set_auto_simplify(True)
     i = 0
     new_matches = True
     while new_matches:
@@ -103,19 +111,25 @@ def simp(
             new_matches = True
             if stats is not None: stats.count_rewrites(name, len(m))
     if not quiet and i>0: print(' {!s} iterations'.format(i))
+    if auto_simplify_parallel_edges:
+        g.set_auto_simplify(auto_simp_value)
     return i
 
 def pivot_simp(g: BaseGraph[VT,ET], matchf:Optional[Callable[[ET],bool]]=None, quiet:bool=False, stats:Optional[Stats]=None) -> int:
-    return simp(g, 'pivot_simp', match_pivot_parallel, pivot, matchf=matchf, quiet=quiet, stats=stats)
+    return simp(g, 'pivot_simp', match_pivot_parallel, pivot, 
+                auto_simplify_parallel_edges=True, matchf=matchf, quiet=quiet, stats=stats)
 
 def pivot_gadget_simp(g: BaseGraph[VT,ET], matchf:Optional[Callable[[ET],bool]]=None, quiet:bool=False, stats:Optional[Stats]=None) -> int:
-    return simp(g, 'pivot_gadget_simp', match_pivot_gadget, pivot, matchf=matchf, quiet=quiet, stats=stats)
+    return simp(g, 'pivot_gadget_simp', match_pivot_gadget, pivot, 
+                auto_simplify_parallel_edges=True, matchf=matchf, quiet=quiet, stats=stats)
 
 def pivot_boundary_simp(g: BaseGraph[VT,ET], matchf:Optional[Callable[[ET],bool]]=None, quiet:bool=False, stats:Optional[Stats]=None) -> int:
-    return simp(g, 'pivot_boundary_simp', match_pivot_boundary, pivot, matchf=matchf, quiet=quiet, stats=stats)
+    return simp(g, 'pivot_boundary_simp', match_pivot_boundary, pivot, 
+                auto_simplify_parallel_edges=True, matchf=matchf, quiet=quiet, stats=stats)
 
 def lcomp_simp(g: BaseGraph[VT,ET], matchf:Optional[Callable[[VT],bool]]=None, quiet:bool=False, stats:Optional[Stats]=None) -> int:
-    return simp(g, 'lcomp_simp', match_lcomp_parallel, lcomp, matchf=matchf, quiet=quiet, stats=stats)
+    return simp(g, 'lcomp_simp', match_lcomp_parallel, lcomp, 
+                auto_simplify_parallel_edges=True, matchf=matchf, quiet=quiet, stats=stats)
 
 def bialg_simp(g: BaseGraph[VT,ET], quiet:bool=False, stats: Optional[Stats]=None) -> int:
     return simp(g, 'bialg_simp', match_bialg_parallel, bialg, quiet=quiet, stats=stats)
@@ -127,10 +141,12 @@ def id_simp(g: BaseGraph[VT,ET], matchf:Optional[Callable[[VT],bool]]=None, quie
     return simp(g, 'id_simp', match_ids_parallel, remove_ids, matchf=matchf, quiet=quiet, stats=stats)
 
 def gadget_simp(g: BaseGraph[VT,ET], matchf: Optional[Callable[[VT],bool]]=None, quiet:bool=False, stats:Optional[Stats]=None) -> int:
-    return simp(g, 'gadget_simp', match_phase_gadgets, merge_phase_gadgets, matchf=matchf, quiet=quiet, stats=stats)
+    return simp(g, 'gadget_simp', match_phase_gadgets, merge_phase_gadgets, 
+                auto_simplify_parallel_edges=True, matchf=matchf, quiet=quiet, stats=stats)
 
 def supplementarity_simp(g: BaseGraph[VT,ET], quiet:bool=False, stats:Optional[Stats]=None) -> int:
-    return simp(g, 'supplementarity_simp', match_supplementarity, apply_supplementarity, quiet=quiet, stats=stats)
+    return simp(g, 'supplementarity_simp', match_supplementarity, apply_supplementarity, 
+                auto_simplify_parallel_edges=True, quiet=quiet, stats=stats)
 
 def copy_simp(g: BaseGraph[VT,ET], quiet:bool=False, stats:Optional[Stats]=None) -> int:
     """Copies 1-ary spiders with 0/pi phase through neighbors.
@@ -143,6 +159,19 @@ def phase_free_simp(g: BaseGraph[VT,ET], quiet:bool=False, stats:Optional[Stats]
     i1 = spider_simp(g, quiet=quiet, stats=stats)
     i2 = bialg_simp(g, quiet=quiet, stats=stats)
     return i1+i2
+
+def basic_simp(g: BaseGraph[VT,ET], matchf: Optional[Callable[[Union[VT, ET]],bool]]=None, quiet:bool=False, stats:Optional[Stats]=None) -> int:
+    """Keeps doing the simplifications ``id_simp`` and ``spider_simp`` until none of them can be applied anymore. If
+    starting from a circuit, the result should still have causal flow."""
+    spider_simp(g, matchf=matchf, quiet=quiet, stats=stats)
+    to_gh(g)
+    i = 0
+    while True:
+        i1 = id_simp(g, matchf=matchf, quiet=quiet, stats=stats)
+        i2 = spider_simp(g, matchf=matchf, quiet=quiet, stats=stats)
+        if i1+i2==0: break
+        i += 1
+    return i
 
 def interior_clifford_simp(g: BaseGraph[VT,ET], matchf: Optional[Callable[[Union[VT, ET]],bool]]=None, quiet:bool=False, stats:Optional[Stats]=None) -> int:
     """Keeps doing the simplifications ``id_simp``, ``spider_simp``,
@@ -283,23 +312,55 @@ def to_gh(g: BaseGraph[VT,ET],quiet:bool=True) -> None:
                 et = g.edge_type(e)
                 g.set_edge_type(e, toggle_edge(et))
 
-def to_rg(g: BaseGraph[VT,ET], select:Optional[Callable[[VT],bool]]=None) -> None:
-    """Turn green nodes into red nodes by color-changing vertices which satisfy the predicate ``select``.
-    By default, the predicate is set to greedily reducing the number of Hadamard-edges.
+def to_rg(g: BaseGraph[VT,ET], select:Optional[Callable[[VT],bool]]=None, change_gadgets: bool=True) -> None:
+    """Try to eliminate H-edges by turning green nodes red
+
+    By default, this does a breadth-first search starting at an arbitrary node, flipping the
+    color of alternating layers. For a ZX-diagram that is graph-like and 2-colorable, this will
+    eliminate all of the interior H-edges.
+    
+    Alternatively, the function `select` can be provided instructing the method where to flip colors.
+
     :param g: A ZX-graph.
-    :param select: A function taking in vertices and returning ``True`` or ``False``."""
-    if select is None:
-        select = lambda v: (
-            len([e for e in g.incident_edges(v) if g.edge_type(e) == EdgeType.SIMPLE]) <
-            len([e for e in g.incident_edges(v) if g.edge_type(e) == EdgeType.HADAMARD])
-            )
+    :param select: A function taking in vertices and returning ``True`` or ``False``.
+    :param change_gadgets: A flag saying always change gadgets to X."""
 
     ty = g.types()
-    for v in g.vertices():
-        if select(v) and vertex_is_zx(ty[v]):
-            g.set_type(v, toggle_vertex(ty[v]))
-            for e in g.incident_edges(v):
-                g.set_edge_type(e, toggle_edge(g.edge_type(e)))
+    if select is None:
+        remaining = set()
+        for w in g.vertices():
+            if change_gadgets and g.is_phase_gadget(w):
+                if vertex_is_zx(ty[w]):
+                    g.set_type(w, toggle_vertex(ty[w]))
+                    for e in g.incident_edges(w):
+                        g.set_edge_type(e, toggle_edge(g.edge_type(e)))
+            else:
+                remaining.add(w)
+        while len(remaining) > 0:
+            v = next(iter(remaining))
+            # if v is a boundary, set `flip` such that its adjacent edge will not be an H-edge afterwards
+            if ty[v] == VertexType.BOUNDARY and g.incident_edges(v)[0] == EdgeType.SIMPLE:
+                flip = True
+            else:
+                flip = False
+            nhd = set([v])
+            while len(nhd) > 0:
+                for w in nhd:
+                    if flip and vertex_is_zx(ty[w]):
+                        g.set_type(w, toggle_vertex(ty[w]))
+                        for e in g.incident_edges(w):
+                            g.set_edge_type(e, toggle_edge(g.edge_type(e)))
+                flip = not flip
+                remaining -= nhd
+                nhd = set.union(*(set(g.neighbors(w)) for w in nhd)).intersection(remaining)
+
+    else:
+        for v in g.vertices():
+            if g.is_phase_gadget(v) and select(v) and vertex_is_zx(ty[v]):
+                g.set_type(v, toggle_vertex(ty[v]))
+                for e in g.incident_edges(v):
+                    g.set_edge_type(e, toggle_edge(g.edge_type(e)))
+
 
 def tcount(g: Union[BaseGraph[VT,ET], Circuit]) -> int:
     """Returns the amount of nodes in g that have a non-Clifford phase."""
