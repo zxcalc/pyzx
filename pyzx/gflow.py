@@ -19,16 +19,24 @@ from typing import Dict, Set, Tuple, Optional
 from .extract import bi_adj
 from .linalg import Mat2
 from .graph.base import BaseGraph, VertexType, VT, ET
+from .utils import vertex_is_zx
 
 
 def gflow(
-    g: BaseGraph[VT, ET]
+    g: BaseGraph[VT, ET], delayed: bool=False, pauli: bool=False
 ) -> Optional[Tuple[Dict[VT, int], Dict[VT, Set[VT]], int]]:
-    r"""Compute the maximally delayed gflow of a diagram in graph-like form.
+    r"""Compute the gflow of a diagram in graph-like form.
+
+    :param g: A ZX-graph.
+    :param delayed: Compute the maximally-delayed gflow
+    :param pauli: Compute the Pauli flow, restricted to {XZ, X} measurements
 
     Based on algorithm by Perdrix and Mhalla.
     See dx.doi.org/10.1007/978-3-540-70575-8_70
 
+    Slightly extended to allow searching for Pauli flow with measurement planes {XZ, X}.
+
+    Here is the pseudocode it is based on:
     ```
     input : An open graph
     output: A generalised flow
@@ -62,28 +70,33 @@ def gflow(
     """
     l: Dict[VT, int] = {}
     gflow: Dict[VT, Set[VT]] = {}
+    ty = g.types()
 
-    inputs: Set[VT] = set(g.inputs())
     processed: Set[VT] = set(g.outputs()) | g.grounds()
-    vertices: Set[VT] = set(g.vertices())
+    vertices: Set[VT] = set(v for v in g.vertices() if vertex_is_zx(ty[v]))
     pattern_inputs: Set[VT] = set()
-    for inp in inputs:
-        if g.type(inp) == VertexType.BOUNDARY:
-            pattern_inputs |= set(g.neighbors(inp))
-        else:
-            pattern_inputs.add(inp)
-    k: int = 1
+    pattern_outputs: Set[VT] = set()
+    paulis: Set[VT] = set()
 
+    for inp in g.inputs():
+        pattern_inputs |= set(n for n in g.neighbors(inp) if vertex_is_zx(ty[n]))
+    for outp in g.outputs():
+        pattern_outputs |= set(n for n in g.neighbors(outp) if vertex_is_zx(ty[n]))
+
+    if pauli:
+        paulis = set(v for v in vertices.difference(pattern_inputs) if g.phase(v) in (0,1))
+
+    processed = pattern_outputs.copy()
     for v in processed:
         l[v] = 0
 
+    k: int = 1
     while True:
         correct = set()
-        # unprocessed = list()
         processed_prime = [
             v
-            for v in processed.difference(pattern_inputs)
-            if any(w not in processed for w in g.neighbors(v))
+            for v in processed.difference(pattern_inputs) | paulis
+            if delayed or any(w not in processed for w in g.neighbors(v))
         ]
         candidates = [
             v
@@ -93,7 +106,6 @@ def gflow(
 
         zerovec = Mat2.zeros(len(candidates), 1)
 
-        # print(unprocessed, processed_prime, zerovec)
         m = bi_adj(g, processed_prime, candidates)
         for index, u in enumerate(candidates):
             vu = zerovec.copy()
@@ -105,7 +117,7 @@ def gflow(
                 l[u] = k
 
         if not correct:
-            if vertices.difference(processed) == inputs.difference(pattern_inputs):
+            if len(vertices) == len(processed):
                 return l, gflow, k
             return None
         else:
@@ -114,7 +126,7 @@ def gflow(
 
 
 def extended_gflow() -> None:
-    r"""NOT IMPLEMENTED YET: Compute the maximally delayed extended (i.e. 3-plane) gflow of a diagram in graph-like form.
+    r"""NOT IMPLEMENTED YET: Compute the extended (i.e. 3-plane) gflow of a diagram in graph-like form.
 
     Based on the algorithm in "There and Back Again"
     See https://arxiv.org/pdf/2003.01664
