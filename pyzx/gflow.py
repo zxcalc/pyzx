@@ -95,9 +95,9 @@ def gflow(
 
         # print(unprocessed, processed_prime, zerovec)
         m = bi_adj(g, processed_prime, candidates)
-        for u in candidates:
+        for index, u in enumerate(candidates):
             vu = zerovec.copy()
-            vu.data[candidates.index(u)] = [1] # type:ignore
+            vu.data[index][0] = 1
             x = m.solve(vu)
             if x:
                 correct.add(u)
@@ -114,7 +114,7 @@ def gflow(
 
 
 def extended_gflow() -> None:
-    r"""Compute the maximally delayed extended (i.e. 3-plane) gflow of a diagram in graph-like form.
+    r"""NOT IMPLEMENTED YET: Compute the maximally delayed extended (i.e. 3-plane) gflow of a diagram in graph-like form.
 
     Based on the algorithm in "There and Back Again"
     See https://arxiv.org/pdf/2003.01664
@@ -168,4 +168,4 @@ def extended_gflow() -> None:
     end
     ```
     """
-    pass # TODO stub
+    raise ValueError("Not implemented")
