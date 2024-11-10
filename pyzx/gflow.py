@@ -26,7 +26,7 @@ from .utils import vertex_is_zx
 
 def gflow(
     g: BaseGraph[VT, ET], focus: bool=False, reverse: bool=False, pauli: bool=False
-) -> Optional[Tuple[Dict[VT, int], Dict[VT, Set[VT]], int]]:
+) -> Optional[Tuple[Dict[VT, int], Dict[VT, Set[VT]]]]:
     r"""Compute the gflow of a diagram in graph-like form.
 
     :param g: A ZX-graph.
@@ -132,7 +132,7 @@ def gflow(
 
         if not correct:
             if len(vertices) == len(processed):
-                return l, gflow, k
+                return {v: k - i - 1 for v,i in l.items()}, gflow
             return None
         else:
             processed.update(correct)
