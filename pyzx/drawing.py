@@ -56,7 +56,7 @@ def draw(g: Union[BaseGraph[VT,ET], Circuit], labels: bool=False, **kwargs) -> A
     # allow global setting to labels=False
     # TODO: probably better to make labels Optional[bool]
     labels = labels or settings.show_labels
-
+    
     if get_mode() == "shell":
         return draw_matplotlib(g, labels, **kwargs)
     elif get_mode() == "browser":
