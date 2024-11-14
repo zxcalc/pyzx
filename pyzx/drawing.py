@@ -346,7 +346,6 @@ def draw_d3(
     graph_id = ''.join(random_graphid.choice(string.ascii_letters + string.digits) for _ in range(8))
 
     if(auto_draw):
-        print("hi")
         v_dict, w, h = auto_draw_vertex_locs(g)
         if scale is None:
             scale = 800 / w
