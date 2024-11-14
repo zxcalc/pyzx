@@ -286,21 +286,22 @@ random_graphid = random.Random()
 #             library_code += f.read() + '\n'
 #     library_code += '</script>'
 #     display(HTML(library_code))
+
 def auto_draw_vertex_locs(g:BaseGraph[VT, ET]): #Force-based graph drawing algorithm given by Eades(1984):
-    c1 = 2
+    c1 = 2 #Sample parameters that work decently well
     c2 = 1
     c3 = 1
     c4 = .1
     v_loc:Dict[VT, Tuple[int, int]] = dict()
     for v in g.vertices():
-        v_loc[v]=(random.random()*10,  random.random()*10)
+        v_locs[v]=(random.random()*math.sqrt(g.num_vertices()),  random.random()*math.sqrt(g.num_vertices()))
     for i in range(100): #100 iterations of force-based drawing
         forces:Dict[VT, Tuple[int, int]] = dict()
         for v in g.vertices():
             forces[v] = (0, 0)
             for v1 in g.vertices():
                 if(v!=v1):
-                    diff = (v_loc[v][0]-v_loc[v1][0], v_loc[v][1]-v_loc[v1][1])
+                    diff = (v_locs[v][0]-v_locs[v1][0], v_locs[v][1]-v_locs[v1][1])
                     d = math.sqrt(diff[0]*diff[0]+diff[1]*diff[1])
                     if g.connected(v1, v): #edge between vertices: apply rule c1*log(d/c2)
                         force_mag = -c1*math.log(d/c2) #negative force attracts
@@ -311,15 +312,13 @@ def auto_draw_vertex_locs(g:BaseGraph[VT, ET]): #Force-based graph drawing algor
                     v_force = (diff[0]*force_mag*c4/d, diff[1]*force_mag*c4/d)
                     forces[v] = (forces[v][0]+v_force[0], forces[v][1]+v_force[1])
         for v in g.vertices(): #leave y value constant if input or output
-            v_loc[v]=(v_loc[v][0]+forces[v][0], v_loc[v][1]+forces[v][1])
+            v_locs[v]=(v_locs[v][0]+forces[v][0], v_locs[v][1]+forces[v][1])
     max_x = max(v[0] for v in v_loc.values())
     min_x = min(v[0] for v in v_loc.values())
     max_y = max(v[1] for v in v_loc.values())
     min_y = min(v[1] for v in v_loc.values())
-    v_loc = {k:(v[0]-min_x, v[1]-min_y) for k, v in v_loc.items()} #dont rescale
-
-    #v_loc = {k:((v[0]-min_x)*(x_scale/(max_x-min_x)), (v[1]-min_y)*y_scale/(max_y-min_y)) for k, v in v_loc.items()} #rescale
-    return v_loc, max_x-min_x, max_y-min_y
+    v_locs = {k:(v[0]-min_x, v[1]-min_y) for k, v in v_locs.items()} #translate to origin
+    return v_locs, max_x-min_x, max_y-min_y
 
 
 def draw_d3(
@@ -352,8 +351,8 @@ def draw_d3(
             if scale > 50: scale = 50
             if scale < 20: scale = 20
         
-        w = w * scale
-        h = h * scale
+        w = (w+2) * scale
+        h = (h+3) * scale
     else:
         minrow = min([g.row(v) for v in g.vertices()], default=0)
         maxrow = max([g.row(v) for v in g.vertices()], default=0)
@@ -372,8 +371,8 @@ def draw_d3(
     if node_size < 2: node_size = 2
 
     nodes = [{'name': str(v),
-              'x': v_dict[v][0]*scale if auto_draw else (g.row(v)-minrow + 1) * scale,
-              'y': v_dict[v][1]*scale if auto_draw else (g.qubit(v)-minqub + 2) * scale,
+              'x': (v_dict[v][0]+1)*scale if auto_draw else (g.row(v)-minrow + 1) * scale,
+              'y': (v_dict[v][1]+2)*scale if auto_draw else (g.qubit(v)-minqub + 2) * scale,
               't': g.type(v),
               'phase': phase_to_s(g.phase(v), g.type(v)) if g.type(v) != VertexType.Z_BOX else str(get_z_box_label(g, v)),
               'ground': g.is_ground(v),
