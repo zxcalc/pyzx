@@ -313,10 +313,10 @@ def auto_layout_vertex_locs(g:BaseGraph[VT, ET]): #Force-based graph drawing alg
                     forces[v] = (forces[v][0]+v_force[0], forces[v][1]+v_force[1])
         for v in g.vertices(): #leave y value constant if input or output
             v_locs[v]=(v_locs[v][0]+forces[v][0], v_locs[v][1]+forces[v][1])
-    max_x = max(v[0] for v in v_loc.values())
-    min_x = min(v[0] for v in v_loc.values())
-    max_y = max(v[1] for v in v_loc.values())
-    min_y = min(v[1] for v in v_loc.values())
+    max_x = max(v[0] for v in v_locs.values())
+    min_x = min(v[0] for v in v_locs.values())
+    max_y = max(v[1] for v in v_locs.values())
+    min_y = min(v[1] for v in v_locs.values())
     v_locs = {k:(v[0]-min_x, v[1]-min_y) for k, v in v_locs.items()} #translate to origin
     return v_locs, max_x-min_x, max_y-min_y
 
@@ -372,8 +372,8 @@ def draw_d3(
     if node_size < 2: node_size = 2
 
     nodes = [{'name': str(v),
-              'x': (v_dict[v][0]+1)*scale if auto_draw else (g.row(v)-minrow + 1) * scale,
-              'y': (v_dict[v][1]+2)*scale if auto_draw else (g.qubit(v)-minqub + 2) * scale,
+              'x': (v_dict[v][0]+1)*scale if auto_layout else (g.row(v)-minrow + 1) * scale,
+              'y': (v_dict[v][1]+2)*scale if auto_layout else (g.qubit(v)-minqub + 2) * scale,
               't': g.type(v),
               'phase': phase_to_s(g.phase(v), g.type(v)) if g.type(v) != VertexType.Z_BOX else str(get_z_box_label(g, v)),
               'ground': g.is_ground(v),
