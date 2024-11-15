@@ -292,11 +292,11 @@ def auto_layout_vertex_locs(g:BaseGraph[VT, ET]): #Force-based graph drawing alg
     c2 = 1
     c3 = 1
     c4 = .1
-    v_locs:Dict[VT, Tuple[int, int]] = dict()
+    v_locs:Dict[VT, Tuple[float, float]] = dict()
     for v in g.vertices():
         v_locs[v]=(random.random()*math.sqrt(g.num_vertices()),  random.random()*math.sqrt(g.num_vertices()))
     for i in range(100): #100 iterations of force-based drawing
-        forces:Dict[VT, Tuple[int, int]] = dict()
+        forces:Dict[VT, Tuple[float, float]] = dict()
         for v in g.vertices():
             forces[v] = (0, 0)
             for v1 in g.vertices():
