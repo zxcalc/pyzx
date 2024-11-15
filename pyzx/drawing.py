@@ -287,7 +287,7 @@ random_graphid = random.Random()
 #     library_code += '</script>'
 #     display(HTML(library_code))
 
-def auto_draw_vertex_locs(g:BaseGraph[VT, ET]): #Force-based graph drawing algorithm given by Eades(1984):
+def auto_layout_vertex_locs(g:BaseGraph[VT, ET]): #Force-based graph drawing algorithm given by Eades(1984):
     c1 = 2 #Sample parameters that work decently well
     c2 = 1
     c3 = 1
@@ -328,9 +328,10 @@ def draw_d3(
     auto_hbox:Optional[bool]=None,
     show_scalar:bool=False,
     vdata: List[str]=[],
-    auto_draw = False
+    auto_layout = False
     ) -> Any:
-
+    """If auto_layout is checked, will automatically space vertices of graph
+    with no regard to qubit/row."""
     if get_mode() not in ("notebook", "browser"): 
         raise Exception("This method only works when loaded in a webpage or Jupyter notebook")
 
@@ -344,8 +345,8 @@ def draw_d3(
     # use an 8-digit random alphanum instead.
     graph_id = ''.join(random_graphid.choice(string.ascii_letters + string.digits) for _ in range(8))
 
-    if(auto_draw):
-        v_dict, w, h = auto_draw_vertex_locs(g)
+    if(auto_layout):
+        v_dict, w, h = auto_layout_vertex_locs(g)
         if scale is None:
             scale = 800 / w
             if scale > 50: scale = 50
