@@ -32,7 +32,7 @@ from functools import reduce
 from optparse import Option
 from typing import List, Callable, Optional, Union, Generic, Tuple, Dict, Iterator, cast
 
-from .utils import EdgeType, VertexType, toggle_edge, vertex_is_zx, toggle_vertex
+from .utils import EdgeType, VertexType, phase_is_clifford, toggle_edge, vertex_is_zx, toggle_vertex
 from .rules import *
 from .graph.base import BaseGraph, VT, ET
 from .graph.multigraph import Multigraph
@@ -361,6 +361,17 @@ def to_rg(g: BaseGraph[VT,ET], select:Optional[Callable[[VT],bool]]=None, change
                 for e in g.incident_edges(v):
                     g.set_edge_type(e, toggle_edge(g.edge_type(e)))
 
+def gadgetize(g: BaseGraph):
+    """Convert every non-Clifford phase to a phase gadget"""
+    for v in list(g.vertices()):
+        p = g.phase(v)
+        if not phase_is_clifford(p) and g.vertex_degree(v) > 1:
+            x = g.add_vertex(VertexType.Z, -1, g.row(v))
+            y = g.add_vertex(VertexType.Z, -2, g.row(v))
+            g.add_edge((x, y), EdgeType.HADAMARD)
+            g.add_edge((v, x), EdgeType.HADAMARD)
+            g.set_phase(y, p)
+            g.set_phase(v, 0)
 
 def tcount(g: Union[BaseGraph[VT,ET], Circuit]) -> int:
     """Returns the amount of nodes in g that have a non-Clifford phase."""
@@ -369,7 +380,7 @@ def tcount(g: Union[BaseGraph[VT,ET], Circuit]) -> int:
     count = 0
     phases = g.phases()
     for v in g.vertices():
-        if phases[v]!=0 and phases[v].denominator > 2:
+        if not phase_is_clifford(phases[v]):
             count += 1
     return count
 
