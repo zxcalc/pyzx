@@ -85,8 +85,8 @@ def simp(
     Returns:
         Number of iterations of ``rewrite`` that had to be applied before no more matches were found."""
 
+    auto_simp_value = g.get_auto_simplify()
     if auto_simplify_parallel_edges:
-        auto_simp_value = g.get_auto_simplify()
         g.set_auto_simplify(True)
     i = 0
     new_matches = True
@@ -361,7 +361,7 @@ def to_rg(g: BaseGraph[VT,ET], select:Optional[Callable[[VT],bool]]=None, change
                 for e in g.incident_edges(v):
                     g.set_edge_type(e, toggle_edge(g.edge_type(e)))
 
-def gadgetize(g: BaseGraph):
+def gadgetize(g: BaseGraph[VT,ET]):
     """Convert every non-Clifford phase to a phase gadget"""
     for v in list(g.vertices()):
         p = g.phase(v)

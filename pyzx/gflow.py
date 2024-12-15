@@ -16,11 +16,9 @@
 
 from typing import Dict, Set, Tuple, Optional
 
-from networkx import neighbors
-
 from .extract import bi_adj
 from .linalg import Mat2
-from .graph.base import BaseGraph, VertexType, VT, ET
+from .graph.base import BaseGraph, VT, ET
 from .utils import vertex_is_zx
 
 
@@ -99,7 +97,7 @@ def gflow(
 
     k: int = 1
     while True:
-        correct = set()
+        correct: Set[VT] = set()
         processed_prime = [
             v
             for v in (processed | paulis).difference(pattern_inputs)
@@ -121,7 +119,7 @@ def gflow(
 
         m = bi_adj(g, processed_prime, clean)
         for index, u in enumerate(clean):
-            if not focus or (u not in processed and any(w in processed_prime for w in g.neighbors(v))):
+            if not focus or (u not in processed and any(w in processed_prime for w in g.neighbors(u))):
                 vu = zerovec.copy()
                 vu.data[index][0] = 1
                 x = m.solve(vu)

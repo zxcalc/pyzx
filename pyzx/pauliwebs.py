@@ -17,39 +17,58 @@
 from .circuit import Circuit
 from .utils import EdgeType, VertexType
 from .simplify import gadgetize, to_rg
-from .graph.base import BaseGraph
+from .graph.base import BaseGraph, VT, ET
 
 
-def preprocess(g: BaseGraph):
+def preprocess(g: BaseGraph[VT,ET]):
     gadgetize(g)
-    to_rg(g) # TODO: i/o should stay Z
-    in_circ = Circuit()
-    out_circ = Circuit()
+    to_rg(g)
+
+    in_circ = Circuit(len(g.inputs()))
     for j,i in enumerate(g.inputs()):
         e = g.incident_edges(i)[0]
-        v = g.neighbors(i)[0]
+        v = next(iter(g.neighbors(i)))
         p = g.phase(v)
+        ty = g.type(v)
+
+        # remove local cliffords from the inputs
         if g.edge_type(e) == EdgeType.HADAMARD:
             in_circ.add_gate('H', j)
             g.set_edge_type(e, EdgeType.SIMPLE)
         if p != 0:
             g.set_phase(v, 0)
-            in_circ.add_gate("ZPhase", j, phase=p)
+            in_circ.add_gate("ZPhase" if ty == VertexType.Z else "XPhase", j, phase=p)
 
+    out_circ = Circuit(len(g.outputs()))
     for j,o in enumerate(g.outputs()):
-        r = g.get_row(o)
-        g.set_row(o, r + 1)
+        r = g.row(o)
+        g.set_row(o, r + 2)
         e = g.incident_edges(o)[0]
-        v = g.neighbors(o)[0]
+        v = next(iter(g.neighbors(o)))
         p = g.phase(v)
+        ty = g.type(v)
+
+        # remove local cliffords from the outputs
         if p != 0:
             g.set_phase(v, 0)
-            out_circ.add_gate("ZPhase", j, phase=p)
+            out_circ.add_gate("ZPhase" if ty == VertexType.Z else "XPhase", j, phase=p)
 
         if g.edge_type(e) == EdgeType.HADAMARD:
             out_circ.add_gate('H', j)
         g.remove_edge(e)
+
+        # introduce ID spiders at the outputs for computing pauli webs
+        if ty == VertexType.X:
+            v1 = g.add_vertex(VertexType.Z, qubit=g.qubit(o), row=r)
+            g.add_edge((v,v1), EdgeType.SIMPLE)
+        else:
+            v1 = v
+            g.set_row(v1, r)
         
-        v1 = g.add_vertex(VertexType.Z, qubit=g.qubit(o), row=r)
-        g.add_edge((v,v1), EdgeType.HADAMARD)
-        g.add_edge((v1,o), EdgeType.HADAMARD)
+        v2 = g.add_vertex(VertexType.X, qubit=g.qubit(o), row=r+1)
+
+        
+        g.add_edge((v1,v2), EdgeType.SIMPLE)
+        g.add_edge((v2,o), EdgeType.SIMPLE)
+    
+    return (in_circ, out_circ)
