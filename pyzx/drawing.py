@@ -29,6 +29,8 @@ from typing import Dict, List, Tuple, Optional, Union, Iterable, Any, TYPE_CHECK
 from typing_extensions import Literal
 import numpy as np
 
+from .pauliweb import PauliWeb
+
 # matplotlib is lazy-imported on the first call to draw_matplotlib
 plt: Any = None
 path: Any = None
@@ -328,6 +330,7 @@ def draw_d3(
     auto_hbox:Optional[bool]=None,
     show_scalar:bool=False,
     vdata: List[str]=[],
+    pauli_web:Optional[PauliWeb[VT,ET]]=None,
     auto_layout = False
     ) -> Any:
     """If auto_layout is checked, will automatically space vertices of graph
@@ -397,7 +400,13 @@ def draw_d3(
     for link in links:
         s,t = (str(link['source']), str(link['target']))
         link['num_parallel'] = counts[(s,t)]
-    graphj = json.dumps({'nodes': nodes, 'links': links})
+    
+    if pauli_web:
+        pw_edges = [{ 'source': vs[0], 'target': vs[1], 't': t } for vs,t in pauli_web.half_edges().items() ]
+    else:
+        pw_edges = []
+
+    graphj = json.dumps({'nodes': nodes, 'links': links, 'pauli_web': pw_edges})
 
     with open(os.path.join(settings.javascript_location, 'zx_viewer.inline.js'), 'r') as f:
         library_code = f.read() + '\n'

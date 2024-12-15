@@ -31,6 +31,13 @@ function edgeColor(t) {
     else if (t == 3) return "gray";
 }
 
+function webColor(t) {
+    if (t == 'X') return "#ff8888";
+    else if (t == 'Y') return "#88ff88";
+    else if (t == 'Z') return "#44aa44";
+    else if (t == 'I') return "#eee";
+}
+
 function nodeStyle(selected) {
     return selected ? "stroke-width: 2px; stroke: #00f" : "stroke-width: 1.5px";
 }
@@ -78,6 +85,13 @@ function showGraph(tag, graph, width, height, scale, node_size, auto_hbox, show_
         t.nhd.push(s);
     });
 
+    graph.pauli_web.forEach(function(d) {
+        var s = ntab[d.source];
+        var t = ntab[d.target];
+        d.source = s;
+        d.target = t;
+    });
+
     var shiftKey;
 
     // SETUP SVG ITEMS
@@ -91,6 +105,15 @@ function showGraph(tag, graph, width, height, scale, node_size, auto_hbox, show_
         .attr("style", "max-width: none; max-height: none")
         .attr("width", width)
         .attr("height", height);
+
+    var web = svg.append("g")
+        .attr("class", "web")
+        .selectAll("line")
+        .data(graph.pauli_web)
+        .enter().append("path")
+        .attr("stroke", function(d) { return webColor(d.t); })
+        .attr("fill", "transparent")
+        .attr("style", "stroke-width: 7px");
 
     var link = svg.append("g")
         .attr("class", "link")
@@ -265,6 +288,13 @@ function showGraph(tag, graph, width, height, scale, node_size, auto_hbox, show_
     };
     link.attr("d", link_curve);
 
+
+    var web_curve = function(d) {
+        var x1 = d.source.x, x2 = (x1 + d.target.x)/2, y1 = d.source.y, y2 = (y1 + d.target.y)/2;
+        return `M ${x1} ${y1} L ${x2} ${y2}`;
+    }
+    web.attr("d", web_curve);
+
     // EVENTS FOR DRAGGING AND SELECTION
 
     node.on("mousedown", function(d) {
@@ -293,6 +323,8 @@ function showGraph(tag, graph, width, height, scale, node_size, auto_hbox, show_
             link.filter(function(d) { return d.source.selected || d.target.selected ||
                     (auto_hbox && d.source.t == 3); })
                 .attr("d", link_curve);
+            web.filter(function(d) { return d.source.selected || d.target.selected; })
+                .attr("d", web_curve);
         }));
 
     brush.call(d3.brush().keyModifiers(false)
