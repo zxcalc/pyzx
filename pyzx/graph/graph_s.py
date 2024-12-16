@@ -219,6 +219,7 @@ class GraphS(BaseGraph[int,Tuple[int,int]]):
 
     def edges(self, s=None, t=None):
         if s is not None and t is not None:
+            if self.connected(s, t):
                 yield (s,t) if s < t else (t,s)
         elif s is not None:
             for t in self.graph[s]:

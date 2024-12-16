@@ -1011,10 +1011,10 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
     
     def is_phase_gadget(self, v: VT) -> bool:
         """Returns True if the vertex is the 'hub' of a phase gadget"""
-        if self.phase(v) != 0 or self.vertex_degree(v) < 2:
+        if not vertex_is_zx(self.type(v)) or self.phase(v) != 0 or self.vertex_degree(v) < 2:
             return False
         for w in self.neighbors(v):
-            if self.vertex_degree(w) == 1:
+            if vertex_is_zx(self.type(w)) and self.vertex_degree(w) == 1:
                 return True
         return False
 
