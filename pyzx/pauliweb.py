@@ -83,8 +83,8 @@ def preprocess(g: BaseGraph[VT,ET]):
     #g.normalize()
     gadgetize(g)
     gadgets = set(v for v in g.vertices() if g.is_phase_gadget(v))
-    boundary_spiders = set(v for v in g.vertices() if any(g.type(w) == VertexType.BOUNDARY for w in g.neighbors(v)))
-    to_rg(g, init_z=boundary_spiders, init_x=gadgets)
+    #boundary_spiders = set(v for v in g.vertices() if any(g.type(w) == VertexType.BOUNDARY for w in g.neighbors(v)))
+    to_rg(g, init_z=None, init_x=gadgets)
 
     in_circ = Circuit(len(g.inputs()))
     for j,i in enumerate(g.inputs()):

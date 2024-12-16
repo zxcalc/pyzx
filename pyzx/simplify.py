@@ -367,15 +367,20 @@ def to_rg(g: BaseGraph[VT,ET], init_z: Optional[Set[VT]]=None, init_x: Optional[
             for e in g.incident_edges(v):
                 g.set_edge_type(e, toggle_edge(g.edge_type(e)))
 
-def gadgetize(g: BaseGraph[VT,ET]):
+def gadgetize(g: BaseGraph[VT,ET], graphlike:bool=True):
     """Convert every non-Clifford phase to a phase gadget"""
     for v in list(g.vertices()):
         p = g.phase(v)
         if not phase_is_clifford(p) and g.vertex_degree(v) > 1:
-            x = g.add_vertex(VertexType.Z, -1, g.row(v))
             y = g.add_vertex(VertexType.Z, -2, g.row(v))
-            g.add_edge((x, y), EdgeType.HADAMARD)
-            g.add_edge((v, x), EdgeType.HADAMARD)
+            if graphlike:
+                x = g.add_vertex(VertexType.Z, -1, g.row(v))
+                g.add_edge((x, y), EdgeType.HADAMARD)
+                g.add_edge((v, x), EdgeType.HADAMARD)
+            else:
+                x = g.add_vertex(VertexType.X, -1, g.row(v))
+                g.add_edge((x, y), EdgeType.SIMPLE)
+                g.add_edge((v, x), EdgeType.SIMPLE)
             g.set_phase(y, p)
             g.set_phase(v, 0)
 

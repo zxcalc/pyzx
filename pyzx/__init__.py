@@ -37,6 +37,7 @@ from . import todd
 from . import linalg
 from . import extract
 from . import rules
+from . import basicrules
 from . import hrules
 from . import optimize
 from . import simplify
