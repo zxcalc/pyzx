@@ -39,6 +39,6 @@ setup(
                       "pyperclip>=1.8.1",
                       "tqdm>=4.56.0",
                       "ipywidgets>=7.5,<8",
-                      "lark~=1.1.7"],
+                      "lark>=1.2.2"],
     include_package_data=True,
 )
