@@ -44,13 +44,13 @@ class PauliWeb(Generic[VT, ET]):
         self.g = g
         self.c = c
 
-    def vertices(self):
+    def vertices(self) -> Set[VT]:
         vs = self.c.copy()
         for v in self.c:
             vs |= set(self.g.neighbors(v))
         return vs
 
-    def half_edges(self):
+    def half_edges(self) -> Dict[Tuple[VT,VT],str]:
         es: Dict[Tuple[VT,VT],str] = dict()
         for v in self.c:
             for e in self.g.incident_edges(v):
@@ -67,7 +67,7 @@ class PauliWeb(Generic[VT, ET]):
                 es[(v1,v)] = multiply_paulis(t2, ty)
         return es
     
-    def boundary(self):
+    def boundary(self) -> Set[VT]:
         b: Dict[VT, int] = dict()
         for v in self.c:
             for n in self.g.neighbors(v):
@@ -136,8 +136,8 @@ def preprocess(g: BaseGraph[VT,ET]):
     return (in_circ, out_circ)
 
 
-def transpose_corrections(c) -> Dict[VT, Set[VT]]:
-    ct = dict()
+def transpose_corrections(c: Dict[VT, Set[VT]]) -> Dict[VT, Set[VT]]:
+    ct: Dict[VT, Set[VT]] = dict()
     for k,s in c.items():
         for v in s:
             if v not in ct: ct[v] = set()

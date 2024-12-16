@@ -823,15 +823,15 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         """Returns the amount of vertices in the graph."""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
-    def num_edges(self) -> int:
+    def num_edges(self, s: Optional[VT]=None, t: Optional[VT]=None) -> int:
         """Returns the amount of edges in the graph"""
-        raise NotImplementedError("Not implemented on backend " + type(self).backend)
+        return len(list(self.edges(s, t)))
 
-    def vertices(self) -> Sequence[VT]:
+    def vertices(self) -> Iterable[VT]:
         """Iterator over all the vertices."""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
-    def edges(self, s: Optional[VT]=None, t: Optional[VT]=None) -> Sequence[ET]:
+    def edges(self, s: Optional[VT]=None, t: Optional[VT]=None) -> Iterable[ET]:
         """Iterator that returns all the edges in the graph, or all the edges connecting the pair of vertices.
         Output type depends on implementation in backend."""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)

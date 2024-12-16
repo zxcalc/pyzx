@@ -318,8 +318,8 @@ def max_cut(g: BaseGraph[VT,ET], vs0: Optional[Set[VT]]=None, vs1: Optional[Set[
 
     This uses the quadratic-time SG3 heuristic explained by Wang et al in https://arxiv.org/abs/2312.10895 .
     """
-    if vs0 == None: vs0 = set()
-    if vs1 == None: vs1 = set()
+    if vs0 is None: vs0 = set()
+    if vs1 is None: vs1 = set()
     # print(f'vs0={vs0} vs1={vs1}')
     remaining = set(g.vertices()) - vs0 - vs1
     while len(remaining) > 0:
@@ -337,7 +337,7 @@ def max_cut(g: BaseGraph[VT,ET], vs0: Optional[Set[VT]]=None, vs1: Optional[Set[
                 in0 = wt0 >= wt1
         # print(f'choosing {v_max} for set {"vs0" if in0 else "vs1"}')
         
-        if v_max == None: raise RuntimeError("No max found")
+        if v_max is None: raise RuntimeError("No max found")
         remaining.remove(v_max)
         if in0: vs0.add(v_max)
         else: vs1.add(v_max)
