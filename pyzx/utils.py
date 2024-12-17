@@ -136,6 +136,54 @@ tikz_classes = {
     'W-io-edge': 'W io edge'
 }
 
+original_palette = {
+    'edge': '#000000',
+    'Hedge': '#0088ff',
+    'Xedge': '#999999',
+    'X': '#ff8888',
+    'Y': '#88ff88',
+    'Z': '#ccffcc',
+    'H': '#00ffff',
+    'W': '#000000',
+    'Zalt': '#ccffcc',
+    'Walt': '#000000',
+    'Xweb': '#ff8888',
+    'Yweb': '#88ff88',
+    'Zweb': '#44aa44',
+}
+
+rgb_palette = {
+    'edge': '#000000',
+    'Hedge': '#0088ff',
+    'Xedge': '#999999',
+    'X': '#ff8888',
+    'Y': '#ccffcc',
+    'Z': '#88ff88',
+    'H': '#00ffff',
+    'W': '#000000',
+    'Zalt': '#ccffcc',
+    'Walt': '#000000',
+    'Xweb': '#ff8888',
+    'Yweb': '#44aa44',
+    'Zweb': '#88ff88',
+}
+
+gray_palette = {
+    'edge': '#000000',
+    'Hedge': '#888888',
+    'Xedge': '#dddddd',
+    'X': '#888888',
+    'Y': '#000000',
+    'Z': '#eeeeee',
+    'H': '#dddddd',
+    'W': '#000000',
+    'Zalt': '#eeeeee',
+    'Walt': '#000000',
+    'Xweb': '#888888',
+    'Yweb': '#444444',
+    'Zweb': '#dddddd',
+}
+
 class Settings(object): # namespace class
     mode: Literal["notebook", "browser", "shell", ""] = "shell"
     drawing_backend: Literal["d3","matplotlib"] = "d3"
@@ -148,6 +196,7 @@ class Settings(object): # namespace class
     show_labels: bool = False
     tikz_classes: Dict[str,str] = tikz_classes
     default_qasm_version: int = 2
+    colors: Dict[str, str] = original_palette
 
 settings = Settings()
 
