@@ -50,7 +50,7 @@ class PauliWeb(Generic[VT, ET]):
         self.es: Dict[Tuple[VT,VT], str] = dict()
         self.vs: Set[VT] = set()
     
-    def add_edge(self, v_pair: Tuple[VT, VT], pauli: str):
+    def add_edge(self, v_pair: Tuple[VT, VT], pauli: str, spread_to_input: bool=False):
         s, t = v_pair
         self.vs.add(s)
         self.vs.add(t)
@@ -60,10 +60,18 @@ class PauliWeb(Generic[VT, ET]):
         self.es[(s,t)] = multiply_paulis(t1, pauli)
         self.es[(t,s)] = multiply_paulis(t2, pauli if et == EdgeType.SIMPLE else h_pauli(pauli))
 
-    def add_vertex(self, v: VT):
+        if spread_to_input and ('Z' if self.g.type(t) == VertexType.Z else 'X') == pauli:
+            inp = self.g.inputs()
+            for v2 in self.g.neighbors(t):
+                if v2 in inp:
+                    self.add_edge((t, v2), pauli, spread_to_input=False)
+                    break
+
+
+    def add_vertex(self, v: VT, spread_to_input: bool=False):
         p = 'X' if self.g.type(v) == VertexType.Z else 'Z'
         for v1 in self.g.neighbors(v):
-            self.add_edge((v, v1), p)
+            self.add_edge((v, v1), p, spread_to_input=spread_to_input)
     
     def vertices(self):
         return self.vs
@@ -73,64 +81,6 @@ class PauliWeb(Generic[VT, ET]):
     
     def __repr__(self):
         return 'PauliWeb' + str(self.vs)
-
-
-def preprocess(g: BaseGraph[VT,ET]):
-    #g.normalize()
-    #gadgetize(g)
-    #gadgets = set(v for v in g.vertices() if g.is_phase_gadget(v))
-    #boundary_spiders = set(v for v in g.vertices() if any(g.type(w) == VertexType.BOUNDARY for w in g.neighbors(v)))
-    #to_rg(g, init_z=None, init_x=gadgets)
-
-    in_circ = Circuit(len(g.inputs()))
-    for j,i in enumerate(g.inputs()):
-        e = g.incident_edges(i)[0]
-        v = next(iter(g.neighbors(i)))
-        p = g.phase(v)
-        ty = g.type(v)
-
-        # remove local cliffords from the inputs
-        if g.edge_type(e) == EdgeType.HADAMARD:
-            in_circ.add_gate('H', j)
-            g.set_edge_type(e, EdgeType.SIMPLE)
-        if p != 0:
-            g.set_phase(v, 0)
-            in_circ.add_gate("ZPhase" if ty == VertexType.Z else "XPhase", j, phase=p)
-
-    out_circ = Circuit(len(g.outputs()))
-    for j,o in enumerate(g.outputs()):
-        r = g.row(o)
-        g.set_row(o, r + 2)
-        e = g.incident_edges(o)[0]
-        v = next(iter(g.neighbors(o)))
-        p = g.phase(v)
-        ty = g.type(v)
-
-        # remove local cliffords from the outputs
-        if p != 0:
-            g.set_phase(v, 0)
-            out_circ.add_gate("ZPhase" if ty == VertexType.Z else "XPhase", j, phase=p)
-
-        if g.edge_type(e) == EdgeType.HADAMARD:
-            out_circ.add_gate('H', j)
-        g.remove_edge(e)
-
-        # introduce ID spiders at the outputs for computing pauli webs
-        if ty == VertexType.X:
-            v1 = g.add_vertex(VertexType.Z, qubit=g.qubit(o), row=r)
-            g.add_edge((v,v1), EdgeType.SIMPLE)
-        else:
-            v1 = v
-            g.set_row(v1, r)
-        
-        v2 = g.add_vertex(VertexType.X, qubit=g.qubit(o), row=r+1)
-
-        
-        g.add_edge((v1,v2), EdgeType.SIMPLE)
-        g.add_edge((v2,o), EdgeType.SIMPLE)
-    
-    return (in_circ, out_circ)
-
 
 def transpose_corrections(c: Dict[VT, Set[VT]]) -> Dict[VT, Set[VT]]:
     ct: Dict[VT, Set[VT]] = dict()
@@ -172,16 +122,15 @@ def compute_pauli_webs(g: BaseGraph[VT,ET]) -> Tuple[Dict[VT, int], Dict[VT, Pau
     xwebs: Dict[VT, PauliWeb[VT,ET]] = dict()
     vset = g.vertex_set()
     corr_t = transpose_corrections(corr)
-    print(corr_t)
 
     for v,c in corr_t.items():
         pw = PauliWeb(g)
         for v1 in c:
             if v1 in vset:
-                pw.add_vertex(v1)
+                pw.add_vertex(v1, spread_to_input=True)
             elif v1 in out_edge:
                 o, vo = out_edge[v1]
-                pw.add_edge((o,vo), 'Z' if g1.type(v1) == VertexType.X else 'X')
+                pw.add_edge((o,vo), 'Z' if g1.type(v1) == VertexType.X else 'X', spread_to_input=True)
         if v in out_edge:
             # o, vo = out_edge[v]
             # pw.add_edge((o,vo), 'Z' if g1.type(v) == VertexType.Z else 'X')
@@ -192,5 +141,14 @@ def compute_pauli_webs(g: BaseGraph[VT,ET]) -> Tuple[Dict[VT, int], Dict[VT, Pau
         if g1.type(v) == VertexType.Z: zwebs[ref] = pw
         elif g1.type(v) == VertexType.X: xwebs[ref] = pw
 
+    for i in g.inputs():
+        v = next(iter(g.neighbors(i)))
+        pw = PauliWeb(g)
+        if g.type(v) == VertexType.Z:
+            pw.add_edge((v, i), 'Z')
+            zwebs[v] = pw
+        elif g.type(v) == VertexType.X:
+            pw.add_edge((v, i), 'X')
+            xwebs[v] = pw
 
     return (order, zwebs, xwebs)
