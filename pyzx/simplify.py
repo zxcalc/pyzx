@@ -63,7 +63,7 @@ def simp(
     rewrite: Callable[[BaseGraph[VT,ET],List[MatchObject]],RewriteOutputType[VT,ET]],
     auto_simplify_parallel_edges: bool = False,
     matchf:Optional[Union[Callable[[ET],bool], Callable[[VT],bool]]]=None,
-    quiet:bool=False,
+    quiet:bool=True,
     stats:Optional[Stats]=None) -> int:
     """Helper method for constructing simplification strategies based on the rules present in rules_.
     It uses the ``match`` function to find matches, and then rewrites ``g`` using ``rewrite``.
@@ -115,52 +115,52 @@ def simp(
         g.set_auto_simplify(auto_simp_value)
     return i
 
-def pivot_simp(g: BaseGraph[VT,ET], matchf:Optional[Callable[[ET],bool]]=None, quiet:bool=False, stats:Optional[Stats]=None) -> int:
+def pivot_simp(g: BaseGraph[VT,ET], matchf:Optional[Callable[[ET],bool]]=None, quiet:bool=True, stats:Optional[Stats]=None) -> int:
     return simp(g, 'pivot_simp', match_pivot_parallel, pivot, 
                 auto_simplify_parallel_edges=True, matchf=matchf, quiet=quiet, stats=stats)
 
-def pivot_gadget_simp(g: BaseGraph[VT,ET], matchf:Optional[Callable[[ET],bool]]=None, quiet:bool=False, stats:Optional[Stats]=None) -> int:
+def pivot_gadget_simp(g: BaseGraph[VT,ET], matchf:Optional[Callable[[ET],bool]]=None, quiet:bool=True, stats:Optional[Stats]=None) -> int:
     return simp(g, 'pivot_gadget_simp', match_pivot_gadget, pivot, 
                 auto_simplify_parallel_edges=True, matchf=matchf, quiet=quiet, stats=stats)
 
-def pivot_boundary_simp(g: BaseGraph[VT,ET], matchf:Optional[Callable[[ET],bool]]=None, quiet:bool=False, stats:Optional[Stats]=None) -> int:
+def pivot_boundary_simp(g: BaseGraph[VT,ET], matchf:Optional[Callable[[ET],bool]]=None, quiet:bool=True, stats:Optional[Stats]=None) -> int:
     return simp(g, 'pivot_boundary_simp', match_pivot_boundary, pivot, 
                 auto_simplify_parallel_edges=True, matchf=matchf, quiet=quiet, stats=stats)
 
-def lcomp_simp(g: BaseGraph[VT,ET], matchf:Optional[Callable[[VT],bool]]=None, quiet:bool=False, stats:Optional[Stats]=None) -> int:
+def lcomp_simp(g: BaseGraph[VT,ET], matchf:Optional[Callable[[VT],bool]]=None, quiet:bool=True, stats:Optional[Stats]=None) -> int:
     return simp(g, 'lcomp_simp', match_lcomp_parallel, lcomp, 
                 auto_simplify_parallel_edges=True, matchf=matchf, quiet=quiet, stats=stats)
 
-def bialg_simp(g: BaseGraph[VT,ET], quiet:bool=False, stats: Optional[Stats]=None) -> int:
+def bialg_simp(g: BaseGraph[VT,ET], quiet:bool=True, stats: Optional[Stats]=None) -> int:
     return simp(g, 'bialg_simp', match_bialg_parallel, bialg, quiet=quiet, stats=stats)
 
-def spider_simp(g: BaseGraph[VT,ET], matchf:Optional[Callable[[VT],bool]]=None, quiet:bool=False, stats:Optional[Stats]=None) -> int:
+def spider_simp(g: BaseGraph[VT,ET], matchf:Optional[Callable[[VT],bool]]=None, quiet:bool=True, stats:Optional[Stats]=None) -> int:
     return simp(g, 'spider_simp', match_spider_parallel, spider, matchf=matchf, quiet=quiet, stats=stats)
 
-def id_simp(g: BaseGraph[VT,ET], matchf:Optional[Callable[[VT],bool]]=None, quiet:bool=False, stats:Optional[Stats]=None) -> int:
+def id_simp(g: BaseGraph[VT,ET], matchf:Optional[Callable[[VT],bool]]=None, quiet:bool=True, stats:Optional[Stats]=None) -> int:
     return simp(g, 'id_simp', match_ids_parallel, remove_ids, matchf=matchf, quiet=quiet, stats=stats)
 
-def gadget_simp(g: BaseGraph[VT,ET], matchf: Optional[Callable[[VT],bool]]=None, quiet:bool=False, stats:Optional[Stats]=None) -> int:
+def gadget_simp(g: BaseGraph[VT,ET], matchf: Optional[Callable[[VT],bool]]=None, quiet:bool=True, stats:Optional[Stats]=None) -> int:
     return simp(g, 'gadget_simp', match_phase_gadgets, merge_phase_gadgets, 
                 auto_simplify_parallel_edges=True, matchf=matchf, quiet=quiet, stats=stats)
 
-def supplementarity_simp(g: BaseGraph[VT,ET], quiet:bool=False, stats:Optional[Stats]=None) -> int:
+def supplementarity_simp(g: BaseGraph[VT,ET], quiet:bool=True, stats:Optional[Stats]=None) -> int:
     return simp(g, 'supplementarity_simp', match_supplementarity, apply_supplementarity, 
                 auto_simplify_parallel_edges=True, quiet=quiet, stats=stats)
 
-def copy_simp(g: BaseGraph[VT,ET], quiet:bool=False, stats:Optional[Stats]=None) -> int:
+def copy_simp(g: BaseGraph[VT,ET], quiet:bool=True, stats:Optional[Stats]=None) -> int:
     """Copies 1-ary spiders with 0/pi phase through neighbors.
     WARNING: only use on maximally fused diagrams consisting solely of Z-spiders."""
     return simp(g, 'copy_simp', match_copy, apply_copy, quiet=quiet, stats=stats)
 
-def phase_free_simp(g: BaseGraph[VT,ET], quiet:bool=False, stats:Optional[Stats]=None) -> int:
+def phase_free_simp(g: BaseGraph[VT,ET], quiet:bool=True, stats:Optional[Stats]=None) -> int:
     '''Performs the following set of simplifications on the graph:
     spider -> bialg'''
     i1 = spider_simp(g, quiet=quiet, stats=stats)
     i2 = bialg_simp(g, quiet=quiet, stats=stats)
     return i1+i2
 
-def basic_simp(g: BaseGraph[VT,ET], matchf: Optional[Callable[[Union[VT, ET]],bool]]=None, quiet:bool=False, stats:Optional[Stats]=None) -> int:
+def basic_simp(g: BaseGraph[VT,ET], matchf: Optional[Callable[[Union[VT, ET]],bool]]=None, quiet:bool=True, stats:Optional[Stats]=None) -> int:
     """Keeps doing the simplifications ``id_simp`` and ``spider_simp`` until none of them can be applied anymore. If
     starting from a circuit, the result should still have causal flow."""
     spider_simp(g, matchf=matchf, quiet=quiet, stats=stats)
@@ -173,7 +173,7 @@ def basic_simp(g: BaseGraph[VT,ET], matchf: Optional[Callable[[Union[VT, ET]],bo
         i += 1
     return i
 
-def interior_clifford_simp(g: BaseGraph[VT,ET], matchf: Optional[Callable[[Union[VT, ET]],bool]]=None, quiet:bool=False, stats:Optional[Stats]=None) -> int:
+def interior_clifford_simp(g: BaseGraph[VT,ET], matchf: Optional[Callable[[Union[VT, ET]],bool]]=None, quiet:bool=True, stats:Optional[Stats]=None) -> int:
     """Keeps doing the simplifications ``id_simp``, ``spider_simp``,
     ``pivot_simp`` and ``lcomp_simp`` until none of them can be applied anymore."""
     spider_simp(g, matchf=matchf, quiet=quiet, stats=stats)
