@@ -196,13 +196,11 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
 
     def clone(self) -> 'BaseGraph':
         """
-        This method should return an identical copy of the graph, without any relabeling
+        This method should return an identical copy of the graph, without any relabeling.
 
-        FIXME: this currently *does* change lables.
-
-        Used in lookahead extraction.
+        Note this needs to be implemented in the backend, since different backends deal with names differently.
         """
-        return self.copy()
+        raise NotImplementedError()
 
     def map_qubits(self, qubit_map:Mapping[int,Tuple[float,float]]) -> None:
         for v in self.vertices():

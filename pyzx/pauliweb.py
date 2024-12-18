@@ -31,6 +31,11 @@ def multiply_paulis(p1: str, p2: str) -> str:
     elif p1 != 'Z' and p2 != 'Z': return 'Z'
     else: raise ValueError('Expected: I, X, Y, or Z')
 
+def h_pauli(p: str) -> str:
+    if p == 'I': return 'I'
+    elif p == 'X': return 'Z'
+    elif p == 'Y': return 'Y'
+    else: return 'X'
 
 
 class PauliWeb(Generic[VT, ET]):
@@ -40,51 +45,42 @@ class PauliWeb(Generic[VT, ET]):
     all the edges incident to the vertices in `c`. To account for Hadamard edges, edge typing is
     assigned to "half-edges".
     """
-    def __init__(self, g: BaseGraph[VT,ET], c: Set[VT]):
+    def __init__(self, g: BaseGraph[VT,ET]):
         self.g = g
-        self.c = c
+        self.es: Dict[Tuple[VT,VT], str] = dict()
+        self.vs: Set[VT] = set()
+    
+    def add_edge(self, v_pair: Tuple[VT, VT], pauli: str):
+        s, t = v_pair
+        self.vs.add(s)
+        self.vs.add(t)
+        et = self.g.edge_type(self.g.edge(s, t))
+        t1 = self.es.get((s,t), 'I')
+        t2 = self.es.get((t,s), 'I')
+        self.es[(s,t)] = multiply_paulis(t1, pauli)
+        self.es[(t,s)] = multiply_paulis(t2, pauli if et == EdgeType.SIMPLE else h_pauli(pauli))
 
-    def vertices(self) -> Set[VT]:
-        vs = self.c.copy()
-        for v in self.c:
-            vs |= set(self.g.neighbors(v))
-        return vs
+    def add_vertex(self, v: VT):
+        p = 'X' if self.g.type(v) == VertexType.Z else 'Z'
+        for v1 in self.g.neighbors(v):
+            self.add_edge((v, v1), p)
+    
+    def vertices(self):
+        return self.vs
 
     def half_edges(self) -> Dict[Tuple[VT,VT],str]:
-        es: Dict[Tuple[VT,VT],str] = dict()
-        for v in self.c:
-            for e in self.g.incident_edges(v):
-                s, t = self.g.edge_st(e)
-                v1 = s if s != v else t
-                ty = 'Z' if self.g.type(v) == VertexType.Z else 'X'
-                oty = 'X' if ty == 'Z' else 'Z'
-                if self.g.edge_type(e) == EdgeType.SIMPLE:
-                    ty = oty
-
-                t1 = es.get((v,v1), 'I')
-                t2 = es.get((v1,v), 'I')
-                es[(v,v1)] = multiply_paulis(t1, oty)
-                es[(v1,v)] = multiply_paulis(t2, ty)
-        return es
-    
-    def boundary(self) -> Set[VT]:
-        b: Dict[VT, int] = dict()
-        for v in self.c:
-            for n in self.g.neighbors(v):
-                if n in b: b[n] += 1
-                else: b[n] = 1
-        return set(n for n,k in b.items() if k%2 == 1)
+        return self.es
     
     def __repr__(self):
-        return 'PauliWeb' + repr(self.c)
+        return 'PauliWeb' + str(self.vs)
 
 
 def preprocess(g: BaseGraph[VT,ET]):
     #g.normalize()
-    gadgetize(g)
-    gadgets = set(v for v in g.vertices() if g.is_phase_gadget(v))
+    #gadgetize(g)
+    #gadgets = set(v for v in g.vertices() if g.is_phase_gadget(v))
     #boundary_spiders = set(v for v in g.vertices() if any(g.type(w) == VertexType.BOUNDARY for w in g.neighbors(v)))
-    to_rg(g, init_z=None, init_x=gadgets)
+    #to_rg(g, init_z=None, init_x=gadgets)
 
     in_circ = Circuit(len(g.inputs()))
     for j,i in enumerate(g.inputs()):
@@ -144,10 +140,57 @@ def transpose_corrections(c: Dict[VT, Set[VT]]) -> Dict[VT, Set[VT]]:
             ct[v].add(k)
     return ct
 
-def compute_pauli_webs(g: BaseGraph[VT,ET]) -> Tuple[Dict[VT, int], Dict[VT, PauliWeb[VT,ET]]]:
-    gf = gflow(g, focus=True, pauli=True)
+def compute_pauli_webs(g: BaseGraph[VT,ET]) -> Tuple[Dict[VT, int], Dict[VT, PauliWeb[VT,ET]], Dict[VT, PauliWeb[VT,ET]]]:
+    g1 = g.clone()
+    out_edge: Dict[VT, Tuple[VT,VT]] = dict()
+    for j,o in enumerate(g1.outputs()):
+        e = g1.incident_edges(o)[0]
+        v = next(iter(g1.neighbors(o)))
+        vt = g1.type(v)
+        et = g1.edge_type(e)
+        g1.remove_edge(e)
+        if ((vt == VertexType.Z and et == EdgeType.SIMPLE) or
+            (vt == VertexType.X and et == EdgeType.HADAMARD)):
+            v0 = g1.add_vertex(VertexType.X)
+            v1 = g1.add_vertex(VertexType.Z)
+        if ((vt == VertexType.X and et == EdgeType.SIMPLE) or
+            (vt == VertexType.Z and et == EdgeType.HADAMARD)):
+            v0 = g1.add_vertex(VertexType.Z)
+            v1 = g1.add_vertex(VertexType.X)
+        g1.add_edge((v, v0), et)
+        g1.add_edge((v0, v1), EdgeType.SIMPLE)
+        g1.add_edge((v1, o), EdgeType.SIMPLE)
+        out_edge[v0] = (o, v)
+        out_edge[v1] = (o, v)
+
+    gf = gflow(g1, focus=True, pauli=True)
     if not gf:
         raise ValueError("Graph must have gFlow")
-    order, c = gf
+    order, corr = gf
 
-    return (order, { v: PauliWeb(g, c) for v,c in transpose_corrections(c).items() })
+    zwebs: Dict[VT, PauliWeb[VT,ET]] = dict()
+    xwebs: Dict[VT, PauliWeb[VT,ET]] = dict()
+    vset = g.vertex_set()
+    corr_t = transpose_corrections(corr)
+    print(corr_t)
+
+    for v,c in corr_t.items():
+        pw = PauliWeb(g)
+        for v1 in c:
+            if v1 in vset:
+                pw.add_vertex(v1)
+            elif v1 in out_edge:
+                o, vo = out_edge[v1]
+                pw.add_edge((o,vo), 'Z' if g1.type(v1) == VertexType.X else 'X')
+        if v in out_edge:
+            # o, vo = out_edge[v]
+            # pw.add_edge((o,vo), 'Z' if g1.type(v) == VertexType.Z else 'X')
+            ref = out_edge[v][0]
+        else:
+            ref = v
+
+        if g1.type(v) == VertexType.Z: zwebs[ref] = pw
+        elif g1.type(v) == VertexType.X: xwebs[ref] = pw
+
+
+    return (order, zwebs, xwebs)
