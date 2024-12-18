@@ -14,9 +14,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from zmq import NORM_BLOCK_SIZE
 from .gflow import gflow
 from .circuit import Circuit
-from .utils import EdgeType, VertexType
+from .utils import EdgeType, VertexType, vertex_is_zx
 from .simplify import gadgetize, to_rg
 from .graph.base import BaseGraph, VT, ET
 
@@ -50,28 +51,56 @@ class PauliWeb(Generic[VT, ET]):
         self.es: Dict[Tuple[VT,VT], str] = dict()
         self.vs: Set[VT] = set()
     
-    def add_edge(self, v_pair: Tuple[VT, VT], pauli: str, spread_to_input: bool=False):
+    def add_half_edge(self, v_pair: Tuple[VT, VT], pauli: str):
         s, t = v_pair
         self.vs.add(s)
-        self.vs.add(t)
+        p = self.es.get((s,t), 'I')
+        self.es[(s,t)] = multiply_paulis(p, pauli)
+
+    def add_edge(self, v_pair: Tuple[VT, VT], pauli: str):
+        s, t = v_pair
         et = self.g.edge_type(self.g.edge(s, t))
-        t1 = self.es.get((s,t), 'I')
-        t2 = self.es.get((t,s), 'I')
-        self.es[(s,t)] = multiply_paulis(t1, pauli)
-        self.es[(t,s)] = multiply_paulis(t2, pauli if et == EdgeType.SIMPLE else h_pauli(pauli))
+        self.add_half_edge((s,t), pauli)
+        self.add_half_edge((t,s), pauli if et == EdgeType.SIMPLE else h_pauli(pauli))
 
-        if spread_to_input and ('Z' if self.g.type(t) == VertexType.Z else 'X') == pauli:
-            inp = self.g.inputs()
-            for v2 in self.g.neighbors(t):
-                if v2 in inp:
-                    self.add_edge((t, v2), pauli, spread_to_input=False)
-                    break
+        # if spread_to_input: 
+        #     inp = self.g.inputs()
+        #     if ('Z' if self.g.type(s) == VertexType.Z else 'X') == pauli:
+        #         for v2 in self.g.neighbors(s):
+        #             if v2 in inp:
+        #                 self.add_edge((s, v2), pauli, spread_to_input=False)
+        #                 break
+
+        #     if ('Z' if self.g.type(t) == VertexType.Z else 'X') == pauli:
+        #         for v2 in self.g.neighbors(t):
+        #             if v2 in inp:
+        #                 self.add_edge((t, v2), pauli, spread_to_input=False)
+        #                 break
+
+    def spread_to_boundary(self, inputs=True, outputs=True):
+        bnd = []
+        if inputs: bnd += self.g.inputs()
+        if outputs: bnd += self.g.outputs()
+
+        for i in bnd:
+            v = next(iter(self.g.neighbors(i)))
+            vt = self.g.type(v)
+            if vt == VertexType.Z:
+                p = 'Z'
+            elif vt == VertexType.X:
+                p = 'X'
+            else:
+                continue
+            adj = sum(1 for v1 in self.g.neighbors(v)
+                      if (v,v1) in self.es and self.es[(v,v1)] in [p, 'Y'])
+            if adj % 2 == 1:
+                self.add_edge((v, i), p)
 
 
-    def add_vertex(self, v: VT, spread_to_input: bool=False):
-        p = 'X' if self.g.type(v) == VertexType.Z else 'Z'
-        for v1 in self.g.neighbors(v):
-            self.add_edge((v, v1), p, spread_to_input=spread_to_input)
+    # def add_vertex(self, v: VT, spread_to_input: bool=False):
+    #     p = 'X' if self.g.type(v) == VertexType.Z else 'Z'
+    #     for v1 in self.g.neighbors(v):
+    #         self.add_edge((v, v1), p, spread_to_input=spread_to_input)
     
     def vertices(self):
         return self.vs
@@ -93,6 +122,23 @@ def transpose_corrections(c: Dict[VT, Set[VT]]) -> Dict[VT, Set[VT]]:
 def compute_pauli_webs(g: BaseGraph[VT,ET]) -> Tuple[Dict[VT, int], Dict[VT, PauliWeb[VT,ET]], Dict[VT, PauliWeb[VT,ET]]]:
     g1 = g.clone()
     out_edge: Dict[VT, Tuple[VT,VT]] = dict()
+    interior_edge: Dict[VT, Tuple[VT,VT]] = dict()
+
+    for e in g.edges():
+        s, t = g.edge_st(e)
+        st = g.type(s)
+        tt = g.type(t)
+        et = g.edge_type(e)
+        if not (vertex_is_zx(st) and vertex_is_zx(tt)): continue
+
+        if (st == tt and et == EdgeType.SIMPLE) or (st != tt and et == EdgeType.HADAMARD):
+            v = g1.add_vertex(VertexType.Z if st == VertexType.X else VertexType.X)
+            g1.remove_edge(e)
+            g1.add_edge((s, v), EdgeType.SIMPLE)
+            g1.add_edge((v, t), et)
+            interior_edge[v] = (s,t)
+        
+
     for o in g1.outputs():
         e = g1.incident_edges(o)[0]
         v = next(iter(g1.neighbors(o)))
@@ -126,17 +172,22 @@ def compute_pauli_webs(g: BaseGraph[VT,ET]) -> Tuple[Dict[VT, int], Dict[VT, Pau
         pw = PauliWeb(g)
         for v1 in c:
             if v1 in vset:
-                pw.add_vertex(v1, spread_to_input=True)
+                p = 'X' if g.type(v1) == VertexType.Z else 'Z'
+                for v2 in g.neighbors(v1):
+                    if g.type(v2) == VertexType.BOUNDARY or g1.connected(v1, v2):
+                        pw.add_edge((v1, v2), p)
+                    else:
+                        pw.add_half_edge((v1, v2), p)
             elif v1 in out_edge:
-                o, vo = out_edge[v1]
-                pw.add_edge((o,vo), 'Z' if g1.type(v1) == VertexType.X else 'X', spread_to_input=True)
+                pw.add_edge(out_edge[v1], 'Z' if g1.type(v1) == VertexType.X else 'X')
+            elif v1 in interior_edge:
+                pw.add_edge(interior_edge[v1], 'Z' if g1.type(v1) == VertexType.X else 'X')
         if v in out_edge:
-            # o, vo = out_edge[v]
-            # pw.add_edge((o,vo), 'Z' if g1.type(v) == VertexType.Z else 'X')
             ref = out_edge[v][0]
         else:
             ref = v
 
+        pw.spread_to_boundary(inputs=True, outputs=False)
         if g1.type(v) == VertexType.Z: zwebs[ref] = pw
         elif g1.type(v) == VertexType.X: xwebs[ref] = pw
 

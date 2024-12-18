@@ -33,8 +33,8 @@ function edgeColor(t) {
 
 function webColor(t) {
     if (t == 'X') return "#ff8888";
-    else if (t == 'Y') return "#88ff88";
-    else if (t == 'Z') return "#44aa44";
+    else if (t == 'Y') return "#eebb00";
+    else if (t == 'Z') return "#66cc66";
     else if (t == 'I') return "#eee";
 }
 
