@@ -160,7 +160,6 @@ def draw_matplotlib(
         h_edge_draw: Literal['blue', 'box']      ='blue', 
         show_scalar: bool                        =False,
         rows: Optional[Tuple[FloatInt,FloatInt]] =None,
-        show_fig                                 =False,
         ) -> Any: # TODO: Returns a matplotlib figure
 
     # lazy import matplotlib
@@ -271,7 +270,7 @@ def draw_matplotlib(
         ax.text(x-5,y,g.scalar.to_latex())
 
     ax.axis('equal')
-    if show_fig:
+    if get_mode() == "shell":
         plt.show()
     else:
         plt.close()
