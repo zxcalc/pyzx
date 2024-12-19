@@ -21,7 +21,7 @@ from fractions import Fraction
 from typing import List, Dict, Tuple, Optional
 
 from . import Circuit
-from .gates import Gate, qasm_gate_table
+from .gates import Gate, qasm_gate_table, Measurement
 from ..utils import settings
 
 
@@ -144,12 +144,12 @@ class QASMParser(object):
         if name == "measure":
             target, result_bit = args[0].split(' -> ')
             # Extract the register name and index separately for both target and result
-            target_reg, target_idx = target.split('[')
-            result_reg, result_idx = result_bit.split('[')
+            _, target_idx = target.split('[')
+            _, result_idx = result_bit.split('[')
             # Remove the trailing ']' and convert to int
             target_qbit = int(target_idx[:-1])
-            result_bit = int(result_idx[:-1])
-            gate = Measurement(target_qbit, result_bit)
+            result_register = int(result_idx[:-1])
+            gate = Measurement(target_qbit, result_register)
             gates.append(gate)
             return gates
         if name in ("opaque", "if"):
