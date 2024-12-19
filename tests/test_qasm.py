@@ -80,6 +80,23 @@ class TestQASM(unittest.TestCase):
         self.assertEqual(c.qubits, qasm3.qubits)
         self.assertListEqual(c.gates, qasm3.gates)
 
+
+    def test_parse_qasm3_long_creg(self):
+        qasm3 = Circuit.from_qasm("""
+        OPENQASM 3;
+        include "stdgates.inc";
+        qubit[3] q1;
+        cx q1[0], q1[1];
+        s q1[2];
+        cx q1[2], q1[1];
+        """)
+        c = Circuit(3)
+        c.add_gate("CNOT", 0, 1)
+        c.add_gate("S", 2)
+        c.add_gate("CNOT", 2, 1)
+        self.assertEqual(c.qubits, qasm3.qubits)
+        self.assertListEqual(c.gates, qasm3.gates)
+
     def test_load_qasm_from_file(self):
         c = Circuit(1)
         c.add_gate("YPhase", 0, Fraction(1, 4))

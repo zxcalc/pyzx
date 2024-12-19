@@ -21,7 +21,7 @@ from fractions import Fraction
 from typing import List, Dict, Tuple, Optional
 
 from . import Circuit
-from .gates import Gate, qasm_gate_table
+from .gates import Gate, qasm_gate_table, Measurement
 from ..utils import settings
 
 
@@ -140,7 +140,18 @@ class QASMParser(object):
     def parse_command(self, c: str, registers: Dict[str,Tuple[int,int]]) -> List[Gate]:
         gates: List[Gate] = []
         name, phases, args = self.extract_command_parts(c)
-        if name in ("barrier","creg","measure", "id"): return gates
+        if name in ("barrier","creg", "id"): return gates
+        if name == "measure":
+            target, result_bit = args[0].split(' -> ')
+            # Extract the register name and index separately for both target and result
+            _, target_idx = target.split('[')
+            _, result_idx = result_bit.split('[')
+            # Remove the trailing ']' and convert to int
+            target_qbit = int(target_idx[:-1])
+            result_register = int(result_idx[:-1])
+            gate = Measurement(target_qbit, result_register)
+            gates.append(gate)
+            return gates
         if name in ("opaque", "if"):
             raise TypeError("Unsupported operation {}".format(c))
         if name == "qreg":
@@ -154,9 +165,12 @@ class QASMParser(object):
         dim = 1
         for a in args:
             if "[" in a:
+                # Split at the first '[' to handle multi-character register names
                 regname, valp = a.split("[",1)
+                # Remove the trailing ']' before converting to int
                 val = int(valp[:-1])
-                if regname not in registers: raise TypeError("Invalid register {}".format(regname))
+                if regname not in registers: 
+                    raise TypeError("Invalid register {}".format(regname))
                 qubit_values.append([registers[regname][0]+val])
             else:
                 if is_range:
