@@ -159,7 +159,8 @@ def draw_matplotlib(
         figsize:Tuple[FloatInt,FloatInt]         =(8,2), 
         h_edge_draw: Literal['blue', 'box']      ='blue', 
         show_scalar: bool                        =False,
-        rows: Optional[Tuple[FloatInt,FloatInt]] =None
+        rows: Optional[Tuple[FloatInt,FloatInt]] =None,
+        show_fig                                 =False,
         ) -> Any: # TODO: Returns a matplotlib figure
 
     # lazy import matplotlib
@@ -270,9 +271,12 @@ def draw_matplotlib(
         ax.text(x-5,y,g.scalar.to_latex())
 
     ax.axis('equal')
-    plt.close()
+    if show_fig:
+        plt.show()
+    else:
+        plt.close()
     return fig1
-    #plt.show()
+    
 
 # Provides functions for displaying pyzx graphs in jupyter notebooks using d3
 
