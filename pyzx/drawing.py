@@ -159,7 +159,7 @@ def draw_matplotlib(
         figsize:Tuple[FloatInt,FloatInt]         =(8,2), 
         h_edge_draw: Literal['blue', 'box']      ='blue', 
         show_scalar: bool                        =False,
-        rows: Optional[Tuple[FloatInt,FloatInt]] =None,
+        rows: Optional[Tuple[FloatInt,FloatInt]] =None
         ) -> Any: # TODO: Returns a matplotlib figure
 
     # lazy import matplotlib
