@@ -415,11 +415,13 @@ def draw_d3(
 <script type="module">
 var d3;
 if (d3 == null) {{ d3 = await import("https://cdn.skypack.dev/d3@5"); }}
+var _settings_colors = JSON.parse('{colors}');
 {library_code}
 showGraph('#graph-output-{id}',
   JSON.parse('{graph}'), {width}, {height}, {scale},
   {node_size}, {hbox}, {labels}, '{scalar_str}');
-</script>""".format(library_code=library_code,
+</script>""".format(colors=json.dumps(settings.colors),
+                    library_code=library_code,
                     id = graph_id,
                     graph = graphj, 
                     width=w, height=h, scale=scale, node_size=node_size,

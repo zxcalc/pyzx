@@ -16,26 +16,26 @@
 
 // styling functions
 function nodeColor(t) {
-    if (t == 0) return "black";
-    else if (t == 1) return "#ccffcc";
-    else if (t == 2) return "#ff8888";
-    else if (t == 3) return "yellow";
-    else if (t == 4) return "black";
-    else if (t == 5) return "black";
-    else if (t == 6) return "#ccffcc";
+    if (t == 0) return _settings_colors['boundary'];
+    else if (t == 1) return _settings_colors['Z']; // "#ccffcc";
+    else if (t == 2) return _settings_colors['X']; // "#ff8888";
+    else if (t == 3) return _settings_colors['H']; // "yellow";
+    else if (t == 4) return _settings_colors['W']; // "black";
+    else if (t == 5) return _settings_colors['Walt']; // "black";
+    else if (t == 6) return _settings_colors['Zalt']; // "#ccffcc";
 }
 
 function edgeColor(t) {
-    if (t == 1) return "black";
-    else if (t == 2) return "#08f";
-    else if (t == 3) return "gray";
+    if (t == 1) return _settings_colors['edge']; //"black";
+    else if (t == 2) return _settings_colors['Hedge']; // "#08f";
+    else if (t == 3) return _settings_colors['Xedge']; // "gray";
 }
 
 function webColor(t) {
-    if (t == 'X') return "#ff8888";
-    else if (t == 'Y') return "#eebb00";
-    else if (t == 'Z') return "#66cc66";
-    else if (t == 'I') return "#eee";
+    if (t == 'X') return _settings_colors['Xweb'];
+    else if (t == 'Y') return _settings_colors['Yweb'];
+    else if (t == 'Z') return _settings_colors['Zweb'];
+    else if (t == 'I') return '#dddddd';
 }
 
 function nodeStyle(selected) {

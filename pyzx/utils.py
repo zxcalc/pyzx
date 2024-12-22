@@ -136,51 +136,43 @@ tikz_classes = {
     'W-io-edge': 'W io edge'
 }
 
-original_palette = {
+original_colors = {
     'edge': '#000000',
     'Hedge': '#0088ff',
     'Xedge': '#999999',
+    'boundary': '#000000',
     'X': '#ff8888',
-    'Y': '#88ff88',
+    'Y': '#aabbff',
     'Z': '#ccffcc',
-    'H': '#00ffff',
+    'H': '#ffff66',
     'W': '#000000',
     'Zalt': '#ccffcc',
     'Walt': '#000000',
     'Xweb': '#ff8888',
-    'Yweb': '#88ff88',
-    'Zweb': '#44aa44',
+    'Yweb': '#aabbff',
+    'Zweb': '#99dd99',
 }
 
-rgb_palette = {
-    'edge': '#000000',
-    'Hedge': '#0088ff',
-    'Xedge': '#999999',
-    'X': '#ff8888',
-    'Y': '#ccffcc',
-    'Z': '#88ff88',
-    'H': '#00ffff',
-    'W': '#000000',
-    'Zalt': '#ccffcc',
-    'Walt': '#000000',
-    'Xweb': '#ff8888',
-    'Yweb': '#44aa44',
-    'Zweb': '#88ff88',
-}
+rgb_colors = original_colors.copy()
+rgb_colors['Y'] = original_colors['Z']
+rgb_colors['Z'] = original_colors['Y']
+rgb_colors['Yweb'] = original_colors['Zweb']
+rgb_colors['Zweb'] = original_colors['Yweb']
 
-gray_palette = {
+grayscale_colors = {
     'edge': '#000000',
     'Hedge': '#888888',
     'Xedge': '#dddddd',
-    'X': '#888888',
-    'Y': '#000000',
-    'Z': '#eeeeee',
-    'H': '#dddddd',
+    'boundary': '#000000',
+    'X': '#666666',
+    'Y': '#9999dd',
+    'Z': '#dddddd',
+    'H': '#eeeeee',
     'W': '#000000',
-    'Zalt': '#eeeeee',
+    'Zalt': '#dddddd',
     'Walt': '#000000',
-    'Xweb': '#888888',
-    'Yweb': '#444444',
+    'Xweb': '#666666',
+    'Yweb': '#9999dd',
     'Zweb': '#dddddd',
 }
 
@@ -196,7 +188,7 @@ class Settings(object): # namespace class
     show_labels: bool = False
     tikz_classes: Dict[str,str] = tikz_classes
     default_qasm_version: int = 2
-    colors: Dict[str, str] = original_palette
+    colors: Dict[str, str] = original_colors
 
 settings = Settings()
 
