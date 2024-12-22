@@ -14,11 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from zmq import NORM_BLOCK_SIZE
 from .gflow import gflow
-from .circuit import Circuit
 from .utils import EdgeType, VertexType, vertex_is_zx
-from .simplify import gadgetize, to_rg
 from .graph.base import BaseGraph, VT, ET
 
 from typing import Set, Dict, Tuple, Generic
