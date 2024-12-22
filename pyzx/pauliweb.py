@@ -116,10 +116,10 @@ def transpose_corrections(c: Dict[VT, Set[VT]]) -> Dict[VT, Set[VT]]:
             ct[v].add(k)
     return ct
 
-def compute_pauli_webs(g: BaseGraph[VT,ET]) -> Tuple[Dict[VT, int], Dict[VT, PauliWeb[VT,ET]], Dict[VT, PauliWeb[VT,ET]]]:
+def compute_pauli_webs(g: BaseGraph[VT,ET], backwards:bool=True) -> Tuple[Dict[VT, int], Dict[VT, PauliWeb[VT,ET]], Dict[VT, PauliWeb[VT,ET]]]:
     g1 = g.clone()
-    out_edge: Dict[VT, Tuple[VT,VT]] = dict()
-    interior_edge: Dict[VT, Tuple[VT,VT]] = dict()
+    color_edge: Dict[VT, Tuple[VT,VT]] = dict()
+    boundary: Dict[VT, VT] = dict()
 
     for e in g.edges():
         s, t = g.edge_st(e)
@@ -133,12 +133,11 @@ def compute_pauli_webs(g: BaseGraph[VT,ET]) -> Tuple[Dict[VT, int], Dict[VT, Pau
             g1.remove_edge(e)
             g1.add_edge((s, v), EdgeType.SIMPLE)
             g1.add_edge((v, t), et)
-            interior_edge[v] = (s,t)
+            color_edge[v] = (s,t)
         
-
-    for o in g1.outputs():
-        e = g1.incident_edges(o)[0]
-        v = next(iter(g1.neighbors(o)))
+    for b in g1.inputs() + g1.outputs():
+        e = g1.incident_edges(b)[0]
+        v = next(iter(g1.neighbors(b)))
         vt = g1.type(v)
         et = g1.edge_type(e)
         g1.remove_edge(e)
@@ -151,11 +150,12 @@ def compute_pauli_webs(g: BaseGraph[VT,ET]) -> Tuple[Dict[VT, int], Dict[VT, Pau
             v1 = g1.add_vertex(VertexType.X)
         g1.add_edge((v, v0), et)
         g1.add_edge((v0, v1), EdgeType.SIMPLE)
-        g1.add_edge((v1, o), EdgeType.SIMPLE)
-        out_edge[v0] = (o, v)
-        out_edge[v1] = (o, v)
+        g1.add_edge((v1, b), EdgeType.SIMPLE)
+        color_edge[v0] = (b, v)
+        boundary[v0] = b
+        boundary[v1] = b
 
-    gf = gflow(g1, focus=True, pauli=True)
+    gf = gflow(g1, focus=True, reverse=backwards, pauli=True)
     if not gf:
         raise ValueError("Graph must have gFlow")
     order, corr = gf
@@ -163,9 +163,9 @@ def compute_pauli_webs(g: BaseGraph[VT,ET]) -> Tuple[Dict[VT, int], Dict[VT, Pau
     zwebs: Dict[VT, PauliWeb[VT,ET]] = dict()
     xwebs: Dict[VT, PauliWeb[VT,ET]] = dict()
     vset = g.vertex_set()
-    corr_t = transpose_corrections(corr)
+    # corr_t = transpose_corrections(corr)
 
-    for v,c in corr_t.items():
+    for v,c in corr.items():
         pw = PauliWeb(g)
         for v1 in c:
             if v1 in vset:
@@ -175,34 +175,16 @@ def compute_pauli_webs(g: BaseGraph[VT,ET]) -> Tuple[Dict[VT, int], Dict[VT, Pau
                         pw.add_edge((v1, v2), p)
                     else:
                         pw.add_half_edge((v1, v2), p)
-            elif v1 in out_edge:
-                pw.add_edge(out_edge[v1], 'Z' if g1.type(v1) == VertexType.X else 'X')
-            elif v1 in interior_edge:
-                pw.add_edge(interior_edge[v1], 'Z' if g1.type(v1) == VertexType.X else 'X')
-        if v in out_edge:
-            ref = out_edge[v][0]
+            elif v1 in color_edge:
+                pw.add_edge(color_edge[v1], 'Z' if g1.type(v1) == VertexType.X else 'X')
+        if v in boundary:
+            ref = boundary[v]
         else:
             ref = v
 
-        pw.spread_to_boundary(inputs=True, outputs=False)
+        # pw.spread_to_boundary(inputs=True, outputs=False)
         if g1.type(v) == VertexType.Z: zwebs[ref] = pw
         elif g1.type(v) == VertexType.X: xwebs[ref] = pw
-
-    for i in g.inputs():
-        v = next(iter(g.neighbors(i)))
-        pw = PauliWeb(g)
-        if g.type(v) == VertexType.Z:
-            pw.add_edge((v, i), 'Z')
-            zwebs[v] = pw
-        elif g.type(v) == VertexType.X:
-            pw.add_edge((v, i), 'X')
-            xwebs[v] = pw
-        elif g.type(v) == VertexType.BOUNDARY:
-            pw.add_edge((v, i), 'X')
-            xwebs[v] = pw
-            pw1 = PauliWeb(g)
-            pw1.add_edge((v, i), 'Z')
-            zwebs[v] = pw1
 
 
     return (order, zwebs, xwebs)
