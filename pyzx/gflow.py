@@ -17,7 +17,6 @@
 from fractions import Fraction
 from typing import Dict, Set, Tuple, Optional
 
-from .extract import bi_adj
 from .linalg import Mat2
 from .graph.base import BaseGraph, VT, ET
 from .utils import vertex_is_zx
