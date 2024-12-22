@@ -28,15 +28,15 @@ def gflow(
 ) -> Optional[Tuple[Dict[VT, int], Dict[VT, Set[VT]]]]:
     r"""Compute the gflow of a diagram in graph-like form.
 
-    :param g: A ZX-graph.
+    :param g: A graphlike ZX diagram.
     :param focus: Compute the focussed gflow
     :param reverse: Reverse the roles of inputs and outputs
-    :param pauli: Compute the Pauli flow, restricted to {XZ, X} measurements
+    :param pauli: Compute the Pauli flow, restricted to {XY, X, Y} measurements
 
     Based on algorithm by Perdrix and Mhalla.
     See dx.doi.org/10.1007/978-3-540-70575-8_70
 
-    Slightly extended to allow searching for Pauli flow with measurement planes {XZ, X}.
+    Slightly extended to allow searching for Pauli flow with measurement planes {XY, X, Y}.
 
     Here is the pseudocode it is based on:
     ```
@@ -101,7 +101,9 @@ def gflow(
     k: int = 1
     while True:
         correct: Set[VT] = set()
-        processed_prime = [
+
+        # a list of nodes that can currently be used in the correction set of the next node
+        candidates = [
             v
             for v in (processed | pauli_x | pauli_y).difference(pattern_inputs)
             if focus or any(w not in processed for w in g.neighbors(v))
@@ -112,23 +114,22 @@ def gflow(
         else:
             clean = [v for v in vertices
                         if v not in processed and 
-                        any(w in processed_prime for w in g.neighbors(v))]
-        
-        # candidates = [
-        #     v
-        #     for v in vertices.difference(processed)
-        #     if any(w in processed_prime for w in g.neighbors(v))
-        # ]
+                        any(w in candidates for w in g.neighbors(v))]
 
-        m = bi_adj(g, processed_prime, clean)
+        # compute the "flow-demand matrix", which is essentially the bi-adjacency matrix from
+        # "clean" to "candidates", which additionally relates every Y-measured node to
+        # itself.
+        m = Mat2([[1 if g.connected(v,w) or (v==w and v in pauli_y) else 0 
+                   for v in candidates] for w in clean])
+
         for index, u in enumerate(clean):
-            if not focus or (u not in processed and any(w in processed_prime for w in g.neighbors(u))):
+            if not focus or (u not in processed and any(w in candidates for w in g.neighbors(u))):
                 vu = zerovec.copy()
                 vu.data[index][0] = 1
                 x = m.solve(vu)
                 if x:
                     correct.add(u)
-                    gflow[u] = {processed_prime[i] for i in range(x.rows()) if x.data[i][0]}
+                    gflow[u] = {candidates[i] for i in range(x.rows()) if x.data[i][0]}
                     l[u] = k
 
         if not correct:
