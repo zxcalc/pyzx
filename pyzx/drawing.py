@@ -270,9 +270,12 @@ def draw_matplotlib(
         ax.text(x-5,y,g.scalar.to_latex())
 
     ax.axis('equal')
-    plt.close()
+    if get_mode() == "shell":
+        plt.show()
+    else:
+        plt.close()
     return fig1
-    #plt.show()
+    
 
 # Provides functions for displaying pyzx graphs in jupyter notebooks using d3
 
