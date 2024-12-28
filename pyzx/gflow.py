@@ -88,8 +88,12 @@ def gflow(
         pattern_inputs, pattern_outputs = pattern_outputs, pattern_inputs
 
     if pauli:
-        pauli_x = set(v for v in vertices if g.phase(v) in (0,1))
-        pauli_y = set(v for v in vertices if g.phase(v) in (Fraction(1,2),Fraction(-1,2)))
+        for v in vertices:
+            p = g.phase(v) % 2
+            if p in (0,1):
+                pauli_x.add(v)
+            elif p in (Fraction(1,2), Fraction(3,2)):
+                pauli_y.add(v)
 
     processed: Set[VT] = pattern_outputs.copy() | g.grounds()
     non_outputs = list(vertices.difference(pattern_outputs))
