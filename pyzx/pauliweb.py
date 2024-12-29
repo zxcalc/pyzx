@@ -14,6 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 from .gflow import gflow
 from .utils import EdgeType, VertexType, vertex_is_zx
 from .graph.base import BaseGraph, VT, ET
@@ -39,74 +41,64 @@ def h_pauli(p: str) -> str:
 class PauliWeb(Generic[VT, ET]):
     """A Pauli web
     
-    This class stores a Pauli web in "correction set" format. That is, the edges in the web are
-    all the edges incident to the vertices in `c`. To account for Hadamard edges, edge typing is
-    assigned to "half-edges".
+    This is a labelling of edges of a given graph by Paulis from the set {'X', 'Y', 'Z'}. In order
+    to deal properly with Hadamard edges, we actually label all "half-edges", where a half-edge named
+    (v, w) is the end of the edge closest to `v`, and (w, v) is the end closest to `w`.
+
+    A Pauli web is "closed" if
+    (i)  every spider has adjacent half-edges labelled by a stabiliser or anti-stabiliser of that spider
+    (ii) for every half-edge (v,w) labelled by a Pauli P, the other half is labelled by P (for a normal edge)
+         and labelled HPH (for a Hadamard edge).
+    
+    If these conditions are violated, the Pauli web is called "open", and a spider violating (i) or edge violating
+    (ii) is called a boundary of the web.
     """
     def __init__(self, g: BaseGraph[VT,ET]):
         self.g = g
         self.es: Dict[Tuple[VT,VT], str] = dict()
-        self.vs: Set[VT] = set()
+    
+    def copy(self) -> PauliWeb:
+        pw = PauliWeb(self.g)
+        pw.es = self.es.copy()
+        return pw
     
     def add_half_edge(self, v_pair: Tuple[VT, VT], pauli: str):
         s, t = v_pair
-        self.vs.add(s)
-        p = self.es.get((s,t), 'I')
-        self.es[(s,t)] = multiply_paulis(p, pauli)
+        p = multiply_paulis(self.es.get((s,t), 'I'), pauli)
+        if p == 'I':
+            self.es.pop((s,t),'')
+        else:
+            self.es[(s,t)] = p
 
     def add_edge(self, v_pair: Tuple[VT, VT], pauli: str):
         s, t = v_pair
         et = self.g.edge_type(self.g.edge(s, t))
         self.add_half_edge((s,t), pauli)
         self.add_half_edge((t,s), pauli if et == EdgeType.SIMPLE else h_pauli(pauli))
-
-        # if spread_to_input: 
-        #     inp = self.g.inputs()
-        #     if ('Z' if self.g.type(s) == VertexType.Z else 'X') == pauli:
-        #         for v2 in self.g.neighbors(s):
-        #             if v2 in inp:
-        #                 self.add_edge((s, v2), pauli, spread_to_input=False)
-        #                 break
-
-        #     if ('Z' if self.g.type(t) == VertexType.Z else 'X') == pauli:
-        #         for v2 in self.g.neighbors(t):
-        #             if v2 in inp:
-        #                 self.add_edge((t, v2), pauli, spread_to_input=False)
-        #                 break
-
-    # def spread_to_boundary(self, inputs=True, outputs=True):
-    #     bnd = []
-    #     if inputs: bnd += self.g.inputs()
-    #     if outputs: bnd += self.g.outputs()
-
-    #     for i in bnd:
-    #         v = next(iter(self.g.neighbors(i)))
-    #         vt = self.g.type(v)
-    #         if vt == VertexType.Z:
-    #             p = 'Z'
-    #         elif vt == VertexType.X:
-    #             p = 'X'
-    #         else:
-    #             continue
-    #         adj = sum(1 for v1 in self.g.neighbors(v)
-    #                   if (v,v1) in self.es and self.es[(v,v1)] in [p, 'Y'])
-    #         if adj % 2 == 1:
-    #             self.add_edge((v, i), p)
-
-
-    # def add_vertex(self, v: VT, spread_to_input: bool=False):
-    #     p = 'X' if self.g.type(v) == VertexType.Z else 'Z'
-    #     for v1 in self.g.neighbors(v):
-    #         self.add_edge((v, v1), p, spread_to_input=spread_to_input)
     
     def vertices(self):
-        return self.vs
+        return set(v for (v,_) in self.es)
 
     def half_edges(self) -> Dict[Tuple[VT,VT],str]:
         return self.es
     
     def __repr__(self):
-        return 'PauliWeb' + str(self.vs)
+        return 'PauliWeb' + str(self.vertices())
+    
+    def __mul__(self, other: PauliWeb):
+        pw = self.copy()
+        for e,p in other.es.items():
+            pw.add_half_edge(e, p)
+        return pw
+    
+    def commutes_with(self, other: PauliWeb):
+        comm = True
+        for e,p1 in self.es.items():
+            p2 = other.es.get(e, 'I')
+            if p1 != 'I' and p2 != 'I' and p1 != p2:
+                comm = not comm
+        return comm
+
 
 def transpose_corrections(c: Dict[VT, Set[VT]]) -> Dict[VT, Set[VT]]:
     ct: Dict[VT, Set[VT]] = dict()
