@@ -137,7 +137,7 @@ def gflow(
 
         if not correct:
             if len(vertices) == len(processed):
-                return {v: k - i - 1 for v,i in l.items()}, gflow
+                return {v: i if reverse else k - i - 1 for v,i in l.items()}, gflow
             return None
         else:
             processed.update(correct)

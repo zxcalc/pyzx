@@ -599,6 +599,20 @@ def to_graph_like(g: BaseGraph[VT,ET]) -> None:
 
     assert(is_graph_like(g,strict=True))
 
+def unfuse_non_cliffords(g: BaseGraph[VT,ET]) -> None:
+    """Unfuses any non-Clifford spider into a magic state connected to a phase-free spider
+
+    Replaces any spider with a non-Clifford phase p and degree n > 1 with a degree 1 spider with phase p connected to
+    a degree n+1 spider with phase 0.
+    """
+    for v in list(g.vertices()):
+        ty = g.type(v)
+        p = g.phase(v)
+        if vertex_is_zx(ty) and not phase_is_clifford(p) and g.vertex_degree(v) > 1:
+            v1 = g.add_vertex(ty, qubit=-1, row=g.row(v), phase=p)
+            g.set_phase(v, 0)
+            g.add_edge((v, v1))
+
 def to_clifford_normal_form_graph(g: BaseGraph[VT,ET]) -> None:
     """Converts a graph that is Clifford into the form described by the right-hand side of eq. (11) of
     *Graph-theoretic Simplification of Quantum Circuits with the ZX-calculus* (https://arxiv.org/abs/1902.03178).
