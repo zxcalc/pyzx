@@ -61,7 +61,6 @@ class GraphDiff(Generic[VT, ET]):
             self.new_edges.append((g2.edge_st(e), g2.edge_type(e)))
 
         for e in Counter(old_edges - new_edges).elements():
-            s,t = g1.edge_st(e)
             self.removed_edges.append(e)
 
         for v in new_verts:
@@ -70,8 +69,10 @@ class GraphDiff(Generic[VT, ET]):
                     self.changed_vertex_types[v] = g2.type(v)
                 if g1.phase(v) != g2.phase(v):
                     self.changed_phases[v] = g2.phase(v)
-                if g1._vdata.get(v, None) != g2._vdata.get(v, None):
-                    self.changed_vdata[v] = g2._vdata.get(v, None)
+                d1 = g1.vdata_dict(v)
+                d2 = g2.vdata_dict(v)
+                if d1 != d2:
+                    self.changed_vdata[v] = d2
                 pos1 = g1.qubit(v), g1.row(v)
                 pos2 = g2.qubit(v), g2.row(v)
                 if pos1 != pos2:
@@ -106,7 +107,7 @@ class GraphDiff(Generic[VT, ET]):
             if v in self.changed_phases:
                 g.set_phase(v,self.changed_phases[v])
             if v in self.changed_vdata:
-                g._vdata[v] = self.changed_vdata[v]
+                g.set_vdata_dict(v, self.changed_vdata[v])
         for st, ty in self.new_edges:
             g.add_edge(st,ty)
 
@@ -124,7 +125,7 @@ class GraphDiff(Generic[VT, ET]):
 
         for v in self.changed_vdata:
             if v in self.new_verts: continue
-            g._vdata[v] = self.changed_vdata[v]
+            g.set_vdata_dict(v, self.changed_vdata[v])
 
         for e in self.changed_edge_types:
             g.set_edge_type(e,self.changed_edge_types[e])

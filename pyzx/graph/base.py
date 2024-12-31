@@ -95,7 +95,6 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         self.phase_master: Optional['simplify.Simplifier'] = None
         self.phase_mult: Dict[int,Literal[1,-1]] = dict()
         self.max_phase_index: int = -1
-        self._vdata: Dict[VT,Dict[str,Any]] = dict()
 
         # merge_vdata(v0,v1) is an optional, custom function for merging
         # vdata of v1 into v0 during spider fusion etc.
@@ -215,52 +214,6 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
             self.set_qubit(v, qf)
             self.set_row(v, rf)
 
-
-    # def replace_subgraph(self, left_row: FloatInt, right_row: FloatInt, replace: BaseGraph[VT,ET]) -> None:
-    #     """Deletes the subgraph of all nodes with rank strictly between ``left_row``
-    #     and ``right_row`` and replaces it with the graph ``replace``.
-    #     The amount of nodes on the left row should match the amount of inputs of 
-    #     the replacement graph and the same for the right row and the outputs.
-    #     The graphs are glued together based on the qubit index of the vertices."""
-
-    #     qleft = [v for v in self.vertices() if self.row(v)==left_row]
-    #     qright= [v for v in self.vertices() if self.row(v)==right_row]
-    #     r_inputs = replace.inputs()
-    #     r_outputs = replace.outputs()
-    #     if len(qleft) != len(r_inputs):
-    #         raise TypeError("Inputs do not match glueing vertices")
-    #     if len(qright) != len(r_outputs):
-    #         raise TypeError("Outputs do not match glueing vertices")
-    #     if set(self.qubit(v) for v in qleft) != set(replace.qubit(v) for v in r_inputs):
-    #         raise TypeError("Input qubit indices do not match")
-    #     if set(self.qubit(v) for v in qright)!= set(replace.qubit(v) for v in r_outputs):
-    #         raise TypeError("Output qubit indices do not match")
-        
-    #     self.remove_vertices([v for v in self.vertices() if (left_row < self.row(v) and self.row(v) < right_row)])
-    #     self.remove_edges([self.edge(s,t) for s in qleft for t in qright if self.connected(s,t)])
-    #     rdepth = replace.depth() -1
-    #     for v in (v for v in self.vertices() if self.row(v)>=right_row):
-    #         self.set_row(v, self.row(v)+rdepth)
-
-    #     vtab = {}
-    #     for v in replace.vertices():
-    #         if v in r_inputs or v in r_outputs: continue
-    #         vtab[v] = self.add_vertex(replace.type(v),
-    #                                   replace.qubit(v),
-    #                                   replace.row(v)+left_row,
-    #                                   replace.phase(v),
-    #                                   replace.is_ground(v))
-    #     for v in r_inputs:
-    #         vtab[v] = [i for i in qleft if self.qubit(i) == replace.qubit(v)][0]
-
-    #     for v in r_outputs:
-    #         vtab[v] = [i for i in qright if self.qubit(i) == replace.qubit(v)][0]
-
-    #     etab = {e:self.edge(vtab[replace.edge_s(e)],vtab[replace.edge_t(e)]) for e in replace.edges()}
-    #     self.add_edges(etab.values())
-    #     for e,f in etab.items():
-    #         self.set_edge_type(f, replace.edge_type(e))
-
     def compose(self, other: BaseGraph[VT,ET]) -> None:
         """Inserts a graph after this one. The amount of qubits of the graphs must match.
         Also available by the operator `graph1 + graph2`"""
@@ -302,7 +255,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
                         qubit=other.qubit(v),
                         row=offset + other.row(v),
                         ground=other.is_ground(v))
-                if v in other._vdata: self._vdata[w] = other._vdata[v]
+                self.set_vdata_dict(w, other.vdata_dict(v))
                 vtab[v] = w
         for e in other.edges():
             s,t = other.edge_st(e)
@@ -325,11 +278,10 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         height = max((self.qubits().values()), default=0) + 1
         rs = other.rows()
         phases = other.phases()
-        vdata = other._vdata
         vertex_map = dict()
         for v in other.vertices():
             w = g.add_vertex(ts[v],qs[v]+height,rs[v],phases[v],g.is_ground(v))
-            if v in vdata: g._vdata[w] = vdata[v]
+            g.set_vdata_dict(w, other.vdata_dict(v))
             vertex_map[v] = w
         for e in other.edges():
             s,t = other.edge_st(e)
@@ -964,6 +916,10 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         self.set_qubit(vertex, q)
         self.set_row(vertex, r)
 
+    def clear_vdata(self, vertex: VT) -> None:
+        """Removes all vdata associated to a vertex"""
+        raise NotImplementedError("Not implemented on backend" + type(self).backend)
+
     def vdata_keys(self, vertex: VT) -> Sequence[str]:
         """Returns an iterable of the vertex data key names.
         Used e.g. in making a copy of the graph in a backend-independent way."""
@@ -977,6 +933,14 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
     def set_vdata(self, vertex: VT, key: str, val: Any) -> None:
         """Sets the vertex data associated to key to val."""
         raise NotImplementedError("Not implemented on backend" + type(self).backend)
+
+    def vdata_dict(self, vertex: VT) -> Dict[str, Any]:
+        return { key: self.vdata(vertex, key) for key in self.vdata_keys(vertex) }
+
+    def set_vdata_dict(self, vertex: VT, d: Dict[str, Any]) -> None:
+        self.clear_vdata(vertex)
+        for k, v in d.items():
+            self.set_vdata(vertex, k, v)
 
     def is_well_formed(self) -> bool:
         """Returns whether the graph is a well-formed ZX-diagram.
