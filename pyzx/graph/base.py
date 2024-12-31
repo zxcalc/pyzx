@@ -101,6 +101,297 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         self.merge_vdata: Optional[Callable[[VT,VT], None]] = None
         self.variable_types: Dict[str,bool] = dict() # mapping of variable names to their type (bool or continuous)
 
+    # MANDATORY OVERRIDES (ALL BACKENDS) {{{
+
+    def clone(self) -> BaseGraph[VT,ET]:
+        """
+        This method should return an identical copy of the graph, without any relabeling.
+
+        This needs to be implemented in the backend, since different backends deal with names differently.
+        """
+        raise NotImplementedError()
+
+    def vindex(self) -> VT:
+        """The index given to the next vertex added to the graph. It should always
+        be equal to ``max(g.vertices()) + 1``."""
+        raise NotImplementedError("Not implemented on backend " + type(self).backend)
+
+    def inputs(self) -> Tuple[VT, ...]:
+        """Gets the inputs of the graph."""
+        raise NotImplementedError("Not implemented on backend " + type(self).backend)
+
+    def set_inputs(self, inputs: Tuple[VT, ...]):
+        """Sets the inputs of the graph."""
+        raise NotImplementedError("Not implemented on backend " + type(self).backend)
+
+    def num_inputs(self) -> int:
+        """Gets the number of inputs of the graph."""
+        raise NotImplementedError("Not implemented on backend " + type(self).backend)
+
+    def outputs(self) -> Tuple[VT, ...]:
+        """Gets the outputs of the graph."""
+        raise NotImplementedError("Not implemented on backend " + type(self).backend)
+
+    def set_outputs(self, outputs: Tuple[VT, ...]):
+        """Sets the outputs of the graph."""
+        raise NotImplementedError("Not implemented on backend " + type(self).backend)
+
+    def num_outputs(self) -> int:
+        """Gets the number of outputs of the graph."""
+        raise NotImplementedError("Not implemented on backend " + type(self).backend)
+
+    def add_vertices(self, amount: int) -> List[VT]:
+        """Add the given amount of vertices, and return the indices of the
+        new vertices added to the graph, namely: range(g.vindex() - amount, g.vindex())"""
+        raise NotImplementedError("Not implemented on backend " + type(self).backend)
+
+    def add_vertex_indexed(self,v:VT) -> None:
+        """Adds a vertex that is guaranteed to have the chosen index (i.e. 'name').
+        If the index isn't available, raises a ValueError.
+        This method is used in the editor and ZXLive to support undo,
+        which requires vertices to preserve their index."""
+        raise NotImplementedError("Not implemented on backend " + type(self).backend)
+
+    def add_edges(self, edge_pairs: Iterable[Tuple[VT,VT]], edgetype:EdgeType=EdgeType.SIMPLE) -> None:
+        """Adds a list of edges to the graph."""
+        raise NotImplementedError("Not implemented on backend " + type(self).backend)
+
+    def add_edge(self, edge_pair: Tuple[VT,VT], edgetype:EdgeType=EdgeType.SIMPLE) -> ET:
+        """Adds a single edge of the given type and return its id"""
+        raise NotImplementedError("Not implemented on backend " + type(self).backend)
+
+    def remove_vertices(self, vertices: Iterable[VT]) -> None:
+        """Removes the list of vertices from the graph."""
+        raise NotImplementedError("Not implemented on backend " + type(self).backend)
+
+    def remove_edges(self, edges: List[ET]) -> None:
+        """Removes the list of edges from the graph."""
+        raise NotImplementedError("Not implemented on backend " + type(self).backend)
+
+    def num_vertices(self) -> int:
+        """Returns the amount of vertices in the graph."""
+        raise NotImplementedError("Not implemented on backend " + type(self).backend)
+
+    def num_edges(self, s: Optional[VT]=None, t: Optional[VT]=None) -> int:
+        """Returns the amount of edges in the graph"""
+        return len(list(self.edges(s, t)))
+
+    def vertices(self) -> Iterable[VT]:
+        """Iterator over all the vertices."""
+        raise NotImplementedError("Not implemented on backend " + type(self).backend)
+
+    def edges(self, s: Optional[VT]=None, t: Optional[VT]=None) -> Iterable[ET]:
+        """Iterator that returns all the edges in the graph, or all the edges connecting the pair of vertices.
+        Output type depends on implementation in backend."""
+        raise NotImplementedError("Not implemented on backend " + type(self).backend)
+
+    def vertex_set(self) -> Set[VT]:
+        """Returns the vertices of the graph as a Python set.
+        Should be overloaded if the backend supplies a cheaper version than this."""
+        return set(self.vertices())
+
+    def edge_set(self) -> Set[ET]:
+        """Returns the edges of the graph as a Python set.
+        Should be overloaded if the backend supplies a cheaper version than this. Note this ignores parallel edges."""
+        return set(self.edges())
+
+    def edge(self, s:VT, t:VT, et: EdgeType=EdgeType.SIMPLE) -> ET:
+        """Returns the name of the first edge with the given source/target and type. Behaviour is undefined if the vertices are not connected."""
+        raise NotImplementedError("Not implemented on backend " + type(self).backend)
+
+    def edge_st(self, edge: ET) -> Tuple[VT, VT]:
+        """Returns a tuple of source/target of the given edge."""
+        raise NotImplementedError("Not implemented on backend " + type(self).backend)
+
+    def edge_s(self, edge: ET) -> VT:
+        """Returns the source of the given edge."""
+        return self.edge_st(edge)[0]
+
+    def edge_t(self, edge: ET) -> VT:
+        """Returns the target of the given edge."""
+        return self.edge_st(edge)[1]
+
+    def neighbors(self, vertex: VT) -> Sequence[VT]:
+        """Returns all neighboring vertices of the given vertex."""
+        raise NotImplementedError("Not implemented on backend " + type(self).backend)
+
+    def vertex_degree(self, vertex: VT) -> int:
+        """Returns the degree of the given vertex."""
+        raise NotImplementedError("Not implemented on backend " + type(self).backend)
+
+    def incident_edges(self, vertex: VT) -> Sequence[ET]:
+        """Returns all neighboring edges of the given vertex."""
+        raise NotImplementedError("Not implemented on backend " + type(self).backend)
+
+    def connected(self,v1: VT,v2: VT) -> bool:
+        """Returns whether vertices v1 and v2 share an edge."""
+        raise NotImplementedError("Not implemented on backend " + type(self).backend)
+
+    def edge_type(self, e: ET) -> EdgeType:
+        """Returns the type of the given edge:
+        ``EdgeType.SIMPLE`` if it is regular, ``EdgeType.HADAMARD`` if it is a Hadamard edge,
+        0 if the edge is not in the graph."""
+        raise NotImplementedError("Not implemented on backend " + type(self).backend)
+
+    def set_edge_type(self, e: ET, t: EdgeType) -> None:
+        """Sets the type of the given edge."""
+        raise NotImplementedError("Not implemented on backend " + type(self).backend)
+
+    def type(self, vertex: VT) -> VertexType:
+        """Returns the type of the given vertex:
+        VertexType.BOUNDARY if it is a boundary, VertexType.Z if it is a Z node,
+        VertexType.X if it is a X node, VertexType.H_BOX if it is an H-box."""
+        raise NotImplementedError("Not implemented on backend " + type(self).backend)
+
+    def types(self) -> Mapping[VT, VertexType]:
+        """Returns a mapping of vertices to their types."""
+        raise NotImplementedError("Not implemented on backend " + type(self).backend)
+
+    def set_type(self, vertex: VT, t: VertexType) -> None:
+        """Sets the type of the given vertex to t."""
+        raise NotImplementedError("Not implemented on backend" + type(self).backend)
+
+    def phase(self, vertex: VT) -> FractionLike:
+        """Returns the phase value of the given vertex."""
+        raise NotImplementedError("Not implemented on backend" + type(self).backend)
+
+    def phases(self) -> Mapping[VT, FractionLike]:
+        """Returns a mapping of vertices to their phase values."""
+        raise NotImplementedError("Not implemented on backend" + type(self).backend)
+
+    def set_phase(self, vertex: VT, phase: FractionLike) -> None:
+        """Sets the phase of the vertex to the given value."""
+        raise NotImplementedError("Not implemented on backend" + type(self).backend)
+
+    def qubit(self, vertex: VT) -> FloatInt:
+        """Returns the qubit index associated to the vertex.
+        If no index has been set, returns -1."""
+        raise NotImplementedError("Not implemented on backend" + type(self).backend)
+
+    def qubits(self) -> Mapping[VT,FloatInt]:
+        """Returns a mapping of vertices to their qubit index."""
+        raise NotImplementedError("Not implemented on backend" + type(self).backend)
+
+    def set_qubit(self, vertex: VT, q: FloatInt) -> None:
+        """Sets the qubit index associated to the vertex."""
+        raise NotImplementedError("Not implemented on backend" + type(self).backend)
+
+    def row(self, vertex: VT) -> FloatInt:
+        """Returns the row that the vertex is positioned at.
+        If no row has been set, returns -1."""
+        raise NotImplementedError("Not implemented on backend" + type(self).backend)
+
+    def rows(self) -> Mapping[VT, FloatInt]:
+        """Returns a mapping of vertices to their row index."""
+        raise NotImplementedError("Not implemented on backend" + type(self).backend)
+
+    def set_row(self, vertex: VT, r: FloatInt) -> None:
+        """Sets the row the vertex should be positioned at."""
+        raise NotImplementedError("Not implemented on backend" + type(self).backend)
+
+    def is_ground(self, vertex: VT) -> bool:
+        """Returns a boolean indicating if the vertex is connected to a ground."""
+        raise NotImplementedError("Not implemented on backend" + type(self).backend)
+
+    def set_position(self, vertex: VT, q: FloatInt, r: FloatInt):
+        """Set both the qubit index and row index of the vertex."""
+        self.set_qubit(vertex, q)
+        self.set_row(vertex, r)
+
+    def clear_vdata(self, vertex: VT) -> None:
+        """Removes all vdata associated to a vertex"""
+        raise NotImplementedError("Not implemented on backend" + type(self).backend)
+
+    def vdata_keys(self, vertex: VT) -> Sequence[str]:
+        """Returns an iterable of the vertex data key names.
+        Used e.g. in making a copy of the graph in a backend-independent way."""
+        raise NotImplementedError("Not implemented on backend" + type(self).backend)
+
+    def vdata(self, vertex: VT, key: str, default: Any=0) -> Any:
+        """Returns the data value of the given vertex associated to the key.
+        If this key has no value associated with it, it returns the default value."""
+        raise NotImplementedError("Not implemented on backend" + type(self).backend)
+
+    def set_vdata(self, vertex: VT, key: str, val: Any) -> None:
+        """Sets the vertex data associated to key to val."""
+        raise NotImplementedError("Not implemented on backend" + type(self).backend)
+
+    # }}}
+
+
+    # OPTIONAL OVERRIDES {{{
+
+    # These only need to be overridden if the backend will be used with hybrid classical/quantum
+    # methods.
+    def grounds(self) -> Set[VT]:
+        """Returns the set of vertices connected to a ground."""
+        raise NotImplementedError("Not implemented on backend" + type(self).backend)
+
+    def set_ground(self, vertex: VT, flag: bool=True) -> None:
+        """Connect or disconnect the vertex to a ground."""
+        raise NotImplementedError("Not implemented on backend" + type(self).backend)
+
+    def is_hybrid(self) -> bool:
+        """Returns whether this is a hybrid quantum-classical graph,
+        i.e. a graph with ground generators."""
+        return bool(self.grounds())
+
+
+    # Backends may wish to override these methods to implement them more efficiently
+
+    def depth(self) -> FloatInt:
+        """Returns the value of the highest row number given to a vertex.
+        This is -1 when no rows have been set."""
+        if self.num_vertices() == 0:
+            return -1
+        else:
+            return max(self.row(v) for v in self.vertices())
+
+    def multigraph(self):
+        return False
+
+    def add_vertex(self,
+                   ty:VertexType=VertexType.BOUNDARY,
+                   qubit:FloatInt=-1,
+                   row:FloatInt=-1,
+                   phase:Optional[FractionLike]=None,
+                   ground:bool=False
+                   ) -> VT:
+        """Add a single vertex to the graph and return its index.
+        The optional parameters allow you to respectively set
+        the type, qubit index, row index and phase of the vertex."""
+        v = self.add_vertices(1)[0]
+        self.set_type(v, ty)
+        if phase is None:
+            if ty == VertexType.H_BOX: phase = 1
+            else: phase = 0
+        self.set_qubit(v, qubit)
+        self.set_row(v, row)
+        if phase:
+            self.set_phase(v, phase)
+        if ground:
+            self.set_ground(v, True)
+        if self.track_phases:
+            self.max_phase_index += 1
+            self.phase_index[v] = self.max_phase_index
+            self.phase_mult[self.max_phase_index] = 1
+        return v
+
+    def remove_vertex(self, vertex: VT) -> None:
+        """Removes the given vertex from the graph."""
+        self.remove_vertices([vertex])
+
+    def remove_edge(self, edge: ET) -> None:
+        """Removes the given edge from the graph."""
+        self.remove_edges([edge])
+
+    def add_to_phase(self, vertex: VT, phase: FractionLike) -> None:
+        """Add the given phase to the phase value of the given vertex."""
+        self.set_phase(vertex,self.phase(vertex)+phase)
+
+    # }}}
+
+
     def __str__(self) -> str:
         return "Graph({} vertices, {} edges)".format(
                 str(self.num_vertices()),str(self.num_edges()))
@@ -194,13 +485,6 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         """Returns a new graph equal to the adjoint of this graph."""
         return self.copy(adjoint=True)
 
-    def clone(self) -> BaseGraph[VT,ET]:
-        """
-        This method should return an identical copy of the graph, without any relabeling.
-
-        Note this needs to be implemented in the backend, since different backends deal with names differently.
-        """
-        raise NotImplementedError()
 
     def map_qubits(self, qubit_map:Mapping[int,Tuple[float,float]]) -> None:
         for v in self.vertices():
@@ -496,16 +780,6 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
             if not self.connected(inputs[i], outputs[i]): return False
         return True
 
-    def vindex(self) -> VT:
-        """The index given to the next vertex added to the graph. It should always
-        be equal to ``max(g.vertices()) + 1``."""
-        raise NotImplementedError("Not implemented on backend " + type(self).backend)
-
-    def depth(self) -> FloatInt:
-        """Returns the value of the highest row number given to a vertex.
-        This is -1 when no rows have been set."""
-        raise NotImplementedError("Not implemented on backend " + type(self).backend)
-
     def pack_circuit_rows(self) -> None:
         """Compresses the rows of the graph so that every index is used."""
         rows = [self.row(v) for v in self.vertices()]
@@ -597,79 +871,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
             g.set_qubit(v,g.qubit(v)+y)
         return g
 
-    def multigraph(self):
-        return False
 
-    def inputs(self) -> Tuple[VT, ...]:
-        """Gets the inputs of the graph."""
-        raise NotImplementedError("Not implemented on backend " + type(self).backend)
-
-    def set_inputs(self, inputs: Tuple[VT, ...]):
-        """Sets the inputs of the graph."""
-        raise NotImplementedError("Not implemented on backend " + type(self).backend)
-
-    def num_inputs(self) -> int:
-        """Gets the number of inputs of the graph."""
-        raise NotImplementedError("Not implemented on backend " + type(self).backend)
-
-    def outputs(self) -> Tuple[VT, ...]:
-        """Gets the outputs of the graph."""
-        raise NotImplementedError("Not implemented on backend " + type(self).backend)
-
-    def set_outputs(self, outputs: Tuple[VT, ...]):
-        """Sets the outputs of the graph."""
-        raise NotImplementedError("Not implemented on backend " + type(self).backend)
-
-    def num_outputs(self) -> int:
-        """Gets the number of outputs of the graph."""
-        raise NotImplementedError("Not implemented on backend " + type(self).backend)
-
-    def add_vertices(self, amount: int) -> List[VT]:
-        """Add the given amount of vertices, and return the indices of the
-        new vertices added to the graph, namely: range(g.vindex() - amount, g.vindex())"""
-        raise NotImplementedError("Not implemented on backend " + type(self).backend)
-
-    def add_vertex(self,
-                   ty:VertexType=VertexType.BOUNDARY,
-                   qubit:FloatInt=-1,
-                   row:FloatInt=-1,
-                   phase:Optional[FractionLike]=None,
-                   ground:bool=False
-                   ) -> VT:
-        """Add a single vertex to the graph and return its index.
-        The optional parameters allow you to respectively set
-        the type, qubit index, row index and phase of the vertex."""
-        v = self.add_vertices(1)[0]
-        self.set_type(v, ty)
-        if phase is None:
-            if ty == VertexType.H_BOX: phase = 1
-            else: phase = 0
-        self.set_qubit(v, qubit)
-        self.set_row(v, row)
-        if phase:
-            self.set_phase(v, phase)
-        if ground:
-            self.set_ground(v, True)
-        if self.track_phases:
-            self.max_phase_index += 1
-            self.phase_index[v] = self.max_phase_index
-            self.phase_mult[self.max_phase_index] = 1
-        return v
-
-    def add_vertex_indexed(self,v:VT) -> None:
-        """Adds a vertex that is guaranteed to have the chosen index (i.e. 'name').
-        If the index isn't available, raises a ValueError.
-        This method is used in the editor and ZXLive to support undo,
-        which requires vertices to preserve their index."""
-        raise NotImplementedError("Not implemented on backend " + type(self).backend)
-
-    def add_edges(self, edge_pairs: Iterable[Tuple[VT,VT]], edgetype:EdgeType=EdgeType.SIMPLE) -> None:
-        """Adds a list of edges to the graph."""
-        raise NotImplementedError("Not implemented on backend " + type(self).backend)
-
-    def add_edge(self, edge_pair: Tuple[VT,VT], edgetype:EdgeType=EdgeType.SIMPLE) -> ET:
-        """Adds a single edge of the given type and return its id"""
-        raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
     def add_edge_table(self, etab:Mapping[Tuple[VT,VT],List[int]]) -> None:
         """Takes a dictionary mapping (source,target) --> (#edges, #h-edges) specifying that
@@ -715,14 +917,6 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         return list(self.phase_index.keys())[list(self.phase_index.values()).index(i)]
 
 
-    def remove_vertices(self, vertices: Iterable[VT]) -> None:
-        """Removes the list of vertices from the graph."""
-        raise NotImplementedError("Not implemented on backend " + type(self).backend)
-
-    def remove_vertex(self, vertex: VT) -> None:
-        """Removes the given vertex from the graph."""
-        self.remove_vertices([vertex])
-
     def remove_isolated_vertices(self) -> None:
         """Deletes all vertices and vertex pairs that are not connected to any other vertex."""
         rem: List[VT] = []
@@ -761,178 +955,6 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
                     else:
                         self.scalar.add_node(self.phase(v)+self.phase(w))
         self.remove_vertices(rem)
-
-    def remove_edges(self, edges: List[ET]) -> None:
-        """Removes the list of edges from the graph."""
-        raise NotImplementedError("Not implemented on backend " + type(self).backend)
-
-    def remove_edge(self, edge: ET) -> None:
-        """Removes the given edge from the graph."""
-        self.remove_edges([edge])
-
-    def num_vertices(self) -> int:
-        """Returns the amount of vertices in the graph."""
-        raise NotImplementedError("Not implemented on backend " + type(self).backend)
-
-    def num_edges(self, s: Optional[VT]=None, t: Optional[VT]=None) -> int:
-        """Returns the amount of edges in the graph"""
-        return len(list(self.edges(s, t)))
-
-    def vertices(self) -> Iterable[VT]:
-        """Iterator over all the vertices."""
-        raise NotImplementedError("Not implemented on backend " + type(self).backend)
-
-    def edges(self, s: Optional[VT]=None, t: Optional[VT]=None) -> Iterable[ET]:
-        """Iterator that returns all the edges in the graph, or all the edges connecting the pair of vertices.
-        Output type depends on implementation in backend."""
-        raise NotImplementedError("Not implemented on backend " + type(self).backend)
-
-    def vertex_set(self) -> Set[VT]:
-        """Returns the vertices of the graph as a Python set.
-        Should be overloaded if the backend supplies a cheaper version than this."""
-        return set(self.vertices())
-
-    def edge_set(self) -> Set[ET]:
-        """Returns the edges of the graph as a Python set.
-        Should be overloaded if the backend supplies a cheaper version than this. Note this ignores parallel edges."""
-        return set(self.edges())
-
-    def edge(self, s:VT, t:VT, et: EdgeType=EdgeType.SIMPLE) -> ET:
-        """Returns the name of the first edge with the given source/target and type. Behaviour is undefined if the vertices are not connected."""
-        raise NotImplementedError("Not implemented on backend " + type(self).backend)
-
-    def edge_st(self, edge: ET) -> Tuple[VT, VT]:
-        """Returns a tuple of source/target of the given edge."""
-        raise NotImplementedError("Not implemented on backend " + type(self).backend)
-
-    def edge_s(self, edge: ET) -> VT:
-        """Returns the source of the given edge."""
-        return self.edge_st(edge)[0]
-
-    def edge_t(self, edge: ET) -> VT:
-        """Returns the target of the given edge."""
-        return self.edge_st(edge)[1]
-
-    def neighbors(self, vertex: VT) -> Sequence[VT]:
-        """Returns all neighboring vertices of the given vertex."""
-        raise NotImplementedError("Not implemented on backend " + type(self).backend)
-
-    def vertex_degree(self, vertex: VT) -> int:
-        """Returns the degree of the given vertex."""
-        raise NotImplementedError("Not implemented on backend " + type(self).backend)
-
-    def incident_edges(self, vertex: VT) -> Sequence[ET]:
-        """Returns all neighboring edges of the given vertex."""
-        raise NotImplementedError("Not implemented on backend " + type(self).backend)
-
-    def connected(self,v1: VT,v2: VT) -> bool:
-        """Returns whether vertices v1 and v2 share an edge."""
-        raise NotImplementedError("Not implemented on backend " + type(self).backend)
-
-    def edge_type(self, e: ET) -> EdgeType:
-        """Returns the type of the given edge:
-        ``EdgeType.SIMPLE`` if it is regular, ``EdgeType.HADAMARD`` if it is a Hadamard edge,
-        0 if the edge is not in the graph."""
-        raise NotImplementedError("Not implemented on backend " + type(self).backend)
-    def set_edge_type(self, e: ET, t: EdgeType) -> None:
-        """Sets the type of the given edge."""
-        raise NotImplementedError("Not implemented on backend " + type(self).backend)
-
-    def type(self, vertex: VT) -> VertexType:
-        """Returns the type of the given vertex:
-        VertexType.BOUNDARY if it is a boundary, VertexType.Z if it is a Z node,
-        VertexType.X if it is a X node, VertexType.H_BOX if it is an H-box."""
-        raise NotImplementedError("Not implemented on backend " + type(self).backend)
-
-    def types(self) -> Mapping[VT, VertexType]:
-        """Returns a mapping of vertices to their types."""
-        raise NotImplementedError("Not implemented on backend " + type(self).backend)
-
-    def set_type(self, vertex: VT, t: VertexType) -> None:
-        """Sets the type of the given vertex to t."""
-        raise NotImplementedError("Not implemented on backend" + type(self).backend)
-
-    def phase(self, vertex: VT) -> FractionLike:
-        """Returns the phase value of the given vertex."""
-        raise NotImplementedError("Not implemented on backend" + type(self).backend)
-
-    def phases(self) -> Mapping[VT, FractionLike]:
-        """Returns a mapping of vertices to their phase values."""
-        raise NotImplementedError("Not implemented on backend" + type(self).backend)
-
-    def set_phase(self, vertex: VT, phase: FractionLike) -> None:
-        """Sets the phase of the vertex to the given value."""
-        raise NotImplementedError("Not implemented on backend" + type(self).backend)
-
-    def add_to_phase(self, vertex: VT, phase: FractionLike) -> None:
-        """Add the given phase to the phase value of the given vertex."""
-        self.set_phase(vertex,self.phase(vertex)+phase)
-
-    def qubit(self, vertex: VT) -> FloatInt:
-        """Returns the qubit index associated to the vertex.
-        If no index has been set, returns -1."""
-        raise NotImplementedError("Not implemented on backend" + type(self).backend)
-
-    def qubits(self) -> Mapping[VT,FloatInt]:
-        """Returns a mapping of vertices to their qubit index."""
-        raise NotImplementedError("Not implemented on backend" + type(self).backend)
-
-    def set_qubit(self, vertex: VT, q: FloatInt) -> None:
-        """Sets the qubit index associated to the vertex."""
-        raise NotImplementedError("Not implemented on backend" + type(self).backend)
-
-    def row(self, vertex: VT) -> FloatInt:
-        """Returns the row that the vertex is positioned at.
-        If no row has been set, returns -1."""
-        raise NotImplementedError("Not implemented on backend" + type(self).backend)
-
-    def rows(self) -> Mapping[VT, FloatInt]:
-        """Returns a mapping of vertices to their row index."""
-        raise NotImplementedError("Not implemented on backend" + type(self).backend)
-
-    def set_row(self, vertex: VT, r: FloatInt) -> None:
-        """Sets the row the vertex should be positioned at."""
-        raise NotImplementedError("Not implemented on backend" + type(self).backend)
-
-    def is_ground(self, vertex: VT) -> bool:
-        """Returns a boolean indicating if the vertex is connected to a ground."""
-        raise NotImplementedError("Not implemented on backend" + type(self).backend)
-
-    def grounds(self) -> Set[VT]:
-        """Returns the set of vertices connected to a ground."""
-        raise NotImplementedError("Not implemented on backend" + type(self).backend)
-
-    def set_ground(self, vertex: VT, flag: bool=True) -> None:
-        """Connect or disconnect the vertex to a ground."""
-        raise NotImplementedError("Not implemented on backend" + type(self).backend)
-
-    def is_hybrid(self) -> bool:
-        """Returns whether this is a hybrid quantum-classical graph,
-        i.e. a graph with ground generators."""
-        return bool(self.grounds())
-
-    def set_position(self, vertex: VT, q: FloatInt, r: FloatInt):
-        """Set both the qubit index and row index of the vertex."""
-        self.set_qubit(vertex, q)
-        self.set_row(vertex, r)
-
-    def clear_vdata(self, vertex: VT) -> None:
-        """Removes all vdata associated to a vertex"""
-        raise NotImplementedError("Not implemented on backend" + type(self).backend)
-
-    def vdata_keys(self, vertex: VT) -> Sequence[str]:
-        """Returns an iterable of the vertex data key names.
-        Used e.g. in making a copy of the graph in a backend-independent way."""
-        raise NotImplementedError("Not implemented on backend" + type(self).backend)
-
-    def vdata(self, vertex: VT, key: str, default: Any=0) -> Any:
-        """Returns the data value of the given vertex associated to the key.
-        If this key has no value associated with it, it returns the default value."""
-        raise NotImplementedError("Not implemented on backend" + type(self).backend)
-
-    def set_vdata(self, vertex: VT, key: str, val: Any) -> None:
-        """Sets the vertex data associated to key to val."""
-        raise NotImplementedError("Not implemented on backend" + type(self).backend)
 
     def vdata_dict(self, vertex: VT) -> Dict[str, Any]:
         return { key: self.vdata(vertex, key) for key in self.vdata_keys(vertex) }
