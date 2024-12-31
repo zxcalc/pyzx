@@ -15,17 +15,15 @@
 # limitations under the License.
 
 from __future__ import annotations
-import abc
 import math
-import copy
 from fractions import Fraction
 from typing import TYPE_CHECKING, Union, Optional, Generic, TypeVar, Any, Sequence
-from typing import List, Dict, Set, Tuple, Mapping, Iterable, Callable, ClassVar
-from typing_extensions import Literal, GenericMeta
+from typing import List, Dict, Set, Tuple, Mapping, Iterable, Callable, ClassVar, Literal
+from typing_extensions import Literal, GenericMeta # type: ignore # https://github.com/python/mypy/issues/5753
 
 import numpy as np
 
-from ..utils import EdgeType, VertexType, get_z_box_label, set_z_box_label, toggle_edge, vertex_is_z_like, vertex_is_zx, toggle_vertex, vertex_is_w, get_w_partner, vertex_is_zx_like
+from ..utils import EdgeType, VertexType, toggle_edge, vertex_is_zx
 from ..utils import FloatInt, FractionLike
 from ..tensor import tensorfy, tensor_to_matrix
 
