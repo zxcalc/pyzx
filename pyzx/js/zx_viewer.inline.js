@@ -32,9 +32,9 @@ function edgeColor(t) {
 }
 
 function webColor(t) {
-    if (t == 'X') return _settings_colors['Xweb'];
-    else if (t == 'Y') return _settings_colors['Yweb'];
-    else if (t == 'Z') return _settings_colors['Zweb'];
+    if (t == 'X') return _settings_colors['Xdark'];
+    else if (t == 'Y') return _settings_colors['Ydark'];
+    else if (t == 'Z') return _settings_colors['Zdark'];
     else if (t == 'I') return '#dddddd';
 }
 

@@ -148,16 +148,16 @@ original_colors = {
     'W': '#000000',
     'Zalt': '#ccffcc',
     'Walt': '#000000',
-    'Xweb': '#ff8888',
-    'Yweb': '#aabbff',
-    'Zweb': '#99dd99',
+    'Xdark': '#ff8888',
+    'Ydark': '#aabbff',
+    'Zdark': '#99dd99',
 }
 
 rgb_colors = original_colors.copy()
 rgb_colors['Y'] = original_colors['Z']
 rgb_colors['Z'] = original_colors['Y']
-rgb_colors['Yweb'] = original_colors['Zweb']
-rgb_colors['Zweb'] = original_colors['Yweb']
+rgb_colors['Ydark'] = original_colors['Zdark']
+rgb_colors['Zdark'] = original_colors['Ydark']
 
 grayscale_colors = {
     'edge': '#000000',
@@ -171,9 +171,9 @@ grayscale_colors = {
     'W': '#000000',
     'Zalt': '#dddddd',
     'Walt': '#000000',
-    'Xweb': '#666666',
-    'Yweb': '#9999dd',
-    'Zweb': '#dddddd',
+    'Xdark': '#666666',
+    'Ydark': '#9999dd',
+    'Zdark': '#dddddd',
 }
 
 class Settings(object): # namespace class
