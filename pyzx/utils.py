@@ -189,6 +189,13 @@ class Settings(object): # namespace class
     tikz_classes: Dict[str,str] = tikz_classes
     default_qasm_version: int = 2
     colors: Dict[str, str] = original_colors
+    javascript_importmap: Dict[str, Any] = {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.172.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.172.0/examples/jsm/",
+            "d3": "https://cdn.jsdelivr.net/npm/d3@5.16.0/dist/d3.min.js",
+        }
+    }
 
 settings = Settings()
 

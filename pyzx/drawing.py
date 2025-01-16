@@ -325,6 +325,46 @@ def auto_layout_vertex_locs(g:BaseGraph[VT, ET]): #Force-based graph drawing alg
     v_locs = {k:(v[0]-min_x, v[1]-min_y) for k, v in v_locs.items()} #translate to origin
     return v_locs, max_x-min_x, max_y-min_y
 
+def graph_json(g: BaseGraph[VT, ET],
+               coords: Dict[VT, Tuple[float, float, float]],
+               vdata: Optional[List[str]]=None,
+               pauli_web: Optional[PauliWeb[VT,ET]]=None) -> str:
+
+    nodes = [{'name': str(v),
+              'x': coords[v][0],
+              'y': coords[v][1],
+              'z': coords[v][2],
+              't': g.type(v),
+              'phase': phase_to_s(g.phase(v), g.type(v)) if g.type(v) != VertexType.Z_BOX else str(get_z_box_label(g, v)),
+              'ground': g.is_ground(v),
+              'vdata': [(key, g.vdata(v, key))
+                  for key in vdata or [] if g.vdata(v, key, None) is not None],
+              }
+             for v in g.vertices()]
+
+    # keep track of the number of parallel edges seen for a source/target pair
+    counts: Dict[Tuple[str,str], int] = dict()
+    links = []
+    for e in g.edges():
+        s = str(g.edge_s(e))
+        t = str(g.edge_t(e))
+        i = counts.get((s,t), 0)
+        links.append({'source': s,
+                      'target': t,
+                      't': g.edge_type(e),
+                      'index': i })
+        counts[(s,t)] = i + 1
+    for link in links:
+        s,t = (str(link['source']), str(link['target']))
+        link['num_parallel'] = counts[(s,t)]
+
+    if pauli_web:
+        pw_edges = [{ 'source': vs[0], 'target': vs[1], 't': t } for vs,t in pauli_web.half_edges().items() ]
+    else:
+        pw_edges = []
+
+    return json.dumps({'nodes': nodes, 'links': links, 'pauli_web': pw_edges})
+
 
 def draw_d3(
     g: Union[BaseGraph[VT,ET], Circuit],
@@ -332,9 +372,9 @@ def draw_d3(
     scale:Optional[FloatInt]=None, 
     auto_hbox:Optional[bool]=None,
     show_scalar:bool=False,
-    vdata: List[str]=[],
-    pauli_web:Optional[PauliWeb[VT,ET]]=None,
-    auto_layout = False
+    vdata: Optional[List[str]]=None,
+    pauli_web: Optional[PauliWeb[VT,ET]]=None,
+    auto_layout: bool = False
     ) -> Any:
     """If auto_layout is checked, will automatically space vertices of graph
     with no regard to qubit/row."""
@@ -377,39 +417,11 @@ def draw_d3(
     node_size = 0.2 * scale
     if node_size < 2: node_size = 2
 
-    nodes = [{'name': str(v),
-              'x': (v_dict[v][0]+1)*scale if auto_layout else (g.row(v)-minrow + 1) * scale,
-              'y': (v_dict[v][1]+2)*scale if auto_layout else (g.qubit(v)-minqub + 2) * scale,
-              't': g.type(v),
-              'phase': phase_to_s(g.phase(v), g.type(v)) if g.type(v) != VertexType.Z_BOX else str(get_z_box_label(g, v)),
-              'ground': g.is_ground(v),
-              'vdata': [(key, g.vdata(v, key))
-                  for key in vdata if g.vdata(v, key, None) is not None],
-              }
-             for v in g.vertices()]
+    coords = [((v_dict[v][0]+1)*scale if auto_layout else (g.row(v)-minrow + 1) * scale,
+               (v_dict[v][1]+2)*scale if auto_layout else (g.qubit(v)-minqub + 2) * scale,
+               0) for v in g.vertices()]
 
-    # keep track of the number of parallel edges seen for a source/target pair
-    counts: Dict[Tuple[str,str], int] = dict()
-    links = []
-    for e in g.edges():
-        s = str(g.edge_s(e))
-        t = str(g.edge_t(e))
-        i = counts.get((s,t), 0)
-        links.append({'source': s,
-                      'target': t,
-                      't': g.edge_type(e),
-                      'index': i })
-        counts[(s,t)] = i + 1
-    for link in links:
-        s,t = (str(link['source']), str(link['target']))
-        link['num_parallel'] = counts[(s,t)]
-    
-    if pauli_web:
-        pw_edges = [{ 'source': vs[0], 'target': vs[1], 't': t } for vs,t in pauli_web.half_edges().items() ]
-    else:
-        pw_edges = []
-
-    graphj = json.dumps({'nodes': nodes, 'links': links, 'pauli_web': pw_edges})
+    graphj = graph_json(g, coords, vdata=vdata, pauli_web=pauli_web)
 
     with open(os.path.join(settings.javascript_location, 'zx_viewer.inline.js'), 'r') as f:
         library_code = f.read() + '\n'
@@ -445,6 +457,31 @@ showGraph('#graph-output-{id}',
         return d,s
 
 
+def draw_3d(
+    g: Union[BaseGraph[VT,ET], Circuit],
+    labels: bool=False, 
+    pauli_web: Optional[PauliWeb[VT,ET]]=None
+    ) -> Any:
+
+    graph_id = ''.join(random_graphid.choice(string.ascii_letters + string.digits) for _ in range(8))
+
+    coords = [(g.row(v), g.qubit(v), g.vdata('z', default=0)) for v in g.vertices()]
+    graphj = graph_json(g, coords, pauli_web=pauli_web)
+
+    with open(os.path.join(settings.javascript_location, 'zx_viewer3d.js'), 'r') as f:
+        library_code = f.read() + '\n'
+
+    display(HTML(f"""
+    <div style="overflow:auto; background-color: white" id="graph-output-{graph_id}"></div>
+    <script type="importmap">
+    {json.dumps(settings.javascript_importmap)}
+    </script>
+    <script type="module">
+    let _settings_colors = JSON.parse('{json.dumps(settings.colors)}');
+    {library_code}
+    showGraph3d('graph-output-3d-{graph_id}', JSON.parse({graphj}), {w}, {h}, {labels});
+    </script>
+    """))
 
 # The dictionaries below are needed to
 # pretty-print complex numbers in pretty_complex() and matrix_to_latex()
