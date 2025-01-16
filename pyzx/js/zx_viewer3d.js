@@ -92,6 +92,9 @@ export function showGraph3D(tag, graph, width, height, show_labels) {
         // s.nhd.push(t);
         // t.nhd.push(s);
         let color = 0x000000;
+        if (s.x != t.x) {
+            color = 0x999999;
+        }
 
         const material = new LineMaterial({ color: color, linewidth: 2 });
         const geometry = new LineGeometry().setFromPoints([

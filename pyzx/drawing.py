@@ -15,7 +15,7 @@
 # limitations under the License.
 
 __all__ = ['draw', 'arrange_scalar_diagram', 'draw_matplotlib', 'draw_d3',
-            'matrix_to_latex', 'print_matrix', 'graphs_to_gif']
+           'draw_3d', 'matrix_to_latex', 'print_matrix', 'graphs_to_gif']
 
 import os
 import math
@@ -465,23 +465,42 @@ def draw_3d(
 
     graph_id = ''.join(random_graphid.choice(string.ascii_letters + string.digits) for _ in range(8))
 
-    coords = [(g.row(v), g.qubit(v), g.vdata('z', default=0)) for v in g.vertices()]
+    minx = 0
+    maxx = 0
+    miny = 0
+    maxy = 0
+    minz = 0
+    maxz = 0
+    for v in g.vertices():
+        minx = min(g.row(v), minx)
+        maxx = max(g.row(v), maxx)
+        miny = min(g.qubit(v), miny)
+        maxy = max(g.qubit(v), maxy)
+        minz = min(g.vdata(v, 'z', default=0), minz)
+        maxz = max(g.vdata(v, 'z', default=0), maxz)
+        
+    coords = [(g.row(v) - (minx+maxx)/2,
+               g.qubit(v) - (miny+maxy)/2,
+               g.vdata(v, 'z', default=0) - (minz+maxz)/2)
+               for v in g.vertices()]
     graphj = graph_json(g, coords, pauli_web=pauli_web)
 
     with open(os.path.join(settings.javascript_location, 'zx_viewer3d.js'), 'r') as f:
         library_code = f.read() + '\n'
 
-    display(HTML(f"""
-    <div style="overflow:auto; background-color: white" id="graph-output-{graph_id}"></div>
+    html_str = f"""
+    <div style="overflow:auto; background-color: white" id="graph-output-3d-{graph_id}"></div>
     <script type="importmap">
     {json.dumps(settings.javascript_importmap)}
     </script>
     <script type="module">
     let _settings_colors = JSON.parse('{json.dumps(settings.colors)}');
     {library_code}
-    showGraph3d('graph-output-3d-{graph_id}', JSON.parse({graphj}), {w}, {h}, {labels});
+    showGraph3D('graph-output-3d-{graph_id}', JSON.parse('{graphj}'), {1000}, {500}, {'true' if labels else 'false'});
     </script>
-    """))
+    """
+    # print(html_str)
+    display(HTML(html_str))
 
 # The dictionaries below are needed to
 # pretty-print complex numbers in pretty_complex() and matrix_to_latex()
