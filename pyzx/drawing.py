@@ -326,14 +326,14 @@ def auto_layout_vertex_locs(g:BaseGraph[VT, ET]): #Force-based graph drawing alg
     return v_locs, max_x-min_x, max_y-min_y
 
 def graph_json(g: BaseGraph[VT, ET],
-               coords: Dict[VT, Tuple[float, float, float]],
+               coords: Dict[VT, Tuple[Any, Any, Any]],
                vdata: Optional[List[str]]=None,
                pauli_web: Optional[PauliWeb[VT,ET]]=None) -> str:
 
     nodes = [{'name': str(v),
-              'x': coords[v][0],
-              'y': coords[v][1],
-              'z': coords[v][2],
+              'x': float(coords[v][0]),
+              'y': float(coords[v][1]),
+              'z': float(coords[v][2]),
               't': g.type(v),
               'phase': phase_to_s(g.phase(v), g.type(v)) if g.type(v) != VertexType.Z_BOX else str(get_z_box_label(g, v)),
               'ground': g.is_ground(v),
@@ -417,9 +417,9 @@ def draw_d3(
     node_size = 0.2 * scale
     if node_size < 2: node_size = 2
 
-    coords = [((v_dict[v][0]+1)*scale if auto_layout else (g.row(v)-minrow + 1) * scale,
+    coords = {v:((v_dict[v][0]+1)*scale if auto_layout else (g.row(v)-minrow + 1) * scale,
                (v_dict[v][1]+2)*scale if auto_layout else (g.qubit(v)-minqub + 2) * scale,
-               0) for v in g.vertices()]
+               0) for v in g.vertices()}
 
     graphj = graph_json(g, coords, vdata=vdata, pauli_web=pauli_web)
 
@@ -463,14 +463,17 @@ def draw_3d(
     pauli_web: Optional[PauliWeb[VT,ET]]=None
     ) -> Any:
 
+    if isinstance(g, Circuit):
+        g = g.to_graph(zh=False)
+
     graph_id = ''.join(random_graphid.choice(string.ascii_letters + string.digits) for _ in range(8))
 
-    minx = 0
-    maxx = 0
-    miny = 0
-    maxy = 0
-    minz = 0
-    maxz = 0
+    minx = 0.0
+    maxx = 0.0
+    miny = 0.0
+    maxy = 0.0
+    minz = 0.0
+    maxz = 0.0
     for v in g.vertices():
         minx = min(g.row(v), minx)
         maxx = max(g.row(v), maxx)
@@ -479,10 +482,10 @@ def draw_3d(
         minz = min(g.vdata(v, 'z', default=0), minz)
         maxz = max(g.vdata(v, 'z', default=0), maxz)
         
-    coords = [(g.row(v) - (minx+maxx)/2,
+    coords = {v:(g.row(v) - (minx+maxx)/2,
                g.qubit(v) - (miny+maxy)/2,
                g.vdata(v, 'z', default=0) - (minz+maxz)/2)
-               for v in g.vertices()]
+               for v in g.vertices()}
     graphj = graph_json(g, coords, pauli_web=pauli_web)
 
     with open(os.path.join(settings.javascript_location, 'zx_viewer3d.js'), 'r') as f:
