@@ -39,7 +39,7 @@ export function showGraph3D(tag, graph, width, height, show_labels) {
     const controls = new OrbitControls( camera, labelRenderer.domElement );
     controls.minDistance = 1;
     controls.maxDistance = 100;
-    controls.enablePan = false;
+    // controls.enablePan = false;
     scene.add(new THREE.AmbientLight(0xffffff, 1.5));
     const light = new THREE.DirectionalLight( 0xffffff, 2);
     light.position.set(1, 1, 1).normalize();
@@ -55,10 +55,10 @@ export function showGraph3D(tag, graph, width, height, show_labels) {
         let color = 0x000000, radius = 0.1;
         if (d.t == 1) {
             color = Number('0x' + '#99dd99'.substring(1));
-            radius = 0.2;
+            radius = 0.15;
         } else if (d.t == 2) {
             color = Number('0x' + '#ff8888'.substring(1));
-            radius = 0.2;
+            radius = 0.15;
         }
 
         const geometry = new THREE.SphereGeometry(radius, 48, 24);
@@ -92,8 +92,16 @@ export function showGraph3D(tag, graph, width, height, show_labels) {
         // s.nhd.push(t);
         // t.nhd.push(s);
         let color = 0x000000;
-        if (s.x != t.x) {
-            color = 0x999999;
+        if (d.t == 2) {
+            if (s.x != t.x) {
+                color = 0xffff99;
+            } else {
+                color = 0xffff66;
+            }
+        } else {
+            if (s.x != t.x) {
+                color = 0x999999;
+            }
         }
 
         const material = new LineMaterial({ color: color, linewidth: 2 });
