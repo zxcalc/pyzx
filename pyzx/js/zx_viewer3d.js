@@ -23,19 +23,14 @@ import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer
 
 export function showGraph3D(tag, graph, width, height, show_labels) {
     const scene = new THREE.Scene();
-    const aspect = height/width;
-    const scale = 20;
-    const camera = new THREE.OrthographicCamera(-scale, scale, scale*aspect, -scale*aspect);
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     const labelRenderer = new CSS2DRenderer();
     const light = new THREE.DirectionalLight( 0xffffff, 2);
 
     scene.background = new THREE.Color(0xffffff);
-    camera.layers.enableAll();
     scene.add(new THREE.AmbientLight(0xffffff, 1.5));
     light.position.set(1, 1, 1).normalize();
     scene.add(light);
-    camera.position.z = 10;
     renderer.setSize(width, height);
     labelRenderer.setSize(width, height);
     labelRenderer.domElement.style.position = 'absolute';
@@ -61,35 +56,29 @@ export function showGraph3D(tag, graph, width, height, show_labels) {
     rightButton.innerHTML = '&#129094;';
     buttons.appendChild(rightButton);
 
-    const controls = new OrbitControls( camera, labelRenderer.domElement );
-    const raycaster = new THREE.Raycaster();
-    const mouse = new THREE.Vector2();
-    let highlightRow = -1;
-    controls.minDistance = 1;
-    controls.maxDistance = 100;
-
-
     var ntab = {};
 
     const rows = new Set();
-    let minY = null, maxY = null, minZ = null, maxZ = null;
+    let minX = null, maxX = null, minY = null, maxY = null, minZ = null, maxZ = null;
 
     graph.nodes.forEach(function(d) {
         ntab[d.name] = d;
         d.nhd = [];
         rows.add(d.x);
+        minX = (minX == null) ? d.x : Math.min(d.x, minX);
         minY = (minY == null) ? d.y : Math.min(d.y, minY);
         minZ = (minZ == null) ? d.z : Math.min(d.z, minZ);
+        maxX = (maxX == null) ? d.x : Math.max(d.x, maxX);
         maxY = (maxY == null) ? d.y : Math.max(d.y, maxY);
         maxZ = (maxZ == null) ? d.z : Math.max(d.z, maxZ);
 
-        let color = 0x000000, radius = 0.1;
+        let color = 0x000000, radius = 0.05;
         if (d.t == 1) {
             color = Number('0x' + '#99dd99'.substring(1));
-            radius = 0.15;
+            radius = 0.1;
         } else if (d.t == 2) {
             color = Number('0x' + '#ff8888'.substring(1));
-            radius = 0.15;
+            radius = 0.1;
         }
 
         const geometry = new THREE.SphereGeometry(radius, 48, 24);
@@ -98,7 +87,7 @@ export function showGraph3D(tag, graph, width, height, show_labels) {
         d.sphere.name = d.name;
         d.sphere.position.set(d.x, d.y, d.z);
         d.sphere.layers.enableAll();
-        d.sphere.renderOrder = 0.0;
+        d.sphere.renderOrder = 0.5;
         scene.add(d.sphere);
 
         if (d.phase != '') {
@@ -139,7 +128,7 @@ export function showGraph3D(tag, graph, width, height, show_labels) {
             new THREE.Vector3(t.x, t.y, t.z)
         ]);
         d.line = new Line2(geometry, material);
-        d.line.renderOrder = 0.5;
+        d.line.renderOrder = 0.6;
         scene.add(d.line);
     });
 
@@ -152,23 +141,42 @@ export function showGraph3D(tag, graph, width, height, show_labels) {
     highlightPlane.renderOrder = 1.0;
     scene.add(highlightPlane);
 
+    const aspect = height/width;
+    let scale = 20;
+    if (minX != null) {
+        scale = Math.max((maxX - minX)/2, (maxY-minY)/(2*aspect)) + 2;
+    }
+    const camera = new THREE.OrthographicCamera(-scale, scale, scale*aspect, -scale*aspect);
+    camera.layers.enableAll();
+    camera.position.z = 5;
+    if (minX != null) {
+        camera.position.z = 2*Math.max(maxX, maxY, maxZ);
+    }
+
+    const controls = new OrbitControls(camera, labelRenderer.domElement);
+    const raycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2();
+    let highlightRow = -1;
+    controls.minDistance = 1;
+    controls.maxDistance = 100;
+
+
+
     function checkIntersection() {
         raycaster.setFromCamera(mouse, camera);
         const intersects = raycaster.intersectObject(scene, true);
-        if (intersects.length > 0) {
-            const selectedObject = intersects[0].object;
+        highlightRow = -1;
+        for (let obj of intersects) {
+            const selectedObject = obj.object;
             if (Object.hasOwn(selectedObject, 'name') && selectedObject.name != '') {
                 const d = ntab[selectedObject.name];
                 highlightRow = rowList.indexOf(d.x);
-            } else {
-                highlightRow = -1;
+                break;
             }
-        } else {
-            highlightRow = -1;
         }
-
         update();
     }
+
 
     function update() {
         if (highlightRow == -1) {
@@ -181,8 +189,10 @@ export function showGraph3D(tag, graph, width, height, show_labels) {
         graph.nodes.forEach(function (d) {
             if (highlightRow == -1 || rowList[highlightRow] == d.x) {
                 d.sphere.material.opacity = 1.0;
+                d.sphere.renderOrder = 0.5;
             } else {
                 d.sphere.material.opacity = 0.4;
+                d.sphere.renderOrder = 0.7;
             }
         });
 
@@ -193,8 +203,10 @@ export function showGraph3D(tag, graph, width, height, show_labels) {
                 } else {
                     d.line.material.opacity = 1.0;
                 }
+                d.line.renderOrder = 0.6;
             } else {
                 d.line.material.opacity = 0.25;
+                d.line.renderOrder = 0.8;
             }
         });
     }
