@@ -45,24 +45,43 @@ export function showGraph3D(tag, graph, width, height, show_labels) {
     element.appendChild(renderer.domElement);
     element.appendChild(labelRenderer.domElement);
 
+    const buttons = document.createElement('div');
+    buttons.style.textAlign = 'center';
+    buttons.style.fontSize = '2em';
+    buttons.style.width = width + 'px';
+    element.appendChild(buttons);
+
+    const leftButton = document.createElement('a');
+    leftButton.href = '#';
+    leftButton.innerHTML = '&#129092;';
+    buttons.appendChild(leftButton);
+
+    const rightButton = document.createElement('a');
+    rightButton.href = '#';
+    rightButton.innerHTML = '&#129094;';
+    buttons.appendChild(rightButton);
+
     const controls = new OrbitControls( camera, labelRenderer.domElement );
     const raycaster = new THREE.Raycaster();
     const mouse = new THREE.Vector2();
-    let highlightRow = null;
+    let highlightRow = -1;
     controls.minDistance = 1;
     controls.maxDistance = 100;
 
 
     var ntab = {};
 
-    const spheres = [];
-    const lines = [];
     const rows = new Set();
+    let minY = null, maxY = null, minZ = null, maxZ = null;
 
     graph.nodes.forEach(function(d) {
         ntab[d.name] = d;
         d.nhd = [];
         rows.add(d.x);
+        minY = (minY == null) ? d.y : Math.min(d.y, minY);
+        minZ = (minZ == null) ? d.z : Math.min(d.z, minZ);
+        maxY = (maxY == null) ? d.y : Math.max(d.y, maxY);
+        maxZ = (maxZ == null) ? d.z : Math.max(d.z, maxZ);
 
         let color = 0x000000, radius = 0.1;
         if (d.t == 1) {
@@ -79,6 +98,7 @@ export function showGraph3D(tag, graph, width, height, show_labels) {
         d.sphere.name = d.name;
         d.sphere.position.set(d.x, d.y, d.z);
         d.sphere.layers.enableAll();
+        d.sphere.renderOrder = 0.0;
         scene.add(d.sphere);
 
         if (d.phase != '') {
@@ -97,7 +117,8 @@ export function showGraph3D(tag, graph, width, height, show_labels) {
 
     });
 
-    const rowList = [...rows].sort();
+    const rowList = [...rows].sort((a,b) => a-b);
+    console.log(rowList);
 
     graph.links.forEach(function(d) {
         var s = ntab[d.source];
@@ -118,8 +139,18 @@ export function showGraph3D(tag, graph, width, height, show_labels) {
             new THREE.Vector3(t.x, t.y, t.z)
         ]);
         d.line = new Line2(geometry, material);
+        d.line.renderOrder = 0.5;
         scene.add(d.line);
     });
+
+    const highlightPlane = new THREE.Mesh(
+        new THREE.PlaneGeometry(maxZ - minZ + 0.5, maxY - minY + 0.5),
+        new THREE.MeshLambertMaterial({color: 0xddddff, side: THREE.DoubleSide, transparent: true}));
+    highlightPlane.rotation.set(0,0.5*Math.PI,0);
+    highlightPlane.position.set(0,(minY+maxY)/2, (minZ+maxZ)/2);
+    highlightPlane.material.opacity = 0.0;
+    highlightPlane.renderOrder = 1.0;
+    scene.add(highlightPlane);
 
     function checkIntersection() {
         raycaster.setFromCamera(mouse, camera);
@@ -128,20 +159,27 @@ export function showGraph3D(tag, graph, width, height, show_labels) {
             const selectedObject = intersects[0].object;
             if (Object.hasOwn(selectedObject, 'name') && selectedObject.name != '') {
                 const d = ntab[selectedObject.name];
-                highlightRow = d.x;
+                highlightRow = rowList.indexOf(d.x);
             } else {
-                highlightRow = null;
+                highlightRow = -1;
             }
         } else {
-            highlightRow = null;
+            highlightRow = -1;
         }
 
         update();
     }
 
     function update() {
+        if (highlightRow == -1) {
+            highlightPlane.material.opacity = 0.0;
+        } else {
+            highlightPlane.position.setComponent(0, rowList[highlightRow]);
+            highlightPlane.material.opacity = 0.5;
+        }
+
         graph.nodes.forEach(function (d) {
-            if (highlightRow == null || d.x == highlightRow) {
+            if (highlightRow == -1 || rowList[highlightRow] == d.x) {
                 d.sphere.material.opacity = 1.0;
             } else {
                 d.sphere.material.opacity = 0.4;
@@ -149,7 +187,7 @@ export function showGraph3D(tag, graph, width, height, show_labels) {
         });
 
         graph.links.forEach(function (d) {
-            if (highlightRow == null || (d.source.x == highlightRow && d.target.x == highlightRow)) {
+            if (highlightRow == -1 || (rowList[highlightRow] == d.target.x && rowList[highlightRow] == d.source.x)) {
                 if (d.source.x != d.target.x) {
                     d.line.material.opacity = 0.5;
                 } else {
@@ -185,30 +223,37 @@ export function showGraph3D(tag, graph, width, height, show_labels) {
         }
     }
 
-    function onKeyDown(event) {
-        switch (event.key) {
-            case "ArrowLeft":
-                if (highlightRow == null || highlightRow == 0) {
-                    highlightRow = 0;
+    function goLeft() {
+        if (rowList.length > 0) {
+            if (highlightRow == -1) {
+                highlightRow = rowList.length - 1;
+            } else {
+                if (highlightRow == 0) {
+                    highlightRow = rowList.length - 1;
                 } else {
-                    highlightRow -= 1;
+                    highlightRow = highlightRow - 1;
                 }
-                update();
-                break;
-            case "ArrowRight":
-                if (highlightRow == null) {
-                    highlightRow = 0;
-                } else {
-                    highlightRow += 1;
-                }
-                update();
-                break;
+            }
         }
+        update();
+    }
+
+    function goRight() {
+        if (rowList.length > 0) {
+            if (highlightRow == -1) {
+                highlightRow = 0;
+            } else {
+                highlightRow = (highlightRow + 1) % rowList.length;
+            }
+        }
+        update();
     }
 
     labelRenderer.domElement.addEventListener('mousedown', onMouseDown);
     labelRenderer.domElement.addEventListener('mouseup', onMouseUp);
-    labelRenderer.domElement.addEventListener('keydown', onKeyDown);
+    leftButton.addEventListener('click', goLeft);
+    rightButton.addEventListener('click', goRight);
+    labelRenderer.tabIndex = 0;
 
     function animate() {
         renderer.render(scene, camera);
