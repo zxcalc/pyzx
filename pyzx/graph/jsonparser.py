@@ -17,7 +17,7 @@
 import json
 import re
 from fractions import Fraction
-from typing import List, Dict, Any, Optional, Callable, Union, TYPE_CHECKING
+from typing import List, Dict, Tuple, Any, Optional, Callable, Union, TYPE_CHECKING
 
 from pyzx.graph.multigraph import Multigraph
 
@@ -208,7 +208,7 @@ def graph_to_dict(g: BaseGraph[VT,ET], include_scalar: bool=True) -> Dict[str, A
             d_v['is_ground'] = True
         verts.append(d_v)
 
-    edges: list[tuple[VT,VT,EdgeType]] = []
+    edges: List[Tuple[VT,VT,EdgeType]] = []
     if g.backend == 'multigraph':
         for e in g.edges():
             edges.append(e)  # type: ignore  # We know what we are doing, for multigraphs this has the right type.
@@ -331,7 +331,7 @@ def graph_to_json(g: BaseGraph[VT,ET], include_scalar: bool=True) -> str:
     of g.scalar with the json, which will also be loaded by the ``from_json`` method."""
     return json.dumps(graph_to_dict(g, include_scalar))
 
-def dict_to_graph(d: dict[str,Any], backend: Optional[str]=None) -> BaseGraph:
+def dict_to_graph(d: Dict[str,Any], backend: Optional[str]=None) -> BaseGraph:
     """Converts a Python dict representation a graph produced by `graph_to_dict` into
     a pyzx Graph.
     If backend is given, it will be used as the backend for the graph, 
