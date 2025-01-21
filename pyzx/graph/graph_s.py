@@ -15,7 +15,7 @@
 # limitations under the License.
 
 from fractions import Fraction
-from typing import Tuple, Dict, Set, Any
+from typing import Optional, Tuple, Dict, Set, Any
 
 from .base import BaseGraph
 
@@ -202,9 +202,16 @@ class GraphS(BaseGraph[int,Tuple[int,int]]):
     def num_vertices(self):
         return len(self.graph)
 
-    def num_edges(self):
-        #return self.nedges
-        return len(self.edge_set())
+    def num_edges(self, s=None, t=None):
+        if s is not None and t is not None:
+            if self.connected(s, t):
+                return 1
+            else:
+                return 0
+        elif s is not None:
+            return self.vertex_degree(s)
+        else:
+            return len(list(self.edges()))
 
     def vertices(self):
         return self.graph.keys()
@@ -219,6 +226,7 @@ class GraphS(BaseGraph[int,Tuple[int,int]]):
 
     def edges(self, s=None, t=None):
         if s is not None and t is not None:
+            if self.connected(s, t):
                 yield (s,t) if s < t else (t,s)
         elif s is not None:
             for t in self.graph[s]:
@@ -329,6 +337,9 @@ class GraphS(BaseGraph[int,Tuple[int,int]]):
         else:
             self._grounds.discard(vertex)
 
+    def clear_vdata(self, vertex):
+        if vertex in self._vdata:
+            del self._vdata[vertex]
     def vdata_keys(self, vertex):
         return self._vdata.get(vertex, {}).keys()
     def vdata(self, vertex, key, default=0):

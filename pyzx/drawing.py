@@ -15,7 +15,7 @@
 # limitations under the License.
 
 __all__ = ['draw', 'arrange_scalar_diagram', 'draw_matplotlib', 'draw_d3',
-            'matrix_to_latex', 'print_matrix', 'graphs_to_gif']
+           'draw_3d', 'matrix_to_latex', 'print_matrix', 'graphs_to_gif']
 
 import os
 import math
@@ -28,6 +28,8 @@ from fractions import Fraction
 from typing import Dict, List, Tuple, Optional, Union, Iterable, Any, TYPE_CHECKING
 from typing_extensions import Literal
 import numpy as np
+
+from .pauliweb import PauliWeb
 
 # matplotlib is lazy-imported on the first call to draw_matplotlib
 plt: Any = None
@@ -56,7 +58,6 @@ def draw(g: Union[BaseGraph[VT,ET], Circuit], labels: bool=False, **kwargs) -> A
     # allow global setting to labels=False
     # TODO: probably better to make labels Optional[bool]
     labels = labels or settings.show_labels
-
     if get_mode() == "shell":
         return draw_matplotlib(g, labels, **kwargs)
     elif get_mode() == "browser":
@@ -269,9 +270,12 @@ def draw_matplotlib(
         ax.text(x-5,y,g.scalar.to_latex())
 
     ax.axis('equal')
-    plt.close()
+    if get_mode() == "shell":
+        plt.show()
+    else:
+        plt.close()
     return fig1
-    #plt.show()
+    
 
 # Provides functions for displaying pyzx graphs in jupyter notebooks using d3
 
@@ -288,52 +292,53 @@ random_graphid = random.Random()
 #     library_code += '</script>'
 #     display(HTML(library_code))
 
-def draw_d3(
-    g: Union[BaseGraph[VT,ET], Circuit],
-    labels:bool=False, 
-    scale:Optional[FloatInt]=None, 
-    auto_hbox:Optional[bool]=None,
-    show_scalar:bool=False,
-    vdata: List[str]=[]
-    ) -> Any:
+def auto_layout_vertex_locs(g:BaseGraph[VT, ET]): #Force-based graph drawing algorithm given by Eades(1984):
+    c1 = 2 #Sample parameters that work decently well
+    c2 = 1
+    c3 = 1
+    c4 = .1
+    v_locs:Dict[VT, Tuple[float, float]] = dict()
+    for v in g.vertices():
+        v_locs[v]=(random.random()*math.sqrt(g.num_vertices()),  random.random()*math.sqrt(g.num_vertices()))
+    for i in range(100): #100 iterations of force-based drawing
+        forces:Dict[VT, Tuple[float, float]] = dict()
+        for v in g.vertices():
+            forces[v] = (0, 0)
+            for v1 in g.vertices():
+                if(v!=v1):
+                    diff = (v_locs[v][0]-v_locs[v1][0], v_locs[v][1]-v_locs[v1][1])
+                    d = math.sqrt(diff[0]*diff[0]+diff[1]*diff[1])
+                    if g.connected(v1, v): #edge between vertices: apply rule c1*log(d/c2)
+                        force_mag = -c1*math.log(d/c2) #negative force attracts
+                    elif v != v1: #nonadjacent vertices: apply rule -c3/d^2
+                        force_mag = c3/(d*d) #positive force repels
+                    else: #free body in question, applies no force on itself
+                        raise ValueError("Vertices ended up at same point")
+                    v_force = (diff[0]*force_mag*c4/d, diff[1]*force_mag*c4/d)
+                    forces[v] = (forces[v][0]+v_force[0], forces[v][1]+v_force[1])
+        for v in g.vertices(): #leave y value constant if input or output
+            v_locs[v]=(v_locs[v][0]+forces[v][0], v_locs[v][1]+forces[v][1])
+    max_x = max(v[0] for v in v_locs.values())
+    min_x = min(v[0] for v in v_locs.values())
+    max_y = max(v[1] for v in v_locs.values())
+    min_y = min(v[1] for v in v_locs.values())
+    v_locs = {k:(v[0]-min_x, v[1]-min_y) for k, v in v_locs.items()} #translate to origin
+    return v_locs, max_x-min_x, max_y-min_y
 
-    if get_mode() not in ("notebook", "browser"): 
-        raise Exception("This method only works when loaded in a webpage or Jupyter notebook")
-
-    if auto_hbox is None:
-        auto_hbox = settings.drawing_auto_hbox
-
-    if isinstance(g, Circuit):
-        g = g.to_graph(zh=True)
-
-    # tracking global sequence can cause clashes if you restart the kernel without clearing ouput, so
-    # use an 8-digit random alphanum instead.
-    graph_id = ''.join(random_graphid.choice(string.ascii_letters + string.digits) for _ in range(8))
-
-    minrow = min([g.row(v) for v in g.vertices()], default=0)
-    maxrow = max([g.row(v) for v in g.vertices()], default=0)
-    minqub = min([g.qubit(v) for v in g.vertices()], default=0)
-    maxqub = max([g.qubit(v) for v in g.vertices()], default=0)
-
-    if scale is None:
-        scale = 800 / (maxrow-minrow + 2)
-        if scale > 50: scale = 50
-        if scale < 20: scale = 20
-
-    node_size = 0.2 * scale
-    if node_size < 2: node_size = 2
-
-    w = (maxrow-minrow + 2) * scale
-    h = (maxqub-minqub + 3) * scale
+def graph_json(g: BaseGraph[VT, ET],
+               coords: Dict[VT, Tuple[Any, Any, Any]],
+               vdata: Optional[List[str]]=None,
+               pauli_web: Optional[PauliWeb[VT,ET]]=None) -> str:
 
     nodes = [{'name': str(v),
-              'x': (g.row(v)-minrow + 1) * scale,
-              'y': (g.qubit(v)-minqub + 2) * scale,
+              'x': float(coords[v][0]),
+              'y': float(coords[v][1]),
+              'z': float(coords[v][2]),
               't': g.type(v),
               'phase': phase_to_s(g.phase(v), g.type(v)) if g.type(v) != VertexType.Z_BOX else str(get_z_box_label(g, v)),
               'ground': g.is_ground(v),
               'vdata': [(key, g.vdata(v, key))
-                  for key in vdata if g.vdata(v, key, None) is not None],
+                  for key in vdata or [] if g.vdata(v, key, None) is not None],
               }
              for v in g.vertices()]
 
@@ -352,7 +357,71 @@ def draw_d3(
     for link in links:
         s,t = (str(link['source']), str(link['target']))
         link['num_parallel'] = counts[(s,t)]
-    graphj = json.dumps({'nodes': nodes, 'links': links})
+
+    if pauli_web:
+        pw_edges = [{ 'source': vs[0], 'target': vs[1], 't': t } for vs,t in pauli_web.half_edges().items() ]
+    else:
+        pw_edges = []
+
+    return json.dumps({'nodes': nodes, 'links': links, 'pauli_web': pw_edges})
+
+
+def draw_d3(
+    g: Union[BaseGraph[VT,ET], Circuit],
+    labels:bool=False, 
+    scale:Optional[FloatInt]=None, 
+    auto_hbox:Optional[bool]=None,
+    show_scalar:bool=False,
+    vdata: Optional[List[str]]=None,
+    pauli_web: Optional[PauliWeb[VT,ET]]=None,
+    auto_layout: bool = False
+    ) -> Any:
+    """If auto_layout is checked, will automatically space vertices of graph
+    with no regard to qubit/row."""
+    if get_mode() not in ("notebook", "browser"): 
+        raise Exception("This method only works when loaded in a webpage or Jupyter notebook")
+
+    if auto_hbox is None:
+        auto_hbox = settings.drawing_auto_hbox
+
+    if isinstance(g, Circuit):
+        g = g.to_graph(zh=True)
+
+    # tracking global sequence can cause clashes if you restart the kernel without clearing ouput, so
+    # use an 8-digit random alphanum instead.
+    graph_id = ''.join(random_graphid.choice(string.ascii_letters + string.digits) for _ in range(8))
+
+    if(auto_layout):
+        v_dict, w, h = auto_layout_vertex_locs(g)
+        if scale is None:
+            scale = 800 / w
+            if scale > 50: scale = 50
+            if scale < 20: scale = 20
+        
+        w = (w+2) * scale
+        h = (h+3) * scale
+    else:
+        minrow = min([g.row(v) for v in g.vertices()], default=0)
+        maxrow = max([g.row(v) for v in g.vertices()], default=0)
+        minqub = min([g.qubit(v) for v in g.vertices()], default=0)
+        maxqub = max([g.qubit(v) for v in g.vertices()], default=0)
+
+        if scale is None:
+            scale = 800 / (maxrow-minrow + 2)
+            if scale > 50: scale = 50
+            if scale < 20: scale = 20
+
+        w = (maxrow-minrow + 2) * scale
+        h = (maxqub-minqub + 3) * scale
+
+    node_size = 0.2 * scale
+    if node_size < 2: node_size = 2
+
+    coords = {v:((v_dict[v][0]+1)*scale if auto_layout else (g.row(v)-minrow + 1) * scale,
+               (v_dict[v][1]+2)*scale if auto_layout else (g.qubit(v)-minqub + 2) * scale,
+               0) for v in g.vertices()}
+
+    graphj = graph_json(g, coords, vdata=vdata, pauli_web=pauli_web)
 
     with open(os.path.join(settings.javascript_location, 'zx_viewer.inline.js'), 'r') as f:
         library_code = f.read() + '\n'
@@ -361,11 +430,13 @@ def draw_d3(
 <script type="module">
 var d3;
 if (d3 == null) {{ d3 = await import("https://cdn.skypack.dev/d3@5"); }}
+var _settings_colors = JSON.parse('{colors}');
 {library_code}
 showGraph('#graph-output-{id}',
   JSON.parse('{graph}'), {width}, {height}, {scale},
   {node_size}, {hbox}, {labels}, '{scalar_str}');
-</script>""".format(library_code=library_code,
+</script>""".format(colors=json.dumps(settings.colors),
+                    library_code=library_code,
                     id = graph_id,
                     graph = graphj, 
                     width=w, height=h, scale=scale, node_size=node_size,
@@ -386,6 +457,53 @@ showGraph('#graph-output-{id}',
         return d,s
 
 
+def draw_3d(
+    g: Union[BaseGraph[VT,ET], Circuit],
+    labels: bool=False, 
+    pauli_web: Optional[PauliWeb[VT,ET]]=None
+    ) -> Any:
+
+    if isinstance(g, Circuit):
+        g = g.to_graph(zh=False)
+
+    graph_id = ''.join(random_graphid.choice(string.ascii_letters + string.digits) for _ in range(8))
+
+    minx = 0.0
+    maxx = 0.0
+    miny = 0.0
+    maxy = 0.0
+    minz = 0.0
+    maxz = 0.0
+    for v in g.vertices():
+        minx = min(g.row(v), minx)
+        maxx = max(g.row(v), maxx)
+        miny = min(g.qubit(v), miny)
+        maxy = max(g.qubit(v), maxy)
+        minz = min(g.vdata(v, 'z', default=0), minz)
+        maxz = max(g.vdata(v, 'z', default=0), maxz)
+        
+    coords = {v:(g.row(v) - (minx+maxx)/2,
+               g.qubit(v) - (miny+maxy)/2,
+               g.vdata(v, 'z', default=0) - (minz+maxz)/2)
+               for v in g.vertices()}
+    graphj = graph_json(g, coords, pauli_web=pauli_web)
+
+    with open(os.path.join(settings.javascript_location, 'zx_viewer3d.js'), 'r') as f:
+        library_code = f.read() + '\n'
+
+    html_str = f"""
+    <div style="overflow:auto; background-color: white" id="graph-output-3d-{graph_id}"></div>
+    <script type="importmap">
+    {json.dumps(settings.javascript_importmap)}
+    </script>
+    <script type="module">
+    let _settings_colors = JSON.parse('{json.dumps(settings.colors)}');
+    {library_code}
+    showGraph3D('graph-output-3d-{graph_id}', JSON.parse('{graphj}'), {1000}, {500}, {'true' if labels else 'false'});
+    </script>
+    """
+    # print(html_str)
+    display(HTML(html_str))
 
 # The dictionaries below are needed to
 # pretty-print complex numbers in pretty_complex() and matrix_to_latex()

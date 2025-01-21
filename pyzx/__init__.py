@@ -19,7 +19,7 @@ __version__ = "0.8.0"
 from .graph.graph import Graph
 from .circuit import Circuit, gates, id
 from .linalg import Mat2
-from .utils import settings, VertexType, EdgeType
+from .utils import settings, VertexType, EdgeType, original_colors, rgb_colors, grayscale_colors
 from .quimb import to_quimb_tensor
 from .drawing import *
 from .simplify import *
@@ -37,6 +37,7 @@ from . import todd
 from . import linalg
 from . import extract
 from . import rules
+from . import basicrules
 from . import hrules
 from . import optimize
 from . import simplify

@@ -16,19 +16,26 @@
 
 // styling functions
 function nodeColor(t) {
-    if (t == 0) return "black";
-    else if (t == 1) return "#ccffcc";
-    else if (t == 2) return "#ff8888";
-    else if (t == 3) return "yellow";
-    else if (t == 4) return "black";
-    else if (t == 5) return "black";
-    else if (t == 6) return "#ccffcc";
+    if (t == 0) return _settings_colors['boundary'];
+    else if (t == 1) return _settings_colors['Z']; // "#ccffcc";
+    else if (t == 2) return _settings_colors['X']; // "#ff8888";
+    else if (t == 3) return _settings_colors['H']; // "yellow";
+    else if (t == 4) return _settings_colors['W']; // "black";
+    else if (t == 5) return _settings_colors['Walt']; // "black";
+    else if (t == 6) return _settings_colors['Zalt']; // "#ccffcc";
 }
 
 function edgeColor(t) {
-    if (t == 1) return "black";
-    else if (t == 2) return "#08f";
-    else if (t == 3) return "gray";
+    if (t == 1) return _settings_colors['edge']; //"black";
+    else if (t == 2) return _settings_colors['Hedge']; // "#08f";
+    else if (t == 3) return _settings_colors['Xedge']; // "gray";
+}
+
+function webColor(t) {
+    if (t == 'X') return _settings_colors['Xdark'];
+    else if (t == 'Y') return _settings_colors['Ydark'];
+    else if (t == 'Z') return _settings_colors['Zdark'];
+    else if (t == 'I') return '#dddddd';
 }
 
 function nodeStyle(selected) {
@@ -78,6 +85,13 @@ function showGraph(tag, graph, width, height, scale, node_size, auto_hbox, show_
         t.nhd.push(s);
     });
 
+    graph.pauli_web.forEach(function(d) {
+        var s = ntab[d.source];
+        var t = ntab[d.target];
+        d.source = s;
+        d.target = t;
+    });
+
     var shiftKey;
 
     // SETUP SVG ITEMS
@@ -91,6 +105,15 @@ function showGraph(tag, graph, width, height, scale, node_size, auto_hbox, show_
         .attr("style", "max-width: none; max-height: none")
         .attr("width", width)
         .attr("height", height);
+
+    var web = svg.append("g")
+        .attr("class", "web")
+        .selectAll("line")
+        .data(graph.pauli_web)
+        .enter().append("path")
+        .attr("stroke", function(d) { return webColor(d.t); })
+        .attr("fill", "transparent")
+        .attr("style", "stroke-width: 7px");
 
     var link = svg.append("g")
         .attr("class", "link")
@@ -265,6 +288,13 @@ function showGraph(tag, graph, width, height, scale, node_size, auto_hbox, show_
     };
     link.attr("d", link_curve);
 
+
+    var web_curve = function(d) {
+        var x1 = d.source.x, x2 = (x1 + d.target.x)/2, y1 = d.source.y, y2 = (y1 + d.target.y)/2;
+        return `M ${x1} ${y1} L ${x2} ${y2}`;
+    }
+    web.attr("d", web_curve);
+
     // EVENTS FOR DRAGGING AND SELECTION
 
     node.on("mousedown", function(d) {
@@ -293,6 +323,8 @@ function showGraph(tag, graph, width, height, scale, node_size, auto_hbox, show_
             link.filter(function(d) { return d.source.selected || d.target.selected ||
                     (auto_hbox && d.source.t == 3); })
                 .attr("d", link_curve);
+            web.filter(function(d) { return d.source.selected || d.target.selected; })
+                .attr("d", web_curve);
         }));
 
     brush.call(d3.brush().keyModifiers(false)

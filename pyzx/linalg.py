@@ -355,7 +355,7 @@ class Mat2(object):
         else:
             best = 1000000
             best_cn = None
-            for size in range(1,self.rows()):
+            for size in range(1,self.rows() + 1):
                 cn = CNOTMaker()
                 assert cn is not None
                 self.copy().gauss(full_reduce=True,x=cn, blocksize=size)

@@ -69,7 +69,7 @@ class Circuit(object):
         return c
 
 
-    def verify_equality(self, other: 'Circuit', up_to_swaps: bool = False) -> bool:
+    def verify_equality(self, other: 'Circuit', up_to_swaps: bool = False, up_to_global_phase: bool = True) -> bool:
         """Composes the other circuit with the adjoint of this circuit, and tries to reduce
         it to the identity using :func:`simplify.full_reduce``. If successful returns True,
         if not returns None.
@@ -95,10 +95,8 @@ class Circuit(object):
         full_reduce(g)
         if (g.num_vertices() == self.qubits*2 and
                 all(g.edge_type(e) == EdgeType.SIMPLE for e in g.edges())):
-            if up_to_swaps:
-                return True
-            else:
-                return all(g.connected(v,w) for v,w in zip(g.inputs(),g.outputs()))
+            return ((up_to_swaps or all(g.connected(v,w) for v,w in zip(g.inputs(),g.outputs()))) and
+                    (up_to_global_phase or g.scalar.phase == 0))
         else:
             return False
 

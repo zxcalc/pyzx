@@ -264,9 +264,11 @@ class Multigraph(BaseGraph[int,Tuple[int,int,EdgeType]]):
     def num_vertices(self):
         return len(self.graph)
 
-    def num_edges(self):
-        return self.nedges
-        #return len(self.edge_set())
+    def num_edges(self, s=None, t=None):
+        if s != None or t != None:
+            return len(list(self.edges(s, t)))
+        else:
+            return self.nedges
 
     def vertices(self):
         return self.graph.keys()
@@ -419,6 +421,9 @@ class Multigraph(BaseGraph[int,Tuple[int,int,EdgeType]]):
         else:
             self._grounds.discard(vertex)
 
+    def clear_vdata(self, vertex):
+        if vertex in self._vdata:
+            del self._vdata[vertex]
     def vdata_keys(self, vertex):
         return self._vdata.get(vertex, {}).keys()
     def vdata(self, vertex, key, default=0):

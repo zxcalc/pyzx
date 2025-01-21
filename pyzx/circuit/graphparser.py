@@ -129,7 +129,7 @@ def circuit_to_graph(c: Circuit, compress_rows:bool=True, backend:Optional[str]=
             except ValueError:
                 raise ValueError("PostSelect label {} is not in use".format(str(l)))
             v = g.add_vertex(VertexType.Z, q, r)
-            g.add_edge(g.edge(u,v),EdgeType.SIMPLE)
+            g.add_edge((u,v),EdgeType.SIMPLE)
         else:
             if not compress_rows: #or not isinstance(gate, (ZPhase, XPhase, HAD)):
                 r = max(q_mapper.max_row(), c_mapper.max_row())
@@ -148,7 +148,7 @@ def circuit_to_graph(c: Circuit, compress_rows:bool=True, backend:Optional[str]=
             v = g.add_vertex(VertexType.BOUNDARY, o, r)
             outputs.append(v)
             u = mapper.prev_vertex(l)
-            g.add_edge(g.edge(u,v))
+            g.add_edge((u,v))
 
     g.set_inputs(tuple(inputs))
     g.set_outputs(tuple(outputs))

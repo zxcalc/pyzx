@@ -26,5 +26,6 @@ __all__ = [
 
 from .graph import Graph
 from .scalar import Scalar
-from .base import EdgeType, VertexType, toggle_edge, vertex_is_zx, toggle_vertex
+from .base import EdgeType, VertexType
+from ..utils import toggle_vertex, toggle_edge, vertex_is_zx
 from .diff import GraphDiff

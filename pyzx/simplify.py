@@ -32,7 +32,7 @@ from functools import reduce
 from optparse import Option
 from typing import List, Callable, Optional, Union, Generic, Tuple, Dict, Iterator, cast
 
-from .utils import EdgeType, VertexType, toggle_edge, vertex_is_zx, toggle_vertex
+from .utils import EdgeType, VertexType, phase_is_clifford, toggle_edge, vertex_is_zx, toggle_vertex
 from .rules import *
 from .graph.base import BaseGraph, VT, ET
 from .graph.multigraph import Multigraph
@@ -63,7 +63,7 @@ def simp(
     rewrite: Callable[[BaseGraph[VT,ET],List[MatchObject]],RewriteOutputType[VT,ET]],
     auto_simplify_parallel_edges: bool = False,
     matchf:Optional[Union[Callable[[ET],bool], Callable[[VT],bool]]]=None,
-    quiet:bool=False,
+    quiet:bool=True,
     stats:Optional[Stats]=None) -> int:
     """Helper method for constructing simplification strategies based on the rules present in rules_.
     It uses the ``match`` function to find matches, and then rewrites ``g`` using ``rewrite``.
@@ -85,8 +85,8 @@ def simp(
     Returns:
         Number of iterations of ``rewrite`` that had to be applied before no more matches were found."""
 
+    auto_simp_value = g.get_auto_simplify()
     if auto_simplify_parallel_edges:
-        auto_simp_value = g.get_auto_simplify()
         g.set_auto_simplify(True)
     i = 0
     new_matches = True
@@ -115,52 +115,52 @@ def simp(
         g.set_auto_simplify(auto_simp_value)
     return i
 
-def pivot_simp(g: BaseGraph[VT,ET], matchf:Optional[Callable[[ET],bool]]=None, quiet:bool=False, stats:Optional[Stats]=None) -> int:
+def pivot_simp(g: BaseGraph[VT,ET], matchf:Optional[Callable[[ET],bool]]=None, quiet:bool=True, stats:Optional[Stats]=None) -> int:
     return simp(g, 'pivot_simp', match_pivot_parallel, pivot, 
                 auto_simplify_parallel_edges=True, matchf=matchf, quiet=quiet, stats=stats)
 
-def pivot_gadget_simp(g: BaseGraph[VT,ET], matchf:Optional[Callable[[ET],bool]]=None, quiet:bool=False, stats:Optional[Stats]=None) -> int:
+def pivot_gadget_simp(g: BaseGraph[VT,ET], matchf:Optional[Callable[[ET],bool]]=None, quiet:bool=True, stats:Optional[Stats]=None) -> int:
     return simp(g, 'pivot_gadget_simp', match_pivot_gadget, pivot, 
                 auto_simplify_parallel_edges=True, matchf=matchf, quiet=quiet, stats=stats)
 
-def pivot_boundary_simp(g: BaseGraph[VT,ET], matchf:Optional[Callable[[ET],bool]]=None, quiet:bool=False, stats:Optional[Stats]=None) -> int:
+def pivot_boundary_simp(g: BaseGraph[VT,ET], matchf:Optional[Callable[[ET],bool]]=None, quiet:bool=True, stats:Optional[Stats]=None) -> int:
     return simp(g, 'pivot_boundary_simp', match_pivot_boundary, pivot, 
                 auto_simplify_parallel_edges=True, matchf=matchf, quiet=quiet, stats=stats)
 
-def lcomp_simp(g: BaseGraph[VT,ET], matchf:Optional[Callable[[VT],bool]]=None, quiet:bool=False, stats:Optional[Stats]=None) -> int:
+def lcomp_simp(g: BaseGraph[VT,ET], matchf:Optional[Callable[[VT],bool]]=None, quiet:bool=True, stats:Optional[Stats]=None) -> int:
     return simp(g, 'lcomp_simp', match_lcomp_parallel, lcomp, 
                 auto_simplify_parallel_edges=True, matchf=matchf, quiet=quiet, stats=stats)
 
-def bialg_simp(g: BaseGraph[VT,ET], quiet:bool=False, stats: Optional[Stats]=None) -> int:
+def bialg_simp(g: BaseGraph[VT,ET], quiet:bool=True, stats: Optional[Stats]=None) -> int:
     return simp(g, 'bialg_simp', match_bialg_parallel, bialg, quiet=quiet, stats=stats)
 
-def spider_simp(g: BaseGraph[VT,ET], matchf:Optional[Callable[[VT],bool]]=None, quiet:bool=False, stats:Optional[Stats]=None) -> int:
+def spider_simp(g: BaseGraph[VT,ET], matchf:Optional[Callable[[VT],bool]]=None, quiet:bool=True, stats:Optional[Stats]=None) -> int:
     return simp(g, 'spider_simp', match_spider_parallel, spider, matchf=matchf, quiet=quiet, stats=stats)
 
-def id_simp(g: BaseGraph[VT,ET], matchf:Optional[Callable[[VT],bool]]=None, quiet:bool=False, stats:Optional[Stats]=None) -> int:
+def id_simp(g: BaseGraph[VT,ET], matchf:Optional[Callable[[VT],bool]]=None, quiet:bool=True, stats:Optional[Stats]=None) -> int:
     return simp(g, 'id_simp', match_ids_parallel, remove_ids, matchf=matchf, quiet=quiet, stats=stats)
 
-def gadget_simp(g: BaseGraph[VT,ET], matchf: Optional[Callable[[VT],bool]]=None, quiet:bool=False, stats:Optional[Stats]=None) -> int:
+def gadget_simp(g: BaseGraph[VT,ET], matchf: Optional[Callable[[VT],bool]]=None, quiet:bool=True, stats:Optional[Stats]=None) -> int:
     return simp(g, 'gadget_simp', match_phase_gadgets, merge_phase_gadgets, 
                 auto_simplify_parallel_edges=True, matchf=matchf, quiet=quiet, stats=stats)
 
-def supplementarity_simp(g: BaseGraph[VT,ET], quiet:bool=False, stats:Optional[Stats]=None) -> int:
+def supplementarity_simp(g: BaseGraph[VT,ET], quiet:bool=True, stats:Optional[Stats]=None) -> int:
     return simp(g, 'supplementarity_simp', match_supplementarity, apply_supplementarity, 
                 auto_simplify_parallel_edges=True, quiet=quiet, stats=stats)
 
-def copy_simp(g: BaseGraph[VT,ET], quiet:bool=False, stats:Optional[Stats]=None) -> int:
+def copy_simp(g: BaseGraph[VT,ET], quiet:bool=True, stats:Optional[Stats]=None) -> int:
     """Copies 1-ary spiders with 0/pi phase through neighbors.
     WARNING: only use on maximally fused diagrams consisting solely of Z-spiders."""
     return simp(g, 'copy_simp', match_copy, apply_copy, quiet=quiet, stats=stats)
 
-def phase_free_simp(g: BaseGraph[VT,ET], quiet:bool=False, stats:Optional[Stats]=None) -> int:
+def phase_free_simp(g: BaseGraph[VT,ET], quiet:bool=True, stats:Optional[Stats]=None) -> int:
     '''Performs the following set of simplifications on the graph:
     spider -> bialg'''
     i1 = spider_simp(g, quiet=quiet, stats=stats)
     i2 = bialg_simp(g, quiet=quiet, stats=stats)
     return i1+i2
 
-def basic_simp(g: BaseGraph[VT,ET], matchf: Optional[Callable[[Union[VT, ET]],bool]]=None, quiet:bool=False, stats:Optional[Stats]=None) -> int:
+def basic_simp(g: BaseGraph[VT,ET], matchf: Optional[Callable[[Union[VT, ET]],bool]]=None, quiet:bool=True, stats:Optional[Stats]=None) -> int:
     """Keeps doing the simplifications ``id_simp`` and ``spider_simp`` until none of them can be applied anymore. If
     starting from a circuit, the result should still have causal flow."""
     spider_simp(g, matchf=matchf, quiet=quiet, stats=stats)
@@ -173,7 +173,7 @@ def basic_simp(g: BaseGraph[VT,ET], matchf: Optional[Callable[[Union[VT, ET]],bo
         i += 1
     return i
 
-def interior_clifford_simp(g: BaseGraph[VT,ET], matchf: Optional[Callable[[Union[VT, ET]],bool]]=None, quiet:bool=False, stats:Optional[Stats]=None) -> int:
+def interior_clifford_simp(g: BaseGraph[VT,ET], matchf: Optional[Callable[[Union[VT, ET]],bool]]=None, quiet:bool=True, stats:Optional[Stats]=None) -> int:
     """Keeps doing the simplifications ``id_simp``, ``spider_simp``,
     ``pivot_simp`` and ``lcomp_simp`` until none of them can be applied anymore."""
     spider_simp(g, matchf=matchf, quiet=quiet, stats=stats)
@@ -312,55 +312,77 @@ def to_gh(g: BaseGraph[VT,ET],quiet:bool=True) -> None:
                 et = g.edge_type(e)
                 g.set_edge_type(e, toggle_edge(et))
 
-def to_rg(g: BaseGraph[VT,ET], select:Optional[Callable[[VT],bool]]=None, change_gadgets: bool=True) -> None:
+
+def max_cut(g: BaseGraph[VT,ET], vs0: Optional[Set[VT]]=None, vs1: Optional[Set[VT]]=None) -> Tuple[Set[VT],Set[VT]]:
+    """Approximate the MAX-CUT of a graph, starting with an initial partition
+
+    This uses the quadratic-time SG3 heuristic explained by Wang et al in https://arxiv.org/abs/2312.10895 .
+    """
+    if vs0 is None: vs0 = set()
+    if vs1 is None: vs1 = set()
+    # print(f'vs0={vs0} vs1={vs1}')
+    remaining = set(g.vertices()) - vs0 - vs1
+    while len(remaining) > 0:
+        score_max = -1
+        v_max: Optional[VT] = None
+        in0 = True
+        for v in remaining:
+            wt0 = sum(len(list(g.edges(v,w))) for w in vs1)
+            wt1 = sum(len(list(g.edges(v,w))) for w in vs0)
+            score = abs(wt0 - wt1)
+            if score > score_max:
+                # print(f'{v}: score={score}, wt0={wt0}, wt1={wt1}')
+                score_max = score
+                v_max = v
+                in0 = wt0 >= wt1
+        # print(f'choosing {v_max} for set {"vs0" if in0 else "vs1"}')
+        
+        if v_max is None: raise RuntimeError("No max found")
+        remaining.remove(v_max)
+        if in0: vs0.add(v_max)
+        else: vs1.add(v_max)
+    return(vs0, vs1)
+
+def to_rg(g: BaseGraph[VT,ET], init_z: Optional[Set[VT]]=None, init_x: Optional[Set[VT]]=None) -> None:
     """Try to eliminate H-edges by turning green nodes red
 
-    By default, this does a breadth-first search starting at an arbitrary node, flipping the
-    color of alternating layers. For a ZX-diagram that is graph-like and 2-colorable, this will
-    eliminate all of the interior H-edges.
-    
-    Alternatively, the function `select` can be provided instructing the method where to flip colors.
+    This implements a quadratic-time max-cut heuristic to eliminate H-edges. In the future, we may want
+    to implement a linear-time version that does a worse job for very large graphs.
 
     :param g: A ZX-graph.
-    :param select: A function taking in vertices and returning ``True`` or ``False``.
-    :param change_gadgets: A flag saying always change gadgets to X."""
+    :param init_z: An optional set of vertices to make Z.
+    :param init_x: An optional set of vertices to make X.
+    """
 
     ty = g.types()
-    if select is None:
-        remaining = set()
-        for w in g.vertices():
-            if change_gadgets and g.is_phase_gadget(w):
-                if vertex_is_zx(ty[w]):
-                    g.set_type(w, toggle_vertex(ty[w]))
-                    for e in g.incident_edges(w):
-                        g.set_edge_type(e, toggle_edge(g.edge_type(e)))
-            else:
-                remaining.add(w)
-        while len(remaining) > 0:
-            v = next(iter(remaining))
-            # if v is a boundary, set `flip` such that its adjacent edge will not be an H-edge afterwards
-            if ty[v] == VertexType.BOUNDARY and g.incident_edges(v)[0] == EdgeType.SIMPLE:
-                flip = True
-            else:
-                flip = False
-            nhd = set([v])
-            while len(nhd) > 0:
-                for w in nhd:
-                    if flip and vertex_is_zx(ty[w]):
-                        g.set_type(w, toggle_vertex(ty[w]))
-                        for e in g.incident_edges(w):
-                            g.set_edge_type(e, toggle_edge(g.edge_type(e)))
-                flip = not flip
-                remaining -= nhd
-                nhd = set.union(*(set(g.neighbors(w)) for w in nhd)).intersection(remaining)
+    vs0, vs1 = max_cut(g, init_z, init_x)
+    for v in vs0:
+        if ty[v] == VertexType.X:
+            g.set_type(v, VertexType.Z)
+            for e in g.incident_edges(v):
+                g.set_edge_type(e, toggle_edge(g.edge_type(e)))
+    for v in vs1:
+        if ty[v] == VertexType.Z:
+            g.set_type(v, VertexType.X)
+            for e in g.incident_edges(v):
+                g.set_edge_type(e, toggle_edge(g.edge_type(e)))
 
-    else:
-        for v in g.vertices():
-            if g.is_phase_gadget(v) and select(v) and vertex_is_zx(ty[v]):
-                g.set_type(v, toggle_vertex(ty[v]))
-                for e in g.incident_edges(v):
-                    g.set_edge_type(e, toggle_edge(g.edge_type(e)))
-
+def gadgetize(g: BaseGraph[VT,ET], graphlike:bool=True):
+    """Convert every non-Clifford phase to a phase gadget"""
+    for v in list(g.vertices()):
+        p = g.phase(v)
+        if not phase_is_clifford(p) and g.vertex_degree(v) > 1:
+            y = g.add_vertex(VertexType.Z, -2, g.row(v))
+            if graphlike:
+                x = g.add_vertex(VertexType.Z, -1, g.row(v))
+                g.add_edge((x, y), EdgeType.HADAMARD)
+                g.add_edge((v, x), EdgeType.HADAMARD)
+            else:
+                x = g.add_vertex(VertexType.X, -1, g.row(v))
+                g.add_edge((x, y), EdgeType.SIMPLE)
+                g.add_edge((v, x), EdgeType.SIMPLE)
+            g.set_phase(y, p)
+            g.set_phase(v, 0)
 
 def tcount(g: Union[BaseGraph[VT,ET], Circuit]) -> int:
     """Returns the amount of nodes in g that have a non-Clifford phase."""
@@ -369,7 +391,7 @@ def tcount(g: Union[BaseGraph[VT,ET], Circuit]) -> int:
     count = 0
     phases = g.phases()
     for v in g.vertices():
-        if phases[v]!=0 and phases[v].denominator > 2:
+        if not phase_is_clifford(phases[v]):
             count += 1
     return count
 
@@ -577,6 +599,20 @@ def to_graph_like(g: BaseGraph[VT,ET]) -> None:
 
     assert(is_graph_like(g,strict=True))
 
+def unfuse_non_cliffords(g: BaseGraph[VT,ET]) -> None:
+    """Unfuses any non-Clifford spider into a magic state connected to a phase-free spider
+
+    Replaces any spider with a non-Clifford phase p and degree n > 1 with a degree 1 spider with phase p connected to
+    a degree n+1 spider with phase 0.
+    """
+    for v in list(g.vertices()):
+        ty = g.type(v)
+        p = g.phase(v)
+        if vertex_is_zx(ty) and not phase_is_clifford(p) and g.vertex_degree(v) > 1:
+            v1 = g.add_vertex(ty, qubit=-1, row=g.row(v), phase=p)
+            g.set_phase(v, 0)
+            g.add_edge((v, v1))
+
 def to_clifford_normal_form_graph(g: BaseGraph[VT,ET]) -> None:
     """Converts a graph that is Clifford into the form described by the right-hand side of eq. (11) of
     *Graph-theoretic Simplification of Quantum Circuits with the ZX-calculus* (https://arxiv.org/abs/1902.03178).
@@ -669,4 +705,5 @@ def to_clifford_normal_form_graph(g: BaseGraph[VT,ET]) -> None:
     for q1,q2 in czs:
         g.add_edge((cz_v[q1],cz_v[q2]),EdgeType.HADAMARD)
     
-    to_rg(g,select=lambda v: v in v_outputs)
+    # TODO: re-introduce correct to_rg behaviour here
+    #to_rg(g,select=lambda v: v in v_outputs)

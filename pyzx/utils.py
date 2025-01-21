@@ -136,6 +136,46 @@ tikz_classes = {
     'W-io-edge': 'W io edge'
 }
 
+original_colors = {
+    'edge': '#000000',
+    'Hedge': '#0088ff',
+    'Xedge': '#999999',
+    'boundary': '#000000',
+    'X': '#ff8888',
+    'Y': '#aabbff',
+    'Z': '#ccffcc',
+    'H': '#ffff66',
+    'W': '#000000',
+    'Zalt': '#ccffcc',
+    'Walt': '#000000',
+    'Xdark': '#ff8888',
+    'Ydark': '#aabbff',
+    'Zdark': '#99dd99',
+}
+
+rgb_colors = original_colors.copy()
+rgb_colors['Y'] = original_colors['Z']
+rgb_colors['Z'] = original_colors['Y']
+rgb_colors['Ydark'] = original_colors['Zdark']
+rgb_colors['Zdark'] = original_colors['Ydark']
+
+grayscale_colors = {
+    'edge': '#000000',
+    'Hedge': '#888888',
+    'Xedge': '#dddddd',
+    'boundary': '#000000',
+    'X': '#666666',
+    'Y': '#9999dd',
+    'Z': '#dddddd',
+    'H': '#eeeeee',
+    'W': '#000000',
+    'Zalt': '#dddddd',
+    'Walt': '#000000',
+    'Xdark': '#666666',
+    'Ydark': '#9999dd',
+    'Zdark': '#dddddd',
+}
+
 class Settings(object): # namespace class
     mode: Literal["notebook", "browser", "shell", ""] = "shell"
     drawing_backend: Literal["d3","matplotlib"] = "d3"
@@ -148,6 +188,14 @@ class Settings(object): # namespace class
     show_labels: bool = False
     tikz_classes: Dict[str,str] = tikz_classes
     default_qasm_version: int = 2
+    colors: Dict[str, str] = original_colors
+    javascript_importmap: Dict[str, Any] = {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.172.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.172.0/examples/jsm/",
+            "d3": "https://cdn.jsdelivr.net/npm/d3@5.16.0/dist/d3.min.js",
+        }
+    }
 
 settings = Settings()
 
