@@ -302,7 +302,15 @@ class TestGraphIO(unittest.TestCase):
 
         d = g.to_dict()
         g2 = Graph.from_json(d)
+        self.assertTrue(g2.backend,'multigraph')
+        self.assertFalse(g2.get_auto_simplify())
         self.assertEqual(g.num_edges(), g2.num_edges())
+
+        js = json.dumps(d)
+        g3 = Graph.from_json(js)
+        self.assertTrue(g3.backend,'multigraph')
+        self.assertFalse(g3.get_auto_simplify())
+        self.assertEqual(g.num_edges(), g3.num_edges())
 
     def test_load_json_old_format(self):
         js = json.dumps(test_graph_old_format)

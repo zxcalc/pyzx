@@ -351,7 +351,8 @@ def dict_to_graph(d: Dict[str,Any], backend: Optional[str]=None) -> BaseGraph:
     if g.backend == 'multigraph':
         if TYPE_CHECKING:
             assert isinstance(g, Multigraph)
-        g.set_auto_simplify(d.get('auto_simplify', True))
+        b = True if d.get('auto_simplify', True) in ('true', True) else False
+        g.set_auto_simplify(b)
     for v_d in d['vertices']:
         pos = v_d['pos']
         v = v_d['id']
