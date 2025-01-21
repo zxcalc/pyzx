@@ -220,8 +220,8 @@ class TestGraphCircuitMethods(unittest.TestCase):
         g2.compose(g)
         self.assertTrue(compare_tensors(g2,identity(2), False))
 
-
-test_graph = {'node_vertices': {
+# A graph in the old format (a Quantomatic .qgraph file)
+test_graph_old_format = {'node_vertices': {
                    'v0': {'annotation': {'coord': [1.0, -1.0]},
                           'data': {'type': 'X', 'value': '\\pi'}},
                    'v1': {'annotation': {'coord': [2.0, -1.0]},
@@ -482,13 +482,13 @@ test_graph = {'node_vertices': {
 
 class TestGraphIO(unittest.TestCase):
 
-    def test_load_json(self):
-        js = json.dumps(test_graph)
+    def test_load_json_old_format(self):
+        js = json.dumps(test_graph_old_format)
         g = Graph.from_json(js)
         js2 = g.to_json()
 
     def test_load_tikz(self):
-        js = json.dumps(test_graph)
+        js = json.dumps(test_graph_old_format)
         g = Graph.from_json(js)
         tikz = g.to_tikz()
         g2 = Graph.from_tikz(tikz, warn_overlap=False)
