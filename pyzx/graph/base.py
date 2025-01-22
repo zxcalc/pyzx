@@ -729,13 +729,12 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         return tensor_to_matrix(tensorfy(self, preserve_scalar), self.num_inputs(), self.num_outputs())
 
     def to_dict(self, include_scalar:bool=True) -> Dict[str, Any]:
-        """Returns a json representation of the graph that follows the Quantomatic .qgraph format.
-        Convert back into a graph using :meth:`from_json`."""
+        """Returns a dictionary representation of the graph, which can then be converted into json."""
         from .jsonparser import graph_to_dict
         return graph_to_dict(self, include_scalar)
 
     def to_json(self, include_scalar:bool=True) -> str:
-        """Returns a json representation of the graph that follows the Quantomatic .qgraph format.
+        """Returns a json representation of the graph.
         Convert back into a graph using :meth:`from_json`."""
         from .jsonparser import graph_to_json
         return graph_to_json(self, include_scalar)
@@ -755,7 +754,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         """Converts the given .qgraph json string into a Graph.
         Works with the output of :meth:`to_json`."""
         from .jsonparser import json_to_graph
-        return json_to_graph(js,cls.backend)
+        return json_to_graph(js)
 
     @classmethod
     def from_tikz(cls, tikz: str, warn_overlap:bool= True, fuse_overlap:bool = True, ignore_nonzx:bool = False) -> BaseGraph[VT,ET]:

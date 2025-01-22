@@ -177,7 +177,7 @@ class Multigraph(BaseGraph[int,Tuple[int,int,EdgeType]]):
         elif edgetype == EdgeType.HADAMARD: e.add(h=1)
         else: e.add(w_io=1)
 
-        if self._auto_simplify:
+        if self._auto_simplify: # This currently can keep a parallel regular and Hadamard edge
             t1 = self.ty[s]
             t2 = self.ty[t]
             if (vertex_is_zx_like(t1) and vertex_is_zx_like(t2)):
@@ -189,16 +189,25 @@ class Multigraph(BaseGraph[int,Tuple[int,int,EdgeType]]):
                         else:
                             self.add_to_phase(s, 1)
                     self.scalar.add_power(-e.h)
+                    self.nedges = self.nedges - e.h
                     e.h = 0
                 else: # apply spider and hopf to merge/cancel parallel edges
                     if t1 == t2:
-                        e.s = 1 if e.s > 0 else 0
-                        self.scalar.add_power(-2 * (e.h - (e.h % 2)))
-                        e.h = e.h % 2
+                        if e.s > 0:
+                            self.nedges = self.nedges - e.s + 1
+                            e.s = 1
+                        if e.h > 0:
+                            self.nedges = self.nedges - (e.h - e.h % 2)
+                            self.scalar.add_power(-2 * (e.h - (e.h % 2)))
+                            e.h = e.h % 2
                     else:
-                        e.h = 1 if e.h > 0 else 0
-                        self.scalar.add_power(-2 * (e.s - (e.s % 2)))
-                        e.s = e.s % 2
+                        if e.h > 0:
+                            self.nedges = self.nedges - e.h + 1
+                            e.h = 1
+                        if e.s > 0:
+                            self.nedges = self.nedges - (e.s - e.s % 2)
+                            self.scalar.add_power(-2 * (e.s - (e.s % 2)))
+                            e.s = e.s % 2
             if e.is_empty():
                 del self.graph[s][t]
                 del self.graph[t][s]
