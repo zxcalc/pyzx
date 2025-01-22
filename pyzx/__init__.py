@@ -25,7 +25,7 @@ from .drawing import *
 from .simplify import *
 from .optimize import *
 from .extract import *
-from .io import *
+from .graph.jsonparser import *
 from .tensor import *
 from .local_search.simulated_annealing import anneal
 from .local_search.genetic import GeneticOptimizer
