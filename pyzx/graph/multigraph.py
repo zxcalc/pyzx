@@ -17,7 +17,7 @@
 import itertools
 from collections import Counter
 from fractions import Fraction
-from typing import Tuple, Dict, Set, Any
+from typing import Tuple, Dict, Set, Union, Any
 
 from .base import BaseGraph
 
@@ -436,3 +436,10 @@ class Multigraph(BaseGraph[int,Tuple[int,int,EdgeType]]):
             self._vdata[vertex][key] = val
         else:
             self._vdata[vertex] = {key:val}
+
+    @classmethod
+    def from_json(cls, js:Union[str,Dict[str,Any]]) -> 'Multigraph':
+        """Converts the given .qgraph json string into a Multigraph.
+        Works with the output of :meth:`to_json`."""
+        from .jsonparser import json_to_graph
+        return json_to_graph(js,backend='multigraph') # type:ignore
