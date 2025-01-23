@@ -150,7 +150,7 @@ Below is listed the content of ``drawing.py``.
    :undoc-members:
 
 
-Tikz and Quantomatic functionality
+Tikz functionality
 ----------------------------------
 
 .. _tikz:
@@ -164,12 +164,4 @@ Below is listed the content of ``tikz.py``.
    :undoc-members:
 
 .. _quanto:
-
-Below is listed the content of ``quantomatic.py``.
-
-.. module:: quantomatic
-
-.. automodule:: pyzx.quantomatic
-   :members:
-   :undoc-members:
 
