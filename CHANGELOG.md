@@ -6,6 +6,42 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 Right now this project is in Beta and does not yet follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Hence, occasionally changes will be backwards incompatible (although they will all be documented here).
 
+## [0.9.0] - 2025-01-30
+
+This new version comes with some new big features and changes.
+
+PyZX now supports a `Multigraph` backend that allows graphs to have multiple edges. Meaning that parallel edges between spiders don't have to be automatically simplified to a single edge. This makes it easier to work with ZH- and ZW-diagrams, and makes it easier to implement other extensions like qudits in the future. As all rewrites have to be reworked to work with multigraphs it is very likely that there are still some semantics breaking things going on. If you use multigraphs be sure to regularly check whether semantics are preserved.
+
+The other big change is that certain features are now deprecated. All Quantomatic features have been removed, since Quantomatic has not seen any major developments in the last 5 years. The file format for saving `Graph`s to json was based on the Quantomatic format and hence was quite complicated. A new simplified future proof format that also supports the new multigraphs is now implemented and replaces the old format. Graphs in the old format can still be loaded in for backwards compatibility. The diagram editor built into PyZX has also been deprecated as [ZXLive](https://github.com/zxcalc/zxlive) can now do pretty much everything better. It is still usable, but requires an older version of `ipywidgets` which was causing issues with compatibility with other libraries.
+
+There are also some new experimental functions and features: calculating an extended gflow and Pauli flow for ZX-diagrams, calculating and visualising a Pauli web, and drawing diagrams in three dimensions.
+
+### Added
+- Multigraph graph backend that allows parallel edges between nodes. Many simplification routines work with the Multigraph backend, but some might still have some unexpected behaviour. Tread carefully. Many of the features and upgrades were implemented by @akissinger and @RazinShaikh.
+- Can now compute focussed gflows, and extended gflows that can deal with Pauli vertices (see functions in `gflow.py`). Courtesy of @akissinger.
+- Compute and draw Pauli webs for ZX-diagrams with Pauli flow. See `demos/PauliWebs.ipynb` and `pauliweb.py`. Courtesy of @akissinger.
+- D3 drawing now supports drawing in 3D. Use function `drawing.draw_3d` for this. Courtesy of @akissinger.
+- Some new useful rewrites for H-boxes in `hsimplify`: A `replace_hadamard` that replaces an H-box with a H-edge, and `had_edge_to_hbox` that does the opposite. Courtesy of @jvdwetering.
+- A new function `cut_vertex` in `simulate` to decompose a single graph into two graphs with the vertex cut away. [link](https://github.com/zxcalc/pyzx/pull/216). Courtesy of @mjsutcliffe99.
+- `generate.qft` for generating a quantum Fourier transform circuit. Courtesy of @akissinger.
+- QASM parser now understands multi-character register names. [link](https://github.com/zxcalc/pyzx/pull/279). Courtesy of @contra-bit.
+- `Circuit.verify_equality` function now takes optional parameter `up_to_global_phase`. Courtesy of @akissinger.
+
+
+### Changed
+- PyZX now uses a new simplified future-proof format for storing `Graph` instances, that also supports the new Multigraph backend. The old format based on the Quantomatic format still works, but is no longer the default.
+- All functionality related to Quantomatic has been removed.
+- The built-in editor for diagrams is now deprecated, and the version requirements for `ipywidgets` necessary for it to work have been removed.
+
+### Fixed
+- Bug in `to_graph_like` [link](https://github.com/zxcalc/pyzx/issues/195).
+- Some more reasonable checks and error messages when calling `full_reduce` wrongly [link](https://github.com/zxcalc/pyzx/pull/212). Courtesy of @dlyongemallo.
+- Scalar now correctly updates when creating `.adjoint()` of a Graph [link](https://github.com/zxcalc/pyzx/pull/230). Courtesy of @rafaelha.
+- Several fixes for the ``Poly`` class for better support of symbolic angles. Courtesy of @lia-approves and @RazinShaikh.
+- Can now generate single-qubit Clifford+T circuits using `generate.cliffordTmeas` [link](https://github.com/zxcalc/pyzx/pull/263). Courtesy of @amirebrahimi.
+- Fixed bug in `simplify.to_clifford_normal_form_graph` [link](https://github.com/zxcalc/pyzx/pull/269). Courtesy of @rafaelha.
+- Bug in the cat decomposition in `simulate.py`. [link](https://github.com/zxcalc/pyzx/pull/271). Courtesy of @alexkoziell.
+
 ## [0.8.0] - 2024-02-14
 
 This release includes breaking changes!
