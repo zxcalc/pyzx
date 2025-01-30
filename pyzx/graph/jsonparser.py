@@ -431,22 +431,3 @@ def to_graphml(g: BaseGraph[VT,ET]) -> str:
     return gml
 
 
-# class ComplexEncoder(json.JSONEncoder):
-#     def default(self, obj):
-#         if isinstance(obj, complex):
-#             return str(obj)
-#         return super().default(obj)
-
-# class ComplexDecoder(json.JSONDecoder):
-#     def __init__(self, *args, **kwargs):
-#         json.JSONDecoder.__init__(self, object_hook=self.object_hook, *args, **kwargs)
-
-#     def object_hook(self, dct):
-#         for k, v in dct.items():
-#             if isinstance(v, str):
-#                 try:
-#                     dct[k] = complex(v)
-#                 except ValueError:
-#                     pass
-#         return dct
-
