@@ -1,7 +1,7 @@
 typing-extensions>=3.7.4
 numpy>=1.14
 matplotlib>=2.2
-ipywidgets>=7.5,<8
+ipywidgets>=7.5
 pyperclip>=1.8.1
 sphinx>=2.3,<7  # see: https://github.com/readthedocs/readthedocs.org/issues/10279
 sphinx_autodoc_typehints>=1.10

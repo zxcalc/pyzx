@@ -46,13 +46,19 @@ These functions are probably best used in some type of loop or function so that 
 The ZX-diagram editor
 ---------------------
 
-If you are using a Jupyter notebook, probably the best way to build an arbitrarily shaped ZX-diagram is to use the built-in graphical editor. If you have a ZX-diagram ``g``, call ``e = zx.editor.edit(g)`` to start a new editor instance. The output of the cell should be the editor, and should look something like this:
+.. warning::
+	The newer JupyterLab as opposed to the older Jupyter Notebook uses a different framework for widgets which is currently not compatible with the widgets used in PyZX. For the editor to work you therefore must use the classic notebook interface. If you are using JupyterLab you can find this interface by going to 'Help -> Launch Classic Notebook'. In addition, versions ``ipywidgets>=8`` and ``notebook>=6.5`` break the editor widget. The latest versions known to work is ``ipywidgets==7.7.1`` and ``notebook==6.4.12``.
+
+.. warning::
+	The current PyZX version does not include this restriction on the versions of ``ipywidgets`` and ``notebook`` to increase compatibility with other libraries, so if you want to use the editor, you have to manually make sure you have the correct version of these libraries. There is no further development on the editor, so you can consider it deprecated. If you want to have a nice ZX-diagram editor that is compatible with PyZX, consider using ZXLive.
+
+If you are using a Jupyter notebook, probably the best way to build an arbitrarily shaped ZX-diagram in PyZX is to use the built-in graphical editor. If you don't mind using additional libraries: see the information on ZXLive below.
+If you have a ZX-diagram ``g``, call ``e = zx.editor.edit(g)`` to start a new editor instance. The output of the cell should be the editor, and should look something like this:
 
 .. figure::  _static/editor_example.png
    :align:   center
 
-.. warning::
-	The newer JupyterLab as opposed to the older Jupyter Notebook uses a different framework for widgets which is currently not compatible with the widgets used in PyZX. For the editor to work you therefore must use the classic notebook interface. If you are using JupyterLab you can find this interface by going to 'Help -> Launch Classic Notebook'. In addition, versions ``ipywidgets>=8`` and ``notebook>=6.5`` break the editor widget. The latest versions known to work is ``ipywidgets==7.7.1`` and ``notebook==6.4.12``.
+
 
 Ctrl-clicking (Command-clicking for Mac users) on the view of the graph will add a new vertex of the type specified by 'Vertex type' (so a Z-vertex in the above example). Click 'Vertex type' to change the type of vertex to be added, or with the editor window selected, use the hotkey 'X'.
 
@@ -73,3 +79,24 @@ With a set of vertices selected, you will see some of the buttons beneath the ed
 Sometimes it is useful to see which linear map your ZX-diagram implements. If you create the editor with the command ``e = zx.editor.edit(g,show_matrix=True)``, this will show a Latex-styled matrix beneath the editor with the linear map your ZX-diagram implements. This matrix is automatically updated after every change you make to the graph. Note that this only works if your ZX-diagram does not have too many inputs and outputs (at most 4). It automatically regards boundary vertices 'pointing right' as inputs, and boundary vertices 'pointing left' as outputs. You can change this manually by changing ``g.inputs`` and ``g.outputs``.
 
 If you click 'Save snapshot', a copy of the graph is saved in the list ``e.snapshots``. When you press 'Load in Tikzit', all snapshots are loaded into a Tikz format parseable by `Tikzit <https://tikzit.github.io>`_. In order to use this functionality you have to point ``zx.settings.tikzit_location`` to a valid executable.
+
+ZXLive
+----------
+
+`ZXLive <https://github.com/zxcalc/zxlive>`_ (see also the documentation `here <https://zxlive.readthedocs.io/en/latest/gettingstarted.html>`_) is a graphical user interface for constructing ZX-diagrams and doing automated rewriting with them that is built on top of PyZX. The interface is inspired by `Tikzit <https://tikzit.github.io>`_ so if you are familiar with that, it should be easy enough to use.
+
+ZXLive is built using Qt, and this supplies a magic Jupyter command to open the app from the notebook, which allows you to dynamically interact with that. To see how this works, add the following cell to a Jupyter notebook with ZXLive installed::
+
+	%gui qt6
+	from zxlive import app
+	g =  zx.Graph()
+	g.add_vertex(zx.VertexType.Z, 0, 0)
+	g.add_vertex(zx.VertexType.X, 0, 1)
+	g.add_edge((0, 1))
+	zx.draw(g)
+
+	zxl = app.get_embedded_app()
+	zxl.edit_graph(g, 'g1')
+	zxl.edit_graph(g, 'g2') # You can open multiple copies of the same graph into separate tabs
+
+Any changes made in the ZXLive graphs are not immediately updated in PyZX. Instead you must extract a copy from ZXLive using ``zxl.get_copy_of_graph('graphname')``.

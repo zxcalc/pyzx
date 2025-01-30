@@ -20,11 +20,11 @@ import os
 from fractions import Fraction
 import traceback
 
-from typing import Callable, Optional, List, Tuple, Set, Dict, Any, Union
+from typing import Optional, List, Tuple, Set, Dict, Any, Union
 
 import pyperclip # type: ignore # Needed for clipboard actions
 
-from .utils import EdgeType, VertexType, toggle_edge, vertex_is_zx, toggle_vertex
+from .utils import VertexType
 from .utils import settings, get_mode, phase_to_s, FloatInt
 from .drawing import matrix_to_latex
 from .graph import Scalar
@@ -104,6 +104,8 @@ Run %%pip install ipywidgets in a cell in your notebook to install the correct p
 def load_js() -> None:
 	if get_mode() != 'notebook':
 		raise Exception(ERROR_STRING)
+	if not widgets.__version__.startswith('7'):
+		raise Exception("The editor is only supported with ipywidgets>=7.5,<8. Upgrade or downgrade your install before using it.")
 	with open(os.path.join(settings.javascript_location,"zx_editor_widget.js")) as f:
 		data1 = f.read()
 	with open(os.path.join(settings.javascript_location,"zx_editor_model.js")) as f:
