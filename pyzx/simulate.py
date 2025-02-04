@@ -680,10 +680,10 @@ def check_catn(g: BaseGraph[VT, ET], vertex: VT, n: int) -> bool:
         edge_type = g.edge_type(g.edge(vertex, neighbor))
         if (
           (edge_type != EdgeType.HADAMARD
-           or neighbor_type is not vertex_type)
+           or neighbor_type != vertex_type)
           and
           (edge_type != EdgeType.SIMPLE
-           or neighbor_type is not toggle_vertex(vertex_type))
+           or neighbor_type != toggle_vertex(vertex_type))
           ):
             raise ValueError(
                 f'The cat {n} decomposition must act on a spider with {n} '
