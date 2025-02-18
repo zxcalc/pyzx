@@ -320,8 +320,13 @@ class Multigraph(BaseGraph[int,Tuple[int,int,EdgeType]]):
     #                    if v1 > v0:
     #                        yield (v0,v1)
 
-    def edge(self, s, t):
-        return (s,t) if s < t else (t,s)
+    def edge(self, s, t, et: EdgeType=EdgeType.SIMPLE):
+        s, t = (s, t) if s < t else (t, s)
+        e = self.graph[s][t]
+        if e.get_edge_count(et):
+            return (s, t, et)
+        return next(self.edges(s, t))
+
 
     def edge_set(self):
         return Counter(self.edges())
