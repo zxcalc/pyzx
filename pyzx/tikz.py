@@ -367,7 +367,7 @@ def tikz_to_graph(
         src = src.replace("(","").replace(")","").strip()
         tgt = tgt.replace("(","").replace(")","").replace(";","").strip()
 
-        e = g.edge(index_dict[int(src)],index_dict[int(tgt)])
+        e = index_dict[int(src)], index_dict[int(tgt)]
 
         if style.lower() in synonyms_edge:
             if e in etab:
