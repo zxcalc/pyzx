@@ -114,18 +114,19 @@ def circuit_to_graph(c: Circuit, compress_rows:bool=True, backend:Optional[str]=
         if gate.name == 'InitAncilla':
             l = gate.label # type: ignore
             try:
-                q_mapper.add_label(l)
+                q_mapper.add_label(l, compress_rows)
             except ValueError:
                 raise ValueError("Ancilla label {} already in use".format(str(l)))
-            v = g.add_vertex(VertexType.Z, q_mapper.to_qubit(l), q_mapper.next_row(l))
+            v = g.add_vertex(VertexType.Z, q_mapper.to_qubit(l), q_mapper.next_row(l)-1)
             q_mapper.set_prev_vertex(l, v)
+            # q_mapper.advance_next_row(l)
         elif gate.name == 'PostSelect':
             l = gate.label # type: ignore
             try:
                 q = q_mapper.to_qubit(l)
                 r = q_mapper.next_row(l)
                 u = q_mapper.prev_vertex(l)
-                q_mapper.remove_label(l)
+                q_mapper.remove_label(l, compress_rows)
             except ValueError:
                 raise ValueError("PostSelect label {} is not in use".format(str(l)))
             v = g.add_vertex(VertexType.Z, q, r)

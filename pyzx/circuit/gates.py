@@ -112,7 +112,7 @@ class TargetMapper(Generic[VT]):
         """
         self._prev_vs[l] = v
 
-    def add_label(self, l: int) -> None:
+    def add_label(self, l: int, compress_rows: bool=True) -> None:
         """
         Adds a tracked label.
 
@@ -124,9 +124,13 @@ class TargetMapper(Generic[VT]):
         self.set_qubit(l, q)
         r = self.max_row()
         self.set_all_rows(r)
-        self.set_next_row(l, r+1)
 
-    def remove_label(self, l: int) -> None:
+        if compress_rows:
+            self.set_next_row(l, r)
+        else:
+            self.set_next_row(l, r+1)
+
+    def remove_label(self, l: int, compress_rows: bool=True) -> None:
         """
         Removes a tracked label.
 
@@ -134,7 +138,11 @@ class TargetMapper(Generic[VT]):
         """
         if l not in self._qubits:
             raise ValueError("Label {} not in use".format(str(l)))
-        self.set_all_rows(self.max_row()+1)
+        
+        if compress_rows:
+            self.set_all_rows(self.max_row())
+        else:
+            self.set_all_rows(self.max_row()+1)
         del self._qubits[l]
         del self._rows[l]
         del self._prev_vs[l]
@@ -1140,11 +1148,13 @@ class InitAncilla(Gate):
     name = 'InitAncilla'
     def __init__(self, label):
         self.label = label
+        self.target = label
 
 class PostSelect(Gate):
     name = 'PostSelect'
     def __init__(self, label):
         self.label = label
+        self.target = label
 
     def to_graph(self, g, labels, qs, _cs, rs, _crs):
         v = g.add_vertex(VertexType.Z, self.label, 0)
