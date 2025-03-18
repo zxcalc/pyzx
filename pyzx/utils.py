@@ -158,6 +158,7 @@ rgb_colors['Y'] = original_colors['Z']
 rgb_colors['Z'] = original_colors['Y']
 rgb_colors['Ydark'] = original_colors['Zdark']
 rgb_colors['Zdark'] = original_colors['Ydark']
+rgb_colors['Hedge'] = '#ff6600'
 
 grayscale_colors = {
     'edge': '#000000',
