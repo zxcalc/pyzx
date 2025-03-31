@@ -265,7 +265,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         return bool(self.grounds())
 
     # Override and set to true if the backend supports parallel edges
-    def multigraph(self):
+    def multigraph(self) -> bool:
         return False
 
 
