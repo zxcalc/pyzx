@@ -317,6 +317,10 @@ def match_bialgebra_op(g: BaseGraph[VT,ET],
     type2_vertices = [v for v in candidates if g.type(v) == vtype2]
     if len(type1_vertices) <= 1 or len(type2_vertices) <= 1:
         return None
+    #the vertices must be phase-free
+    for v in type1_vertices + type2_vertices:
+        if g.phase(v) != 0:
+            return None
     # the vertices must have one external edge
     for v1 in type1_vertices:
         if g.vertex_degree(v1) != len(type2_vertices) + 1:
