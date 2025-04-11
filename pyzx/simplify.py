@@ -355,6 +355,25 @@ def to_rg(g: BaseGraph[VT,ET], init_z: Optional[Set[VT]]=None, init_x: Optional[
     """
 
     ty = g.types()
+
+    if init_z is None: init_z = set()
+    if init_x is None: init_x = set()
+
+    # initialise boundaries to help max_cut prioritise removing H-edges on the boundary
+    for b in g.inputs() + g.outputs():
+        v = next(iter(g.neighbors(b)))
+        e = g.edge(b, v)
+        if g.edge_type(e) == EdgeType.HADAMARD:
+            if g.type(v) == VertexType.Z:
+                init_z.add(b)
+            elif g.type(v) == VertexType.X:
+                init_x.add(b)
+        else:
+            if g.type(v) == VertexType.Z:
+                init_x.add(b)
+            elif g.type(v) == VertexType.X:
+                init_z.add(b)
+
     vs0, vs1 = max_cut(g, init_z, init_x)
     for v in vs0:
         if ty[v] == VertexType.X:
