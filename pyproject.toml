@@ -1,0 +1,39 @@
+[project]
+name = "pyzx"
+authors = [{ name = "Quantomatic", email = "john@vdwetering.name"}]
+readme = "readme.md"
+dependencies = ["typing_extensions>=3.7.4",
+                      "numpy>=1.14",
+                      "pyperclip>=1.8.1",
+                      "tqdm>=4.56.0",
+                      "ipywidgets>=7.5",
+                      "lark>=1.2.2"]
+requires-python = ">=3.9"
+
+[tool.poetry]
+version = "0.9.0"
+description = "Library for quantum circuit rewriting and optimisation using the ZX-calculus"
+license = "Apache-2.0"
+classifiers = [
+        "License :: OSI Approved :: Apache Software License",
+        "Programming Language :: Python :: 3",
+        "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
+        "Programming Language :: Python :: 3.12",
+        "Topic :: Software Development :: Libraries :: Python Modules",
+        "Development Status :: 4 - Beta",
+    ]
+packages= [{include ="pyzx"}]
+include = ["pyzx.circuit", "pyzx.graph", "pyzx.routing", "pyzx.local_search", "pyzx.scripts"]
+
+[project.urls]
+Homepage = "https://zxcalculus.com/pyzx.html"
+Documentation = "https://pyzx.readthedocs.io/en/latest/#"
+Repository = "https://github.com/zxcalc/pyzx"
+"Bug Tracker" = "https://github.com/zxcalc/pyzx/issues"
+Changelog = "https://github.com/zxcalc/pyzx/blob/master/CHANGELOG.md"
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
