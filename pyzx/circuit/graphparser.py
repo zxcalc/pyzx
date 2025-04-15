@@ -114,33 +114,36 @@ def circuit_to_graph(c: Circuit, compress_rows:bool=True, backend:Optional[str]=
         if gate.name == 'InitAncilla':
             l = gate.label # type: ignore
             try:
-                q_mapper.add_label(l, compress_rows)
+                q_mapper.add_label(l, q_mapper.max_row())
             except ValueError:
                 raise ValueError("Ancilla label {} already in use".format(str(l)))
-            v = g.add_vertex(VertexType.Z, q_mapper.to_qubit(l), q_mapper.next_row(l)-1)
+            v = g.add_vertex(VertexType.Z, q_mapper.to_qubit(l), q_mapper.next_row(l))
             q_mapper.set_prev_vertex(l, v)
-            # q_mapper.advance_next_row(l)
+            q_mapper.advance_next_row(l)
         elif gate.name == 'PostSelect':
             l = gate.label # type: ignore
             try:
                 q = q_mapper.to_qubit(l)
                 r = q_mapper.next_row(l)
                 u = q_mapper.prev_vertex(l)
-                q_mapper.remove_label(l, compress_rows)
+                q_mapper.remove_label(l)
+                q_mapper.shift_all_rows(1)
             except ValueError:
                 raise ValueError("PostSelect label {} is not in use".format(str(l)))
             v = g.add_vertex(VertexType.Z, q, r)
             g.add_edge((u,v),EdgeType.SIMPLE)
         else:
             if not compress_rows: #or not isinstance(gate, (ZPhase, XPhase, HAD)):
-                r = max(q_mapper.max_row(), c_mapper.max_row())
-                q_mapper.set_all_rows(r)
-                c_mapper.set_all_rows(r)
+                q_mapper.set_max_row(max(q_mapper.max_row(), c_mapper.max_row()))
+                c_mapper.set_max_row(q_mapper.max_row())
+                q_mapper.set_all_rows_to_max()
+                c_mapper.set_all_rows_to_max()
             gate.to_graph(g, q_mapper, c_mapper)
             if not compress_rows: # or not isinstance(gate, (ZPhase, XPhase, HAD)):
-                r = max(q_mapper.max_row(), c_mapper.max_row())
-                q_mapper.set_all_rows(r)
-                c_mapper.set_all_rows(r)
+                q_mapper.set_max_row(max(q_mapper.max_row(), c_mapper.max_row()))
+                c_mapper.set_max_row(q_mapper.max_row())
+                q_mapper.set_all_rows_to_max()
+                c_mapper.set_all_rows_to_max()
 
     r = max(q_mapper.max_row(), c_mapper.max_row())
     for mapper in (q_mapper, c_mapper):
