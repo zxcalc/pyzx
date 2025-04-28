@@ -1,8 +1,9 @@
 from .utils import VertexType
 from .graph import Graph
 from .linalg import Mat2
+from typing import Optional
 
-def generate_css_encoder_graph(S: Mat2, L: Mat2=None, type: str='Z-X'):
+def generate_css_encoder_graph(S: Mat2, L: Optional[Mat2]=None, type: str='Z-X'):
     """Returns a phase-free PyZX Graph of the encoder for a CSS code,
       given its stabilizers (S), logical operators (L), and normal form type (type).
       Normal form type can be 'Z-X' or 'X-Z' (Definitions 4.3.1 and 4.3.7 of Picturing Quantum Software).
