@@ -335,7 +335,7 @@ def graph_json(g: BaseGraph[VT, ET],
               'y': float(coords[v][1]),
               'z': float(coords[v][2]),
               't': g.type(v),
-              'phase': phase_to_s(g.phase(v), g.type(v)) if g.type(v) != VertexType.Z_BOX else str(get_z_box_label(g, v)),
+              'phase': phase_to_s(g.phase(v), g.type(v), poly_with_pi=True) if g.type(v) != VertexType.Z_BOX else str(get_z_box_label(g, v)),
               'ground': g.is_ground(v),
               'vdata': [(key, g.vdata(v, key))
                   for key in vdata or [] if g.vdata(v, key, None) is not None],
