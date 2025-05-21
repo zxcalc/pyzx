@@ -95,6 +95,7 @@ class Multigraph(BaseGraph[int,Tuple[int,int,EdgeType]]):
         cpy._rindex = self._rindex.copy()
         cpy._maxr = self._maxr
         cpy._vdata = self._vdata.copy()
+        cpy._edata = {k: v.copy() for k, v in self._edata.items()}
         cpy.scalar = self.scalar.copy()
         cpy._inputs = tuple(list(self._inputs))
         cpy._outputs = tuple(list(self._outputs))
@@ -223,6 +224,9 @@ class Multigraph(BaseGraph[int,Tuple[int,int,EdgeType]]):
             for v1 in vs:
                 e = self.graph[v][v1]
                 self.nedges -= e.s + e.h
+                # Remove all edata for all edge types between v and v1
+                for ty in EdgeType:
+                    self._edata.pop((min(v, v1), max(v, v1), ty), None)
                 del self.graph[v][v1]
                 if v != v1: del self.graph[v1][v]
             # remove the vertex

@@ -508,7 +508,8 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         
         for e in self.edges():
             s, t = self.edge_st(e)
-            g.add_edge((vtab[s], vtab[t]), self.edge_type(e))
+            new_e = g.add_edge((vtab[s], vtab[t]), self.edge_type(e))
+            g.set_edata_dict(new_e, self.edata_dict(e))
 
         return g
 

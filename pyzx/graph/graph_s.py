@@ -41,9 +41,9 @@ class GraphS(BaseGraph[int,Tuple[int,int]]):
         self._grounds: Set[int] = set()
 
         self._vdata: Dict[int,Any]                      = dict()
+        self._edata: Dict[Tuple[int,int],Any] = dict()
         self._inputs: Tuple[int, ...]                   = tuple()
         self._outputs: Tuple[int, ...]                  = tuple()
-        self._edata: Dict[Tuple[int,int],Any] = dict()
 
     def clone(self) -> 'GraphS':
         cpy = GraphS()
@@ -196,6 +196,7 @@ class GraphS(BaseGraph[int,Tuple[int,int]]):
             self.nedges -= 1
             del self.graph[s][t]
             del self.graph[t][s]
+            self._edata.pop((s, t), None)
 
     def remove_edge(self, edge):
         self.remove_edges([edge])
