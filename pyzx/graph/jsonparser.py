@@ -210,7 +210,7 @@ def graph_to_dict(g: BaseGraph[VT,ET], include_scalar: bool=True) -> Dict[str, A
             d_v['is_ground'] = True
         verts.append(d_v)
 
-    edges: List[Tuple[VT,VT,EdgeType]] = []
+    edges: List[Any] = []
     if g.backend == 'multigraph':
         for e in g.edges():
             edges.append(e)  # type: ignore  # We know what we are doing, for multigraphs this has the right type.
@@ -218,8 +218,12 @@ def graph_to_dict(g: BaseGraph[VT,ET], include_scalar: bool=True) -> Dict[str, A
         for e in g.edges():
             src,tgt = g.edge_st(e)
             et = g.edge_type(e)
-            edges.append((src,tgt,et))
-    
+            edata_keys = g.edata_keys(e)
+            if edata_keys:
+                edge_dict = {'src': src, 'tgt': tgt, 'type': et, 'data': {k: g.edata(e, k) for k in edata_keys}}
+                edges.append(edge_dict)
+            else:
+                edges.append((src, tgt, et)) # this is the old format, but we keep it for backwards compatibility
     d['vertices'] = verts
     d['edges']  = edges
     return d
@@ -370,8 +374,19 @@ def dict_to_graph(d: Dict[str,Any], backend: Optional[str]=None) -> BaseGraph:
             for k,val in v_d['data'].items():
                 g.set_vdata(v,k,val)
 
-    for (s,t,et) in d['edges']:
-        g.add_edge((s,t),et)
+    for edge in d['edges']:
+        if isinstance(edge, dict):
+            s = edge['src']
+            t = edge['tgt']
+            et = edge.get('type', EdgeType.SIMPLE)
+            e = g.add_edge((s, t), et)
+            if 'data' in edge:
+                for k, val in edge['data'].items():
+                    g.set_edata(e, k, val)
+        else:
+            # Backwards compatible: (s, t, et) tuple
+            s, t, et = edge
+            g.add_edge((s, t), et)
 
     return g
 

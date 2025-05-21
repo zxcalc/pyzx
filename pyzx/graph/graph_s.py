@@ -43,6 +43,7 @@ class GraphS(BaseGraph[int,Tuple[int,int]]):
         self._vdata: Dict[int,Any]                      = dict()
         self._inputs: Tuple[int, ...]                   = tuple()
         self._outputs: Tuple[int, ...]                  = tuple()
+        self._edata: Dict[Tuple[int,int],Any] = dict()
 
     def clone(self) -> 'GraphS':
         cpy = GraphS()
@@ -352,3 +353,18 @@ class GraphS(BaseGraph[int,Tuple[int,int]]):
             self._vdata[vertex][key] = val
         else:
             self._vdata[vertex] = {key:val}
+
+    def clear_edata(self, edge):
+        self._edata.pop(edge, None)
+    def edata_keys(self, edge):
+        return self._edata.get(edge, {}).keys()
+    def edata(self, edge, key, default=0):
+        if edge in self._edata:
+            return self._edata[edge].get(key, default)
+        else:
+            return default
+    def set_edata(self, edge, key, val):
+        if edge in self._edata:
+            self._edata[edge][key] = val
+        else:
+            self._edata[edge] = {key: val}

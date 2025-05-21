@@ -78,6 +78,7 @@ class Multigraph(BaseGraph[int,Tuple[int,int,EdgeType]]):
         self._grounds: Set[int]                         = set()
 
         self._vdata: Dict[int,Any]                      = dict()
+        self._edata: Dict[Tuple[int,int,EdgeType], Dict[str, Any]] = dict()
         self._inputs: Tuple[int, ...]                   = tuple()
         self._outputs: Tuple[int, ...]                  = tuple()
 
@@ -211,6 +212,7 @@ class Multigraph(BaseGraph[int,Tuple[int,int,EdgeType]]):
             if e.is_empty():
                 del self.graph[s][t]
                 del self.graph[t][s]
+                self._edata.pop((s, t, edgetype), None)
 
         return (s,t, edgetype) if s <= t else (t,s,edgetype)
 
@@ -258,6 +260,7 @@ class Multigraph(BaseGraph[int,Tuple[int,int,EdgeType]]):
         if e.is_empty():
             del self.graph[s][t]
             if s != t: del self.graph[t][s]
+            self._edata.pop(edge, None)
 
         self.nedges -= 1
 
@@ -441,6 +444,29 @@ class Multigraph(BaseGraph[int,Tuple[int,int,EdgeType]]):
             self._vdata[vertex][key] = val
         else:
             self._vdata[vertex] = {key:val}
+
+    def clear_edata(self, edge):
+        self._edata.pop(edge, None)
+
+    def edata_keys(self, edge):
+        return self._edata.get(edge, {}).keys()
+
+    def edata(self, edge, key, default=0):
+        return self._edata.get(edge, {}).get(key, default)
+
+    def set_edata(self, edge, key, val):
+        if edge in self._edata:
+            self._edata[edge][key] = val
+        else:
+            self._edata[edge] = {key: val}
+
+    def edata_dict(self, edge):
+        return dict(self._edata.get(edge, {}))
+
+    def set_edata_dict(self, edge, d):
+        self.clear_edata(edge)
+        if d:
+            self._edata[edge] = dict(d)
 
     @classmethod
     def from_json(cls, js:Union[str,Dict[str,Any]]) -> 'Multigraph':

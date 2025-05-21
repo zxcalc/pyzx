@@ -35,6 +35,7 @@ class GraphIG(BaseGraph):
 		self.graph.vs['_q'] = None
 		self.graph.vs['_r'] = None
 		self.graph.es['_t'] = None
+		self.graph.es['_edata'] = None
 		self._maxq = -1
 		self._maxr = -1
 		self.inputs = []
@@ -165,3 +166,20 @@ class GraphIG(BaseGraph):
 		except KeyError:
 			val = default
 		return val
+
+    def clear_edata(self, edge):
+        self.graph.es[edge]['_edata'] = None
+    def edata_keys(self, edge):
+        edata = self.graph.es[edge]['_edata']
+        return edata.keys() if edata else []
+    def edata(self, edge, key, default=0):
+        edata = self.graph.es[edge]['_edata']
+        if edata and key in edata:
+            return edata[key]
+        return default
+    def set_edata(self, edge, key, val):
+        edata = self.graph.es[edge]['_edata']
+        if edata:
+            edata[key] = val
+        else:
+            self.graph.es[edge]['_edata'] = {key: val}
