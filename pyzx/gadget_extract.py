@@ -28,7 +28,7 @@ def lc_boundary(g: BaseGraph[VT, ET], q: int, c: Circuit):
     for i in range(len(nhd)):
         g.add_to_phase(nhd[i], Fraction(-1,2))
         for j in range(i+1, len(nhd)):
-            g.add_edge(g.edge(nhd[i],nhd[j]), EdgeType.HADAMARD)
+            g.add_edge((nhd[i],nhd[j]), EdgeType.HADAMARD)
     c.prepend_gate(XPhase(Fraction(1,2)))
 
 

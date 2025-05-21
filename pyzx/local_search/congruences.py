@@ -38,7 +38,7 @@ def toggle_edge(g, v1, v2):
     if g.connected(v1, v2):
         g.remove_edge(g.edge(v1, v2))
     else:
-        g.add_edge(g.edge(v1, v2), edgetype=EdgeType.HADAMARD)
+        g.add_edge((v1, v2), edgetype=EdgeType.HADAMARD)
 
 def toggle_subset_connectivity(g, vs1, vs2):
     """Toggles the connectivity between two subsets of spiders in a graph-like ZX-diagram."""
@@ -67,14 +67,14 @@ def unfuse(g, v):
 
     # unfuse the phase
     g.set_phase(v, phase=0)
-    g.add_edge(g.edge(v, new_v), edgetype=EdgeType.SIMPLE)
+    g.add_edge((v, new_v), edgetype=EdgeType.SIMPLE)
 
     # transfer over the boundary connectivity to the new spider
     for b in bs:
         e = g.edge(v, b)
         b_edge_type = g.edge_type(e)
         g.remove_edge(e)
-        g.add_edge(g.edge(new_v, b), edgetype=b_edge_type)
+        g.add_edge((new_v, b), edgetype=b_edge_type)
 
     # return the reference to the new vertex
     return new_v
@@ -121,7 +121,7 @@ def lc_cong(g, v):
         row=g.row(v)
     )
     g.set_phase(v, phase=Fraction(1, 2))
-    g.add_edge(g.edge(v, new_v), edgetype=EdgeType.HADAMARD)
+    g.add_edge((v, new_v), edgetype=EdgeType.HADAMARD)
 
 
 def lc_cong2(g, v):
@@ -136,8 +136,8 @@ def lc_cong2(g, v):
                 ty=VertexType.Z,
                 qubit=g.qubit(v)-1,
                 row=g.row(v))
-        g.add_edge(g.edge(v1, v2), edgetype=EdgeType.HADAMARD)
-        g.add_edge(g.edge(v2, v), edgetype=EdgeType.HADAMARD)
+        g.add_edge((v1, v2), edgetype=EdgeType.HADAMARD)
+        g.add_edge((v2, v), edgetype=EdgeType.HADAMARD)
         g.set_phase(v, Fraction(-1,2))
     # apply_rule(g, lcomp, [[v, list(g.neighbors(v))]])
 
@@ -195,8 +195,8 @@ def pivot_cong(g, v1, v2):
 
     g.remove_edge(g.edge(v1, new_v1))
     g.remove_edge(g.edge(v2, new_v2))
-    g.add_edge(g.edge(v1, new_v2), edgetype=EdgeType.HADAMARD)
-    g.add_edge(g.edge(v2, new_v1), edgetype=EdgeType.HADAMARD)
+    g.add_edge((v1, new_v2), edgetype=EdgeType.HADAMARD)
+    g.add_edge((v2, new_v1), edgetype=EdgeType.HADAMARD)
 
 
 

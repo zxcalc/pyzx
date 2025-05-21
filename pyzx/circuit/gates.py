@@ -1243,7 +1243,7 @@ class Measurement(Gate):
                 VertexType.X,
                 self.result_bit,
                 r)
-            g.add_edge(g.edge(v,u), EdgeType.SIMPLE)
+            g.add_edge((v,u), EdgeType.SIMPLE)
             c_mapper.set_next_row(self.result_bit, r+1)
 
 gate_types: Dict[str,Type[Gate]] = {
