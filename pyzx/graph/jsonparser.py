@@ -159,13 +159,13 @@ def json_to_graph_old(js: Union[str,Dict[str,Any]], backend:Optional[str]=None) 
             g.add_edge((names[n1],names[n2]), EdgeType.W_IO)
             continue
 
-        amount = edges.get(g.edge(names[n1],names[n2]),[0,0])
+        amount = edges.get((names[n1],names[n2]),[0,0])
         amount[0] += 1
-        edges[g.edge(names[n1],names[n2])] = amount
+        edges[(names[n1],names[n2])] = amount
 
     for l in hadamards.values():
         if len(l) != 2: raise TypeError("Can't parse graphs with irregular Hadamard nodes")
-        e = g.edge(*tuple(l))
+        e = tuple(l)
         amount = edges.get(e,[0,0])
         amount[1] += 1
         edges[e] = amount
