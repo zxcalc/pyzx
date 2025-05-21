@@ -662,8 +662,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
             vert_map[v] = w
         for e in edges:
             s,t = self.edge_st(e)
-            f = g.edge(vert_map[s],vert_map[t])
-            g.add_edge(f,self.edge_type(e))
+            g.add_edge((vert_map[s],vert_map[t]), self.edge_type(e))
 
         return g
 

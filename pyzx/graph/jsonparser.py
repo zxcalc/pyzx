@@ -156,7 +156,7 @@ def json_to_graph_old(js: Union[str,Dict[str,Any]], backend:Optional[str]=None) 
             hadamards[n2].append(names[n1])
             continue
         if 'type' in edge and edge['type'] == 'w_io':
-            g.add_edge(g.edge(names[n1],names[n2]), EdgeType.W_IO)
+            g.add_edge((names[n1],names[n2]), EdgeType.W_IO)
             continue
 
         amount = edges.get(g.edge(names[n1],names[n2]),[0,0])

@@ -94,7 +94,7 @@ def spider(
             raise ValueError("Wrong number of inputs for W node: " + str(inputs))
         v_in = g.add_vertex(VertexType.W_INPUT, (outputs-1)/2, 0.8)
         v_out = g.add_vertex(VertexType.W_OUTPUT, (outputs-1)/2, 1)
-        g.add_edge(g.edge(v_in, v_out), EdgeType.W_IO)
+        g.add_edge((v_in, v_out), EdgeType.W_IO)
     elif typ == VertexType.Z_BOX:
         v_in = g.add_vertex(typ, (inputs-1)/2, 1)
         set_z_box_label(g, v_in, phase)
@@ -112,9 +112,9 @@ def spider(
         v = g.add_vertex(VertexType.BOUNDARY,i,2)
         outp.append(v)
     for w in inp:
-        g.add_edge(g.edge(v_in, w))
+        g.add_edge((v_in, w))
     for w in outp:
-        g.add_edge(g.edge(v_out, w))
+        g.add_edge((v_out, w))
 
     g.set_inputs(tuple(inp))
     g.set_outputs(tuple(outp))
