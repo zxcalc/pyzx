@@ -197,7 +197,7 @@ def graph_to_dict(g: BaseGraph[VT,ET], include_scalar: bool=True) -> Dict[str, A
         if isinstance(k, tuple) and len(k) == 3 and hasattr(k[2], 'value'):
             return str((k[0], k[1], k[2].value))
         return str(k)
-    d['edata'] = {edata_key_to_str(k): v for k, v in g._edata.items()}
+    d['edata'] = {edata_key_to_str(k): v for k, v in g._edata.items()}  # type: ignore[attr-defined]
     if g.backend == 'multigraph':
         d['auto_simplify'] = g.get_auto_simplify()
 
@@ -378,7 +378,7 @@ def dict_to_graph(d: Dict[str,Any], backend: Optional[str]=None) -> BaseGraph:
                 g.set_vdata(v,k,val)
 
     if 'edata' in d:
-        g._edata = {ast.literal_eval(k): v for k, v in d['edata'].items()}
+        g._edata = {ast.literal_eval(k): v for k, v in d['edata'].items()}  # type: ignore[attr-defined]
 
     for (s,t,et) in d['edges']:
         g.add_edge((s,t),et)
