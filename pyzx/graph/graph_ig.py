@@ -167,19 +167,19 @@ class GraphIG(BaseGraph):
 			val = default
 		return val
 
-    def clear_edata(self, edge):
-        self.graph.es[edge]['_edata'] = None
-    def edata_keys(self, edge):
-        edata = self.graph.es[edge]['_edata']
-        return edata.keys() if edata else []
-    def edata(self, edge, key, default=0):
-        edata = self.graph.es[edge]['_edata']
-        if edata and key in edata:
-            return edata[key]
-        return default
-    def set_edata(self, edge, key, val):
-        edata = self.graph.es[edge]['_edata']
-        if edata:
-            edata[key] = val
-        else:
-            self.graph.es[edge]['_edata'] = {key: val}
+	def clear_edata(self, edge):
+		self.graph.es[edge]['_edata'] = None
+	def edata_keys(self, edge):
+		edata = self.graph.es[edge]['_edata']
+		return edata.keys() if edata else []
+	def edata(self, edge, key, default=0):
+		edata = self.graph.es[edge]['_edata']
+		if edata and key in edata:
+			return edata[key]
+		return default
+	def set_edata(self, edge, key, val):
+		edata = self.graph.es[edge]['_edata']
+		if edata:
+			edata[key] = val
+		else:
+			self.graph.es[edge]['_edata'] = {key: val}
