@@ -18,6 +18,7 @@ __all__ = ['string_to_phase','to_graphml']
 
 import json
 import re
+import ast
 from fractions import Fraction
 from typing import List, Dict, Tuple, Any, Optional, Callable, Union, TYPE_CHECKING
 
@@ -191,9 +192,15 @@ def graph_to_dict(g: BaseGraph[VT,ET], include_scalar: bool=True) -> Dict[str, A
         d["scalar"] = g.scalar.to_dict()
     d['inputs'] = g.inputs()
     d['outputs'] = g.outputs()
+    # Convert tuple keys to strings for JSON compatibility, replacing EdgeType with its integer value
+    def edata_key_to_str(k):
+        if isinstance(k, tuple) and len(k) == 3 and hasattr(k[2], 'value'):
+            return str((k[0], k[1], k[2].value))
+        return str(k)
+    d['edata'] = {edata_key_to_str(k): v for k, v in g._edata.items()}
     if g.backend == 'multigraph':
         d['auto_simplify'] = g.get_auto_simplify()
-    
+
     verts = []
     for v in g.vertices():
         d_v = {
@@ -210,7 +217,7 @@ def graph_to_dict(g: BaseGraph[VT,ET], include_scalar: bool=True) -> Dict[str, A
             d_v['is_ground'] = True
         verts.append(d_v)
 
-    edges: List[Any] = []
+    edges: List[Tuple[VT,VT,EdgeType]] = []
     if g.backend == 'multigraph':
         for e in g.edges():
             edges.append(e)  # type: ignore  # We know what we are doing, for multigraphs this has the right type.
@@ -218,12 +225,8 @@ def graph_to_dict(g: BaseGraph[VT,ET], include_scalar: bool=True) -> Dict[str, A
         for e in g.edges():
             src,tgt = g.edge_st(e)
             et = g.edge_type(e)
-            edata_keys = g.edata_keys(e)
-            if edata_keys:
-                edge_dict = {'src': src, 'tgt': tgt, 'type': et, 'data': {k: g.edata(e, k) for k in edata_keys}}
-                edges.append(edge_dict)
-            else:
-                edges.append((src, tgt, et)) # this is the old format, but we keep it for backwards compatibility
+            edges.append((src,tgt,et))
+
     d['vertices'] = verts
     d['edges']  = edges
     return d
@@ -374,19 +377,11 @@ def dict_to_graph(d: Dict[str,Any], backend: Optional[str]=None) -> BaseGraph:
             for k,val in v_d['data'].items():
                 g.set_vdata(v,k,val)
 
-    for edge in d['edges']:
-        if isinstance(edge, dict):
-            s = edge['src']
-            t = edge['tgt']
-            et = edge.get('type', EdgeType.SIMPLE)
-            e = g.add_edge((s, t), et)
-            if 'data' in edge:
-                for k, val in edge['data'].items():
-                    g.set_edata(e, k, val)
-        else:
-            # Backwards compatible: (s, t, et) tuple
-            s, t, et = edge
-            g.add_edge((s, t), et)
+    if 'edata' in d:
+        g._edata = {ast.literal_eval(k): v for k, v in d['edata'].items()}
+
+    for (s,t,et) in d['edges']:
+        g.add_edge((s,t),et)
 
     return g
 
