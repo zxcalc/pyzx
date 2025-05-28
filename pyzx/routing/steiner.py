@@ -325,6 +325,7 @@ def steiner_reduce_column(
     :param usable_nodes: A list of all possible nodes that can be used
     :param rec_nodes: A list of all nodes that must be used
     :param upper: If true working on upper triangular part
+    :yeilds: Showcases which row additions are applied
     """
     steiner_tree = architecture.rec_steiner_tree(
         root, nodes, usable_nodes, rec_nodes, upper
