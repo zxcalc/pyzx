@@ -133,6 +133,11 @@ class Architecture():
                 "full": [self.floyd_warshall(self.vertices[:until+1], upper=False) for until, v in enumerate(self.vertices)]}
 
     def _get_reduce_order(self) -> List[int]:
+        """
+        Determines reduction order by iteratively removing the largest labelled leaf node.
+
+        :return: A descending list of the qubits that have been stored as leaf nodes
+        """
         vertices = list(sorted(self.vertices, reverse=True, key=self.vertex2qubit)) # sort qubits from large to small
         # Pick leaf with largest label every time.
         reduce_order = []
@@ -147,7 +152,12 @@ class Architecture():
         return reduce_order
 
     def _place_qubits(self, start_vertex=None) -> List[int]:
-        # Start at start_vertex and label the graph using DFT and post-ordered labeling
+        """
+        Label the graph using depth-first traversal (DFT) with post-order labeling, starting at the start_vertex or the highest index node if none given.
+        
+        :param start_vertex: Starting node for traversal, if None start at highest index node, default None
+        :return: Ordered list of qubit placements
+        """
         # If no start_vertex is given, start at the node with the highest index
         if start_vertex is None:
             start_vertex = max(self.vertices)
@@ -170,9 +180,21 @@ class Architecture():
         return qubit_map
         
     def _non_cutting_vertices_hash(self, subgraph: List[int]) -> Tuple[int, ...]:
+        """
+        Converts a list of vertices, representing a subgraph, to a sorted tuple.
+        
+        :param subgraph: A list of vertex location within the subgraph
+        :return: A sorted tuple of the given subgraph vertices 
+        """
         return tuple(sorted(subgraph))
 
     def pre_calc_non_cutting_vertices(self):
+        """
+        Adds to a dictionary all non-cutting vertices for every possible subset of qubits.
+        
+        Raises:
+            NotImplementedError: Function is not yet complete
+        """
         # TODO refactor using vertex2qubit() and qubit2vertex() and proper naming to make a difference between qubits and vertices
         raise NotImplementedError("pre calculation non cutting vertices")
 
@@ -195,7 +217,11 @@ class Architecture():
     
     def non_cutting_vertices(self, subgraph_vertices: List[int], pre_calc: bool=False) -> List[int]:
         """
-        Find the non-cutting vertices for this subgraph
+        Find the non-cutting vertices for this subgraph.
+
+        :param subgraph_vertices: A list of vertex location within the subgraph
+        :param pre_calc: If true, calls :func:`~architecture.Architecture.pre_calc_non_cutting_vertices`, default False
+        :return: A list of non-cutting qubits
         """
         hash = self._non_cutting_vertices_hash(subgraph_vertices)
         if hash in self._non_cutting_vertices.keys():
@@ -212,6 +238,12 @@ class Architecture():
 
 
     def _is_cutting(self, vertices: Optional[List[int]]=None) -> List[bool]:
+        """
+        Find the articulation points in a subgraph, these are the cutting vertices which if removed would cut the graph.
+
+        :param vertices: An optional list of vertex locations within the graph, default None
+        :return: A corresponding list showcasing which vertices are articulation points
+        """
         # algorithm from https://courses.cs.washington.edu/courses/cse421/04su/slides/artic.pdf and https://www.geeksforgeeks.org/articulation-points-or-cut-vertices-in-a-graph/ 
         if vertices is None:
             vertices = self.vertices
@@ -252,13 +284,30 @@ class Architecture():
         return cutting
                     
     def get_neighboring_qubits(self, qubit: int) -> Set[int]:
+        """
+        Given a qubit, finds all neighboring qubits in the graph.
+
+        :param qubit: Location of qubit index within the graph
+        :return: A set of all related qubit indices
+        """
         vertex = self.qubit2vertex(qubit)
         return set(self.vertex2qubit(q) for q in self.get_neighboring_vertices(vertex))
 
     def get_neighboring_vertices(self, vertex: int) -> Set[int]:
+        """
+        From a given vertex location, finds all neighboring vertices in the graph.
+
+        :param vertex: Location of vertex within the graph
+        :return: A set of all neighboring vertices
+        """
         return set(self.graph.neighbors(vertex))
 
     def to_quil_device(self):
+        """
+        Convert the graph to a PyQuil NxDevive object.
+
+        :return: A NxDevice object relating to the graphs topology representing this architecture
+        """
         # Only required here
         import networkx as nx
         from pyquil.device import NxDeviceA
@@ -268,6 +317,11 @@ class Architecture():
         return device
 
     def visualize(self, filename=None):
+        """
+        Visualise the graph and save it as a png image file.
+
+        :param filename: The filename of the image to be saved, default None
+        """
         import networkx as nx
         import matplotlib.pyplot as plt
         plt.switch_backend('agg')
@@ -281,7 +335,7 @@ class Architecture():
 
     def floyd_warshall(self, subgraph_vertices: List[int], upper: bool=True, rec_vertices: List[int]=[]) -> Dict[Tuple[int,int], Tuple[int,List[Tuple[int,int]]]]:
         """
-        Implementation of the Floyd-Warshall algorithm to calculate the all-pair distances in a given graph
+        Implementation of the Floyd-Warshall algorithm to calculate the all-pair distances in a given graph.
 
         :param subgraph_vertices: Subset of vertices to consider
         :param upper: Whether use bidirectional edges or only ordered edges (src, tgt) such that src > tgt, default True
@@ -318,6 +372,14 @@ class Architecture():
         return distances
 
     def shortest_path(self, start_qubit: int, end_qubit: int, qubits_to_use: Optional[List[int]]=None) -> Optional[List[int]]:
+        """
+        Find the shortest path between two qubits in the graph using breadth-first search (BFS)
+        
+        :param start_qubit: Location of the start qubit index within the graph
+        :param end_qubit: Location of the end qubit index within the graph
+        :param qubits_to_use: An optional list of qubit indicies to be traversed along the path, default None
+        :return: An optional list showcasing the path from the start_qubit to the end_qubit
+        """
         if qubits_to_use is None:
             nodes = self.vertices
         else: 
@@ -344,7 +406,8 @@ class Architecture():
     def steiner_tree(self, start_qubit: int, qubits_to_use: List[int], upper: bool=True) -> Iterator[Optional[Tuple[int,int]]]:
         """
         Approximates the steiner tree given the architecture, a root qubit and the other qubits that should be present.
-        This is done using the pre-calculated all-pairs shortest distance and Prim's algorithm for creating a minimum spanning tree
+        This is done using the pre-calculated all-pairs shortest distance and Prim's algorithm for creating a minimum spanning tree.
+
         :param start_qubit: The index of the root qubit to be used
         :param qubits_to_use: The indices of the other qubits that should be present in the steiner tree
         :param upper: Whether to consider only the nodes 
@@ -425,7 +488,17 @@ class Architecture():
             yield edge
         yield None
 
-    def rec_steiner_tree(self, start_qubit, terminal_qubits, usable_qubits, rec_qubits, upper=True):
+    def rec_steiner_tree(self, start_qubit: int, terminal_qubits: List[int], usable_qubits: List[int], rec_qubits: List[int], upper: bool=True):
+        """
+        Build a Steiner tree with recursive constraints for given qubits, connecting all terminal qubits using the min number of edges.
+        
+        :param start_qubit: Location of the start qubit index within the graph
+        :param terminal_qubits: List of qubit indicies within the graph that must be included in the tree
+        :param usable_qubits: List of all qubit indicies within the graph that can be used to build the tree
+        :param rec_qubits: list of qubit indicies within the graph where edges are treated as undirected
+        :param upper: Whether use bidirectional edges or only ordered edges (src, tgt) such that src > tgt, default True
+        :yeilds: Pairs of qubit indices representing edges in the Steiner tree, yeilds None to signal end of top-down phase and next phase, then yeild None to signal completion
+        """
         if not all([q in usable_qubits for q in terminal_qubits]):
             raise Exception("Terminals not in the subgraph")
         # Builds the steiner tree with start as root, contains at least nodes and at most useable_nodes
@@ -477,6 +550,9 @@ class Architecture():
         yield None # Signal done
 
     def transpose(self):
+        """
+        Returns a transposed copy of the architecture with reversed qubit mapping.
+        """
         # TODO make a transposed copy of self
         qubit_map = list(reversed(self.qubit_map))
         arch = Architecture(self.name + "_transpose", coupling_graph=self.graph, qubit_map=qubit_map)
@@ -492,12 +568,33 @@ class Architecture():
         return arities
 
 def dynamic_size_architecture_name(base_name: str, n_qubits: int) -> str:
+    """
+    Creates an architecture name by prefixing with qubit count.
+    
+    :param base_name: Base name of the architechture
+    :param n_qubits: Number of qubits
+    :return: A string concatination of the number of qubits and the base name
+    """
     return str(n_qubits) + "q-" + base_name
 
 def connect_vertices_in_line(vertices: List[int]) -> List[Tuple[int, int]]:
+    """
+    Connects a list of vertices in a straight line.
+    
+    :param vertices: List of vertex indicies within the graph
+    :return: A list of edges connecting each vertex
+    """
     return [(vertices[i], vertices[i+1]) for i in range(len(vertices)-1)]
 
 def connect_vertices_as_grid(width: int, height: int, vertices: List[int]) -> List[Tuple[int,int]]:
+    """
+    Connects vertices into a grid, with layout specified by width and height, vertices length much be equal to width * height. 
+    
+    :param width: Width of the grid, number of columns
+    :param height: Height of the grid, number of rows
+    :param vertices: List of vertex indicies within the graph, length must equal width * height
+    :return: A list of edges forming a 2D grid structure
+    """
     if len(vertices) != width * height:
         raise KeyError("To make a grid, you need vertices exactly equal to width*height, but got %d=%d*%d." % (len(vertices), width, height))
     edges = connect_vertices_in_line(vertices)
@@ -508,6 +605,14 @@ def connect_vertices_as_grid(width: int, height: int, vertices: List[int]) -> Li
     return edges
 
 def create_line_architecture(n_qubits, backend=None, **kwargs):
+    """
+    Creates a linear architecture of connected qubits.
+    
+    :param n_qubits: Number of qubits
+    :param backend: Backend associated with the architecture, default None
+    :param **kwargs: Additional arguments passed
+    :return: A linear architecture
+    """
     graph = Graph(backend=backend)
     vertices = graph.add_vertices(n_qubits)
     edges = connect_vertices_in_line(vertices)
@@ -516,6 +621,14 @@ def create_line_architecture(n_qubits, backend=None, **kwargs):
     return Architecture(name=name, coupling_graph=graph, backend=backend, **kwargs)
 
 def create_circle_architecture(n_qubits, backend=None, **kwargs):
+    """
+    Creates a circular architecture where qubits form a closed loop.
+    
+    :param n_qubits: Number of qubits
+    :param backend: Backend associated with the architecture, default None
+    :param **kwargs: Additional arguments passed
+    :return: A circular architecture
+    """
     graph = Graph(backend=backend)
     vertices = graph.add_vertices(n_qubits)
     edges = connect_vertices_in_line(vertices)
@@ -525,6 +638,14 @@ def create_circle_architecture(n_qubits, backend=None, **kwargs):
     return Architecture(name=name, coupling_graph=graph, backend=backend, **kwargs)
 
 def create_square_architecture(n_qubits, backend=None, **kwargs):
+    """
+    Creates a square (2D) architecture of qubits, number of qubits must be a perfect square.
+    
+    :param n_qubits: Number of qubits
+    :param backend: Backend associated with the architecture, default None
+    :param **kwargs: Additional arguments passed
+    :return: A square (2D) architecture
+    """
     # No floating point errors
     sqrt_qubits = math.floor(math.sqrt(n_qubits))
     if sqrt_qubits**2 != n_qubits:
@@ -562,6 +683,12 @@ def create_5q_line_architecture(**kwargs):
     return Architecture(name=LINE_5Q, coupling_matrix=m, **kwargs)
 """
 def create_ibm_qx2_architecture(**kwargs):
+    """
+    Creates the IBM QX2 architecture based on its standard 5-qubit coupling map.
+    
+    :param **kwargs: Additional arguments passed
+    :return: The IBM QX2 architecture
+    """
     m = np.array([
         [0, 1, 1, 0, 0],
         [1, 0, 1, 0, 0],
@@ -572,6 +699,12 @@ def create_ibm_qx2_architecture(**kwargs):
     return Architecture(IBM_QX2, coupling_matrix=m, **kwargs)
 
 def create_ibm_qx4_architecture(**kwargs):
+    """
+    Creates the IBM QX2 architecture based on its standard 5-qubit coupling map.
+    
+    :param **kwargs: Additional arguments passed
+    :return: The IBM QX4 architecture
+    """
     m = np.array([
         [0, 1, 1, 0, 0],
         [1, 0, 1, 0, 0],
@@ -582,6 +715,12 @@ def create_ibm_qx4_architecture(**kwargs):
     return Architecture(IBM_QX4, coupling_matrix=m, **kwargs)
 
 def create_ibm_qx3_architecture(**kwargs):
+    """
+    Creates the IBM QX3 architecture based on its standard 16-qubit coupling map.
+    
+    :param **kwargs: Additional arguments passed
+    :return: The IBM QX3 architecture
+    """
     m = np.array([
         #0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15
         [0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], #0
@@ -604,6 +743,12 @@ def create_ibm_qx3_architecture(**kwargs):
     return Architecture(IBM_QX3, coupling_matrix=m, **kwargs)
 
 def create_ibm_qx5_architecture(**kwargs):
+    """
+    Creates the IBM QX5 architecture based on its standard 16-qubit coupling map.
+    
+    :param **kwargs: Additional arguments passed
+    :return: The IBM QX5 architecture
+    """
     m = np.array([
         #0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15
         [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1], #0
@@ -626,6 +771,13 @@ def create_ibm_qx5_architecture(**kwargs):
     return Architecture(IBM_QX5, coupling_matrix=m, **kwargs)
 
 def create_ibm_q20_tokyo_architecture(backend=None, **kwargs):
+    """
+    Creates the IBM Q20 Tokyo architecture with a 5*4 grid plus cross connections.
+    
+    :param backend: Backend associated with the architecture, default None
+    :param **kwargs: Additional arguments passed
+    :return: The IBM Q20 Tokyo 20-qubit architecture
+    """
     graph = Graph(backend=backend)
     vertices = graph.add_vertices(20)
     edges = connect_vertices_as_grid(5, 4, vertices)
@@ -642,6 +794,13 @@ def create_ibm_q20_tokyo_architecture(backend=None, **kwargs):
     return Architecture(name=IBM_Q20_TOKYO, coupling_graph=graph, backend=backend, **kwargs)
 
 def create_ibmq_poughkeepsie(backend=None, **kwargs):
+    """
+    Creates the IBM Q Poughkeepsie architecture, consisting of 20 qubits connected in a linear chain with a few additional cross-connections.
+    
+    :param backend: Backend associated with the architecture, default None
+    :param **kwargs: Additional arguments passed
+    :return: The IBM Q Poughkeepsie 20-qubit architecture
+    """
     graph = Graph(backend=backend)
     vertices = graph.add_vertices(20)
     edges = connect_vertices_in_line(vertices)
@@ -653,6 +812,14 @@ def create_ibmq_poughkeepsie(backend=None, **kwargs):
     return Architecture(name=IBMQ_POUGHKEEPSIE, coupling_graph=graph, backend=backend, **kwargs)
 
 def create_ibmq_singapore(backend=None, name=None, **kwargs):
+    """
+    Creates the IBM Q Singapore architecture with a modified linear structure and cross-links.
+    
+    :param backend: Backend associated with the architecture, default None
+    :param name: Custom architecture name. If not provided, uses IBMQ Boeblingen name. Default None
+    :param **kwargs: Additional arguments passed
+    :return: The IBM Q Singapore 20-qubit architecture
+    """
     graph = Graph(backend=backend)
     vertices = graph.add_vertices(20)
     edges = connect_vertices_in_line([v for i, v in enumerate(vertices) if i not in [3, 15]])
@@ -664,6 +831,13 @@ def create_ibmq_singapore(backend=None, name=None, **kwargs):
     return Architecture(name=IBMQ_SINGAPORE, coupling_graph=graph, backend=backend, **kwargs)
 
 def create_rigetti_19q_acorn_architecture(backend=None, **kwargs):
+    """
+    Creates the Rigetti 19Q Acorn architecture, a 20-node graph.
+    
+    :param backend: Backend associated with the architecture, default None
+    :param **kwargs: Additional arguments passed
+    :return: The Rigetti 19Q Acorn qubit architecture
+    """
     graph = Graph(backend=backend)
     vertices = graph.add_vertices(20)
     edges = connect_vertices_in_line([vertices[i] for i in range(20) if i != 8])
@@ -674,6 +848,13 @@ def create_rigetti_19q_acorn_architecture(backend=None, **kwargs):
 
 
 def create_rigetti_16q_aspen_architecture(backend=None, **kwargs):
+    """
+    Creates the Rigetti 16Q Aspen architecture, a 16-node graph.
+    
+    :param backend: Backend associated with the architecture, default None
+    :param **kwargs: Additional arguments passed
+    :return: The Rigetti 16Q Aspen qubit architecture
+    """
     graph = Graph(backend=backend)
     vertices = graph.add_vertices(16)
     edges = connect_vertices_in_line(vertices)
@@ -683,6 +864,13 @@ def create_rigetti_16q_aspen_architecture(backend=None, **kwargs):
     return Architecture(RIGETTI_16Q_ASPEN, coupling_graph=graph, backend=backend, **kwargs)
 
 def create_sycamore_like(backend=None, **kwargs):
+    """
+    Creates a Sycamore-like architecture inspired by Google's Sycamore topology, a 20-qubit architecture.
+    
+    :param backend: Backend associated with the architecture, default None
+    :param **kwargs: Additional arguments passed
+    :return: A Sycamore-like qubit architecture
+    """
     graph = Graph(backend=backend)
     vertices = list(graph.add_vertices(20))
     line = vertices[:1]+vertices[2:4]+vertices[5:13]+vertices[14:17]+vertices[18:]
@@ -693,6 +881,13 @@ def create_sycamore_like(backend=None, **kwargs):
     return Architecture(SYCAMORE_LIKE, coupling_graph=graph, backend=backend, **kwargs)
 
 def create_rigetti_8q_agave_architecture(**kwargs):
+    """
+    Creates the Rigetti 8Q Agave architecture, an 8-qubit architecture using tghe standard Rigetti Agave coupling map.
+    
+    :param **kwargs: Additional arguments passed
+    :return: A Rigetti 8Q Agave 8-qubit architecture
+    """
+    
     m = np.array([
         [0, 1, 0, 0, 0, 0, 0, 1],
         [1, 0, 1, 0, 0, 0, 0, 0],
@@ -706,6 +901,12 @@ def create_rigetti_8q_agave_architecture(**kwargs):
     return Architecture(RIGETTI_8Q_AGAVE, coupling_matrix=m, **kwargs)
 
 def create_recursive_architecture(**kwargs):
+    """
+    Creates a 9-qubit recursive architecture.
+    
+    :param **kwargs: Additional arguments passed
+    :return: A Recursive 9-qubit architecture
+    """
     m = np.array([
         #0  1  2  3  4  5  6  7  8
         [0, 0, 1, 0, 0, 0, 0, 0, 0],#0
@@ -721,6 +922,13 @@ def create_recursive_architecture(**kwargs):
     return Architecture(name=REC_ARCH, coupling_matrix=m, **kwargs)
 
 def create_fully_connected_architecture(n_qubits=None, **kwargs):
+    """
+    Creates a fully connected architecture where each where each qubit is connected to every other qubit.
+    
+    :param n_qubits: The number of qubits, if None 9 is used, default None
+    :param **kwargs: Additional arguments passed
+    :return: A fully connected 9-qubit architechture
+    """
     if n_qubits is None:
         print("Warning: size is not given for the fully connected architecuture, using 9 as default.")
         n_qubits = 9
@@ -731,6 +939,15 @@ def create_fully_connected_architecture(n_qubits=None, **kwargs):
     return Architecture(name, coupling_matrix=m, **kwargs)
 
 def create_dynamic_density_hamiltonian_architecture(n_qubits, density_prob=0.1, backend=None, **kwargs):
+    """
+    Creates a randomly connected architecture with user-defined edge density.
+    
+    :param n_qubits: The number of qubits
+    :param density_prob: Probability for each possible edge to be included, default 0.1
+    :param backend: Backend associated with the architecture, default None
+    :param **kwargs: Additional arguments passed
+    :return: A graph-based architecture with specified qubit count and edge density
+    """
     graph = Graph(backend=backend)
     vertices = graph.add_vertices(n_qubits)
     edges = connect_vertices_in_line(vertices)
@@ -744,6 +961,15 @@ def create_dynamic_density_hamiltonian_architecture(n_qubits, density_prob=0.1, 
     return Architecture(name=name, coupling_graph=graph, backend=backend, **kwargs)
 
 def create_dynamic_density_tree_architecture(n_qubits, density_prob=0.1, backend=None, **kwargs):
+    """
+    Creates a random tree-based architecture with additional edges to control density.
+    
+    :param n_qubits: The number of qubits
+    :param density_prob: Probability for each possible edge to be included, default 0.1
+    :param backend: Backend associated with the architecture, default None
+    :param **kwargs: Additional arguments passed
+    :return: A tree-structured qubit architecture with optional extra edges
+    """
     graph = Graph(backend=backend)
     vertices = graph.add_vertices(n_qubits)
     edges = []
@@ -784,6 +1010,15 @@ def create_dynamic_density_tree_architecture(n_qubits, density_prob=0.1, backend
     return arch
 
 def create_dynamic_density_architecture(n_qubits, density_prob=0.1, backend=None, **kwargs):
+    """
+    Creates a randomly connected architecture with specified edge density, ensuring full connectivity.
+    
+    :param n_qubits: The number of qubits
+    :param density_prob: Probability for each possible edge to be included, default 0.1
+    :param backend: Backend associated with the architecture, default None
+    :param **kwargs: Additional arguments passed
+    :return: A connected, random-density qubit architecture
+    """
     # Generate a random graph by adding each possible edge with probability density_prob
     graph = Graph(backend=backend)
     vertices = graph.add_vertices(n_qubits)
@@ -816,6 +1051,13 @@ def create_dynamic_density_architecture(n_qubits, density_prob=0.1, backend=None
     return arch
 
 def create_ibm_rochester(backend=None, **kwargs):
+    """
+    Creates the IBM Rochester architecture, a 53-qubit architecture.
+    
+    :param backend: Backend associated with the architecture, default None
+    :param **kwargs: Additional arguments passed
+    :return: A IBM Rochester 53-qubit architecture
+    """
     graph = Graph(backend=backend)
     vertices = graph.add_vertices(53)
     edges = connect_vertices_in_line([vertices[i] for i in range(53) if i not in [7, 14, 17,30,37, 40]])
@@ -825,6 +1067,13 @@ def create_ibm_rochester(backend=None, **kwargs):
     return Architecture(IBM_ROCHESTER, coupling_graph=graph, backend=backend, **kwargs)
 
 def create_google_sycamore(backend=None, **kwargs):
+    """
+    Creates the Google Sycamore architecture, a 53-qubit architecture.
+    
+    :param backend: Backend associated with the architecture, default None
+    :param **kwargs: Additional arguments passed
+    :return: A Google Sycamore 53-qubit architecture
+    """
     graph = Graph(backend=backend)
     vertices = graph.add_vertices(53)
     edges = connect_vertices_in_line([vertices[i] for i in range(53) if i not in [6,12,31,32,47,50]])
