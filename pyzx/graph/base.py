@@ -316,12 +316,17 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
                    qubit:FloatInt=-1,
                    row:FloatInt=-1,
                    phase:Optional[FractionLike]=None,
-                   ground:bool=False
+                   ground:bool=False,
+                   index: Optional[VT] = None
                    ) -> VT:
         """Add a single vertex to the graph and return its index.
         The optional parameters allow you to respectively set
         the type, qubit index, row index and phase of the vertex."""
-        v = self.add_vertices(1)[0]
+        if index is not None:
+            self.add_vertex_indexed(index)
+            v = index
+        else:
+            v = self.add_vertices(1)[0]
         self.set_type(v, ty)
         if phase is None:
             if ty == VertexType.H_BOX: phase = 1
