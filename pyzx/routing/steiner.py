@@ -43,6 +43,12 @@ def steiner_gauss(
     """
 
     def row_add(c0, c1):
+        """
+        Adds row c0 to c1 in the main matrix. If debug flag is set it prints what happening.
+
+        :param c0: Source row
+        :param c1: Target row
+        """
         matrix.row_add(c0, c1)
         if debug:
             print("Reducing", c0, c1)
@@ -52,6 +58,14 @@ def steiner_gauss(
             y.col_add(c1, c0)
 
     def steiner_reduce(col: int, root: int, nodes: List[int], upper: bool):
+        """
+        Uses Steiner tree to reduce matrix columns
+
+        :param col: Column to minimise
+        :param root: Start point
+        :param nodes: Target point
+        :param upper: If true working on upper triangular part
+        """
         steiner_tree = architecture.steiner_tree(root, nodes, upper)
         # Remove all zeros
         next_check = next(steiner_tree)
@@ -175,6 +189,12 @@ def rec_steiner_gauss(
         matrix.permute_cols(permutation)
 
     def row_add(c0, c1):
+        """
+        Adds row c0 to c1 in the main matrix. If debug flag is set it prints what happening.
+
+        :param c0: Source row
+        :param c1: Target row
+        """
         matrix.row_add(c0, c1)
         if debug:
             print("Reducing", c0, c1)
@@ -184,6 +204,14 @@ def rec_steiner_gauss(
             y.col_add(c1, c0)
 
     def steiner_reduce(col, root, nodes, usable_nodes, rec_nodes, upper):
+        """
+        Uses Steiner tree to reduce matrix columns
+
+        :param col: Column to minimise
+        :param root: Start point
+        :param nodes: Target point
+        :param upper: If true working on upper triangular part
+        """
         if not all([q in usable_nodes for q in nodes]):
             raise Exception(
                 "Terminals not in the subgraph "
@@ -213,6 +241,12 @@ def rec_steiner_gauss(
         return tree_nodes
 
     def rec_step(qubit_removal_order):
+        """
+        Recursive step function to reduce matrix
+
+        :param qubit_removal_order: List of row/column indices to work on
+        """
+
         # size, p_cols and pivot is needed if the matrix isn't square or of full rank
         size = len(qubit_removal_order)
         # Order the rows and columns to be ascending.
@@ -281,6 +315,17 @@ def steiner_reduce_column(
     rec_nodes,
     upper: bool,
 ):
+    """
+    Performs Steiner tree reduction to a matrix column under the constraints of some quantum architecture
+
+    :param architecture: The architecture graph to be used
+    :param col: Column to minimise
+    :param root: Start point
+    :param nodes: Target point
+    :param usable_nodes: A list of all possible nodes that can be used
+    :param rec_nodes: A list of all nodes that must be used
+    :param upper: If true working on upper triangular part
+    """
     steiner_tree = architecture.rec_steiner_tree(
         root, nodes, usable_nodes, rec_nodes, upper
     )
