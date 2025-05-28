@@ -488,7 +488,7 @@ class Architecture():
             yield edge
         yield None
 
-    def rec_steiner_tree(self, start_qubit: int, terminal_qubits: List[int], usable_qubits: List[int], rec_qubits: List[int], upper: bool=True):
+    def rec_steiner_tree(self, start_qubit, terminal_qubits, usable_qubits, rec_qubits, upper=True):
         """
         Build a Steiner tree with recursive constraints for given qubits, connecting all terminal qubits using the min number of edges.
         
