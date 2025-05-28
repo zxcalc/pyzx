@@ -442,6 +442,15 @@ class StepFunction:
     """
 
     def __init__(self, matrices, mode, architecture, fitness_func, **kwargs):
+        """
+        Creates and returns a step function.
+
+        :param matrices: List of parity matrices to reduce sequentially
+        :param mode: The type of Gaussian elimination to be used
+        :param architecture: The architecture to take into account when routing
+        :param fitness_func: Fitness function to guide optimisation
+        :param **kwargs: Additional arguments passed
+        """
         self.matrices = matrices
         self.mode = mode
         self.architecture = architecture
@@ -452,6 +461,12 @@ class StepFunction:
         ]  # Reverse and transpose the parity matrices to create the reversed equivalent sequence
 
     def __call__(self, initial_perm):
+        """
+        Evaluates a candidate qubit permutation by running a forward and reverse sequence of architecture-aware Gaussian eliminations.
+
+        :param initial_perm: The initial qubit permutation to evaluate
+        :return: The optimised initial permutation, the resulting circuits and permutations, and the total cost score
+        """
         matrices = self.matrices
         new_mode = self.mode
         architecture = self.architecture
