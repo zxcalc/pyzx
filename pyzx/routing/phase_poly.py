@@ -77,11 +77,17 @@ class RootHeuristic(Enum):
     """Use an already-chosen root in a recursive call."""
 
     def __str__(self):
+        """
+        Converts RootHeuristic into a string
+        """
         return f"{self.value}"
 
     def to_function(
         self,
     ) -> Callable[[Architecture, Mat2, List[int], List[int], int, int, Any], List[int]]:
+        """
+        Looks at the RootHeuristic type and returns the relevant root heuristic
+        """
         # ignore types due to https://github.com/python/mypy/issues/5876
         if self == RootHeuristic.RANDOM:
             return random_root_heuristic  # type: ignore
@@ -110,11 +116,17 @@ class SplitHeuristic(Enum):
     """Split the circuit on all the candidate nodes."""
 
     def __str__(self):
+        """
+        Converts SplitHeuristic into a string
+        """
         return f"{self.value}"
 
     def to_function(
         self,
     ) -> Callable[[Architecture, Mat2, List[int], List[int], Any], List[int]]:
+        """
+        Looks at the SplitHeuristic type and returns the relevant split heuristic
+        """
         if self == SplitHeuristic.RANDOM:
             return random_split_heuristic  # type: ignore
         elif self == SplitHeuristic.ARITY:
@@ -183,6 +195,18 @@ def route_phase_poly(
 def random_root_heuristic(
     architecture, matrix, cols_to_use, qubits, column, phase_qubit, **kwargs
 ):
+    """
+    Randomly chooses a root from the given qubits and creates a steiner reduction for a specific column in the matrix
+
+    :param architecture: The quantum architecture to be used
+    :param matrix: The matrix to be used
+    :param cols_to_use: (not directly used)
+    :param qubits: The list of qubits to randomly select a root from
+    :param column: Column to be reduced
+    :param phase_qubit: (not directly used)
+    :param **kwargs: Additional arguments passed
+    :return: The sequence of row operations applied
+    """
     root = np.random.choice(qubits)
     return list(
         steiner_reduce_column(
@@ -200,6 +224,19 @@ def random_root_heuristic(
 def exhaustive_root_heuristic(
     architecture, matrix, cols_to_use, qubits, column, phase_qubit, **kwargs
 ):
+    """
+    Exhastively applies the Steiner reduction with all the given qubits as roots for a specific column in the matrix and returns the shortest 
+    reduction sequence.
+
+    :param architecture: The quantum architecture to be used
+    :param matrix: The matrix to be used
+    :param cols_to_use: (not directly used)
+    :param qubits: The list of qubits to be used as roots
+    :param column: Column to be reduced
+    :param phase_qubit: (not directly used)
+    :param **kwargs: Additional arguments passed
+    :return: The shortest sequence of row operations applied
+    """
     cnots = None
     for root in qubits:
         # build a steiner tree
@@ -223,6 +260,19 @@ def exhaustive_root_heuristic(
 def arity_root_heuristic(
     architecture, matrix, cols_to_use, qubits, column, phase_qubit, **kwargs
 ):
+    """
+    Filters qubits by highest arity and randomly selects one as a root for a specific column in the matrix and returns the 
+    reduction sequence.
+
+    :param architecture: The quantum architecture to be used
+    :param matrix: The matrix to be used
+    :param cols_to_use: (not directly used)
+    :param qubits: The list of qubits to be used as roots
+    :param column: Column to be reduced
+    :param phase_qubit: (not directly used)
+    :param **kwargs: Additional arguments passed
+    :return: The sequence of row operations applied
+    """
     iterator = (
         (qubit, arity) for qubit, arity in architecture.arities() if qubit in qubits
     )
@@ -249,6 +299,18 @@ def arity_root_heuristic(
 def rec_root_heuristic(
     architecture, matrix, cols_to_use, qubits, column, phase_qubit, **kwargs
 ):
+    """
+    Uses the phase_qubit as a root for a specific column in the matrix and returns the reduction sequence.
+
+    :param architecture: The quantum architecture to be used
+    :param matrix: The matrix to be used
+    :param cols_to_use: (not directly used)
+    :param qubits: The list of qubits to be used as roots
+    :param column: Column to be reduced
+    :param phase_qubit: The qubit to be used as the root
+    :param **kwargs: Additional arguments passed
+    :return: The sequence of row operations applied
+    """
     root = phase_qubit
     return list(
         steiner_reduce_column(
@@ -264,6 +326,16 @@ def rec_root_heuristic(
 
 
 def calculate_reward(architecture, matrix, cols_to_use, root):
+    """
+    Runs Steiner reduction over multiple columns and sums up the total number of CNOT operations, outputting a reward score
+
+    :param architecture: The quantum architecture to be used
+    :param matrix: The matrix to be used
+    :param cols_to_use: A list of columns to be used in calculating the reward
+    :param root: The qubit to be used as the root
+
+    :return: The reward score
+    """
     n_qubits = architecture.n_qubits
     all_cnots = 0
     for column in cols_to_use:
@@ -294,10 +366,32 @@ def random_split_heuristic(
     qubits: List[int],
     **kwargs,
 ):
+    """
+    Returns a random split of qubits
+
+    :param architecture: (Not directly used)
+    :param matrix: (Not directly used)
+    :param cols_to_use: (Not directly used)
+    :param qubits: The list of qubits to be split
+    :param **kwargs: Additional arguments passed
+
+    :return: A random split from the given qubits
+    """
     return [np.random.choice(qubits)]
 
 
 def arity_split_heuristic(architecture, matrix, cols_to_use, qubits, **kwargs):
+    """
+    Returns a split of qubits with the highest arity score
+
+    :param architecture: The quantum architecture to be used
+    :param matrix: (Not directly used)
+    :param cols_to_use: (Not directly used)
+    :param qubits: The list of qubits to be split
+    :param **kwargs: Additional arguments passed
+
+    :return: A split from the given qubits with the highest arity score
+    """
     iterator = (
         (qubit, arity) for qubit, arity in architecture.arities() if qubit in qubits
     )
@@ -311,6 +405,17 @@ def arity_split_heuristic(architecture, matrix, cols_to_use, qubits, **kwargs):
 
 
 def count_split_heuristic(architecture, matrix, cols_to_use, qubits, **kwargs):
+    """
+    Returns a split of qubits with the highest arity score
+
+    :param architecture: (Not directly used)
+    :param matrix: (Not directly used)
+    :param cols_to_use: (Not directly used)
+    :param qubits: The list of qubits to be split
+    :param **kwargs: Additional arguments passed
+
+    :return: The qubits passed in
+    """
     return qubits
 
 
@@ -324,6 +429,12 @@ class PhasePoly:
         zphase_dict: Dict[Parity, Fraction],
         out_parities: List[Parity],
     ):
+        """
+        Creates and returns a phase polynomial object.
+
+        :param zphase_dict: A dictionary of parity objects and phase factors
+        :param out_parities: A list of final parity objects
+        """
         self.zphases = zphase_dict
         self.out_par = out_parities
         self.n_qubits = out_parities[0].n_qubits()
@@ -335,6 +446,15 @@ class PhasePoly:
         initial_qubit_placement=None,
         final_qubit_placement=None,
     ):
+        """
+        Takes a circuit and tracks how qubit parities evolve as gates are applied, 
+        accumulates Z-phase rotations then builds a compact PhasePoly representing the circuit's phase structure
+
+        :param circuit: The circuit to be used
+        :param initial_qubit_placement: Optional list specifying initial qubit mapping, default None
+        :param final_qubit_placement: Optional list specifying final qubit mapping, default None
+        :return: A PhasePoly object representing the circuit's accumulated Z-phase structure
+        """
         zphases = {}
         current_parities = mat22partition(Mat2.id(circuit.qubits))
         if initial_qubit_placement is not None:
@@ -362,6 +482,12 @@ class PhasePoly:
                 raise Exception("Gate not supported!", gate.name)
 
         def clamp(phase):
+            """
+            Normalize phase into range [-1, 1]
+
+            :param phase: The initial phase
+            :return: The new phase
+            """
             new_phase = phase % 2
             if new_phase > 1:
                 return new_phase - 2
@@ -374,6 +500,13 @@ class PhasePoly:
         return PhasePoly(zphases, current_parities)
 
     def partition(self, skip_output_parities=True, optimize_parity_order=False):
+        """
+        Uses matroid partitioning algorithm to split the parities into independent partiotions
+
+        :param skip_output_parities: If True, ignore the out_par parities, default True
+        :param optimize_parity_order: If True, reorder parities for more optimal placement, default False
+        :return: List of ordered parity partitions
+        """
         # Matroid partitioning based on wikipedia: https://en.wikipedia.org/wiki/Matroid_partitioning
         def add_edge(graph, vs_dict, node1, node2):
             v1 = [k for k, v in vs_dict.items() if v == node1][0]
@@ -451,12 +584,25 @@ class PhasePoly:
         return ordered_partitions
 
     def _order_partitions(self, partitions):
+        """
+        Reorders partitions based on a cost metric
+
+        :param partitions: List of partitions, where each partition is a list of Parity objects
+        :return: Partitions ordered by cost metric
+        """
         n = len(partitions)
         numbered = {
             i: partition2mat2(partition) for i, partition in enumerate(partitions)
         }
 
         def cost_func(p1, p2):
+            """
+            Calculates the cost to go from one partition to another
+
+            :param p1: First partition
+            :param p2: Second partition
+            :return: Cost to go from p1 to p2
+            """
             inv = inverse_hack(p1)
             if inv is not None:
                 _, inv = inv
@@ -488,6 +634,12 @@ class PhasePoly:
         return new_partitions
 
     def _place_parities(self, parities: Union[Mat2, MatLike]) -> List[int]:
+        """
+        Assigns parities to qubits
+
+        :param parities: A list representing each parity
+        :return: List of indices showing which parity should be assigned to which qubit index
+        """
         if isinstance(parities, Mat2):
             parities = parities.data
         permutation = [0] * self.n_qubits
@@ -531,6 +683,15 @@ class PhasePoly:
         return permutation
 
     def _dfs(self, nodes, graph, inv_vs_dict, partitions):
+        """
+        A depth first search to find the path
+
+        :param nodes: A list of (current_node, current_path) tuples
+        :param graph: The graph showcasing the adjacency connections
+        :param inv_vs_dict: A reverse lookup
+        :param partitions: List of node objects considered as target nodes
+        :return: The path
+        """
         # recursive dfs to find the shortest path
         if nodes == []:
             return []
@@ -551,6 +712,12 @@ class PhasePoly:
 
     @staticmethod
     def _independent(partition: List[Parity]) -> bool:
+        """
+        Checks if a partition is independent
+
+        :param partition: The list of parities to check
+        :return: True if partition is independent 
+        """
         return inverse_hack(partition2mat2(partition)) is not None
 
     def matroid_synth(
@@ -564,6 +731,20 @@ class PhasePoly:
         iterative_initial_placement: bool = False,
         **kwargs,
     ):
+        """
+        Using Matroid synthesis method, partitions parities, builds transformation matrices, runs sequential Gaussian elimination,
+        builds a final circuit, tracks and updates the current parity states.
+
+        :param mode: Elimination mode, controls Gaussian elimination strategy
+        :param architecture: The quantum architecture to be used
+        :param optimize_parity_order: Reorder parities within each partition, default False
+        :param optimize_partition_order: Reorder the whole partition sequence, default True
+        :param iterative_placement: Place qubits iteratively during synthesis, default False
+        :param parity_permutation: Allow permuting parities for better optimization, default True
+        :param iterative_initial_placement: Optimize initial qubit placement iteratively, default False
+        :param **kwargs: Additional arguments passed
+        :return: The full Circuit, the input permutation, the output permutation
+        """
         kwargs["full_reduce"] = True
         n_qubits = (
             architecture.n_qubits if architecture is not None else len(self.out_par)
@@ -631,6 +812,14 @@ class PhasePoly:
     def gray_synth(
         self, mode: ElimMode, architecture: Optional[Architecture], **kwargs
     ):
+        """
+        Using gray synthesis method, builds a quantum circuit by reducing a parity matrix
+
+        :param mode: Elimination mode, controls Gaussian elimination strategy
+        :param architecture: An optional of the quantum architecture to be used
+        :param **kwargs: Additional arguments passed
+        :return: Constructed circuit, input and output qubit orderings
+        """
         kwargs["full_reduce"] = True
         arch: Architecture
         if architecture is None or mode == ElimMode.GAUSS_MODE:
@@ -722,6 +911,18 @@ class PhasePoly:
         phase_qubit=None,
         **kwargs,
     ):
+        """
+        Builds quantum circuit by applying a recursive Gray synthesis strategy
+
+        :param mode: Elimination mode, controls Gaussian elimination strategy
+        :param architecture: An optional of the quantum architecture to be used
+        :param root_heuristic: Controls how to pick the root qubit when extracting Steiner trees
+        :param split_heuristic: Controls how to split the matrix into subproblems
+        :param full: Whether to apply final parity fixes after recursive synthesis, default True
+        :param phase_qubit: Initial qubit to use for placing phase gates, default None
+        :param **kwargs: Additional arguments passed
+        :return: Constructed circuit
+        """
         kwargs["full_reduce"] = True
         if architecture is None or mode == ElimMode.GAUSS_MODE:
             architecture = create_architecture(
@@ -873,6 +1074,19 @@ class PhasePoly:
         tie_break=False,
         **kwargs,
     ) -> Tuple[Circuit, Any, Any]:
+        """
+        Builds CNOT circuit  to implement a set of parity transformations using recursive 
+        Gaussian elimination
+
+        :param mode: Elimination mode, controls Gaussian elimination strategy
+        :param architecture: An optional of the quantum architecture to be used
+        :param full: Whether to do the full parity finalization step, default True
+        :param zeroes_rec: Changes the recursion heuristic to focus on zeros indead of ones, default False
+        :param neighbour_path: Influences neighbor selection strategy when adding gates, default False
+        :param tie_break: Enables tie-breaking heuristics when multiple choices have equal scores, default False
+        :param **kwargs: Additional arguments passed
+        :return: Tuple of (circuit, list_of_qubits, list_of_qubits) where the lists are the qubit indices in the architecture
+        """
         kwargs["full_reduce"] = True
         if not isinstance(architecture, Architecture):
             architecture = create_architecture(
@@ -898,12 +1112,24 @@ class PhasePoly:
         self.prev_rows: List[int] = []
 
         def place_cnot(control, target):
+            """
+            Add CNOT gate from control qubit to target qubit and updates the parity matrix
+
+            :param control: The control qubit
+            :param target: The target qubit 
+            """
             # Place the CNOT on the circuit
             circuit.add_gate(CNOT(control, target))
             # Adjust the matrix accordingly - reversed elementary row operations
             parity_matrix.row_add(target, control)
 
         def base_recurse(cols_to_use, qubits_to_use):
+            """
+            Recursively synthesize parity columns by choosing a pivot qubit and splitting columns.
+
+            :param cols_to_use: List of indices of parity columns to synthesize
+            :param qubits_to_use: List of qubit indices available for this recursion step
+            """
             if qubits_to_use != [] and cols_to_use != []:
                 # Select edge qubits
                 vertices_to_use = [architecture.qubit2vertex(q) for q in qubits_to_use]
@@ -952,6 +1178,13 @@ class PhasePoly:
                 )
 
         def one_recurse(cols_to_use, qubits_to_use, qubit):
+            """
+            Recursively synthesize parity columns where the pivot qubit row has 1s.
+
+            :param cols_to_use: List of indices of parity columns to synthesize
+            :param qubits_to_use: List of qubit indices available for this recursion step
+            :param qubit: The pivot qubit index on which the current recursion is based
+            """
             if cols_to_use != []:
                 self._update_prev_rows([qubit])
                 neighbors = [
@@ -1048,12 +1281,24 @@ class PhasePoly:
         return columns
 
     def _tie_break(self, qubits, indices):
+        """
+        Tie-breaking strategy to select a qubit index among multiple candidates.
+
+        :param qubits: List of qubit indicies under consideration
+        :param indices: List of indices representing tied candidates
+        :return: The selected qubit index from `qubits`
+        """
         for i in indices:
             if qubits[i] not in self.prev_rows:
                 return qubits[i] if not qubits[i] else qubits[i]
         return qubits[indices[0]] if not qubits[indices[0]] else qubits[indices[0]]
 
     def _update_prev_rows(self, qubits):
+        """
+        Update the internal record of previously used qubits.
+
+        :param qubits: List of qubit indicies to update into the previous rows record
+        """
         # print("Updating prev rows:", self.prev_rows, qubits[0], end="\t")
         # if any(qubit in self.prev_rows for qubit in qubits):
         #    self.prev_rows = qubits
@@ -1100,6 +1345,12 @@ class PhasePoly:
 
 
 def inverse_hack(matrix: Mat2) -> Optional[Tuple[Mat2, Mat2]]:
+    """
+    Compute the inverse of a binary matrix (over GF(2)), if matrix is not square it is extened
+
+    :param matrix: Binary matrix to invert
+    :return: Tuple of possibly extented matrix and its inverse, or None if the matrix is singular
+    """
     m = matrix.copy()
     if matrix.rows() != matrix.cols():
         # Compute which columns are independent from the matrix
@@ -1126,8 +1377,20 @@ def inverse_hack(matrix: Mat2) -> Optional[Tuple[Mat2, Mat2]]:
 
 
 def partition2mat2(partition: List[Parity]) -> Mat2:
+    """
+    Convert a list of Parity objects into a Mat2 binary matrix.
+
+    :param partition: List of Parity objects, each representing a binary row
+    :return: Mat2 binary matrix constructed from the partition
+    """
     return Mat2([parity.to_mat2_row() for parity in partition])
 
 
 def mat22partition(m: Mat2) -> List[Parity]:
+    """
+    Convert a Mat2 binary matrix into a list of Parity objects.
+
+    :param m: Mat2 bianry matrix
+    :return: List of Parity objects representing the rows of the matrix
+    """
     return [Parity(p) for p in m.data]
