@@ -22,6 +22,9 @@ import numpy as np
 
 
 class GeneticAlgorithm:
+    """
+    A genetic algorithm for optimising permutations based on a fitness function.
+    """
     def __init__(
         self,
         population_size: int,
@@ -30,6 +33,15 @@ class GeneticAlgorithm:
         fitness_func,
         maximize: bool = False,
     ):
+        """
+        Creates and returns a genetic algorithm.
+
+        :param population_size: Number of individuals in the population
+        :param crossover_prob: Probability of crossover between individuals
+        :param mutation_prob: Probability of mutation for an offspring
+        :param fitness_func: Function to evaluate fitness of permutations
+        :param maximize: True, Maximise the fitness, False, Minimise the Fitness, default False 
+        """
         self.population_size = population_size
         self.negative_population_size = int(np.sqrt(population_size))
         self.crossover_prob = crossover_prob
@@ -41,6 +53,11 @@ class GeneticAlgorithm:
         self.population: List[Tuple[List[int], Any]] = []
 
     def _select(self):
+        """
+        Selects two parent indices from the population based on fitness-proportional selection.
+        
+        :return: A random two parent indices from the population
+        """
         fitness_scores = [f for c, f in self.population]
         total_fitness = sum(fitness_scores)
         if self.maximize:
@@ -55,6 +72,12 @@ class GeneticAlgorithm:
         )
 
     def _create_population(self, n):
+        """
+        Initialises the population with random permutations with size n and evaluates their fitness.
+        Also creates a list of the weakest individuals - negative population.
+
+        :param n: The size of the random permutation
+        """
         population = [np.random.permutation(n) for _ in range(self.population_size)]
         self.population = [
             (list(chromosome), self.fitness_func(chromosome))
@@ -66,6 +89,16 @@ class GeneticAlgorithm:
     def find_optimum(
         self, n_qubits, n_generations, initial_order=None, n_child=None, continued=False
     ):
+        """
+        Runs the genetic algorithm to find the best permutation over a number of generations.
+
+        :param n_qubits: The number of qubits (number of elements in each permutation)
+        :param n_generations: The number of generations
+        :param initial_order: Initial permuation to start from, if None, creates population with the number of qubits, default None
+        :param n_child: Number of children to generate per generation, default None
+        :param continued: True, continue to previous population, default False
+        :return: The best permutation
+        """
         self.n_qubits = n_qubits
         partial_solution = False
         if not continued or not self.population:
@@ -87,6 +120,11 @@ class GeneticAlgorithm:
         return self.population[0][0]
 
     def _add_children(self, children):
+        """
+        Adds new children to the population and updates fitness scores.
+
+        :param children: The children to be added to the population
+        """
         n_child = len(children)
         self.population.extend(
             [(child, self.fitness_func(child)) for child in children]
@@ -104,6 +142,11 @@ class GeneticAlgorithm:
         self.population = self.population[: self.population_size]
 
     def _update_population(self, n_child: int):
+        """
+        Generates a new generation of children and integrates them into the population.
+
+        :param n_child: The number of children
+        """
         children = []
         # Create a child from weak parents to avoid local optima
         p1, p2 = np.random.choice(self.negative_population_size, size=2, replace=False)
@@ -121,6 +164,13 @@ class GeneticAlgorithm:
         self._add_children(children)
 
     def _crossover(self, parent1, parent2):
+        """
+        Performs ordered crossover between two parents.
+
+        :param parent1: The first parent
+        :param parent2: The second parent
+        :return: The child of the 2 parents
+        """
         crossover_start = np.random.choice(int(self.n_qubits / 2))
         crossover_length = np.random.choice(self.n_qubits - crossover_start)
         crossover_end = crossover_start + crossover_length
@@ -136,6 +186,12 @@ class GeneticAlgorithm:
         return child
 
     def _mutate(self, parent):
+        """
+        Applies mutation by swapping two random elements in the permutation.
+
+        :param parent: The parent to mutate
+        :return: A mutated parent
+        """
         gen1, gen2 = np.random.choice(len(parent), size=2, replace=False)
         _ = parent[gen1]
         parent[gen1] = parent[gen2]
@@ -184,6 +240,11 @@ class ParticleSwarmOptimization:
             self.pool = Pool(n_threads)
 
     def __getstate__(self):
+        """
+        Prepares the object state for pickling by removing non-serialisable fields.
+
+        :return: The state dictionary
+        """
         state = self.__dict__.copy()
         # Don't pickle baz
         # del state["fitness_func"]
@@ -191,12 +252,23 @@ class ParticleSwarmOptimization:
         return state
 
     def __setstate__(self, state):
+        """
+        Restores the object state after unpickling
+
+        :param state: The state to be restored to the dictionary
+        """
         self.__dict__.update(state)
         # Add baz back since it doesn't exist in the pickle
         # self.fitness_func = None
         self.pool = None
 
     def _create_swarm(self, n):
+        """
+        Initializes the swarm with random permutations.
+
+        :param n: The number of qubits in a particle
+        """
+
         self.swarm = [
             Particle(
                 n,
@@ -213,6 +285,15 @@ class ParticleSwarmOptimization:
         self.swarm[0].current = np.arange(n)
 
     def find_optimum(self, n_qubits, n_steps, quiet=True, close_pool=True):
+        """
+        Creates a swarm of n-qubits and determines the optimum fitness solution for a given number of steps
+
+        :param n_qubits: The number of qubits
+        :param n_steps: The number of steps
+        :param quiet: Whether to show updates on the iteration and fitness score as it iterates, default True
+        :param close_pool: Whether to close and join the pool after finding the optimum, default True
+        :return: The optimum solution for swarm
+        """
         self._create_swarm(n_qubits)
         self.best_particle = self.swarm[0]
         for i in range(n_steps):
@@ -232,11 +313,20 @@ class ParticleSwarmOptimization:
 
     @staticmethod
     def particle_update_func(args):
+        """
+        Update a single particle in the swarm using the current global best particle.
+
+        :param args: Tuple of swarm_best and particle, where swarm_best is the current best performing particle and the particle is the particle to be updated
+        :return: The next evolution of the particle
+        """
         swarm_best, p = args
         p.step(swarm_best)
         return p
 
     def _update_swarm(self):
+        """
+        Update the state of all particles in the swarm, after updating the method finds the best particle in the swarm.
+        """
         if self.pool is not None:
             self.swarm = self.pool.map(
                 self.particle_update_func, [(self.best_particle, p) for p in self.swarm]
@@ -258,6 +348,9 @@ class ParticleSwarmOptimization:
 
 
 class Particle:
+    """
+    Represents a single particle in a swarm.
+    """
     def __init__(
         self,
         size,
@@ -268,6 +361,17 @@ class Particle:
         maximize=False,
         id=None,
     ):
+        """
+        Creates and returns a single particle.
+
+        :param size: The number of qubits in the permutation space
+        :param step_func: A callable that evaluates the current position and returns (new_position, solution, fitness)
+        :param s_best_crossover: Proportion of genes inherited from the swarms best particle
+        :param p_best_crossover: Proportion of genes inherited from the particles own best known position
+        :param mutation: Mutation rate as a proportion of the permatation length
+        :param maximize: True, Maximise the fitness, False, Minimise the fitness, default False 
+        :param id: Id for the particle, default None
+        """
         self.step_func = step_func
         self.size = size
         self.current = np.random.permutation(size)
@@ -281,6 +385,12 @@ class Particle:
         self.id = id
 
     def compare(self, x):
+        """
+        Compare a new fitness score to the current best.
+
+        :param x: New score to compare
+        :return: True, if it is the better than the best score
+        """
         if x is None:
             return True
         if self.maximize:
@@ -289,6 +399,12 @@ class Particle:
             return x > self.best
 
     def step(self, swarm_best):
+        """
+        Preform one optimisation step for the particle.
+
+        :param swarm_best: The best particle in the swarm
+        :return: True, a better solution was found, False, no better solution was found
+        """
         new, solution, fitness = self.step_func(self.current)
         is_better = self.best is None or not self.compare(fitness)
         if is_better:
@@ -309,6 +425,12 @@ class Particle:
         return is_better
 
     def _mutate(self, particle):
+        """
+        Randomly mutate the particle by permuting a subset of its genes.
+
+        :param particle: The current particle permutation
+        :return: A mutated particle permutation
+        """
         new_particle = particle.copy()
         m_idxs = np.random.choice(self.size, size=self.mutation, replace=False)
         m_perm = np.random.permutation(self.mutation)
@@ -317,6 +439,14 @@ class Particle:
         return new_particle
 
     def _crossover(self, particle, best_particle, n):
+        """
+        Preform a crossover between this particle and the best current particle.
+
+        :param particle: The current particle permutation
+        :param best_particle: The highest scoring particle permutation
+        :param n: The number of genes to crossover
+        :return: A new mutated particle permutation resulting from the crossover
+        """
         cross_idxs = np.random.choice(self.size, size=n, replace=False)
         new_particle = -1 * np.ones_like(particle)
         new_particle[cross_idxs] = best_particle[cross_idxs]
@@ -334,6 +464,12 @@ class Particle:
 if __name__ == "__main__":
 
     def fitness_func(chromosome):
+        """
+        Sample fitness function.
+
+        :param chromosome: A list representing a permutation of indices
+        :return: An integer representing a fitness score
+        """
         t1 = 1
         t2 = 1
         size = len(chromosome)
