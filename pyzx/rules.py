@@ -854,8 +854,6 @@ def match_hopf(g: BaseGraph[VT,ET], vertexf:Optional[Callable[[VT],bool]]=None) 
 
     m:List[MatchHopfType] = []
 
-    if not isinstance(g, Multigraph): return m # Hopf only applies to multigraphs
-    
     for v in candidates:
         if not vertex_is_zx_like(types[v]): continue
         for w in g.neighbors(v):
@@ -909,13 +907,10 @@ def match_self_loop(g: BaseGraph[VT,ET], vertexf:Optional[Callable[[VT],bool]]=N
     types = g.types()
 
     m:List[MatchSelfLoopType] = []
-
-    if not isinstance(g, Multigraph): return m # Self-loop only applies to multigraphs
     
     for v in candidates:
         if not vertex_is_zx_like(types[v]): continue
 
-        # If the number of self-loops is greater than 1, we can remove edges
         ns = g.num_edges(v, v, EdgeType.SIMPLE)
         nh = g.num_edges(v, v, EdgeType.HADAMARD)
         if ns == 0 and nh == 0: continue
