@@ -155,7 +155,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         """Returns the amount of vertices in the graph."""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
-    def num_edges(self, s: Optional[VT]=None, t: Optional[VT]=None) -> int:
+    def num_edges(self, s: Optional[VT]=None, t: Optional[VT]=None, et: Optional[ET]=None) -> int:
         """Returns the amount of edges in the graph"""
         return len(list(self.edges(s, t)))
 

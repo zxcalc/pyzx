@@ -204,10 +204,16 @@ class GraphS(BaseGraph[int,Tuple[int,int]]):
     def num_vertices(self):
         return len(self.graph)
 
-    def num_edges(self, s=None, t=None):
+    def num_edges(self, s=None, t=None, et=None):
         if s is not None and t is not None:
             if self.connected(s, t):
-                return 1
+                if et is not None:
+                    if self.edge_type((s, t)) == et:
+                        return 1
+                    else:
+                        return 0
+                else:
+                    return 1
             else:
                 return 0
         elif s is not None:
