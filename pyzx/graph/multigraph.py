@@ -275,6 +275,8 @@ class Multigraph(BaseGraph[int,Tuple[int,int,EdgeType]]):
         if s != None or t != None:
             if et == None:
                 return len(list(self.edges(s, t)))
+            if not t in self.graph[s]:
+                return 0
             if et == EdgeType.SIMPLE:
                 return self.graph[s][t].s
             elif et == EdgeType.HADAMARD:

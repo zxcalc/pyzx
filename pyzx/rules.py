@@ -918,6 +918,7 @@ def match_self_loop(g: BaseGraph[VT,ET], vertexf:Optional[Callable[[VT],bool]]=N
         # If the number of self-loops is greater than 1, we can remove edges
         ns = g.num_edges(v, v, EdgeType.SIMPLE)
         nh = g.num_edges(v, v, EdgeType.HADAMARD)
+        if ns == 0 and nh == 0: continue
         m.append((v,ns,nh))
     return m
 
