@@ -127,7 +127,8 @@ def CNOT_HAD_PHASE_circuit(
         depth: int,
         p_had: float = 0.2,
         p_t: float = 0.2,
-        clifford:bool=False
+        clifford:bool=False,
+        seed:Optional[int]=None
         ) -> Circuit:
     """Construct a Circuit consisting of CNOT, HAD and phase gates.
     The default phase gate is the T gate, but if ``clifford=True``\\ , then
@@ -144,6 +145,7 @@ def CNOT_HAD_PHASE_circuit(
         A random circuit consisting of Hadamards, CNOT gates and phase gates.
 
     """
+    random.seed(seed)
     p_cnot = 1-p_had-p_t
     c = Circuit(qubits)
     for _ in range(depth):
@@ -162,7 +164,7 @@ def CNOT_HAD_PHASE_circuit(
     return c
 
 
-def cnots(qubits: int, depth: int, backend:Optional[str]=None) -> BaseGraph:
+def cnots(qubits: int, depth: int, backend:Optional[str]=None, seed:Optional[int]=None) -> BaseGraph:
     """Generates a circuit consisting of randomly placed CNOT gates.
     
     Args:
@@ -194,6 +196,7 @@ def cnots(qubits: int, depth: int, backend:Optional[str]=None) -> BaseGraph:
     r += 1
 
     # random CNOTs
+    random.seed(seed)
     for i in range(depth):
         c = random.randint(0, qubits-1)
         t = random.randint(0, qubits-2)
@@ -259,7 +262,8 @@ def cliffordTmeas(
         p_hsh:Optional[float]=None, 
         p_cnot:Optional[float]=None, 
         p_meas:Optional[float]=None, 
-        backend:Optional[str]=None
+        backend:Optional[str]=None,
+        seed:Optional[int]=None
         ) -> BaseGraph:
     """Generates a circuit consisting of randomly placed Clifford+T gates. Optionally, take
     probabilities of adding T, S, HSH, CNOT, and measurements.
@@ -280,6 +284,8 @@ def cliffordTmeas(
     qs = list(range(qubits))  # tracks qubit indices of vertices
     v = 0                     # next vertex to add
     r = 0                     # current row
+    
+    random.seed(seed)
 
     num = 0.0
     rest = 1.0
@@ -384,7 +390,8 @@ def cliffordT(
         p_s:Optional[float]=None,
         p_hsh:Optional[float]=None,
         p_cnot:Optional[float]=None,
-        backend:Optional[str]=None
+        backend:Optional[str]=None,
+        seed:Optional[int]=None
         ) -> BaseGraph:
     """Generates a circuit consisting of randomly placed Clifford+T gates. Optionally, take
     probabilities of adding T, S, HSH, and CNOT. If probabilities for only a subset of gates
@@ -400,14 +407,16 @@ def cliffordT(
     :param backend: When given, should be one of the possible :ref:`graph_api` backends.
     :rtype: Instance of graph of the given backend.
     """
-    return cliffordTmeas(qubits, depth, p_t, p_s, p_hsh, p_cnot, 0, backend)
+    return cliffordTmeas(qubits, depth, p_t, p_s, p_hsh, p_cnot, 0, backend, seed)
 
 def cliffords(
         qubits: int, 
         depth: int, 
         no_hadamard:bool=False,
         t_gates:bool=False,
-        backend:Optional[str]=None):
+        backend:Optional[str]=None,
+        seed:Optional[int]=None
+        ):
     """Generates a circuit consisting of randomly placed Clifford gates.
     Uses a different approach to generating Clifford circuits then :func:`cliffordT`.
 
@@ -447,6 +456,7 @@ def cliffords(
     r += 1
 
     # random gates
+    random.seed(seed)
     for i in range(depth):
         c = random.randint(0, qubits-1)
         t = random.randint(0, qubits-2)
