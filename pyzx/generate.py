@@ -145,20 +145,20 @@ def CNOT_HAD_PHASE_circuit(
         A random circuit consisting of Hadamards, CNOT gates and phase gates.
 
     """
-    random.seed(seed)
+    rand = random.Random(seed)
     p_cnot = 1-p_had-p_t
     c = Circuit(qubits)
     for _ in range(depth):
-        r = random.random()
+        r = rand.random()
         if r > 1-p_had:
-            c.add_gate("HAD",random.randrange(qubits))
+            c.add_gate("HAD",rand.randrange(qubits))
         elif r > 1-p_had-p_t:
-            if not clifford: c.add_gate("T",random.randrange(qubits))
-            else: c.add_gate("S",random.randrange(qubits))
+            if not clifford: c.add_gate("T",rand.randrange(qubits))
+            else: c.add_gate("S",rand.randrange(qubits))
         else:
-            tgt = random.randrange(qubits)
+            tgt = rand.randrange(qubits)
             while True:
-                ctrl = random.randrange(qubits)
+                ctrl = rand.randrange(qubits)
                 if ctrl!=tgt: break
             c.add_gate("CNOT",tgt,ctrl)
     return c
@@ -196,10 +196,10 @@ def cnots(qubits: int, depth: int, backend:Optional[str]=None, seed:Optional[int
     r += 1
 
     # random CNOTs
-    random.seed(seed)
+    rand = random.Random(seed)
     for i in range(depth):
-        c = random.randint(0, qubits-1)
-        t = random.randint(0, qubits-2)
+        c = rand.randint(0, qubits-1)
+        t = rand.randint(0, qubits-2)
         if t >= c: t += 1
         es += [(q[c], v), (q[t], v+1), (v, v+1)]
         q[c] = v
@@ -246,13 +246,13 @@ def cnots(qubits: int, depth: int, backend:Optional[str]=None, seed:Optional[int
     g.scalar.add_power(depth)
     return g
 
-def accept(p: float) -> bool:
-    return p>random.random()
+def accept(p: float, rand:Optional[random.Random]=random.Random()) -> bool:
+    return p>rand.random()
 
-def random_phase(add_t: bool) -> Fraction:
+def random_phase(add_t: bool, rand:Optional[random.Random]=random.Random()) -> Fraction:
     if add_t:
-        return Fraction(random.randint(1,8),4)
-    return Fraction(random.randint(1,4),2)
+        return Fraction(rand.randint(1,8),4)
+    return Fraction(rand.randint(1,4),2)
 
 def cliffordTmeas(
         qubits: int, 
@@ -285,7 +285,7 @@ def cliffordTmeas(
     v = 0                     # next vertex to add
     r = 0                     # current row
     
-    random.seed(seed)
+    rand = random.Random(seed)
 
     num = 0.0
     rest = 1.0
@@ -331,8 +331,8 @@ def cliffordTmeas(
     r += 1
 
     for i in range(2, depth+2):
-        p = random.random()
-        q0 = random.randrange(qubits)
+        p = rand.random()
+        q0 = rand.randrange(qubits)
 
         g.add_vertex(VertexType.Z,q0,r)
         g.add_edge((qs[q0], v))
@@ -342,7 +342,7 @@ def cliffordTmeas(
 
         if p > 1 - p_cnot:
             # apply CNOT gate
-            q1 = random.randrange(qubits-1)
+            q1 = rand.randrange(qubits-1)
             if q1 >= q0: q1 += 1
 
             g.add_vertex(VertexType.X,q1,r-1)
@@ -456,29 +456,29 @@ def cliffords(
     r += 1
 
     # random gates
-    random.seed(seed)
+    rand = random.Random(seed)
     for i in range(depth):
-        c = random.randint(0, qubits-1)
-        t = random.randint(0, qubits-2)
+        c = rand.randint(0, qubits-1)
+        t = rand.randint(0, qubits-2)
         if t >= c: t += 1
-        if accept(p_two_qubit):
-            if no_hadamard or accept(p_cnot): 
+        if accept(p_two_qubit,rand):
+            if no_hadamard or accept(p_cnot,rand): 
                 es1.append((v, v+1))
                 ty += [VertexType.Z, VertexType.X]
             else: 
                 es2.append((v,v+1))
-                typ: VertexType = random.choice([VertexType.Z, VertexType.X])
+                typ: VertexType = rand.choice([VertexType.Z, VertexType.X])
                 ty += [typ, typ]
-            if accept(p_phase): phases[v] = random_phase(t_gates)
-            if accept(p_phase): phases[v+1] = random_phase(t_gates)
+            if accept(p_phase,rand): phases[v] = random_phase(t_gates,rand)
+            if accept(p_phase,rand): phases[v+1] = random_phase(t_gates,rand)
         else:
-            phases[v] = random_phase(t_gates)
-            phases[v+1] = random_phase(t_gates)
+            phases[v] = random_phase(t_gates,rand)
+            phases[v+1] = random_phase(t_gates,rand)
             ty += [VertexType.Z, VertexType.X]
         
-        if not no_hadamard and accept(p_had): es2.append((q[c],v))
+        if not no_hadamard and accept(p_had,rand): es2.append((q[c],v))
         else: es1.append((q[c],v))
-        if not no_hadamard and accept(p_had): es2.append((q[t],v+1))
+        if not no_hadamard and accept(p_had,rand): es2.append((q[t],v+1))
         else: es1.append((q[t],v+1))
 
         q[c] = v
