@@ -172,7 +172,7 @@ class GraphIG(BaseGraph):
 	def edata_keys(self, edge):
 		edata = self.graph.es[edge]['_edata']
 		return edata.keys() if edata else []
-	def edata(self, edge, key, default=0):
+	def edata(self, edge, key, default=None):
 		edata = self.graph.es[edge]['_edata']
 		if edata and key in edata:
 			return edata[key]

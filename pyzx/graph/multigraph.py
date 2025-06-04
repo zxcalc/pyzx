@@ -455,7 +455,7 @@ class Multigraph(BaseGraph[int,Tuple[int,int,EdgeType]]):
     def edata_keys(self, edge):
         return self._edata.get(edge, {}).keys()
 
-    def edata(self, edge, key, default=0):
+    def edata(self, edge, key, default=None):
         return self._edata.get(edge, {}).get(key, default)
 
     def set_edata(self, edge, key, val):

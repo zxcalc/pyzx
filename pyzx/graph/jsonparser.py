@@ -193,6 +193,7 @@ def graph_to_dict(g: BaseGraph[VT,ET], include_scalar: bool=True) -> Dict[str, A
     d['inputs'] = g.inputs()
     d['outputs'] = g.outputs()
     # Convert tuple keys to strings for JSON compatibility, replacing EdgeType with its integer value
+    # This only applies to edata in Multigraph. For other classes, it returns str(k)
     def edata_key_to_str(k):
         if isinstance(k, tuple) and len(k) == 3 and hasattr(k[2], 'value'):
             return str((k[0], k[1], k[2].value))

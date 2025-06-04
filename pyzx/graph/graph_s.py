@@ -359,7 +359,7 @@ class GraphS(BaseGraph[int,Tuple[int,int]]):
         self._edata.pop(edge, None)
     def edata_keys(self, edge):
         return self._edata.get(edge, {}).keys()
-    def edata(self, edge, key, default=0):
+    def edata(self, edge, key, default=None):
         if edge in self._edata:
             return self._edata[edge].get(key, default)
         else:

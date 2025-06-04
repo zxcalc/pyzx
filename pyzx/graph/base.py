@@ -248,7 +248,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         """Returns an iterable of the edge data key names."""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
-    def edata(self, edge: ET, key: str, default: Any=0) -> Any:
+    def edata(self, edge: ET, key: str, default: Any=None) -> Any:
         """Returns the data value of the given edge associated to the key.
         If this key has no value associated with it, it returns the default value."""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)

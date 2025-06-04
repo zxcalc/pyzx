@@ -116,7 +116,7 @@ class GraphGT(BaseGraph):
 		edata = self.graph.ep.edata[edge]
 		return edata.keys() if edata else []
 
-	def edata(self, edge, key, default=0):
+	def edata(self, edge, key, default=None):
 		edata = self.graph.ep.edata[edge]
 		if edata and key in edata:
 			return edata[key]
