@@ -393,7 +393,7 @@ operations = {
                "tooltip": "Fuses connected spiders of the same color",
                "matcher": rules.match_spider_parallel, 
                "rule": rules.spider, 
-               "type": MATCHES_EDGES},
+               "type": MATCHES_VERTICES},
     "to_z": {"text": "change color to Z", 
                "tooltip": "Changes X spiders into Z spiders by pushing out Hadamards",
                "matcher": match_X_spiders, 
