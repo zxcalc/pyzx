@@ -431,7 +431,7 @@ class Multigraph(BaseGraph[int,Tuple[int,int,EdgeType]]):
             del self._vdata[vertex]
     def vdata_keys(self, vertex):
         return self._vdata.get(vertex, {}).keys()
-    def vdata(self, vertex, key, default=0):
+    def vdata(self, vertex, key, default=None):
         if vertex in self._vdata:
             return self._vdata[vertex].get(key,default)
         else:
