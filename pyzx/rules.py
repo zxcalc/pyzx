@@ -160,7 +160,7 @@ def match_spider(g: BaseGraph[VT,ET]) -> List[MatchSpiderType[VT]]:
 
 def match_spider_parallel(
         g: BaseGraph[VT,ET],
-        matchf:Optional[Callable[[ET],bool]]=None,
+        matchf:Optional[Callable[[VT],bool]]=None,
         num:int=-1
         ) -> List[MatchSpiderType[VT]]:
     """Finds non-interacting matchings of the spider fusion rule.
@@ -173,28 +173,31 @@ def match_spider_parallel(
        tries to find as many as possible.
     :rtype: List of 2-tuples ``(v1, v2)``
     """
-    if matchf is not None: candidates = set([e for e in g.edges() if matchf(e)])
-    else: candidates = g.edge_set()
+    if matchf is not None: candidates = set([v for v in g.vertices() if matchf(v)])
+    else: candidates = g.vertex_set()
     candidates = set(candidates)
     types = g.types()
-
-    i = 0
     m: List[MatchSpiderType[VT]] = []
-    while (num == -1 or i < num) and len(candidates) > 0:
-        e = candidates.pop()
-        if g.edge_type(e) != EdgeType.SIMPLE: continue
-        v0, v1 = g.edge_st(e)
-        if v0 == v1: continue
-        v0t = types[v0]
-        v1t = types[v1]
-        if (v0t == v1t and vertex_is_zx(v0t)) or \
-            (vertex_is_z_like(v0t) and vertex_is_z_like(v1t)):
-            i += 1
-            for v in g.neighbors(v0):
-                for c in g.incident_edges(v): candidates.discard(c)
-            for v in g.neighbors(v1):
-                for c in g.incident_edges(v): candidates.discard(c)
-            m.append((v0,v1))
+    i = 0
+    used: Set[VT] = set()
+    for v in list(candidates):
+        if v in used:
+            continue
+        for e in g.incident_edges(v):
+            if g.edge_type(e) != EdgeType.SIMPLE:
+                continue
+            v0, v1 = g.edge_st(e)
+            if v0 == v1 or v0 in used or v1 in used or v0 not in candidates or v1 not in candidates:
+                continue
+            v0t, v1t = types[v0], types[v1]
+            if (v0t == v1t and vertex_is_zx(v0t)) or (vertex_is_z_like(v0t) and vertex_is_z_like(v1t)):
+                i += 1
+                used.update([v0, v1, *g.neighbors(v0), *g.neighbors(v1)])
+                m.append((v0, v1))
+                if num != -1 and i >= num:
+                    return m
+        if num != -1 and i >= num:
+            break
     return m
 
 
