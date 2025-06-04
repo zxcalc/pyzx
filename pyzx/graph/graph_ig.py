@@ -159,7 +159,7 @@ class GraphIG(BaseGraph):
 	def vdata_keys(self, v):
 		return [a for a in self.graph.vertex_attributes() if a != '_a' and a != '_t' and a != '_q' and a != '_r']
 
-	def vdata(self, v, key, default=0):
+	def vdata(self, v, key, default=None):
 		try:
 			val = self.graph.vs[v][key]
 			if not val: val = default

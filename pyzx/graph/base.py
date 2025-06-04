@@ -231,7 +231,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         Used e.g. in making a copy of the graph in a backend-independent way."""
         raise NotImplementedError("Not implemented on backend" + type(self).backend)
 
-    def vdata(self, vertex: VT, key: str, default: Any=0) -> Any:
+    def vdata(self, vertex: VT, key: str, default: Any=None) -> Any:
         """Returns the data value of the given vertex associated to the key.
         If this key has no value associated with it, it returns the default value."""
         raise NotImplementedError("Not implemented on backend" + type(self).backend)
