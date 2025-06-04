@@ -56,7 +56,9 @@ import itertools
 
 import numpy as np
 
-from .utils import VertexType, EdgeType, get_w_partner, get_z_box_label, set_z_box_label, toggle_edge, vertex_is_w, vertex_is_zx, FloatInt, FractionLike, get_w_io, vertex_is_z_like
+from pyzx.graph.multigraph import Multigraph
+
+from .utils import VertexType, EdgeType, get_w_partner, get_z_box_label, set_z_box_label, toggle_edge, vertex_is_w, vertex_is_zx, vertex_is_zx_like, FloatInt, FractionLike, get_w_io, vertex_is_z_like
 from .graph.base import BaseGraph, VT, ET
 from .symbolic import Poly
 
@@ -834,6 +836,65 @@ def remove_ids(g: BaseGraph[VT,ET], matches: List[MatchIdType[VT]]) -> RewriteOu
         if et == EdgeType.SIMPLE: etab[e][0] += 1
         else: etab[e][1] += 1
     return (etab, rem, [], False)
+
+
+MatchHopfType = Tuple[VT, VT, EdgeType]
+
+def match_hopf(g: BaseGraph[VT,ET], vertexf:Optional[Callable[[VT],bool]]=None) -> List[MatchHopfType[VT]]:
+    """Finds parallel edges between spiders that can be removed.
+    :param g: An instance of a ZX-graph.
+    :param vertexf: An optional filtering function for candidate vertices, should
+    return True if a vertex should be considered as a match. Passing None will
+    consider all vertices.
+    :rtype: List of 2-tuples ``(vertex, neighbors)``.
+    """
+    if vertexf is not None: candidates = set([v for v in g.vertices() if vertexf(v)])
+    else: candidates = g.vertex_set()
+    types = g.types()
+
+    m:MatchHopfType = []
+
+    if not isinstance(g, Multigraph): return m # Hopf only applies to multigraphs
+    
+    for v in candidates:
+        if not vertex_is_zx_like(types[v]): continue
+        for w in g.neighbors(v):
+            if not w in candidates or not vertex_is_zx_like(types[w]): continue
+
+            # If the number of edges between v and w is greater than 1, we can remove edges
+            ns = g.num_edges(v, w, EdgeType.SIMPLE)
+            nh = g.num_edges(v, w, EdgeType.HADAMARD)
+            v_is_z = vertex_is_z_like(types[v])
+            w_is_z = vertex_is_z_like(types[w])
+            if v_is_z == w_is_z: # Both Z-like or X-like
+                if nh > 1:
+                    if (w,v,EdgeType.HADAMARD) not in m:
+                        m.append((v,w,EdgeType.HADAMARD))
+            else: # One is Z-like, the other is X-like
+                if ns > 1:
+                    if (w,v,EdgeType.SIMPLE) not in m:
+                        m.append((v,w,EdgeType.SIMPLE))
+    return m
+
+def hopf(g: BaseGraph[VT,ET], matches: List[MatchHopfType[VT]]) -> RewriteOutputType[VT,ET]:
+    """Performs a Hopf rule rewrite on the given graph with the
+    given ``matches`` returned from ``match_hopf``. Removes all parallel edges of the given type
+    A match is itself a list where:
+
+    ``m[0]`` : first vertex in Hopf.
+    ``m[1]`` : second vertex in Hopf.
+    ``m[2]`` : edge type of the edge to remove.
+    """
+    etab: Dict[Tuple[VT,VT],List[int]] = dict()
+    rem_edges = []
+    for v,w,et in matches:
+        n = g.num_edges(v,w,et)
+        parity = n % 2
+        rem_edges.extend([(v, w, et)]*(n - parity))
+        g.scalar.add_power(n-parity)
+
+    return (etab, [], rem_edges, False)
+    
 
 MatchGadgetType = Tuple[VT,VT,FractionLike,List[VT],List[VT]]
 

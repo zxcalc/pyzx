@@ -264,9 +264,18 @@ class Multigraph(BaseGraph[int,Tuple[int,int,EdgeType]]):
     def num_vertices(self):
         return len(self.graph)
 
-    def num_edges(self, s=None, t=None):
+    def num_edges(self, s=None, t=None, et=None):
         if s != None or t != None:
-            return len(list(self.edges(s, t)))
+            if et == None:
+                return len(list(self.edges(s, t)))
+            if et == EdgeType.SIMPLE:
+                return self.graph[s][t].s
+            elif et == EdgeType.HADAMARD:
+                return self.graph[s][t].h
+            elif et == EdgeType.W_IO:
+                return self.graph[s][t].w_io
+            else:
+                raise ValueError("Unkown EdgeType: %s" % repr(et))
         else:
             return self.nedges
 
