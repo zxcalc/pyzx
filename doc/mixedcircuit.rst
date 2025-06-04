@@ -499,16 +499,3 @@ The following benchmark compares optimization performance on different circuit t
         if data['original'] > 0:
             print(f"  Reduction %: {100 * data['reduction'] / data['original']:.1f}%")
         print()
-
-Summary
--------
-
-The ZX-calculus provides a powerful framework for analyzing hybrid quantum-classical circuits:
-
-1. **Measurement Operations**: Can be modeled through grounding operations
-2. **Classical Control**: Represented via auxiliary spiders and graph topology  
-3. **Optimization**: Standard ZX rewrite rules can reduce circuit complexity
-4. **Analysis**: Vertices can be classified as classical-like or quantum based on phase and connectivity
-5. **Feedback Loops**: Teleportation and measurement-based protocols can be represented graphically
-
-This approach enables systematic optimization and analysis of hybrid circuits, identifying which components require true quantum resources versus those that can be classically simulated.
