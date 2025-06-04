@@ -855,10 +855,8 @@ def match_hopf(g: BaseGraph[VT,ET], vertexf:Optional[Callable[[VT],bool]]=None) 
     else: candidates = g.vertex_set()
     types = g.types()
 
-    m:MatchHopfType = []
+    m:List[MatchHopfType] = []
 
-    if not isinstance(g, Multigraph): return m # Hopf only applies to multigraphs
-    
     for v in candidates:
         if not vertex_is_zx_like(types[v]): continue
         for w in g.neighbors(v):
@@ -889,15 +887,58 @@ def hopf(g: BaseGraph[VT,ET], matches: List[MatchHopfType[VT]]) -> RewriteOutput
     ``m[2]`` : edge type of the edge to remove.
     """
     etab: Dict[Tuple[VT,VT],List[int]] = dict()
-    rem_edges = []
+    rem_edges: List[ET] = []
     for v,w,et in matches:
         n = g.num_edges(v,w,et)
         parity = n % 2
-        rem_edges.extend([(v, w, et)]*(n - parity))
-        g.scalar.add_power(n-parity)
+        rem_edges.extend([g.edge(v, w, et)]*(n - parity))
+        g.scalar.add_power(-(n-parity))
 
     return (etab, [], rem_edges, False)
     
+MatchSelfLoopType = Tuple[VT, int, int]
+def match_self_loop(g: BaseGraph[VT,ET], vertexf:Optional[Callable[[VT],bool]]=None) -> List[MatchSelfLoopType[VT]]:
+    """Finds self-loops on vertices that can be removed.
+    :param g: An instance of a ZX-graph.
+    :param vertexf: An optional filtering function for candidate vertices, should
+    return True if a vertex should be considered as a match. Passing None will
+    consider all vertices.
+    :rtype: List of 2-tuples ``(vertex, neighbors)``.
+    """
+    if vertexf is not None: candidates = set([v for v in g.vertices() if vertexf(v)])
+    else: candidates = g.vertex_set()
+    types = g.types()
+
+    m:List[MatchSelfLoopType] = []
+    
+    for v in candidates:
+        if not vertex_is_zx_like(types[v]): continue
+
+        ns = g.num_edges(v, v, EdgeType.SIMPLE)
+        nh = g.num_edges(v, v, EdgeType.HADAMARD)
+        if ns == 0 and nh == 0: continue
+        m.append((v,ns,nh))
+    return m
+
+def remove_self_loops(g: BaseGraph[VT,ET], matches: List[MatchSelfLoopType[VT]]) -> RewriteOutputType[VT,ET]:
+    """Performs a self-loop removal rewrite on the given graph with the
+    given ``matches`` returned from ``match_self_loop``. Removes all self-loops of the given type
+    A match is itself a list where:
+
+    ``m[0]`` : vertex in self-loop.
+    ``m[1]`` : number of simple edges to remove.
+    ``m[2]`` : number of hadamard edges to remove.
+    """
+    etab: Dict[Tuple[VT,VT],List[int]] = dict()
+    rem_edges: List[ET] = []
+    for v,ns,nh in matches:
+        rem_edges.extend([g.edge(v, v, EdgeType.SIMPLE)]*ns)
+        rem_edges.extend([g.edge(v, v, EdgeType.HADAMARD)]*nh)
+        g.scalar.add_power(-nh)
+        if nh % 2 == 1: # A Hadamard self-loop gives a phase of pi
+            g.add_to_phase(v, Fraction(1,1))
+
+    return (etab, [], rem_edges, False)
 
 MatchGadgetType = Tuple[VT,VT,FractionLike,List[VT],List[VT]]
 
