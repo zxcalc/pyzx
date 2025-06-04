@@ -34,6 +34,7 @@ class GraphDiff(Generic[VT, ET]):
     changed_phases: Dict[VT, FractionLike]
     changed_pos: Dict[VT, Tuple[FloatInt,FloatInt]]
     changed_vdata: Dict[VT, Any]
+    changed_edata: Dict[ET, Any]
     variable_types: Dict[str,bool]
 
     def __init__(self, g1: BaseGraph[VT,ET], g2: BaseGraph[VT,ET]) -> None:
@@ -45,6 +46,7 @@ class GraphDiff(Generic[VT, ET]):
         self.changed_phases = {}
         self.changed_pos = {}
         self.changed_vdata = {}
+        self.changed_edata = {}
         self.variable_types = g1.variable_types.copy()
         self.variable_types.update(g2.variable_types)
 
@@ -89,9 +91,16 @@ class GraphDiff(Generic[VT, ET]):
             if e in old_edges:
                 if g1.edge_type(e) != g2.edge_type(e):
                     self.changed_edge_types[e] = g2.edge_type(e)
+                d1 = g1.edata_dict(e)
+                d2 = g2.edata_dict(e)
+                if d1 != d2:
+                    self.changed_edata[e] = d2
             else:
                 if g2.edge_type(e) != EdgeType.HADAMARD: # We take Hadamard edges to be the default
                     self.changed_edge_types[e] = g2.edge_type(e)
+                d2 = g2.edata_dict(e)
+                if d2:
+                    self.changed_edata[e] = d2
 
     def apply_diff(self,g: BaseGraph[VT,ET]) -> BaseGraph[VT,ET]:
         g = copy.deepcopy(g)
@@ -110,6 +119,9 @@ class GraphDiff(Generic[VT, ET]):
                 g.set_vdata_dict(v, self.changed_vdata[v])
         for st, ty in self.new_edges:
             g.add_edge(st,ty)
+        for e in self.changed_edata:
+            for k, val in self.changed_edata[e].items():
+                g.set_edata(e, k, val)
 
         for v in self.changed_pos:
             if v in self.new_verts: continue
@@ -136,6 +148,9 @@ class GraphDiff(Generic[VT, ET]):
         changed_edge_types_str_dict = {}
         for key, value in self.changed_edge_types.items():
             changed_edge_types_str_dict[f"{key[0]},{key[1]}"] = value # type: ignore
+        changed_edata_str_dict = {}
+        for key, value in self.changed_edata.items():
+            changed_edata_str_dict[f"{key[0]},{key[1]}"] = value # type: ignore
         changed_phases_str = {k: phase_to_s(v) for k, v in self.changed_phases.items()}
         return {
             "removed_verts": self.removed_verts,
@@ -147,6 +162,7 @@ class GraphDiff(Generic[VT, ET]):
             "changed_phases": changed_phases_str,
             "changed_pos": self.changed_pos,
             "changed_vdata": self.changed_vdata,
+            "changed_edata": changed_edata_str_dict,
             "variable_types": self.variable_types
         }
 
@@ -166,6 +182,10 @@ class GraphDiff(Generic[VT, ET]):
         gd.changed_phases = {int(k): string_to_phase(v,gd) for k, v in d["changed_phases"].items()}
         gd.changed_pos = map_dict_keys(d["changed_pos"], int)
         gd.changed_vdata = map_dict_keys(d["changed_vdata"], int)
+        if "changed_edata" in d:
+            gd.changed_edata = map_dict_keys(d["changed_edata"], lambda x: tuple(map(int, x.split(","))))
+        else:
+            gd.changed_edata = {}
         return gd
 
 def map_dict_keys(d: Dict[str, Any], f: Callable[[str], Any]) -> Dict[Any, Any]:

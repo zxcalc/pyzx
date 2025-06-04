@@ -240,6 +240,22 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         """Sets the vertex data associated to key to val."""
         raise NotImplementedError("Not implemented on backend" + type(self).backend)
 
+    def clear_edata(self, edge: ET) -> None:
+        """Removes all edata associated to an edge"""
+        raise NotImplementedError("Not implemented on backend " + type(self).backend)
+
+    def edata_keys(self, edge: ET) -> Sequence[str]:
+        """Returns an iterable of the edge data key names."""
+        raise NotImplementedError("Not implemented on backend " + type(self).backend)
+
+    def edata(self, edge: ET, key: str, default: Any=None) -> Any:
+        """Returns the data value of the given edge associated to the key.
+        If this key has no value associated with it, it returns the default value."""
+        raise NotImplementedError("Not implemented on backend " + type(self).backend)
+
+    def set_edata(self, edge: ET, key: str, val: Any) -> None:
+        """Sets the edge data associated to key to val."""
+        raise NotImplementedError("Not implemented on backend " + type(self).backend)
     # }}}
 
 
@@ -497,7 +513,8 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         
         for e in self.edges():
             s, t = self.edge_st(e)
-            g.add_edge((vtab[s], vtab[t]), self.edge_type(e))
+            new_e = g.add_edge((vtab[s], vtab[t]), self.edge_type(e))
+            g.set_edata_dict(new_e, self.edata_dict(e))
 
         return g
 
@@ -564,7 +581,8 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         for e in other.edges():
             s,t = other.edge_st(e)
             if not s in inputs and not t in inputs:
-                self.add_edge((vtab[s],vtab[t]), edgetype=other.edge_type(e))
+                new_e = self.add_edge((vtab[s],vtab[t]), edgetype=other.edge_type(e))
+                self.set_edata_dict(new_e, other.edata_dict(e))
 
         for (no,ni,et) in plugs:
             self.add_edge((no,vtab[ni]), edgetype=et)
@@ -587,7 +605,8 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
             vertex_map[v] = w
         for e in other.edges():
             s,t = other.edge_st(e)
-            g.add_edge((vertex_map[s],vertex_map[t]),other.edge_type(e))
+            new_e = g.add_edge((vertex_map[s],vertex_map[t]),other.edge_type(e))
+            g.set_edata_dict(new_e, other.edata_dict(e))
 
         inputs = g.inputs() + tuple(vertex_map[v] for v in other.inputs())
         outputs = g.outputs() + tuple(vertex_map[v] for v in other.outputs())
@@ -977,6 +996,16 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         self.clear_vdata(vertex)
         for k, v in d.items():
             self.set_vdata(vertex, k, v)
+
+    def edata_dict(self, edge: ET) -> Dict[str, Any]:
+        """Return a dict of all edge data for the given edge."""
+        return { key: self.edata(edge, key) for key in self.edata_keys(edge) }
+
+    def set_edata_dict(self, edge: ET, d: Dict[str, Any]) -> None:
+        """Set all edge data for the given edge from a dict, clearing existing data first."""
+        self.clear_edata(edge)
+        for k, v in d.items():
+            self.set_edata(edge, k, v)
 
     def is_well_formed(self) -> bool:
         """Returns whether the graph is a well-formed ZX-diagram.
