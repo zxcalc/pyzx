@@ -246,10 +246,10 @@ def cnots(qubits: int, depth: int, backend:Optional[str]=None, seed:Optional[int
     g.scalar.add_power(depth)
     return g
 
-def accept(p: float, rand:Optional[random.Random]=random.Random()) -> bool:
+def accept(p: float, rand:random.Random=random.Random()) -> bool:
     return p>rand.random()
 
-def random_phase(add_t: bool, rand:Optional[random.Random]=random.Random()) -> Fraction:
+def random_phase(add_t: bool, rand:random.Random=random.Random()) -> Fraction:
     if add_t:
         return Fraction(rand.randint(1,8),4)
     return Fraction(rand.randint(1,4),2)
