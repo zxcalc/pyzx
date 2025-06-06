@@ -41,6 +41,7 @@ class GraphS(BaseGraph[int,Tuple[int,int]]):
         self._grounds: Set[int] = set()
 
         self._vdata: Dict[int,Any]                      = dict()
+        self._edata: Dict[Tuple[int,int],Any] = dict()
         self._inputs: Tuple[int, ...]                   = tuple()
         self._outputs: Tuple[int, ...]                  = tuple()
 
@@ -195,6 +196,7 @@ class GraphS(BaseGraph[int,Tuple[int,int]]):
             self.nedges -= 1
             del self.graph[s][t]
             del self.graph[t][s]
+            self._edata.pop((s, t), None)
 
     def remove_edge(self, edge):
         self.remove_edges([edge])
@@ -202,10 +204,16 @@ class GraphS(BaseGraph[int,Tuple[int,int]]):
     def num_vertices(self):
         return len(self.graph)
 
-    def num_edges(self, s=None, t=None):
+    def num_edges(self, s=None, t=None, et=None):
         if s is not None and t is not None:
             if self.connected(s, t):
-                return 1
+                if et is not None:
+                    if self.edge_type((s, t)) == et:
+                        return 1
+                    else:
+                        return 0
+                else:
+                    return 1
             else:
                 return 0
         elif s is not None:
@@ -342,7 +350,7 @@ class GraphS(BaseGraph[int,Tuple[int,int]]):
             del self._vdata[vertex]
     def vdata_keys(self, vertex):
         return self._vdata.get(vertex, {}).keys()
-    def vdata(self, vertex, key, default=0):
+    def vdata(self, vertex, key, default=None):
         if vertex in self._vdata:
             return self._vdata[vertex].get(key,default)
         else:
@@ -352,3 +360,18 @@ class GraphS(BaseGraph[int,Tuple[int,int]]):
             self._vdata[vertex][key] = val
         else:
             self._vdata[vertex] = {key:val}
+
+    def clear_edata(self, edge):
+        self._edata.pop(edge, None)
+    def edata_keys(self, edge):
+        return self._edata.get(edge, {}).keys()
+    def edata(self, edge, key, default=None):
+        if edge in self._edata:
+            return self._edata[edge].get(key, default)
+        else:
+            return default
+    def set_edata(self, edge, key, val):
+        if edge in self._edata:
+            self._edata[edge][key] = val
+        else:
+            self._edata[edge] = {key: val}

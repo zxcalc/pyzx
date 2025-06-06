@@ -56,7 +56,9 @@ import itertools
 
 import numpy as np
 
-from .utils import VertexType, EdgeType, get_w_partner, get_z_box_label, set_z_box_label, toggle_edge, vertex_is_w, vertex_is_zx, FloatInt, FractionLike, get_w_io, vertex_is_z_like
+from pyzx.graph.multigraph import Multigraph
+
+from .utils import VertexType, EdgeType, get_w_partner, get_z_box_label, set_z_box_label, toggle_edge, vertex_is_w, vertex_is_zx, vertex_is_zx_like, FloatInt, FractionLike, get_w_io, vertex_is_z_like
 from .graph.base import BaseGraph, VT, ET
 from .symbolic import Poly
 
@@ -158,7 +160,7 @@ def match_spider(g: BaseGraph[VT,ET]) -> List[MatchSpiderType[VT]]:
 
 def match_spider_parallel(
         g: BaseGraph[VT,ET],
-        matchf:Optional[Callable[[ET],bool]]=None,
+        matchf:Optional[Callable[[VT],bool]]=None,
         num:int=-1
         ) -> List[MatchSpiderType[VT]]:
     """Finds non-interacting matchings of the spider fusion rule.
@@ -171,28 +173,31 @@ def match_spider_parallel(
        tries to find as many as possible.
     :rtype: List of 2-tuples ``(v1, v2)``
     """
-    if matchf is not None: candidates = set([e for e in g.edges() if matchf(e)])
-    else: candidates = g.edge_set()
+    if matchf is not None: candidates = set([v for v in g.vertices() if matchf(v)])
+    else: candidates = g.vertex_set()
     candidates = set(candidates)
     types = g.types()
-
-    i = 0
     m: List[MatchSpiderType[VT]] = []
-    while (num == -1 or i < num) and len(candidates) > 0:
-        e = candidates.pop()
-        if g.edge_type(e) != EdgeType.SIMPLE: continue
-        v0, v1 = g.edge_st(e)
-        if v0 == v1: continue
-        v0t = types[v0]
-        v1t = types[v1]
-        if (v0t == v1t and vertex_is_zx(v0t)) or \
-            (vertex_is_z_like(v0t) and vertex_is_z_like(v1t)):
-            i += 1
-            for v in g.neighbors(v0):
-                for c in g.incident_edges(v): candidates.discard(c)
-            for v in g.neighbors(v1):
-                for c in g.incident_edges(v): candidates.discard(c)
-            m.append((v0,v1))
+    i = 0
+    used: Set[VT] = set()
+    for v in list(candidates):
+        if v in used:
+            continue
+        for e in g.incident_edges(v):
+            if g.edge_type(e) != EdgeType.SIMPLE:
+                continue
+            v0, v1 = g.edge_st(e)
+            if v0 == v1 or v0 in used or v1 in used or v0 not in candidates or v1 not in candidates:
+                continue
+            v0t, v1t = types[v0], types[v1]
+            if (v0t == v1t and vertex_is_zx(v0t)) or (vertex_is_z_like(v0t) and vertex_is_z_like(v1t)):
+                i += 1
+                used.update([v0, v1, *g.neighbors(v0), *g.neighbors(v1)])
+                m.append((v0, v1))
+                if num != -1 and i >= num:
+                    return m
+        if num != -1 and i >= num:
+            break
     return m
 
 
@@ -834,6 +839,106 @@ def remove_ids(g: BaseGraph[VT,ET], matches: List[MatchIdType[VT]]) -> RewriteOu
         if et == EdgeType.SIMPLE: etab[e][0] += 1
         else: etab[e][1] += 1
     return (etab, rem, [], False)
+
+
+MatchHopfType = Tuple[VT, VT, EdgeType]
+
+def match_hopf(g: BaseGraph[VT,ET], vertexf:Optional[Callable[[VT],bool]]=None) -> List[MatchHopfType[VT]]:
+    """Finds parallel edges between spiders that can be removed.
+    :param g: An instance of a ZX-graph.
+    :param vertexf: An optional filtering function for candidate vertices, should
+    return True if a vertex should be considered as a match. Passing None will
+    consider all vertices.
+    :rtype: List of 2-tuples ``(vertex, neighbors)``.
+    """
+    if vertexf is not None: candidates = set([v for v in g.vertices() if vertexf(v)])
+    else: candidates = g.vertex_set()
+    types = g.types()
+
+    m:List[MatchHopfType] = []
+
+    for v in candidates:
+        if not vertex_is_zx_like(types[v]): continue
+        for w in g.neighbors(v):
+            if not w in candidates or not vertex_is_zx_like(types[w]): continue
+
+            # If the number of edges between v and w is greater than 1, we can remove edges
+            ns = g.num_edges(v, w, EdgeType.SIMPLE)
+            nh = g.num_edges(v, w, EdgeType.HADAMARD)
+            v_is_z = vertex_is_z_like(types[v])
+            w_is_z = vertex_is_z_like(types[w])
+            if v_is_z == w_is_z: # Both Z-like or X-like
+                if nh > 1:
+                    if (w,v,EdgeType.HADAMARD) not in m:
+                        m.append((v,w,EdgeType.HADAMARD))
+            else: # One is Z-like, the other is X-like
+                if ns > 1:
+                    if (w,v,EdgeType.SIMPLE) not in m:
+                        m.append((v,w,EdgeType.SIMPLE))
+    return m
+
+def hopf(g: BaseGraph[VT,ET], matches: List[MatchHopfType[VT]]) -> RewriteOutputType[VT,ET]:
+    """Performs a Hopf rule rewrite on the given graph with the
+    given ``matches`` returned from ``match_hopf``. Removes all parallel edges of the given type
+    A match is itself a list where:
+
+    ``m[0]`` : first vertex in Hopf.
+    ``m[1]`` : second vertex in Hopf.
+    ``m[2]`` : edge type of the edge to remove.
+    """
+    etab: Dict[Tuple[VT,VT],List[int]] = dict()
+    rem_edges: List[ET] = []
+    for v,w,et in matches:
+        n = g.num_edges(v,w,et)
+        parity = n % 2
+        rem_edges.extend([g.edge(v, w, et)]*(n - parity))
+        g.scalar.add_power(-(n-parity))
+
+    return (etab, [], rem_edges, False)
+    
+MatchSelfLoopType = Tuple[VT, int, int]
+def match_self_loop(g: BaseGraph[VT,ET], vertexf:Optional[Callable[[VT],bool]]=None) -> List[MatchSelfLoopType[VT]]:
+    """Finds self-loops on vertices that can be removed.
+    :param g: An instance of a ZX-graph.
+    :param vertexf: An optional filtering function for candidate vertices, should
+    return True if a vertex should be considered as a match. Passing None will
+    consider all vertices.
+    :rtype: List of 2-tuples ``(vertex, neighbors)``.
+    """
+    if vertexf is not None: candidates = set([v for v in g.vertices() if vertexf(v)])
+    else: candidates = g.vertex_set()
+    types = g.types()
+
+    m:List[MatchSelfLoopType] = []
+    
+    for v in candidates:
+        if not vertex_is_zx_like(types[v]): continue
+
+        ns = g.num_edges(v, v, EdgeType.SIMPLE)
+        nh = g.num_edges(v, v, EdgeType.HADAMARD)
+        if ns == 0 and nh == 0: continue
+        m.append((v,ns,nh))
+    return m
+
+def remove_self_loops(g: BaseGraph[VT,ET], matches: List[MatchSelfLoopType[VT]]) -> RewriteOutputType[VT,ET]:
+    """Performs a self-loop removal rewrite on the given graph with the
+    given ``matches`` returned from ``match_self_loop``. Removes all self-loops of the given type
+    A match is itself a list where:
+
+    ``m[0]`` : vertex in self-loop.
+    ``m[1]`` : number of simple edges to remove.
+    ``m[2]`` : number of hadamard edges to remove.
+    """
+    etab: Dict[Tuple[VT,VT],List[int]] = dict()
+    rem_edges: List[ET] = []
+    for v,ns,nh in matches:
+        rem_edges.extend([g.edge(v, v, EdgeType.SIMPLE)]*ns)
+        rem_edges.extend([g.edge(v, v, EdgeType.HADAMARD)]*nh)
+        g.scalar.add_power(-nh)
+        if nh % 2 == 1: # A Hadamard self-loop gives a phase of pi
+            g.add_to_phase(v, Fraction(1,1))
+
+    return (etab, [], rem_edges, False)
 
 MatchGadgetType = Tuple[VT,VT,FractionLike,List[VT],List[VT]]
 

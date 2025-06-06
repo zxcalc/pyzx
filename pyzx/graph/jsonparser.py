@@ -18,6 +18,7 @@ __all__ = ['string_to_phase','to_graphml']
 
 import json
 import re
+import ast
 from fractions import Fraction
 from typing import List, Dict, Tuple, Any, Optional, Callable, Union, TYPE_CHECKING
 
@@ -191,9 +192,16 @@ def graph_to_dict(g: BaseGraph[VT,ET], include_scalar: bool=True) -> Dict[str, A
         d["scalar"] = g.scalar.to_dict()
     d['inputs'] = g.inputs()
     d['outputs'] = g.outputs()
+    # Convert tuple keys to strings for JSON compatibility, replacing EdgeType with its integer value
+    # This only applies to edata in Multigraph. For other classes, it returns str(k)
+    def edata_key_to_str(k):
+        if isinstance(k, tuple) and len(k) == 3 and hasattr(k[2], 'value'):
+            return str((k[0], k[1], k[2].value))
+        return str(k)
+    d['edata'] = {edata_key_to_str(k): v for k, v in g._edata.items()}  # type: ignore[attr-defined]
     if g.backend == 'multigraph':
         d['auto_simplify'] = g.get_auto_simplify()
-    
+
     verts = []
     for v in g.vertices():
         d_v = {
@@ -219,7 +227,7 @@ def graph_to_dict(g: BaseGraph[VT,ET], include_scalar: bool=True) -> Dict[str, A
             src,tgt = g.edge_st(e)
             et = g.edge_type(e)
             edges.append((src,tgt,et))
-    
+
     d['vertices'] = verts
     d['edges']  = edges
     return d
@@ -369,6 +377,9 @@ def dict_to_graph(d: Dict[str,Any], backend: Optional[str]=None) -> BaseGraph:
         if 'data' in v_d:
             for k,val in v_d['data'].items():
                 g.set_vdata(v,k,val)
+
+    if 'edata' in d:
+        g._edata = {ast.literal_eval(k): v for k, v in d['edata'].items()}  # type: ignore[attr-defined]
 
     for (s,t,et) in d['edges']:
         g.add_edge((s,t),et)
