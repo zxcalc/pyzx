@@ -17,7 +17,7 @@
 
 
 """
-This module contains two congruences (i.e., non-simplification rewrite rules) for exploring the space of equivalent ZX-diagrams. The two congruences defined here are based on the graph-theoretic notions of local complementation and pivoting. The methods lc_cong and pivot_cong take a ZX-diagram and subjects over which to apply the rewrite rule as parameters. The methods apply_rand_lc and apply_rand_pivot select these subjects probabilistically.
+This module contains two congruences (i.e., non-simplification rewrite rules) for exploring the space of equivalent ZX-diagrams. The two congruences defined here are based on the graph-theoretic notions of local complementation and pivoting. The methods lc_cong and pivot_cong take a ZX-diagram and subjects over which to apply the rewrite rule as parameters. The methods `apply_rand_lc` and `apply_rand_pivot` select these subjects probabilistically.
 """
 
 
@@ -34,19 +34,40 @@ from pyzx.utils import VertexType, EdgeType
 
 ### Utilities
 def toggle_edge(g, v1, v2):
-    """Toggles the connectivity between two spiders in a graph-like ZX-diagram."""
+    """
+    Utility function that toggles the connectivity between two spiders in a graph-like ZX-diagram.
+
+    :param g: Graph where the operation is applied.
+    :param v1: First vertex to toggle.
+    :param v2: Second vertex to toggle
+    """
     if g.connected(v1, v2):
         g.remove_edge(g.edge(v1, v2))
     else:
         g.add_edge((v1, v2), edgetype=EdgeType.HADAMARD)
 
 def toggle_subset_connectivity(g, vs1, vs2):
-    """Toggles the connectivity between two subsets of spiders in a graph-like ZX-diagram."""
+    """
+    Utility function that toggles the connectivity between two subsets of spiders in a graph-like ZX-diagram.
+
+    :param g: Graph where the operation is applied.
+    :param vs1: First subset of vertices to be toggled.
+    :param vs2: Second subset of vertices to be toggled.
+
+    """
     for v1 in vs1:
         for v2 in vs2:
             toggle_edge(g, v1, v2)
 
 def uniform_weights(g, elts):
+    """
+    Assigns uniform weights to elements for selection.
+    Used as weight function for random local complementation and random pivoting functions.
+
+    :param g: Graph context for the operation.
+    :param elts: Elements to assign weights to.
+    :return: List of uniform weights.
+    """
     return [1 / len(elts)] * len(elts)
 
 def unfuse(g, v):
@@ -54,6 +75,10 @@ def unfuse(g, v):
     For a Z-spider with a phase and neighbors that are both BOUNDARY and Z, unfuse the phase
     in the form of a new spider that holds the connectivity to the boundaries. Note that v will
     maintain its connectivity to any Z spiders (just not boundaries).
+
+    :param g: Graph where the operation is applied.
+    :param v: Vertex to unfuse.
+    :return: New vertex created during unfusion.
     """
     v_phase = g.phase(v)
     bs = [v for v in g.neighbors(v) if g.type(v) == VertexType.BOUNDARY]
@@ -84,7 +109,12 @@ def unfuse(g, v):
 
 ### Local Complementation
 def is_lc_vertex(g, v):
-    """Checks if a spider in a ZX-diagram is a valid subject for local complementation."""
+    """Checks if a spider in a ZX-diagram is a valid subject for local complementation.
+
+    :param g: Graph where the check is performed.
+    :param v: Vertex to check.
+    :return: True if valid, False otherwise.
+    """
     # don't want to apply LC to a single-degree spider because it will only result in a growing chain
     if g.vertex_degree(v) < 2 or g.type(v) != VertexType.Z:
         return False
@@ -99,8 +129,11 @@ def is_lc_vertex(g, v):
 
 # Assumes that v is a Z-spider (green)
 def lc_cong(g, v):
-    """Applies local complementation at a provided spider in a ZX-diagram"""
+    """Applies local complementation at a provided spider in a ZX-diagram. Assumes v is a Z spider.
 
+    :param g: Graph where the operation is applied.
+    :param v: Vertex to apply local complementation.
+    """
     # FIXME: not gracefully handling if on boundary. If on boundary, sohuld just add on same qubit rather than add a gadget
     ns = [n for n in g.neighbors(v) if g.type(n) == VertexType.Z]
 
@@ -125,6 +158,11 @@ def lc_cong(g, v):
 
 
 def lc_cong2(g, v):
+    """Applies local complementation at a provided spider in a ZX-diagram.
+
+    :param g: Graph where the operation is applied.
+    :param v: Vertex to apply local complementation.
+    """
     p = g.phase(v)
     if p != Fraction(1,2) and p != Fraction(-1,2):
         v1 = g.add_vertex(
@@ -144,7 +182,11 @@ def lc_cong2(g, v):
 
 
 def apply_rand_lc(g, weight_func=uniform_weights):
-    """Applies local complementation to randomly selected spider"""
+    """Applies local complementation to randomly selected spider.
+
+    :param g: Graph where the operation is applied.
+    :param weight_func: Function to determine weights for selection.    
+    """
 
     lc_vs = [v for v in g.vertices() if is_lc_vertex(g, v)]
     weights = weight_func(g, lc_vs)
@@ -158,13 +200,25 @@ def apply_rand_lc(g, weight_func=uniform_weights):
 
 # TODO: May want to add some additional cases when we know it's not useful (as in the LC case)
 def is_pivot_edge(g, e):
-    """Checks if a given edge in a ZX-diagram is a suitable candidate for pivoting"""
+    """
+    Checks if a given edge in a ZX-diagram is a suitable candidate for pivoting
+    
+    :param g: Graph where the check is performed.
+    :param e: Edge to check.
+    :return: True if suitable, False otherwise.
+    """
 
     v1, v2 = g.edge_st(e)
     return g.type(v1) == VertexType.Z and g.type(v2) == VertexType.Z
 
 def pivot_cong(g, v1, v2):
-    """Applies pivoting to two connected spiders"""
+    """
+    Applies pivoting to two connected spiders
+
+    :param g: Graph where the operation is applied.
+    :param v1: First vertex.
+    :param v2: Second vertex.
+    """
 
     # get the three subsets
     nhd1 = list(g.neighbors(v1))
@@ -202,7 +256,12 @@ def pivot_cong(g, v1, v2):
 
 
 def apply_rand_pivot(g, weight_func=uniform_weights):
-    """Applies pivoting to a randomly selected pair of connected spiders"""
+    """
+    Applies pivoting to a randomly selected pair of connected spiders.
+
+    :param g: Graph where the operation is applied.
+    :param weight_func: Function to determine weights for selection. Default is uniform weights.
+    """
 
     # assumes len(candidates) != 0
     candidates = [e for e in g.edges() if is_pivot_edge(g, e)]
