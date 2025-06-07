@@ -27,6 +27,7 @@ class GraphGT(BaseGraph):
 		self.graph = gt.Graph(directed=False)
 		self.graph.set_fast_edge_removal()
 		self.graph.vp.type = self.graph.new_vertex_property('int')
+		self.graph.ep.edata = self.graph.new_edge_property('object')
 
 	def add_vertices(self, amount):
 		self.graph.add_vertex(amount)
@@ -107,3 +108,23 @@ class GraphGT(BaseGraph):
 	def add_attribute(self, attrib_name, default=0):
 		self.graph.vertex_properties[attrib_name] = self.graph.new_vertex_property('int')
 		self.graph.vertex_properties[attrib_name].set_value(default)
+
+	def clear_edata(self, edge):
+		self.graph.ep.edata[edge] = None
+
+	def edata_keys(self, edge):
+		edata = self.graph.ep.edata[edge]
+		return edata.keys() if edata else []
+
+	def edata(self, edge, key, default=None):
+		edata = self.graph.ep.edata[edge]
+		if edata and key in edata:
+			return edata[key]
+		return default
+
+	def set_edata(self, edge, key, val):
+		edata = self.graph.ep.edata[edge]
+		if edata:
+			edata[key] = val
+		else:
+			self.graph.ep.edata[edge] = {key: val}

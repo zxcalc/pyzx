@@ -78,6 +78,7 @@ class Multigraph(BaseGraph[int,Tuple[int,int,EdgeType]]):
         self._grounds: Set[int]                         = set()
 
         self._vdata: Dict[int,Any]                      = dict()
+        self._edata: Dict[Tuple[int,int,EdgeType], Dict[str, Any]] = dict()
         self._inputs: Tuple[int, ...]                   = tuple()
         self._outputs: Tuple[int, ...]                  = tuple()
 
@@ -94,6 +95,7 @@ class Multigraph(BaseGraph[int,Tuple[int,int,EdgeType]]):
         cpy._rindex = self._rindex.copy()
         cpy._maxr = self._maxr
         cpy._vdata = self._vdata.copy()
+        cpy._edata = {k: v.copy() for k, v in self._edata.items()}
         cpy.scalar = self.scalar.copy()
         cpy._inputs = tuple(list(self._inputs))
         cpy._outputs = tuple(list(self._outputs))
@@ -211,6 +213,7 @@ class Multigraph(BaseGraph[int,Tuple[int,int,EdgeType]]):
             if e.is_empty():
                 del self.graph[s][t]
                 del self.graph[t][s]
+                self._edata.pop((s, t, edgetype), None)
 
         return (s,t, edgetype) if s <= t else (t,s,edgetype)
 
@@ -221,6 +224,9 @@ class Multigraph(BaseGraph[int,Tuple[int,int,EdgeType]]):
             for v1 in vs:
                 e = self.graph[v][v1]
                 self.nedges -= e.s + e.h
+                # Remove all edata for all edge types between v and v1
+                for ty in EdgeType:
+                    self._edata.pop((min(v, v1), max(v, v1), ty), None)
                 del self.graph[v][v1]
                 if v != v1: del self.graph[v1][v]
             # remove the vertex
@@ -258,15 +264,27 @@ class Multigraph(BaseGraph[int,Tuple[int,int,EdgeType]]):
         if e.is_empty():
             del self.graph[s][t]
             if s != t: del self.graph[t][s]
+            self._edata.pop(edge, None)
 
         self.nedges -= 1
 
     def num_vertices(self):
         return len(self.graph)
 
-    def num_edges(self, s=None, t=None):
+    def num_edges(self, s=None, t=None, et=None):
         if s != None or t != None:
-            return len(list(self.edges(s, t)))
+            if et == None:
+                return len(list(self.edges(s, t)))
+            if not t in self.graph[s]:
+                return 0
+            if et == EdgeType.SIMPLE:
+                return self.graph[s][t].s
+            elif et == EdgeType.HADAMARD:
+                return self.graph[s][t].h
+            elif et == EdgeType.W_IO:
+                return self.graph[s][t].w_io
+            else:
+                raise ValueError("Unkown EdgeType: %s" % repr(et))
         else:
             return self.nedges
 
@@ -431,7 +449,7 @@ class Multigraph(BaseGraph[int,Tuple[int,int,EdgeType]]):
             del self._vdata[vertex]
     def vdata_keys(self, vertex):
         return self._vdata.get(vertex, {}).keys()
-    def vdata(self, vertex, key, default=0):
+    def vdata(self, vertex, key, default=None):
         if vertex in self._vdata:
             return self._vdata[vertex].get(key,default)
         else:
@@ -441,6 +459,29 @@ class Multigraph(BaseGraph[int,Tuple[int,int,EdgeType]]):
             self._vdata[vertex][key] = val
         else:
             self._vdata[vertex] = {key:val}
+
+    def clear_edata(self, edge):
+        self._edata.pop(edge, None)
+
+    def edata_keys(self, edge):
+        return self._edata.get(edge, {}).keys()
+
+    def edata(self, edge, key, default=None):
+        return self._edata.get(edge, {}).get(key, default)
+
+    def set_edata(self, edge, key, val):
+        if edge in self._edata:
+            self._edata[edge][key] = val
+        else:
+            self._edata[edge] = {key: val}
+
+    def edata_dict(self, edge):
+        return dict(self._edata.get(edge, {}))
+
+    def set_edata_dict(self, edge, d):
+        self.clear_edata(edge)
+        if d:
+            self._edata[edge] = dict(d)
 
     @classmethod
     def from_json(cls, js:Union[str,Dict[str,Any]]) -> 'Multigraph':
