@@ -28,8 +28,12 @@ from pyzx.optimize import basic_optimization
 
 # Weighted gate count
 def wgc(c, two_qb_weight=10):
-    """A measure of the complexity of a given circuit. By default, 2-qubit
-    gates are treated as 10X more costly than single-qubit gates"""
+    """A measure of the complexity of a given circuit.
+
+    :param c: Circuit to evaluate.
+    :param two_qb_weight: Weight factor for 2-qubit gates, default is 10.
+    :return: Weighted gate count of the circuit.
+    """
 
     c_tmp = c.to_basic_gates()
     total = len(c_tmp.gates)
@@ -40,7 +44,12 @@ def wgc(c, two_qb_weight=10):
 # Weighted gate count of a ZX-diagram
 def g_wgc(g, two_qb_weight=10, g_simplify=False, c_simplify=True):
     """A measure of the complexity of the circuit obtained from a a ZX-diagram
-    upon extraction using the above measure of circuit complexity"""
+
+    :param g: ZX-diagram to evaluate.
+    :param two_qb_weight: Weight factor for 2-qubit gates, default is 10.
+    :param g_simplify: If True, applies full reduction to graph before returning weighted count.
+    :param c_simplify: If True, applies basic optimization to circuit before returning weighted count.
+    :return: Weighted gate count of the extracted circuit."""
 
     g_tmp = g.copy()
     if g_simplify:

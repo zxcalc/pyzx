@@ -163,5 +163,46 @@ Below is listed the content of ``tikz.py``.
    :members:
    :undoc-members:
 
+
+Local Search Functions
+----------------------
+
+.. _local_search:
+
+Below listed is the content of ``genetic.py``.
+
+.. module:: local_search
+
+.. automodule:: pyzx.local_search.genetic
+   :members:
+   :undoc-members:
+   :member-order: bysource
+
+Below listed is the content of ``simulated_annealing.py``.
+
+.. module:: local_search
+
+.. automodule:: pyzx.local_search.simulated_annealing
+   :members:
+   :undoc-members:
+   :member-order: bysource
+
+Below listed is the content of ``congruences.py``.
+
+.. module:: local_search
+
+.. automodule:: pyzx.local_search.congruences
+   :members:
+   :undoc-members:
+   :member-order: bysource
+
+Below listed is the content of ``scores.py``.
+
+.. module:: local_search
+
+.. automodule:: pyzx.local_search.scores
+   :members:
+   :undoc-members:
+   :member-order: bysource
 .. _quanto:
 
