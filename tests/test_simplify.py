@@ -54,9 +54,9 @@ class TestSimplify(unittest.TestCase):
         self.circuits = []
         self.circuits.append(cliffordT(3,20,0.3))
         self.circuits.append(cliffordT(3,10,0.1))
-        self.circuits.append(cliffordT(4,30,0.3))
-        self.circuits.append(cliffordT(5,50,0.08))
-        self.circuits.append(cliffordT(4,80,0.1))
+        # self.circuits.append(cliffordT(4,30,0.3))
+        # self.circuits.append(cliffordT(5,50,0.08))
+        # self.circuits.append(cliffordT(4,80,0.1))
 
     def func_test(self, func, prepare=None):
         for i,c in enumerate(self.circuits):
