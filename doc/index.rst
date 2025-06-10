@@ -16,7 +16,7 @@ PyZX
    graph
    representations
    api
-
+   mixedcircuit
 .. toctree::
    :caption: Notebooks:
 
