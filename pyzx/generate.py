@@ -27,7 +27,7 @@ __all__ = [
     "qft",
 ]
 
-import random
+import random, types
 from fractions import Fraction
 
 from typing import Optional, List, Set, Union
@@ -145,6 +145,7 @@ def CNOT_HAD_PHASE_circuit(
         A random circuit consisting of Hadamards, CNOT gates and phase gates.
 
     """
+    rand: Union[random.Random, types.ModuleType]
     if (seed is not None): rand = random.Random(seed)
     else: rand = random
     p_cnot = 1-p_had-p_t
@@ -197,6 +198,7 @@ def cnots(qubits: int, depth: int, backend:Optional[str]=None, seed:Optional[int
     r += 1
 
     # random CNOTs
+    rand: Union[random.Random, types.ModuleType]
     if (seed is not None): rand = random.Random(seed)
     else: rand = random
     for i in range(depth):
@@ -248,10 +250,10 @@ def cnots(qubits: int, depth: int, backend:Optional[str]=None, seed:Optional[int
     g.scalar.add_power(depth)
     return g
 
-def accept(p: float, rand:Union[random.Random,type(random)]=random) -> bool:
+def accept(p: float, rand:Union[random.Random,types.ModuleType]=random) -> bool:
     return p>rand.random()
 
-def random_phase(add_t: bool, rand:Union[random.Random,type(random)]=random) -> Fraction:
+def random_phase(add_t: bool, rand:Union[random.Random,types.ModuleType]=random) -> Fraction:
     if add_t: return Fraction(rand.randint(1,8),4)
     return Fraction(rand.randint(1,4),2)
 
@@ -286,6 +288,7 @@ def cliffordTmeas(
     v = 0                     # next vertex to add
     r = 0                     # current row
     
+    rand: Union[random.Random, types.ModuleType]
     if (seed is not None): rand = random.Random(seed)
     else: rand = random
 
@@ -458,6 +461,7 @@ def cliffords(
     r += 1
 
     # random gates
+    rand: Union[random.Random, types.ModuleType]
     if (seed is not None): rand = random.Random(seed)
     else: rand = random
     for i in range(depth):
