@@ -145,7 +145,8 @@ def CNOT_HAD_PHASE_circuit(
         A random circuit consisting of Hadamards, CNOT gates and phase gates.
 
     """
-    rand = random.Random(seed)
+    if (seed is not None): rand = random.Random(seed)
+    else: rand = random
     p_cnot = 1-p_had-p_t
     c = Circuit(qubits)
     for _ in range(depth):
@@ -196,7 +197,8 @@ def cnots(qubits: int, depth: int, backend:Optional[str]=None, seed:Optional[int
     r += 1
 
     # random CNOTs
-    rand = random.Random(seed)
+    if (seed is not None): rand = random.Random(seed)
+    else: rand = random
     for i in range(depth):
         c = rand.randint(0, qubits-1)
         t = rand.randint(0, qubits-2)
@@ -246,12 +248,11 @@ def cnots(qubits: int, depth: int, backend:Optional[str]=None, seed:Optional[int
     g.scalar.add_power(depth)
     return g
 
-def accept(p: float, rand:random.Random=random.Random()) -> bool:
+def accept(p: float, rand:Union[random.Random,type(random)]=random) -> bool:
     return p>rand.random()
 
-def random_phase(add_t: bool, rand:random.Random=random.Random()) -> Fraction:
-    if add_t:
-        return Fraction(rand.randint(1,8),4)
+def random_phase(add_t: bool, rand:Union[random.Random,type(random)]=random) -> Fraction:
+    if add_t: return Fraction(rand.randint(1,8),4)
     return Fraction(rand.randint(1,4),2)
 
 def cliffordTmeas(
@@ -285,7 +286,8 @@ def cliffordTmeas(
     v = 0                     # next vertex to add
     r = 0                     # current row
     
-    rand = random.Random(seed)
+    if (seed is not None): rand = random.Random(seed)
+    else: rand = random
 
     num = 0.0
     rest = 1.0
@@ -456,7 +458,8 @@ def cliffords(
     r += 1
 
     # random gates
-    rand = random.Random(seed)
+    if (seed is not None): rand = random.Random(seed)
+    else: rand = random
     for i in range(depth):
         c = rand.randint(0, qubits-1)
         t = rand.randint(0, qubits-2)
