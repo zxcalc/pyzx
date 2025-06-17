@@ -130,6 +130,8 @@ def tensorfy(g: 'BaseGraph[VT,ET]', preserve_scalar:bool=True) -> np.ndarray:
 
     for i,r in enumerate(sorted(verts_row.keys())):
         for v in sorted(verts_row[r]):
+            if types[v] == VertexType.DUMMY:
+                continue
             neigh = list(itertools.chain.from_iterable(
                 set(g.edge_st(e)) - {v} for e in g.incident_edges(v)
             ))

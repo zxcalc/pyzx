@@ -84,6 +84,9 @@ class GraphDiff(Generic[VT, ET]):
                     self.changed_vertex_types[v] = g2.type(v)
                 if g2.phase(v) != 0:
                     self.changed_phases[v] = g2.phase(v)
+                d2 = g2.vdata_dict(v)
+                if d2:
+                    self.changed_vdata[v] = d2
                 pos2 = g2.qubit(v), g2.row(v)
                 self.changed_pos[v] = pos2
 

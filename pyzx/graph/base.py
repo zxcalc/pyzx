@@ -655,11 +655,13 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         edges = []
         for v in other.vertices():
             w = self.add_vertex(ty[v],qs[v],rs[v],phase[v],v in grounds)
+            self.set_vdata_dict(w, other.vdata_dict(v))
             vert_map[v] = w
         for e in other.edges():
             s,t = other.edge_st(e)
             f = (vert_map[s],vert_map[t])
-            self.add_edge(f,other.edge_type(e))
+            new_e = self.add_edge(f,other.edge_type(e))
+            self.set_edata_dict(new_e, other.edata_dict(e))
             edges.append(e)
         return (list(vert_map.values()),edges)
 
@@ -684,9 +686,11 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         for v in verts:
             w = g.add_vertex(ty[v], qs[v], rs[v], phase[v], v in grounds, index=v)
             vert_map[v] = w
+            g.set_vdata_dict(w, self.vdata_dict(v))
         for e in edges:
             s,t = self.edge_st(e)
-            g.add_edge((vert_map[s],vert_map[t]), self.edge_type(e))
+            new_e = g.add_edge((vert_map[s], vert_map[t]), self.edge_type(e))
+            g.set_edata_dict(new_e, self.edata_dict(e))
 
         return g
 
