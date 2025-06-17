@@ -655,15 +655,17 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         edges = []
         for v in other.vertices():
             w = self.add_vertex(ty[v],qs[v],rs[v],phase[v],v in grounds)
+            self.set_vdata_dict(w, other.vdata_dict(v))
             vert_map[v] = w
         for e in other.edges():
             s,t = other.edge_st(e)
             f = (vert_map[s],vert_map[t])
-            self.add_edge(f,other.edge_type(e))
+            new_e = self.add_edge(f,other.edge_type(e))
+            self.set_edata_dict(new_e, other.edata_dict(e))
             edges.append(e)
         return (list(vert_map.values()),edges)
 
-    def subgraph_from_vertices(self,verts: List[VT]) -> BaseGraph[VT,ET]: #TODO: preserve vdata and edata
+    def subgraph_from_vertices(self,verts: List[VT]) -> BaseGraph[VT,ET]:
         """Returns the subgraph consisting of the specified vertices."""
         from .graph import Graph # imported here to prevent circularity
         from .multigraph import Multigraph
