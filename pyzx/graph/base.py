@@ -663,7 +663,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
             edges.append(e)
         return (list(vert_map.values()),edges)
 
-    def subgraph_from_vertices(self,verts: List[VT]) -> BaseGraph[VT,ET]:
+    def subgraph_from_vertices(self,verts: List[VT]) -> BaseGraph[VT,ET]: #TODO: preserve vdata and edata
         """Returns the subgraph consisting of the specified vertices."""
         from .graph import Graph # imported here to prevent circularity
         from .multigraph import Multigraph
@@ -684,9 +684,11 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         for v in verts:
             w = g.add_vertex(ty[v], qs[v], rs[v], phase[v], v in grounds, index=v)
             vert_map[v] = w
+            g.set_vdata_dict(w, self.vdata_dict(v))
         for e in edges:
             s,t = self.edge_st(e)
-            g.add_edge((vert_map[s],vert_map[t]), self.edge_type(e))
+            new_e = g.add_edge((vert_map[s], vert_map[t]), self.edge_type(e))
+            g.set_edata_dict(new_e, self.edata_dict(e))
 
         return g
 
