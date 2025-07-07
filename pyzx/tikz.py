@@ -62,6 +62,15 @@ def _to_tikz(g: BaseGraph[VT,ET], draw_scalar:bool = False,
 
     for v in g.vertices():
         ty = g.type(v)
+        if ty == VertexType.DUMMY:
+            # Export dummy node with its text label and style=text
+            text = g.vdata(v, 'text', '')
+            x = g.row(v) + xoffset
+            y = - g.qubit(v) - yoffset
+            s = f"        \\node [style=text] ({v+idoffset}) at ({{x:.2f}}, {{y:.2f}}) {{{{text}}}};".format(x=x, y=y, text=text)
+            verts.append(s)
+            maxindex = max([v+idoffset,maxindex])
+            continue
         if ty == VertexType.Z_BOX:
             p = get_z_box_label(g,v)
         else:
@@ -256,6 +265,7 @@ def tikz_to_graph(
         elif style.lower() in synonyms_w_input: ty = VertexType.W_INPUT
         elif style.lower() in synonyms_w_output: ty = VertexType.W_OUTPUT
         elif style.lower() in synonyms_z_box: ty = VertexType.Z_BOX
+        elif style.lower() == 'text': ty = VertexType.DUMMY
         else:
             if ignore_nonzx:
                 ty = VertexType.BOUNDARY
@@ -275,7 +285,10 @@ def tikz_to_graph(
             v = g.add_vertex(ty,-y,x)
         index_dict[vid] = v
 
-        if ty == VertexType.Z_BOX:
+        if ty == VertexType.DUMMY:
+            g.set_vdata(v, 'text', label)
+            continue
+        elif ty == VertexType.Z_BOX:
             set_phase = lambda v, p: set_z_box_label(g, v, p)
         else:
             set_phase = g.set_phase

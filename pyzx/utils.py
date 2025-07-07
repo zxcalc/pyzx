@@ -36,6 +36,7 @@ class VertexType(IntEnum):
     W_INPUT = 4
     W_OUTPUT = 5
     Z_BOX = 6
+    DUMMY = 99
 
 def vertex_is_zx(ty: VertexType) -> bool:
     """Check if a vertex type corresponds to a green or red spider."""
