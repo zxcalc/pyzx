@@ -135,6 +135,7 @@ tikz_classes = {
     'H': 'hadamard',
     'W': 'W triangle',
     'W input': 'W input',
+    'dummy': 'text',
     'edge': '',
     'H-edge': 'hadamard edge',
     'W-io-edge': 'W io edge'
