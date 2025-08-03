@@ -19,7 +19,9 @@ __all__ = [
     "remove_unitaries_input",
     "remove_HS",
     "to_canonical_form",
-    "remove_LC_pivot"
+    "remove_LC_pivot",
+    "to_RRREF",
+    "remove_pivot_edges",
 ]
 
 def is_graph_state(g, states):
@@ -218,7 +220,7 @@ def conjugate_in_paulis(g, states):
 # check that after local complementing there is only one LC gate H or S on each state
 def assert_intermediate(g, states):
     for v in states:
-        edge = g.edge(v, get_bound(v, states))
+        edge = g.edge(v, get_bound(g, v, states))
         if g.phase(v) != 0 and g.edge_type(edge) == EdgeType.HADAMARD:
             return False
     
@@ -303,9 +305,6 @@ def to_canonical_form(g, states, quiet=True):
                         break
 
 def remove_LC_pivot(g, states, pivots):
-    """
-    Remove all local complementations from the graph state.
-    """
     go_on = True
     while go_on:
         for v in pivots:
@@ -315,3 +314,44 @@ def remove_LC_pivot(g, states, pivots):
                 vin = vin[0]
                 local_comp_HS(g, vin, states)
                 go_on = True
+
+def to_RRREF(g, states):
+    """
+    Transform the graph state to a reduced row echelon form.
+    """
+    ins = [x for x in states if get_bound(g,x, states) in g.inputs()]
+    outs = [x for x in states if get_bound(g,x, states) in g.outputs()]
+
+    mat = bi_adj(g, ins, outs)
+
+    mat = mat.transpose()
+
+
+
+    print(mat)
+
+    mat.gauss(full_reduce=True)
+    pivots = []
+    for i in range(mat.rows()):
+        for j in range(mat.cols()):
+            if mat[i,j] != 0:
+                pivots.append(j)
+                break
+
+    pivots = [outs[j] for j in pivots]
+
+    mat = mat.transpose()
+
+    connectivity_from_biadj(g, mat, ins, outs)
+  
+    return pivots
+
+def remove_pivot_edges(g, states, pivots):
+    for x in pivots:
+        for y in pivots:
+            if x != y and g.connected(x, y):
+                g.remove_edge(g.edge(x, y))
+
+
+
+
