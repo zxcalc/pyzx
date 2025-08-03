@@ -31,6 +31,7 @@ from .local_search.simulated_annealing import anneal
 from .local_search.genetic import GeneticOptimizer
 from .circuit.qasmparser import qasm
 from .circuit.sqasm import sqasm
+from . import graph_states
 from . import generate
 from . import todd
 from . import linalg
@@ -48,6 +49,7 @@ from . import editor
 from . import routing
 from . import local_search
 from .routing.parity_maps import CNOT_tracker
+from .graph_states import *
 
 # some common scalars
 from .graph.base import Scalar
