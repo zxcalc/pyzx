@@ -28,7 +28,7 @@ from ..utils import FractionLike, EdgeType, VertexType, phase_to_s
 from .graph import Graph
 from .scalar import Scalar
 from .base import BaseGraph, VT, ET
-from ..simplify import id_simp
+# from ..simplify import id_simp
 from ..symbolic import parse, Poly, new_var
 if TYPE_CHECKING:
     from .diff import GraphDiff
