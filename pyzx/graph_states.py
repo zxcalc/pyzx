@@ -5,18 +5,18 @@ Graph states MODULE
 
 __all__ = [
     "GraphState",
-    "is_graph_state",
 ]
 
 
+from pyzx.symbolic import Poly
 from .simplify import is_graph_like, spider_simp, id_simp
 from fractions import Fraction
 from .d3 import draw_d3
 from .graph.base import ET, VT, BaseGraph, EdgeType, VertexType
 from .extract import connectivity_from_biadj, bi_adj
-from typing import List, Tuple, Dict
+from typing import List, Tuple, Dict, Generic, cast
 
-class GraphState:
+class GraphState(Generic[VT, ET]):
     """
     A class representing a graph state.
     
@@ -50,11 +50,17 @@ class GraphState:
         Returns:
             True if valid graph state, False otherwise
         """
-        if not is_graph_like(g, strict=True):
+        if not is_graph_like(self._graph, strict=True):
             return False
         
+        
         for v in self._states:
-            if self._graph.phase(v) % Fraction(1, 2) != 0:
+            a = self._graph.phase(v) 
+            if type(a) == Poly:
+                return False
+            else:
+                a = cast(Fraction, a) 
+            if a % Fraction(1, 2) != 0:
                 return False
         
         for v in self._states:
@@ -93,6 +99,7 @@ class GraphState:
         
         self._bound[s] = bounds[0]
         return bounds[0]
+    
 
     def local_comp_SH(self, v: VT) -> None:
         """
@@ -124,9 +131,9 @@ class GraphState:
                     continue
                 connected = self._graph.connected(x, y)
                 if connected == 0:
-                    self._graph.add_edge(edge_pair={x, y}, edgetype=EdgeType.HADAMARD)
+                    self._graph.add_edge(edge_pair=(x, y), edgetype=EdgeType.HADAMARD)
                 else:
-                    self._graph.remove_edge((x, y))
+                    self._graph.remove_edge(self._graph.edge(x, y))
 
     def local_comp_HS(self, v: VT) -> None:
         """
@@ -163,9 +170,9 @@ class GraphState:
                     continue
                 connected = self._graph.connected(x, y)
                 if connected == 0:
-                    self._graph.add_edge(edge_pair={x, y}, edgetype=EdgeType.HADAMARD)
+                    self._graph.add_edge(edge_pair=(x, y), edgetype=EdgeType.HADAMARD)
                 else:
-                    self._graph.remove_edge((x, y))
+                    self._graph.remove_edge(self._graph.edge(x, y))
 
     def pivot(self, x: VT, y: VT) -> None:
         """
@@ -242,7 +249,7 @@ class GraphState:
                     else:
                         self._graph.add_edge((bound[i], new), EdgeType.HADAMARD)
                         self._graph.add_edge((new, v), EdgeType.HADAMARD)
-                    self._graph.remove_edge((bound[i], v))
+                    self._graph.remove_edge(self._graph.edge(bound[i], v))
         
         self._update_bounds()
 
@@ -263,7 +270,7 @@ class GraphState:
                     self._graph.set_row(new, row)
                     self._graph.add_edge((bound, new), EdgeType.SIMPLE)
                     self._graph.add_edge((new, v), EdgeType.HADAMARD)
-                    self._graph.remove_edge((bound, v))
+                    self._graph.remove_edge(self._graph.edge(bound, v))
                     self._graph.set_phase(v, a - 1)
                 else:
                     new = self._graph.add_vertex(VertexType.Z, phase=1)
@@ -271,7 +278,7 @@ class GraphState:
                     self._graph.set_row(new, row)
                     self._graph.add_edge((bound, new), EdgeType.SIMPLE)
                     self._graph.add_edge((new, v), EdgeType.SIMPLE)
-                    self._graph.remove_edge((bound, v))
+                    self._graph.remove_edge(self._graph.edge(bound, v))
                     self._graph.set_phase(v, a - 1)
 
             spider_simp(self._graph, matchf=lambda x: x not in self._states)
@@ -323,9 +330,9 @@ class GraphState:
                             if x in self._states:
                                 self._graph.add_to_phase(x, 1)
 
-                    new_bound = get_bound(self._graph, bound, self._states)
+                    new_bound = self.get_bound(bound)
                     self._graph.remove_vertex(bound)
-                    self._graph.add_edge({v, new_bound}, edge_type)
+                    self._graph.add_edge((v, new_bound), edge_type)
                     break
         
         self._update_bounds()
@@ -381,7 +388,8 @@ class GraphState:
                 self._graph.set_edge_type(e, EdgeType.SIMPLE)
 
         for e in self._graph.edge_set():
-            v, w = e
+            v = self._graph.edge_s(e)
+            w = self._graph.edge_t(e)
             if v in self._states and w in self._states:
                 b1 = self.get_bound(v)
                 b2 = self.get_bound(w)
@@ -495,8 +503,3 @@ class GraphState:
             for y in pivots:
                 if x != y and self._graph.connected(x, y):
                     self._graph.remove_edge(self._graph.edge(x, y))
-
-
-
-
-
