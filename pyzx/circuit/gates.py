@@ -74,7 +74,8 @@ class TargetMapper(Generic[VT]):
 
     def next_row_or_default(self, l: int, default: int) -> int:
         """
-        Returns the next free row in the label's qubit.
+        Returns the next free row in the label's qubit if it is tracked.
+        Otherwise, the default value is returned.
         """
         return self._rows.get(l, default)
 
