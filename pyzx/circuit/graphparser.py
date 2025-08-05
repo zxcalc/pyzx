@@ -99,16 +99,14 @@ def circuit_to_graph(c: Circuit, compress_rows:bool=True, backend:Optional[str]=
     for i in range(c.qubits):
         v = g.add_vertex(VertexType.BOUNDARY,i,0)
         inputs.append(v)
+        q_mapper.add_label(i, 1)
         q_mapper.set_prev_vertex(i, v)
-        q_mapper.set_next_row(i, 1)
-        q_mapper.set_qubit(i, i)
     for i in range(c.bits):
         qubit = i+c.qubits
         v = g.add_vertex(VertexType.BOUNDARY, qubit, 0)
         inputs.append(v)
-        c_mapper.set_prev_vertex(i, v)
-        c_mapper.set_next_row(i, 1)
-        c_mapper.set_qubit(i, qubit)
+        q_mapper.add_label(qubit, 1)
+        c_mapper.set_prev_vertex(qubit, v)
 
     for gate in c.gates:
         if gate.name == 'InitAncilla':
