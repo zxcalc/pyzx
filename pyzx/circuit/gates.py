@@ -38,19 +38,21 @@ class TargetMapper(Generic[VT]):
     _qubits: Dict[int, int]
     _rows: Dict[int, int]
     _prev_vs: Dict[int, VT]
+    _labels: Set[int]
     _max_row: int
 
     def __init__(self):
         self._qubits = {}
         self._rows = {}
         self._prev_vs = {}
+        self._labels = set()
         self._max_row = 0
 
     def labels(self) -> Set[int]:
         """
         Returns the mapped labels.
         """
-        return set(self._qubits.keys())
+        return self._labels
 
     def to_qubit(self, l: int) -> int:
         """
@@ -69,6 +71,12 @@ class TargetMapper(Generic[VT]):
         Returns the next free row in the label's qubit.
         """
         return self._rows[l]
+
+    def next_row_or_default(self, l: int, default: int) -> int:
+        """
+        Returns the next free row in the label's qubit.
+        """
+        return self._rows.get(l, default)
 
     def set_next_row(self, l: int, row: int) -> None:
         """
@@ -130,11 +138,12 @@ class TargetMapper(Generic[VT]):
 
         :raises: ValueError if the label is already tracked.
         """
-        if l in self._qubits:
+        if l in self._labels:
             raise ValueError("Label {} already in use".format(str(l)))
-        q = len(self._qubits)
+        q = self._qubits.get(l, len(self._qubits))
         self.set_qubit(l, q)
         self.set_next_row(l, row)
+        self._labels.add(l)
         # r = self.max_row()
         # self.set_all_rows_to_max()
 
@@ -149,16 +158,14 @@ class TargetMapper(Generic[VT]):
 
         :raises: ValueError if the label is not tracked.
         """
-        if l not in self._qubits:
+        if l not in self._labels:
             raise ValueError("Label {} not in use".format(str(l)))
         
         # self.set_all_rows_to_max()
         # if not compress_rows:
         #     self.shift_all_rows(1)
 
-        del self._qubits[l]
-        del self._rows[l]
-        del self._prev_vs[l]
+        self._labels.remove(l)
 
 class Gate(object):
     """Base class for representing quantum gates."""
@@ -577,12 +584,13 @@ class CNOT(Gate):
         self.target = target
         self.control = control
     def to_graph(self, g, q_mapper, _c_mapper):
-        r = max(q_mapper.next_row(self.target), q_mapper.next_row(self.control))
+        [top, bot] = sorted([self.target, self.control])
+        r = max(q_mapper.next_row(r_) for r_ in range(top, bot + 1))
         t = self.graph_add_node(g, q_mapper, VertexType.X, self.target, r)
         c = self.graph_add_node(g, q_mapper, VertexType.Z, self.control, r)
         g.add_edge((t,c))
-        q_mapper.set_next_row(self.target, r+1)
-        q_mapper.set_next_row(self.control, r+1)
+        for r_ in range(top, bot + 1):
+          q_mapper.set_next_row(r_, r+1)
         g.scalar.add_power(1)
 
     def to_emoji(self,strings: List[List[str]]) -> None:
