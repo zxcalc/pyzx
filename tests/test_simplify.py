@@ -149,7 +149,9 @@ class TestSimplify(unittest.TestCase):
 
         full_reduce(g1)
         
-        self.assertTrue(g.num_vertices() == g1.num_vertices())
+        self.assertTrue(g.num_vertices() == 0)
+        self.assertTrue(g1.num_vertices() == 0)
+
 
     def test_to_clifford_normal_form_graph(self):
         for _ in range(10):
