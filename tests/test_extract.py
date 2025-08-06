@@ -51,11 +51,25 @@ class TestExtract(unittest.TestCase):
         c.add_gate("ZPhase", 0, phase=1/4)
 
         g = c.to_graph()
-        # simplify.full_reduce(g,quiet=True)
+        
+        simplify.full_reduce(g,quiet=True)
 
         c2 = extract_circuit(g)
         self.assertListEqual(c.gates, c2.gates)
         self.assertTrue(c.verify_equality(c2))
+
+    def test_extract_not_graph_like(self):
+        c = Circuit(1)
+        c.add_gate("HAD", 0)
+        c.add_gate("ZPhase", 0, phase=1/4)
+
+        g = c.to_graph()
+        
+
+        with self.assertRaises(ValueError) as context:
+            c = extract_circuit(g)
+        self.assertTrue("Input graph is not graph-like. Try running full_reduce first" in str(context.exception))
+
 
 
     def test_extract_circuit(self):
