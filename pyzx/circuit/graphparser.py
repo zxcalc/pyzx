@@ -99,22 +99,20 @@ def circuit_to_graph(c: Circuit, compress_rows:bool=True, backend:Optional[str]=
     for i in range(c.qubits):
         v = g.add_vertex(VertexType.BOUNDARY,i,0)
         inputs.append(v)
+        q_mapper.add_label(i, 1)
         q_mapper.set_prev_vertex(i, v)
-        q_mapper.set_next_row(i, 1)
-        q_mapper.set_qubit(i, i)
     for i in range(c.bits):
         qubit = i+c.qubits
         v = g.add_vertex(VertexType.BOUNDARY, qubit, 0)
         inputs.append(v)
-        c_mapper.set_prev_vertex(i, v)
-        c_mapper.set_next_row(i, 1)
-        c_mapper.set_qubit(i, qubit)
+        q_mapper.add_label(qubit, 1)
+        c_mapper.set_prev_vertex(qubit, v)
 
     for gate in c.gates:
         if gate.name == 'InitAncilla':
             l = gate.label # type: ignore
             try:
-                q_mapper.add_label(l, q_mapper.max_row())
+                q_mapper.add_label(l, q_mapper.next_row_or_default(l, q_mapper.max_row() - 1))
             except ValueError:
                 raise ValueError("Ancilla label {} already in use".format(str(l)))
             v = g.add_vertex(VertexType.Z, q_mapper.to_qubit(l), q_mapper.next_row(l))
@@ -126,8 +124,8 @@ def circuit_to_graph(c: Circuit, compress_rows:bool=True, backend:Optional[str]=
                 q = q_mapper.to_qubit(l)
                 r = q_mapper.next_row(l)
                 u = q_mapper.prev_vertex(l)
+                q_mapper.set_next_row(l, r + 1)
                 q_mapper.remove_label(l)
-                q_mapper.shift_all_rows(1)
             except ValueError:
                 raise ValueError("PostSelect label {} is not in use".format(str(l)))
             v = g.add_vertex(VertexType.Z, q, r)
