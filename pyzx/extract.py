@@ -624,7 +624,6 @@ def extract_circuit(
 
     if not is_graph_like(g):
         raise ValueError("Input graph is not graph-like. Try running full_reduce first")
-    
 
     for v in g.vertices():
         if g.vertex_degree(v) == 1 and v not in inputs and v not in outputs:
@@ -791,6 +790,9 @@ def graph_to_swaps(g: BaseGraph[VT, ET], no_swaps: bool = False) -> Circuit:
     leftover_swaps = False
     inputs = g.inputs()
     outputs = g.outputs()
+
+    if not is_graph_like(g):
+        raise ValueError("Input graph is not graph-like")
 
     c = Circuit(len(inputs))
 
