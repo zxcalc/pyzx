@@ -22,7 +22,7 @@ import itertools
 
 from .utils import EdgeType, VertexType, toggle_edge
 from .linalg import Mat2, Z2
-from .simplify import id_simp, tcount,full_reduce
+from .simplify import id_simp, tcount,full_reduce, is_graph_like
 from .rules import apply_rule, pivot, match_spider_parallel, spider
 from .circuit import Circuit
 from .circuit.gates import Gate, ParityPhase, CNOT, HAD, ZPhase, XPhase, CZ, XCX, SWAP, InitAncilla
@@ -622,6 +622,9 @@ def extract_circuit(
 
     c = Circuit(len(outputs))
 
+    if not is_graph_like(g):
+        raise ValueError("Input graph is not graph-like. Try running full_reduce first")
+
     for v in g.vertices():
         if g.vertex_degree(v) == 1 and v not in inputs and v not in outputs:
             n = list(g.neighbors(v))[0]
@@ -780,13 +783,16 @@ def extract_simple(g: BaseGraph[VT, ET], up_to_perm: bool = True) -> Circuit:
 
 
 def graph_to_swaps(g: BaseGraph[VT, ET], no_swaps: bool = False) -> Circuit:
-    """Converts a graph containing only normal and Hadamard edges (i.e., no vertices other than
+    """This function expects a graph like circuit as input. Converts a graph containing only normal and Hadamard edges (i.e., no vertices other than
     inputs and outputs) into a circuit of Hadamard and SWAP gates. If 'no_swaps' is True, only add
     Hadamards where needed"""
     swap_map = {}
     leftover_swaps = False
     inputs = g.inputs()
     outputs = g.outputs()
+
+    if not is_graph_like(g):
+        raise ValueError("Input graph is not graph-like")
 
     c = Circuit(len(inputs))
 
