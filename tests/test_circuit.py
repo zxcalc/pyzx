@@ -124,6 +124,18 @@ class TestCircuit(unittest.TestCase):
         cz_matrix = np.array([[1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,-1]])
         self.assertTrue(compare_tensors(c.to_matrix(),cz_matrix))
 
+    def test_measurement_gate(self):
+        c = Circuit(2) 
+        c1 = Circuit(2)
+        c.add_gate("Measurement", 0)
+        c1.add_gate("Measurement", 0, None)
+        
+        self.assertTrue(c.gates[0] == c1.gates[0])
+        g = c.to_graph()
+        g1 = c1.to_graph()
+        self.assertTrue(len(g.vertices()) == len(g1.vertices()))
+
+
     def test_verify_equality_permutation_option(self):
         c1 = Circuit(2)
         c2 = Circuit(2)
