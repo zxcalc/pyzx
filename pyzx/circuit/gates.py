@@ -1207,13 +1207,14 @@ class Measurement(Gate):
     target: int
     result_bit: Optional[int]
 
+    name = 'Measurement'
     quipper_name = 'measure'
     # This gate has special syntax in qasm: https://openqasm.com/language/insts.html#measurement
     # PyZX supports the following subset of the syntax:
     # * (OpenQASM 2) measure q[0] -> c[0]
     # * (OpenQASM 3) c[0] = measure q[0]
 
-    def __init__(self, target: int, result_bit: Optional[int]) -> None:
+    def __init__(self, target: int, result_bit: Optional[int] = None) -> None:
         self.target = target
         self.result_bit = result_bit
 
@@ -1221,7 +1222,7 @@ class Measurement(Gate):
         if not isinstance(other, Measurement): return False
         if self.target != other.target: return False
         if self.result_bit != other.result_bit: return False
-        return False
+        return True
 
     def reposition(self, mask, bit_mask = None):
         g = self.copy()
@@ -1236,7 +1237,7 @@ class Measurement(Gate):
             DiscardBit(self.result_bit).to_graph(g, q_mapper, c_mapper)
         # Qubit measurement
         r = q_mapper.next_row(self.target)
-        if self.result_bit is None:
+        if self.result_bit is not None:
             r = max(r, c_mapper.next_row(self.result_bit))
         v = self.graph_add_node(g,
             q_mapper,
