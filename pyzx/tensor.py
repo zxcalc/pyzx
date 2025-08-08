@@ -59,10 +59,11 @@ def Z_to_tensor(arity: int, phase: float) -> np.ndarray:
     return Z_box_to_tensor(arity, np.exp(1j*phase))
 
 def X_to_tensor(arity: int, phase: float) -> np.ndarray:
-    m = np.ones(2**arity, dtype = complex)
     if arity == 0:
-        m[()] = 1 + np.exp(1j*phase)
-        return m
+      m = np.zeros([2]*arity, dtype = complex)
+      m[()] = 1 + np.exp(1j*phase)
+      return m
+    m = np.ones(2**arity, dtype = complex)
     for i in range(2**arity):
         if bin(i).count("1")%2 == 0:
             m[i] += np.exp(1j*phase)
