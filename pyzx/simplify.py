@@ -234,6 +234,7 @@ def full_reduce(g: BaseGraph[VT,ET], matchf: Optional[Callable[[Union[VT, ET]],b
         clifford_simp(g, matchf=matchf, quiet=quiet, stats=stats)
         i = gadget_simp(g, matchf=matchf, quiet=quiet, stats=stats)
         interior_clifford_simp(g, matchf=matchf, quiet=quiet, stats=stats)
+        copy_simp(g, quiet=quiet, stats=stats)
         j = pivot_gadget_simp(g, matchf=matchf, quiet=quiet, stats=stats)
         if i+j == 0:
             break
