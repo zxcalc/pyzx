@@ -122,6 +122,8 @@ class GraphS(BaseGraph[int,Tuple[int,int]]):
     
     def add_edge(self, edge_pair, edgetype=EdgeType.SIMPLE):
         s,t = edge_pair
+        if s == t:
+            return edge_pair
         if not t in self.graph[s]:
             self.nedges += 1
             self.graph[s][t] = edgetype
