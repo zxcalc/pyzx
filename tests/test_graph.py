@@ -67,6 +67,13 @@ class TestGraphBasicMethods(unittest.TestCase):
         self.assertEqual(g.num_edges(),0)
         self.assertFalse(g.connected(v1,v2))
 
+    def test_self_loop(self):
+        g = Graph()
+        v1 = g.add_vertex()
+        g.add_edge((v1,v1))
+        self.assertEqual(g.num_edges(),0)
+        self.assertEqual(g.vertex_degree(v1), 0)
+
     def test_set_attributes(self):
         g = Graph()
         v = g.add_vertex()
