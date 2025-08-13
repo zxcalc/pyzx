@@ -32,7 +32,7 @@ from pyzx.circuit.qasmparser import qasm
 from fractions import Fraction
 from pyzx.generate import cliffordT
 from pyzx.simplify import *
-from pyzx.simplify import supplementarity_simp, to_clifford_normal_form_graph
+from pyzx.simplify import supplementarity_simp, to_clifford_normal_form_graph, copy_simp
 from pyzx import compare_tensors
 from pyzx.generate import cliffordT
 
@@ -138,6 +138,47 @@ class TestSimplify(unittest.TestCase):
             g0 = g.copy()
             to_clifford_normal_form_graph(g)
             self.assertTrue(compare_tensors(g0, g, preserve_scalar=True))
+    
+    def test_copy_simp(self):
+        g = Graph() 
+
+        v0 = g.add_vertex(VertexType.Z, 0, 0)
+        v1 = g.add_vertex(VertexType.X, 0, 1)
+        g.add_edge((v0, v1))
+        v2 = g.add_vertex(VertexType.BOUNDARY, 0, 3)
+        g.add_edge((v1, v2))
+        v3 = g.add_vertex(VertexType.BOUNDARY, 1, 3)
+        g.add_edge((v1, v3))
+        g1 = g.copy()
+        to_gh(g1)
+        copy_simp(g1)
+
+        g1.auto_detect_io()
+        g.auto_detect_io()
+
+        self.assertTrue(compare_tensors(g1.to_tensor(),g.to_tensor()))
+
+    
+    def test_copy_simp_full_reduce(self):
+        g = Graph() 
+
+        v0 = g.add_vertex(VertexType.Z, 0, 0)
+        v1 = g.add_vertex(VertexType.X, 0, 1)
+        g.add_edge((v0, v1))
+        v2 = g.add_vertex(VertexType.BOUNDARY, 0, 3)
+        g.add_edge((v1, v2))
+        v3 = g.add_vertex(VertexType.BOUNDARY, 1, 3)
+        g.add_edge((v1, v3))
+
+        g1 = g.copy()
+        to_gh(g)
+        copy_simp(g)
+
+        full_reduce(g1)
+        g.auto_detect_io()
+        g1.auto_detect_io()
+        self.assertTrue(compare_tensors(g1.to_tensor(),g.to_tensor()))
+
 
 
 qasm_1 = """OPENQASM 2.0;
