@@ -12,7 +12,7 @@ PyZX
    
    gettingstarted
    faq
-   simplify
+   notebooks/simplify
    graph
    representations
    api
