@@ -32,7 +32,7 @@ from pyzx.circuit import Circuit
 np: Optional[ModuleType]
 try:
     import numpy as np
-    from pyzx.tensor import tensorfy, compare_tensors, compose_tensors, adjoint
+    from pyzx.tensor import tensorfy, compare_tensors, compose_tensors, adjoint, VertexType
 except ImportError:
     np = None
 
@@ -173,6 +173,14 @@ class TestTensor(unittest.TestCase):
         g.add_edges([(i0, i1), (i1, i1)] + [(i1, i2)] * 2)
         g.add_edges([(i2, i2), (i2, i3)], 2)
         self.assertTrue(compare_tensors(g, np.array([[0,0],[1,0]])))
+
+    def test_to_tensor_equivalent(self):
+        g = Graph()
+        g.add_vertex(VertexType.Z, phase=1)
+        g1 = Graph()
+        g1.add_vertex(VertexType.X, phase=1)
+        self.assertTrue(g.to_tensor() == g1.to_tensor())
+
 
 if __name__ == '__main__':
     unittest.main()

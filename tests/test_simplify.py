@@ -132,6 +132,27 @@ class TestSimplify(unittest.TestCase):
             full_reduce(g)
         self.assertTrue("Input graph is not a ZX-diagram" in str(context.exception))
 
+    def test_full_reduce_scalar(self):
+        """Test that checks whether a scalar is correctly removed from a graph using full_reduce.
+        """
+
+        from pyzx import Graph, full_reduce 
+        g = Graph()
+        g.add_vertex(ty=1, phase=0.5)
+        g.add_vertex(ty=1, phase=1)
+        g.add_edge((0, 1))
+
+        full_reduce(g)
+
+        g1 = Graph()
+        g1.add_vertex(ty=1, phase=1)
+
+        full_reduce(g1)
+        
+        self.assertTrue(g.num_vertices() == 0)
+        self.assertTrue(g1.num_vertices() == 0)
+
+
     def test_to_clifford_normal_form_graph(self):
         for _ in range(10):
             g = cliffordT(4, 20, p_t=0)

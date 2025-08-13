@@ -239,6 +239,7 @@ def full_reduce(g: BaseGraph[VT,ET], matchf: Optional[Callable[[Union[VT, ET]],b
         l = supplementarity_simp(g,quiet=True, stats=stats)
         j = pivot_gadget_simp(g, matchf=matchf, quiet=quiet, stats=stats)
         if i+j+k+l == 0:
+            g.remove_isolated_vertices()
             break
 
 def teleport_reduce(g: BaseGraph[VT,ET], quiet:bool=True, stats:Optional[Stats]=None) -> BaseGraph[VT,ET]:
