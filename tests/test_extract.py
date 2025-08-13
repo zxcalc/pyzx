@@ -20,6 +20,7 @@ import random
 import sys
 from types import ModuleType
 from typing import Optional
+from fractions import Fraction
 
 if __name__ == '__main__':
     sys.path.append('..')
@@ -48,7 +49,7 @@ class TestExtract(unittest.TestCase):
     def test_simple_extract(self):
         c = Circuit(1)
         c.add_gate("HAD", 0)
-        c.add_gate("ZPhase", 0, phase=1/4)
+        c.add_gate("ZPhase", 0, phase= Fraction(1,4))
 
         g = c.to_graph()
         
