@@ -201,7 +201,7 @@ def clifford_simp(g: BaseGraph[VT,ET], matchf: Optional[Callable[[Union[VT, ET]]
 
 def reduce_scalar(g: BaseGraph[VT,ET], quiet:bool=True, stats:Optional[Stats]=None) -> int:
     """Modification of ``full_reduce`` that is tailered for scalar ZX-diagrams.
-    It skips the boundary pivots, and it additionally does ``supplementarity_simp``."""
+    It skips the boundary pivots, and it additionally does ``supplementarity_simp`` and ``copy_simp``."""
     i = 0
     while True:
         i1 = id_simp(g, quiet=quiet, stats=stats)
@@ -234,9 +234,10 @@ def full_reduce(g: BaseGraph[VT,ET], matchf: Optional[Callable[[Union[VT, ET]],b
         clifford_simp(g, matchf=matchf, quiet=quiet, stats=stats)
         i = gadget_simp(g, matchf=matchf, quiet=quiet, stats=stats)
         interior_clifford_simp(g, matchf=matchf, quiet=quiet, stats=stats)
-        copy_simp(g, quiet=quiet, stats=stats)
+        k = copy_simp(g, quiet=quiet, stats=stats)
+        l = supplementarity_simp(g,quiet=True, stats=stats)
         j = pivot_gadget_simp(g, matchf=matchf, quiet=quiet, stats=stats)
-        if i+j == 0:
+        if i+j+k+l == 0:
             break
 
 def teleport_reduce(g: BaseGraph[VT,ET], quiet:bool=True, stats:Optional[Stats]=None) -> BaseGraph[VT,ET]:
