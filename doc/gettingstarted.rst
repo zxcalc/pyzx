@@ -1,5 +1,5 @@
 A Quick Introduction
-===============
+================================
 
 .. _gettingstarted:
 
