@@ -1,4 +1,4 @@
-Getting Started
+A Quick Introduction
 ===============
 
 .. _gettingstarted:
@@ -9,7 +9,8 @@ PyZX can be installed as a package using pip::
 
 If you wish to use the demo notebooks or benchmark circuits, then the repository can be cloned from `Github <https://github.com/zxcalc/pyzx>`_.
 
-The best way to get started if you have cloned the repository is to run the `Getting Started notebook <notebooks/gettingstarted.ipynb>`_ in Jupyter. This page contains the same general information as that notebook.
+The best way to get started if you have cloned the repository is to run the `Getting Started notebook <notebooks/gettingstarted.ipynb>`_ in Jupyter. 
+This page is meant to give you an overall view of what can be done with pyZX, but the notebook explains all this and more in much more detail.
 
 .. warning::
 	The newer JupyterLab as opposed to the older Jupyter Notebook uses a different framework for widgets which is currently not compatible with the widgets used in PyZX. It is therefore recommended that you use the classic notebook interface. If you are using JupyterLab you can find this interface by going to 'Help -> Launch Classic Notebook'.
@@ -20,9 +21,11 @@ Let's start by importing the library::
 
 For all the examples in this documentation we will assume you have imported PyZX in this manner.
 
-Quantum circuits in PyZX are represented by the :class:`~pyzx.circuit.Circuit` class. File in the supported formats (QASM, QC, Quipper) can easily be imported into PyZX::
+Quantum circuits in PyZX are represented by the :class:`~pyzx.circuit.Circuit` class. Files in the supported formats (QASM, QC, Quipper) can easily be imported into PyZX::
 
 	circuit = zx.Circuit.load("path/to/circuit.extension")
+
+The circuit file-formats supported by ``Circuit.load`` are curently *qasm*, *qc* or *quipper*. 
 
 PyZX tries to automatically figure out in which format the circuit is represented. The :mod:`~pyzx.generate` module supplies several ways to generate random circuits::
 	
@@ -36,14 +39,15 @@ If you are running inside a Jupyter notebook, circuits can be easily visualized:
    :align:   center
 
 The default drawing method is to use the D3 Javascript library. When not running in a Jupyter notebook ``zx.draw`` returns a matplotlib figure instead. 
-In PyZX, Hadamard gates are stored as edges between vertices, which here are shown as blue lines.
+The green and red nodes represent the Z- and X- phase gates respectively. In PyZX, Hadamard gates are stored as edges between vertices, which here are shown as blue lines.
 
 There are two main data structures in PyZX, Circuits and Graphs. A :class:`~pyzx.circuit.Circuit` is essentially just a list of gates. The above is an example of a ``Circuit``::
 
 	>>>print(circuit.gates)
 	[CNOT(2,3), CNOT(0,1), CNOT(1,3), CNOT(1,2), CNOT(1,3), S(0), S(1), S(3), HAD(2), HAD(3), CNOT(2,1), HAD(3), CNOT(2,0), S(3), CNOT(1,3), S(3), HAD(0), HAD(1), CNOT(3,1), CNOT(3,2)]
 
-Most of the functionality in PyZX works on Graphs instead, which directly represent ZX-diagrams (the drawing function ``zx.draw`` above for instance first converted the circuit into a Graph before drawing it). ZX-diagrams are represented by instances of :class:`~pyzx.graph.base.BaseGraph`. To convert a circuit into a ZX-diagram, simply do::
+Most of the functionality in PyZX works on Graphs instead, which directly represent ZX-diagrams (the drawing function ``zx.draw`` above for instance first converted the circuit into a Graph before drawing it). 
+ZX-diagrams are represented by instances of :class:`~pyzx.graph.base.BaseGraph`. To convert a circuit into a ZX-diagram, simply do::
 
 	g = circuit.to_graph()
 
@@ -113,45 +117,12 @@ We can convert circuits into one of several circuit description languages, such 
 	cx q[2], q[1];
 	cx q[1], q[2];
 
-
-Optimizing random circuits is of course not very useful, so let us do some optimization on a predefined circuit::
-
-	>>> c = zx.Circuit.load('circuits/Fast/mod5_4_before')  # Circuit.load auto-detects the file format
-	>>> print(c.gates)  #  This circuit is built out of CCZ gates.
-	[NOT(4), HAD(4), CCZ(c1=0,c2=3,t=4), CCZ(c1=2,c2=3,t=4), HAD(4), CNOT(3,4), HAD(4), CCZ(c1=1,c2=2,t=4), HAD(4), CNOT(2,4), HAD(4), CCZ(c1=0,c2=1,t=4), HAD(4), CNOT(1,4), CNOT(0,4)]
-	>>> c = c.to_basic_gates()  #  Convert it to the Clifford+T gate set.
-	>>> print(c.gates)
-	[NOT(4), HAD(4), CNOT(3,4), T*(4), CNOT(0,4), T(4), CNOT(3,4), T*(4), CNOT(0,4), T(3), T(4), HAD(4), CNOT(0,3), T(0), T*(3), CNOT(0,3), HAD(4), CNOT(3,4), T*(4), CNOT(2,4), T(4), CNOT(3,4), T*(4), CNOT(2,4), T(3), T(4), HAD(4), CNOT(2,3), T(2), T*(3), CNOT(2,3), HAD(4), HAD(4), CNOT(3,4), HAD(4), CNOT(2,4), T*(4), CNOT(1,4), T(4), CNOT(2,4), T*(4), CNOT(1,4), T(2), T(4), HAD(4), CNOT(1,2), T(1), T*(2), CNOT(1,2), HAD(4), HAD(4), CNOT(2,4), HAD(4), CNOT(1,4), T*(4), CNOT(0,4), T(4), CNOT(1,4), T*(4), CNOT(0,4), T(1), T(4), HAD(4), CNOT(0,1), T(0), T*(1), CNOT(0,1), HAD(4), HAD(4), CNOT(1,4), CNOT(0,4)]
-	>>> print(c.stats())
-	Circuit mod5_4_before on 5 qubits with 71 gates.
-		28 is the T-count
-		43 Cliffords among which
-		28 2-qubit gates and 14 Hadamard gates.
-	>>> g = c.to_graph()
-	>>> print(g)
-	Graph(109 vertices, 132 edges)
-	>>> zx.simplify.full_reduce(g)  # Simplify the ZX-graph
-	>>> print(g)
-	Graph(31 vertices, 38 edges)
-	>>> c2 = zx.extract_circuit(g).to_basic_gates()  # Turn graph back into circuit
-	>>> print(c2.stats())
-	Circuit  on 5 qubits with 42 gates.
-		8 is the T-count
-		34 Cliffords among which
-		24 2-qubit gates and 10 Hadamard gates.
-	>>> c3 = zx.optimize.full_optimize(c2)  #  Do some further optimization on the circuit
-	>>> print(c3.stats())
-	Circuit  on 5 qubits with 27 gates.
-		8 is the T-count
-		19 Cliffords among which
-		14 2-qubit gates and 2 Hadamard gates.
-
-The circuit file-formats supported by ``Circuit.load`` are curently *qasm*, *qc* or *quipper*. 
 PyZX can also be run from the command-line for some easy circuit-to-circuit manipulation. In order to optimize a circuit you can run the command::
 	
 	python -m pyzx opt input_circuit.qasm
 
 For more information regarding the command-line tools, run ``python -m pyzx --help``.
 
-This concludes this tutorial. For more information about the simplification procedures see :ref:`simplify`. 
+This concludes this tutorial. For more explanation and an example of optimizing a predefined circuit look at the `Getting Started notebook <notebooks/gettingstarted.ipynb>`_.
+For more information about the simplification procedures see :ref:`simplify`. 
 The different representations of the graphs and circuits is detailed in :ref:`representations`. How to create and modify ZX-diagrams is explained in :ref:`graphs`.
