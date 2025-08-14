@@ -212,7 +212,8 @@ class Multigraph(BaseGraph[int,Tuple[int,int,EdgeType]]):
                             e.s = e.s % 2
             if e.is_empty():
                 del self.graph[s][t]
-                del self.graph[t][s]
+                if s != t:
+                    del self.graph[t][s]
                 self._edata.pop((s, t, edgetype), None)
 
         return (s,t, edgetype) if s <= t else (t,s,edgetype)
