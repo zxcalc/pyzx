@@ -126,7 +126,7 @@ class GraphS(BaseGraph[int,Tuple[int,int]]):
         t2 = self.ty[t]
         if s == t:
             if not vertex_is_zx_like(t1) or not vertex_is_zx_like(t2):
-                raise ValueError(f'Unexpected vertex type, it should be either z or x')
+                raise ValueError(f'Unexpected vertex type, it should be either z or x because you are trying to add a self-loop')
             if edgetype==EdgeType.SIMPLE:
                 return edge_pair
             elif edgetype==EdgeType.HADAMARD:
