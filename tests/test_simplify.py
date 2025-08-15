@@ -170,6 +170,7 @@ class TestSimplify(unittest.TestCase):
         g.add_edge((v1, v2))
         v3 = g.add_vertex(VertexType.BOUNDARY, 1, 3)
         g.add_edge((v1, v3))
+
         g1 = g.copy()
         to_gh(g1)
         copy_simp(g1)
@@ -177,6 +178,8 @@ class TestSimplify(unittest.TestCase):
         g1.auto_detect_io()
         g.auto_detect_io()
 
+        self.assertFalse(g.num_vertices() != g1.num_vertices())
+        self.assertTrue(g1.num_vertices() == 4)
         self.assertTrue(compare_tensors(g1.to_tensor(),g.to_tensor()))
 
     
@@ -198,6 +201,8 @@ class TestSimplify(unittest.TestCase):
         full_reduce(g1)
         g.auto_detect_io()
         g1.auto_detect_io()
+
+        self.assertTrue(g.num_vertices() == g1.num_vertices())
         self.assertTrue(compare_tensors(g1.to_tensor(),g.to_tensor()))
 
 
