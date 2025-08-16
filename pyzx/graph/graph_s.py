@@ -122,13 +122,24 @@ class GraphS(BaseGraph[int,Tuple[int,int]]):
     
     def add_edge(self, edge_pair, edgetype=EdgeType.SIMPLE):
         s,t = edge_pair
+        t1 = self.ty[s]
+        t2 = self.ty[t]
+        if s == t:
+            if not vertex_is_zx_like(t1) or not vertex_is_zx_like(t2):
+                raise ValueError(f'Unexpected vertex type, it should be either z or x because you are trying to add a self-loop')
+            if edgetype==EdgeType.SIMPLE:
+                return edge_pair
+            elif edgetype==EdgeType.HADAMARD:
+                self.add_to_phase(s, 1)
+                return edge_pair
+            else:
+                raise ValueError(f'The edge you are adding is not an accepted type')
+                
         if not t in self.graph[s]:
             self.nedges += 1
             self.graph[s][t] = edgetype
             self.graph[t][s] = edgetype
         else:
-            t1 = self.ty[s]
-            t2 = self.ty[t]
             if (vertex_is_zx_like(t1) and vertex_is_zx_like(t2)):
                 et1 = self.graph[s][t]
 
@@ -167,6 +178,8 @@ class GraphS(BaseGraph[int,Tuple[int,int]]):
             vs = list(self.graph[v])
             # remove all edges
             for v1 in vs:
+                if v1 == v:
+                    continue
                 self.nedges -= 1
                 del self.graph[v][v1]
                 del self.graph[v1][v]
@@ -193,6 +206,8 @@ class GraphS(BaseGraph[int,Tuple[int,int]]):
 
     def remove_edges(self, edges):
         for s,t in edges:
+            if s == t:
+                continue
             self.nedges -= 1
             del self.graph[s][t]
             del self.graph[t][s]

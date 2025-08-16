@@ -67,6 +67,32 @@ class TestGraphBasicMethods(unittest.TestCase):
         self.assertEqual(g.num_edges(),0)
         self.assertFalse(g.connected(v1,v2))
 
+    def test_self_loop(self):
+        g = Graph()
+        v1 = g.add_vertex(VertexType.X, 0, 0)
+        v2 = g.add_vertex(VertexType.Z, 0, 0)
+        g.add_edge((v1,v1))
+        g.add_edge((v2,v2))
+
+        self.assertEqual(g.num_edges(),0)
+        self.assertEqual(g.vertex_degree(v1), 0)
+        self.assertEqual(g.vertex_degree(v2), 0)
+        self.assertEqual(g.phases()[0], 0)
+        self.assertEqual(g.phases()[1], 0)
+
+    def test_self_loop_had_edge(self):
+        g = Graph()
+        v1 = g.add_vertex(VertexType.X, 0, 0)
+        v2 = g.add_vertex(VertexType.Z, 0, 0)
+        g.add_edge((v1,v1), edgetype=EdgeType.HADAMARD)
+        g.add_edge((v2,v2), edgetype=EdgeType.HADAMARD)
+
+        self.assertEqual(g.num_edges(),0)
+        self.assertEqual(g.vertex_degree(v1), 0)
+        self.assertEqual(g.vertex_degree(v2), 0)
+        self.assertEqual(g.phases()[0], 1)
+        self.assertEqual(g.phases()[1], 1)
+
     def test_set_attributes(self):
         g = Graph()
         v = g.add_vertex()
