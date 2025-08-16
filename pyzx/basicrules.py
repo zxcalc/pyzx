@@ -61,13 +61,10 @@ def color_change_diagram(g: BaseGraph[VT,ET]):
             for e in g.incident_edges(v):
                 g.set_edge_type(e, toggle_edge(g.edge_type(e)))
         elif check_color_change(g, v):
-            color_change(g, v)
+            g.set_type(v, toggle_vertex(g.type(v)))
 
 def check_color_change(g: BaseGraph[VT,ET], v: VT) -> bool:
-    if not (g.type(v) == VertexType.Z or g.type(v) == VertexType.X):
-        return False
-    else:
-        return True
+    return (g.type(v) == VertexType.Z or g.type(v) == VertexType.X)
 
 def color_change(g: BaseGraph[VT,ET], v: VT) -> bool:
     if not (g.type(v) == VertexType.Z or g.type(v) == VertexType.X):
