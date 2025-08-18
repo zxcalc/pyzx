@@ -116,14 +116,17 @@ def simp(
     return i
 
 def pivot_simp(g: BaseGraph[VT,ET], matchf:Optional[Callable[[ET],bool]]=None, quiet:bool=True, stats:Optional[Stats]=None) -> int:
+    """Performs a pivoting rewrite, given a list of matches returned by :func:`match_pivot_parallel`"""
     return simp(g, 'pivot_simp', match_pivot_parallel, pivot, 
                 auto_simplify_parallel_edges=True, matchf=matchf, quiet=quiet, stats=stats)
 
 def pivot_gadget_simp(g: BaseGraph[VT,ET], matchf:Optional[Callable[[ET],bool]]=None, quiet:bool=True, stats:Optional[Stats]=None) -> int:
+    """Performs a pivoting rewrite, given a list of matches returned by :func:`match_pivot_gadget`"""
     return simp(g, 'pivot_gadget_simp', match_pivot_gadget, pivot, 
                 auto_simplify_parallel_edges=True, matchf=matchf, quiet=quiet, stats=stats)
 
 def pivot_boundary_simp(g: BaseGraph[VT,ET], matchf:Optional[Callable[[ET],bool]]=None, quiet:bool=True, stats:Optional[Stats]=None) -> int:
+    """Performs a pivoting rewrite, given a list of matches returned by :func:`match_pivot_boundary`"""
     return simp(g, 'pivot_boundary_simp', match_pivot_boundary, pivot, 
                 auto_simplify_parallel_edges=True, matchf=matchf, quiet=quiet, stats=stats)
 
@@ -135,9 +138,11 @@ def bialg_simp(g: BaseGraph[VT,ET], quiet:bool=True, stats: Optional[Stats]=None
     return simp(g, 'bialg_simp', match_bialg_parallel, bialg, quiet=quiet, stats=stats)
 
 def spider_simp(g: BaseGraph[VT,ET], matchf:Optional[Callable[[VT],bool]]=None, quiet:bool=True, stats:Optional[Stats]=None) -> int:
+    """Performs spider fusion, given a list of matches returned by :func:`match_spider_parallel`"""
     return simp(g, 'spider_simp', match_spider_parallel, spider, matchf=matchf, quiet=quiet, stats=stats)
 
 def id_simp(g: BaseGraph[VT,ET], matchf:Optional[Callable[[VT],bool]]=None, quiet:bool=True, stats:Optional[Stats]=None) -> int:
+    """Removes non-interacting identity vertices, as found by :func:`match_ids_parallel`"""
     return simp(g, 'id_simp', match_ids_parallel, remove_ids, matchf=matchf, quiet=quiet, stats=stats)
 
 def gadget_simp(g: BaseGraph[VT,ET], matchf: Optional[Callable[[VT],bool]]=None, quiet:bool=True, stats:Optional[Stats]=None) -> int:
@@ -145,6 +150,7 @@ def gadget_simp(g: BaseGraph[VT,ET], matchf: Optional[Callable[[VT],bool]]=None,
                 auto_simplify_parallel_edges=True, matchf=matchf, quiet=quiet, stats=stats)
 
 def supplementarity_simp(g: BaseGraph[VT,ET], quiet:bool=True, stats:Optional[Stats]=None) -> int:
+    """Performs supplementarity to remove non-Clifford spiders that act on the same set of targets, as found by :func:`match_supplementarity`"""
     return simp(g, 'supplementarity_simp', match_supplementarity, apply_supplementarity, 
                 auto_simplify_parallel_edges=True, quiet=quiet, stats=stats)
 
