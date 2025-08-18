@@ -10,7 +10,7 @@ PyZX
    :maxdepth: 2
    :caption: Contents:
    
-   gettingstarted
+   quickintro
    faq
    notebooks/simplify
    graph
