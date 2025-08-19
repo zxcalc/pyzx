@@ -116,44 +116,44 @@ def simp(
     return i
 
 def pivot_simp(g: BaseGraph[VT,ET], matchf:Optional[Callable[[ET],bool]]=None, quiet:bool=True, stats:Optional[Stats]=None) -> int:
-    """Performs a pivoting rewrite, using a list of matches supplied by :func:`match_pivot_parallel`."""
+    """Keeps performing a pivoting rewrite until the list of matches supplied by :func:`match_pivot_parallel` is empty."""
     return simp(g, 'pivot_simp', match_pivot_parallel, pivot, 
                 auto_simplify_parallel_edges=True, matchf=matchf, quiet=quiet, stats=stats)
 
 def pivot_gadget_simp(g: BaseGraph[VT,ET], matchf:Optional[Callable[[ET],bool]]=None, quiet:bool=True, stats:Optional[Stats]=None) -> int:
-    """Performs a pivoting rewrite, using a list of matches supplied by :func:`match_pivot_gadget`."""
+    """Keeps performing a pivoting rewrite until the list of matches supplied by :func:`match_pivot_gadget` is empty."""
     return simp(g, 'pivot_gadget_simp', match_pivot_gadget, pivot, 
                 auto_simplify_parallel_edges=True, matchf=matchf, quiet=quiet, stats=stats)
 
 def pivot_boundary_simp(g: BaseGraph[VT,ET], matchf:Optional[Callable[[ET],bool]]=None, quiet:bool=True, stats:Optional[Stats]=None) -> int:
-    """Performs a pivoting rewrite, using a list of matches supplied by :func:`match_pivot_boundary`."""
+    """Keeps performing  a pivoting rewrite until the list of matches supplied by :func:`match_pivot_boundary` is empty."""
     return simp(g, 'pivot_boundary_simp', match_pivot_boundary, pivot, 
                 auto_simplify_parallel_edges=True, matchf=matchf, quiet=quiet, stats=stats)
 
 def lcomp_simp(g: BaseGraph[VT,ET], matchf:Optional[Callable[[VT],bool]]=None, quiet:bool=True, stats:Optional[Stats]=None) -> int:
-    """Performs a local complementation based rewrite rule, using a list of matches supplied by :func:`match_lcomp_parallel`."""
+    """Keeps performing a local complementation based rewrite until the list of matches supplied by :func:`match_lcomp_parallel` is empty."""
     return simp(g, 'lcomp_simp', match_lcomp_parallel, lcomp, 
                 auto_simplify_parallel_edges=True, matchf=matchf, quiet=quiet, stats=stats)
 
 def bialg_simp(g: BaseGraph[VT,ET], quiet:bool=True, stats: Optional[Stats]=None) -> int:
-    """Performs a bialgebra rewrite, using a list of matches supplied by :func:`match_bialg(_parallel)`."""
+    """Keeps performing a bialgebra rewrite until the list of matches supplied by :func:`match_bialg(_parallel)` is empty."""
     return simp(g, 'bialg_simp', match_bialg_parallel, bialg, quiet=quiet, stats=stats)
 
 def spider_simp(g: BaseGraph[VT,ET], matchf:Optional[Callable[[VT],bool]]=None, quiet:bool=True, stats:Optional[Stats]=None) -> int:
-    """Performs spider fusion, using a list of matches supplied by :func:`match_spider_parallel`."""
+    """Keeps performing spider fusion until the list of matches supplied by :func:`match_spider_parallel` is empty."""
     return simp(g, 'spider_simp', match_spider_parallel, spider, matchf=matchf, quiet=quiet, stats=stats)
 
 def id_simp(g: BaseGraph[VT,ET], matchf:Optional[Callable[[VT],bool]]=None, quiet:bool=True, stats:Optional[Stats]=None) -> int:
-    """Removes non-interacting identity vertices, as found by :func:`match_ids_parallel`."""
+    """Removes all non-interacting identity vertices found by :func:`match_ids_parallel`."""
     return simp(g, 'id_simp', match_ids_parallel, remove_ids, matchf=matchf, quiet=quiet, stats=stats)
 
 def gadget_simp(g: BaseGraph[VT,ET], matchf: Optional[Callable[[VT],bool]]=None, quiet:bool=True, stats:Optional[Stats]=None) -> int:
-    """Removes phase gadgets that act on the same set of targets, as found by :func:`match_phase_gadgets`"""
+    """Removes all phase gadgets that act on the same set of targets found by :func:`match_phase_gadgets`."""
     return simp(g, 'gadget_simp', match_phase_gadgets, merge_phase_gadgets, 
                 auto_simplify_parallel_edges=True, matchf=matchf, quiet=quiet, stats=stats)
 
 def supplementarity_simp(g: BaseGraph[VT,ET], quiet:bool=True, stats:Optional[Stats]=None) -> int:
-    """Performs supplementarity to remove non-Clifford spiders that act on the same set of targets, as found by :func:`match_supplementarity`"""
+    """Keeps performing supplementarity to remove non-Clifford spiders that act on the same set of targets until the list of matches found by :func:`match_supplementarity` is empty."""
     return simp(g, 'supplementarity_simp', match_supplementarity, apply_supplementarity, 
                 auto_simplify_parallel_edges=True, quiet=quiet, stats=stats)
 
