@@ -116,35 +116,44 @@ def simp(
     return i
 
 def pivot_simp(g: BaseGraph[VT,ET], matchf:Optional[Callable[[ET],bool]]=None, quiet:bool=True, stats:Optional[Stats]=None) -> int:
+    """Keeps performing a pivoting rewrite until the list of matches supplied by :func:`match_pivot_parallel` is empty."""
     return simp(g, 'pivot_simp', match_pivot_parallel, pivot, 
                 auto_simplify_parallel_edges=True, matchf=matchf, quiet=quiet, stats=stats)
 
 def pivot_gadget_simp(g: BaseGraph[VT,ET], matchf:Optional[Callable[[ET],bool]]=None, quiet:bool=True, stats:Optional[Stats]=None) -> int:
+    """Keeps performing a pivoting rewrite until the list of matches supplied by :func:`match_pivot_gadget` is empty."""
     return simp(g, 'pivot_gadget_simp', match_pivot_gadget, pivot, 
                 auto_simplify_parallel_edges=True, matchf=matchf, quiet=quiet, stats=stats)
 
 def pivot_boundary_simp(g: BaseGraph[VT,ET], matchf:Optional[Callable[[ET],bool]]=None, quiet:bool=True, stats:Optional[Stats]=None) -> int:
+    """Keeps performing  a pivoting rewrite until the list of matches supplied by :func:`match_pivot_boundary` is empty."""
     return simp(g, 'pivot_boundary_simp', match_pivot_boundary, pivot, 
                 auto_simplify_parallel_edges=True, matchf=matchf, quiet=quiet, stats=stats)
 
 def lcomp_simp(g: BaseGraph[VT,ET], matchf:Optional[Callable[[VT],bool]]=None, quiet:bool=True, stats:Optional[Stats]=None) -> int:
+    """Keeps performing a local complementation based rewrite until the list of matches supplied by :func:`match_lcomp_parallel` is empty."""
     return simp(g, 'lcomp_simp', match_lcomp_parallel, lcomp, 
                 auto_simplify_parallel_edges=True, matchf=matchf, quiet=quiet, stats=stats)
 
 def bialg_simp(g: BaseGraph[VT,ET], quiet:bool=True, stats: Optional[Stats]=None) -> int:
+    """Keeps performing a bialgebra rewrite until the list of matches supplied by :func:`match_bialg(_parallel)` is empty."""
     return simp(g, 'bialg_simp', match_bialg_parallel, bialg, quiet=quiet, stats=stats)
 
 def spider_simp(g: BaseGraph[VT,ET], matchf:Optional[Callable[[VT],bool]]=None, quiet:bool=True, stats:Optional[Stats]=None) -> int:
+    """Keeps performing spider fusion until the list of matches supplied by :func:`match_spider_parallel` is empty."""
     return simp(g, 'spider_simp', match_spider_parallel, spider, matchf=matchf, quiet=quiet, stats=stats)
 
 def id_simp(g: BaseGraph[VT,ET], matchf:Optional[Callable[[VT],bool]]=None, quiet:bool=True, stats:Optional[Stats]=None) -> int:
+    """Removes all non-interacting identity vertices found by :func:`match_ids_parallel`."""
     return simp(g, 'id_simp', match_ids_parallel, remove_ids, matchf=matchf, quiet=quiet, stats=stats)
 
 def gadget_simp(g: BaseGraph[VT,ET], matchf: Optional[Callable[[VT],bool]]=None, quiet:bool=True, stats:Optional[Stats]=None) -> int:
+    """Removes all phase gadgets that act on the same set of targets found by :func:`match_phase_gadgets`."""
     return simp(g, 'gadget_simp', match_phase_gadgets, merge_phase_gadgets, 
                 auto_simplify_parallel_edges=True, matchf=matchf, quiet=quiet, stats=stats)
 
 def supplementarity_simp(g: BaseGraph[VT,ET], quiet:bool=True, stats:Optional[Stats]=None) -> int:
+    """Keeps performing supplementarity to remove non-Clifford spiders that act on the same set of targets until the list of matches found by :func:`match_supplementarity` is empty."""
     return simp(g, 'supplementarity_simp', match_supplementarity, apply_supplementarity, 
                 auto_simplify_parallel_edges=True, quiet=quiet, stats=stats)
 
@@ -307,7 +316,7 @@ class Simplifier(Generic[VT, ET]):
 
 
 def to_gh(g: BaseGraph[VT,ET],quiet:bool=True) -> None:
-    """Turns every red node into a green node by changing regular edges into hadamard edges"""
+    """Turns every red node into a green node by applying a Hadamard to the edges incident to red nodes"""
     ty = g.types()
     for v in g.vertices():
         if ty[v] == VertexType.X:
@@ -443,30 +452,40 @@ def simp_iter(
             new_matches = True
 
 def pivot_iter(g: BaseGraph[VT,ET]) -> Iterator[Tuple[BaseGraph[VT,ET],str]]:
+    """Returns an iterator for the pivot rule, using a list of matches supplied by :func:`match_pivot_parallel`."""
     return simp_iter(g, 'pivot', match_pivot_parallel, pivot)
 
+def pivot_gadget_iter(g: BaseGraph[VT,ET]) -> Iterator[Tuple[BaseGraph[VT,ET],str]]:
+    """Returns an iterator for the pivoting rewrite, using a list of matches supplied by :func:`match_pivot_gadget`."""
+    return simp_iter(g, 'pivot_gadget', match_pivot_gadget, pivot)
+
+def pivot_boundary_iter(g: BaseGraph[VT,ET]) -> Iterator[Tuple[BaseGraph[VT,ET],str]]:
+    """Returns an iterator for the pivoting rewrite, using a list of matches supplied by :func:`match_pivot_boundary`."""
+    return simp_iter(g, 'pivot_boundary', match_pivot_boundary, pivot)
+
 def lcomp_iter(g: BaseGraph[VT,ET]) -> Iterator[Tuple[BaseGraph[VT,ET],str]]:
+    """Returns an iterator for the local complementation based rewrite rule, using a list of matches supplied by :func:`match_lcomp_parallel`."""
     return simp_iter(g, 'lcomp', match_lcomp_parallel, lcomp)
 
 def bialg_iter(g: BaseGraph[VT,ET]) -> Iterator[Tuple[BaseGraph[VT,ET],str]]:
+    """Returns an iterator for the bialgebra rewrite rule, using a list of matches supplied by :func:`match_bialg(_parallel)`."""
     return simp_iter(g, 'bialg', match_bialg_parallel, bialg)
 
 def spider_iter(g: BaseGraph[VT,ET]) -> Iterator[Tuple[BaseGraph[VT,ET],str]]:
+    """Returns an iterator for spider fusion, using a list of matches supplied by :func:`match_spider_parallel`."""
     return simp_iter(g, 'spider', match_spider_parallel, spider)
 
 def id_iter(g: BaseGraph[VT,ET]) -> Iterator[Tuple[BaseGraph[VT,ET],str]]:
+    """Returns an iterator for removing non-interacting identity vertices, as found by :func:`match_ids_parallel`."""
     return simp_iter(g, 'id', match_ids_parallel, remove_ids)
 
-def pivot_gadget_iter(g: BaseGraph[VT,ET]) -> Iterator[Tuple[BaseGraph[VT,ET],str]]:
-    return simp_iter(g, 'pivot_gadget', match_pivot_gadget, pivot)
-
 def gadget_iter(g: BaseGraph[VT,ET]) -> Iterator[Tuple[BaseGraph[VT,ET],str]]:
+    """Returns an iterator for removing phase gadgets that act on the same set of targets, as found by :func:`match_phase_gadgets`"""
     return simp_iter(g, 'gadget', match_phase_gadgets, merge_phase_gadgets)
 
-def pivot_boundary_iter(g: BaseGraph[VT,ET]) -> Iterator[Tuple[BaseGraph[VT,ET],str]]:
-    return simp_iter(g, 'pivot_boundary', match_pivot_boundary, pivot)
 
 def clifford_iter(g: BaseGraph[VT,ET]) -> Iterator[Tuple[BaseGraph[VT,ET],str]]:
+    """Like :func:`clifford_simp`, but returns an iterator instead of performing the rewrites all at once."""
     ok = True
     while ok:
         ok = False
@@ -477,6 +496,7 @@ def clifford_iter(g: BaseGraph[VT,ET]) -> Iterator[Tuple[BaseGraph[VT,ET],str]]:
             yield g, step
 
 def interior_clifford_iter(g: BaseGraph[VT,ET]) -> Iterator[Tuple[BaseGraph[VT,ET],str]]:
+    """Like :func:`interior_clifford_simp`, but returns an iterator instead of performing the rewrites all at once."""
     yield from spider_iter(g)
     to_gh(g)
     yield g, "to_gh"
@@ -497,6 +517,7 @@ def interior_clifford_iter(g: BaseGraph[VT,ET]) -> Iterator[Tuple[BaseGraph[VT,E
             yield g, step
 
 def full_reduce_iter(g: BaseGraph[VT,ET]) -> Iterator[Tuple[BaseGraph[VT,ET],str]]:
+    """Like :func:`full_reduce`, but returns an iterator instead of performing the rewrites all at once."""
     yield from interior_clifford_iter(g)
     yield from pivot_gadget_iter(g)
     ok = True
