@@ -201,7 +201,7 @@ def clifford_simp(g: BaseGraph[VT,ET], matchf: Optional[Callable[[Union[VT, ET]]
 
 def reduce_scalar(g: BaseGraph[VT,ET], quiet:bool=True, stats:Optional[Stats]=None) -> int:
     """Modification of ``full_reduce`` that is tailered for scalar ZX-diagrams.
-    It skips the boundary pivots, and it additionally does ``supplementarity_simp``."""
+    It skips the boundary pivots."""
     i = 0
     while True:
         i1 = id_simp(g, quiet=quiet, stats=stats)
@@ -213,18 +213,19 @@ def reduce_scalar(g: BaseGraph[VT,ET], quiet:bool=True, stats:Optional[Stats]=No
             continue
         i5 = pivot_gadget_simp(g,quiet=quiet, stats=stats)
         i6 = gadget_simp(g, quiet=quiet, stats=stats)
-        if i5 + i6:
+        i7 = copy_simp(g, quiet=quiet, stats=stats)
+        if i5 + i6 + i7:
             i += 1
             continue
-        i7 = supplementarity_simp(g,quiet=quiet, stats=stats)
-        if not i7: break
+        i8 = supplementarity_simp(g,quiet=quiet, stats=stats)
+        if not i8: break
         i += 1
     return i
 
 
 def full_reduce(g: BaseGraph[VT,ET], matchf: Optional[Callable[[Union[VT, ET]],bool]]=None, quiet:bool=True, stats:Optional[Stats]=None) -> None:
     """The main simplification routine of PyZX. It uses a combination of :func:`clifford_simp` and
-    the gadgetization strategies :func:`pivot_gadget_simp` and :func:`gadget_simp`."""
+    the gadgetization strategies :func:`pivot_gadget_simp` and :func:`gadget_simp`. It also attempts to run :func:`supplementarity_simp` and :func:`copy_simp`."""
     if any(g.types()[h] == VertexType.H_BOX for h in g.vertices()):
         raise ValueError("Input graph is not a ZX-diagram as it contains an H-box. "
                          "Maybe call pyzx.hsimplify.from_hypergraph_form(g) first?")
@@ -234,8 +235,10 @@ def full_reduce(g: BaseGraph[VT,ET], matchf: Optional[Callable[[Union[VT, ET]],b
         clifford_simp(g, matchf=matchf, quiet=quiet, stats=stats)
         i = gadget_simp(g, matchf=matchf, quiet=quiet, stats=stats)
         interior_clifford_simp(g, matchf=matchf, quiet=quiet, stats=stats)
+        k = copy_simp(g, quiet=quiet, stats=stats)
+        l = supplementarity_simp(g,quiet=True, stats=stats)
         j = pivot_gadget_simp(g, matchf=matchf, quiet=quiet, stats=stats)
-        if i+j == 0:
+        if i+j+k+l == 0:
             g.remove_isolated_vertices()
             break
 
