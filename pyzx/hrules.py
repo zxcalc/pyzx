@@ -255,15 +255,17 @@ def apply_copy(
 
 def is_NOT_gate(g, v, n1, n2):
     """Returns whether the vertex v in graph g is a NOT gate between its neighbours n1 and n2."""
-    if g.edge_type(g.edge(n1,v)) == EdgeType.SIMPLE and g.type(v) == VertexType.X: 
-        if g.edge_type(g.edge(n2,v)) != EdgeType.SIMPLE:
-            return False
-    elif g.edge_type(g.edge(n1,v)) == EdgeType.HADAMARD and g.type(v) == VertexType.Z: 
-        if g.edge_type(g.edge(n2,v)) != EdgeType.HADAMARD:
-            return False
-    else:
-        return False
-    return True
+    return (
+        (
+            g.edge_type(g.edge(n1,v)) == EdgeType.SIMPLE 
+            and g.type(v) == VertexType.X 
+            and g.edge_type(g.edge(n2,v)) == EdgeType.SIMPLE
+        ) or (
+            g.edge_type(g.edge(n1,v)) == EdgeType.HADAMARD 
+            and g.type(v) == VertexType.Z 
+            and g.edge_type(g.edge(n2,v)) == EdgeType.HADAMARD
+        )
+    ) 
 
 
 def match_hbox_parallel_not(
