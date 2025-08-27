@@ -299,6 +299,10 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         """Multiplies the scalar by a phase factor."""
         self.scalar.add_phase(phase)
 
+    def mult_scalar_by_one_plus_phase(self, phase: FractionLike) -> None:
+        """Multiplies the scalar by a phase factor."""
+        self.scalar.add_node(phase)
+
     def mult_scalar_by_sqrt2_power(self, power: int) -> None:
         """Multiplies the scalar by sqrt(2) raised to the given power."""
         self.scalar.add_power(power)

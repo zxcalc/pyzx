@@ -652,18 +652,18 @@ def pivot(g: BaseGraph[VT,ET], matches: List[MatchPivotType[VT]]) -> RewriteOutp
               [(s,t) for s in n[1] for t in n[2]] +
               [(s,t) for s in n[0] for t in n[2]])
         k0, k1, k2 = len(n[0]), len(n[1]), len(n[2])
-        g.scalar.add_power(k0*k2 + k1*k2 + k0*k1)
+        g.mult_scalar_by_sqrt2_power(k0*k2 + k1*k2 + k0*k1)
 
         for v in n[2]:
             if not g.is_ground(v):
                 g.add_to_phase(v, 1)
 
-        if g.phase(m[0][0]) and g.phase(m[0][1]): g.scalar.add_phase(Fraction(1))
+        if g.phase(m[0][0]) and g.phase(m[0][1]): g.mult_scalar_by_phase(Fraction(1))
         if not m[1][0] and not m[1][1]:
-            g.scalar.add_power(-(k0+k1+2*k2-1))
+            g.mult_scalar_by_sqrt2_power(-(k0+k1+2*k2-1))
         elif not m[1][0]:
-            g.scalar.add_power(-(k1+k2))
-        else: g.scalar.add_power(-(k0+k2))
+            g.mult_scalar_by_sqrt2_power(-(k1+k2))
+        else: g.mult_scalar_by_sqrt2_power(-(k0+k2))
 
         for i in 0, 1:
             # if m[i] has a phase, it will get copied on to the neighbors of m[1-i]:
@@ -762,10 +762,10 @@ def lcomp(g: BaseGraph[VT,ET], matches: List[MatchLcompType[VT]]) -> RewriteOutp
         a = g.phase(m[0])
         rem.append(m[0])
         assert isinstance(a,Fraction)  # For mypy
-        if a.numerator == 1: g.scalar.add_phase(Fraction(1,4))
-        else: g.scalar.add_phase(Fraction(7,4))
+        if a.numerator == 1: g.mult_scalar_by_phase(Fraction(1,4))
+        else: g.mult_scalar_by_phase(Fraction(7,4))
         n = len(m[1])
-        g.scalar.add_power((n-2)*(n-1)//2)
+        g.mult_scalar_by_sqrt2_power((n-2)*(n-1)//2)
         for i in range(n):
             if not g.is_ground(m[1][i]):
                 g.add_to_phase(m[1][i], -a)
@@ -892,7 +892,7 @@ def hopf(g: BaseGraph[VT,ET], matches: List[MatchHopfType[VT]]) -> RewriteOutput
         n = g.num_edges(v,w,et)
         parity = n % 2
         rem_edges.extend([g.edge(v, w, et)]*(n - parity))
-        g.scalar.add_power(-(n-parity))
+        g.mult_scalar_by_sqrt2_power(-(n-parity))
 
     return (etab, [], rem_edges, False)
     
@@ -934,7 +934,7 @@ def remove_self_loops(g: BaseGraph[VT,ET], matches: List[MatchSelfLoopType[VT]])
     for v,ns,nh in matches:
         rem_edges.extend([g.edge(v, v, EdgeType.SIMPLE)]*ns)
         rem_edges.extend([g.edge(v, v, EdgeType.HADAMARD)]*nh)
-        g.scalar.add_power(-nh)
+        g.mult_scalar_by_sqrt2_power(-nh)
         if nh % 2 == 1: # A Hadamard self-loop gives a phase of pi
             g.add_to_phase(v, Fraction(1,1))
 
@@ -979,16 +979,16 @@ def match_phase_gadgets(g: BaseGraph[VT,ET],vertexf:Optional[Callable[[VT],bool]
             n = gad[0]
             v = gadgets[n]
             if phases[n] != 0: # If the phase of the axel vertex is pi, we change the phase of the gadget
-                g.scalar.add_phase(phases[v])
+                g.mult_scalar_by_phase(phases[v])
                 g.phase_negate(v)
                 m.append((v,n,-phases[v],[],[]))
         else:
             totphase = sum((1 if phases[n]==0 else -1)*phases[gadgets[n]] for n in gad)%2
             for n in gad:
                 if phases[n] != 0:
-                    g.scalar.add_phase(phases[gadgets[n]])
+                    g.mult_scalar_by_phase(phases[gadgets[n]])
                     g.phase_negate(gadgets[n])
-            g.scalar.add_power(-((len(par)-1)*(len(gad)-1)))
+            g.mult_scalar_by_sqrt2_power(-((len(par)-1)*(len(gad)-1)))
             n = gad.pop()
             v = gadgets[n]
             m.append((v,n,totphase, gad, [gadgets[n] for n in gad]))
@@ -1064,20 +1064,20 @@ def apply_supplementarity(
         rem.append(w)
         alpha = g.phase(v)
         beta = g.phase(w)
-        g.scalar.add_power(-2*len(neigh))
+        g.mult_scalar_by_sqrt2_power(-2*len(neigh))
         if t == 1: # v and w are not connected
-            g.scalar.add_node(2*alpha+1)
+            g.mult_scalar_by_one_plus_phase(2*alpha+1)
             #if (alpha-beta)%2 == 1: # Standard supplementarity
             if (alpha+beta)%2 == 1: # Need negation on beta
-                g.scalar.add_phase(-alpha + 1)
+                g.mult_scalar_by_phase(-alpha + 1)
                 for n in neigh:
                     g.add_to_phase(n,1)
         elif t == 2: # they are connected
-            g.scalar.add_power(-1)
-            g.scalar.add_node(2*alpha)
+            g.mult_scalar_by_sqrt2_power(-1)
+            g.mult_scalar_by_one_plus_phase(2*alpha)
             #if (alpha-beta)%2 == 1: # Standard supplementarity
             if (alpha+beta)%2 == 0: # Need negation
-                g.scalar.add_phase(-alpha)
+                g.mult_scalar_by_phase(-alpha)
                 for n in neigh:
                     g.add_to_phase(n,1)
         else: raise Exception("Shouldn't happen")
@@ -1118,8 +1118,8 @@ def apply_copy(g: BaseGraph[VT,ET], matches: List[MatchCopyType[VT]]) -> Rewrite
     for v,w,a,alpha, neigh in matches:
         rem.append(v)
         rem.append(w)
-        g.scalar.add_power(-len(neigh)+1)
-        if a: g.scalar.add_phase(alpha)
+        g.mult_scalar_by_sqrt2_power(-len(neigh)+1)
+        if a: g.mult_scalar_by_phase(alpha)
         for n in neigh:
             if types[n] == VertexType.BOUNDARY:
                 r = g.row(n) - 1 if n in outputs else g.row(n)+1
