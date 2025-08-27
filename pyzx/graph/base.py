@@ -287,6 +287,31 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
 
     # Backends may wish to override these methods to implement them more efficiently
 
+
+    # Helper functions for mutating the scalar
+    #
+    # AK: I suggest new code *only* uses these functions to modify the scalar and we deprecate mutating
+    # the scalar directly (which doesn't work correctly with the Rust backend). I also picked slightly
+    # clearer names for these options, as the "add_..." method names are misleading for these operations,
+    # which all entail scalar multiplication.
+
+    def mult_scalar_by_phase(self, phase: FractionLike) -> None:
+        """Multiplies the scalar by a phase factor."""
+        self.scalar.add_phase(phase)
+
+    def mult_scalar_by_sqrt2_power(self, power: int) -> None:
+        """Multiplies the scalar by sqrt(2) raised to the given power."""
+        self.scalar.add_power(power)
+    
+    def mult_scalar_by_scalar(self, scalar: Scalar) -> None:
+        """Multiplies scalar with the given scalar"""
+        self.scalar.mult_with_scalar(scalar)
+
+    def mult_scalar_by_spider_pair(self, phase1: FractionLike, phase2: FractionLike) -> None:
+        """Multiplies scalar with a 'spider pair', i.e. a pair of phased Z-spiders connected by an H edge"""
+        self.scalar.add_spider_pair(phase1, phase2)
+
+
     # These methods return mappings from vertices to various pieces of data. If the backend
     # stores these e.g. as Python dicts, just return the relevant dicts.
     def phases(self) -> Mapping[VT, FractionLike]:

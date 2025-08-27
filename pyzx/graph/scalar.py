@@ -245,7 +245,7 @@ class Scalar(object):
         if other.is_zero: self.is_zero = True
         if other.is_unknown: self.is_unknown = True
 
-    def add_spider_pair(self, p1: FractionLike,p2: FractionLike) -> None:
+    def add_spider_pair(self, p1: FractionLike, p2: FractionLike) -> None:
         """Add the scalar corresponding to a connected pair of spiders (p1)-H-(p2)."""
         # These if statements look quite arbitrary, but they are just calculations of the scalar
         # of a pair of connected single wire spiders of opposite colors.
