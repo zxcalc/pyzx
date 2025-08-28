@@ -280,7 +280,20 @@ function showGraph(tag, graph, width, height, scale, node_size, auto_hbox, show_
 
     var link_curve = function(d) {
         var x1 = d.source.x, x2 = d.target.x, y1 = d.source.y, y2 = d.target.y;
-        if (d.num_parallel == 1) {
+        if (x1 == x2 && y1 == y2 && d.num_parallel == 1) {
+            var cx1 = x1 - 40;
+            var cy1 = y1 - 40;
+            var cx2 = x1 + 40;
+            var cy2 = y1 - 40;
+            return `M ${x1} ${y1} C ${cx1} ${cy1}, ${cx2} ${cy2}, ${x2} ${y2}`;
+        } else if (x1 == x2 && y1 == y2) {
+            var pos = d.index + 1;
+            var cx1 = x1 - 20 - pos * 10;
+            var cy1 = y1 - 20 - pos * 10;
+            var cx2 = x1 + 20 + pos * 10;
+            var cy2 = y1 - 20 - pos * 10;
+            return `M ${x1} ${y1} C ${cx1} ${cy1}, ${cx2} ${cy2}, ${x2} ${y2}`;
+        } else if (d.num_parallel == 1) {
             return `M ${x1} ${y1} L ${x2} ${y2}`;
         } else {
             var dx = x2 - x1, dy = y2 - y1;

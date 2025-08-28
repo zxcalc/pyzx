@@ -10,9 +10,9 @@ PyZX
    :maxdepth: 2
    :caption: Contents:
    
-   gettingstarted
+   quickintro
    faq
-   simplify
+   notebooks/simplify
    graph
    representations
    api
