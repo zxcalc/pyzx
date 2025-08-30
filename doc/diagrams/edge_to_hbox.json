@@ -1,0 +1,1 @@
+{"version": 2, "backend": "multigraph", "variable_types": {}, "scalar": {"power2": 0, "phase": "0"}, "inputs": [3], "outputs": [4], "edata": {}, "auto_simplify": false, "vertices": [{"id": 3, "t": 0, "pos": [0.0, 1.0]}, {"id": 4, "t": 0, "pos": [1.5, 1.0]}], "edges": [[3, 4, 2]]}

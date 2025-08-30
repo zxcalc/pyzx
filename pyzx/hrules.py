@@ -111,7 +111,11 @@ def match_connected_hboxes(g: BaseGraph[VT,ET],
         edgef: Optional[Callable[[ET],bool]] = None
         ) -> List[ET]:
     """Matches Hadamard-edges that are connected to H-boxes, as these can be fused,
-    see the rule (HS1) of https://arxiv.org/pdf/1805.02175.pdf."""
+    see the rule (HS1) of https://arxiv.org/pdf/1805.02175.pdf. 
+    
+    Warning:
+        Does not work with multigraphs. 
+    """
     if edgef is not None: candidates = set([e for e in g.edges() if edgef(e)])
     else: candidates = g.edge_set()
     m : Set[ET] = set()

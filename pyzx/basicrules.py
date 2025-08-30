@@ -67,6 +67,7 @@ def check_color_change(g: BaseGraph[VT,ET], v: VT) -> bool:
     return (g.type(v) == VertexType.Z or g.type(v) == VertexType.X)
 
 def color_change(g: BaseGraph[VT,ET], v: VT) -> bool:
+    """Color-change a vertex by applying Hadamards to all incident edges. Must be either a Z- or X- vertex"""
     if not (g.type(v) == VertexType.Z or g.type(v) == VertexType.X):
         return False
 
