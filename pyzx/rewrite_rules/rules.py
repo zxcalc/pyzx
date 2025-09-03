@@ -45,8 +45,6 @@ Warning:
     than through the output it generates (for instance by adding vertices or changes phases).
 
 """
-import sys
-sys.path.insert(0, '../..')
 
 from typing import Tuple, List, Dict, Set, FrozenSet
 from typing import Any, Callable, TypeVar, Optional, Union

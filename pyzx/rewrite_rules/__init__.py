@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from . import basicrules
-from . import editor_actions
-from . import hrules
-from . import rules
+from .basicrules import *
+from .editor_actions import *
+from .hrules import *
+from .rules import *

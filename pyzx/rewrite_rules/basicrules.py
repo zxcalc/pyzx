@@ -46,12 +46,11 @@ __all__ = ['color_change_diagram',
         'fuse',
         'check_remove_id',
         'remove_id']
-# import sys
-# sys.path.insert(0, '../..')
+
 from typing import Tuple, List
-from editor_actions import bialgebra
+from .editor_actions import bialgebra
 from pyzx.graph.base import BaseGraph, VT, ET
-from rules import apply_rule, w_fusion, z_to_z_box
+from .rules import apply_rule, w_fusion, z_to_z_box
 from pyzx.utils import (EdgeType, VertexType, get_w_io, get_z_box_label, is_pauli,
                     set_z_box_label, vertex_is_w, vertex_is_z_like, toggle_vertex, toggle_edge)
 

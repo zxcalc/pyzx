@@ -18,8 +18,6 @@
 """
 NEW VERSION 
 """
-import sys
-sys.path.insert(0, '../..')
 
 from fractions import Fraction
 from itertools import combinations

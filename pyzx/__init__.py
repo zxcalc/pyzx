@@ -37,6 +37,7 @@ from . import linalg
 from . import extract
 from . import rules
 from . import basicrules
+from . import rewrite_rules
 from . import hrules
 from . import optimize
 from . import simplify

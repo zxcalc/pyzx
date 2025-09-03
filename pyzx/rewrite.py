@@ -29,7 +29,7 @@ class Rewrite(object):
     def __init__(self, is_match: Callable[[BaseGraph[VT,ET]], VT] | Callable[[BaseGraph[VT, ET]], tuple[VT,VT]], applyer: Callable[[BaseGraph[VT,ET]], VT]| Callable[[BaseGraph[VT, ET]], tuple[VT,VT]]) -> None:
         self.__doc__ = is_match.__doc__
 
-    def find_all_matches (graph):
+    def find_all_matches (self, graph) -> list:
         # Must be implemented by subclass
         pass
 
