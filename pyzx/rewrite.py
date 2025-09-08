@@ -20,37 +20,43 @@ work to perform the rewrite rules on diagrams."""
 
 from typing import List, Callable, Optional, Union, Generic, Tuple, Dict, Iterator, cast
 from .graph.base import BaseGraph, VT, ET
-from .graph.base import BaseGraph, VT, ET
 
 
 
 class Rewrite(object):
-    
-    def __init__(self, is_match: Callable[[BaseGraph[VT,ET]], VT] | Callable[[BaseGraph[VT, ET]], tuple[VT,VT]], applyer: Callable[[BaseGraph[VT,ET]], VT]| Callable[[BaseGraph[VT, ET]], tuple[VT,VT]]) -> None:
-        self.__doc__ = is_match.__doc__
+    applier = None
+    is_match = []
 
-    def find_all_matches (self, graph) -> list:
-        # Must be implemented by subclass
-        pass
+    def __init__(self, is_match: Callable[[BaseGraph[VT,ET]], VT] | Callable[[BaseGraph[VT, ET]], tuple[VT,VT]], applier: Callable[[BaseGraph[VT,ET]], VT]| Callable[[BaseGraph[VT, ET]], tuple[VT,VT]]) -> None:
+        self.__doc__ = is_match.__doc__
+        self.applier = applier
+        self.is_match = is_match
 
     def simp(self, graph):
         matches = self.find_all_matches(graph)
         for m in matches:
-            self.applyer(graph, m)
-            
+            self.applier(graph, m)
+
     def __call__(self, graph) :
-        self. simp (graph)
+        self.simp(graph)
 
 class RewriteSingleVertex(Rewrite):
-    def __init__(self, is_match: Callable[[BaseGraph[VT,ET]], VT], applyer: Callable[[BaseGraph[VT,ET]], VT]) -> None:
-        self.__doc__ = is_match.__doc__ + applyer.__doc__
+    def __init__(self, is_match: Callable[[BaseGraph[VT,ET]], VT], applier: Callable[[BaseGraph[VT,ET]], VT]) -> None:
+        self.__doc__ = is_match.__doc__
+        self.is_match = is_match
+        self.applier = applier
 
-    def find_all_matches (self, graph) -> list:
+    def find_all_matches (self, graph) -> list[VT]:
         all_matches = []
         for v in graph.vertices():
             if self.is_match(graph, v):
                 all_matches.append(v)
         return all_matches
+
+    def simp(self, graph):
+        matches = self.find_all_matches(graph)
+        for m in matches:
+            self.applier(graph, m)
 
 class RewriteDoubleVertex(Rewrite):
     # Matcher takes in single vertex
