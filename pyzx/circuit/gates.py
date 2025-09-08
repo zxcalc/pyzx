@@ -592,7 +592,7 @@ class CNOT(Gate):
         g.add_edge((t,c))
         for r_ in range(top, bot + 1):
           q_mapper.set_next_row(r_, r+1)
-        g.scalar.add_power(1)
+        g.mult_scalar_by_sqrt2_power(1)
 
     def to_emoji(self,strings: List[List[str]]) -> None:
         c,t = self.control, self.target
@@ -634,7 +634,7 @@ class CZ(Gate):
         g.add_edge((t,c), EdgeType.HADAMARD)
         q_mapper.set_next_row(self.target, r+1)
         q_mapper.set_next_row(self.control, r+1)
-        g.scalar.add_power(1)
+        g.mult_scalar_by_sqrt2_power(1)
 
     def to_emoji(self,strings: List[List[str]]) -> None:
         c,t = self.control, self.target
@@ -656,7 +656,7 @@ class XCX(CZ):
         g.add_edge((t,c), EdgeType.HADAMARD)
         q_mapper.set_next_row(self.target, r+1)
         q_mapper.set_next_row(self.control, r+1)
-        g.scalar.add_power(1)
+        g.mult_scalar_by_sqrt2_power(1)
 
     def to_basic_gates(self):
         return [HAD(self.control), CNOT(self.control,self.target), HAD(self.control)]
@@ -912,7 +912,7 @@ class FSim(Gate):
         #rs[self.control] = r+2
 
         q_mapper.shift_all_rows(4)
-        g.scalar.add_power(1)
+        g.mult_scalar_by_sqrt2_power(1)
 
         # c1 = self.graph_add_node(g, q_mapper, VertexType.Z, self.control,r)
         # t1 = self.graph_add_node(g, q_mapper, VertexType.Z, self.target,r)
