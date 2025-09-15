@@ -25,7 +25,7 @@ import numpy as np
 import itertools
 from fractions import Fraction
 
-from ..rules import apply_rule, lcomp
+from ..rewrite_rules.rules import apply_rule, lcomp
 
 import sys
 if __name__ == '__main__':
