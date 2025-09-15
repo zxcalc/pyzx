@@ -18,46 +18,118 @@
 It is part of a major reworking of how the rule and simplify files 
 work to perform the rewrite rules on diagrams."""
 
-from typing import List, Callable, Optional, Union, Generic, Tuple, Dict, Iterator, cast
+from typing import List, Callable, Optional, Union, Generic, Set, Tuple, Dict, Iterator, cast
 from .graph.base import BaseGraph, VT, ET
-
-
 
 class Rewrite(object):
     applier = None
-    is_match = []
+    is_match = None
+    simp_match = None
 
-    def __init__(self, is_match: Callable[[BaseGraph[VT,ET]], VT] | Callable[[BaseGraph[VT, ET]], tuple[VT,VT]], applier: Callable[[BaseGraph[VT,ET]], VT]| Callable[[BaseGraph[VT, ET]], tuple[VT,VT]]) -> None:
-        self.__doc__ = is_match.__doc__
-        self.applier = applier
-        self.is_match = is_match
+    def __init__(self) -> None:
+        pass
 
-    def simp(self, graph):
-        matches = self.find_all_matches(graph)
-        for m in matches:
-            self.applier(graph, m)
+    def simp(self, graph) -> None:
+        raise Exception("This rewrite rule cannot terminate when run automatically. Try using apply() instead to manually target vertices.")
 
-    def __call__(self, graph) :
+    def __call__(self, graph) -> None:
         self.simp(graph)
 
 class RewriteSingleVertex(Rewrite):
-    def __init__(self, is_match: Callable[[BaseGraph[VT,ET]], VT], applier: Callable[[BaseGraph[VT,ET]], VT]) -> None:
-        self.__doc__ = is_match.__doc__
+    def __init__(self, is_match: Callable[[BaseGraph[VT, ET], VT], bool],
+                 applier: Callable[[BaseGraph[VT, ET], VT], bool]) -> None:
+        super().__init__()
         self.is_match = is_match
         self.applier = applier
+        self.__doc__ = is_match.__doc__
 
-    def find_all_matches (self, graph) -> list[VT]:
-        all_matches = []
+    def apply(self, graph: BaseGraph[VT, ET], v: VT) -> None:
+        if self.is_match(graph, v):
+            self.applier(graph, v)
+
+
+class RewriteSimpSingleVertex(RewriteSingleVertex):
+    def __init__(self, is_match: Callable[[BaseGraph[VT, ET], VT], bool],
+                 applier: Callable[[BaseGraph[VT, ET], VT], bool],
+                 simp_match: Callable[[BaseGraph[VT, ET], VT, VT], bool] = None) -> None:
+        super().__init__(is_match, applier)
+        self.simp_match = simp_match
+
+    def find_all_matches (self, graph) -> set[VT]:
+        all_matches = set()
+        if self.simp_match is not None:
+            match = self.simp_match
+        else:
+            match = self.is_match
+
         for v in graph.vertices():
-            if self.is_match(graph, v):
-                all_matches.append(v)
+            if match(graph, v):
+                all_matches.add(v)
         return all_matches
 
-    def simp(self, graph):
-        matches = self.find_all_matches(graph)
-        for m in matches:
-            self.applier(graph, m)
+    def simp(self, graph: BaseGraph[VT, ET]) -> None:
+        if self.simp_match is not None:
+            match = self.simp_match
+        else:
+            match = self.is_match
+
+        while True:
+            j = 0
+            all_matches = self.find_all_matches(graph)
+            for m in all_matches:
+                if match(graph, m):
+                    j += 1
+                    self.applier(graph, m)
+            if j == 0:
+                break
 
 class RewriteDoubleVertex(Rewrite):
-    # Matcher takes in single vertex
-    pass
+    def __init__(self, is_match: Callable[[BaseGraph[VT, ET], VT, VT], bool],
+                 applier: Callable[[BaseGraph[VT, ET], VT, VT], bool]) -> None:
+        super().__init__()
+        self.is_match = is_match
+        self.applier = applier
+        self.__doc__ = is_match.__doc__
+
+    def apply(self, graph: BaseGraph[VT, ET], v1: VT, v2: VT) -> None:
+        if self.is_match(graph, v1, v2):
+            self.applier(graph, v1, v2)
+
+
+class RewriteSimpDoubleVertex(RewriteDoubleVertex):
+    def __init__(self, is_match: Callable[[BaseGraph[VT, ET], VT, VT], bool],
+                 applier: Callable[[BaseGraph[VT, ET], VT, VT], bool],
+                 simp_match: Callable[[BaseGraph[VT, ET], VT, VT], bool] = None) -> None:
+        super().__init__(is_match, applier)
+        self.simp_match = simp_match
+
+    def find_all_matches (self, graph: BaseGraph[VT, ET]) -> Set[Tuple[VT, VT]]:
+        all_matches = set()
+        if self.simp_match is not None:
+            match = self.simp_match
+        else:
+            match = self.is_match
+
+        for v1 in graph.vertices():
+            for v2 in graph.neighbors(v1):
+                if match(graph, v1, v2):
+                    all_matches.add(tuple(sorted((v1, v2))))
+        return all_matches
+
+    def simp(self, graph: BaseGraph[VT, ET]) -> None:
+        if self.simp_match is not None:
+            match = self.simp_match
+        else:
+            match = self.is_match
+
+        while True:
+            j = 0
+            all_matches = self.find_all_matches(graph)
+
+            for m in all_matches:
+                if match(graph, m[0], m[1]):
+                    j += 1
+                    self.applier(graph, m[0], m[1])
+
+            if j == 0:
+                break
