@@ -53,12 +53,12 @@ class RewriteSimpSingleVertex(RewriteSingleVertex):
 
     def __init__(self, is_match: Callable[[BaseGraph[VT, ET], VT], bool],
                  applier: Callable[[BaseGraph[VT, ET], VT], bool],
-                 simp_match: Callable[[BaseGraph[VT, ET], VT], bool] = None) -> None:
+                 simp_match: Optional[Callable[[BaseGraph[VT, ET], VT], bool]] = None) -> None:
         super().__init__(is_match, applier)
         self.simp_match = simp_match
 
-    def find_all_matches (self, graph) -> set[VT]:
-        all_matches = set()
+    def find_all_matches (self, graph: BaseGraph[VT, ET]) -> Set[VT]:
+        all_matches: Set[VT] = set()
         if self.simp_match is not None:
             match = self.simp_match
         else:
@@ -106,12 +106,12 @@ class RewriteSimpDoubleVertex(RewriteDoubleVertex):
 
     def __init__(self, is_match: Callable[[BaseGraph[VT, ET], VT, VT], bool],
                  applier: Callable[[BaseGraph[VT, ET], VT, VT], bool],
-                 simp_match: Callable[[BaseGraph[VT, ET], VT, VT], bool] = None) -> None:
+                 simp_match: Optional[Callable[[BaseGraph[VT, ET], VT, VT], bool]] = None) -> None:
         super().__init__(is_match, applier)
         self.simp_match = simp_match
 
     def find_all_matches (self, graph: BaseGraph[VT, ET]) -> Set[Tuple[VT, VT]]:
-        all_matches = set()
+        all_matches: Set[VT] = set()
         if self.simp_match is not None:
             match = self.simp_match
         else:
