@@ -13,3 +13,25 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+from .color_change_rule import  color_change_diagram, check_color_change, color_change
+
+
+
+__all__ = ['color_change_diagram',
+            'check_color_change',
+           'color_change',
+        'check_copy_X',
+        'copy_X',
+        'check_copy_Z',
+        'copy_Z',
+        'check_pi_commute_X',
+        'pi_commute_X',
+        'check_pi_commute_Z',
+        'pi_commute_Z',
+        'check_strong_comp',
+        'strong_comp',
+        'check_fuse',
+        'fuse',
+        'check_remove_id',
+        'remove_id']
