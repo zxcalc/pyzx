@@ -33,7 +33,6 @@ def color_change_diagram(g: BaseGraph[VT,ET]):
 
 def check_color_change(g: BaseGraph[VT,ET], v: VT) -> bool:
     """Check if a vertex can be color-changed. It must be either a Z- or X- vertex"""
-
     return g.type(v) == VertexType.Z or g.type(v) == VertexType.X
 
 def color_change(g: BaseGraph[VT,ET], v: VT) -> bool:

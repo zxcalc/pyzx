@@ -38,39 +38,16 @@ __all__ = [
         'pi_commute_X',
         'check_pi_commute_Z',
         'pi_commute_Z',
-        'check_strong_comp',
-        'strong_comp',
         'check_fuse',
         'fuse',
         'check_remove_id',
         'remove_id']
 
-from .editor_actions import bialgebra
 from pyzx.graph.base import BaseGraph, VT, ET
 from .rules import apply_rule, w_fusion, z_to_z_box
 
 from pyzx.utils import (EdgeType, VertexType, get_w_io, get_z_box_label, is_pauli,
                     set_z_box_label, vertex_is_w, vertex_is_z_like, toggle_vertex, toggle_edge)
-
-
-def check_strong_comp(g: BaseGraph[VT,ET], v1: VT, v2: VT) -> bool:
-    if not (((g.type(v1) == VertexType.X and g.type(v2) == VertexType.Z) or
-             (g.type(v1) == VertexType.Z and g.type(v2) == VertexType.X)) and
-            is_pauli(g.phase(v1)) and
-            is_pauli(g.phase(v2)) and
-            g.connected(v1,v2) and
-            EdgeType.SIMPLE in [g.edge_type(edge) for edge in g.edges(v1,v2)]):
-        return False
-    return True
-
-def strong_comp(g: BaseGraph[VT,ET], v1: VT, v2: VT) -> bool:
-    if not check_strong_comp(g, v1, v2): return False
-
-    etab, rem_verts, rem_edges, check_isolated_vertices = bialgebra(g, [(v1, v2)])
-    g.remove_edges(rem_edges)
-    g.remove_vertices(rem_verts)
-    g.add_edge_table(etab)
-    return True
 
 def check_copy_X(g: BaseGraph[VT,ET], v: VT) -> bool:
     if not (g.vertex_degree(v) == 1 and
