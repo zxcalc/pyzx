@@ -29,9 +29,7 @@ whether the rule applies at the given location and doesn't actually apply
 the rule.
 """
 
-__all__ = ['color_change_diagram',
-        'check_color_change',
-           'color_change_rule.py',
+__all__ = [
         'check_copy_X',
         'copy_X',
         'check_copy_Z',
@@ -47,10 +45,10 @@ __all__ = ['color_change_diagram',
         'check_remove_id',
         'remove_id']
 
-from typing import Tuple, List
 from .editor_actions import bialgebra
 from pyzx.graph.base import BaseGraph, VT, ET
 from .rules import apply_rule, w_fusion, z_to_z_box
+
 from pyzx.utils import (EdgeType, VertexType, get_w_io, get_z_box_label, is_pauli,
                     set_z_box_label, vertex_is_w, vertex_is_z_like, toggle_vertex, toggle_edge)
 
