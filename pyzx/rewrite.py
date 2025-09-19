@@ -21,7 +21,7 @@ work to perform the rewrite rules on diagrams."""
 from typing import List, Callable, Optional, Union, Generic, Set, Tuple, Dict, Iterator, cast
 from .graph.base import BaseGraph, VT, ET
 
-class Rewrite(object):
+class Rewrite(Generic[VT, ET]):
 
     def __init__(self) -> None:
         pass
@@ -32,7 +32,7 @@ class Rewrite(object):
     def __call__(self, graph) -> None:
         self.simp(graph)
 
-class RewriteSingleVertex(Rewrite):
+class RewriteSingleVertex(Rewrite[VT, ET]):
     applier: Callable[[BaseGraph[VT, ET], VT], bool]
     is_match: Callable[[BaseGraph[VT, ET], VT], bool]
 
@@ -48,7 +48,7 @@ class RewriteSingleVertex(Rewrite):
             self.applier(graph, v)
 
 
-class RewriteSimpSingleVertex(RewriteSingleVertex):
+class RewriteSimpSingleVertex(RewriteSingleVertex[VT, ET]):
     simp_match: Optional[Callable[[BaseGraph[VT, ET], VT], bool]]
 
     def __init__(self, is_match: Callable[[BaseGraph[VT, ET], VT], bool],
@@ -85,7 +85,7 @@ class RewriteSimpSingleVertex(RewriteSingleVertex):
             if j == 0:
                 break
 
-class RewriteDoubleVertex(Rewrite):
+class RewriteDoubleVertex(Rewrite[VT, ET]):
     applier: Callable[[BaseGraph[VT, ET], VT, VT], bool]
     is_match: Callable[[BaseGraph[VT, ET], VT, VT], bool]
 
@@ -101,7 +101,7 @@ class RewriteDoubleVertex(Rewrite):
             self.applier(graph, v1, v2)
 
 
-class RewriteSimpDoubleVertex(RewriteDoubleVertex):
+class RewriteSimpDoubleVertex(RewriteDoubleVertex[VT, ET]):
     simp_match: Optional[Callable[[BaseGraph[VT, ET], VT, VT], bool]]
 
     def __init__(self, is_match: Callable[[BaseGraph[VT, ET], VT, VT], bool],
@@ -111,7 +111,7 @@ class RewriteSimpDoubleVertex(RewriteDoubleVertex):
         self.simp_match = simp_match
 
     def find_all_matches (self, graph: BaseGraph[VT, ET]) -> Set[Tuple[VT, VT]]:
-        all_matches: Set[VT] = set()
+        all_matches: Set[Tuple[VT, VT]] = set()
         if self.simp_match is not None:
             match = self.simp_match
         else:
@@ -120,7 +120,8 @@ class RewriteSimpDoubleVertex(RewriteDoubleVertex):
         for v1 in graph.vertices():
             for v2 in graph.neighbors(v1):
                 if match(graph, v1, v2):
-                    all_matches.add(tuple(sorted((v1, v2))))
+                    pair = (v1, v2) if v1 <= v2 else (v2, v1)
+                    all_matches.add(pair)
         return all_matches
 
     def simp(self, graph: BaseGraph[VT, ET]) -> None:
