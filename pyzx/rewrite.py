@@ -22,9 +22,6 @@ from typing import List, Callable, Optional, Union, Generic, Set, Tuple, Dict, I
 from .graph.base import BaseGraph, VT, ET
 
 class Rewrite(object):
-    applier = None
-    is_match = None
-    simp_match = None
 
     def __init__(self) -> None:
         pass
@@ -36,6 +33,9 @@ class Rewrite(object):
         self.simp(graph)
 
 class RewriteSingleVertex(Rewrite):
+    applier: Callable[[BaseGraph[VT, ET], VT], bool]
+    is_match: Callable[[BaseGraph[VT, ET], VT], bool]
+
     def __init__(self, is_match: Callable[[BaseGraph[VT, ET], VT], bool],
                  applier: Callable[[BaseGraph[VT, ET], VT], bool]) -> None:
         super().__init__()
@@ -49,9 +49,11 @@ class RewriteSingleVertex(Rewrite):
 
 
 class RewriteSimpSingleVertex(RewriteSingleVertex):
+    simp_match: Optional[Callable[[BaseGraph[VT, ET], VT], bool]]
+
     def __init__(self, is_match: Callable[[BaseGraph[VT, ET], VT], bool],
                  applier: Callable[[BaseGraph[VT, ET], VT], bool],
-                 simp_match: Callable[[BaseGraph[VT, ET], VT, VT], bool] = None) -> None:
+                 simp_match: Callable[[BaseGraph[VT, ET], VT], bool] = None) -> None:
         super().__init__(is_match, applier)
         self.simp_match = simp_match
 
@@ -84,6 +86,9 @@ class RewriteSimpSingleVertex(RewriteSingleVertex):
                 break
 
 class RewriteDoubleVertex(Rewrite):
+    applier: Callable[[BaseGraph[VT, ET], VT, VT], bool]
+    is_match: Callable[[BaseGraph[VT, ET], VT, VT], bool]
+
     def __init__(self, is_match: Callable[[BaseGraph[VT, ET], VT, VT], bool],
                  applier: Callable[[BaseGraph[VT, ET], VT, VT], bool]) -> None:
         super().__init__()
@@ -97,6 +102,8 @@ class RewriteDoubleVertex(Rewrite):
 
 
 class RewriteSimpDoubleVertex(RewriteDoubleVertex):
+    simp_match: Optional[Callable[[BaseGraph[VT, ET], VT, VT], bool]]
+
     def __init__(self, is_match: Callable[[BaseGraph[VT, ET], VT, VT], bool],
                  applier: Callable[[BaseGraph[VT, ET], VT, VT], bool],
                  simp_match: Callable[[BaseGraph[VT, ET], VT, VT], bool] = None) -> None:
