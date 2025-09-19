@@ -15,7 +15,7 @@
 # limitations under the License.
 
 from .color_change_rule import  color_change_diagram, check_color_change, color_change
-from .bialgebra_rule    import  check_strong_comp, strong_comp, check_bialg
+from .bialgebra_rule    import  check_strong_comp, bialgebra, check_bialgebra
 from .basicrules        import  check_fuse, fuse
 
 
@@ -31,8 +31,8 @@ __all__ = ['color_change_diagram',
         'check_pi_commute_Z',
         'pi_commute_Z',
            'check_strong_comp',
-           'strong_comp',
-           'check_bialg',
+           'bialgebra',
+           'check_bialgebra',
         'check_fuse',
         'fuse',
         'check_remove_id',
