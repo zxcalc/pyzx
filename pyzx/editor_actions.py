@@ -21,8 +21,6 @@ from fractions import Fraction
 
 from typing import Callable, Optional, List, Dict, Tuple
 
-from sympy.integrals.manualintegrate import rewrites_rule
-
 from .utils import EdgeType, VertexType, FractionLike
 from .utils import toggle_edge, vertex_is_zx, toggle_vertex
 from .graph.base import BaseGraph, VT, ET, upair
