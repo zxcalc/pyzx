@@ -26,11 +26,11 @@ class Rewrite(Generic[VT, ET]):
     def __init__(self) -> None:
         pass
 
-    def simp(self, graph) -> None:
+    def simp(self, graph) -> bool:
         raise Exception("This rewrite rule cannot terminate when run automatically. Try using apply() instead to manually target vertices.")
 
-    def __call__(self, graph) -> None:
-        self.simp(graph)
+    def __call__(self, graph) -> bool:
+        return self.simp(graph)
 
 class RewriteSingleVertex(Rewrite[VT, ET]):
     applier: Callable[[BaseGraph[VT, ET], VT], bool]
@@ -43,9 +43,11 @@ class RewriteSingleVertex(Rewrite[VT, ET]):
         self.applier = applier
         self.__doc__ = is_match.__doc__
 
-    def apply(self, graph: BaseGraph[VT, ET], v: VT) -> None:
+    def apply(self, graph: BaseGraph[VT, ET], v: VT) -> bool:
         if self.is_match(graph, v):
             self.applier(graph, v)
+            return True
+        return False
 
 
 class RewriteSimpSingleVertex(RewriteSingleVertex[VT, ET]):
@@ -69,12 +71,12 @@ class RewriteSimpSingleVertex(RewriteSingleVertex[VT, ET]):
                 all_matches.add(v)
         return all_matches
 
-    def simp(self, graph: BaseGraph[VT, ET]) -> None:
+    def simp(self, graph: BaseGraph[VT, ET]) -> bool:
         if self.simp_match is not None:
             match = self.simp_match
         else:
             match = self.is_match
-
+        applied: bool = False
         while True:
             j = 0
             all_matches = self.find_all_matches(graph)
@@ -82,8 +84,10 @@ class RewriteSimpSingleVertex(RewriteSingleVertex[VT, ET]):
                 if match(graph, m):
                     j += 1
                     self.applier(graph, m)
+                    applied = True
             if j == 0:
                 break
+        return applied
 
 class RewriteDoubleVertex(Rewrite[VT, ET]):
     applier: Callable[[BaseGraph[VT, ET], VT, VT], bool]
@@ -96,9 +100,11 @@ class RewriteDoubleVertex(Rewrite[VT, ET]):
         self.applier = applier
         self.__doc__ = is_match.__doc__
 
-    def apply(self, graph: BaseGraph[VT, ET], v1: VT, v2: VT) -> None:
+    def apply(self, graph: BaseGraph[VT, ET], v1: VT, v2: VT) -> bool:
         if self.is_match(graph, v1, v2):
             self.applier(graph, v1, v2)
+            return True
+        return False
 
 
 class RewriteSimpDoubleVertex(RewriteDoubleVertex[VT, ET]):
@@ -124,12 +130,13 @@ class RewriteSimpDoubleVertex(RewriteDoubleVertex[VT, ET]):
                     all_matches.add(pair)
         return all_matches
 
-    def simp(self, graph: BaseGraph[VT, ET]) -> None:
+    def simp(self, graph: BaseGraph[VT, ET]) -> bool:
         if self.simp_match is not None:
             match = self.simp_match
         else:
             match = self.is_match
 
+        applied: bool = False
         while True:
             j = 0
             all_matches = self.find_all_matches(graph)
@@ -138,6 +145,7 @@ class RewriteSimpDoubleVertex(RewriteDoubleVertex[VT, ET]):
                 if match(graph, m[0], m[1]):
                     j += 1
                     self.applier(graph, m[0], m[1])
-
+                    applied = True
             if j == 0:
                 break
+        return applied
