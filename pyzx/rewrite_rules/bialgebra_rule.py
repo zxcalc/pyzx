@@ -16,10 +16,10 @@
 
 __all__ = [
         'check_strong_comp',
-        'check_bialgebra'
-        'bialgebra'
-        'bialgebra_op'
-        'match_bialgebra_op'
+        'check_bialgebra',
+        'bialgebra',
+        'bialgebra_op',
+        'match_bialgebra_op',
         ]
 
 from collections import defaultdict
