@@ -14,12 +14,97 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+__all__ = [
+        'check_strong_comp',
+        'check_bialgebra'
+        'bialgebra'
+        'bialgebra_op'
+        'match_bialgebra_op'
+        ]
+
 from collections import defaultdict
 from typing import Callable, Optional, List, Tuple, Dict
 from pyzx.utils import EdgeType, VertexType, is_pauli
 from pyzx.graph.base import BaseGraph, VT, ET, upair
 
 from pyzx.rewrite_rules.rules import RewriteOutputType
+
+def check_strong_comp(g: BaseGraph[VT,ET], v1: VT, v2: VT) -> bool:
+    """Checks if the bialgebra rule can be applied to a given pair of vertices."""
+    return (((g.type(v1) == VertexType.X and g.type(v2) == VertexType.Z) or
+             (g.type(v1) == VertexType.Z and g.type(v2) == VertexType.X)) and
+            is_pauli(g.phase(v1)) and
+            is_pauli(g.phase(v2)) and
+            g.num_edges(v1, v2) == 1 and  # there is exactly 1 edge between vertices
+            g.num_edges(v1, v1) == 0 and  # there are no self-loops on v1
+            g.num_edges(v2, v2) == 0 and  # there are no self-loops on v2
+            EdgeType.SIMPLE in [g.edge_type(edge) for edge in g.edges(v1,v2)])
+
+def check_bialgebra(g: BaseGraph[VT,ET], v1: VT, v2: VT) -> bool:
+    """Checks if the bialgebra rule can be applied to a given pair of vertices.
+    NOTE: only returns true if the match of the spiders are neighbouring other spiders not a boundary vertex."""
+    if not (v1 in g.vertices()) and (v2 in g.vertices()): return False
+
+    v1n = [n for n in g.neighbors(v1) if not n == v2]
+    v2n = [n for n in g.neighbors(v2) if not n == v1]
+    if (check_strong_comp(g, v1, v2) and
+        all([g.type(n) == g.type(v2) and g.phase(n) == 0 for n in v1n]) and  # all neighbors of v1 are of the same type as v2
+        all([g.type(n) ==  g.type(v1) and g.phase(n) == 0 for n in v2n]) and  # all neighbors of v0 are of the same type as v1
+        EdgeType.SIMPLE in [g.edge_type(edge) for edge in g.edges(v1,v2)]):
+        return True
+    return False
+
+def bialgebra(g: BaseGraph[VT,ET], v1: VT, v2: VT ) -> bool:
+    """Applies the bialgebra rule to a given pair of Z and X spiders"""
+    rem_verts = []
+    etab = {}
+    if not check_strong_comp(g, v1, v2): return False
+
+    rem_verts.append(v1)
+    rem_verts.append(v2)
+    v = (v1,v2)
+    new_verts: Tuple[List[VT],List[VT]] = ([],[]) # new vertices for v1 and v2
+
+    for i, j in [(0, 1), (1, 0)]:
+        multi_edge_found = False
+        for e in g.incident_edges(v[i]):
+            source, target = g.edge_st(e)
+            other_vertex = source if source != v[i] else target
+            if other_vertex != v[j] or multi_edge_found:
+                q = 0.4*g.qubit(other_vertex) + 0.6*g.qubit(v[i])
+                r = 0.4*g.row(other_vertex) + 0.6*g.row(v[i])
+                newv = g.add_vertex(g.type(v[j]), qubit=q, row=r)
+                g.set_phase(newv, g.phase(v[j]))
+                new_verts[i].append(newv)
+                if other_vertex == v[j]:
+                    q = 0.4*g.qubit(v[i]) + 0.6*g.qubit(other_vertex)
+                    r = 0.4*g.row(v[i]) + 0.6*g.row(other_vertex)
+                    newv2 = g.add_vertex(g.type(v[i]), qubit=q, row=r)
+                    new_verts[j].append(newv2)
+                    other_vertex = newv2
+                if upair(newv, other_vertex) not in etab:
+                    etab[upair(newv, other_vertex)] = [0, 0]
+                type_index = 0 if g.edge_type(e) == EdgeType.SIMPLE else 1
+                etab[upair(newv, other_vertex)][type_index] += 1
+            elif i == 0: # only add new vertex once
+                multi_edge_found = True
+
+    for n1 in new_verts[0]:
+        for n2 in new_verts[1]:
+            if upair(n1,n2) not in etab:
+                etab[upair(n1,n2)] = [0, 0]
+            etab[upair(n1,n2)][0] += 1
+
+    if g.type(v1) == VertexType.H_BOX or g.type(v2) == VertexType.H_BOX: # x-h bialgebra
+        x_vertex = v1 if g.type(v2) == VertexType.H_BOX else v2
+        g.scalar.add_power(g.vertex_degree(x_vertex)-2)
+    else: # z-x bialgebra
+        g.scalar.add_power((g.vertex_degree(v1)-2)*(g.vertex_degree(v2)-2))
+
+    g.remove_vertices(rem_verts)
+    g.add_edge_table(etab)
+    return True
+
 
 def match_bialgebra_op(g: BaseGraph[VT,ET],
         vertexf: Optional[Callable[[VT], bool]] = None,
@@ -105,80 +190,3 @@ def bialgebra_op(g: BaseGraph[VT,ET],
     g.scalar.add_power(-(len(neighbors1)-1)*(len(neighbors2)-1))
 
     return (etab, type1_vertices + type2_vertices, [], False)
-
-
-def check_strong_comp(g: BaseGraph[VT,ET], v1: VT, v2: VT) -> bool:
-    if not (((g.type(v1) == VertexType.X and g.type(v2) == VertexType.Z) or
-             (g.type(v1) == VertexType.Z and g.type(v2) == VertexType.X)) and
-            is_pauli(g.phase(v1)) and
-            is_pauli(g.phase(v2)) and
-            g.num_edges(v1, v2) == 1 and  # there is exactly 1 edge between vertices
-            g.num_edges(v1, v1) == 0 and  # there are no self-loops on v1
-            g.num_edges(v2, v2) == 0 and  # there are no self-loops on v2
-            EdgeType.SIMPLE in [g.edge_type(edge) for edge in g.edges(v1,v2)]):
-        return False
-    return True
-
-def check_bialgebra(g: BaseGraph[VT,ET], v1: VT, v2: VT) -> bool:
-    v1n = [n for n in g.neighbors(v1) if not n == v2]
-    v2n = [n for n in g.neighbors(v2) if not n == v1]
-    if (check_strong_comp(g, v1, v2) and
-        all([g.type(n) == g.type(v2) and g.phase(n) == 0 for n in v1n]) and  # all neighbors of v1 are of the same type as v2
-        all([g.type(n) ==  g.type(v1) and g.phase(n) == 0 for n in v2n]) and  # all neighbors of v0 are of the same type as v1
-        EdgeType.SIMPLE in [g.edge_type(edge) for edge in g.edges(v1,v2)]):
-        return False
-    return True
-
-def bialgebra(g: BaseGraph[VT,ET], v1: VT, v2: VT ) -> bool:
-    """Applies the bialgebra rule to a given pair of Z and X spiders"""
-
-    rem_verts = []
-    etab = {}
-    if not check_strong_comp(g, v1, v2): return False
-
-    rem_verts.append(v1)
-    rem_verts.append(v2)
-    v = (v1,v2)
-    new_verts: Tuple[List[VT],List[VT]] = ([],[]) # new vertices for v1 and v2
-
-    for i, j in [(0, 1), (1, 0)]:
-        multi_edge_found = False
-        for e in g.incident_edges(v[i]):
-            source, target = g.edge_st(e)
-            other_vertex = source if source != v[i] else target
-            if other_vertex != v[j] or multi_edge_found:
-                q = 0.4*g.qubit(other_vertex) + 0.6*g.qubit(v[i])
-                r = 0.4*g.row(other_vertex) + 0.6*g.row(v[i])
-                newv = g.add_vertex(g.type(v[j]), qubit=q, row=r)
-                g.set_phase(newv, g.phase(v[j]))
-                new_verts[i].append(newv)
-                if other_vertex == v[j]:
-                    q = 0.4*g.qubit(v[i]) + 0.6*g.qubit(other_vertex)
-                    r = 0.4*g.row(v[i]) + 0.6*g.row(other_vertex)
-                    newv2 = g.add_vertex(g.type(v[i]), qubit=q, row=r)
-                    new_verts[j].append(newv2)
-                    other_vertex = newv2
-                if upair(newv, other_vertex) not in etab:
-                    etab[upair(newv, other_vertex)] = [0, 0]
-                type_index = 0 if g.edge_type(e) == EdgeType.SIMPLE else 1
-                etab[upair(newv, other_vertex)][type_index] += 1
-            elif i == 0: # only add new vertex once
-                multi_edge_found = True
-
-    for n1 in new_verts[0]:
-        for n2 in new_verts[1]:
-            if upair(n1,n2) not in etab:
-                etab[upair(n1,n2)] = [0, 0]
-            etab[upair(n1,n2)][0] += 1
-
-    if g.type(v1) == VertexType.H_BOX or g.type(v2) == VertexType.H_BOX: # x-h bialgebra
-        x_vertex = v1 if g.type(v2) == VertexType.H_BOX else v2
-        g.scalar.add_power(g.vertex_degree(x_vertex)-2)
-    else: # z-x bialgebra
-        g.scalar.add_power((g.vertex_degree(v1)-2)*(g.vertex_degree(v2)-2))
-
-    g.remove_vertices(rem_verts)
-    g.add_edge_table(etab)
-    return True
-
-

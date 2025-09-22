@@ -15,6 +15,12 @@
 # limitations under the License.
 
 
+__all__ = [
+        'color_change_diagram',
+        'color_change'
+        'check_color_change'
+        ]
+
 from pyzx.graph.base import BaseGraph, VT, ET
 from pyzx.utils import (EdgeType, VertexType, get_w_io, get_z_box_label, is_pauli,
                     set_z_box_label, vertex_is_w, vertex_is_z_like, toggle_vertex, toggle_edge)

@@ -45,6 +45,8 @@ __all__ = [
 
 from pyzx.graph.base import BaseGraph, VT, ET
 from .rules import apply_rule, w_fusion, z_to_z_box
+from pyzx.rewrite_rules.color_change_rule import color_change_diagram
+from pyzx.rewrite_rules.bialgebra_rule import bialgebra
 
 from pyzx.utils import (EdgeType, VertexType, get_w_io, get_z_box_label, is_pauli,
                     set_z_box_label, vertex_is_w, vertex_is_z_like, toggle_vertex, toggle_edge)
@@ -63,7 +65,7 @@ def check_copy_X(g: BaseGraph[VT,ET], v: VT) -> bool:
 def copy_X(g: BaseGraph[VT,ET], v: VT) -> bool:
     if not check_copy_X(g, v): return False
     nv = next(iter(g.neighbors(v)))
-    strong_comp(g, v, nv)
+    bialgebra(g, v, nv)
 
     return True
 
