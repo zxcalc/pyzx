@@ -14,13 +14,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__all__ = [
-        'check_strong_comp',
-        'check_bialgebra',
-        'bialgebra',
-        'bialgebra_op',
-        'match_bialgebra_op',
-        ]
+__all__ = ['check_strong_comp',
+           'check_bialgebra',
+           'bialgebra',
+           'unsafe_bialgebra',
+           'bialgebra_op',
+           'match_bialgebra_op']
 
 from collections import defaultdict
 from typing import Callable, Optional, List, Tuple, Dict
@@ -31,6 +30,8 @@ from pyzx.rewrite_rules.rules import RewriteOutputType
 
 def check_strong_comp(g: BaseGraph[VT,ET], v1: VT, v2: VT) -> bool:
     """Checks if the bialgebra rule can be applied to a given pair of vertices."""
+    if not (v1 in g.vertices()) and (v2 in g.vertices()): return False
+
     return (((g.type(v1) == VertexType.X and g.type(v2) == VertexType.Z) or
              (g.type(v1) == VertexType.Z and g.type(v2) == VertexType.X)) and
             is_pauli(g.phase(v1)) and
@@ -54,11 +55,14 @@ def check_bialgebra(g: BaseGraph[VT,ET], v1: VT, v2: VT) -> bool:
         return True
     return False
 
-def bialgebra(g: BaseGraph[VT,ET], v1: VT, v2: VT ) -> bool:
+def bialgebra(g: BaseGraph[VT, ET], v1: VT, v2: VT) -> bool:
+    if not check_strong_comp(g, v1, v2): return False
+    return unsafe_bialgebra(g, v1, v2)
+
+def unsafe_bialgebra(g: BaseGraph[VT,ET], v1: VT, v2: VT ) -> bool:
     """Applies the bialgebra rule to a given pair of Z and X spiders"""
     rem_verts = []
     etab = {}
-    if not check_strong_comp(g, v1, v2): return False
 
     rem_verts.append(v1)
     rem_verts.append(v2)
@@ -105,6 +109,8 @@ def bialgebra(g: BaseGraph[VT,ET], v1: VT, v2: VT ) -> bool:
     g.add_edge_table(etab)
     return True
 
+
+#TODO: fix this to work with Rewrite class
 
 def match_bialgebra_op(g: BaseGraph[VT,ET],
         vertexf: Optional[Callable[[VT], bool]] = None,

@@ -38,8 +38,6 @@ __all__ = [
         'pi_commute_X',
         'check_pi_commute_Z',
         'pi_commute_Z',
-        'check_fuse',
-        'fuse',
         'check_remove_id',
         'remove_id']
 
@@ -114,62 +112,6 @@ def copy_Z(g: BaseGraph, v: VT) -> bool:
     b = copy_X(g, v)
     color_change_diagram(g)
     return b
-
-def check_fuse(g: BaseGraph[VT,ET], v1: VT, v2: VT) -> bool:
-    if check_fuse_w(g, v1, v2):
-        return True
-    if not (g.connected(v1,v2) and
-            ((g.type(v1) == VertexType.X and g.type(v2) == VertexType.X) or
-             (vertex_is_z_like(g.type(v1)) and vertex_is_z_like(g.type(v2)))) and
-            EdgeType.SIMPLE in [g.edge_type(edge) for edge in g.edges(v1,v2)]):
-        return False
-    return True
-
-def fuse(g: BaseGraph[VT,ET], v1: VT, v2: VT) -> bool:
-    if not check_fuse(g, v1, v2): return False
-    if vertex_is_w(g.type(v1)):
-        return fuse_w(g, v1, v2)
-    if g.type(v1) == VertexType.Z_BOX or g.type(v2) == VertexType.Z_BOX:
-        if g.type(v1) == VertexType.Z:
-            z_to_z_box(g, [v1])
-        if g.type(v2) == VertexType.Z:
-            z_to_z_box(g, [v2])
-        set_z_box_label(g, v1, get_z_box_label(g, v1) * get_z_box_label(g, v2))
-    else:
-        g.add_to_phase(v1, g.phase(v2))
-    for e in g.incident_edges(v2):
-        source, target = g.edge_st(e)
-        other_vertex = source if source != v2 else target
-        if source != v2:
-            other_vertex = source
-        elif target != v2:
-            other_vertex = target
-        else: #self-loop
-            other_vertex = v1
-        if other_vertex == v1 and g.edge_type(e) == EdgeType.SIMPLE:
-            continue
-        g.add_edge((v1,other_vertex), edgetype=g.edge_type(e))
-    g.remove_vertex(v2)
-    return True
-
-def check_fuse_w(g: BaseGraph[VT,ET], v1: VT, v2: VT) -> bool:
-    if vertex_is_w(g.type(v1)) and vertex_is_w(g.type(v2)):
-        v1_in, v1_out = get_w_io(g, v1)
-        v2_in, v2_out = get_w_io(g, v2)
-        if (g.connected(v1_in, v2_out) and g.edge_type(g.edge(v1_in, v2_out)) == EdgeType.SIMPLE) or \
-           (g.connected(v2_in, v1_out) and g.edge_type(g.edge(v2_in, v1_out)) == EdgeType.SIMPLE):
-            return True
-    return False
-
-def fuse_w(g: BaseGraph[VT,ET], v1: VT, v2: VT) -> bool:
-    if not check_fuse_w(g, v1, v2): return False
-    v1_in, v1_out = get_w_io(g, v1)
-    v2_in, v2_out = get_w_io(g, v2)
-    if not g.connected(v1_out, v2_in):
-        g.set_position(v2_in, g.qubit(v1_in), g.row(v1_in))
-        g.set_position(v2_out, g.qubit(v1_out), g.row(v1_out))
-    apply_rule(g, w_fusion, [(v2, v1)])
-    return True
 
 def check_remove_id(g: BaseGraph[VT,ET], v: VT) -> bool:
     if not g.vertex_degree(v) == 2:

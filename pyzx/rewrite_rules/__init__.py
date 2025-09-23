@@ -15,13 +15,24 @@
 # limitations under the License.
 
 from .color_change_rule import  color_change_diagram, check_color_change, color_change
-from .bialgebra_rule    import  check_strong_comp, bialgebra, check_bialgebra
-from .basicrules        import  check_fuse, fuse
+from .bialgebra_rule    import  check_strong_comp, bialgebra, unsafe_bialgebra, check_bialgebra
+from .fuse              import  check_fuse, fuse, check_fuse_w, fuse_w, unsafe_fuse_w, unsafe_fuse, unfuse
 
 
 __all__ = ['color_change_diagram',
            'check_color_change',
            'color_change',
+           'check_strong_comp',
+           'bialgebra',
+           'unsafe_bialgebra',
+           'check_bialgebra',
+           'check_fuse',
+           'check_fuse_w',
+           'fuse',
+           'unsafe_fuse',
+           'fuse_w',
+           'unsafe_fuse_w',
+           'unfuse',
         'check_copy_X',
         'copy_X',
         'check_copy_Z',
@@ -30,10 +41,5 @@ __all__ = ['color_change_diagram',
         'pi_commute_X',
         'check_pi_commute_Z',
         'pi_commute_Z',
-           'check_strong_comp',
-           'bialgebra',
-           'check_bialgebra',
-        'check_fuse',
-        'fuse',
         'check_remove_id',
         'remove_id']

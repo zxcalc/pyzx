@@ -17,16 +17,15 @@
 
 __all__ = [
         'color_change_diagram',
-        'color_change'
-        'check_color_change'
-        ]
+        'color_change',
+        'check_color_change']
 
 from pyzx.graph.base import BaseGraph, VT, ET
 from pyzx.utils import (EdgeType, VertexType, get_w_io, get_z_box_label, is_pauli,
                     set_z_box_label, vertex_is_w, vertex_is_z_like, toggle_vertex, toggle_edge)
 
 
-def color_change_diagram(g: BaseGraph[VT,ET]):
+def color_change_diagram(g: BaseGraph[VT,ET]) -> bool:
     """Color-change an entire diagram by applying Hadamards to the inputs and ouputs."""
     for v in g.vertices():
         if g.type(v) == VertexType.BOUNDARY:
@@ -36,18 +35,25 @@ def color_change_diagram(g: BaseGraph[VT,ET]):
                 g.set_edge_type(e, toggle_edge(g.edge_type(e)))
         elif check_color_change(g, v):
             g.set_type(v, toggle_vertex(g.type(v)))
+    return True
 
 def check_color_change(g: BaseGraph[VT,ET], v: VT) -> bool:
     """Check if a vertex can be color-changed. It must be either a Z- or X- vertex"""
+    if not (v in g.vertices()): return False
     return g.type(v) == VertexType.Z or g.type(v) == VertexType.X
 
 def color_change(g: BaseGraph[VT,ET], v: VT) -> bool:
     """Color-change a vertex by applying Hadamards to all incident edges. Must be either a Z- or X- vertex"""
-    if not (g.type(v) == VertexType.Z or g.type(v) == VertexType.X):
+    if not check_color_change(g, v):
         return False
+
+    return unsafe_color_change(g, v)
+
+def unsafe_color_change(g: BaseGraph[VT,ET], v: VT) -> bool:
+    """Color-change a vertex by applying Hadamards to all incident edges. Must be either a Z- or X- vertex
+    NOTE: does not check if a vertex can be color-changed."""
 
     g.set_type(v, toggle_vertex(g.type(v)))
     for e in g.incident_edges(v):
         g.set_edge_type(e, toggle_edge(g.edge_type(e)))
-
     return True
