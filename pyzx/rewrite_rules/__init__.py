@@ -16,20 +16,20 @@
 
 from .color_change_rule import  color_change_diagram, check_color_change, color_change
 from .bialgebra_rule    import  check_strong_comp, bialgebra, unsafe_bialgebra, check_bialgebra
-from .fuse              import  check_fuse, fuse, check_fuse_w, fuse_w, unsafe_fuse_w, unsafe_fuse, unfuse
+from .fuse_rule              import  check_fuse, fuse, check_fuse_w, fuse_w, unsafe_fuse_w, unsafe_fuse, unfuse
 
 
 __all__ = ['color_change_diagram',
            'check_color_change',
            'color_change',
            'check_strong_comp',
+           'check_bialgebra',
            'bialgebra',
            'unsafe_bialgebra',
-           'check_bialgebra',
            'check_fuse',
-           'check_fuse_w',
            'fuse',
            'unsafe_fuse',
+           'check_fuse_w',
            'fuse_w',
            'unsafe_fuse_w',
            'unfuse',
