@@ -37,9 +37,7 @@ __all__ = [
         'check_pi_commute_X',
         'pi_commute_X',
         'check_pi_commute_Z',
-        'pi_commute_Z',
-        'check_remove_id',
-        'remove_id']
+        'pi_commute_Z']
 
 from pyzx.graph.base import BaseGraph, VT, ET
 from pyzx.rewrite_rules.color_change_rule import color_change_diagram
@@ -47,24 +45,6 @@ from pyzx.rewrite_rules.bialgebra_rule import bialgebra
 
 from pyzx.utils import (EdgeType, VertexType, get_w_io, get_z_box_label, is_pauli,
                     vertex_is_w)
-
-def check_copy_X(g: BaseGraph[VT,ET], v: VT) -> bool:
-    if not (g.vertex_degree(v) == 1 and
-            g.type(v) == VertexType.X and
-            is_pauli(g.phase(v))):
-        return False
-    nv = next(iter(g.neighbors(v)))
-    if not (g.type(nv) == VertexType.Z and
-            g.edge_type(g.edge(v,nv)) == EdgeType.SIMPLE):
-        return False
-    return True
-
-def copy_X(g: BaseGraph[VT,ET], v: VT) -> bool:
-    if not check_copy_X(g, v): return False
-    nv = next(iter(g.neighbors(v)))
-    bialgebra(g, v, nv)
-
-    return True
 
 def check_pi_commute_Z(g: BaseGraph[VT, ET], v: VT) -> bool:
     return g.type(v) == VertexType.Z
@@ -97,17 +77,5 @@ def check_pi_commute_X(g: BaseGraph[VT,ET], v: VT) -> bool:
 def pi_commute_X(g: BaseGraph[VT,ET], v: VT) -> bool:
     color_change_diagram(g)
     b = pi_commute_Z(g, v)
-    color_change_diagram(g)
-    return b
-
-def check_copy_Z(g: BaseGraph[VT,ET], v: VT) -> bool:
-    color_change_diagram(g)
-    b = check_copy_X(g, v)
-    color_change_diagram(g)
-    return b
-
-def copy_Z(g: BaseGraph, v: VT) -> bool:
-    color_change_diagram(g)
-    b = copy_X(g, v)
     color_change_diagram(g)
     return b

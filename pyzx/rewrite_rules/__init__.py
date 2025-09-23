@@ -14,10 +14,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .color_change_rule import  color_change_diagram, check_color_change, color_change
-from .bialgebra_rule    import  check_strong_comp, bialgebra, unsafe_bialgebra, check_bialgebra
-from .fuse_rule         import  check_fuse, fuse, check_fuse_w, fuse_w, unsafe_fuse_w, unsafe_fuse, unfuse
+from .color_change_rule import color_change_diagram, check_color_change, color_change
+from .bialgebra_rule    import check_strong_comp, bialgebra, unsafe_bialgebra, check_bialgebra
+from .fuse_rule         import check_fuse, fuse, check_fuse_w, fuse_w, unsafe_fuse_w, unsafe_fuse, unfuse
 from .remove_id_rule    import check_remove_id, remove_id, unsafe_remove_id, check_remove_id_w, remove_id_w, unsafe_remove_id_w
+from .copy_rule         import check_copy, copy, unsafe_copy
 
 __all__ = ['color_change_diagram',
            'check_color_change',
@@ -39,6 +40,9 @@ __all__ = ['color_change_diagram',
            'check_remove_id_w',
            'remove_id_w',
            'unsafe_remove_id_w',
+           'check_copy',
+           'copy',
+           'unsafe_copy',
         'check_copy_X',
         'copy_X',
         'check_copy_Z',
