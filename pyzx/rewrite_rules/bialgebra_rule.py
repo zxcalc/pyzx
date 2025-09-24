@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__all__ = ['check_strong_comp',
+__all__ = ['check_bialgebra_reduce',
            'check_bialgebra',
            'bialgebra',
            'unsafe_bialgebra',
@@ -28,9 +28,9 @@ from pyzx.graph.base import BaseGraph, VT, ET, upair
 
 from pyzx.rewrite_rules.rules import RewriteOutputType
 
-def check_strong_comp(g: BaseGraph[VT,ET], v1: VT, v2: VT) -> bool:
+def check_bialgebra(g: BaseGraph[VT,ET], v1: VT, v2: VT) -> bool:
     """Checks if the bialgebra rule can be applied to a given pair of vertices."""
-    if not (v1 in g.vertices()) and (v2 in g.vertices()): return False
+    if not (v1 in g.vertices() and v2 in g.vertices()): return False
 
     return (((g.type(v1) == VertexType.X and g.type(v2) == VertexType.Z) or
              (g.type(v1) == VertexType.Z and g.type(v2) == VertexType.X)) and
@@ -41,14 +41,15 @@ def check_strong_comp(g: BaseGraph[VT,ET], v1: VT, v2: VT) -> bool:
             g.num_edges(v2, v2) == 0 and  # there are no self-loops on v2
             EdgeType.SIMPLE in [g.edge_type(edge) for edge in g.edges(v1,v2)])
 
-def check_bialgebra(g: BaseGraph[VT,ET], v1: VT, v2: VT) -> bool:
+def check_bialgebra_reduce(g: BaseGraph[VT,ET], v1: VT, v2: VT) -> bool:
     """Checks if the bialgebra rule can be applied to a given pair of vertices.
-    NOTE: only returns true if the match of the spiders are neighbouring other spiders not a boundary vertex."""
-    if not (v1 in g.vertices()) and (v2 in g.vertices()): return False
+    NOTE: only returns true if the match of the spiders are neighbouring other
+    spiders not a boundary vertex."""
+    if not (v1 in g.vertices() and v2 in g.vertices()): return False
 
     v1n = [n for n in g.neighbors(v1) if not n == v2]
     v2n = [n for n in g.neighbors(v2) if not n == v1]
-    if (check_strong_comp(g, v1, v2) and
+    if (check_bialgebra(g, v1, v2) and
         all([g.type(n) == g.type(v2) and g.phase(n) == 0 for n in v1n]) and  # all neighbors of v1 are of the same type as v2
         all([g.type(n) ==  g.type(v1) and g.phase(n) == 0 for n in v2n]) and  # all neighbors of v0 are of the same type as v1
         EdgeType.SIMPLE in [g.edge_type(edge) for edge in g.edges(v1,v2)]):
@@ -56,7 +57,7 @@ def check_bialgebra(g: BaseGraph[VT,ET], v1: VT, v2: VT) -> bool:
     return False
 
 def bialgebra(g: BaseGraph[VT, ET], v1: VT, v2: VT) -> bool:
-    if not check_strong_comp(g, v1, v2): return False
+    if not check_bialgebra(g, v1, v2): return False
     return unsafe_bialgebra(g, v1, v2)
 
 def unsafe_bialgebra(g: BaseGraph[VT,ET], v1: VT, v2: VT ) -> bool:

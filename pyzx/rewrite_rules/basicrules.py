@@ -30,10 +30,6 @@ the rule.
 """
 
 __all__ = [
-        'check_copy_X',
-        'copy_X',
-        'check_copy_Z',
-        'copy_Z',
         'check_pi_commute_X',
         'pi_commute_X',
         'check_pi_commute_Z',
@@ -45,6 +41,8 @@ from pyzx.rewrite_rules.bialgebra_rule import bialgebra
 
 from pyzx.utils import (EdgeType, VertexType, get_w_io, get_z_box_label, is_pauli,
                     vertex_is_w)
+
+##wanna merge
 
 def check_pi_commute_Z(g: BaseGraph[VT, ET], v: VT) -> bool:
     return g.type(v) == VertexType.Z

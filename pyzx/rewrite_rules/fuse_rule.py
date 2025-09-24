@@ -40,7 +40,7 @@ def check_fuse(g: BaseGraph[VT,ET], v1: VT, v2: VT) -> bool:
     if check_fuse_w(g, v1, v2):
         return True
 
-    if not (v1 in g.vertices()) and (v2 in g.vertices()): return False
+    if not (v1 in g.vertices() and v2 in g.vertices()): return False
 
     if (g.connected(v1,v2) and
         ((g.type(v1) == VertexType.X and g.type(v2) == VertexType.X) or
@@ -85,7 +85,7 @@ def unsafe_fuse(g: BaseGraph[VT,ET], v1: VT, v2: VT) -> bool:
 # Fuse w
 
 def check_fuse_w(g: BaseGraph[VT,ET], v1: VT, v2: VT) -> bool:
-    if not (v1 in g.vertices()) and (v2 in g.vertices()): return False
+    if not (v1 in g.vertices() and v2 in g.vertices()): return False
 
     if vertex_is_w(g.type(v1)) and vertex_is_w(g.type(v2)):
         v1_in, v1_out = get_w_io(g, v1)

@@ -16,10 +16,9 @@
 
 __all__ = ['check_remove_id',
            'remove_id',
-           'unsafe_remove_id',
-           'check_remove_id_w',
-           'remove_id_w',
-           'unsafe_remove_id_w']
+           'unsafe_remove_id']
+
+## seperate into 3 parts: overarching, zx remove, w remove. have overarching be in __all__
 
 from pyzx.graph.base import BaseGraph, VT, ET
 from pyzx.utils import EdgeType, VertexType, get_z_box_label, vertex_is_w, get_w_io
@@ -28,6 +27,7 @@ def check_remove_id(g: BaseGraph[VT,ET], v: VT) -> bool:
     if not (v in g.vertices()): return False
     if vertex_is_w(g.type(v)):
         return check_remove_id_w(g, v)
+
     if not g.vertex_degree(v) == 2:
         return False
     if g.type(v) == VertexType.Z_BOX and get_z_box_label(g, v) == 1:
@@ -61,6 +61,8 @@ def unsafe_remove_id(g: BaseGraph[VT,ET], v: VT) -> bool:
 
     return True
 
+
+# Remove identity with w nodes
 
 def check_remove_id_w(g: BaseGraph[VT,ET], v: VT) -> bool:
     w_in, w_out = get_w_io(g, v)

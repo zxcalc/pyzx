@@ -25,6 +25,9 @@ from pyzx.rewrite_rules.bialgebra_rule import bialgebra
 
 from pyzx.utils import (EdgeType, VertexType, is_pauli)
 
+## split matcher from hrules into multiple simpler rules,
+# have overarching check_copy that calls them all
+
 
 def check_copy(g: BaseGraph[VT,ET], v: VT) -> bool:
     if not (v in g.vertices()): return False

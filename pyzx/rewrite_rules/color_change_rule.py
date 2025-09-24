@@ -18,6 +18,7 @@
 __all__ = [
         'color_change_diagram',
         'color_change',
+        'unsafe_color_change',
         'check_color_change']
 
 from pyzx.graph.base import BaseGraph, VT, ET
@@ -44,9 +45,7 @@ def check_color_change(g: BaseGraph[VT,ET], v: VT) -> bool:
 
 def color_change(g: BaseGraph[VT,ET], v: VT) -> bool:
     """Color-change a vertex by applying Hadamards to all incident edges. Must be either a Z- or X- vertex"""
-    if not check_color_change(g, v):
-        return False
-
+    if not check_color_change(g, v): return False
     return unsafe_color_change(g, v)
 
 def unsafe_color_change(g: BaseGraph[VT,ET], v: VT) -> bool:
