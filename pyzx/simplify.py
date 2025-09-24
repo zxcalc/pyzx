@@ -33,7 +33,7 @@ from optparse import Option
 from typing import List, Callable, Optional, Union, Generic, Tuple, Dict, Iterator, cast
 
 from .utils import EdgeType, VertexType, phase_is_clifford, toggle_edge, vertex_is_zx, toggle_vertex
-from .rules import *
+from .rewrite_rules.rules import *
 from .graph.base import BaseGraph, VT, ET
 from .graph.multigraph import Multigraph
 from .circuit import Circuit

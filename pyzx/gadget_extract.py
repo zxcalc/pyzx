@@ -5,7 +5,7 @@
 from .utils import EdgeType, VertexType, toggle_edge
 from .linalg import Mat2, Z2
 from .simplify import id_simp, tcount
-from .rules import apply_rule, pivot, match_spider_parallel, spider
+from .rewrite_rules.rules import apply_rule, pivot, match_spider_parallel, spider
 from .circuit import Circuit
 from .circuit.gates import Gate, ParityPhase, CNOT, HAD, ZPhase, XPhase, CZ, XCX, SWAP, InitAncilla
 from .graph.base import BaseGraph, VT, ET, FractionLike

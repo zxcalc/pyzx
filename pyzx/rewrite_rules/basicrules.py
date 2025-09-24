@@ -15,6 +15,8 @@
 # limitations under the License.
 
 """
+NEW VERSION
+
 This module contains several rules more easily applied interactively to ZX
 diagrams. The emphasis is more on ease of use and simplicity than performance.
 
@@ -47,9 +49,9 @@ __all__ = ['color_change_diagram',
 
 from typing import Tuple, List
 from .editor_actions import bialgebra
-from .graph.base import BaseGraph, VT, ET
+from pyzx.graph.base import BaseGraph, VT, ET
 from .rules import apply_rule, w_fusion, z_to_z_box
-from .utils import (EdgeType, VertexType, get_w_io, get_z_box_label, is_pauli,
+from pyzx.utils import (EdgeType, VertexType, get_w_io, get_z_box_label, is_pauli,
                     set_z_box_label, vertex_is_w, vertex_is_z_like, toggle_vertex, toggle_edge)
 
 def color_change_diagram(g: BaseGraph[VT,ET]):

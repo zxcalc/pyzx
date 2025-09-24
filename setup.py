@@ -30,6 +30,7 @@ setup(
         "pyzx",
         "pyzx.circuit",
         "pyzx.graph",
+        "pyzx.rewrite_rules",
         "pyzx.routing",
         "pyzx.local_search",
         "pyzx.scripts",
