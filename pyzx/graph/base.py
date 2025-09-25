@@ -99,6 +99,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         # merge_vdata(v0,v1) is an optional, custom function for merging
         # vdata of v1 into v0 during spider fusion etc.
         self.merge_vdata: Optional[Callable[[VT,VT], None]] = None
+        self.variable_types: Dict[str,bool] = dict() # DEPRICATED - mapping of variable names to their type (bool or continuous)
         self.var_registry: VarRegistry = VarRegistry() # registry for variable types
 
     # MANDATORY OVERRIDES {{{
