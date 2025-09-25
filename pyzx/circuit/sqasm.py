@@ -15,7 +15,7 @@
 # limitations under the License.
 
 from .qasmparser import QASMParser
-from ..rules import *
+from ..rewrite_rules.rules import *
 from ..simplify import simp
 from ..graph.base import BaseGraph
 

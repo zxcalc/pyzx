@@ -14,13 +14,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
+"""
+NEW VERSION 
+"""
+
 from fractions import Fraction
 from itertools import combinations
 from typing import Dict, List, Tuple, Callable, Optional, Set, FrozenSet
-from .utils import EdgeType, VertexType, toggle_edge, toggle_vertex, FractionLike, FloatInt, vertex_is_zx
-from .simplify import *
-from .graph.base import BaseGraph, ET, VT, upair
-from . import rules
+from pyzx.utils import EdgeType, VertexType, toggle_edge, toggle_vertex, FractionLike, FloatInt, vertex_is_zx
+from pyzx.simplify import *
+from pyzx.graph.base import BaseGraph, ET, VT, upair
+import pyzx.rewrite_rules.rules as rules
 
 def is_hadamard(g: BaseGraph[VT,ET], v: VT) -> bool:
     """Returns whether the vertex v in graph g is a Hadamard gate."""

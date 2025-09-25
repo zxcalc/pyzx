@@ -20,8 +20,8 @@ from .simplify import simp, Stats, spider_simp, id_simp
 from .simplify import pivot_simp, lcomp_simp, pivot_gadget_simp, pivot_boundary_simp
 from .utils import EdgeType, VertexType
 from .graph.base import BaseGraph, VT,ET
-from .hrules import *
-from .rules import MatchObject
+from .rewrite_rules.hrules import *
+from .rewrite_rules.rules import MatchObject
 
 
 def hadamard_simp(g: BaseGraph[VT,ET], matchf:Optional[Callable[[VT],bool]]=None, quiet:bool=False) -> int:

@@ -14,6 +14,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+NEW VERSION 
+"""
 
 import json
 from collections import defaultdict
@@ -21,9 +24,8 @@ from fractions import Fraction
 
 from typing import Callable, Optional, List, Dict, Tuple
 
-from .utils import EdgeType, VertexType, FractionLike
-from .utils import toggle_edge, vertex_is_zx, toggle_vertex
-from .graph.base import BaseGraph, VT, ET, upair
+from pyzx.utils import EdgeType, VertexType, FractionLike, toggle_edge, vertex_is_zx, toggle_vertex
+from pyzx.graph.base import BaseGraph, VT, ET, upair
 import pyzx.rewrite_rules.rules as rules
 import pyzx.rewrite_rules.hrules as hrules
 
@@ -431,18 +433,18 @@ operations = {
                         "type": MATCHES_VERTICES},
     "had2edge": {"text": "Convert H-box", 
                "tooltip": "Converts an arity 2 H-box into an H-edge.",
-               "matcher": hrules.match_hadamards,
-               "rule": hrules.hadamard_to_h_edge,
+               "matcher": hrules.match_hadamards, 
+               "rule": hrules.hadamard_to_h_edge, 
                "type": MATCHES_VERTICES},
     "fuse_hbox": {"text": "Fuse H-boxes", 
                "tooltip": "Merges two adjacent H-boxes together",
-               "matcher": hrules.match_connected_hboxes,
-               "rule": hrules.fuse_hboxes,
+               "matcher": hrules.match_connected_hboxes, 
+               "rule": hrules.fuse_hboxes, 
                "type": MATCHES_EDGES},
     "mult_hbox": {"text": "Multiply H-boxes", 
                "tooltip": "Merges groups of H-boxes that have the same connectivity",
-               "matcher": hrules.match_par_hbox,
-               "rule": hrules.par_hbox,
+               "matcher": hrules.match_par_hbox, 
+               "rule": hrules.par_hbox, 
                "type": MATCHES_VERTICES},
     "fuse_w": {"text": "fuse W nodes",
                "tooltip": "Merges two connected W nodes together",
@@ -451,8 +453,8 @@ operations = {
                 "type": MATCHES_EDGES},
     "copy": {"text": "copy 0/pi spider", 
                "tooltip": "Copies a single-legged spider with a 0/pi phase through its neighbor",
-               "matcher": hrules.match_copy,
-               "rule": hrules.apply_copy,
+               "matcher": hrules.match_copy, 
+               "rule": hrules.apply_copy, 
                "type": MATCHES_VERTICES},
     "pauli": {"text": "push Pauli", 
                "tooltip": "Pushes an arity 2 pi-phase through a selected neighbor",
