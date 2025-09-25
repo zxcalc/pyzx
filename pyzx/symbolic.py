@@ -28,29 +28,39 @@ from operator import add, mul
 from fractions import Fraction
 
 
+class VarRegistry:
+    """Registry to track variable types for a specific graph"""
+    def __init__(self):
+        self.types = {}  # name -> is_bool
+
+    def get_type(self, name: str, default: bool = False) -> bool:
+        """Get the type of a variable, using default if not found"""
+        return self.types.get(name, default)
+
+    def set_type(self, name: str, is_bool: bool) -> None:
+        """Set the type of a variable"""
+        self.types[name] = is_bool
+
+    def vars(self) -> Set[str]:
+        """Get the set of variable names in the registry"""
+        return set(self.types.keys())
+
+
 class Var:
     name: str
-    _is_bool: bool
-    _types_dict: Optional[Union[bool, Dict[str, bool]]]
+    _registry: VarRegistry
 
-    def __init__(self, name: str, data: Union[bool, Dict[str, bool]]):
+    def __init__(self, name: str, is_bool: bool = False, registry: Optional[VarRegistry] = None):
         self.name = name
-        if isinstance(data, dict):
-            self._types_dict = data
-            self._frozen = False
-            self._is_bool = False
+        if registry is None:
+            self._registry = VarRegistry()
         else:
-            self._types_dict = None
-            self._frozen = True
-            self._is_bool = data
+            self._registry = registry
+        self._registry.set_type(name, is_bool)
 
     @property
     def is_bool(self) -> bool:
-        if self._frozen:
-            return self._is_bool
-        else:
-            assert isinstance(self._types_dict, dict)
-            return self._types_dict[self.name]
+        return self._registry.get_type(self.name)
 
     def __repr__(self) -> str:
         return self.name
@@ -67,34 +77,26 @@ class Var:
         return int(hash(self.name))
 
     def __eq__(self, other: object) -> bool:
-        return self.__hash__() == other.__hash__()
-
-    def freeze(self) -> None:
-        if not self._frozen:
-            assert isinstance(self._types_dict, dict)
-            self._is_bool = self._types_dict[self.name]
-            self._frozen = True
-            self._types_dict = None
+        if not isinstance(other, Var):
+            return False
+        return self.name == other.name
 
     def __copy__(self) -> 'Var':
-        if self._frozen:
-            return Var(self.name, self.is_bool)
-        else:
-            assert isinstance(self._types_dict, dict)
-            return Var(self.name, self._types_dict)
+        return Var(self.name, self.is_bool, self._registry)
 
     def __deepcopy__(self, _memo: object) -> 'Var':
         return self.__copy__()
+
+    def rebind_to_registry(self, new_registry: VarRegistry) -> None:
+        """Rebind this variable to a new registry"""
+        self._registry = new_registry
+        new_registry.set_type(self.name, self.is_bool)
 
 class Term:
     vars: List[Tuple[Var, int]]
 
     def __init__(self, vars: List[Tuple[Var,int]]) -> None:
         self.vars = vars
-
-    def freeze(self) -> None:
-        for var, _ in self.vars:
-            var.freeze()
 
     def free_vars(self) -> Set[Var]:
         return set(var for var, _ in self.vars)
@@ -145,16 +147,17 @@ class Term:
                 new_vars.append((v, c))
         return (coeff, Term(new_vars))
 
+    def rebind_variables_to_registry(self, new_registry: VarRegistry) -> None:
+        """Rebind all variables in this term to the given registry"""
+        for var, _ in self.vars:
+            var.rebind_to_registry(new_registry)
+
 
 class Poly:
     terms: List[Tuple[Union[int, float, complex, Fraction], Term]]
 
     def __init__(self, terms: List[Tuple[Union[int, float, complex, Fraction], Term]]) -> None:
         self.terms = terms
-
-    def freeze(self) -> None:
-        for _, term in self.terms:
-            term.freeze()
 
     def free_vars(self) -> Set[Var]:
         output = set()
@@ -319,6 +322,11 @@ class Poly:
     def copy(self) -> 'Poly':
         return Poly([(c, t) for c, t in self.terms])
 
+    def rebind_variables_to_registry(self, new_registry: VarRegistry) -> None:
+        """Rebind all variables in this polynomial to the given registry"""
+        for _, term in self.terms:
+            term.rebind_variables_to_registry(new_registry)
+
     def substitute(self, var_map: Dict[Var, Union[float, complex, 'Fraction']]) -> 'Poly':
         """Substitute variables in the polynomial with the given values."""
         p = Poly([])
@@ -327,8 +335,8 @@ class Poly:
             p += Poly([(c * coeff, term)])
         return p
 
-def new_var(name: str, types_dict: Union[bool, Dict[str, bool]]) -> Poly:
-    return Poly([(1, Term([(Var(name, types_dict), 1)]))])
+def new_var(name: str, is_bool: bool, registry: Optional[VarRegistry] = None) -> Poly:
+    return Poly([(1, Term([(Var(name, is_bool, registry), 1)]))])
 
 def new_const(coeff: Union[int, Fraction]) -> Poly:
     return Poly([(coeff, Term([]))])

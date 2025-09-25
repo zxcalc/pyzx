@@ -23,6 +23,7 @@ from ..utils import VertexType, EdgeType, FractionLike, FloatInt, phase_to_s
 from .base import BaseGraph, VT, ET
 from .graph_s import GraphS
 from .jsonparser import string_to_phase
+from ..symbolic import VarRegistry
 
 class GraphDiff(Generic[VT, ET]):
     removed_verts: List[VT]
@@ -36,6 +37,7 @@ class GraphDiff(Generic[VT, ET]):
     changed_vdata: Dict[VT, Any]
     changed_edata: Dict[ET, Any]
     variable_types: Dict[str,bool]
+    var_registry: VarRegistry
 
     def __init__(self, g1: BaseGraph[VT,ET], g2: BaseGraph[VT,ET]) -> None:
         self.calculate_diff(g1,g2)
@@ -47,8 +49,12 @@ class GraphDiff(Generic[VT, ET]):
         self.changed_pos = {}
         self.changed_vdata = {}
         self.changed_edata = {}
-        self.variable_types = g1.variable_types.copy()
-        self.variable_types.update(g2.variable_types)
+        self.var_registry = VarRegistry()
+        for name in g1.var_registry.vars():
+            self.var_registry.set_type(name, g1.var_registry.get_type(name, False))
+        for name in g2.var_registry.vars():
+            self.var_registry.set_type(name, g2.var_registry.get_type(name, False))
+        self.variable_types = self.var_registry.types.copy()
 
         old_verts = g1.vertex_set()
         new_verts = g2.vertex_set()
@@ -145,6 +151,7 @@ class GraphDiff(Generic[VT, ET]):
         for e in self.changed_edge_types:
             g.set_edge_type(e,self.changed_edge_types[e])
 
+        g.rebind_variables_to_registry()
         return g
 
     def to_dict(self) -> Dict[str, Any]:
@@ -166,7 +173,7 @@ class GraphDiff(Generic[VT, ET]):
             "changed_pos": self.changed_pos,
             "changed_vdata": self.changed_vdata,
             "changed_edata": changed_edata_str_dict,
-            "variable_types": self.variable_types
+            "variable_types": self.var_registry.types,
         }
 
     def to_json(self) -> str:
@@ -176,6 +183,9 @@ class GraphDiff(Generic[VT, ET]):
     def from_json(json_str: str) -> "GraphDiff":
         d = json.loads(json_str)
         gd = GraphDiff(GraphS(),GraphS())
+        gd.var_registry = VarRegistry()
+        for name, is_bool in d["variable_types"].items():
+            gd.var_registry.set_type(name, is_bool)
         gd.removed_verts = d["removed_verts"]
         gd.new_verts = d["new_verts"]
         gd.removed_edges = list(map(tuple, d["removed_edges"])) # type: ignore

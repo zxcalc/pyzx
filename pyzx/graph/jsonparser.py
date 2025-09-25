@@ -57,9 +57,7 @@ def string_to_phase(string: str, g: Union[BaseGraph,'GraphDiff']) -> Union[Fract
             return Fraction(int(s))
     except ValueError:
         def _new_var(name: str) -> Poly:
-            if name not in g.variable_types:
-                g.variable_types[name] = False
-            return new_var(name, g.variable_types)
+            return new_var(name, is_bool=g.var_registry.get_type(name, False), registry=g.var_registry)
         try:
             return parse(string, _new_var)
         except Exception as e:
