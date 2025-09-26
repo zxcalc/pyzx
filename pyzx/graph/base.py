@@ -16,6 +16,7 @@
 
 from __future__ import annotations
 import math
+import copy
 from fractions import Fraction
 from typing import TYPE_CHECKING, Union, Optional, Generic, TypeVar, Any, Sequence
 from typing import List, Dict, Set, Tuple, Mapping, Iterable, Callable, ClassVar, Literal
@@ -23,6 +24,7 @@ from typing_extensions import Literal, GenericMeta # type: ignore # https://gith
 
 import numpy as np
 
+from ..symbolic import Poly, VarRegistry
 from ..utils import EdgeType, VertexType, toggle_edge, vertex_is_zx
 from ..utils import FloatInt, FractionLike
 from ..tensor import tensorfy, tensor_to_matrix
@@ -97,7 +99,8 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         # merge_vdata(v0,v1) is an optional, custom function for merging
         # vdata of v1 into v0 during spider fusion etc.
         self.merge_vdata: Optional[Callable[[VT,VT], None]] = None
-        self.variable_types: Dict[str,bool] = dict() # mapping of variable names to their type (bool or continuous)
+        self.variable_types: Dict[str,bool] = dict() # DEPRICATED - mapping of variable names to their type (bool or continuous)
+        self.var_registry: VarRegistry = VarRegistry() # registry for variable types
 
     # MANDATORY OVERRIDES {{{
 
@@ -479,6 +482,8 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         g.track_phases = self.track_phases
         g.scalar = self.scalar.copy(conjugate=adjoint)
         g.merge_vdata = self.merge_vdata # type: ignore
+        for name in self.var_registry.vars():
+            g.var_registry.set_type(name, self.var_registry.get_type(name))
         mult:int = 1
         if adjoint:
             mult = -1
@@ -510,11 +515,14 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         else:
             g.set_inputs(new_outputs)
             g.set_outputs(new_inputs)
-        
+
         for e in self.edges():
             s, t = self.edge_st(e)
             new_e = g.add_edge((vtab[s], vtab[t]), self.edge_type(e))
             g.set_edata_dict(new_e, self.edata_dict(e))
+
+        # Rebind all variables in phases to the new graph's registry
+        g.rebind_variables_to_registry()
 
         return g
 
@@ -1031,16 +1039,38 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
 
     def get_auto_simplify(self) -> bool:
         """Returns whether this graph auto-simplifies parallel edges
-        
+
         For multigraphs, this parameter might change, but simple graphs should always return True."""
         return True
 
+    def rebind_variables_to_registry(self) -> None:
+        """Rebind all variables in phases to this graph's registry.
+        This should be called after deep copying a graph to ensure all variables
+        reference the new graph's registry."""
+        for v in self.vertices():
+            phase = self.phase(v)
+            if isinstance(phase, Poly):
+                phase.rebind_variables_to_registry(self.var_registry)
+
+    def __deepcopy__(self, memo):
+        """Custom deepcopy implementation to ensure variable registry is properly handled
+        while using Python's default deepcopy behavior."""
+        cls = self.__class__
+        result = cls.__new__(cls)
+        memo[id(self)] = result
+        # Copy all attributes using default deepcopy
+        for k, v in self.__dict__.items():
+            setattr(result, k, copy.deepcopy(v, memo))
+        # Rebind all variables to the new registry
+        result.rebind_variables_to_registry()
+        return result
+
     def set_auto_simplify(self, s: bool) -> None:
         """Set whether this graph auto-simplifies parallel edges
-        
+
         Simple graphs should always auto-simplify, so this method is a no-op."""
         pass
-    
+
     def is_phase_gadget(self, v: VT) -> bool:
         """Returns True if the vertex is the 'hub' of a phase gadget"""
         if not vertex_is_zx(self.type(v)) or self.phase(v) != 0 or self.vertex_degree(v) < 2:
