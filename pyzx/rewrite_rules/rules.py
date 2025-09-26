@@ -970,6 +970,7 @@ def match_phase_gadgets(g: BaseGraph[VT,ET],vertexf:Optional[Callable[[VT],bool]
             if n in inputs or n in outputs: continue # Not a real phase gadget (happens for non-unitary diagrams)
             gadgets[n] = v
             par = frozenset(set(g.neighbors(n)).difference({v}))
+            if par == frozenset(): continue # Not a real phase gadget if it acts on nothing
             if par in parities: parities[par].append(n)
             else: parities[par] = [n]
 
