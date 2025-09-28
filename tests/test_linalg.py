@@ -17,11 +17,12 @@
 
 import unittest
 import sys
+import numpy as np
 if __name__ == '__main__':
     sys.path.append('..')
     sys.path.append('.')
 
-from pyzx.linalg import Mat2
+from pyzx.linalg import Mat2, rank_factorize, generalized_inverse
 
 
 class TestMat2(unittest.TestCase):
@@ -80,6 +81,22 @@ class TestMat2(unittest.TestCase):
         self.assertEqual(m0.cols(),self.m3.rank())
         self.assertEqual(m1.rows(),self.m3.rank())
         self.assertEqual(m0*m1, self.m3)
+
+    def test_rank_factorize(self):
+        A = np.array([[1, 1, 1, 1, 1],
+                      [1, 1, 1, 1, 1],
+                      [0, 1, 0, 0, 1],
+                      [1, 0, 1, 1, 0]], dtype=np.int8)
+        r, U, V = rank_factorize(A)
+        assert r == 2
+        assert ((U[:, :r] @ V[:r]) % 2 == A).all()
+
+    def test_generalized_inverse(self):
+        A = np.array([[1, 1, 1, 0],
+                      [1, 1, 1, 1],
+                      [1, 1, 1, 1]], dtype=np.int8)
+        B = generalized_inverse(A)
+        assert ((A @ B @ A) % 2 == A).all()
 
 if __name__ == '__main__':
     unittest.main()

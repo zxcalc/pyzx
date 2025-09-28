@@ -97,12 +97,21 @@ def pop_and_shift(verts, indices):
             indices[w] = l2
     return res
 
-def tensorfy(g: 'BaseGraph[VT,ET]', preserve_scalar:bool=True) -> np.ndarray:
+def tensorfy(g: 'BaseGraph[VT,ET]', preserve_scalar=True, strategy='naive', verbose=False) -> np.ndarray:
     """Takes in a Graph and outputs a multidimensional numpy array
-    representing the linear map the ZX-diagram implements.
-    Beware that quantum circuits take exponential memory to represent."""
+        representing the linear map the ZX-diagram implements.
+        Beware that quantum circuits take exponential memory to represent."""
     if g.is_hybrid():
         raise ValueError("Hybrid graphs are not supported.")
+    if strategy == 'naive':
+        return tensorfy_naive(g, preserve_scalar=preserve_scalar)
+    elif strategy.startswith('rw-'):
+        from .rank_width import tensorfy_rw
+        return tensorfy_rw(g, strategy=strategy, preserve_scalar=preserve_scalar, verbose=verbose)
+    else:
+        raise ValueError('Unknown simulation strategy')
+
+def tensorfy_naive(g: 'BaseGraph[VT,ET]', preserve_scalar:bool=True) -> np.ndarray:
     rows = g.rows()
     phases = g.phases()
     types = g.types()
