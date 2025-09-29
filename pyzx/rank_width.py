@@ -255,7 +255,7 @@ def apply_parity_map(Psi: np.ndarray, M: np.ndarray) -> np.ndarray:
     m = M.shape[1]
     ys = mat_image(M)
     Phi = np.zeros((Psi.shape[0], 2 ** m), dtype=Psi.dtype)
-    np.add.at(Phi, (slice(None), ys), Psi)
+    np.add.at(Phi, (slice(None), ys), Psi) # type: ignore
     Phi /= sqrt(2) ** (M.sum() - m)
     return Phi
 
