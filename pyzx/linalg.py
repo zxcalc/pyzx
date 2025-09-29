@@ -405,7 +405,7 @@ class REF:
             while pivot_row < len(self.pivot_cols) and self.pivot_cols[pivot_row] < col:
                 pivot_row += 1
             col_loc, col_rem = divmod(col, BASE)
-            if (row_arr[col_loc] >> np.uint64(col_rem)) & 1:
+            if (row_arr[col_loc] >> np.uint64(col_rem)) & np.uint64(1):
                 if pivot_row < len(self.pivot_cols) and self.pivot_cols[pivot_row] == col:
                     row_arr ^= self.mat[pivot_row]
                 else:
