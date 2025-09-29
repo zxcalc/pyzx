@@ -16,9 +16,9 @@
 
 import math
 import numpy as np
-from galois import GF2
 from typing import Union, Any, Tuple, List, Optional, Dict, cast
 from typing_extensions import Literal
+from numpy.typing import NDArray
 
 from .circuit.gates import CNOT
 
@@ -376,9 +376,6 @@ class CNOTMaker(object):
         self.cnots.append(CNOT(r2,r1))
 
 
-BASE = 64
-
-
 class REF:
     """
     A class to efficiently compute cut-ranks for multiple partitions.
@@ -387,45 +384,46 @@ class REF:
     Initially, all vertices are in the right part.
     The function take(v) moves a vertex to the left, and rank() returns the cut-rank.
     """
+    BASE = 64
 
-    def __init__(self, graph):
-        self.n = len(graph)
-        self.N = (self.n + BASE - 1) // BASE * BASE
+    def __init__(self, adj_mat: NDArray[np.int8]):
+        self.n = len(adj_mat)
+        self.N = (self.n + self.BASE - 1) // self.BASE * self.BASE
         self.taken = [False] * self.N
-        self.graph = np.hstack([graph, np.zeros((self.n, self.N - self.n), dtype=graph.dtype)])
-        self.graph = np.packbits(self.graph, axis=-1, bitorder='little').view(np.uint64)
-        self.mat = []
-        self.pivot_cols = []
+        adj_mat_padded = np.hstack([adj_mat, np.zeros((self.n, self.N - self.n), dtype=adj_mat.dtype)])
+        self.adj_mat = np.packbits(adj_mat_padded, axis=-1, bitorder='little').view(np.uint64)
+        self.ref: List[NDArray[np.uint64]] = []
+        self.pivot_cols: List[int] = []
 
-    def _add_row(self, row_arr, start_col=0):
+    def _add_row(self, row_arr: NDArray[np.uint64], start_col: int = 0):
         pivot_row = 0
         for col in range(start_col, self.N):
             if self.taken[col]:
                 continue
             while pivot_row < len(self.pivot_cols) and self.pivot_cols[pivot_row] < col:
                 pivot_row += 1
-            col_loc, col_rem = divmod(col, BASE)
+            col_loc, col_rem = divmod(col, self.BASE)
             if (row_arr[col_loc] >> np.uint64(col_rem)) & np.uint64(1):
                 if pivot_row < len(self.pivot_cols) and self.pivot_cols[pivot_row] == col:
-                    row_arr ^= self.mat[pivot_row]
+                    row_arr ^= self.ref[pivot_row]
                 else:
-                    self.mat.insert(pivot_row, row_arr)
+                    self.ref.insert(pivot_row, row_arr)
                     self.pivot_cols.insert(pivot_row, col)
                     break
 
-    def take(self, col):
+    def take(self, v: int):
         """
         Move a vertex from the right part to the left in O(n^2) time.
-        :param col: vertex id
+        :param v: vertex id
         """
-        self.taken[col] = True
-        if col in self.pivot_cols:
-            pivot_row = self.pivot_cols.index(col)
+        self.taken[v] = True
+        if v in self.pivot_cols:
+            pivot_row = self.pivot_cols.index(v)
             self.pivot_cols.pop(pivot_row)
-            row_arr = self.mat[pivot_row]
-            self.mat.pop(pivot_row)
-            self._add_row(row_arr, col + 1)
-        self._add_row(self.graph[col])
+            row_arr = self.ref[pivot_row]
+            self.ref.pop(pivot_row)
+            self._add_row(row_arr, v + 1)
+        self._add_row(self.adj_mat[v])
 
     def rank(self):
         """
@@ -434,55 +432,76 @@ class REF:
         return len(self.pivot_cols)
 
 
-def rank_factorize(A: np.ndarray) -> Tuple[int, np.ndarray, np.ndarray]:
+def rank_factorise(A: NDArray[np.int8],
+                   mode: str = 'compact') -> Tuple[NDArray[np.int8], NDArray[np.int8], NDArray[np.int8]]:
     """
-    Rank factorisation of a matrix over GF(2).
+    Rank factorisation of a matrix over GF(2), i.e. A = UΣV. Three modes are available:
+        - 'compact' -- U, V have r columns and rows, respectively, and Σ = I_r
+        - 'full' -- U, V are square invertible matrices, and Σ has I_r in its top left corner
+        - 'invert' -- same as 'full', but compute U^{-1}, V^{-1} instead of U, V
     :param A: binary matrix of shape (n, m)
-    :return: tuple (r, L, R) where
-        - r is the rank of A
-        - L (binary matrix of shape (n, n)) is an invertible matrix whose first r columns
-            represent the first factor
-        - R (binary matrix of shape (m, m)) is an invertible matrix whose first r rows
-            represent the second factor
+    :param mode: factorisation mode
+    :return: tuple (U, Σ, V) such that UΣV = A
     """
-    assert len(A.shape) == 2 and A.dtype == np.int8
     n, m = A.shape
-    A1 = A.copy()
-    L, R = np.eye(n, dtype=np.int8), np.eye(m, dtype=np.int8)
+    S = A.copy()
     pivots = []
+    row_adds = []
+    col_adds = []
     r = 0
     for j in range(m):
-        if A1[r:, j].any():
+        if S[r:, j].any():
             pivots.append(j)
-            i = r + np.where(A1[r:, j])[0][0]
-            A1[[r, i]] = A1[[i, r]]
-            L[:, [r, i]] = L[:, [i, r]]
+            i = r + np.where(S[r:, j])[0][0]
+            S[[r, i]] = S[[i, r]]
+            if i != r:
+                row_adds.extend([(r, i), (i, r), (r, i)])
             for k in range(r + 1, n):
-                if A1[k, j]:
-                    A1[k] ^= A1[r]
-                    L[:, r] ^= L[:, k]
+                if S[k, j]:
+                    S[k] ^= S[r]
+                    row_adds.append((k, r))
             r += 1
     for i, j in list(enumerate(pivots))[::-1]:
         for k in range(i - 1, -1, -1):
-            if A1[k, j]:
-                A1[k] ^= A1[i]
-                L[:, i] ^= L[:, k]
+            if S[k, j]:
+                S[k] ^= S[i]
+                row_adds.append((k, i))
     for i, j in enumerate(pivots):
         for k in range(j + 1, m):
-            if A1[i, k]:
-                A1[:, k] ^= A1[:, j]
-                R[j] ^= R[k]
+            if S[i, k]:
+                S[:, k] ^= S[:, j]
+                col_adds.append((k, j))
     for i, j in enumerate(pivots):
-        A1[:, [i, j]] = A1[:, [j, i]]
-        R[[i, j]] = R[[j, i]]
-    return A1.sum(), L, R
+        S[:, [i, j]] = S[:, [j, i]]
+        if i != j:
+            col_adds.extend([(i, j), (j, i), (i, j)])
+    if mode == 'compact':
+        U = np.vstack((np.eye(r, dtype=np.int8), np.zeros((n - r, r), dtype=np.int8)))
+        S = S[:r, :r]
+        V = np.hstack((np.eye(r, dtype=np.int8), np.zeros((r, m - r), dtype=np.int8)))
+    elif mode == 'full':
+        U = np.eye(n, dtype=np.int8)
+        V = np.eye(m, dtype=np.int8)
+    elif mode == 'invert':
+        U = np.eye(n, dtype=np.int8)
+        V = np.eye(m, dtype=np.int8)
+        row_adds.reverse()
+        col_adds.reverse()
+    else:
+        raise ValueError('Unknown factorisation mode')
+    for i, j in row_adds[::-1]:
+        U[i] ^= U[j]
+    for i, j in col_adds[::-1]:
+        V[:, i] ^= V[:, j]
+    return U, S, V
 
 
-def generalized_inverse(A: np.ndarray) -> np.ndarray:
+def generalised_inverse(A: NDArray[np.int8]) -> NDArray[np.int8]:
     """
     Compute the generalised inverse of a matrix over GF(2).
     :param A: binary matrix of shape (n, m)
     :return: binary matrix A^g satisfying A * A^g * A = A
     """
-    r, U, V = rank_factorize(A)
-    return (np.linalg.inv(GF2(V))[:, :r] @ np.linalg.inv(GF2(U))[:r]) == 1
+    U_inv, S, V_inv = rank_factorise(A, mode='invert')
+    r = S.sum()
+    return (V_inv[:, :r] @ U_inv[:r]) % 2

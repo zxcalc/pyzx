@@ -40,6 +40,7 @@ np.set_printoptions(suppress=True)
 
 # typing imports
 from typing import TYPE_CHECKING, List, Dict, Union
+from numpy.typing import NDArray
 from .utils import FractionLike, FloatInt, VertexType, EdgeType, get_z_box_label
 if TYPE_CHECKING:
     from .graph.base import BaseGraph, VT, ET
@@ -97,7 +98,10 @@ def pop_and_shift(verts, indices):
             indices[w] = l2
     return res
 
-def tensorfy(g: 'BaseGraph[VT,ET]', preserve_scalar=True, strategy='naive', verbose=False) -> np.ndarray:
+def tensorfy(g: 'BaseGraph[VT,ET]',
+             preserve_scalar: bool = True,
+             strategy: str = 'naive',
+             verbose: bool = False) -> NDArray[np.complex128]:
     """
     Returns a multidimensional numpy array representing the linear map the ZX diagram implements.
     Available simulation strategies are:
@@ -121,7 +125,7 @@ def tensorfy(g: 'BaseGraph[VT,ET]', preserve_scalar=True, strategy='naive', verb
     else:
         raise ValueError('Unknown simulation strategy')
 
-def tensorfy_naive(g: 'BaseGraph[VT,ET]', preserve_scalar:bool=True) -> np.ndarray:
+def tensorfy_naive(g: 'BaseGraph[VT,ET]', preserve_scalar: bool = True) -> NDArray[np.complex128]:
     rows = g.rows()
     phases = g.phases()
     types = g.types()
