@@ -30,8 +30,11 @@ from fractions import Fraction
 
 class VarRegistry:
     """Registry to track variable types for a specific graph"""
-    def __init__(self):
-        self.types = {}  # name -> is_bool
+
+    types: Dict[str, bool]  # name -> is_bool
+
+    def __init__(self, types: Optional[Dict[str, bool]] = None):
+        self.types = types if types is not None else {}
 
     def get_type(self, name: str, default: bool = False) -> bool:
         """Get the type of a variable, using default if not found"""

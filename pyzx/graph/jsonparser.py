@@ -29,7 +29,7 @@ from .graph import Graph
 from .scalar import Scalar
 from .base import BaseGraph, VT, ET
 from ..simplify import id_simp
-from ..symbolic import parse, Poly, new_var
+from ..symbolic import parse, Poly, new_var, VarRegistry
 if TYPE_CHECKING:
     from .diff import GraphDiff
     from .multigraph import Multigraph
@@ -182,7 +182,7 @@ def graph_to_dict(g: BaseGraph[VT,ET], include_scalar: bool=True) -> Dict[str, A
     d = {
         "version": 2,
         "backend": g.backend,
-        "variable_types": g.variable_types, # Potential source of error: this dictionary is mutable
+        "variable_types": g.var_registry.types, # Potential source of error: this dictionary is mutable
     }
     if hasattr(g,'name'):
         d['name'] = g.name
@@ -353,9 +353,9 @@ def dict_to_graph(d: Dict[str,Any], backend: Optional[str]=None) -> BaseGraph:
     if backend == None:
         backend = d.get('backend', None)
         if backend is None: raise ValueError("No backend specified in dictionary")
-    
+
     g = Graph(backend)
-    g.variable_types = d.get('variable_types',{})
+    g.var_registry = VarRegistry(d.get('variable_types',{}))
     if g.backend == 'multigraph':
         if TYPE_CHECKING:
             assert isinstance(g, Multigraph)
