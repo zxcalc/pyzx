@@ -23,10 +23,11 @@ import numpy as np
 import pyzx as zx
 from copy import deepcopy
 from itertools import product
-from typing import Tuple, List, Iterable, Union
+from typing import Tuple, List, Iterable
 from math import sqrt, pi, log2
 
 from .linalg import REF, rank_factorize, generalized_inverse
+from .symbolic import Poly
 
 
 def adjacency_matrix(g: zx.graph.base.BaseGraph, v_left: Iterable[int], v_right: Iterable[int]) -> np.ndarray:
@@ -154,7 +155,7 @@ def greedy_b2t_decomposition(g: zx.graph.base.BaseGraph):
     leaves = [{i} for i in range(n)]
     loc = list(range(n))
     refs_next = dict()
-    edges = [set() for _ in range(n)]
+    edges: List = [set() for _ in range(n)]
     for i in range(n):
         for j in refs[i].pivot_cols:
             ref = deepcopy(refs[i])
@@ -171,9 +172,9 @@ def greedy_b2t_decomposition(g: zx.graph.base.BaseGraph):
         decomps.pop(loc[j])
         leaves[loc[i]] |= leaves[loc[j]]
         leaves.pop(loc[j])
-        loc[j] = None
+        loc[j] = -1
         for k in range(j + 1, n):
-            if loc[k] is not None:
+            if loc[k] != -1:
                 loc[k] -= 1
         edges_i = edges[i].copy()
         for k in edges_i:
@@ -188,7 +189,7 @@ def greedy_b2t_decomposition(g: zx.graph.base.BaseGraph):
             edges[j].remove(k)
             edges[k].remove(j)
         for k in range(n):
-            if loc[k] is None or k == i:
+            if loc[k] == -1 or k == i:
                 continue
             if (set(refs[loc[i]].pivot_cols) & leaves[loc[k]] or
                     set(refs[loc[k]].pivot_cols) & leaves[loc[i]]):
@@ -401,7 +402,10 @@ def tensorfy_rw_subtree(g: zx.graph.base.BaseGraph, subtree, verbose=False) -> T
                 Psi_u = np.eye(2, dtype=np.complex128)
             B_u = [subtree]
         elif vt == zx.VertexType.Z:
-            Psi_u = np.array([[1, np.exp(pi * 1j * g.phase(subtree))]])
+            phase = g.phase(subtree)
+            if isinstance(phase, Poly):
+                raise ValueError(f"Can't convert diagram with parameters to tensor: {str(phase)}")
+            Psi_u = np.array([[1, np.exp(pi * 1j * phase)]])
             B_u = []
         else:
             raise ValueError(f'Invalid vertex type: {vt}')
