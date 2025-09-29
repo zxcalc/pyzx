@@ -105,15 +105,20 @@ def tensorfy(g: 'BaseGraph[VT,ET]',
     """
     Returns a multidimensional numpy array representing the linear map the ZX diagram implements.
     Available simulation strategies are:
-        - 'naive': good for sparse circuits
-        - 'rw-greedy-b2t': rank-width with greedy bottom-to-top heuristic
-        - 'rw-greedy-linear': rank-width with greedy-linear heuristic
-        - 'rw-auto': choose the best of 'rw-greedy-b2t' and 'rw-greedy-linear'
-    :param g: ZX diagram
-    :param preserve_scalar: whether to account for the diagram scalar
-    :param strategy: which simulation strategy to use.
-    :param verbose: print additional info
-    :return: tensor with |O| + |I| dimensions (output dimensions first)
+
+    - 'naive': good for sparse graphs
+    - 'rw-greedy-b2t': rank-width with greedy bottom-to-top heuristic
+    - 'rw-greedy-linear': rank-width with greedy-linear heuristic
+    - 'rw-auto': choose the best of 'rw-greedy-b2t' and 'rw-greedy-linear'
+
+    Args:
+        g: ZX diagram
+        preserve_scalar: whether to account for the diagram scalar
+        strategy: which simulation strategy to use
+        verbose: print additional info
+
+    Returns:
+        Numpy tensor having (num_inputs + num_outputs) dimensions (output dimensions first)
     """
     if g.is_hybrid():
         raise ValueError("Hybrid graphs are not supported.")

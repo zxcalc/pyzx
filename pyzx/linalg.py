@@ -414,7 +414,8 @@ class REF:
     def take(self, v: int):
         """
         Move a vertex from the right part to the left in O(n^2) time.
-        :param v: vertex id
+        Args:
+            v: vertex id
         """
         self.taken[v] = True
         if v in self.pivot_cols:
@@ -436,12 +437,17 @@ def rank_factorise(A: NDArray[np.int8],
                    mode: str = 'compact') -> Tuple[NDArray[np.int8], NDArray[np.int8], NDArray[np.int8]]:
     """
     Rank factorisation of a matrix over GF(2), i.e. A = UΣV. Three modes are available:
-        - 'compact' -- U, V have r columns and rows, respectively, and Σ = I_r
-        - 'full' -- U, V are square invertible matrices, and Σ has I_r in its top left corner
-        - 'invert' -- same as 'full', but compute U^{-1}, V^{-1} instead of U, V
-    :param A: binary matrix of shape (n, m)
-    :param mode: factorisation mode
-    :return: tuple (U, Σ, V) such that UΣV = A
+
+    - 'compact' -- U, V have r columns and rows, respectively, and Σ = I_r
+    - 'full' -- U, V are square invertible matrices, and Σ has I_r in its top left corner
+    - 'invert' -- same as 'full', but compute U^{-1}, V^{-1} instead of U, V
+
+    Args:
+        A: binary matrix of shape (n, m)
+        mode: factorisation mode
+
+    Returns:
+        tuple (U, Σ, V) such that UΣV = A
     """
     n, m = A.shape
     S = A.copy()
@@ -499,8 +505,12 @@ def rank_factorise(A: NDArray[np.int8],
 def generalised_inverse(A: NDArray[np.int8]) -> NDArray[np.int8]:
     """
     Compute the generalised inverse of a matrix over GF(2).
-    :param A: binary matrix of shape (n, m)
-    :return: binary matrix A^g satisfying A * A^g * A = A
+
+    Args:
+        A: binary matrix of shape (n, m)
+
+    Returns:
+        binary matrix A^g satisfying A * A^g * A = A
     """
     U_inv, S, V_inv = rank_factorise(A, mode='invert')
     r = S.sum()
