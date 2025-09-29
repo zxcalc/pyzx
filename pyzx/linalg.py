@@ -438,9 +438,12 @@ def rank_factorize(A: np.ndarray) -> Tuple[int, np.ndarray, np.ndarray]:
     """
     Rank factorisation of a matrix over GF(2).
     :param A: binary matrix of shape (n, m)
-    :return r: int - rk(A)
-            L: binary matrix of shape (n, n) - invertible matrix whose first r columns represent the first factor
-            R: binary matrix of shape (m, m) - invertible matrix whose first r rows represent the second factor
+    :return: tuple (r, L, R) where
+        - r is the rank of A
+        - L (binary matrix of shape (n, n)) is an invertible matrix whose first r columns
+            represent the first factor
+        - R (binary matrix of shape (m, m)) is an invertible matrix whose first r rows
+            represent the second factor
     """
     assert len(A.shape) == 2 and A.dtype == np.int8
     n, m = A.shape
@@ -479,7 +482,7 @@ def generalized_inverse(A: np.ndarray) -> np.ndarray:
     """
     Compute the generalised inverse of a matrix over GF(2).
     :param A: binary matrix of shape (n, m)
-    :return A^g: binary matrix of shape (m, n) - a matrix satisfying A * A^g * A = A
+    :return: binary matrix A^g satisfying A * A^g * A = A
     """
     r, U, V = rank_factorize(A)
     return (np.linalg.inv(GF2(V))[:, :r] @ np.linalg.inv(GF2(U))[:r]) == 1

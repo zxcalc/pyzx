@@ -26,7 +26,8 @@ if __name__ == '__main__':
     sys.path.append('.')
 
 import pyzx as zx
-from pyzx.rank_width import tensorfy_rw, conv_uv, conv_vw, conv_naive
+from pyzx.rank_width import conv_uv, conv_vw, conv_naive
+from pyzx.tensor import tensorfy
 
 
 class TestRankWidth(unittest.TestCase):
@@ -48,8 +49,8 @@ class TestRankWidth(unittest.TestCase):
             self.assertTrue(False)
 
     def check_graph_tensorfy(self, g, strategy='rw-auto'):
-        res = tensorfy_rw(g, strategy=strategy)
-        corr = zx.tensorfy(g, strategy='naive')
+        res = tensorfy(g, strategy=strategy)
+        corr = tensorfy(g, strategy='naive')
         self.check_amplitude(res, corr, str(g.edge_set()))
 
     def check_circuit_tensorfy(self, circ, state, effect, strategy='rw-auto'):

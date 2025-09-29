@@ -108,8 +108,8 @@ def rank_score_flops(decomp, g: zx.graph.base.BaseGraph, calc_rs=True) -> float:
 def greedy_linear_order(g: zx.graph.base.BaseGraph) -> List:
     """
     Linear rank-decomposition obtained by greedily taking the next vertex.
-    :param g: BaseGraph - ZX diagram
-    :return order: list - sequence of vertices for the linear rank-decomposition
+    :param g: ZX diagram
+    :return: sequence of vertices for the greedy-linear rank-decomposition
     """
     n = g.num_vertices()
     if n == 0:
@@ -138,8 +138,8 @@ def greedy_linear_order(g: zx.graph.base.BaseGraph) -> List:
 def greedy_b2t_decomposition(g: zx.graph.base.BaseGraph):
     """
     Rank-decomposition built greedily from bottom to top.
-    :param g: BaseGraph - ZX diagram
-    :return decomp: Any - rank-decomposition
+    :param g: ZX diagram
+    :return: rank-decomposition
     """
     n = g.num_vertices()
     if n == 0:
@@ -207,10 +207,10 @@ def greedy_b2t_decomposition(g: zx.graph.base.BaseGraph):
 def generate_decomposition(g: zx.graph.base.BaseGraph, strategy='rw-auto', verbose=False):
     """
     Generate rank-decomposition of a ZX diagram using a specific strategy.
-    :param g: BaseGraph - ZX diagram
-    :param strategy: str - type of strategy
-    :param verbose: bool - print additional info
-    :return decomp: Any - rank-decomposition
+    :param g: ZX diagram
+    :param strategy: type of strategy
+    :param verbose: print additional info
+    :return: rank-decomposition
     """
     if strategy == 'rw-greedy-b2t':
         decomp = greedy_b2t_decomposition(g)
@@ -235,7 +235,7 @@ def mat_image(M: np.ndarray) -> np.ndarray:
     """
     Compute y = xM for all possible vectors x.
     :param M: binary matrix of shape (n, m)
-    :return ys: np.ndarray of shape (2^n,) - list of vectors represented as int64
+    :return: np.ndarray of shape (2^n,) -- list of vectors represented as int64
     """
     n, m = M.shape
     M_ints = M @ (1 << np.arange(m))
@@ -250,7 +250,7 @@ def apply_parity_map(Psi: np.ndarray, M: np.ndarray) -> np.ndarray:
     Apply parity map M to state Psi.
     :param Psi: np.ndarray of shape (..., 2^n)
     :param M: binary matrix of shape (n, m)
-    :return Phi: np.ndarray of shape (..., 2^m)
+    :return: np.ndarray of shape (..., 2^m)
     """
     m = M.shape[1]
     ys = mat_image(M)
@@ -264,7 +264,7 @@ def phase_tensor(E: np.ndarray):
     """
     Generate P_{a,b} = (-1)^{<a, Eb>} / sqrt(2)^|E|.
     :param E: binary matrix of shape (n, m)
-    :return P: np.ndarray of shape (2^{n+m},)
+    :return: np.ndarray of shape (2^{n+m},)
     """
     n, m = E.shape
     Eb = mat_image(E.T)
@@ -284,7 +284,7 @@ def conv_naive(Psi_v: np.ndarray, Psi_w: np.ndarray,
     :param E_vw: binary matrix of shape (r_v, r_w)
     :param E_vu: binary matrix of shape (r_v, r_u)
     :param E_wu: binary matrix of shape (r_w, r_u)
-    :return Psi_u: np.ndarray of shape (2^{b_v + b_w}, 2^{r_u})
+    :return: np.ndarray of shape (2^{b_v + b_w}, 2^{r_u})
     """
     r_u, r_v, r_w = E_vu.shape[1], E_vu.shape[0], E_wu.shape[0]
     Psi_v = Psi_v.reshape((-1,) + (2,) * r_v, order='F')
@@ -313,7 +313,7 @@ def conv_vw(Psi_v: np.ndarray, Psi_w: np.ndarray,
     :param E_vw: binary matrix of shape (r_v, r_w)
     :param E_vu: binary matrix of shape (r_v, r_u)
     :param E_wu: binary matrix of shape (r_w, r_u)
-    :return Psi_u: np.ndarray of shape (2^{b_v + b_w}, 2^{r_u})
+    :return: np.ndarray of shape (2^{b_v + b_w}, 2^{r_u})
     """
     Psi_vw = np.kron(Psi_w, Psi_v)
     Psi_vw *= phase_tensor(E_vw)
@@ -334,7 +334,7 @@ def conv_uv(Psi_v: np.ndarray, Psi_w: np.ndarray,
     :param E_vw: binary matrix of shape (r_v, r_w)
     :param E_vu: binary matrix of shape (r_v, r_u)
     :param E_wu: binary matrix of shape (r_w, r_u)
-    :return Psi_u: np.ndarray of shape (2^{b_v + b_w}, 2^{r_u})
+    :return: np.ndarray of shape (2^{b_v + b_w}, 2^{r_u})
     """
     r_u, r_v, r_w = E_vu.shape[1], E_vu.shape[0], E_wu.shape[0]
     E = np.hstack([E_vw.T, E_wu])
@@ -358,8 +358,9 @@ def conv(Psi_v: np.ndarray, Psi_w: np.ndarray,
     :param E_vu: binary matrix of shape (r_v, r_u)
     :param E_wu: binary matrix of shape (r_w, r_u)
     :param verbose: bool
-    :return Psi_u: np.ndarray of shape (2^{b_v + b_w}, 2^{r_u})
-            swapped: bool
+    :return: tuple (Psi_u, swapped) where
+        - Psi_u is np.ndarray of shape (2^{b_v + b_w}, 2^{r_u})
+        - swapped indicates whether boundary dimensions were swapped
     """
     r_u, r_v, r_w = E_vu.shape[1], E_vu.shape[0], E_wu.shape[0]
     if verbose:
@@ -377,13 +378,14 @@ def tensorfy_rw_subtree(g: zx.graph.base.BaseGraph, subtree, verbose=False) -> T
     np.ndarray, np.ndarray, np.ndarray, List]:
     """
     Returns the simulated version of the subdiagram induced by the leaves from the subtree.
-    :param g: BaseGraph - ZX diagram
-    :param subtree: Any - subtree of the rank-decomposition
-    :param verbose: bool - print additional info
-    :return Psi_u: np.ndarray of shape (2^{b_u}, 2^{r_u}) - tensorfication of the subdiagram
-            M_u: binary matrix of shape (r_u, n) - parity map to the rest of the graph
-            S_u: boolean array - set of vertices in the subdiagram
-            B_u: list - order of boundary vertices in the subdiagram
+    :param g: ZX diagram
+    :param subtree: subtree of the rank-decomposition
+    :param verbose: print additional info
+    :return: tuple (Psi_u, M_u, S_u, B_u) where
+        - Psi_u (np.ndarray of shape (2^{b_u}, 2^{r_u})) is the tensorfication of the subdiagram
+        - M_u (binary matrix of shape (r_u, n)) is the parity map to the rest of the graph
+        - S_u is the set of vertices in the subdiagram
+        - B_u is the order of boundary vertices in the subdiagram
     """
     n = g.num_vertices()
     v_all = np.array(list(g.vertices()))
@@ -443,11 +445,11 @@ def tensorfy_rw_subtree(g: zx.graph.base.BaseGraph, subtree, verbose=False) -> T
 def tensorfy_rw(g: zx.graph.base.BaseGraph, strategy='rw-auto', preserve_scalar=True, verbose=False) -> np.ndarray:
     """
     Evaluate the tensor diagram corresponding to g using the rank-width method.
-    :param g: BaseGraph - ZX diagram
-    :param strategy: str - rank-decomposition generation strategy
-    :param preserve_scalar: bool - account for the diagram scalar
-    :param verbose: bool - print additional info
-    :return result: np.ndarray - tensor with |O| + |I| dimensions (output dimensions first)
+    :param g: ZX diagram
+    :param strategy: rank-decomposition generation strategy
+    :param preserve_scalar: whether to account for the diagram scalar
+    :param verbose: print additional info
+    :return: tensor with |O| + |I| dimensions (output dimensions first)
     """
     g = g.copy()
     zx.full_reduce(g)

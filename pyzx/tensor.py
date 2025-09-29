@@ -98,9 +98,19 @@ def pop_and_shift(verts, indices):
     return res
 
 def tensorfy(g: 'BaseGraph[VT,ET]', preserve_scalar=True, strategy='naive', verbose=False) -> np.ndarray:
-    """Takes in a Graph and outputs a multidimensional numpy array
-        representing the linear map the ZX-diagram implements.
-        Beware that quantum circuits take exponential memory to represent."""
+    """
+    Returns a multidimensional numpy array representing the linear map the ZX diagram implements.
+    Available simulation strategies are:
+        - 'naive': good for sparse circuits
+        - 'rw-greedy-b2t': rank-width with greedy bottom-to-top heuristic
+        - 'rw-greedy-linear': rank-width with greedy-linear heuristic
+        - 'rw-auto': choose the best of 'rw-greedy-b2t' and 'rw-greedy-linear'
+    :param g: ZX diagram
+    :param preserve_scalar: whether to account for the diagram scalar
+    :param strategy: which simulation strategy to use.
+    :param verbose: print additional info
+    :return: tensor with |O| + |I| dimensions (output dimensions first)
+    """
     if g.is_hybrid():
         raise ValueError("Hybrid graphs are not supported.")
     if strategy == 'naive':
