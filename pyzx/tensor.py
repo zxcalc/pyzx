@@ -245,8 +245,9 @@ def tensor_to_matrix(t: np.ndarray, inputs: int, outputs: int) -> np.ndarray:
         rows.append(row)
     return np.array(rows)
 
-def compare_tensors(t1: TensorConvertible,t2: TensorConvertible, preserve_scalar: bool=False) -> bool:
-    """Returns true if ``t1`` and ``t2`` represent equal tensors.
+def compare_tensors(t1: TensorConvertible,t2: TensorConvertible,
+                    preserve_scalar: bool=False, strategy: str='naive') -> bool:
+    """Returns true if ``t1`` and ``t2`` represent equal tensors by calling :func:`~pyzx.tensor.tensorfy`.
     When `preserve_scalar` is False (the default), equality is checked up to nonzero rescaling.
 
     Example: To check whether two ZX-graphs `g1` and `g2` are semantically the same you would do::
@@ -257,9 +258,9 @@ def compare_tensors(t1: TensorConvertible,t2: TensorConvertible, preserve_scalar
     from .circuit import Circuit
 
     if not isinstance(t1, np.ndarray):
-        t1 = t1.to_tensor(preserve_scalar)
+        t1 = t1.to_tensor(preserve_scalar, strategy)
     if not isinstance(t2, np.ndarray):
-        t2 = t2.to_tensor(preserve_scalar)
+        t2 = t2.to_tensor(preserve_scalar, strategy)
     if np.allclose(t1,t2): return True
     if preserve_scalar: return False # We do not check for equality up to scalar
     epsilon = 10**-14
