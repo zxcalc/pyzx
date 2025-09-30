@@ -29,7 +29,7 @@ from fractions import Fraction
 
 
 class VarRegistry:
-    """Registry to track variable types for a specific graph"""
+    """Registry to track variable types (Boolean/continuous) for a specific graph"""
 
     types: Dict[str, bool]  # name -> is_bool
 
@@ -50,6 +50,13 @@ class VarRegistry:
 
 
 class Var:
+    """Symbolic variable that keeps track of its Boolean/continuous type.
+
+    Variables are always associated with a :class:`VarRegistry`, which records
+    whether the variable should be treated as Boolean (multiples of $\pi$) or
+    as a general real-valued parameter. Unless an explicit registry is
+    provided, a fresh registry is created so the variable can stand on its own.
+    """
     name: str
     _registry: VarRegistry
 
@@ -96,6 +103,9 @@ class Var:
         new_registry.set_type(self.name, self.is_bool)
 
 class Term:
+    """Product of symbolic variables with associated integer exponents.
+    Example: x^2 * y * z^3 is represented as Term([(x, 2), (y, 1), (z, 3)])
+    """
     vars: List[Tuple[Var, int]]
 
     def __init__(self, vars: List[Tuple[Var,int]]) -> None:
@@ -114,6 +124,12 @@ class Term:
         return '*'.join(vs)
 
     def __mul__(self, other: 'Term') -> 'Term':
+        """Return the product of two terms, combining exponents.
+
+        Example: (x^2 * y) * (y^3 * z) = x^2 * y^4 * z
+        Boolean variables are treated idempotently (x^2 = x), ensuring their
+        exponent isreduced to 1 when multiplying.
+        """
         vs = dict()
         for v, c in self.vars + other.vars:
             if v not in vs: vs[v] = c
@@ -130,6 +146,7 @@ class Term:
         return self.__hash__() == other.__hash__()
 
     def __lt__(self, other: 'Term') -> bool:
+        """Compare terms lexicographically by variable name and exponent"""
         if len(self.vars) != len(other.vars):
             return len(self.vars) < len(other.vars)
         for (v1, c1), (v2, c2) in zip(sorted(self.vars), sorted(other.vars)):
@@ -138,8 +155,14 @@ class Term:
         return False
 
     def substitute(self, var_map: Dict[Var, Union[float, complex, 'Fraction']]) -> Tuple[Union[float, complex, 'Fraction'], 'Term']:
-        """Substitute variables in the term with the given values. Returns a tuple
-        of the coefficient and the new term.
+        """Evaluate variables present in ``var_map`` and return residual term.
+
+        The method extracts the numerical coefficient contributed by
+        substituted variables and returns both the coefficient and a new term
+        containing only the untouched variables. This is a building block for
+        partial evaluation of polynomials.
+
+        Example: substituting {x: 2} in x^2*y gives (4, y).
         """
         coeff: Union[float, complex, 'Fraction'] = 1.
         new_vars = []
@@ -151,12 +174,18 @@ class Term:
         return (coeff, Term(new_vars))
 
     def rebind_variables_to_registry(self, new_registry: VarRegistry) -> None:
-        """Rebind all variables in this term to the given registry"""
+        """Rebind all variables in this term to the given registry."""
         for var, _ in self.vars:
             var.rebind_to_registry(new_registry)
 
 
 class Poly:
+    """A multivariate polynomial over integer, floating point, fractional, or complex coefficients.
+    A polynomial is represented as a list of (coefficient, term) pairs.
+
+    Example: 3*x^2*y + (1/2)*y*z + 5 is represented as
+    Poly([(3, Term([(x,2),(y,1)])), (1/2, Term([(y,1),(z,1)])), (5, Term([]))])
+    """
     terms: List[Tuple[Union[int, float, complex, Fraction], Term]]
 
     def __init__(self, terms: List[Tuple[Union[int, float, complex, Fraction], Term]]) -> None:
@@ -290,6 +319,10 @@ class Poly:
 
     @property
     def is_pauli(self) -> bool:
+        """Check if the polynomial is a Pauli polynomial.
+        A Pauli polynomial is one where all variables are Boolean and all
+        coefficients are integers.
+        """
         for c, t in self.terms:
             if isinstance(c, complex):
                 return False
@@ -301,6 +334,10 @@ class Poly:
 
     @property
     def is_clifford(self) -> bool:
+        """Check if the polynomial is a Clifford polynomial.
+        A Clifford polynomial is one where all variables are Boolean and all
+        coefficients are half-integers (i.e. integer multiples of 1/2).
+        """
         for c, t in self.terms:
             if isinstance(c, complex):
                 return False
@@ -323,15 +360,16 @@ class Poly:
         raise NotImplementedError('denominator not implemented for symbolic Poly')
 
     def copy(self) -> 'Poly':
+        """Return a shallow copy of the polynomial."""
         return Poly([(c, t) for c, t in self.terms])
 
     def rebind_variables_to_registry(self, new_registry: VarRegistry) -> None:
-        """Rebind all variables in this polynomial to the given registry"""
+        """Rebind all variables in this polynomial to the given registry."""
         for _, term in self.terms:
             term.rebind_variables_to_registry(new_registry)
 
     def substitute(self, var_map: Dict[Var, Union[float, complex, 'Fraction']]) -> 'Poly':
-        """Substitute variables in the polynomial with the given values."""
+        """Partially evaluate the polynomial with the provided variable values."""
         p = Poly([])
         for c, t in self.terms:
             coeff, term = t.substitute(var_map)
@@ -339,9 +377,11 @@ class Poly:
         return p
 
 def new_var(name: str, is_bool: bool, registry: Optional[VarRegistry] = None) -> Poly:
+    """Create a polynomial consisting of a single symbolic variable."""
     return Poly([(1, Term([(Var(name, is_bool, registry), 1)]))])
 
 def new_const(coeff: Union[int, Fraction]) -> Poly:
+    """Create a constant polynomial with the given coefficient."""
     return Poly([(coeff, Term([]))])
 
 
@@ -364,6 +404,7 @@ poly_grammar = Lark("""
     maybe_placeholders=True)
 
 class PolyTransformer(Transformer):
+    """Lark transformer that builds :class:`Poly` instances from parse trees."""
     def __init__(self, new_var: Callable[[str], Poly]):
         super().__init__()
 
@@ -393,5 +434,6 @@ class PolyTransformer(Transformer):
         return new_const(Fraction(numerator, int(items[2])))
 
 def parse(expr: str, new_var: Callable[[str], Poly]) -> Poly:
+    """Parse ``expr`` into a :class:`Poly` using ``new_var`` for variable lookup."""
     tree = poly_grammar.parse(expr)
     return PolyTransformer(new_var).transform(tree)
