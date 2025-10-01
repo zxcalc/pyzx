@@ -53,9 +53,9 @@ class Var:
     """Symbolic variable that keeps track of its Boolean/continuous type.
 
     Variables are always associated with a :class:`VarRegistry`, which records
-    whether the variable should be treated as Boolean (multiples of $\pi$) or
-    as a general real-valued parameter. Unless an explicit registry is
-    provided, a fresh registry is created so the variable can stand on its own.
+    whether the variable should be treated as Boolean or a general real-valued parameter.
+    Unless an explicit registry is provided, a fresh registry is created so the
+    variable can stand on its own.
     """
     name: str
     _registry: VarRegistry
@@ -162,7 +162,7 @@ class Term:
         containing only the untouched variables. This is a building block for
         partial evaluation of polynomials.
 
-        Example: substituting {x: 2} in x^2*y gives (4, y).
+        Example: substituting {x: 2} in x^2*y^3 gives (4, Term([(y, 3)]))
         """
         coeff: Union[float, complex, 'Fraction'] = 1.
         new_vars = []
@@ -180,8 +180,9 @@ class Term:
 
 
 class Poly:
-    """A multivariate polynomial over integer, floating point, fractional, or complex coefficients.
-    A polynomial is represented as a list of (coefficient, term) pairs.
+    """Multivariate polynomials with integer, float, fractional, or complex coefficients.
+    Each polynomial is stored as a list of (coefficient, Term) pairs.
+    These polynomials encode spider phases as multiples of π, so a constant 1 means a phase of π.
 
     Example: 3*x^2*y + (1/2)*y*z + 5 is represented as
     Poly([(3, Term([(x,2),(y,1)])), (1/2, Term([(y,1),(z,1)])), (5, Term([]))])
@@ -404,7 +405,10 @@ poly_grammar = Lark("""
     maybe_placeholders=True)
 
 class PolyTransformer(Transformer):
-    """Lark transformer that builds :class:`Poly` instances from parse trees."""
+    """Lark transformer that builds :class:`Poly` instances from parse trees.
+    The parse trees are built using the grammar defined in `poly_grammar`.
+    It is used in the `parse` function below to convert a string into a Poly.
+    """
     def __init__(self, new_var: Callable[[str], Poly]):
         super().__init__()
 
@@ -434,6 +438,9 @@ class PolyTransformer(Transformer):
         return new_const(Fraction(numerator, int(items[2])))
 
 def parse(expr: str, new_var: Callable[[str], Poly]) -> Poly:
-    """Parse ``expr`` into a :class:`Poly` using ``new_var`` for variable lookup."""
+    """Parse ``expr`` into a :class:`Poly` using ``new_var`` for variable lookup.
+    It converts the string expression into a polynomial.
+    Example: parse("x^2 + 3*y + 1/2", new_var) returns Poly([(1, Term([(x,2)])), (3, Term([(y,1)])), (1/2, Term([]))])
+    """
     tree = poly_grammar.parse(expr)
     return PolyTransformer(new_var).transform(tree)
