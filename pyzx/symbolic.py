@@ -307,10 +307,10 @@ class Poly:
             if not all(v.is_bool for v, _ in t.vars):
                 return False
             if t.vars: # Contains a Boolean variable
-               if c % 1 != 0: # With weight not equal to 1
+               if c*2 % 1 != 0: # With coefficient not an integer multiple of 1/2
                 return False
             else:
-                if c*2 % 1 != 0: # Variable-free term with weight not equal to 1/2
+                if c*2 % 1 != 0: # Variable-free term with coefficient not an integer multiple of 1/2
                     return False
         return True
 
