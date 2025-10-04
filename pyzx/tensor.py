@@ -40,6 +40,7 @@ np.set_printoptions(suppress=True)
 
 # typing imports
 from typing import TYPE_CHECKING, List, Dict, Union
+from numpy.typing import NDArray
 from .utils import FractionLike, FloatInt, VertexType, EdgeType, get_z_box_label
 if TYPE_CHECKING:
     from .graph.base import BaseGraph, VT, ET
@@ -97,12 +98,39 @@ def pop_and_shift(verts, indices):
             indices[w] = l2
     return res
 
-def tensorfy(g: 'BaseGraph[VT,ET]', preserve_scalar:bool=True) -> np.ndarray:
-    """Takes in a Graph and outputs a multidimensional numpy array
-    representing the linear map the ZX-diagram implements.
-    Beware that quantum circuits take exponential memory to represent."""
+def tensorfy(g: 'BaseGraph[VT,ET]',
+             preserve_scalar: bool = True,
+             strategy: str = 'naive',
+             verbose: bool = False) -> NDArray[np.complex128]:
+    """
+    Returns a multidimensional numpy array representing the linear map the ZX diagram implements.
+    Available simulation strategies are:
+
+    - 'naive': good for sparse graphs
+    - 'rw-greedy-b2t': rank-width with greedy bottom-to-top heuristic
+    - 'rw-greedy-linear': rank-width with greedy-linear heuristic
+    - 'rw-auto': choose the best of 'rw-greedy-b2t' and 'rw-greedy-linear'
+
+    Args:
+        g: ZX diagram
+        preserve_scalar: whether to account for the diagram scalar
+        strategy: which simulation strategy to use
+        verbose: print additional info
+
+    Returns:
+        Numpy tensor having (num_inputs + num_outputs) dimensions (output dimensions first)
+    """
     if g.is_hybrid():
         raise ValueError("Hybrid graphs are not supported.")
+    if strategy == 'naive':
+        return tensorfy_naive(g, preserve_scalar=preserve_scalar)
+    elif strategy.startswith('rw-'):
+        from .rank_width import tensorfy_rw
+        return tensorfy_rw(g, strategy=strategy, preserve_scalar=preserve_scalar, verbose=verbose)
+    else:
+        raise ValueError('Unknown simulation strategy')
+
+def tensorfy_naive(g: 'BaseGraph[VT,ET]', preserve_scalar: bool = True) -> NDArray[np.complex128]:
     rows = g.rows()
     phases = g.phases()
     types = g.types()
@@ -217,8 +245,9 @@ def tensor_to_matrix(t: np.ndarray, inputs: int, outputs: int) -> np.ndarray:
         rows.append(row)
     return np.array(rows)
 
-def compare_tensors(t1: TensorConvertible,t2: TensorConvertible, preserve_scalar: bool=False) -> bool:
-    """Returns true if ``t1`` and ``t2`` represent equal tensors.
+def compare_tensors(t1: TensorConvertible,t2: TensorConvertible,
+                    preserve_scalar: bool=False, strategy: str='naive') -> bool:
+    """Returns true if ``t1`` and ``t2`` represent equal tensors by calling :func:`~pyzx.tensor.tensorfy`.
     When `preserve_scalar` is False (the default), equality is checked up to nonzero rescaling.
 
     Example: To check whether two ZX-graphs `g1` and `g2` are semantically the same you would do::
@@ -229,9 +258,9 @@ def compare_tensors(t1: TensorConvertible,t2: TensorConvertible, preserve_scalar
     from .circuit import Circuit
 
     if not isinstance(t1, np.ndarray):
-        t1 = t1.to_tensor(preserve_scalar)
+        t1 = t1.to_tensor(preserve_scalar, strategy)
     if not isinstance(t2, np.ndarray):
-        t2 = t2.to_tensor(preserve_scalar)
+        t2 = t2.to_tensor(preserve_scalar, strategy)
     if np.allclose(t1,t2): return True
     if preserve_scalar: return False # We do not check for equality up to scalar
     epsilon = 10**-14

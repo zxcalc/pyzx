@@ -268,12 +268,13 @@ class Circuit(object):
         return circuit_to_graph(self if zh else self.to_basic_gates(),
             compress_rows, backend)
 
-    def to_tensor(self, preserve_scalar:bool=True) -> np.ndarray:
+    def to_tensor(self, preserve_scalar:bool=True, strategy:str='naive') -> np.ndarray:
         """Returns a numpy tensor describing the circuit."""
-        return self.to_graph().to_tensor(preserve_scalar)
-    def to_matrix(self, preserve_scalar=True) -> np.ndarray:
+        return self.to_graph().to_tensor(preserve_scalar, strategy)
+
+    def to_matrix(self, preserve_scalar=True, strategy:str='naive') -> np.ndarray:
         """Returns a numpy matrix describing the circuit."""
-        return self.to_graph().to_matrix(preserve_scalar)
+        return self.to_graph().to_matrix(preserve_scalar, strategy)
 
     def to_emoji(self) -> str:
         """Converts circuit into a representation that can be copy-pasted

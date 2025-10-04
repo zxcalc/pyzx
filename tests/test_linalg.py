@@ -17,11 +17,12 @@
 
 import unittest
 import sys
+import numpy as np
 if __name__ == '__main__':
     sys.path.append('..')
     sys.path.append('.')
 
-from pyzx.linalg import Mat2
+from pyzx.linalg import Mat2, rank_factorise, generalised_inverse
 
 
 class TestMat2(unittest.TestCase):
@@ -80,6 +81,29 @@ class TestMat2(unittest.TestCase):
         self.assertEqual(m0.cols(),self.m3.rank())
         self.assertEqual(m1.rows(),self.m3.rank())
         self.assertEqual(m0*m1, self.m3)
+
+    def test_rank_factorise(self):
+        A = np.array([[1, 1, 1, 1, 1],
+                      [1, 1, 1, 1, 1],
+                      [0, 1, 0, 0, 1],
+                      [1, 0, 1, 1, 0]], dtype=np.int8)
+        U, S, V = rank_factorise(A, mode='compact')
+        r = S.sum()
+        self.assertEqual(r, 2)
+        self.assertTrue((S == np.eye(r)).all())
+        self.assertTrue(((U @ S @ V) % 2 == A).all())
+        U, S, V = rank_factorise(A, mode='full')
+        r = S.sum()
+        self.assertEqual(r, 2)
+        self.assertTrue((S[:r, :r] == np.eye(r)).all())
+        self.assertTrue(((U @ S @ V) % 2 == A).all())
+
+    def test_generalised_inverse(self):
+        A = np.array([[1, 1, 1, 0],
+                      [1, 1, 1, 1],
+                      [1, 1, 1, 1]], dtype=np.int8)
+        B = generalised_inverse(A)
+        self.assertTrue(((A @ B @ A) % 2 == A).all())
 
 if __name__ == '__main__':
     unittest.main()
