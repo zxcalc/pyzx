@@ -34,6 +34,7 @@ class QASMParser(object):
         self.custom_gates: Dict[str,Circuit] = {}
         self.registers: Dict[str,Tuple[int,int]] = {}
         self.qubit_count: int = 0
+        self.bit_count: int = 0
         self.circuit: Optional[Circuit] = None
 
     def parse(self, s: str, strict:bool=True) -> Circuit:
@@ -148,8 +149,8 @@ class QASMParser(object):
             _, result_idx = result_bit.split('[')
             # Remove the trailing ']' and convert to int
             target_qbit = int(target_idx[:-1])
-            result_register = int(result_idx[:-1])
-            gate = Measurement(target_qbit, result_register)
+            # TODO: Currently control flow is not supported, thus ignore result_bit
+            gate = Measurement(target_qbit)
             gates.append(gate)
             return gates
         if name in ("opaque", "if"):
