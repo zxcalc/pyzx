@@ -292,6 +292,8 @@ class Scalar(object):
         phase -> coefficient in the sum."""
         new_sum_of_phases: Dict[FractionLike, int] = {}
         # Use the distributive law: (a*e^ip1)(b*e^ip2) = (a*b)*e^i(p1+p2)
+if not self.sum_of_phases:
+            self.sum_of_phases = {0:1}
         for phase1, coeff1 in phases.items():
             for phase2, coeff2 in self.sum_of_phases.items():
                 new_phase = phase1 + phase2
