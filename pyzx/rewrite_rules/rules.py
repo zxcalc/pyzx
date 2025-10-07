@@ -56,9 +56,11 @@ import itertools
 
 import numpy as np
 
-from pyzx.graph.multigraph import Multigraph
-
-from pyzx.utils import VertexType, EdgeType, get_w_partner, get_z_box_label, set_z_box_label, toggle_edge, vertex_is_w, vertex_is_zx, vertex_is_zx_like, FloatInt, FractionLike, get_w_io, vertex_is_z_like
+from pyzx.utils import (
+    EdgeType, FloatInt, FractionLike, VertexType, get_w_io, get_w_partner,
+    get_z_box_label, set_z_box_label, toggle_edge, vertex_is_w, vertex_is_z_like,
+    vertex_is_zx, vertex_is_zx_like, phase_is_pauli, phase_is_clifford
+)
 from pyzx.graph.base import BaseGraph, VT, ET
 from pyzx.symbolic import Poly
 
@@ -428,7 +430,7 @@ def match_pivot_parallel(
 
         v0a = phases[v0]
         v1a = phases[v1]
-        if not ((v0a in (0,1)) and (v1a in (0,1))): continue
+        if not (phase_is_pauli(v0a) and phase_is_pauli(v1a)): continue
         if g.is_ground(v0) or g.is_ground(v1):
             continue
 
@@ -499,12 +501,12 @@ def match_pivot_gadget(
         v0a = phases[v0]
         v1a = phases[v1]
 
-        if v0a not in (0,1):
-            if v1a in (0,1):
+        if not phase_is_pauli(v0a):
+            if phase_is_pauli(v1a):
                 v0, v1 = v1, v0
                 v0a, v1a = v1a, v0a
             else: continue
-        elif v1a in (0,1): continue
+        elif phase_is_pauli(v1a): continue
         # Now v0 has a Pauli phase and v1 has a non-Pauli phase
 
         if g.is_ground(v0):
@@ -567,7 +569,7 @@ def match_pivot_boundary(
     inputs = g.inputs()
     while (num == -1 or i < num) and len(candidates) > 0:
         v = candidates.pop()
-        if types[v] != VertexType.Z or phases[v] not in (0,1) or g.is_ground(v):
+        if types[v] != VertexType.Z or not phase_is_pauli(phases[v]) or g.is_ground(v):
             continue
 
         good_vert = True
@@ -595,7 +597,7 @@ def match_pivot_boundary(
                     wrong_match = True
             if len(boundaries) != 1 or wrong_match: # n is not on the boundary,
                 continue             # has too many boundaries or has neighbors of wrong type
-            if phases[n] and hasattr(phases[n], 'denominator') and phases[n].denominator == 2:
+            if not phase_is_pauli(phases[n]) and phase_is_clifford(phases[n]):
                 w = n
                 bound = boundaries[0]
             if not w:
@@ -658,7 +660,8 @@ def pivot(g: BaseGraph[VT,ET], matches: List[MatchPivotType[VT]]) -> RewriteOutp
             if not g.is_ground(v):
                 g.add_to_phase(v, 1)
 
-        if g.phase(m[0][0]) and g.phase(m[0][1]): g.scalar.add_phase(Fraction(1))
+        #if g.phase(m[0][0]) and g.phase(m[0][1]): g.scalar.add_phase(Fraction(1))
+        g.scalar.add_phase(Fraction(1) * g.phase(m[0][0]) * g.phase(m[0][1]))
         if not m[1][0] and not m[1][1]:
             g.scalar.add_power(-(k0+k1+2*k2-1))
         elif not m[1][0]:
@@ -734,7 +737,7 @@ def match_lcomp_parallel(
         va = g.phase(v)
 
         if vt != VertexType.Z: continue
-        if not (va == Fraction(1,2) or va == Fraction(3,2)): continue
+        if not phase_is_clifford(va) or phase_is_pauli(va): continue
 
         if g.is_ground(v):
             continue
@@ -761,9 +764,9 @@ def lcomp(g: BaseGraph[VT,ET], matches: List[MatchLcompType[VT]]) -> RewriteOutp
     for m in matches:
         a = g.phase(m[0])
         rem.append(m[0])
-        assert isinstance(a,Fraction)  # For mypy
-        if a.numerator == 1: g.scalar.add_phase(Fraction(1,4))
-        else: g.scalar.add_phase(Fraction(7,4))
+        #if pi/2, then scalar = pi/4
+        #if 3pi/2, then scalar = 7pi/4
+        g.scalar.add_phase(Fraction(3,2) * a - Fraction(1,2))
         n = len(m[1])
         g.scalar.add_power((n-2)*(n-1)//2)
         for i in range(n):
@@ -965,7 +968,7 @@ def match_phase_gadgets(g: BaseGraph[VT,ET],vertexf:Optional[Callable[[VT],bool]
             non_clifford = phases[v] != 0 and getattr(phases[v], 'denominator', 1) > 2
         if non_clifford and len(list(g.neighbors(v)))==1:
             n = list(g.neighbors(v))[0]
-            if phases[n] not in (0,1): continue # Not a real phase gadget (happens for scalar diagrams)
+            if not phase_is_pauli(phases[n]): continue # Not a real phase gadget (happens for scalar diagrams)
             if n in gadgets: continue # Not a real phase gadget (happens for scalar diagrams)
             if n in inputs or n in outputs: continue # Not a real phase gadget (happens for non-unitary diagrams)
             gadgets[n] = v
@@ -1027,7 +1030,7 @@ def match_supplementarity(g: BaseGraph[VT,ET], vertexf:Optional[Callable[[VT],bo
     # First we find all the non-Clifford vertices and their list of neighbors
     while len(candidates) > 0:
         v = candidates.pop()
-        if phases[v] == 0 or (not isinstance(phases[v], Poly) and phases[v].denominator <= 2): continue # Skip Clifford vertices
+        if phase_is_clifford(phases[v]): continue # Skip Clifford vertices
         neigh = set(g.neighbors(v))
         if not neigh.isdisjoint(taken): continue
         par = frozenset(neigh)
@@ -1043,7 +1046,7 @@ def match_supplementarity(g: BaseGraph[VT,ET], vertexf:Optional[Callable[[VT],bo
             if v in taken: continue
         else: parities[par] = [v]
         for w in neigh:
-            if phases[w] == 0 or (not isinstance(phases[w], Poly) and phases[w].denominator <= 2) or w in taken: continue
+            if phase_is_clifford(phases[w]) or w in taken: continue
             diff = neigh.symmetric_difference(g.neighbors(w))
             if len(diff) == 2: # Perfect overlap
                 if (phases[v] + phases[w]) % 2 == 0 or (phases[v] - phases[w]) % 2 == 1:
@@ -1106,7 +1109,7 @@ def match_copy(
 
     while len(candidates) > 0:
         v = candidates.pop()
-        if phases[v] not in (0,1) or types[v] != VertexType.Z or g.vertex_degree(v) != 1: continue
+        if not phase_is_pauli(phases[v]) or types[v] != VertexType.Z or g.vertex_degree(v) != 1: continue
         w = list(g.neighbors(v))[0]
         if types[w] != VertexType.Z: continue
         neigh = [n for n in g.neighbors(w) if n != v]
