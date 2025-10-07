@@ -66,17 +66,19 @@ class Scalar(object):
 
     def __str__(self) -> str:
         s = ""
-        if not self.is_unknown:
+        try:
             s += "{0.real:.2f}{0.imag:+.2f}i = ".format(self.to_number())
+        except:
+            pass
         if self.floatfactor != 1.0:
             s += "{0.real:.2f}{0.imag:+.2f}i".format(self.floatfactor)
-        if self.phase:
-            s += "exp({}ipi)".format(str(self.phase))
         s += "sqrt(2)^{:d}".format(self.power2)
+        if self.phase:
+            s += phase_to_str(self.phase)
         for node in self.phasenodes:
-            s += "(1+exp({}ipi))".format(str(node))
+            s += "(1+exp(({})ipi))".format(str(node))
         if self.sum_of_phases:
-            s += "(" + " + ".join([f"{count}*exp(({phase})ipi)" for phase, count in self.sum_of_phases.items()]) + ")"
+            s += "(" + " + ".join([f"{coeff_to_str(coeff)}{phase_to_str(phase)}" for phase, coeff in self.sum_of_phases.items()]) + ")"
         return s
 
     def __complex__(self) -> complex:
@@ -154,14 +156,14 @@ class Scalar(object):
 
         if self.sum_of_phases:
             terms = []
-            for phase, count in self.sum_of_phases.items():
-                coeff = str(count) if count != 1 else ""
+            for phase, coeff in self.sum_of_phases.items():
+                coeff_str = coeff_to_str(coeff)
                 if isinstance(phase, Poly):
                     phase_str = fr"\exp(i\pi ~({str(phase)}))"
                 else:
                     phase_str = r"\exp(i~\frac{{{:d}\pi}}{{{:d}}})".format(
                         phase.numerator, phase.denominator)
-                terms.append(f"{coeff}{phase_str}")
+                terms.append(f"{coeff_str}{phase_str}")
             if terms:
                 s += "(" + " + ".join(terms) + ")"
 
@@ -197,31 +199,25 @@ class Scalar(object):
             val = str(abs(self.power2))
             s += "".join([unicode_superscript[i] for i in val])
         if phase != 0:
-            s += "exp(i"
-            if isinstance(phase, Poly):
-                s += f"({str(phase)})π)"
-            elif phase in unicode_fractions:
-                s += unicode_fractions[phase] + "π)"
+            if isinstance(phase, Fraction) and phase in unicode_fractions:
+                s += "exp(i" + unicode_fractions[phase] + "π)"
             else:
-                s += "{:d}/{:d}π)".format(phase.numerator,phase.denominator)
+                s += phase_to_str(phase, unicode=True)
         if self.sum_of_phases:
             terms = []
-            for ph, count in self.sum_of_phases.items():
-                term = f"{count}exp(i" if count != 1 else "exp(i"
-                if isinstance(ph, Poly):
-                    term += f"({str(ph)})"
+            for ph, coeff in self.sum_of_phases.items():
+                term = coeff_to_str(coeff)
+                if isinstance(ph, Fraction) and ph in unicode_fractions:
+                    term += "exp(i" + unicode_fractions[ph] + "π)"
                 else:
-                    ph = Fraction(ph)
-                    if ph in unicode_fractions:
-                        term += unicode_fractions[ph]
-                    else:
-                        term += "{:d}/{:d}".format(ph.numerator, ph.denominator)
-                term += "π)"
+                    term += phase_to_str(phase, unicode=True)
                 terms.append(term)
             if len(terms) == 1:
                 s += terms[0]
             elif len(terms) > 1:
                 s += "(" + " + ".join(terms) + ")"
+        if s == "":
+            s = "1"
         return s
 
     def to_dict(self) -> Dict[str, Any]:
@@ -292,7 +288,7 @@ class Scalar(object):
         phase -> coefficient in the sum."""
         new_sum_of_phases: Dict[FractionLike, int] = {}
         # Use the distributive law: (a*e^ip1)(b*e^ip2) = (a*b)*e^i(p1+p2)
-if not self.sum_of_phases:
+        if not self.sum_of_phases:
             self.sum_of_phases = {0:1}
         for phase1, coeff1 in phases.items():
             for phase2, coeff2 in self.sum_of_phases.items():
@@ -345,3 +341,25 @@ if not self.sum_of_phases:
         # add the sum of phases 1 + e^(i pi p1) + e^(i pi p2) - e^(i pi (p1+p2))
         self.multiply_sum_of_phases({0:1, p1:1, p2:1, (p1+p2)%2:-1})
         return
+
+
+def coeff_to_str(coeff: int) -> str:
+    if coeff == 1:
+        return ""
+    if coeff == -1:
+        return "-"
+    return str(coeff) + "*"
+
+def phase_to_str(phase: FractionLike, unicode: bool = False) -> str:
+    pi = "π" if unicode else "pi"
+    if phase == 0:
+        return "1"
+    if phase == 1:
+        return f"exp(i{pi})"
+    if isinstance(phase, Poly):
+        if len(phase.terms) == 1:
+            return f"exp({str(phase)}i{pi})"
+        return f"exp(({str(phase)})i{pi})"
+    if isinstance(phase, Fraction):
+        return f"exp({phase.numerator}/{phase.denominator}i{pi})"
+    return f"exp({str(phase)}i{pi})"
