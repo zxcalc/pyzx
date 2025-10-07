@@ -23,7 +23,7 @@ from fractions import Fraction
 from typing import Dict, List, Any, Union
 import json
 
-from ..utils import FloatInt, FractionLike, phase_is_pauli, phase_is_clifford
+from ..utils import FractionLike, phase_is_pauli, phase_is_clifford
 from ..symbolic import Poly
 
 __all__ = ['Scalar']
@@ -56,7 +56,7 @@ class Scalar(object):
         self.power2: int = 0 # Stores power of square root of two
         self.phase: FractionLike = Fraction(0) # Stores complex phase of the number
         self.phasenodes: List[FractionLike] = [] # Stores list of legless spiders, by their phases.
-        self.sum_of_phases: Dict[FractionLike, int] = {} # Maps phase -> coefficient in sum
+        self.sum_of_phases: Dict[FractionLike, int] = {} # Represents the term (c1*exp(i*phase1) + ... + cn*exp(i*phaseN)). The dictionary maps phase -> coefficient.
         self.floatfactor: complex = 1.0
         self.is_unknown: bool = False # Whether this represents an unknown scalar value
         self.is_zero: bool = False
@@ -245,7 +245,6 @@ class Scalar(object):
             d = json.loads(s)
         else:
             d = s
-        # print('scalar from json', repr(d))
         scalar = Scalar()
         scalar.phase = Fraction(d["phase"]) # TODO support parameters
         scalar.power2 = int(d["power2"])
@@ -267,9 +266,11 @@ class Scalar(object):
     def add_power(self, n) -> None:
         """Adds a factor of sqrt(2)^n to the scalar."""
         self.power2 += n
+
     def add_phase(self, phase: FractionLike) -> None:
         """Multiplies the scalar by a complex phase."""
         self.phase = (self.phase + phase) % 2
+
     def add_node(self, node: FractionLike) -> None:
         """A solitary spider with a phase ``node`` is converted into the
         scalar 1+e^(i*pi*node)."""
@@ -278,6 +279,7 @@ class Scalar(object):
         else:
             self.phasenodes.append(node)
         if node == 1: self.is_zero = True
+
     def add_float(self,f: complex) -> None:
         if f == 0.0:
             self.is_zero = True
