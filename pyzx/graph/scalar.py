@@ -56,7 +56,7 @@ class Scalar(object):
         self.power2: int = 0 # Stores power of square root of two
         self.phase: FractionLike = Fraction(0) # Stores complex phase of the number
         self.phasenodes: List[FractionLike] = [] # Stores list of legless spiders, by their phases.
-        self.sum_of_phases: Dict[FractionLike, int] = {} # Maps phase -> count (coefficient in sum)
+        self.sum_of_phases: Dict[FractionLike, int] = {} # Maps phase -> coefficient in sum
         self.floatfactor: complex = 1.0
         self.is_unknown: bool = False # Whether this represents an unknown scalar value
         self.is_zero: bool = False
@@ -109,7 +109,7 @@ class Scalar(object):
         if not conjugate:
             s.sum_of_phases = copy.deepcopy(self.sum_of_phases)
         else:
-            s.sum_of_phases = {-phase: count for phase, count in self.sum_of_phases.items()}
+            s.sum_of_phases = {-phase: coeff for phase, coeff in self.sum_of_phases.items()}
         return s
 
     def conjugate(self) -> 'Scalar':
@@ -122,8 +122,8 @@ class Scalar(object):
         for node in self.phasenodes: # Node should be a Fraction
             val *= 1+cexp(node)
         sum_of_phases_val = 0j
-        for phase, count in self.sum_of_phases.items():
-            sum_of_phases_val += count * cexp(phase)
+        for phase, coeff in self.sum_of_phases.items():
+            sum_of_phases_val += coeff * cexp(phase)
         if sum_of_phases_val != 0:
             val *= sum_of_phases_val
         val *= math.sqrt(2)**self.power2
@@ -231,7 +231,7 @@ class Scalar(object):
         if self.phasenodes:
             d["phasenodes"] = [str(p) for p in self.phasenodes]
         if self.sum_of_phases:
-            d["sum_of_phases"] = {str(phase): count for phase, count in self.sum_of_phases.items()}
+            d["sum_of_phases"] = {str(phase): coeff for phase, coeff in self.sum_of_phases.items()}
         if self.is_zero:
             d["is_zero"] = self.is_zero
         if self.is_unknown:
@@ -258,7 +258,7 @@ class Scalar(object):
         if "phasenodes" in d:
             scalar.phasenodes = [Fraction(p) for p in d["phasenodes"]]
         if "sum_of_phases" in d:
-            scalar.sum_of_phases = {string_to_phase(phase): count for phase, count in d["sum_of_phases"].items()}
+            scalar.sum_of_phases = {string_to_phase(phase): coeff for phase, coeff in d["sum_of_phases"].items()}
         if "is_zero" in d:
             scalar.is_zero = bool(d["is_zero"])
         if "is_unknown" in d:
@@ -292,10 +292,10 @@ class Scalar(object):
         phase -> coefficient in the sum."""
         new_sum_of_phases: Dict[FractionLike, int] = {}
         # Use the distributive law: (a*e^ip1)(b*e^ip2) = (a*b)*e^i(p1+p2)
-        for phase1, count1 in phases.items():
-            for phase2, count2 in self.sum_of_phases.items():
+        for phase1, coeff1 in phases.items():
+            for phase2, coeff2 in self.sum_of_phases.items():
                 new_phase = phase1 + phase2
-                new_coeff = count1 * count2
+                new_coeff = coeff1 * coeff2
                 # Add the resulting term, combining with any existing term that has the same new polynomial
                 new_sum_of_phases[new_phase] = new_sum_of_phases.get(new_phase, 0) + new_coeff
         self.sum_of_phases = new_sum_of_phases
