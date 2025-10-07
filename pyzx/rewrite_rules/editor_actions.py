@@ -24,7 +24,7 @@ from fractions import Fraction
 
 from typing import Callable, Optional, List, Dict, Tuple
 
-from pyzx.utils import EdgeType, VertexType, FractionLike, toggle_edge, vertex_is_zx, toggle_vertex
+from pyzx.utils import EdgeType, VertexType, FractionLike, phase_is_pauli, toggle_edge, vertex_is_zx, toggle_vertex
 from pyzx.graph.base import BaseGraph, VT, ET, upair
 import pyzx.rewrite_rules.rules as rules
 import pyzx.rewrite_rules.hrules as hrules
@@ -69,8 +69,12 @@ def pauli_matcher(
     phases = g.phases()
     types = g.types()
     m: List[Tuple[VT,VT]] = []
-    paulis = {v for v in candidates
-                if phases[v] == 1 and vertex_is_zx(types[v])}
+    paulis: set = set()
+    for v in candidates:
+        if not vertex_is_zx(types[v]): continue
+        if isinstance(phases[v], (int, Fraction)) and phases[v] == 0: continue
+        if phase_is_pauli(phases[v]):
+            paulis.add(v)
     if not paulis: return m
     while len(candidates) > 0:
         v = candidates.pop()
@@ -114,9 +118,9 @@ def pauli_push(g: BaseGraph[VT,ET],
         new_verts = []
         if vertex_is_zx(g.type(v)):
             g.scalar.add_phase(g.phase(v))
-            g.set_phase(v,(-g.phase(v)) % 2)
+            g.set_phase(v,((1 - 2 * g.phase(w)) * g.phase(v)) % 2) # 1-2a is -1 if a=1 (i.e. pi) and 1 if a=0 (i.e. 0). We need to do it this way to handle boolean symbolic phases
             t = toggle_vertex(g.type(v))
-            p: FractionLike = Fraction(1)
+            p: FractionLike = g.phase(w)
         else:
             t = VertexType.Z
             p = 0
@@ -138,7 +142,7 @@ def pauli_push(g: BaseGraph[VT,ET],
             else:
                 r = (g.row(v) + sum(g.row(n) for n in new_verts)) / (len(new_verts) + 1)
                 q = (g.qubit(v) + sum(g.qubit(n) for n in new_verts))/(len(new_verts)+1)
-                h = g.add_vertex(VertexType.H_BOX,q,r,Fraction(1))
+                h = g.add_vertex(VertexType.H_BOX,q,r,Fraction(1)) # TODO: check if Fraction(1) is correct in case of symbolic phases
                 for n in new_verts: etab[upair(h,n)] = [1,0]
     return (etab, rem_verts, rem_edges, False)
 

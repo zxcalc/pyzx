@@ -22,7 +22,7 @@ NEW VERSION
 from fractions import Fraction
 from itertools import combinations
 from typing import Dict, List, Tuple, Callable, Optional, Set, FrozenSet
-from pyzx.utils import EdgeType, VertexType, toggle_edge, toggle_vertex, FractionLike, FloatInt, vertex_is_zx
+from pyzx.utils import EdgeType, VertexType, toggle_edge, toggle_vertex, FractionLike, FloatInt, vertex_is_zx, phase_is_pauli
 from pyzx.simplify import *
 from pyzx.graph.base import BaseGraph, ET, VT, upair
 import pyzx.rewrite_rules.rules as rules
@@ -175,8 +175,8 @@ def match_copy(
 
     while len(candidates) > 0:
         v = candidates.pop()
-        if phases[v] not in (0,1) or types[v] == VertexType.BOUNDARY or g.vertex_degree(v) != 1:
-                    continue
+        if not phase_is_pauli(phases[v]) or types[v] == VertexType.BOUNDARY or g.vertex_degree(v) != 1:
+            continue
         w = list(g.neighbors(v))[0]
         if w in taken: continue
         tv = types[v]
