@@ -19,7 +19,7 @@ from typing import Dict, Set, Tuple, Optional
 
 from .linalg import Mat2
 from .graph.base import BaseGraph, VT, ET
-from .utils import vertex_is_zx
+from .utils import phase_is_clifford, phase_is_pauli, vertex_is_zx
 
 
 def gflow(
@@ -90,9 +90,9 @@ def gflow(
     if pauli:
         for v in vertices:
             p = g.phase(v) % 2
-            if p in (0,1):
+            if phase_is_pauli(p):
                 pauli_x.add(v)
-            elif p in (Fraction(1,2), Fraction(3,2)):
+            elif phase_is_clifford(p):
                 pauli_y.add(v)
 
     processed: Set[VT] = pattern_outputs.copy() | g.grounds()

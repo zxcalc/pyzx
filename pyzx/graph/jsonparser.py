@@ -35,7 +35,7 @@ if TYPE_CHECKING:
     from .multigraph import Multigraph
 
 
-def string_to_phase(string: str, g: Union[BaseGraph,'GraphDiff']) -> Union[Fraction, Poly]:
+def string_to_phase(string: str, g: Optional[Union[BaseGraph,'GraphDiff']] = None) -> Union[Fraction, Poly]:
     if not string:
         return Fraction(0)
     try:
@@ -57,6 +57,8 @@ def string_to_phase(string: str, g: Union[BaseGraph,'GraphDiff']) -> Union[Fract
             return Fraction(int(s))
     except ValueError:
         def _new_var(name: str) -> Poly:
+            if g is None:
+                return new_var(name, is_bool=False)
             return new_var(name, is_bool=g.var_registry.get_type(name, False), registry=g.var_registry)
         try:
             return parse(string, _new_var)
