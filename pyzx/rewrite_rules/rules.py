@@ -597,7 +597,7 @@ def match_pivot_boundary(
                     wrong_match = True
             if len(boundaries) != 1 or wrong_match: # n is not on the boundary,
                 continue             # has too many boundaries or has neighbors of wrong type
-            if phases[n] and hasattr(phases[n], 'denominator') and phases[n].denominator == 2:
+            if not phase_is_pauli(phases[n]) and phase_is_clifford(phases[n]):
                 w = n
                 bound = boundaries[0]
             if not w:
@@ -1030,7 +1030,7 @@ def match_supplementarity(g: BaseGraph[VT,ET], vertexf:Optional[Callable[[VT],bo
     # First we find all the non-Clifford vertices and their list of neighbors
     while len(candidates) > 0:
         v = candidates.pop()
-        if phases[v] == 0 or (not isinstance(phases[v], Poly) and phases[v].denominator <= 2): continue # Skip Clifford vertices
+        if phase_is_clifford(phases[v]): continue # Skip Clifford vertices
         neigh = set(g.neighbors(v))
         if not neigh.isdisjoint(taken): continue
         par = frozenset(neigh)
@@ -1046,7 +1046,7 @@ def match_supplementarity(g: BaseGraph[VT,ET], vertexf:Optional[Callable[[VT],bo
             if v in taken: continue
         else: parities[par] = [v]
         for w in neigh:
-            if phases[w] == 0 or (not isinstance(phases[w], Poly) and phases[w].denominator <= 2) or w in taken: continue
+            if phase_is_clifford(phases[w]) or w in taken: continue
             diff = neigh.symmetric_difference(g.neighbors(w))
             if len(diff) == 2: # Perfect overlap
                 if (phases[v] + phases[w]) % 2 == 0 or (phases[v] - phases[w]) % 2 == 1:

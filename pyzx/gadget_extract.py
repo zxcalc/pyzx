@@ -2,7 +2,7 @@
 
 # NOTE: this is experimental code, and not fully implemented. Do not expect it to extract circuits.
 
-from .utils import EdgeType, VertexType, toggle_edge
+from .utils import EdgeType, VertexType, toggle_edge, phase_is_clifford
 from .linalg import Mat2, Z2
 from .simplify import id_simp, tcount
 from .rewrite_rules.rules import apply_rule, pivot, match_spider_parallel, spider
@@ -12,8 +12,6 @@ from .graph.base import BaseGraph, VT, ET, FractionLike
 
 from typing import List, Optional, Tuple, Dict, Set, Union, Iterator
 
-def is_clifford(g: BaseGraph[VT, ET], v: VT):
-    return g.phase(v).denominator <= 2
 
 def is_gadget(g: BaseGraph[VT, ET], v: VT):
     for n in g.neighbors(v):
@@ -35,7 +33,7 @@ def lc_boundary(g: BaseGraph[VT, ET], q: int, c: Circuit):
 def gadgetize(g: BaseGraph[VT, ET]):
     verts = list(g.vertices())
     for v in verts:
-        if g.type(v) == VertexType.Z and g.vertex_degree(v) > 1 and not is_clifford(g, v):
+        if g.type(v) == VertexType.Z and g.vertex_degree(v) > 1 and not phase_is_clifford(g.phase(v)):
             r = g.row(v)
             q = g.qubit(v)
             v1 = g.add_vertex(VertexType.Z, qubit = -1, row = r+1)
@@ -102,7 +100,7 @@ def clean_frontier(g: BaseGraph[VT, ET], c: Circuit):
             v = next(g.neighbors(0))
             if g.type(v) != VertexType.Z: continue
             for n in g.neighbors(v):
-                if g.type(n) == VertexType.Z and is_clifford(g, n) and not is_gadget(g, n):
+                if g.type(n) == VertexType.Z and phase_is_clifford(g.phase(n)) and not is_gadget(g, n):
                     found_cliff = True
                     break
             if found_cliff: break # break all the way out to while loop
