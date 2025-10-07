@@ -23,7 +23,7 @@ from fractions import Fraction
 from typing import Dict, List, Any, Union
 import json
 
-from ..utils import FloatInt, FractionLike
+from ..utils import FloatInt, FractionLike, phase_is_pauli, phase_is_clifford
 from ..symbolic import Poly
 
 __all__ = ['Scalar']
@@ -250,29 +250,21 @@ class Scalar(object):
         # These if statements look quite arbitrary, but they are just calculations of the scalar
         # of a pair of connected single wire spiders of opposite colors.
         # We make special cases for Clifford phases and pi/4 phases.
-        if p2 in (0,1):
+        if phase_is_pauli(p2):
             p1,p2 = p2, p1
-        if p1 == 0:
+        if phase_is_pauli(p1):
             self.add_power(1)
+            self.add_phase(p1 * p2)
             return
-        elif p1 == 1:
-            self.add_power(1)
-            self.add_phase(p2)
-            return
-        if isinstance(p1, Poly) or isinstance(p2, Poly):
-            self.set_unknown()
-            return
-        if p2.denominator == 2:
+
+        if phase_is_clifford(p2):
             p1, p2 = p2, p1
-        if p1 == Fraction(1,2):
-            self.add_phase(Fraction(1,4))
-            self.add_node((p2-Fraction(1,2))%2)
+        if phase_is_clifford(p1) and not phase_is_pauli(p1):
+            self.add_phase(Fraction(3,2) * p1 - Fraction(1,2))
+            self.add_node((p2-p1)%2)
             return
-        elif p1 == Fraction(3,2):
-            self.add_phase(Fraction(7,4))
-            self.add_node((p2-Fraction(3,2))%2)
-            return
-        if (p1 + p2) % 2 == 0:
+
+        if (p1 + p2) % 2 == 0 and not isinstance(p1, Poly) and not isinstance(p2, Poly):
             if p1.denominator == 4:
                 if p1.numerator in (3,5):
                     self.add_phase(Fraction(1))
@@ -280,6 +272,7 @@ class Scalar(object):
             self.add_power(1)
             self.add_float(math.cos(p1))
             return
+
         # Generic case
         self.add_power(-1)
         self.add_float(1+cexp(p1)+cexp(p2) - cexp(p1+p2))
