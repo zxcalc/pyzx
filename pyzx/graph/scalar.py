@@ -56,6 +56,7 @@ class Scalar(object):
         self.power2: int = 0 # Stores power of square root of two
         self.phase: FractionLike = Fraction(0) # Stores complex phase of the number
         self.phasenodes: List[FractionLike] = [] # Stores list of legless spiders, by their phases.
+        self.sum_of_phases: Dict[FractionLike, int] = {} # Maps phase -> count (coefficient in sum)
         self.floatfactor: complex = 1.0
         self.is_unknown: bool = False # Whether this represents an unknown scalar value
         self.is_zero: bool = False
@@ -64,9 +65,9 @@ class Scalar(object):
         return "Scalar({})".format(str(self))
 
     def __str__(self) -> str:
-        if self.is_unknown:
-            return "UNKNOWN"
-        s = "{0.real:.2f}{0.imag:+.2f}i = ".format(self.to_number())
+        s = ""
+        if not self.is_unknown:
+            s += "{0.real:.2f}{0.imag:+.2f}i = ".format(self.to_number())
         if self.floatfactor != 1.0:
             s += "{0.real:.2f}{0.imag:+.2f}i".format(self.floatfactor)
         if self.phase:
@@ -74,6 +75,8 @@ class Scalar(object):
         s += "sqrt(2)^{:d}".format(self.power2)
         for node in self.phasenodes:
             s += "(1+exp({}ipi))".format(str(node))
+        if self.sum_of_phases:
+            s += "(" + " + ".join([f"{count}*exp(({phase})ipi)" for phase, count in self.sum_of_phases.items()]) + ")"
         return s
 
     def __complex__(self) -> complex:
@@ -103,8 +106,12 @@ class Scalar(object):
         s.floatfactor = self.floatfactor if not conjugate else self.floatfactor.conjugate()
         s.is_unknown = self.is_unknown
         s.is_zero = self.is_zero
+        if not conjugate:
+            s.sum_of_phases = copy.deepcopy(self.sum_of_phases)
+        else:
+            s.sum_of_phases = {-phase: count for phase, count in self.sum_of_phases.items()}
         return s
-    
+
     def conjugate(self) -> 'Scalar':
         """Returns a new Scalar equal to the complex conjugate"""
         return self.copy(conjugate=True)
@@ -114,6 +121,11 @@ class Scalar(object):
         val = cexp(self.phase)
         for node in self.phasenodes: # Node should be a Fraction
             val *= 1+cexp(node)
+        sum_of_phases_val = 0j
+        for phase, count in self.sum_of_phases.items():
+            sum_of_phases_val += count * cexp(phase)
+        if sum_of_phases_val != 0:
+            val *= sum_of_phases_val
         val *= math.sqrt(2)**self.power2
         return val*self.floatfactor
 
@@ -136,9 +148,23 @@ class Scalar(object):
             s += r"\sqrt{{2}}^{{{:d}}}".format(self.power2)
         if self.phase not in (0,1):
             if isinstance(self.phase, Poly):
-                s += fr"\exp(i~{str(self.phase)})".format(str(self.phase))
+                s += fr"\exp(i\pi ~({str(self.phase)}))"
             else:
                 s += r"\exp(i~\frac{{{:d}\pi}}{{{:d}}})".format(self.phase.numerator,self.phase.denominator)
+
+        if self.sum_of_phases:
+            terms = []
+            for phase, count in self.sum_of_phases.items():
+                coeff = str(count) if count != 1 else ""
+                if isinstance(phase, Poly):
+                    phase_str = fr"\exp(i\pi ~({str(phase)}))"
+                else:
+                    phase_str = r"\exp(i~\frac{{{:d}\pi}}{{{:d}}})".format(
+                        phase.numerator, phase.denominator)
+                terms.append(f"{coeff}{phase_str}")
+            if terms:
+                s += "(" + " + ".join(terms) + ")"
+
         s += "$"
         if s == "$$": return ""
         return s
@@ -151,17 +177,17 @@ class Scalar(object):
         f = self.floatfactor
         for node in self.phasenodes:
             f *= 1+cexp(node)
-        if isinstance(self.phase, Poly):
-            raise NotImplementedError("Unicode representation of Poly not implemented")
-        phase = Fraction(self.phase)
-        if self.phase >= 1:
+        s = ""
+        phase = self.phase
+        if not isinstance(phase, Poly):
+            phase = Fraction(phase)
+        if phase >= 1:
             f *= -1
             phase -= 1
 
         if abs(f+1) > 0.001 and abs(f-1) > 0.001:
             return str(f)
 
-        s = ""
         if abs(f+1) < 0.001: #f \approx -1
             s += "-"
         if self.power2 != 0:
@@ -172,10 +198,30 @@ class Scalar(object):
             s += "".join([unicode_superscript[i] for i in val])
         if phase != 0:
             s += "exp(i"
-            if phase in unicode_fractions:
+            if isinstance(phase, Poly):
+                s += f"({str(phase)})π)"
+            elif phase in unicode_fractions:
                 s += unicode_fractions[phase] + "π)"
             else:
                 s += "{:d}/{:d}π)".format(phase.numerator,phase.denominator)
+        if self.sum_of_phases:
+            terms = []
+            for ph, count in self.sum_of_phases.items():
+                term = f"{count}exp(i" if count != 1 else "exp(i"
+                if isinstance(ph, Poly):
+                    term += f"({str(ph)})"
+                else:
+                    ph = Fraction(ph)
+                    if ph in unicode_fractions:
+                        term += unicode_fractions[ph]
+                    else:
+                        term += "{:d}/{:d}".format(ph.numerator, ph.denominator)
+                term += "π)"
+                terms.append(term)
+            if len(terms) == 1:
+                s += terms[0]
+            elif len(terms) > 1:
+                s += "(" + " + ".join(terms) + ")"
         return s
 
     def to_dict(self) -> Dict[str, Any]:
@@ -184,6 +230,8 @@ class Scalar(object):
             d["floatfactor"] =  str(self.floatfactor)
         if self.phasenodes:
             d["phasenodes"] = [str(p) for p in self.phasenodes]
+        if self.sum_of_phases:
+            d["sum_of_phases"] = {str(phase): count for phase, count in self.sum_of_phases.items()}
         if self.is_zero:
             d["is_zero"] = self.is_zero
         if self.is_unknown:
@@ -195,6 +243,8 @@ class Scalar(object):
 
     @classmethod
     def from_json(cls, s: Union[str,Dict[str,Any]]) -> 'Scalar':
+        from .jsonparser import string_to_phase
+
         if isinstance(s, str):
             d = json.loads(s)
         else:
@@ -207,6 +257,8 @@ class Scalar(object):
             scalar.floatfactor = complex(d["floatfactor"])
         if "phasenodes" in d:
             scalar.phasenodes = [Fraction(p) for p in d["phasenodes"]]
+        if "sum_of_phases" in d:
+            scalar.sum_of_phases = {string_to_phase(phase): count for phase, count in d["sum_of_phases"].items()}
         if "is_zero" in d:
             scalar.is_zero = bool(d["is_zero"])
         if "is_unknown" in d:
@@ -215,7 +267,6 @@ class Scalar(object):
 
     def set_unknown(self) -> None:
         self.is_unknown = True
-        self.phasenodes = []
 
     def add_power(self, n) -> None:
         """Adds a factor of sqrt(2)^n to the scalar."""
@@ -236,11 +287,25 @@ class Scalar(object):
             self.is_zero = True
         self.floatfactor *= f
 
+    def multiply_sum_of_phases(self, phases: Dict[FractionLike,int]) -> None:
+        """Adds a sum of phases to the scalar. The input is a dictionary mapping
+        phase -> coefficient in the sum."""
+        new_sum_of_phases: Dict[FractionLike, int] = {}
+        # Use the distributive law: (a*e^ip1)(b*e^ip2) = (a*b)*e^i(p1+p2)
+        for phase1, count1 in phases.items():
+            for phase2, count2 in self.sum_of_phases.items():
+                new_phase = phase1 + phase2
+                new_coeff = count1 * count2
+                # Add the resulting term, combining with any existing term that has the same new polynomial
+                new_sum_of_phases[new_phase] = new_sum_of_phases.get(new_phase, 0) + new_coeff
+        self.sum_of_phases = new_sum_of_phases
+
     def mult_with_scalar(self, other: 'Scalar') -> None:
         """Multiplies two instances of Scalar together."""
         self.power2 += other.power2
         self.phase = (self.phase +other.phase)%2
         self.phasenodes.extend(other.phasenodes)
+        self.multiply_sum_of_phases(other.sum_of_phases)
         self.floatfactor *= other.floatfactor
         if other.is_zero: self.is_zero = True
         if other.is_unknown: self.is_unknown = True
@@ -275,5 +340,6 @@ class Scalar(object):
 
         # Generic case
         self.add_power(-1)
-        self.add_float(1+cexp(p1)+cexp(p2) - cexp(p1+p2))
+        # add the sum of phases 1 + e^(i pi p1) + e^(i pi p2) - e^(i pi (p1+p2))
+        self.multiply_sum_of_phases({0:1, p1:1, p2:1, (p1+p2)%2:-1})
         return
