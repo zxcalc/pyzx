@@ -393,7 +393,7 @@ poly_grammar = Lark("""
                | term
     term       : neg_term | pos_term
     neg_term   : "-" pos_term
-    pos_term   : factor ("*"? factor)*
+    pos_term   : factor (("*" | "⋅")? factor)*
     ?factor    : base ("^" exponent)?
     base       : intf | frac | decimal | pi | pifrac | var | "(" expr ")"
     exponent   : intf
