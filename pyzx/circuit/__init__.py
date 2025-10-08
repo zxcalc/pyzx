@@ -269,8 +269,9 @@ class Circuit(object):
         i.e. we apply the state |0...0> and effect <0...0| to the graph. ``Measurement`` gates 
         will be skipped when transforming the circuit to a graph.
 
-        If ``apply_state_effect`` is False, ``Measurement`` gates will be represented by nodes 
-        with "ground" symbols."""
+        If ``apply_state_effect`` is False, we will not automatically apply states or effects 
+        to the graph, and ``Measurement`` gates will be represented by nodes with 
+        "ground" symbols."""
         from .graphparser import circuit_to_graph
 
         return circuit_to_graph(self if zh else self.to_basic_gates(),

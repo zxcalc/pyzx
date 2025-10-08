@@ -96,8 +96,9 @@ def circuit_to_graph(c: Circuit, compress_rows:bool=True, backend:Optional[str]=
     i.e. we apply the state |0...0> and effect <0...0| to the graph. ``Measurement`` gates 
     will be skipped when transforming the circuit to a graph.
 
-    If ``apply_state_effect`` is False, ``Measurement`` gates will be represented by nodes 
-    with "ground" symbols."""
+    If ``apply_state_effect`` is False, we will not automatically apply states or effects 
+    to the graph, and ``Measurement`` gates will be represented by nodes with 
+    "ground" symbols."""
     g = Graph(backend)
     q_mapper: TargetMapper[VT] = TargetMapper()
     c_mapper: TargetMapper[VT] = TargetMapper()
