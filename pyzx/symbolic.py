@@ -121,7 +121,7 @@ class Term:
                 vs.append(f'{v}')
             else:
                 vs.append(f'{v}^{c}')
-        return '*'.join(vs)
+        return '⋅'.join(vs)
 
     def __mul__(self, other: 'Term') -> 'Term':
         """Return the product of two terms, combining exponents.
@@ -276,7 +276,7 @@ class Poly:
             elif c == 1:
                 ts.append(f'{t}')
             else:
-                ts.append(f'{c}{t}')
+                ts.append(f'{c}⋅{t}')
         return ' + '.join(ts)
 
     def __eq__(self, other: object) -> bool:
@@ -387,16 +387,25 @@ def new_const(coeff: Union[int, Fraction]) -> Poly:
 
 
 poly_grammar = Lark("""
-    start      : "(" start ")" | term ("+" term)*
-    term       : (intf | frac)? factor ("*" factor)*
-    ?factor    : intf | frac | pi | pifrac | var
+    start      : expr
+    ?expr      : expr "+" term   -> add
+               | expr "-" term   -> sub
+               | term
+    term       : neg_term | pos_term
+    neg_term   : "-" pos_term
+    pos_term   : factor ("*"? factor)*
+    ?factor    : base ("^" exponent)?
+    base       : intf | frac | decimal | pi | pifrac | var | "(" expr ")"
+    exponent   : intf
     var        : CNAME
     intf       : INT
+    decimal    : DECIMAL
     pi         : "\\pi" | "pi"
     frac       : INT "/" INT
     pifrac     : [INT] pi "/" INT
 
     %import common.INT
+    %import common.DECIMAL
     %import common.CNAME
     %import common.WS
     %ignore WS
@@ -411,14 +420,39 @@ class PolyTransformer(Transformer):
     """
     def __init__(self, new_var: Callable[[str], Poly]):
         super().__init__()
-
         self._new_var = new_var
 
-    def start(self, items: List[Poly]) -> Poly:
-        return reduce(add, items)
+    def start(self, items: List[Any]) -> Poly:
+        return items[0]
 
-    def term(self, items: List[Poly]) -> Poly:
+    def add(self, items: List[Any]) -> Poly:
+        return items[0] + items[1]
+
+    def sub(self, items: List[Any]) -> Poly:
+        return items[0] - items[1]
+
+    def term(self, items: List[Any]) -> Poly:
+        return items[0]
+
+    def neg_term(self, items: List[Any]) -> Poly:
+        return -items[0]  # Negate the pos_term
+
+    def pos_term(self, items: List[Any]) -> Poly:
         return reduce(mul, items)
+
+    def factor(self, items: List[Any]) -> Poly:
+        if len(items) == 1:
+            return items[0]
+        # Handle exponentiation: base^exponent
+        base = items[0]
+        exponent = items[1]
+        return base ** exponent
+
+    def base(self, items: List[Any]) -> Poly:
+        return items[0]
+
+    def exponent(self, items: List[Any]) -> int:
+        return items[0].terms[0][0]
 
     def var(self, items: List[Any]) -> Poly:
         v = str(items[0])
@@ -429,6 +463,9 @@ class PolyTransformer(Transformer):
 
     def intf(self, items: List[Any]) -> Poly:
         return new_const(int(items[0]))
+
+    def decimal(self, items: List[Any]) -> Poly:
+        return new_const(Fraction(float(items[0])).limit_denominator())
 
     def frac(self, items: List[Any]) -> Poly:
         return new_const(Fraction(int(items[0]), int(items[1])))
