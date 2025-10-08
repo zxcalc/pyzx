@@ -262,7 +262,15 @@ class Circuit(object):
     def to_graph(self, zh:bool=False, compress_rows:bool=True, backend:Optional[str]=None, apply_state_effect:bool=False) -> BaseGraph:
         """Turns the circuit into a ZX-Graph.
         If ``compress_rows`` is set, it tries to put single qubit gates on different qubits,
-        on the same row."""
+        on the same row.
+
+        If ``apply_state_effect`` is True, we set all inputs to have |0> connected to them and 
+        all outputs that correspond to measured qubits to have <0| connected to them,
+        i.e. we apply the state |0...0> and effect <0...0| to the graph. ``Measurement`` gates 
+        will be skipped when transforming the circuit to a graph.
+
+        If ``apply_state_effect`` is False, ``Measurement`` gates will be represented by nodes 
+        with "ground" symbols."""
         from .graphparser import circuit_to_graph
 
         return circuit_to_graph(self if zh else self.to_basic_gates(),

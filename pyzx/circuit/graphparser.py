@@ -87,15 +87,17 @@ def graph_to_circuit(g:BaseGraph[VT,ET], split_phases:bool=True) -> Circuit:
 
 
 def circuit_to_graph(c: Circuit, compress_rows:bool=True, backend:Optional[str]=None, apply_state_effect: bool = False) -> BaseGraph[VT, ET]:
-    """
-    Turns the circuit into a ZX-Graph.
+    """Turns the circuit into a ZX-Graph.
     If ``compress_rows`` is set, it tries to put single qubit gates on different qubits,
     on the same row.
 
-    If ``apply_state_effect`` is set, the graph will have fixed Z-basis inputs and outputs
-    thus ``Measurement`` gates will be skipped when transforming the circuit to a graph.
-    Otherwise, ``Measurement`` gates will be transformed to nodes with "ground" symbols.
-    """
+    If ``apply_state_effect`` is True, we set all inputs to have |0> connected to them and 
+    all outputs that correspond to measured qubits to have <0| connected to them,
+    i.e. we apply the state |0...0> and effect <0...0| to the graph. ``Measurement`` gates 
+    will be skipped when transforming the circuit to a graph.
+
+    If ``apply_state_effect`` is False, ``Measurement`` gates will be represented by nodes 
+    with "ground" symbols."""
     g = Graph(backend)
     q_mapper: TargetMapper[VT] = TargetMapper()
     c_mapper: TargetMapper[VT] = TargetMapper()
