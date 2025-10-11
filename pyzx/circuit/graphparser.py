@@ -21,6 +21,7 @@ from .gates import Measurement, TargetMapper
 from ..utils import EdgeType, VertexType, FloatInt, FractionLike
 from ..graph import Graph
 from ..graph.base import BaseGraph, VT, ET
+from ..symbolic import new_var
 
 def graph_to_circuit(g:BaseGraph[VT,ET], split_phases:bool=True) -> Circuit:
     inputs = g.inputs()
@@ -86,19 +87,10 @@ def graph_to_circuit(g:BaseGraph[VT,ET], split_phases:bool=True) -> Circuit:
     return c
 
 
-def circuit_to_graph(c: Circuit, compress_rows:bool=True, backend:Optional[str]=None, apply_state_effect: bool = False) -> BaseGraph[VT, ET]:
+def circuit_to_graph(c: Circuit, compress_rows:bool=True, backend:Optional[str]=None) -> BaseGraph[VT, ET]:
     """Turns the circuit into a ZX-Graph.
     If ``compress_rows`` is set, it tries to put single qubit gates on different qubits,
-    on the same row.
-
-    If ``apply_state_effect`` is True, we set all inputs to have |0> connected to them and
-    all outputs that correspond to measured qubits to have <0| connected to them,
-    i.e. we apply the state |0...0> and effect <0...0| to the graph. ``Measurement`` gates
-    will be skipped when transforming the circuit to a graph.
-
-    If ``apply_state_effect`` is False, we will not automatically apply states or effects
-    to the graph, and ``Measurement`` gates will be represented by nodes with
-    "ground" symbols."""
+    on the same row."""
     g = Graph(backend)
     q_mapper: TargetMapper[VT] = TargetMapper()
     c_mapper: TargetMapper[VT] = TargetMapper()
@@ -106,8 +98,10 @@ def circuit_to_graph(c: Circuit, compress_rows:bool=True, backend:Optional[str]=
     outputs = []
     measure_targets = set()
 
+    # Create input vertices
     for i in range(c.qubits):
-        v = g.add_vertex(VertexType.BOUNDARY,i,0)
+        phase = new_var("a", is_bool=True, registry=g.var_registry)
+        v = g.add_vertex(VertexType.X,i,0,phase=phase)
         inputs.append(v)
         q_mapper.add_label(i, 1)
         q_mapper.set_prev_vertex(i, v)
@@ -123,8 +117,6 @@ def circuit_to_graph(c: Circuit, compress_rows:bool=True, backend:Optional[str]=
         if gate.name == "Measurement":
             assert isinstance(gate, Measurement)
             measure_targets.add(gate.target)
-            if apply_state_effect:
-                continue
         if gate.name == 'InitAncilla':
             l = gate.label # type: ignore
             try:
@@ -159,25 +151,18 @@ def circuit_to_graph(c: Circuit, compress_rows:bool=True, backend:Optional[str]=
                 q_mapper.set_all_rows_to_max()
                 c_mapper.set_all_rows_to_max()
 
-    output_with_effect = set()
+    # Create output vertices
     r = max(q_mapper.max_row(), c_mapper.max_row())
     for mapper in (q_mapper, c_mapper):
         for l in mapper.labels():
             o = mapper.to_qubit(l)
-            v = g.add_vertex(VertexType.BOUNDARY, o, r)
-            outputs.append(v)
-            u = mapper.prev_vertex(l)
-            g.add_edge((u,v))
-            if o in measure_targets:
-                output_with_effect.add(v)
+            if o not in measure_targets:
+                v = g.add_vertex(VertexType.BOUNDARY, o, r)
+                outputs.append(v)
+                u = mapper.prev_vertex(l)
+                g.add_edge((u,v))
 
     g.set_inputs(tuple(inputs))
     g.set_outputs(tuple(outputs))
-
-    if apply_state_effect:
-        state = "".join("0" for _ in inputs)
-        g.apply_state(state)
-        effect = "".join("0" if v in output_with_effect else "/" for v in outputs)
-        g.apply_effect(effect)
 
     return g
