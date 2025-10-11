@@ -16,7 +16,6 @@
 
 __all__ = [
     "Graph",
-    "graph",
     "EdgeType",
     "VertexType",
     "toggle_edge",

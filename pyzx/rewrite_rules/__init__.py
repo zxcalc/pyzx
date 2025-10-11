@@ -15,7 +15,7 @@
 # limitations under the License.
 
 from .color_change_rule import color_change_diagram, check_color_change, color_change
-from .bialgebra_rule    import check_strong_comp, bialgebra, unsafe_bialgebra, check_bialgebra
+from .bialgebra_rule    import bialgebra, unsafe_bialgebra, check_bialgebra, check_bialgebra_reduce
 from .fuse_rule         import check_fuse, fuse, check_fuse_w, fuse_w, unsafe_fuse_w, unsafe_fuse, unfuse
 from .remove_id_rule    import check_remove_id, remove_id, unsafe_remove_id, check_remove_id_w, remove_id_w, unsafe_remove_id_w
 from .copy_rule         import check_copy, copy, unsafe_copy
@@ -23,7 +23,7 @@ from .copy_rule         import check_copy, copy, unsafe_copy
 __all__ = ['color_change_diagram',
            'check_color_change',
            'color_change',
-           'check_strong_comp',
+           'check_bialgebra_reduce',
            'check_bialgebra',
            'bialgebra',
            'unsafe_bialgebra',
