@@ -1261,7 +1261,7 @@ class Measurement(Gate):
     def to_graph_symbolic_boolean(self, g, q_mapper):
         """Represent the measurement as a node with symbolic boolean phases."""
         r = q_mapper.next_row(self.target)
-        phase = new_var(name="a", is_bool=True, registry=g.var_registry) 
+        phase = new_var(name=f"a{self.target}", is_bool=True, registry=g.var_registry) 
         _ = self.graph_add_node(g,
             q_mapper,
             VertexType.X,

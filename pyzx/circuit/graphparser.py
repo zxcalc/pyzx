@@ -87,10 +87,19 @@ def graph_to_circuit(g:BaseGraph[VT,ET], split_phases:bool=True) -> Circuit:
     return c
 
 
-def circuit_to_graph(c: Circuit, compress_rows:bool=True, backend:Optional[str]=None) -> BaseGraph[VT, ET]:
+def circuit_to_graph(
+    c: Circuit, 
+    compress_rows:bool=True,
+    backend:Optional[str]=None,
+    init:Optional[List[bool]]=None,
+    post_select:Optional[List[bool]]=None
+) -> BaseGraph[VT, ET]:
     """Turns the circuit into a ZX-Graph.
     If ``compress_rows`` is set, it tries to put single qubit gates on different qubits,
-    on the same row."""
+    on the same row.
+
+    ``init`` denotes whether each input should be initialized to |0\ranlge,
+    ``post_select`` denotes whether each measurement should be post-selected to |0\rangle."""
     g = Graph(backend)
     q_mapper: TargetMapper[VT] = TargetMapper()
     c_mapper: TargetMapper[VT] = TargetMapper()
@@ -100,8 +109,7 @@ def circuit_to_graph(c: Circuit, compress_rows:bool=True, backend:Optional[str]=
 
     # Create input vertices
     for i in range(c.qubits):
-        phase = new_var("a", is_bool=True, registry=g.var_registry)
-        v = g.add_vertex(VertexType.X,i,0,phase=phase)
+        v = g.add_vertex(VertexType.BOUNDARY,i,0)
         inputs.append(v)
         q_mapper.add_label(i, 1)
         q_mapper.set_prev_vertex(i, v)
@@ -153,16 +161,30 @@ def circuit_to_graph(c: Circuit, compress_rows:bool=True, backend:Optional[str]=
 
     # Create output vertices
     r = max(q_mapper.max_row(), c_mapper.max_row())
+    measure_vertices = []
     for mapper in (q_mapper, c_mapper):
         for l in mapper.labels():
             o = mapper.to_qubit(l)
+            u = mapper.prev_vertex(l)
             if o not in measure_targets:
                 v = g.add_vertex(VertexType.BOUNDARY, o, r)
                 outputs.append(v)
-                u = mapper.prev_vertex(l)
                 g.add_edge((u,v))
+            else:
+                measure_vertices.append(u)
 
     g.set_inputs(tuple(inputs))
     g.set_outputs(tuple(outputs))
+
+    if init:
+        assert len(inputs) == len(init), "Length of init list must be equal to number of inputs!"
+        state = "".join("0" if i else "/" for i in init)
+        g.apply_state(state)
+
+    if post_select:
+        assert len(measure_vertices) == len(post_select), "Length of post_select list must be equal to number of measurements!"
+        for i, v in enumerate(measure_vertices):
+            if post_select[i]:
+                g.set_phase(v, 0)
 
     return g
