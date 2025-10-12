@@ -265,13 +265,14 @@ class Circuit(object):
         compress_rows:bool=True,
         backend:Optional[str]=None,
         init:Optional[List[bool]]=None,
-        post_select:Optional[List[bool]]=None
+        post_select:Optional[List[int]]=None
     ) -> BaseGraph:
         """Turns the circuit into a ZX-Graph.
         If ``compress_rows`` is set, it tries to put single qubit gates on different qubits,
         on the same row.
         ``init`` denotes whether each input should be connected to |0\ranlge,
-        ``post_select`` denotes whether each measurement should be post-selected to |0\rangle."""
+        ``post_select`` denotes for each measurement whether it should be 
+        postselected to |0\rangle (0) or |1\ranlge (1)."""
         from .graphparser import circuit_to_graph
 
         return circuit_to_graph(self if zh else self.to_basic_gates(),
