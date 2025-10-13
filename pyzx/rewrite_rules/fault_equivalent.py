@@ -41,15 +41,14 @@ Two circuits :math:`C_1` and :math:`C_2` are **fault-equivalent**, written :math
 
 import itertools
 import math
-from typing import Callable
-from typing import Optional
+from typing import Callable, Optional
 
 from pyzx.graph.base import BaseGraph, VT, ET
 from pyzx.rewrite_rules.basicrules import (
-    remove_id as elim_FE,                   # noqa # pylint: disable=unused-import
-    check_remove_id as check_elim_FE,       # noqa # pylint: disable=unused-import
-    color_change as color_change_FE,        # noqa # pylint: disable=unused-import
-    check_color_change as color_change_FE,  # noqa # pylint: disable=unused-import
+    check_remove_id as check_elim_FE,             # noqa # pylint: disable=unused-import
+    remove_id as elim_FE,                         # noqa # pylint: disable=unused-import
+    check_color_change as check_color_change_FE,  # noqa # pylint: disable=unused-import
+    color_change as color_change_FE,              # noqa # pylint: disable=unused-import
     fuse as _fuse,
 )
 from pyzx.utils import VertexType, is_pauli
