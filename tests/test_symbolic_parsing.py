@@ -183,6 +183,11 @@ class TestSymbolicParsing(unittest.TestCase):
         expected = (new_const(Fraction(1, 4)) + new_const(Fraction(2, 3)))
         self.assertEqual(result, expected)
 
+        # Test pi symbol
+        result = parse("π", self.new_var)
+        expected = new_const(1)
+        self.assertEqual(result, expected)
+
     def test_dot_multiplication(self):
         """Test dot multiplication operator ⋅."""
         # Test simple dot multiplication

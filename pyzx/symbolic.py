@@ -400,7 +400,7 @@ poly_grammar = Lark("""
     var        : CNAME
     intf       : INT
     decimal    : DECIMAL
-    pi         : "\\pi" | "pi"
+    pi         : "\\pi" | "pi" | "π"
     frac       : INT "/" INT
     pifrac     : [INT] pi "/" INT
 
