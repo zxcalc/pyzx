@@ -294,10 +294,12 @@ class Scalar(object):
             self.sum_of_phases = {0:1}
         for phase1, coeff1 in phases.items():
             for phase2, coeff2 in self.sum_of_phases.items():
-                new_phase = phase1 + phase2
+                new_phase = (phase1 + phase2) % 2
                 new_coeff = coeff1 * coeff2
                 # Add the resulting term, combining with any existing term that has the same new polynomial
                 new_sum_of_phases[new_phase] = new_sum_of_phases.get(new_phase, 0) + new_coeff
+                if new_sum_of_phases[new_phase] == 0:
+                    del new_sum_of_phases[new_phase]
         self.sum_of_phases = new_sum_of_phases
 
     def mult_with_scalar(self, other: 'Scalar') -> None:
