@@ -246,12 +246,12 @@ class Scalar(object):
         else:
             d = s
         scalar = Scalar()
-        scalar.phase = Fraction(d["phase"]) # TODO support parameters
+        scalar.phase = string_to_phase(d["phase"])
         scalar.power2 = int(d["power2"])
         if "floatfactor" in d:
             scalar.floatfactor = complex(d["floatfactor"])
         if "phasenodes" in d:
-            scalar.phasenodes = [Fraction(p) for p in d["phasenodes"]]
+            scalar.phasenodes = [string_to_phase(p) for p in d["phasenodes"]]
         if "sum_of_phases" in d:
             scalar.sum_of_phases = {string_to_phase(phase): coeff for phase, coeff in d["sum_of_phases"].items()}
         if "is_zero" in d:
