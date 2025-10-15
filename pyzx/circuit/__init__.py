@@ -259,14 +259,24 @@ class Circuit(object):
         from .graphparser import graph_to_circuit
         return graph_to_circuit(g, split_phases=split_phases)
 
-    def to_graph(self, zh:bool=False, compress_rows:bool=True, backend:Optional[str]=None) -> BaseGraph:
+    def to_graph(
+        self,
+        zh:bool=False,
+        compress_rows:bool=True,
+        backend:Optional[str]=None,
+        init:Optional[List[bool]]=None,
+        post_select:Optional[List[int]]=None
+    ) -> BaseGraph:
         """Turns the circuit into a ZX-Graph.
         If ``compress_rows`` is set, it tries to put single qubit gates on different qubits,
-        on the same row."""
+        on the same row.
+        ``init`` denotes whether each input should be connected to |0\ranlge,
+        ``post_select`` denotes for each measurement whether it should be 
+        postselected to |0\rangle (0) or |1\ranlge (1)."""
         from .graphparser import circuit_to_graph
 
         return circuit_to_graph(self if zh else self.to_basic_gates(),
-            compress_rows, backend)
+            compress_rows, backend, init=init, post_select=post_select)
 
     def to_tensor(self, preserve_scalar:bool=True, strategy:str='naive') -> np.ndarray:
         """Returns a numpy tensor describing the circuit."""
