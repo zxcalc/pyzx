@@ -19,6 +19,8 @@ It is part of a major reworking of how the rule and simplify files
 work to perform the rewrite rules on diagrams."""
 
 from typing import List, Callable, Optional, Union, Generic, Set, Tuple, Dict, Iterator, cast
+
+from pyzx import VertexType
 from .graph.base import BaseGraph, VT, ET
 
 class Rewrite(Generic[VT, ET]):
@@ -88,6 +90,66 @@ class RewriteSimpSingleVertex(RewriteSingleVertex[VT, ET]):
             if j == 0:
                 break
         return applied
+
+
+class RewriteSingleVertexExtra(Rewrite[VT, ET]):
+    applier: Callable[[BaseGraph[VT, ET], VT, VertexType], bool]
+    is_match: Callable[[BaseGraph[VT, ET], VT], tuple[bool, Optional[VertexType]]]
+    info_type: VertexType
+
+    def __init__(self, is_match: Callable[[BaseGraph[VT, ET], VT], tuple[bool, Optional[VertexType]]],
+                 applier: Callable[[BaseGraph[VT, ET], VT, VertexType], bool]) -> None:
+        super().__init__()
+        self.is_match = is_match
+        self.applier = applier
+
+        self.__doc__ = is_match.__doc__
+
+    def apply(self, graph: BaseGraph[VT, ET], v: VT) -> None:
+        match, info_type = self.is_match(graph, v)
+        if match:
+            self.applier(graph, v, info_type)
+
+
+class RewriteSimpSingleVertexExtra(RewriteSingleVertexExtra[VT, ET]):
+    simp_match: Optional[Callable[[BaseGraph[VT, ET], VT], bool]]
+
+    def __init__(self, is_match: Callable[[BaseGraph[VT, ET], VT], tuple[bool, Optional[VertexType]]],
+                 applier: Callable[[BaseGraph[VT, ET], VT, VertexType], bool],
+                 simp_match: Optional[Callable[[BaseGraph[VT, ET], VT, VertexType], bool]] = None) -> None:
+        super().__init__(is_match, applier)
+        self.simp_match = simp_match
+
+    def find_all_matches (self, graph: BaseGraph[VT, ET]) -> Set[tuple[VT, Optional[VertexType]]]:
+        all_matches: Set[tuple[VT, Optional[VertexType]]] = set()
+        if self.simp_match is not None:
+            match = self.simp_match
+        else:
+            match = self.is_match
+
+        for v in graph.vertices():
+            is_match, info_type = self.is_match(graph, v)
+            if match(graph, v):
+                all_matches.add((is_match, info_type))
+        return all_matches
+
+    def simp(self, graph: BaseGraph[VT, ET]) -> None:
+        if self.simp_match is not None:
+            match = self.simp_match
+        else:
+            match = self.is_match
+
+        while True:
+            j = 0
+            all_matches = self.find_all_matches(graph)
+            for m in all_matches:
+                if match(graph, m[0]):
+                    j += 1
+                    self.applier(graph, m[0], m[1])
+            if j == 0:
+                break
+
+
 
 class RewriteDoubleVertex(Rewrite[VT, ET]):
     applier: Callable[[BaseGraph[VT, ET], VT, VT], bool]

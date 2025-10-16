@@ -35,7 +35,7 @@ def check_remove_id(g: BaseGraph[VT,ET], v: VT) -> bool:
 
 def remove_id(g: BaseGraph[VT,ET], v: VT) -> bool:
     if vertex_is_w(g.type(v)) and check_remove_id_w(g, v):
-        return check_remove_id_w(g, v)
+        return unsafe_remove_id_w(g, v)
 
     if check_remove_id(g, v):
         return unsafe_remove_zx(g, v)
@@ -45,7 +45,7 @@ def remove_id(g: BaseGraph[VT,ET], v: VT) -> bool:
 
 def unsafe_remove_id(g: BaseGraph[VT,ET], v: VT) -> bool:
     if vertex_is_w(g.type(v)):
-        return check_remove_id_w(g, v)
+        return unsafe_remove_id_w(g, v)
 
     return unsafe_remove_zx(g, v)
 
