@@ -35,6 +35,7 @@ function edgeColor(t) {
     if (t == 1) return _settings_colors['edge']; //"black";
     else if (t == 2) return _settings_colors['Hedge']; // "#08f";
     else if (t == 3) return _settings_colors['Xedge']; // "gray";
+    else if (t == 4) return _settings_colors['FaultEdge']; // "dark red";
 }
 
 function webColor(t) {
