@@ -126,6 +126,9 @@ def _to_tikz(g: BaseGraph[VT,ET], draw_scalar:bool = False,
         elif et == EdgeType.W_IO:
             style = settings.tikz_classes['W-io-edge']
             if style: s += "[style={:s}] ".format(style)
+        elif et == EdgeType.FAULT_EDGE:
+            style = settings.tikz_classes['Fault-edge']
+            if style: s += "[style={:s}] ".format(style)
         else:
             style = settings.tikz_classes['edge']
             if style: s += "[style={:s}] ".format(style)
@@ -206,6 +209,7 @@ synonyms_dummy = ['text', 'label', 'dummy node', 'dummy spider', 'dummy phase sp
 synonyms_edge = ['empty', 'simple', 'none']
 synonyms_hedge = ['hadamard edge']
 synonyms_wedge = ['w edge', 'w io edge']
+synonyms_fault_edge = ['fault edge']
 
 tikz_error_message = "Not a valid tikz picture. Please use Tikzit to generate correct output."
 def tikz_to_graph(
@@ -396,6 +400,8 @@ def tikz_to_graph(
                 etab[e] = [0,1]
         elif style.lower() in synonyms_wedge:
             g.add_edge(e, EdgeType.W_IO)
+        elif style.lower() in synonyms_fault_edge:
+            g.add_edge(e, EdgeType.FAULT_EDGE)
         else:
             if ignore_nonzx:
                 if e in etab:
