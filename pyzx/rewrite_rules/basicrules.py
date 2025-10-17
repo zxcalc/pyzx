@@ -195,6 +195,8 @@ def fuse(g: BaseGraph[VT,ET], v1: VT, v2: VT) -> bool:
             other_vertex = v1
         if other_vertex == v1 and g.edge_type(e) == EdgeType.SIMPLE:
             continue
+        if other_vertex == v1 and g.edge_type(e) == EdgeType.FAULT_EDGE:
+            continue
         g.add_edge((v1,other_vertex), edgetype=g.edge_type(e))
     g.remove_vertex(v2)
     return True

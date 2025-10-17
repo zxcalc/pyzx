@@ -209,6 +209,8 @@ def draw_matplotlib(
             ecol = '#0099ff'
         elif et == 3:
             ecol = 'gray'
+        elif et == 4:
+            ecol = '#8B0000'  # Dark red for FAULT_EDGE
         else:
             ecol = 'black'
 

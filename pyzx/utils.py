@@ -80,6 +80,7 @@ class EdgeType(IntEnum):
     SIMPLE = 1
     HADAMARD = 2
     W_IO = 3
+    FAULT_EDGE = 4
 
 def toggle_edge(ty: EdgeType) -> EdgeType:
     """Swap the regular and Hadamard edge types."""
@@ -138,13 +139,15 @@ tikz_classes = {
     'dummy': 'text',
     'edge': '',
     'H-edge': 'hadamard edge',
-    'W-io-edge': 'W io edge'
+    'W-io-edge': 'W io edge',
+    'Fault-edge': 'fault edge'
 }
 
 original_colors = {
     'edge': '#000000',
     'Hedge': '#0088ff',
     'Xedge': '#999999',
+    'FaultEdge': '#8B0000',
     'boundary': '#000000',
     'X': '#ff8888',
     'Y': '#aabbff',
@@ -169,6 +172,7 @@ grayscale_colors = {
     'edge': '#000000',
     'Hedge': '#888888',
     'Xedge': '#dddddd',
+    'FaultEdge': '#8B0000',
     'boundary': '#000000',
     'X': '#666666',
     'Y': '#9999dd',

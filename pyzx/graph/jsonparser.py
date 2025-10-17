@@ -159,6 +159,9 @@ def json_to_graph_old(js: Union[str,Dict[str,Any]], backend:Optional[str]=None) 
         if 'type' in edge and edge['type'] == 'w_io':
             g.add_edge((names[n1],names[n2]), EdgeType.W_IO)
             continue
+        if 'type' in edge and edge['type'] == 'fault_edge':
+            g.add_edge((names[n1],names[n2]), EdgeType.FAULT_EDGE)
+            continue
 
         amount = edges.get((names[n1],names[n2]),[0,0])
         amount[0] += 1
@@ -320,6 +323,9 @@ def graph_to_dict_old(g: BaseGraph[VT,ET], include_scalar: bool=True) -> Dict[st
             i += 1
         elif et == EdgeType.W_IO:
             edges["e"+str(i)] = {"src": names[src],"tgt": names[tgt], "type": "w_io"}
+            i += 1
+        elif et == EdgeType.FAULT_EDGE:
+            edges["e"+str(i)] = {"src": names[src],"tgt": names[tgt], "type": "fault_edge"}
             i += 1
         else:
             raise TypeError("Edge of type 0")
