@@ -72,6 +72,47 @@ class TestSimplify(unittest.TestCase):
     def test_spider_simp(self):
         self.func_test(spider_simp)
 
+    def test_spider_simp_removes_preexisting_self_loops(self):
+        """Regression test for issue #352.
+
+        Test that spider_simp removes pre-existing self-loops in multigraphs."""
+        from pyzx.graph.multigraph import Multigraph
+        from pyzx import VertexType, EdgeType
+
+        g = Multigraph()
+        g.set_auto_simplify(False)
+        g.add_vertex(VertexType.BOUNDARY, row=0)
+        g.add_vertex(VertexType.X, row=1)
+        g.set_inputs([0])
+        g.add_edge((0, 1), EdgeType.SIMPLE)
+        g.add_edge((1, 1), EdgeType.SIMPLE)
+
+        self.assertTrue(g.connected(1, 1))
+        spider_simp(g, quiet=True)
+        self.assertFalse(g.connected(1, 1))
+
+    def test_spider_simp_removes_self_loops_created_during_fusion(self):
+        """Regression test for issue #352.
+
+        Test that spider_simp removes self-loops created during spider fusion."""
+        from pyzx.graph.multigraph import Multigraph
+        from pyzx import VertexType, EdgeType
+
+        g = Multigraph()
+        g.set_auto_simplify(False)
+        b = g.add_vertex(VertexType.BOUNDARY, row=0)
+        v0 = g.add_vertex(VertexType.Z, row=1)
+        v1 = g.add_vertex(VertexType.Z, row=2)
+        g.add_edge((b, v0), EdgeType.SIMPLE)
+        g.add_edge((v0, v1), EdgeType.SIMPLE)
+        g.add_edge((v1, v1), EdgeType.HADAMARD)
+        g.set_inputs([b])
+
+        self.assertTrue(g.connected(v1, v1))
+        spider_simp(g, quiet=True)
+        for v in g.vertices():
+            self.assertFalse(g.connected(v, v))
+
     def test_id_simp(self):
         self.func_test(id_simp)
 

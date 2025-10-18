@@ -140,8 +140,14 @@ def bialg_simp(g: BaseGraph[VT,ET], quiet:bool=True, stats: Optional[Stats]=None
     return simp(g, 'bialg_simp', match_bialg_parallel, bialg, quiet=quiet, stats=stats)
 
 def spider_simp(g: BaseGraph[VT,ET], matchf:Optional[Callable[[VT],bool]]=None, quiet:bool=True, stats:Optional[Stats]=None) -> int:
-    """Keeps performing spider fusion until the list of matches supplied by :func:`match_spider_parallel` is empty."""
-    return simp(g, 'spider_simp', match_spider_parallel, spider, matchf=matchf, quiet=quiet, stats=stats)
+    """Keeps performing spider fusion until the list of matches supplied by :func:`match_spider_parallel` is empty. Self-loops are removed."""
+    result = simp(g, 'spider_simp', match_spider_parallel, spider,
+                auto_simplify_parallel_edges=True, matchf=matchf, quiet=quiet, stats=stats)
+
+    # Convert any remaining self-loops to phases, and count them.
+    result += simp(g, 'spider_simp_self_loop_cleanup', match_self_loop, remove_self_loops, quiet=quiet, stats=stats)
+
+    return result
 
 def id_simp(g: BaseGraph[VT,ET], matchf:Optional[Callable[[VT],bool]]=None, quiet:bool=True, stats:Optional[Stats]=None) -> int:
     """Removes all non-interacting identity vertices found by :func:`match_ids_parallel`."""
