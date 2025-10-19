@@ -24,7 +24,9 @@ if __name__ == '__main__':
     sys.path.append('.')
 
 from pyzx.graph import Graph
+from pyzx.graph.jsonparser import graph_to_dict, dict_to_graph
 from pyzx.utils import EdgeType, VertexType
+from pyzx.symbolic import Poly, new_var
 
 
 # A graph in the old format (a Quantomatic .qgraph file)
@@ -322,6 +324,38 @@ class TestGraphIO(unittest.TestCase):
         g = Graph.from_json(js)
         tikz = g.to_tikz()
         g2 = Graph.from_tikz(tikz, warn_overlap=False)
+
+    def test_zbox_label_roundtrip(self):
+        g = Graph()
+        v1 = g.add_vertex(VertexType.Z_BOX, 0, 0)
+        v2 = g.add_vertex(VertexType.Z_BOX, 0, 1)
+        v3 = g.add_vertex(VertexType.Z_BOX, 0, 2)
+
+        poly_label = new_var('alpha', is_bool=False, registry=g.var_registry) + Fraction(1, 2)
+        g.set_vdata(v1, 'label', Fraction(3, 4))
+        g.set_vdata(v2, 'label', poly_label)
+        g.set_vdata(v3, 'label', 2.5 + 1.3j)
+        g.set_vdata(v1, 'name', 'my vertex')
+        g.set_vdata(v2, 'custom', 42)
+
+        d = graph_to_dict(g)
+        g2 = dict_to_graph(d)
+
+        self.assertEqual(g2.vdata(v1, 'label'), Fraction(3, 4))
+        self.assertEqual(g2.vdata(v2, 'label'), poly_label)
+        self.assertEqual(g2.vdata(v3, 'label'), 2.5 + 1.3j)
+        self.assertEqual(g2.vdata(v1, 'name'), 'my vertex')
+        self.assertEqual(g2.vdata(v2, 'custom'), 42)
+
+        js = json.dumps(d)
+        d2 = json.loads(js)
+        g3 = dict_to_graph(d2)
+
+        self.assertEqual(g3.vdata(v1, 'label'), Fraction(3, 4))
+        self.assertEqual(g3.vdata(v2, 'label'), poly_label)
+        self.assertEqual(g3.vdata(v3, 'label'), 2.5 + 1.3j)
+        self.assertEqual(g3.vdata(v1, 'name'), 'my vertex')
+        self.assertEqual(g3.vdata(v2, 'custom'), 42)
 
 if __name__ == '__main__':
     unittest.main()
