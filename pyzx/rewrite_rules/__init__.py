@@ -19,6 +19,9 @@ from .bialgebra_rule    import bialgebra, unsafe_bialgebra, check_bialgebra, che
 from .fuse_rule         import check_fuse, fuse, check_fuse_w, fuse_w, unsafe_fuse_w, unsafe_fuse, unfuse
 from .remove_id_rule    import check_remove_id, remove_id, unsafe_remove_id
 from .copy_rule         import check_copy, copy, unsafe_copy
+from .z_to_z_box_rule   import z_to_z_box, unsafe_z_to_z_box, check_z_to_z_box
+from .pivot_rule        import unsafe_pivot, pivot, check_pivot_parallel
+
 
 __all__ = ['color_change_diagram',
            'check_color_change',
@@ -35,12 +38,17 @@ __all__ = ['color_change_diagram',
            'unsafe_fuse_w',
            'unfuse',
            'check_remove_id',
-           'check_remove_id',
            'remove_id',
-           'unsafe_remove_id'
+           'unsafe_remove_id',
            'check_copy',
            'copy',
            'unsafe_copy',
+           'z_to_z_box',
+           'unsafe_z_to_z_box',
+           'check_z_to_z_box',
+           'check_pivot_parallel',
+           'pivot',
+           'unsafe_pivot',
         'check_copy_X',
         'copy_X',
         'check_copy_Z',
@@ -48,6 +56,4 @@ __all__ = ['color_change_diagram',
         'check_pi_commute_X',
         'pi_commute_X',
         'check_pi_commute_Z',
-        'pi_commute_Z',
-        'check_remove_id',
-        'remove_id']
+        'pi_commute_Z']

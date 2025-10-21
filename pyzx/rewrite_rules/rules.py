@@ -65,6 +65,42 @@ from pyzx.graph.base import BaseGraph, VT, ET
 from pyzx.symbolic import Poly
 
 RewriteOutputType = Tuple[Dict[Tuple[VT,VT],List[int]], List[VT], List[ET], bool]
+
+
+def match_z_to_z_box(g: BaseGraph[VT,ET]) -> List[VT]:
+    """Does the same as :func:`match_z_to_z_box_parallel` but with ``num=1``."""
+    return match_z_to_z_box_parallel(g, num=1)
+
+def match_z_to_z_box_parallel(
+        g: BaseGraph[VT,ET],
+        matchf:Optional[Callable[[VT],bool]]=None,
+        num:int=-1
+        ) -> List[VT]:
+    """Finds all vertices that can be converted to Z-boxes."""
+    if matchf is not None: candidates = set([v for v in g.vertices() if matchf(v)])
+    else: candidates = g.vertex_set()
+    types = g.types()
+    phases = g.phases()
+    m: List[VT] = []
+    for v in candidates:
+        if types[v] == VertexType.Z and not isinstance(phases[v],Poly):
+            if num == 0: break
+            m.append(v)
+            num -= 1
+    return m
+
+def z_to_z_box(g: BaseGraph[VT,ET], matches: List[VT]) -> RewriteOutputType[VT,ET]:
+    """Converts a Z vertex to a Z-box."""
+    for v in matches:
+        g.set_type(v, VertexType.Z_BOX)
+        phase = g.phase(v)
+        assert not isinstance(phase, Poly)
+        label = np.round(np.e**(1j * np.pi * phase), 8)
+        set_z_box_label(g, v, label)
+        g.set_phase(v, 0)
+    return ({}, [], [], True)
+
+
 MatchObject = TypeVar('MatchObject')
 
 def apply_rule(
@@ -83,76 +119,6 @@ def apply_rule(
 
 MatchBialgType = Tuple[VT,VT,List[VT],List[VT]]
 
-def match_bialg(g: BaseGraph[VT,ET]) -> List[MatchBialgType[VT]]:
-    """Does the same as :func:`match_bialg_parallel` but with ``num=1``."""
-    return match_bialg_parallel(g, num=1)
-
-
-#TODO: make it be hadamard edge aware
-def match_bialg_parallel(
-        g: BaseGraph[VT,ET],
-        matchf:Optional[Callable[[ET],bool]]=None,
-        num: int=-1
-        ) -> List[MatchBialgType[VT]]:
-    """Finds noninteracting matchings of the bialgebra rule.
-
-    :param g: An instance of a ZX-graph.
-    :param matchf: An optional filtering function for candidate edge, should
-       return True if a edge should considered as a match. Passing None will
-       consider all edges.
-    :param num: Maximal amount of matchings to find. If -1 (the default)
-       tries to find as many as possible.
-    :rtype: List of 4-tuples ``(v1, v2, neighbors_of_v1,neighbors_of_v2)``
-    """
-    if matchf is not None: candidates_set = set([e for e in g.edges() if matchf(e)])
-    else: candidates_set = g.edge_set()
-    candidates = list(Counter(candidates_set).elements())
-    phases = g.phases()
-    types = g.types()
-
-    i = 0
-    m: List[MatchBialgType[VT]] = []
-    while (num == -1 or i < num) and len(candidates) > 0:
-        v0, v1 = g.edge_st(candidates.pop())
-        if g.is_ground(v0) or g.is_ground(v1):
-            continue
-        v0t = types[v0]
-        v1t = types[v1]
-        v0p = phases[v0]
-        v1p = phases[v1]
-        if (v0p == 0 and v1p == 0 and
-        ((v0t == VertexType.Z and v1t == VertexType.X) or (v0t == VertexType.X and v1t == VertexType.Z))):
-            v0n = [n for n in g.neighbors(v0) if not n == v1]
-            v1n = [n for n in g.neighbors(v1) if not n == v0]
-            if (all([types[n] == v1t and phases[n] == 0 for n in v0n]) and # all neighbors of v0 are of the same type as v1
-                all([types[n] == v0t and phases[n] == 0 for n in v1n]) and # all neighbors of v1 are of the same type as v0
-                g.num_edges(v0, v1) == 1 and # there is exactly one edge between v0 and v1
-                g.num_edges(v0, v0) == 0 and # there are no self-loops on v0
-                g.num_edges(v1, v1) == 0): # there are no self-loops on v1
-                i += 1
-                for vn in [v0n, v1n]:
-                    for v in vn:
-                        for c in g.incident_edges(v):
-                            if c in candidates:
-                                candidates.remove(c)
-                m.append((v0,v1,v0n,v1n))
-    return m
-
-
-def bialg(g: BaseGraph[VT,ET], matches: List[MatchBialgType[VT]]) -> RewriteOutputType[VT,ET]:
-    """Performs a certain type of bialgebra rewrite given matchings supplied by
-    ``match_bialg(_parallel)``."""
-    rem_verts: List[VT] = []
-    etab: Dict[Tuple[VT,VT], List[int]] = dict()
-    for m in matches:
-        rem_verts.append(m[0])
-        rem_verts.append(m[1])
-        es = [(i,j) for i in m[2] for j in m[3]]
-        for e in es:
-            if e in etab: etab[e][0] += 1
-            else: etab[e] = [1,0]
-
-    return (etab, rem_verts, [], True)
 
 MatchSpiderType = Tuple[VT,VT]
 
@@ -282,39 +248,6 @@ def unspider(g: BaseGraph[VT,ET], m: List[Any], qubit:FloatInt=-1, row:FloatInt=
         g.set_phase(v, g.phase(u))
         g.set_phase(u, 0)
     return v
-
-def match_z_to_z_box(g: BaseGraph[VT,ET]) -> List[VT]:
-    """Does the same as :func:`match_z_to_z_box_parallel` but with ``num=1``."""
-    return match_z_to_z_box_parallel(g, num=1)
-
-def match_z_to_z_box_parallel(
-        g: BaseGraph[VT,ET],
-        matchf:Optional[Callable[[VT],bool]]=None,
-        num:int=-1
-        ) -> List[VT]:
-    """Finds all vertices that can be converted to Z-boxes."""
-    if matchf is not None: candidates = set([v for v in g.vertices() if matchf(v)])
-    else: candidates = g.vertex_set()
-    types = g.types()
-    phases = g.phases()
-    m: List[VT] = []
-    for v in candidates:
-        if types[v] == VertexType.Z and not isinstance(phases[v],Poly):
-            if num == 0: break
-            m.append(v)
-            num -= 1
-    return m
-
-def z_to_z_box(g: BaseGraph[VT,ET], matches: List[VT]) -> RewriteOutputType[VT,ET]:
-    """Converts a Z vertex to a Z-box."""
-    for v in matches:
-        g.set_type(v, VertexType.Z_BOX)
-        phase = g.phase(v)
-        assert not isinstance(phase, Poly)
-        label = np.round(np.e**(1j * np.pi * phase), 8)
-        set_z_box_label(g, v, label)
-        g.set_phase(v, 0)
-    return ({}, [], [], True)
 
 MatchWType = Tuple[VT,VT]
 
@@ -1012,7 +945,9 @@ def merge_phase_gadgets(g: BaseGraph[VT,ET], matches: List[MatchGadgetType[VT]])
                 g.merge_vdata(v, w)
     return ({}, rem, [], False)
 
+
 MatchSupplementarityType = Tuple[VT,VT,Literal[1,2],FrozenSet[VT]]
+
 
 def match_supplementarity(g: BaseGraph[VT,ET], vertexf:Optional[Callable[[VT],bool]]=None) -> List[MatchSupplementarityType[VT]]:
     """Finds pairs of non-Clifford spiders that are connected to exactly the same set of vertices.

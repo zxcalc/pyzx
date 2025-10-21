@@ -30,7 +30,7 @@ from pyzx.utils import (get_w_io, get_z_box_label, EdgeType, VertexType,
 from typing import List, Any, Dict, Tuple
 from fractions import Fraction
 
-from .rules import z_to_z_box
+from pyzx.rewrite_rules.z_to_z_box_rule import unsafe_z_to_z_box
 from pyzx.graph.base import BaseGraph, VT, ET
 
 
@@ -51,17 +51,17 @@ def check_fuse(g: BaseGraph[VT,ET], v1: VT, v2: VT) -> bool:
 
 def fuse(g: BaseGraph[VT,ET], v1: VT, v2: VT) -> bool:
     if not check_fuse(g, v1, v2): return False
-    return unsafe_fuse_w(g, v1, v2)
+    return unsafe_fuse(g, v1, v2)
 
 def unsafe_fuse(g: BaseGraph[VT,ET], v1: VT, v2: VT) -> bool:
     if vertex_is_w(g.type(v1)):
-        return fuse_w(g, v1, v2)
+        return unsafe_fuse_w(g, v1, v2)
 
     if g.type(v1) == VertexType.Z_BOX or g.type(v2) == VertexType.Z_BOX:
         if g.type(v1) == VertexType.Z:
-            z_to_z_box(g, [v1])
+            unsafe_z_to_z_box(g, v1)
         if g.type(v2) == VertexType.Z:
-            z_to_z_box(g, [v2])
+            unsafe_z_to_z_box(g, v2)
         set_z_box_label(g, v1, get_z_box_label(g, v1) * get_z_box_label(g, v2))
     else:
         g.add_to_phase(v1, g.phase(v2))

@@ -51,7 +51,6 @@ def unsafe_remove_id(g: BaseGraph[VT,ET], v: VT) -> bool:
 
 
 
-
 # Remove identity subrules
 
 def check_remove_zx(g: BaseGraph[VT,ET], v: VT) -> bool:
