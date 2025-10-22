@@ -15,12 +15,15 @@
 # limitations under the License.
 
 from .color_change_rule import color_change_diagram, check_color_change, color_change
-from .bialgebra_rule    import bialgebra, unsafe_bialgebra, check_bialgebra, check_bialgebra_reduce
-from .fuse_rule         import check_fuse, fuse, check_fuse_w, fuse_w, unsafe_fuse_w, unsafe_fuse, unfuse
-from .remove_id_rule    import check_remove_id, remove_id, unsafe_remove_id
-from .copy_rule         import check_copy, copy, unsafe_copy
-from .z_to_z_box_rule   import z_to_z_box, unsafe_z_to_z_box, check_z_to_z_box
-from .pivot_rule        import unsafe_pivot, pivot, check_pivot_parallel
+from .bialgebra_rule    import bialgebra, check_bialgebra, check_bialgebra_reduce
+from .fuse_rule         import check_fuse, fuse, unfuse
+from .remove_id_rule    import check_remove_id, remove_id
+from .copy_rule         import check_copy, copy
+from .z_to_z_box_rule   import z_to_z_box, check_z_to_z_box
+from .pivot_rule        import pivot, check_pivot_parallel
+from .lcomp_rule        import lcomp, check_lcomp
+from .hopf_rule         import hopf, check_hopf
+from .self_loops_rule   import remove_self_loop, check_self_loop
 
 
 __all__ = ['color_change_diagram',
@@ -29,26 +32,23 @@ __all__ = ['color_change_diagram',
            'check_bialgebra_reduce',
            'check_bialgebra',
            'bialgebra',
-           'unsafe_bialgebra',
            'check_fuse',
            'fuse',
-           'unsafe_fuse',
-           'check_fuse_w',
-           'fuse_w',
-           'unsafe_fuse_w',
            'unfuse',
            'check_remove_id',
            'remove_id',
-           'unsafe_remove_id',
            'check_copy',
            'copy',
-           'unsafe_copy',
            'z_to_z_box',
-           'unsafe_z_to_z_box',
            'check_z_to_z_box',
            'check_pivot_parallel',
            'pivot',
-           'unsafe_pivot',
+           'check_lcomp',
+           'lcomp',
+           'hopf',
+           'check_hopf',
+           'check_self_loop',
+           'remove_self_loop',
         'check_copy_X',
         'copy_X',
         'check_copy_Z',

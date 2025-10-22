@@ -16,8 +16,7 @@
 
 
 __all__ = ['check_copy',
-           'copy',
-           'unsafe_copy']
+           'copy']
 
 from typing import Optional
 from pyzx.utils import EdgeType, VertexType, toggle_vertex, vertex_is_zx

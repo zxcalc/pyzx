@@ -17,8 +17,7 @@
 
 __all__ = [
         'check_pivot_parallel',
-        'pivot',
-        'unsafe_pivot']
+        'pivot']
 
 
 from typing import Tuple, List, Dict, Set, Callable, Optional
@@ -52,24 +51,22 @@ def boundary_list_for_vertex(
 
 def check_pivot_parallel(
         g: BaseGraph[VT,ET],
-        e: ET
+        v0: VT,
+        v1: VT
         ) -> bool:
     """Checks if an edge can be simplified using the pivot rule.
 
     :param g: An instance of a ZX-graph.
-    :param e: An instance of a ZX-edge.
+    :param v0: The source vertex of the edge to check.
+    :param v1: The target vertex of the edge  to check.
     """
 
     types = g.types()
     phases = g.phases()
+    if not g.connected(v0,v1): return False
+    if not (v0 in g.vertices() and v1 in g.vertices()): return False
 
-    i = 0
-    m: List[MatchPivotType[VT]] = []
-
-    if e not in g.edges(): return False
-
-    if g.edge_type(e) != EdgeType.HADAMARD: return False
-    v0, v1 = g.edge_st(e)
+    if g.edge_type(g.edge(v0, v1)) != EdgeType.HADAMARD: return False
 
     if not (types[v0] == VertexType.Z and types[v1] == VertexType.Z): return False
 
@@ -232,14 +229,14 @@ def match_pivot_boundary(
     return m
 
 
-def pivot(g: BaseGraph[VT,ET], e: ET) -> bool:
-    if check_pivot_parallel(g, e):
-        return unsafe_pivot(g, e)
+def pivot(g: BaseGraph[VT,ET], v: VT, v1: VT) -> bool:
+    if check_pivot_parallel(g, v, v1):
+        return unsafe_pivot(g, v, v1)
     return False
 
 
 
-def unsafe_pivot(g: BaseGraph[VT,ET], e: ET) -> bool:
+def unsafe_pivot(g: BaseGraph[VT,ET], v0: VT, v1: VT) -> bool:
     """Perform a pivoting rewrite, given a list of matches as returned by
     ``match_pivot(_parallel)``. A match is itself a list where:
 
@@ -251,8 +248,6 @@ def unsafe_pivot(g: BaseGraph[VT,ET], e: ET) -> bool:
     rem_verts: List[VT] = []
     rem_edges: List[ET] = []
     etab: Dict[Tuple[VT,VT],List[int]] = dict()
-
-    v0, v1 = g.edge_st(e)
 
     b0: List[VT] = boundary_list_for_vertex(g, v0)
     assert b0 is not None

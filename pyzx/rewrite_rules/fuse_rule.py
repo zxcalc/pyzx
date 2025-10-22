@@ -16,11 +16,7 @@
 
 __all__ = [
         'check_fuse',
-        'check_fuse_w',
         'fuse',
-        'unsafe_fuse',
-        'fuse_w',
-        'unsafe_fuse_w',
         'unfuse']
 
 

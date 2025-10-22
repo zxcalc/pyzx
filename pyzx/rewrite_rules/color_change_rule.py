@@ -18,7 +18,6 @@
 __all__ = [
         'color_change_diagram',
         'color_change',
-        'unsafe_color_change',
         'check_color_change']
 
 from pyzx.graph.base import BaseGraph, VT, ET
