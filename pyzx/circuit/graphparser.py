@@ -91,15 +91,15 @@ def circuit_to_graph(
     c: Circuit, 
     compress_rows:bool=True,
     backend:Optional[str]=None,
-    init:Optional[List[bool]]=None,
-    post_select:Optional[List[int]]=None
+    initialize_qubits:Optional[List[bool]]=None,
+    postselect_qubits:Optional[List[int]]=None
 ) -> BaseGraph[VT, ET]:
     """Turns the circuit into a ZX-Graph.
     If ``compress_rows`` is set, it tries to put single qubit gates on different qubits,
     on the same row.
 
-    ``init`` denotes whether each input should be connected to |0\ranlge,
-    ``post_select`` denotes for each measurement whether it should be 
+    ``initialize_qubits`` denotes whether each input should be connected to |0\ranlge,
+    ``postselect_qubits`` denotes for each measurement whether it should be 
     postselected to |0\rangle (0) or |1\ranlge (1)."""
     g = Graph(backend)
     q_mapper: TargetMapper[VT] = TargetMapper()
@@ -177,14 +177,14 @@ def circuit_to_graph(
     g.set_inputs(tuple(inputs))
     g.set_outputs(tuple(outputs))
 
-    if init:
-        assert len(inputs) == len(init), "Length of init list must be equal to number of inputs!"
-        state = "".join("0" if i else "/" for i in init)
+    if initialize_qubits:
+        assert len(inputs) == len(initialize_qubits), "Length of init list must be equal to number of inputs!"
+        state = "".join("0" if i else "/" for i in initialize_qubits)
         g.apply_state(state)
 
-    if post_select:
-        assert len(measure_vertices) == len(post_select), "Length of post_select list must be equal to number of measurements!"
+    if postselect_qubits:
+        assert len(measure_vertices) == len(postselect_qubits), "Length of post_select list must be equal to number of measurements!"
         for i, v in enumerate(measure_vertices):
-            g.set_phase(v, post_select[i])
+            g.set_phase(v, postselect_qubits[i])
 
     return g

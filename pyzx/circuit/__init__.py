@@ -48,6 +48,12 @@ class Circuit(object):
         self.gates:  List[Gate] = []
         self.name:   str        = name
 
+        # If the i-th entry is True, the i-th qubit is initialized to |0>, otherwise the qubit will not be initialized.
+        self._initialize_qubits: Optional[List[bool]] = None
+
+        # If the i-th entry is 1 (0), the i-th measured qubit is postselected to |1> (|0>).
+        self._postselect_qubits: Optional[List[int]] = None
+
     ### BASIC FUNCTIONALITY
 
 
@@ -67,6 +73,29 @@ class Circuit(object):
         for g in reversed(self.gates):
             c.gates.append(g.to_adjoint())
         return c
+
+
+    def initialize_qubits(self, initialize_qubits: List[bool]):
+        """
+        Args:
+            initialize_qubits: A list of booleans of length equal to the number of qubits in the circuit.
+                If the i-th entry is True, the i-th qubit is initialized to |0>, otherwise the qubit will not be initialized.
+        """
+        if len(initialize_qubits) != self.qubits:
+            raise ValueError("Length of initialize_qubits must be equal to the number of qubits in the circuit.")
+        self._initialize_qubits = initialize_qubits
+
+    def postselect_qubits(self, postselect_qubits: List[int]):
+        """
+        Args:
+            postselect_qubits: A list of integers indicating for each measured qubits, whether it should be
+                postselected to |0> (0) or |1> (1). The length of the list must be equal to the number of
+                measurement gates in the circuit.
+        """
+        measurement_count = sum(1 for g in self.gates if isinstance(g, Measurement))
+        if len(postselect_qubits) != measurement_count:
+            raise ValueError("Length of postselect_qubits must be equal to the number of measurement gates in the circuit.")
+        self._postselect_qubits = postselect_qubits
 
 
     def verify_equality(self, other: 'Circuit', up_to_swaps: bool = False, up_to_global_phase: bool = True) -> bool:
@@ -264,19 +293,19 @@ class Circuit(object):
         zh:bool=False,
         compress_rows:bool=True,
         backend:Optional[str]=None,
-        init:Optional[List[bool]]=None,
-        post_select:Optional[List[int]]=None
     ) -> BaseGraph:
         """Turns the circuit into a ZX-Graph.
         If ``compress_rows`` is set, it tries to put single qubit gates on different qubits,
-        on the same row.
-        ``init`` denotes whether each input should be connected to |0\ranlge,
-        ``post_select`` denotes for each measurement whether it should be 
-        postselected to |0\rangle (0) or |1\ranlge (1)."""
+        on the same row."""
         from .graphparser import circuit_to_graph
 
-        return circuit_to_graph(self if zh else self.to_basic_gates(),
-            compress_rows, backend, init=init, post_select=post_select)
+        return circuit_to_graph(
+            self if zh else self.to_basic_gates(),
+            compress_rows, 
+            backend, 
+            initialize_qubits=self._initialize_qubits, 
+            postselect_qubits=self._postselect_qubits
+        )
 
     def to_tensor(self, preserve_scalar:bool=True) -> np.ndarray:
         """Returns a numpy tensor describing the circuit."""

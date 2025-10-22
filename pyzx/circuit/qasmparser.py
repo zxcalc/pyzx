@@ -146,11 +146,10 @@ class QASMParser(object):
             target, result_bit = args[0].split(' -> ')
             # Extract the register name and index separately for both target and result
             _, target_idx = target.split('[')
-            _, result_idx = result_bit.split('[')
+            result_reg_name, result_idx = result_bit.split('[')
             # Remove the trailing ']' and convert to int
             target_qbit = int(target_idx[:-1])
-            # TODO: Currently control flow is not supported, thus ignore result_bit
-            gate = Measurement(target_qbit)
+            gate = Measurement(target_qbit, result_symbol=f"{result_reg_name}[{result_idx[:-1]}]")
             gates.append(gate)
             return gates
         if name in ("opaque", "if"):

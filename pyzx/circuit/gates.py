@@ -1215,9 +1215,15 @@ class Measurement(Gate):
     # * (OpenQASM 2) measure q[0] -> c[0]
     # * (OpenQASM 3) c[0] = measure q[0]
 
-    def __init__(self, target: int, result_bit: Optional[int] = None) -> None:
+    def __init__(
+        self,
+        target: int,
+        result_bit: Optional[int] = None,
+        result_symbol: Optional[str] = None
+    ) -> None:
         self.target = target
         self.result_bit = result_bit
+        self.result_symbol = result_symbol
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, Measurement): return False
@@ -1261,7 +1267,8 @@ class Measurement(Gate):
     def to_graph_symbolic_boolean(self, g, q_mapper):
         """Represent the measurement as a node with symbolic boolean phases."""
         r = q_mapper.next_row(self.target)
-        phase = new_var(name=f"a{self.target}", is_bool=True, registry=g.var_registry) 
+        symbol_name = self.result_symbol if self.result_symbol is not None else f"m{self.target}"
+        phase = new_var(name=f"{symbol_name}", is_bool=True, registry=g.var_registry) 
         _ = self.graph_add_node(g,
             q_mapper,
             VertexType.X,
