@@ -24,6 +24,8 @@ from .pivot_rule        import pivot, check_pivot_parallel
 from .lcomp_rule        import lcomp, check_lcomp
 from .hopf_rule         import hopf, check_hopf
 from .self_loops_rule   import remove_self_loop, check_self_loop
+from .add_identity_rule import check_edge, add_Z_identity
+from .push_pauli_rule   import check_pauli, pauli_push
 
 
 __all__ = ['color_change_diagram',
@@ -49,6 +51,10 @@ __all__ = ['color_change_diagram',
            'check_hopf',
            'check_self_loop',
            'remove_self_loop',
+           'check_edge',
+           'add_Z_identity',
+           'check_pauli',
+           'pauli_push',
         'check_copy_X',
         'copy_X',
         'check_copy_Z',

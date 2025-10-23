@@ -63,8 +63,8 @@ def check_pivot_parallel(
 
     types = g.types()
     phases = g.phases()
-    if not g.connected(v0,v1): return False
     if not (v0 in g.vertices() and v1 in g.vertices()): return False
+    if not g.connected(v0,v1): return False
 
     if g.edge_type(g.edge(v0, v1)) != EdgeType.HADAMARD: return False
 
