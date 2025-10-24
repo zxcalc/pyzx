@@ -254,8 +254,8 @@ class RewriteSimpTripleVertex(RewriteTripleVertex[VT, ET]):
 
         for v1 in graph.vertices():
             for v2 in graph.neighbors(v1):
-                for v3 in graph.neighbors(v2):
-                    if match(graph, v1, v2, v3):
+                for v3 in graph.neighbors(v1):
+                    if v2 != v3 and match(graph, v1, v2, v3):
                         if self.is_ordered:
                             all_matches.add((v1, v2, v3))
                         else:

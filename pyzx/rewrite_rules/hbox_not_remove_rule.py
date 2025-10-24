@@ -40,7 +40,7 @@ def is_NOT_gate(g, v, n1, n2):
 def check_hbox_parallel_not(
         g: BaseGraph[VT,ET],
         h: VT,
-        n:VT,
+        n: VT,
         v: VT
         ) -> bool:
     """Finds H-boxes that are connected to a Z-spider both directly and via a NOT.
@@ -57,7 +57,7 @@ def check_hbox_parallel_not(
 
     if types[h] != VertexType.H_BOX or phases[h] != 1: return False
     if v == h: return False
-    if not g.connected(v,h): return False
+    if not g.connected(v,n): return False
 
     if g.vertex_degree(n) != 2 or phases[n] != 1: return False # If it turns out to be useful, this rule can be generalised to allow spiders of arbitrary phase here
 

@@ -32,7 +32,7 @@ from .hbox_not_remove_rule  import check_hbox_parallel_not, hbox_parallel_not_re
 from .zero_hbox_rule        import check_zero_hbox, zero_hbox, unsafe_zero_hbox
 from .fuse_hboxes_rule      import check_connected_hboxes, fuse_hboxes, unsafe_fuse_hboxes
 from .had_edge_hbox_rule    import check_hadamard, check_hadamard_edge, replace_hadamard, had_edge_to_hbox, unsafe_had_edge_to_hbox, unsafe_replace_hadamard
-
+from .hpivot_rule           import check_hpivot, hpivot, unsafe_hpivot
 
 __all__ = ['color_change_diagram',
            'check_color_change',
@@ -92,5 +92,8 @@ __all__ = ['color_change_diagram',
            'replace_hadamard',
            'unsafe_replace_hadamard',
            'had_edge_hbox_rule',
-           'unsafe_had_edge_to_hbox'
+           'unsafe_had_edge_to_hbox',
+           'check_hpivot',
+           'hpivot',
+           'unsafe_hpivot',
            ]
