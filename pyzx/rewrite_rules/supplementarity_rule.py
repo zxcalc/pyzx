@@ -15,7 +15,7 @@
 # limitations under the License.
 
 __all__ = ['check_supplementarity',
-           'apply_supplementarity']
+           'supplementarity']
 
 
 from typing import Tuple, List, Dict, Set, FrozenSet

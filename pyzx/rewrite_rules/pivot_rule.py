@@ -17,7 +17,8 @@
 
 __all__ = [
         'check_pivot_parallel',
-        'pivot']
+        'pivot',
+        'unsafe_pivot',]
 
 
 from typing import Tuple, List, Dict, Set, Callable, Optional

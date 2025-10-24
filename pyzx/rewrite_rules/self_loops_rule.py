@@ -15,7 +15,8 @@
 # limitations under the License.
 
 __all__ = ['check_self_loop',
-           'remove_self_loop']
+           'remove_self_loop',
+           'unsafe_remove_self_loop']
 
 
 from typing import Tuple, List, Dict

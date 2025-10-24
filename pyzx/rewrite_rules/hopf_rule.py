@@ -15,7 +15,8 @@
 # limitations under the License.
 
 __all__ = ['check_hopf',
-           'hopf']
+           'hopf',
+           'unsafe_hopf']
 
 from typing import Tuple, List, Dict, Callable, Optional
 from pyzx.utils import EdgeType, vertex_is_z_like, vertex_is_zx_like

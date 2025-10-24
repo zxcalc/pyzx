@@ -16,23 +16,23 @@
 
 
 __all__ = ['check_edge',
-           'add_Z_identity']
+           'add_Z_identity',
+           'unsafe_add_Z_identity']
 
 
 
-from typing import Callable, Optional, List, Tuple
+from typing import Tuple
 
 from pyzx.utils import EdgeType, VertexType
 from pyzx.graph.base import BaseGraph, VT, ET, upair
-import pyzx.rewrite_rules.rules as rules
 
 MatchSelfLoopType = Tuple[VT, int, int]
 
 
 
 def check_edge( g: BaseGraph[VT,ET], v:VT, w:VT) -> bool:
-    if not g.connected(v,w): return False
     if not (v in g.vertices() and w in g.vertices()): return False
+    if not g.connected(v,w): return False
     return True
 
 def add_Z_identity( g: BaseGraph[VT,ET], v:VT, w:VT) -> bool:
@@ -43,9 +43,10 @@ def add_Z_identity( g: BaseGraph[VT,ET], v:VT, w:VT) -> bool:
 def unsafe_add_Z_identity(g: BaseGraph[VT,ET], v:VT, w:VT) -> bool:
 
     etab = {}
-    e = g.edge(v, w)
 
+    e = g.edge(v, w)
     et = g.edge_type(e)
+
     v1,v2 = g.edge_st(e)
     r = 0.5*(g.row(v1) + g.row(v2))
     q = 0.5*(g.qubit(v1) + g.qubit(v2))

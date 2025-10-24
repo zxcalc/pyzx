@@ -14,41 +14,36 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""
-NEW VERSION
-
-This module contains several rules more easily applied interactively to ZX
-diagrams. The emphasis is more on ease of use and simplicity than performance.
-
-Rules are given as functions that take as input a vertex or a pair of vertices
-to fix the location the rule is applied. They then apply the rule and return
-True if the rule indeed applies at this location, otherwise they return false.
-
-Most rules also have a companion function check_RULENAME, which only checks
-whether the rule applies at the given location and doesn't actually apply
-the rule.
-"""
 
 __all__ = [
-        'check_pi_commute_X',
-        'pi_commute_X',
-        'check_pi_commute_Z',
-        'pi_commute_Z']
+        'check_pi_commute',
+        'pi_commute',
+        'unsafe_pi_commute',]
 
 from pyzx.graph.base import BaseGraph, VT, ET
 from pyzx.rewrite_rules.color_change_rule import color_change_diagram
-from pyzx.rewrite_rules.bialgebra_rule import bialgebra
 
-from pyzx.utils import (EdgeType, VertexType, get_w_io, get_z_box_label, is_pauli,
-                    vertex_is_w)
+from pyzx.utils import EdgeType, VertexType
 
-##wanna merge
 
-def check_pi_commute_Z(g: BaseGraph[VT, ET], v: VT) -> bool:
-    return g.type(v) == VertexType.Z
 
-def pi_commute_Z(g: BaseGraph[VT, ET], v: VT) -> bool:
-    if not check_pi_commute_Z(g, v): return False
+def check_pi_commute(g: BaseGraph[VT, ET], v: VT) -> bool:
+    return g.type(v) == VertexType.Z or g.type(v) == VertexType.X
+
+
+def pi_commute(g: BaseGraph[VT, ET], v: VT) -> bool:
+    if check_pi_commute(g, v): return unsafe_pi_commute(g, v)
+    return False
+
+def unsafe_pi_commute(g: BaseGraph[VT, ET], v: VT) -> bool:
+
+    swap_color = False
+
+    if g.type(v) == VertexType.X:
+        swap_color = True
+        color_change_diagram(g)
+
+
     g.set_phase(v, -g.phase(v))
     ns = g.neighbors(v)
     for w in ns:
@@ -64,16 +59,8 @@ def pi_commute_Z(g: BaseGraph[VT, ET], v: VT) -> bool:
                     row=0.5*(g.row(v) + g.row(w)))
             g.add_edge((v, c))
             g.add_edge((c, w), edgetype=et)
+
+    if swap_color:
+        color_change_diagram(g)
+
     return True
-
-def check_pi_commute_X(g: BaseGraph[VT,ET], v: VT) -> bool:
-    color_change_diagram(g)
-    b = check_pi_commute_Z(g, v)
-    color_change_diagram(g)
-    return b
-
-def pi_commute_X(g: BaseGraph[VT,ET], v: VT) -> bool:
-    color_change_diagram(g)
-    b = pi_commute_Z(g, v)
-    color_change_diagram(g)
-    return b

@@ -17,7 +17,8 @@
 
 __all__ = [
         'check_lcomp',
-        'lcomp']
+        'lcomp',
+        'unsafe_lcomp']
 
 
 from typing import Tuple, List, Dict

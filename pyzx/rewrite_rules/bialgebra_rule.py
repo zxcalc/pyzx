@@ -16,7 +16,8 @@
 
 __all__ = ['check_bialgebra_reduce',
            'check_bialgebra',
-           'bialgebra']
+           'bialgebra',
+           'unsafe_bialgebra']
 
 from collections import defaultdict
 from typing import Callable, Optional, List, Tuple, Dict

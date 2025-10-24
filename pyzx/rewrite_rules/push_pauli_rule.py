@@ -15,7 +15,8 @@
 # limitations under the License.
 
 __all__ = ['check_pauli',
-           'pauli_push']
+           'pauli_push',
+           'unsafe_pauli_push',]
 
 from fractions import Fraction
 

@@ -15,7 +15,8 @@
 # limitations under the License.
 
 __all__ = ['check_remove_id',
-           'remove_id']
+           'remove_id',
+           'unsafe_remove_id']
 
 ## seperate into 3 parts: overarching, zx remove, w remove. have overarching be in __all__
 

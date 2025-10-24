@@ -147,14 +147,6 @@ def pauli_push(g: BaseGraph[VT,ET],
     return (etab, rem_verts, rem_edges, False)
 
 
-def match_hadamard_edge(
-        g: BaseGraph[VT,ET], 
-        edgef: Optional[Callable[[ET],bool]] = None
-        ) -> List[ET]:
-    if edgef is not None: candidates = set([e for e in g.edges() if edgef(e)])
-    else: candidates = g.edge_set()
-    return [e for e in candidates if g.edge_type(e)==EdgeType.HADAMARD]
-
 
 def match_edge(
         g: BaseGraph[VT,ET], 
@@ -163,6 +155,16 @@ def match_edge(
     if edgef is not None: candidates = set([e for e in g.edges() if edgef(e)])
     else: candidates = g.edge_set()
     return list(candidates)
+
+
+
+def match_hadamard_edge(
+        g: BaseGraph[VT,ET],
+        edgef: Optional[Callable[[ET],bool]] = None
+        ) -> List[ET]:
+    if edgef is not None: candidates = set([e for e in g.edges() if edgef(e)])
+    else: candidates = g.edge_set()
+    return [e for e in candidates if g.edge_type(e)==EdgeType.HADAMARD]
 
 
 def euler_expansion(g: BaseGraph[VT,ET], 

@@ -22,6 +22,11 @@ from pyzx.graph.base import BaseGraph, VT, ET
 from pyzx.symbolic import Poly
 
 
+__all__ = [
+        'check_lcomp',
+        'lcomp',
+        'unsafe_lcomp']
+
 MatchGadgetType = Tuple[VT,VT,FractionLike,List[VT],List[VT]]
 
 def match_phase_gadgets(g: BaseGraph[VT,ET],vertexf:Optional[Callable[[VT],bool]]=None) -> List[MatchGadgetType[VT]]:

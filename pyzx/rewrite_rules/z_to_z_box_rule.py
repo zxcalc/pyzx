@@ -17,7 +17,8 @@
 
 __all__ = [
         'z_to_z_box',
-        'check_z_to_z_box']
+        'check_z_to_z_box',
+        'unsafe_z_to_z_box',]
 
 
 from typing import List, Callable, Optional

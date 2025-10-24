@@ -17,7 +17,8 @@
 __all__ = [
         'check_fuse',
         'fuse',
-        'unfuse']
+        'unfuse',
+        'unsafe_fuse',]
 
 
 from pyzx.utils import (get_w_io, get_z_box_label, EdgeType, VertexType,
