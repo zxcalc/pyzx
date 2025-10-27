@@ -42,7 +42,7 @@ class Edge:
         self.h += h
         self.w_io += w_io
         self.fault_edge += fault_edge
-        if self.s < 0 or self.h < 0:
+        if self.s < 0 or self.h < 0 or self.w_io < 0 or self.fault_edge < 0:
             raise ValueError('Cannot have negative edges')
         if self.w_io not in (0,1):
             raise ValueError('Invalid number of W-IO edges')
@@ -234,7 +234,7 @@ class Multigraph(BaseGraph[int,Tuple[int,int,EdgeType]]):
             # remove all edges
             for v1 in vs:
                 e = self.graph[v][v1]
-                self.nedges -= e.s + e.h
+                self.nedges -= e.s + e.h + e.w_io + e.fault_edge
                 # Remove all edata for all edge types between v and v1
                 for ty in EdgeType:
                     self._edata.pop((min(v, v1), max(v, v1), ty), None)
@@ -408,10 +408,14 @@ class Multigraph(BaseGraph[int,Tuple[int,int,EdgeType]]):
             # decrement the old type and increment the new type
             if ty == EdgeType.SIMPLE: e.add(s=-1)
             elif ty == EdgeType.HADAMARD: e.add(h=-1)
-            else: e.add(w_io=-1)
+            elif ty == EdgeType.W_IO: e.add(w_io=-1)
+            elif ty == EdgeType.FAULT_EDGE: e.add(fault_edge=-1)
+            else: raise ValueError(f"Unknown edge type: {ty}")
             if t == EdgeType.SIMPLE: e.add(s=1)
             elif t == EdgeType.HADAMARD: e.add(h=1)
-            else: e.add(w_io=1)
+            elif t == EdgeType.W_IO: e.add(w_io=1)
+            elif t == EdgeType.FAULT_EDGE: e.add(fault_edge=1)
+            else: raise ValueError(f"Unknown edge type: {t}")
 
     def type(self, vertex):
         return self.ty[vertex]

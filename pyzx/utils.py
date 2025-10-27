@@ -84,6 +84,8 @@ class EdgeType(IntEnum):
 
 def toggle_edge(ty: EdgeType) -> EdgeType:
     """Swap the regular and Hadamard edge types."""
+    if ty not in (EdgeType.SIMPLE, EdgeType.HADAMARD):
+        raise ValueError(f"Unknown edge type: {ty}")
     return EdgeType.HADAMARD if ty == EdgeType.SIMPLE else EdgeType.SIMPLE
 
 def phase_to_s(a: FractionLike, t:VertexType=VertexType.Z, poly_with_pi:bool=False) -> str:

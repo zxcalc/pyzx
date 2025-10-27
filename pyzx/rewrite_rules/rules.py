@@ -837,7 +837,8 @@ def remove_ids(g: BaseGraph[VT,ET], matches: List[MatchIdType[VT]]) -> RewriteOu
         e = (v0,v1)
         if not e in etab: etab[e] = [0,0]
         if et == EdgeType.SIMPLE: etab[e][0] += 1
-        else: etab[e][1] += 1
+        elif et == EdgeType.HADAMARD: etab[e][1] += 1
+        else: raise ValueError(f"Invalid edge type: {et}")
     return (etab, rem, [], False)
 
 

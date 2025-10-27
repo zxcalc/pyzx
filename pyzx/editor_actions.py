@@ -128,7 +128,12 @@ def pauli_push(g: BaseGraph[VT,ET],
             rem_edges.append(edge)
             w2 = g.add_vertex(t,q,r,p)
             etab[upair(v,w2)] = [1,0]
-            etab[upair(n,w2)] = [1,0] if et == EdgeType.SIMPLE else [0,1]
+            if et == EdgeType.SIMPLE:
+                etab[upair(n,w2)] = [1,0]
+            elif et == EdgeType.HADAMARD:
+                etab[upair(n,w2)] = [0,1]
+            else:
+                raise ValueError(f"Cannot apply Pauli commutation through {et} edge")
             new_verts.append(w2)
         if not vertex_is_zx(g.type(v)): # v is H_BOX
             if len(new_verts) == 2:
