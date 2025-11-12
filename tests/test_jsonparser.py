@@ -24,6 +24,7 @@ if __name__ == '__main__':
     sys.path.append('.')
 
 from pyzx.graph import Graph
+from pyzx.graph.scalar import Scalar
 from pyzx.graph.jsonparser import graph_to_dict, dict_to_graph
 from pyzx.utils import EdgeType, VertexType
 from pyzx.symbolic import Poly, new_var
@@ -324,6 +325,29 @@ class TestGraphIO(unittest.TestCase):
         g = Graph.from_json(js)
         tikz = g.to_tikz()
         g2 = Graph.from_tikz(tikz, warn_overlap=False)
+
+    def test_dict_to_graph_scalar_roundtrip(self):
+        g = Graph()
+        v = g.add_vertex(VertexType.Z, 0, 0)
+        w = g.add_vertex(VertexType.X, 0, 1)
+        x = g.add_vertex(VertexType.Z, 0, 2)
+        g.add_edge((v, w))
+        g.add_edge((w, x), EdgeType.HADAMARD)
+
+        g.scalar.power2 = 3
+        g.scalar.phase = Fraction(1, 4)
+        g.scalar.floatfactor = 2.5
+        normalized_scalar = Scalar.from_json(g.scalar.to_dict())
+
+        d = graph_to_dict(g)
+
+        g2 = dict_to_graph(d)
+        self.assertEqual(g2.scalar, normalized_scalar)
+
+        js = json.dumps(d)
+        d2 = json.loads(js)
+        g3 = dict_to_graph(d2)
+        self.assertEqual(g3.scalar, normalized_scalar)
 
     def test_zbox_label_roundtrip(self):
         g = Graph()

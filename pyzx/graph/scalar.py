@@ -84,6 +84,20 @@ class Scalar(object):
     def __complex__(self) -> complex:
         return self.to_number()
 
+    def __eq__(self, other: object) -> bool:
+        """Compares all fields for equality.
+
+        Note that two Scalars can have the same output for to_number() even though not all their fields are equal."""
+        if not isinstance(other, Scalar):
+            return NotImplemented
+        return (self.power2 == other.power2 and
+                self.phase == other.phase and
+                self.phasenodes == other.phasenodes and
+                self.sum_of_phases == other.sum_of_phases and
+                self.floatfactor == other.floatfactor and
+                self.is_unknown == other.is_unknown and
+                self.is_zero == other.is_zero)
+
     def polar_str(self) -> str:
         """Returns a human-readable string of the scalar in polar format"""
         r,th = cmath.polar(self.to_number())

@@ -398,6 +398,14 @@ def dict_to_graph(d: Dict[str,Any], backend: Optional[str]=None) -> BaseGraph:
     for (s,t,et) in d['edges']:
         g.add_edge((s,t),et)
 
+    if 'inputs' in d:
+        g.set_inputs(tuple(d['inputs']))
+    if 'outputs' in d:
+        g.set_outputs(tuple(d['outputs']))
+
+    if 'scalar' in d:
+        g.scalar = Scalar.from_json(d['scalar'])
+
     return g
 
 def json_to_graph(js: Union[str,Dict[str,Any]], backend:Optional[str]=None) -> BaseGraph:
