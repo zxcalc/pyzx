@@ -48,6 +48,7 @@ from . import simulate
 from . import editor
 from . import routing
 from . import local_search
+from . import cpm
 from .routing.parity_maps import CNOT_tracker
 
 # some common scalars
