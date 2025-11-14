@@ -199,6 +199,10 @@ def tensorfy_naive(g: 'BaseGraph[VT,ET]', preserve_scalar: bool = True) -> NDArr
                     t = np.tensordot(t,had)
                 elif g.edge_type(sl) == EdgeType.SIMPLE:
                     t = np.trace(t)
+                elif g.edge_type(sl) == EdgeType.W_IO:
+                    raise NotImplementedError(f"Tensor contraction with W_IO self-loops is not implemented.")
+                elif g.edge_type(sl) == EdgeType.FAULT_EDGE:
+                    raise NotImplementedError(f"Tensor contraction with FAULT_EDGE self-loops is not implemented.")
                 else:
                     raise NotImplementedError(f"Tensor contraction with {repr(sl)} self-loops is not implemented.")
             nn = list(filter(lambda n: rows[n]<r or (rows[n]==r and n<v), neigh)) # TODO: allow ordering on vertex indices?

@@ -134,7 +134,12 @@ def pauli_push(g: BaseGraph[VT,ET],
             rem_edges.append(edge)
             w2 = g.add_vertex(t,q,r,p)
             etab[upair(v,w2)] = [1,0]
-            etab[upair(n,w2)] = [1,0] if et == EdgeType.SIMPLE else [0,1]
+            if et == EdgeType.SIMPLE:
+                etab[upair(n,w2)] = [1,0]
+            elif et == EdgeType.HADAMARD:
+                etab[upair(n,w2)] = [0,1]
+            else:
+                raise ValueError(f"Cannot apply Pauli commutation through {et} edge")
             new_verts.append(w2)
         if not vertex_is_zx(g.type(v)): # v is H_BOX
             if len(new_verts) == 2:
@@ -223,7 +228,12 @@ def add_Z_identity(g: BaseGraph[VT,ET],
         r = 0.5*(g.row(v1) + g.row(v2))
         q = 0.5*(g.qubit(v1) + g.qubit(v2))
         w = g.add_vertex(VertexType.Z, q,r, 0)
-        etab[upair(v1,w)] = [1,0] if et == EdgeType.SIMPLE else [0,1]
+        if et == EdgeType.SIMPLE:
+            etab[upair(v1,w)] = [1,0]
+        elif et == EdgeType.HADAMARD:
+            etab[upair(v1,w)] = [0,1]
+        else:
+            raise ValueError(f"Cannot add Z identity on {et} edge")
         etab[upair(v2,w)] = [1,0]
     return (etab, [], rem_edges, False)
 
