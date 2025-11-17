@@ -49,8 +49,7 @@ def check_lcomp(
     if vt != VertexType.Z: return False
     if not phase_is_clifford(va) or phase_is_pauli(va): return False
 
-    if g.is_ground(v):
-        return False
+    if g.is_ground(v): return False
 
     if not (all(g.edge_type(e) == EdgeType.HADAMARD for e in g.incident_edges(v))): return False
 

@@ -23,19 +23,28 @@ from pyzx.symbolic import Poly
 
 
 __all__ = [
-        'check_lcomp',
-        'lcomp',
-        'unsafe_lcomp']
+        'check_phase_gadgets_for_simp',
+        'check_phase_gadgets_for_apply',
+        'merge_phase_gadgets_for_simp',
+        'merge_phase_gadgets_for_apply']
 
 MatchGadgetType = Tuple[VT,VT,FractionLike,List[VT],List[VT]]
 
-def match_phase_gadgets(g: BaseGraph[VT,ET],vertexf:Optional[Callable[[VT],bool]]=None) -> List[MatchGadgetType[VT]]:
+def check_phase_gadgets_for_simp(g: BaseGraph[VT,ET]) -> bool:
+    matches = match_phase_gadgets(g)
+    return len(matches) != 0
+
+def check_phase_gadgets_for_apply(g: BaseGraph[VT,ET], v: VT, w: VT) -> bool:
+    matches = match_phase_gadgets(g, [v, w])
+    return len(matches) != 0
+
+def match_phase_gadgets(g: BaseGraph[VT,ET], vertices:Optional[List[VT]]=None) -> List[MatchGadgetType[VT]]:
     """Determines which phase gadgets act on the same vertices, so that they can be fused together.
 
     :param g: An instance of a ZX-graph.
     :rtype: List of 5-tuples ``(axel,leaf, total combined phase, other axels with same targets, other leafs)``.
     """
-    if vertexf is not None: candidates = set([v for v in g.vertices() if vertexf(v)])
+    if vertices is not None: candidates = set(vertices)
     else: candidates = g.vertex_set()
 
     phases = g.phases()
@@ -82,10 +91,17 @@ def match_phase_gadgets(g: BaseGraph[VT,ET],vertexf:Optional[Callable[[VT],bool]
             m.append((v,n,totphase, gad, [gadgets[n] for n in gad]))
     return m
 
+def merge_phase_gadgets_for_simp(g: BaseGraph[VT,ET]) -> bool:
+    matches = match_phase_gadgets(g)
+    return merge_phase_gadgets(g, matches)
+
+def merge_phase_gadgets_for_apply(g: BaseGraph[VT,ET], v: VT, w: VT) -> bool:
+    matches = match_phase_gadgets(g, [v, w])
+    return merge_phase_gadgets(g, matches)
+
 def merge_phase_gadgets(g: BaseGraph[VT,ET], matches: List[MatchGadgetType[VT]]) -> bool:
     """Given the output of :func:``match_phase_gadgets``, removes phase gadgets that act on the same set of targets."""
     rem: List[VT] = []
-
 
     for v, n, phase, othergadgets, othertargets in matches:
         g.set_phase(v, phase)

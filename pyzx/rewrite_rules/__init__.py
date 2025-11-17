@@ -33,6 +33,8 @@ from .zero_hbox_rule        import check_zero_hbox, zero_hbox, unsafe_zero_hbox
 from .fuse_hboxes_rule      import check_connected_hboxes, fuse_hboxes, unsafe_fuse_hboxes
 from .had_edge_hbox_rule    import check_hadamard, check_hadamard_edge, replace_hadamard, had_edge_to_hbox, unsafe_had_edge_to_hbox, unsafe_replace_hadamard
 from .hpivot_rule           import check_hpivot, hpivot, unsafe_hpivot
+from .phase_gadget_rule     import check_phase_gadgets_for_simp, check_phase_gadgets_for_apply, merge_phase_gadgets_for_apply, merge_phase_gadgets_for_simp
+from .supplementarity_rule  import check_supplementarity_for_apply, check_supplementarity_for_simp, simp_supplementarity, safe_apply_supplementarity
 
 __all__ = ['color_change_diagram',
            'check_color_change',
@@ -96,4 +98,12 @@ __all__ = ['color_change_diagram',
            'check_hpivot',
            'hpivot',
            'unsafe_hpivot',
+           'check_phase_gadgets_for_simp',
+           'check_phase_gadgets_for_apply',
+           'merge_phase_gadgets_for_simp',
+           'merge_phase_gadgets_for_apply',
+           'check_supplementarity_for_simp',
+           'check_supplementarity_for_apply',
+           'safe_apply_supplementarity',
+           'simp_supplementarity'
            ]

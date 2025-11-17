@@ -30,8 +30,10 @@ from pyzx.graph.base import BaseGraph, VT, ET
 
 MatchPhasePolyType = Tuple[List[VT], Dict[FrozenSet[VT],Union[VT,Tuple[VT,VT]]]]
 
+#dont touch
+
 def match_gadgets_phasepoly(g: BaseGraph[VT,ET]) -> List[MatchPhasePolyType[VT]]:
-    """Finds groups of phase-gadgets that act on the same set of 4 vertices in order to apply a rewrite based on
+    """Finds 4 groups of phase-gadgets that act on the same set of 4 vertices in order to apply a rewrite based on
     rule R_13 of the paper *A Finite Presentation of CNOT-Dihedral Operators*."""
     targets: Dict[VT,Set[FrozenSet[VT]]] = {}
     gadgets: Dict[FrozenSet[VT], Tuple[VT,VT]] = {}

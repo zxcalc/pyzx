@@ -37,6 +37,8 @@ def is_NOT_gate(g, v, n1, n2):
     )
 
 
+#change this to take in h and n only and that guarantees v (2 vertex)
+
 def check_hbox_parallel_not(
         g: BaseGraph[VT,ET],
         h: VT,
@@ -51,7 +53,6 @@ def check_hbox_parallel_not(
 
     phases = g.phases()
     types = g.types()
-    m = []
 
     if not (h in g.vertices() and n in g.vertices() and v in g.vertices()): return False
 

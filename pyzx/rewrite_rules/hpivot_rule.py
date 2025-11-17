@@ -33,27 +33,27 @@ hpivot_match_output = List[Tuple[
     List[Tuple[FractionLike, List[VT]]]
 ]]
 
-def check_hpivot(g: BaseGraph[VT, ET], h: VT, v0: VT, v1: VT) -> bool:
+def check_hpivot(g: BaseGraph[VT, ET], h: VT) -> bool:
+    #change to take only 1 vertex, the h input, which guarantees v0 v1
     """Finds a matching of the hyper-pivot rule. Note this currently assumes
     hboxes don't have phases.
 
     :param g: An instance of a ZH-graph.
-    :param matchf: An optional filtering function for candidate arity-2 hbox, should
-       return True if an hbox should considered as a match. Passing None will
-       consider all arity-2 hboxes.
-    :rtype: List containing 0 or 1 matches.
+    :param h: A H_box vertex
     """
 
     types = g.types()
     phases = g.phases()
-    m = []
 
-    if not (h in g.vertices() and v0 in g.vertices() and v1 in g.vertices()): return False
+    if not h in g.vertices(): return False
 
     if not (g.vertex_degree(h) == 2 and
             types[h] == VertexType.H_BOX and
             phases[h] == 1
     ): return False
+
+    v0 = g.neighbors(h)[0]
+    v1 = g.neighbors(h)[1]
 
     v0n = set(g.neighbors(v0))
     v1n = set(g.neighbors(v1))
@@ -65,9 +65,17 @@ def check_hpivot(g: BaseGraph[VT, ET], h: VT, v0: VT, v1: VT) -> bool:
     v1b = [v for v in v1n if types[v] == VertexType.BOUNDARY]
     v1h = [v for v in v1n if types[v] == VertexType.H_BOX and v != h]
 
-    # check that v0 has all pi phases on adjacent hboxes.
+    # check that at least one of v0 or v1 has all pi phases on adjacent
+    # hboxes.
     if not (all(phases[v] == 1 for v in v0h)):
-        return False
+        if not (all(phases[v] == 1 for v in v1h)):
+            return False
+        else:
+            # interchange the roles of v0 <-> v1
+            v0, v1 = v1, v0
+            v0n, v1n = v1n, v0n
+            v0b, v1b = v1b, v0b
+            v0h, v1h = v1h, v0h
 
 
     v0nn = [list(filter(lambda w: w != v0, g.neighbors(v))) for v in v0h]
@@ -88,13 +96,16 @@ def check_hpivot(g: BaseGraph[VT, ET], h: VT, v0: VT, v1: VT) -> bool:
 
 
 def hpivot(g: BaseGraph[VT, ET], h: VT, v0: VT, v1: VT) -> bool:
-    if check_hpivot(g, h, v0, v1): return unsafe_hpivot(g, h, v0, v1)
+    if check_hpivot(g, h): return unsafe_hpivot(g, h)
     return False
 
-def unsafe_hpivot(g: BaseGraph[VT, ET], h: VT, v0: VT, v1: VT) -> bool:
+def unsafe_hpivot(g: BaseGraph[VT, ET], h: VT) -> bool:
 
     types = g.types()
     phases = g.phases()
+
+    v0 = g.neighbors(h)[0]
+    v1 = g.neighbors(h)[1]
 
     v0n = set(g.neighbors(v0))
     v1n = set(g.neighbors(v1))
