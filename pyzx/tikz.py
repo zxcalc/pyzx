@@ -226,8 +226,8 @@ def tikz_to_graph(
         backend: Backend of the graph returned.
 
     Warning:
-    	Vertices that might look connected in the output of the tikz are not necessarily connected
-		at the level of tikz itself, and won't be treated as such in pyzx.
+        Vertices that might look connected in the output of the tikz are not necessarily connected
+        at the level of tikz itself, and won't be treated as such in pyzx.
     """
     lines = [l.strip() for l in s.strip().splitlines() if l.strip() != '']
     if not lines[0].startswith(r'\begin{tikzpicture}'):
@@ -238,28 +238,31 @@ def tikz_to_graph(
         raise ValueError(tikz_error_message)
 
     g = Graph(backend)
-    index_dict: Dict[int,VT] = {} # type: ignore
+    index_dict: Dict[int,VT] = {}  # type: ignore
     position_dict: Dict[str,List[int]] = {}
+
     for c,l in enumerate(lines[2:]):
         if l == r'\end{pgfonlayer}': break
-        # l should look like
-        # \node [style=stylename] (integer_id) at (x_float, y_float) {$phase$};
+
         if not l.startswith(r'\node'):
             raise ValueError(r"Node definition does not start with '\node': %s" % l)
+
         l = l[6:]
         i = l.find('[')
         if i == -1: raise ValueError("Node definition %s does not include style" % l)
         j = l.find(']',i)
         style = l[i+1:j].strip()
         style = style.split('=')[1]
+
         vs, other = l[j+1:].split("at")
         vid = int(vs.replace("(","").replace(")","").strip())
+
         pos, label = other.split("{",1)
         pos = pos.replace("(","").replace(")","").strip()
         x,y = [float(z) for z in pos.split(",")]
         label = label[:-2].replace('$','').replace(r'\ ','').replace('~','').strip()
 
-        ty: VertexType
+        # Determine vertex type
         if style.lower() in synonyms_boundary: ty = VertexType.BOUNDARY
         elif style.lower() in synonyms_z: ty = VertexType.Z
         elif style.lower() in synonyms_x: ty = VertexType.X
@@ -274,26 +277,33 @@ def tikz_to_graph(
             else:
                 raise ValueError("Unknown vertex style '%s' in node definition %s" % (style, l))
 
+        # Vertex creation / overlap logic
         if pos in position_dict:
             if warn_overlap:
                 raise Warning("Vertices %d and %s have same position" % (vid, str(position_dict[pos])))
             if fuse_overlap:
                 v = index_dict[position_dict[pos][0]]
             else:
-                v = g.add_vertex(ty,-y,x)
+                v = g.add_vertex(ty, -y, x)
             position_dict[pos].append(vid)
         else:
             position_dict[pos] = [vid]
-            v = g.add_vertex(ty,-y,x)
+            v = g.add_vertex(ty, -y, x)
+
         index_dict[vid] = v
 
+        # Handle text-only dummy nodes
         if ty == VertexType.DUMMY:
             g.set_vdata(v, 'text', label)
             continue
-        elif ty == VertexType.Z_BOX:
+
+        # Choose correct phase setter
+        if ty == VertexType.Z_BOX:
             set_phase = lambda v, p: set_z_box_label(g, v, p)
         else:
             set_phase = g.set_phase
+
+        # Now parse the phase label
         if label == '0':
             set_phase(v,0)
         elif label == r'\neg':
@@ -304,8 +314,12 @@ def tikz_to_graph(
                     raise ValueError("Node definition %s has invalid phase label" % l)
             else:
                 label = label.replace(r'\pi','').strip()
+
+                # Common cases
                 if label == '' or label == '-' or label == '-1':
                     set_phase(v,1)
+
+                # \frac{n}{m}
                 elif label.find(r'\frac') != -1:
                     label = label.replace(r'\frac','').strip()
                     if label.find('}{') == -1:
@@ -329,8 +343,11 @@ def tikz_to_graph(
                             m = int(denom)
                         except:
                             raise ValueError("Node definition %s has invalid phase label" % l)
+
                     set_phase(v, Fraction(n,m))
-                elif label.find('/') != -1:
+
+                # n/m
+                elif '/' in label:
                     num, denom = label.split('/',1)
                     if num == '': n = 1
                     elif num == '-': n = -1
@@ -343,26 +360,44 @@ def tikz_to_graph(
                         m = int(denom)
                     except:
                         raise ValueError("Node definition %s has invalid phase label" % l)
+
                     set_phase(v, Fraction(n,m))
+
+                # FINAL CASE: integer or symbolic
                 else:
                     try:
+                        # Existing logic: try integer/complex
                         if ty == VertexType.Z_BOX:
                             phase = complex(label)
                         else:
                             phase = int(label)
-                    except:
-                        raise ValueError("Node definition %s has invalid phase label '%s'" % (l,label))
-                    set_phase(v, phase)
+                        set_phase(v, phase)
 
-    # done parsing the vertices, now we parse the edges
-    etab: Dict[ET, List[int]] = {} # type: ignore
+                    except Exception:
+                        # NEW FALLBACK: use jsonparser.string_to_phase
+                        try:
+                            from pyzx.jsonparser import string_to_phase
+                            phase = string_to_phase(label, g)
+                            set_phase(v, phase)
+                        except Exception as e:
+                            raise ValueError(
+                                "Node definition %s has invalid symbolic phase '%s': %s"
+                                % (l, label, e)
+                            )
+
+    # ---------------------------------------------------------
+    # Now parse edges
+    etab: Dict[ET, List[int]] = {}  # type: ignore
 
     if lines[c+3] != r'\begin{pgfonlayer}{edgelayer}':
         raise ValueError(tikz_error_message)
+
     for c,l in enumerate(lines[c+4:]):
         if l == r'\end{pgfonlayer}': break
+
         if not l.startswith(r'\draw'):
             raise ValueError(r"Edge definition does not start with '\draw': %s" % l)
+
         l = l[6:]
         i = l.find('style')
         if i == -1:
@@ -378,6 +413,7 @@ def tikz_to_graph(
             else:
                 style = l[i+5:j1].replace("=","").strip()
             j = j1
+
         src, tgt = l[j+1:].replace(".center","").split("to")
         src = src.replace("(","").replace(")","").strip()
         tgt = tgt.replace("(","").replace(")","").replace(";","").strip()
@@ -389,13 +425,16 @@ def tikz_to_graph(
                 etab[e][0] += 1
             else:
                 etab[e] = [1,0]
+
         elif style.lower() in synonyms_hedge:
             if e in etab:
                 etab[e][1] += 1
             else:
                 etab[e] = [0,1]
+
         elif style.lower() in synonyms_wedge:
             g.add_edge(e, EdgeType.W_IO)
+
         else:
             if ignore_nonzx:
                 if e in etab:
