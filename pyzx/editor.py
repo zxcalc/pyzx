@@ -31,7 +31,6 @@ from .graph import Scalar
 from .graph.graph import GraphS
 from .rewrite_rules import rules
 from . import tikz
-from graph.jsonparser import string_to_phase
 
 from .editor_actions import MATCHES_VERTICES, MATCHES_EDGES, operations, operations_to_js
 
@@ -322,48 +321,32 @@ class ZXEditorWidget(widgets.DOMWidget):
 		self.update()
 		self.halt_callbacks = False
 
-	
-
 	def paste(self) -> None:
 		v = pyperclip.paste()
-
 		try:
-			# FIRST: Try parsing as a symbolic phase
-			try:
-				g = string_to_phase(v, g = self.graph)
-			except Exception:
-				# SECOND: If that fails, assume TikZ input
-				g = tikz.tikz_to_graph(v, warn_overlap=False, ignore_nonzx=True)
-
+			g = tikz.tikz_to_graph(v,warn_overlap=False,ignore_nonzx=True)
 		except ValueError as e:
 			self.msg.append("Tried loading tikz from clipboard, but failed:")
 			self.msg.append(str(e))
 			return
-
 		self.msg.append("Copied graph from clipboard")
-
 		minrow = min([g.row(v) for v in g.vertices()], default=0)
 		minqub = min([g.qubit(v) for v in g.vertices()], default=0)
-
-		if minrow > 0:
-			minrow = 0
-		if minqub > 0:
-			minqub = 0
-
-		minrow -= 0.3
-		minqub -= 0.3
-
-		g = g.translate(-minrow, -minqub)
+		if minrow > 0: minrow = 0
+		if minqub > 0: minqub = 0
+		minrow = minrow - 0.3
+		minqub = minqub - 0.3
+		g = g.translate(-minrow,-minqub)
 		self.halt_callbacks = True
-
 		verts, edges = self.graph.merge(g)
-		self._undo_stack_add("paste", graph_to_json(self.graph, self.graph.scale))  # type: ignore
+		# self.graph_selected = '{"nodes": [], "links": []}'
+		# js = graph_to_json(g, self.graph.scale) # type: ignore
+		# self.graph_from_json(json.loads(js))
+		self._undo_stack_add("paste",graph_to_json(self.graph,self.graph.scale)) # type: ignore
 		self.update()
-
-		self.graph_selected = graph_to_json(self.graph, self.graph.scale, verts, [])  # type: ignore
-
+		self.graph_selected = graph_to_json(self.graph,self.graph.scale,verts,[]) # type: ignore
 		self.halt_callbacks = False
-
+		# self._selection_changed(None)
 
 	def copy_to_clipboard(self) -> None:
 		selection = json.loads(self.graph_selected)
