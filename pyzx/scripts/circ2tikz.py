@@ -26,7 +26,7 @@ def to_tikz(source, target):
     circ = Circuit.load(source)
     print("Converting circuit with {:d} gates to TikZ".format(len(circ.gates)))
     g = circ.to_graph()
-    id_simp(g,quiet=True)
+    id_simp(g)
     tikz_output = tikz.to_tikz(g)
     print("Output file: ", os.path.abspath(target))
     f = open(target, 'w')
