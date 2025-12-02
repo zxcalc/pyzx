@@ -36,9 +36,6 @@ from . import todd
 from . import linalg
 from . import extract
 from .rewrite_rules import *
-from .rewrite_rules import rules
-from .rewrite_rules import hrules
-from .rewrite_rules import editor_actions
 from . import optimize
 from . import simplify
 from . import hsimplify

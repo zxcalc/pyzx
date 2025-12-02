@@ -17,8 +17,8 @@
 __all__ = [
         'check_fuse',
         'fuse',
-        'unfuse',
-        'unsafe_fuse',]
+        'unsafe_fuse',
+        'unfuse']
 
 
 from pyzx.utils import (get_w_io, get_z_box_label, EdgeType, VertexType,
@@ -29,7 +29,6 @@ from fractions import Fraction
 
 from pyzx.rewrite_rules.z_to_z_box_rule import unsafe_z_to_z_box
 from pyzx.graph.base import BaseGraph, VT, ET
-
 
 # Fuse spiders
 

@@ -60,17 +60,18 @@ class TestSimplify(unittest.TestCase):
 
     def func_test(self, func, prepare=None):
         for i,c in enumerate(self.circuits):
-            with self.subTest(i=i, func=func.__name__):
+            with self.subTest(i=i):
                 if prepare:
-                    for f in prepare: f(c,quiet=True)
+                    for f in prepare: f(c)
                 t = tensorfy(c)
-                func(c, quiet=True)
+                func(c)
                 t2 = tensorfy(c)
                 self.assertTrue(compare_tensors(t,t2))
                 del t, t2
 
     def test_spider_simp(self):
         self.func_test(spider_simp)
+        
 
     def test_spider_simp_removes_preexisting_self_loops(self):
         """Regression test for issue #352.
@@ -88,7 +89,7 @@ class TestSimplify(unittest.TestCase):
         g.add_edge((1, 1), EdgeType.SIMPLE)
 
         self.assertTrue(g.connected(1, 1))
-        spider_simp(g, quiet=True)
+        spider_simp(g)
         self.assertFalse(g.connected(1, 1))
 
     def test_spider_simp_removes_self_loops_created_during_fusion(self):
@@ -109,7 +110,8 @@ class TestSimplify(unittest.TestCase):
         g.set_inputs([b])
 
         self.assertTrue(g.connected(v1, v1))
-        spider_simp(g, quiet=True)
+        spider_simp(g)
+
         for v in g.vertices():
             self.assertFalse(g.connected(v, v))
 
@@ -139,7 +141,7 @@ class TestSimplify(unittest.TestCase):
             vs.append(h)
             g.add_edges([(v,h),(w,h)],2)
         t = g.to_tensor()
-        i = supplementarity_simp(g,quiet=True)
+        i = supplementarity_simp(g)
         self.assertEqual(i,1)
         self.assertTrue(compare_tensors(t,g.to_tensor()))
 
@@ -179,14 +181,14 @@ class TestSimplify(unittest.TestCase):
 
         from pyzx import Graph, full_reduce 
         g = Graph()
-        g.add_vertex(ty=1, phase=0.5)
-        g.add_vertex(ty=1, phase=1)
+        g.add_vertex(ty=VertexType.Z, phase=0.5)
+        g.add_vertex(ty=VertexType.Z, phase=1)
         g.add_edge((0, 1))
 
         full_reduce(g)
 
         g1 = Graph()
-        g1.add_vertex(ty=1, phase=1)
+        g1.add_vertex(ty=VertexType.Z, phase=1)
 
         full_reduce(g1)
         

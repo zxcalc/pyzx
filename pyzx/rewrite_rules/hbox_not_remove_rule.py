@@ -42,25 +42,25 @@ def is_NOT_gate(g, v, n1, n2):
 def check_hbox_parallel_not(
         g: BaseGraph[VT,ET],
         h: VT,
-        n: VT,
-        v: VT
+        n: VT
         ) -> bool:
     """Finds H-boxes that are connected to a Z-spider both directly and via a NOT.
     :param g: Graph to check.
     :param h: H-box to check.
-    :param n: NOT connecting hbox and Z-spider.
-    :param v: Z-spider connected to hbox and NOT."""
+    :param n: NOT connecting hbox and Z-spider."""
 
     phases = g.phases()
     types = g.types()
 
-    if not (h in g.vertices() and n in g.vertices() and v in g.vertices()): return False
-
+    if not (h in g.vertices() and n in g.vertices()): return False
     if types[h] != VertexType.H_BOX or phases[h] != 1: return False
-    if v == h: return False
-    if not g.connected(v,n): return False
 
     if g.vertex_degree(n) != 2 or phases[n] != 1: return False # If it turns out to be useful, this rule can be generalised to allow spiders of arbitrary phase here
+
+    v = [v for v in g.neighbors(n) if v != h][0]  # The other neighbor of n
+
+    if not g.connected(v,h): return False
+
 
     if not is_NOT_gate(g,n,h,v): return False
 
@@ -69,11 +69,11 @@ def check_hbox_parallel_not(
 
 
 def hbox_parallel_not_remove(g: BaseGraph[VT,ET], h: VT, n: VT, v: VT) -> bool:
-    if check_hbox_parallel_not(g,h,n,v): return unsafe_hbox_parallel_not_remove(g,h,n,v)
+    if check_hbox_parallel_not(g,h,n): return unsafe_hbox_parallel_not_remove(g,h,n)
     return False
 
 
-def unsafe_hbox_parallel_not_remove(g: BaseGraph[VT,ET], h: VT, n: VT, v: VT) -> bool:
+def unsafe_hbox_parallel_not_remove(g: BaseGraph[VT,ET], h: VT, n: VT) -> bool:
     """If a Z-spider is connected to an H-box via a regular wire and a NOT, then they disconnect, and the H-box is turned into a Z-spider.
     :param g: Graph to check.
     :param h: H-box to check.
@@ -86,6 +86,7 @@ def unsafe_hbox_parallel_not_remove(g: BaseGraph[VT,ET], h: VT, n: VT, v: VT) ->
 
     rem.append(h)
     rem.append(n)
+    v = [v for v in g.neighbors(n) if v != h][0]  # The other neighbor of n
 
     for w in g.neighbors(h):
         if w == v or w == n: continue
@@ -98,7 +99,6 @@ def unsafe_hbox_parallel_not_remove(g: BaseGraph[VT,ET], h: VT, n: VT, v: VT) ->
         if et == EdgeType.SIMPLE:
             etab[upair(z,w)] = [1,0]
         else: etab[upair(z,w)] = [0,1]
-
 
     g.add_edge_table(etab)
     g.remove_vertices(rem)

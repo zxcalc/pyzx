@@ -15,7 +15,7 @@
 __all__ = ['check_hadamard',
            'replace_hadamard',
            'unsafe_replace_hadamard',
-           'had_edge_hbox_rule',
+           'had_edge_to_hbox',
            'unsafe_had_edge_to_hbox']
 
 from pyzx.utils import EdgeType, VertexType

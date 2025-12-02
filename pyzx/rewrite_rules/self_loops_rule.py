@@ -19,13 +19,11 @@ __all__ = ['check_self_loop',
            'unsafe_remove_self_loop']
 
 
-from typing import Tuple, List, Dict
+from typing import List, Dict
 from fractions import Fraction
-
 from pyzx.utils import  EdgeType, vertex_is_zx_like
-from pyzx.graph.base import BaseGraph, VT, ET
+from pyzx.rewrite import *
 
-MatchSelfLoopType = Tuple[VT, int, int]
 
 def check_self_loop(g: BaseGraph[VT, ET], v: VT) -> bool:
     """Finds self-loops on vertices that can be removed.
@@ -72,3 +70,5 @@ def unsafe_remove_self_loop(g: BaseGraph[VT, ET], v: VT) -> bool:
     g.remove_edges(rem_edges)
 
     return True
+
+remove_self_loop_simp = RewriteSimpSingleVertex(check_self_loop, unsafe_remove_self_loop,)

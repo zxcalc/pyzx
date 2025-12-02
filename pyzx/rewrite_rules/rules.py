@@ -86,137 +86,61 @@ def apply_rule(
 MatchBialgType = Tuple[VT,VT,List[VT],List[VT]]
 
 
-def match_z_to_z_box(g: BaseGraph[VT,ET]) -> List[VT]:
-    """Does the same as :func:`match_z_to_z_box_parallel` but with ``num=1``."""
-    return match_z_to_z_box_parallel(g, num=1)
+####    z_to_z_box_rule
 
-def match_z_to_z_box_parallel(
-        g: BaseGraph[VT,ET],
-        matchf:Optional[Callable[[VT],bool]]=None,
-        num:int=-1
-        ) -> List[VT]:
-    """Finds all vertices that can be converted to Z-boxes."""
-    if matchf is not None: candidates = set([v for v in g.vertices() if matchf(v)])
-    else: candidates = g.vertex_set()
-    types = g.types()
-    phases = g.phases()
-    m: List[VT] = []
-    for v in candidates:
-        if types[v] == VertexType.Z and not isinstance(phases[v],Poly):
-            if num == 0: break
-            m.append(v)
-            num -= 1
-    return m
-
-def z_to_z_box(g: BaseGraph[VT,ET], matches: List[VT]) -> RewriteOutputType[VT,ET]:
-    """Converts a Z vertex to a Z-box."""
-    for v in matches:
-        g.set_type(v, VertexType.Z_BOX)
-        phase = g.phase(v)
-        assert not isinstance(phase, Poly)
-        label = np.round(np.e**(1j * np.pi * phase), 8)
-        set_z_box_label(g, v, label)
-        g.set_phase(v, 0)
-    return ({}, [], [], True)
+# def match_z_to_z_box(g: BaseGraph[VT,ET]) -> List[VT]:
+#     """Does the same as :func:`match_z_to_z_box_parallel` but with ``num=1``."""
+#
+# def match_z_to_z_box_parallel
+#     """Finds all vertices that can be converted to Z-boxes."""
+#     if matchf is not None: candidates = set([v for v in g.vertices() if matchf(v)])
+#
+#
+# def z_to_z_box(g: BaseGraph[VT,ET], matches: List[VT]) -> RewriteOutputType[VT,ET]:
+#     """Converts a Z vertex to a Z-box."""
 
 
+####    fuse_rule
 
-MatchSpiderType = Tuple[VT,VT]
+# def match_spider(g: BaseGraph[VT,ET]) -> List[MatchSpiderType[VT]]:
+#     """Does the same as :func:`match_spider_parallel` but with ``num=1``."""
+#     return match_spider_parallel(g, num=1)
+#
+# def match_spider_parallel(
+#         g: BaseGraph[VT,ET],
+#         matchf:Optional[Callable[[VT],bool]]=None,
+#         num:int=-1
+#         ) -> List[MatchSpiderType[VT]]:
+#     """Finds non-interacting matchings of the spider fusion rule.
 
-def match_spider(g: BaseGraph[VT,ET]) -> List[MatchSpiderType[VT]]:
-    """Does the same as :func:`match_spider_parallel` but with ``num=1``."""
-    return match_spider_parallel(g, num=1)
+# def spider(g: BaseGraph[VT,ET], matches: List[MatchSpiderType[VT]]) -> RewriteOutputType[VT,ET]:
+#     '''Performs spider fusion given a list of matchings from ``match_spider(_parallel)``
+#     '''
 
-def match_spider_parallel(
-        g: BaseGraph[VT,ET],
-        matchf:Optional[Callable[[VT],bool]]=None,
-        num:int=-1
-        ) -> List[MatchSpiderType[VT]]:
-    """Finds non-interacting matchings of the spider fusion rule.
+# def match_w_fusion(g: BaseGraph[VT,ET]) -> List[MatchWType[VT]]:
+#     """Does the same as :func:`match_w_fusion_parallel` but with ``num=1``."""
+#     return match_w_fusion_parallel(g, num=1)
 
-    :param g: An instance of a ZX-graph.
-    :param matchf: An optional filtering function for candidate edge, should
-       return True if the edge should be considered for matchings. Passing None will
-       consider all edges.
-    :param num: Maximal amount of matchings to find. If -1 (the default)
-       tries to find as many as possible.
-    :rtype: List of 2-tuples ``(v1, v2)``
-    """
-    if matchf is not None: candidates = set([v for v in g.vertices() if matchf(v)])
-    else: candidates = g.vertex_set()
-    candidates = set(candidates)
-    types = g.types()
-    m: List[MatchSpiderType[VT]] = []
-    i = 0
-    used: Set[VT] = set()
-    for v in list(candidates):
-        if v in used:
-            continue
-        for e in g.incident_edges(v):
-            if g.edge_type(e) != EdgeType.SIMPLE:
-                continue
-            v0, v1 = g.edge_st(e)
-            if v0 == v1 or v0 in used or v1 in used or v0 not in candidates or v1 not in candidates:
-                continue
-            v0t, v1t = types[v0], types[v1]
-            if (v0t == v1t and vertex_is_zx(v0t)) or (vertex_is_z_like(v0t) and vertex_is_z_like(v1t)):
-                i += 1
-                used.update([v0, v1, *g.neighbors(v0), *g.neighbors(v1)])
-                m.append((v0, v1))
-                if num != -1 and i >= num:
-                    return m
-        if num != -1 and i >= num:
-            break
-    return m
+# def match_w_fusion_parallel(
+#         g: BaseGraph[VT,ET],
+#         matchf:Optional[Callable[[ET],bool]]=None,
+#         num:int=-1) -> List[MatchWType[VT]]:
+#     """Finds non-interacting matchings of the W fusion rule.
+#
+#     :param g: An instance of a ZX-graph.
+#     :param matchf: An optional filtering function for candidate edge, should
+#        return True if the edge should be considered for matchings. Passing None will
+#        consider all edges.
+#     :param num: Maximal amount of matchings to find. If -1 (the default)
+#        tries to find as many as possible.
+#     :rtype: List of 2-tuples ``(v1, v2)``
+#     """
+#
 
+# def w_fusion(g: BaseGraph[VT,ET], matches: List[MatchSpiderType[VT]]) -> RewriteOutputType[VT,ET]:
+#     '''Performs W fusion given a list of matchings from ``match_w_fusion(_parallel)``
+#     '''
 
-def spider(g: BaseGraph[VT,ET], matches: List[MatchSpiderType[VT]]) -> RewriteOutputType[VT,ET]:
-    '''Performs spider fusion given a list of matchings from ``match_spider(_parallel)``
-    '''
-    rem_verts: List[VT] = []
-    etab: Dict[Tuple[VT,VT],List[int]] = dict()
-
-    for m in matches:
-        if g.row(m[0]) == 0:
-            v0, v1 = m[1], m[0]
-        else:
-            v0, v1 = m[0], m[1]
-
-        ground = g.is_ground(v0) or g.is_ground(v1)
-
-        if ground:
-            g.set_phase(v0, 0)
-            g.set_ground(v0)
-        elif g.type(v0) == VertexType.Z_BOX or g.type(v1) == VertexType.Z_BOX:
-            if g.type(v0) == VertexType.Z:
-                z_to_z_box(g, [v0])
-            if g.type(v1) == VertexType.Z:
-                z_to_z_box(g, [v1])
-            g.set_phase(v0, 0)
-            set_z_box_label(g, v0, get_z_box_label(g, v0) * get_z_box_label(g, v1))
-        else:
-            g.add_to_phase(v0, g.phase(v1))
-
-        if g.track_phases:
-            g.fuse_phases(v0,v1)
-
-        # always delete the second vertex in the match
-        rem_verts.append(v1)
-
-        # edges from the second vertex are transferred to the first
-        for e in g.incident_edges(v1):
-            source, target = g.edge_st(e)
-            if source != v1:
-                other_vertex = source
-            elif target != v1:
-                other_vertex = target
-            else: #self-loop
-                other_vertex = v0
-            new_e = (v0, other_vertex)
-            if new_e not in etab: etab[new_e] = [0,0]
-            etab[new_e][g.edge_type(e)-1] += 1
-        etab[(v0,v0)][0] = 0 # remove simple edge loops
-    return (etab, rem_verts, [], True)
 
 def unspider(g: BaseGraph[VT,ET], m: List[Any], qubit:FloatInt=-1, row:FloatInt=-1) -> VT:
     """Undoes a single spider fusion, given a match ``m``. A match is a list with 3
@@ -250,164 +174,35 @@ def unspider(g: BaseGraph[VT,ET], m: List[Any], qubit:FloatInt=-1, row:FloatInt=
         g.set_phase(u, 0)
     return v
 
-MatchWType = Tuple[VT,VT]
 
-def match_w_fusion(g: BaseGraph[VT,ET]) -> List[MatchWType[VT]]:
-    """Does the same as :func:`match_w_fusion_parallel` but with ``num=1``."""
-    return match_w_fusion_parallel(g, num=1)
 
-def match_w_fusion_parallel(
-        g: BaseGraph[VT,ET],
-        matchf:Optional[Callable[[ET],bool]]=None,
-        num:int=-1
-        ) -> List[MatchWType[VT]]:
-    """Finds non-interacting matchings of the W fusion rule.
-
-    :param g: An instance of a ZX-graph.
-    :param matchf: An optional filtering function for candidate edge, should
-       return True if the edge should be considered for matchings. Passing None will
-       consider all edges.
-    :param num: Maximal amount of matchings to find. If -1 (the default)
-       tries to find as many as possible.
-    :rtype: List of 2-tuples ``(v1, v2)``
-    """
-    if matchf is not None: candidates = set([e for e in g.edges() if matchf(e)])
-    else: candidates = g.edge_set()
-    types = g.types()
-
-    i = 0
-    m: List[MatchWType[VT]] = []
-    while (num == -1 or i < num) and len(candidates) > 0:
-        e = candidates.pop()
-        if g.edge_type(e) != EdgeType.SIMPLE: continue
-        v0, v1 = g.edge_st(e)
-        v0t = types[v0]
-        v1t = types[v1]
-        if vertex_is_w(v0t) and vertex_is_w(v1t):
-            i += 1
-            candidates_to_remove: List[VT] = []
-            candidates_to_remove.extend(list(g.neighbors(v0)))
-            candidates_to_remove.extend(list(g.neighbors(v1)))
-            candidates_to_remove.extend(list(g.neighbors(get_w_partner(g, v0))))
-            candidates_to_remove.extend(list(g.neighbors(get_w_partner(g, v1))))
-            for v in candidates_to_remove:
-                for c in g.incident_edges(v): candidates.discard(c)
-            m.append((v0,v1))
-    return m
-
-def w_fusion(g: BaseGraph[VT,ET], matches: List[MatchSpiderType[VT]]) -> RewriteOutputType[VT,ET]:
-    '''Performs W fusion given a list of matchings from ``match_w_fusion(_parallel)``
-    '''
-    rem_verts: List[VT] = []
-    etab: Dict[Tuple[VT,VT],List[int]] = dict()
-
-    for v0, v1 in matches:
-        v0_in, v0_out = get_w_io(g, v0)
-        v1_in, v1_out = get_w_io(g, v1)
-        if not g.connected(v0_out, v1_in):
-            v0_in, v1_in = v1_in, v0_in
-            v0_out, v1_out = v1_out, v0_out
-        # always delete the second vertex in the match
-        rem_verts.extend([v1_in, v1_out])
-
-        # edges from the second vertex are transferred to the first
-        for w in g.neighbors(v1_out):
-            if w == v1_in or w == v0_in:
-                continue
-            if w == v1_out:
-                w = v0_out
-            e = (v0_out, w)
-            if e not in etab: etab[e] = [0,0]
-            etab[e][g.edge_type(g.edge(v1_out, w)) - 1] += 1
-    return (etab, rem_verts, [], True)
-
+#####   'check_pivot_parallel': pivot_rule
+#
+# def match_pivot(g: BaseGraph[VT,ET]) -> List[MatchPivotType[VT]]:
+#     """Does the same as :func:`match_pivot_parallel` but with ``num=1``."""
+#     return match_pivot_parallel(g, num=1, check_edge_types=True)
+#
+#
+# def match_pivot_parallel(
+#         g: BaseGraph[VT,ET],
+#         matchf:Optional[Callable[[ET],bool]]=None,
+#         num:int=-1,
+#         check_edge_types:bool=True
+#         ) -> List[MatchPivotType[VT]]:
+#     """Finds non-interacting matchings of the pivot rule.
+#     :param g: An instance of a ZX-graph.
+#     :param num: Maximal amount of matchings to find. If -1 (the default)
+#        tries to find as many as possible.
+#     :param check_edge_types: Whether the method has to check if all the edges involved
+#        are of the correct type (Hadamard edges).
+#     :param matchf: An optional filtering function for candidate edge, should
+#        return True if a edge should considered as a match. Passing None will
+#        consider all edges.
+#     :rtype: List of 4-tuples. See :func:`pivot` for the details.
+#     """
+#
 
 MatchPivotType = Tuple[Tuple[VT,VT],Tuple[List[VT],List[VT]]]
-
-def match_pivot(g: BaseGraph[VT,ET]) -> List[MatchPivotType[VT]]:
-    """Does the same as :func:`match_pivot_parallel` but with ``num=1``."""
-    return match_pivot_parallel(g, num=1, check_edge_types=True)
-
-
-def match_pivot_parallel(
-        g: BaseGraph[VT,ET],
-        matchf:Optional[Callable[[ET],bool]]=None,
-        num:int=-1,
-        check_edge_types:bool=True
-        ) -> List[MatchPivotType[VT]]:
-    """Finds non-interacting matchings of the pivot rule.
-
-    :param g: An instance of a ZX-graph.
-    :param num: Maximal amount of matchings to find. If -1 (the default)
-       tries to find as many as possible.
-    :param check_edge_types: Whether the method has to check if all the edges involved
-       are of the correct type (Hadamard edges).
-    :param matchf: An optional filtering function for candidate edge, should
-       return True if a edge should considered as a match. Passing None will
-       consider all edges.
-    :rtype: List of 4-tuples. See :func:`pivot` for the details.
-    """
-    if matchf is not None: candidates_set = set([e for e in g.edges() if matchf(e)])
-    else: candidates_set = g.edge_set()
-    candidates = list(Counter(candidates_set).elements())
-    types = g.types()
-    phases = g.phases()
-
-    i = 0
-    m: List[MatchPivotType[VT]] = []
-    while (num == -1 or i < num) and len(candidates) > 0:
-        e = candidates.pop()
-        if check_edge_types and g.edge_type(e) != EdgeType.HADAMARD: continue
-        v0, v1 = g.edge_st(e)
-
-        if not (types[v0] == VertexType.Z and types[v1] == VertexType.Z): continue
-
-        v0a = phases[v0]
-        v1a = phases[v1]
-        if not (phase_is_pauli(v0a) and phase_is_pauli(v1a)): continue
-        if g.is_ground(v0) or g.is_ground(v1):
-            continue
-
-        invalid_edge = False
-
-        v0n = list(g.neighbors(v0))
-        v0b: List[VT] = []
-        for n in v0n:
-            if len(list(g.edges(v0,n))) != 1:
-                invalid_edge = True
-                break
-            et = g.edge_type(g.edge(v0,n))
-            if types[n] == VertexType.Z and et == EdgeType.HADAMARD: pass
-            elif types[n] == VertexType.BOUNDARY: v0b.append(n)
-            else:
-                invalid_edge = True
-                break
-
-        if invalid_edge: continue
-
-        v1n = list(g.neighbors(v1))
-        v1b: List[VT] = []
-        for n in v1n:
-            et = g.edge_type(g.edge(v1,n))
-            if types[n] == VertexType.Z and et == EdgeType.HADAMARD: pass
-            elif types[n] == VertexType.BOUNDARY: v1b.append(n)
-            else:
-                invalid_edge = True
-                break
-
-        if invalid_edge: continue
-        if len(v0b) + len(v1b) > 1: continue
-
-        i += 1
-        for vn in [v0n, v1n]:
-            for v in vn:
-                for c in g.incident_edges(v):
-                    if c in candidates:
-                        candidates.remove(c)
-        b0 = list(v0b)
-        b1 = list(v1b)
-        m.append(((v0,v1),(b0,b1)))
-    return m
 
 def match_pivot_gadget(
         g: BaseGraph[VT,ET],
@@ -557,82 +352,19 @@ def match_pivot_boundary(
     g.add_edges(edge_list, EdgeType.HADAMARD)
     return m
 
-def pivot(g: BaseGraph[VT,ET], matches: List[MatchPivotType[VT]]) -> RewriteOutputType[VT,ET]:
-    """Perform a pivoting rewrite, given a list of matches as returned by
-    ``match_pivot(_parallel)``. A match is itself a list where:
 
-    ``m[0][0]`` : first vertex in pivot.
-    ``m[0][1]`` : second vertex in pivot.
-    ``m[1][0]`` : list of zero or one boundaries adjacent to ``m[0]``.
-    ``m[1][1]`` : list of zero or one boundaries adjacent to ``m[1]``.
-    """
-    rem_verts: List[VT] = []
-    rem_edges: List[ET] = []
-    etab: Dict[Tuple[VT,VT],List[int]] = dict()
+#pivot: pivot_rule
 
-
-    for m in matches:
-        # compute:
-        #  n[0] <- non-boundary neighbors of m[0] only
-        #  n[1] <- non-boundary neighbors of m[1] only
-        #  n[2] <- non-boundary neighbors of m[0] and m[1]
-        g.update_phase_index(m[0][0],m[0][1])
-        n = [set(g.neighbors(m[0][0])), set(g.neighbors(m[0][1]))]
-        for i in range(2):
-            n[i].remove(m[0][1-i])
-            if len(m[1][i]) == 1: n[i].remove(m[1][i][0])
-        n.append(n[0] & n[1])
-        n[0] = n[0] - n[2]
-        n[1] = n[1] - n[2]
-        es = ([(s,t) for s in n[0] for t in n[1]] +
-              [(s,t) for s in n[1] for t in n[2]] +
-              [(s,t) for s in n[0] for t in n[2]])
-        k0, k1, k2 = len(n[0]), len(n[1]), len(n[2])
-        g.scalar.add_power(k0*k2 + k1*k2 + k0*k1)
-
-        for v in n[2]:
-            if not g.is_ground(v):
-                g.add_to_phase(v, 1)
-
-        #if g.phase(m[0][0]) and g.phase(m[0][1]): g.scalar.add_phase(Fraction(1))
-        g.scalar.add_phase(Fraction(1) * g.phase(m[0][0]) * g.phase(m[0][1]))
-        if not m[1][0] and not m[1][1]:
-            g.scalar.add_power(-(k0+k1+2*k2-1))
-        elif not m[1][0]:
-            g.scalar.add_power(-(k1+k2))
-        else: g.scalar.add_power(-(k0+k2))
-
-        for i in 0, 1:
-            # if m[i] has a phase, it will get copied on to the neighbors of m[1-i]:
-            a = g.phase(m[0][i])
-            if a:
-                for v in n[1-i]:
-                    if not g.is_ground(v):
-                        g.add_to_phase(v, a)
-                for v in n[2]:
-                    if not g.is_ground(v):
-                        g.add_to_phase(v, a)
-
-            if not m[1][i]:
-                # if there is no boundary, the other vertex is destroyed
-                rem_verts.append(m[0][1-i])
-            else:
-                # if there is a boundary, toggle whether it is an h-edge or a normal edge
-                # and point it at the other vertex
-                e = (m[0][i], m[1][i][0])
-                new_e = (m[0][1-i], m[1][i][0])
-                ne,nhe = etab.get(new_e) or [0,0]
-                if g.edge_type(g.edge(e[0],e[1])) == EdgeType.SIMPLE: nhe += 1
-                elif g.edge_type(g.edge(e[0],e[1])) == EdgeType.HADAMARD: ne += 1
-                etab[new_e] = [ne,nhe]
-                rem_edges.append(g.edge(e[0], e[1]))
-
-
-        for e in es:
-            nhe = etab.get(e, (0,0))[1]
-            etab[e] = [0,nhe+1]
-
-    return (etab, rem_verts, rem_edges, True)
+# def pivot(g: BaseGraph[VT,ET], matches: List[MatchPivotType[VT]]) -> RewriteOutputType[VT,ET]:
+#     """Perform a pivoting rewrite, given a list of matches as returned by
+#     ``match_pivot(_parallel)``. A match is itself a list where:
+#
+#     ``m[0][0]`` : first vertex in pivot.
+#     ``m[0][1]`` : second vertex in pivot.
+#     ``m[1][0]`` : list of zero or one boundaries adjacent to ``m[0]``.
+#     ``m[1][1]`` : list of zero or one boundaries adjacent to ``m[1]``.
+#     """
+#
 
 MatchLcompType = Tuple[VT,List[VT]]
 
@@ -778,74 +510,18 @@ def remove_ids(g: BaseGraph[VT,ET], matches: List[MatchIdType[VT]]) -> RewriteOu
     return (etab, rem, [], False)
 
 
-MatchGadgetType = Tuple[VT,VT,FractionLike,List[VT],List[VT]]
+####     merge_phase_gadget_rule
 
-def match_phase_gadgets(g: BaseGraph[VT,ET],vertexf:Optional[Callable[[VT],bool]]=None) -> List[MatchGadgetType[VT]]:
-    """Determines which phase gadgets act on the same vertices, so that they can be fused together.
+# def match_phase_gadgets(g: BaseGraph[VT,ET],vertexf:Optional[Callable[[VT],bool]]=None) -> List[MatchGadgetType[VT]]:
+#     """Determines which phase gadgets act on the same vertices, so that they can be fused together.
+#
+#     :param g: An instance of a ZX-graph.
+#     :rtype: List of 5-tuples ``(axel,leaf, total combined phase, other axels with same targets, other leafs)``.
+#     """
 
-    :param g: An instance of a ZX-graph.
-    :rtype: List of 5-tuples ``(axel,leaf, total combined phase, other axels with same targets, other leafs)``.
-    """
-    if vertexf is not None: candidates = set([v for v in g.vertices() if vertexf(v)])
-    else: candidates = g.vertex_set()
+# def merge_phase_gadgets(g: BaseGraph[VT,ET], matches: List[MatchGadgetType[VT]]) -> RewriteOutputType[VT,ET]:
+#     """Given the output of :func:``match_phase_gadgets``, removes phase gadgets that act on the same set of targets."""
 
-    phases = g.phases()
-
-    parities: Dict[FrozenSet[VT], List[VT]] = dict()
-    gadgets: Dict[VT,VT] = dict()
-    inputs = g.inputs()
-    outputs = g.outputs()
-    # First we find all the phase-gadgets, and the list of vertices they act on
-    for v in candidates:
-        if isinstance(phases[v], Poly):
-            non_clifford = True
-        else:
-            non_clifford = phases[v] != 0 and getattr(phases[v], 'denominator', 1) > 2
-        if non_clifford and len(list(g.neighbors(v)))==1:
-            n = list(g.neighbors(v))[0]
-            if not phase_is_pauli(phases[n]): continue # Not a real phase gadget (happens for scalar diagrams)
-            if n in gadgets: continue # Not a real phase gadget (happens for scalar diagrams)
-            if n in inputs or n in outputs: continue # Not a real phase gadget (happens for non-unitary diagrams)
-            gadgets[n] = v
-            par = frozenset(set(g.neighbors(n)).difference({v}))
-            if par == frozenset(): continue # Not a real phase gadget if it acts on nothing
-            if par in parities: parities[par].append(n)
-            else: parities[par] = [n]
-
-    m: List[MatchGadgetType[VT]] = []
-    for par, gad in parities.items():
-        if len(gad) == 1:
-            n = gad[0]
-            v = gadgets[n]
-            if phases[n] != 0: # If the phase of the axel vertex is pi, we change the phase of the gadget
-                g.scalar.add_phase(phases[v])
-                g.phase_negate(v)
-                m.append((v,n,-phases[v],[],[]))
-        else:
-            totphase = sum((1 if phases[n]==0 else -1)*phases[gadgets[n]] for n in gad)%2
-            for n in gad:
-                if phases[n] != 0:
-                    g.scalar.add_phase(phases[gadgets[n]])
-                    g.phase_negate(gadgets[n])
-            g.scalar.add_power(-((len(par)-1)*(len(gad)-1)))
-            n = gad.pop()
-            v = gadgets[n]
-            m.append((v,n,totphase, gad, [gadgets[n] for n in gad]))
-    return m
-
-def merge_phase_gadgets(g: BaseGraph[VT,ET], matches: List[MatchGadgetType[VT]]) -> RewriteOutputType[VT,ET]:
-    """Given the output of :func:``match_phase_gadgets``, removes phase gadgets that act on the same set of targets."""
-    rem: List[VT] = []
-    for v, n, phase, othergadgets, othertargets in matches:
-        g.set_phase(v, phase)
-        g.set_phase(n, 0)
-        rem.extend(othergadgets)
-        rem.extend(othertargets)
-        for w in othertargets:
-            g.fuse_phases(v,w)
-            if g.merge_vdata is not None:
-                g.merge_vdata(v, w)
-    return ({}, rem, [], False)
 
 
 MatchSupplementarityType = Tuple[VT,VT,Literal[1,2],FrozenSet[VT]]
@@ -1192,3 +868,81 @@ def apply_gadget_phasepoly(g: BaseGraph[VT,ET], matches: List[MatchPhasePolyType
             phase = 0
             g.add_edges([(n,v)]+[(n,w) for w in group],EdgeType.HADAMARD)
         g.set_phase(v, phase + Fraction(7,4))
+
+
+
+def pivot(g: BaseGraph[VT,ET], matches: List[MatchPivotType[VT]]) -> RewriteOutputType[VT,ET]:
+    """Perform a pivoting rewrite, given a list of matches as returned by
+    ``match_pivot(_parallel)``. A match is itself a list where:
+
+    ``m[0][0]`` : first vertex in pivot.
+    ``m[0][1]`` : second vertex in pivot.
+    ``m[1][0]`` : list of zero or one boundaries adjacent to ``m[0]``.
+    ``m[1][1]`` : list of zero or one boundaries adjacent to ``m[1]``.
+    """
+    rem_verts: List[VT] = []
+    rem_edges: List[ET] = []
+    etab: Dict[Tuple[VT,VT],List[int]] = dict()
+
+
+    for m in matches:
+        # compute:
+        #  n[0] <- non-boundary neighbors of m[0] only
+        #  n[1] <- non-boundary neighbors of m[1] only
+        #  n[2] <- non-boundary neighbors of m[0] and m[1]
+        g.update_phase_index(m[0][0],m[0][1])
+        n = [set(g.neighbors(m[0][0])), set(g.neighbors(m[0][1]))]
+        for i in range(2):
+            n[i].remove(m[0][1-i])
+            if len(m[1][i]) == 1: n[i].remove(m[1][i][0])
+        n.append(n[0] & n[1])
+        n[0] = n[0] - n[2]
+        n[1] = n[1] - n[2]
+        es = ([(s,t) for s in n[0] for t in n[1]] +
+              [(s,t) for s in n[1] for t in n[2]] +
+              [(s,t) for s in n[0] for t in n[2]])
+        k0, k1, k2 = len(n[0]), len(n[1]), len(n[2])
+        g.scalar.add_power(k0*k2 + k1*k2 + k0*k1)
+
+        for v in n[2]:
+            if not g.is_ground(v):
+                g.add_to_phase(v, 1)
+
+        if g.phase(m[0][0]) and g.phase(m[0][1]): g.scalar.add_phase(Fraction(1))
+        if not m[1][0] and not m[1][1]:
+            g.scalar.add_power(-(k0+k1+2*k2-1))
+        elif not m[1][0]:
+            g.scalar.add_power(-(k1+k2))
+        else: g.scalar.add_power(-(k0+k2))
+
+        for i in 0, 1:
+            # if m[i] has a phase, it will get copied on to the neighbors of m[1-i]:
+            a = g.phase(m[0][i])
+            if a:
+                for v in n[1-i]:
+                    if not g.is_ground(v):
+                        g.add_to_phase(v, a)
+                for v in n[2]:
+                    if not g.is_ground(v):
+                        g.add_to_phase(v, a)
+
+            if not m[1][i]:
+                # if there is no boundary, the other vertex is destroyed
+                rem_verts.append(m[0][1-i])
+            else:
+                # if there is a boundary, toggle whether it is an h-edge or a normal edge
+                # and point it at the other vertex
+                e = (m[0][i], m[1][i][0])
+                new_e = (m[0][1-i], m[1][i][0])
+                ne,nhe = etab.get(new_e) or [0,0]
+                if g.edge_type(g.edge(e[0],e[1])) == EdgeType.SIMPLE: nhe += 1
+                elif g.edge_type(g.edge(e[0],e[1])) == EdgeType.HADAMARD: ne += 1
+                etab[new_e] = [ne,nhe]
+                rem_edges.append(g.edge(e[0], e[1]))
+
+
+        for e in es:
+            nhe = etab.get(e, (0,0))[1]
+            etab[e] = [0,nhe+1]
+
+    return (etab, rem_verts, rem_edges, True)

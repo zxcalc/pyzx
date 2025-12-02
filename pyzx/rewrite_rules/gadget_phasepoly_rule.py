@@ -15,8 +15,10 @@
 # limitations under the License.
 
 
-__all__ = ['check_gadgets_phasepoly',
-           'apply_gadget_phasepoly']
+__all__ = ['check_gadgets_phasepoly_for_apply',
+           'check_gadgets_phasepoly_for_simp',
+           'gadgets_phasepoly_for_simp',
+           'gadgets_phasepoly_for_apply']
 
 from typing import Tuple, List, Dict, Set, FrozenSet
 from typing import Union
@@ -30,7 +32,13 @@ from pyzx.graph.base import BaseGraph, VT, ET
 
 MatchPhasePolyType = Tuple[List[VT], Dict[FrozenSet[VT],Union[VT,Tuple[VT,VT]]]]
 
-#dont touch
+
+def check_gadgets_phasepoly_for_apply(g: BaseGraph[VT,ET], v: VT, w: VT) -> bool:
+    return False
+
+def check_gadgets_phasepoly_for_simp(g: BaseGraph[VT,ET]) -> bool:
+    matches = match_gadgets_phasepoly(g)
+    return len(matches) != 0
 
 def match_gadgets_phasepoly(g: BaseGraph[VT,ET]) -> List[MatchPhasePolyType[VT]]:
     """Finds 4 groups of phase-gadgets that act on the same set of 4 vertices in order to apply a rewrite based on
@@ -81,6 +89,16 @@ def match_gadgets_phasepoly(g: BaseGraph[VT,ET]) -> List[MatchPhasePolyType[VT]]
         taken.update(groupp)
 
     return m
+
+
+
+def gadgets_phasepoly_for_apply(g: BaseGraph[VT,ET], v: VT, w: VT) -> bool:
+    return False
+
+def gadgets_phasepoly_for_simp(g: BaseGraph[VT,ET]) -> bool:
+    matches = match_gadgets_phasepoly(g)
+    return apply_gadget_phasepoly(g, matches)
+
 
 def apply_gadget_phasepoly(g: BaseGraph[VT,ET], matches: List[MatchPhasePolyType[VT]]) -> bool:
     """Uses the output of :func:`match_gadgets_phasepoly` to apply a rewrite based

@@ -14,96 +14,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .color_change_rule     import color_change_diagram, check_color_change, color_change, unsafe_color_change
-from .bialgebra_rule        import bialgebra, check_bialgebra, check_bialgebra_reduce, unsafe_bialgebra
-from .fuse_rule             import check_fuse, fuse, unfuse, unsafe_fuse
-from .remove_id_rule        import check_remove_id, remove_id,  unsafe_remove_id
-from .copy_rule             import check_copy, copy, unsafe_copy
-from .z_to_z_box_rule       import z_to_z_box, check_z_to_z_box, unsafe_z_to_z_box
-from .pivot_rule            import pivot, check_pivot_parallel, unsafe_pivot
-from .lcomp_rule            import lcomp, check_lcomp, unsafe_lcomp
-from .hopf_rule             import hopf, check_hopf, unsafe_hopf
-from .self_loops_rule       import remove_self_loop, check_self_loop, unsafe_remove_self_loop
-from .add_identity_rule     import check_edge, add_Z_identity, unsafe_add_Z_identity
-from .push_pauli_rule       import check_pauli, pauli_push, unsafe_pauli_push
-from .euler_rule            import check_hadamard_edge, euler_expansion, unsafe_euler_expansion
-from .pi_commute_rule       import check_pi_commute, pi_commute, unsafe_pi_commute
-from .hbox_not_remove_rule  import check_hbox_parallel_not, hbox_parallel_not_remove, unsafe_hbox_parallel_not_remove
-from .zero_hbox_rule        import check_zero_hbox, zero_hbox, unsafe_zero_hbox
-from .fuse_hboxes_rule      import check_connected_hboxes, fuse_hboxes, unsafe_fuse_hboxes
-from .had_edge_hbox_rule    import check_hadamard, check_hadamard_edge, replace_hadamard, had_edge_to_hbox, unsafe_had_edge_to_hbox, unsafe_replace_hadamard
-from .hpivot_rule           import check_hpivot, hpivot, unsafe_hpivot
-from .phase_gadget_rule     import check_phase_gadgets_for_simp, check_phase_gadgets_for_apply, merge_phase_gadgets_for_apply, merge_phase_gadgets_for_simp
-from .supplementarity_rule  import check_supplementarity_for_apply, check_supplementarity_for_simp, simp_supplementarity, safe_apply_supplementarity
-
-__all__ = ['color_change_diagram',
-           'check_color_change',
-           'color_change',
-           'unsafe_color_change',
-           'check_bialgebra_reduce',
-           'check_bialgebra',
-           'bialgebra',
-           'unsafe_bialgebra',
-           'check_fuse',
-           'fuse',
-           'unfuse',
-           'unsafe_fuse',
-           'check_remove_id',
-           'remove_id',
-           'unsafe_remove_id',
-           'check_copy',
-           'copy',
-           'unsafe_copy',
-           'z_to_z_box',
-           'unsafe_z_to_z_box',
-           'check_z_to_z_box',
-           'check_pivot_parallel',
-           'pivot',
-           'unsafe_pivot',
-           'check_lcomp',
-           'lcomp',
-           'unsafe_lcomp',
-           'hopf',
-           'unsafe_hopf',
-           'check_hopf',
-           'check_self_loop',
-           'remove_self_loop',
-           'unsafe_remove_self_loop',
-           'check_edge',
-           'add_Z_identity',
-           'unsafe_add_Z_identity',
-           'check_pauli',
-           'pauli_push',
-           'unsafe_pauli_push',
-           'check_hadamard_edge',
-           'euler_expansion',
-           'unsafe_euler_expansion',
-           'check_pi_commute',
-           'pi_commute',
-           'unsafe_pi_commute',
-           'check_hbox_parallel_not',
-           'hbox_parallel_not_remove',
-           'unsafe_hbox_parallel_not_remove',
-           'check_zero_hbox',
-           'zero_hbox',
-           'unsafe_zero_hbox',
-           'check_connected_hboxes',
-           'fuse_hboxes',
-           'unsafe_fuse_hboxes',
-           'check_hadamard',
-           'replace_hadamard',
-           'unsafe_replace_hadamard',
-           'had_edge_hbox_rule',
-           'unsafe_had_edge_to_hbox',
-           'check_hpivot',
-           'hpivot',
-           'unsafe_hpivot',
-           'check_phase_gadgets_for_simp',
-           'check_phase_gadgets_for_apply',
-           'merge_phase_gadgets_for_simp',
-           'merge_phase_gadgets_for_apply',
-           'check_supplementarity_for_simp',
-           'check_supplementarity_for_apply',
-           'safe_apply_supplementarity',
-           'simp_supplementarity'
-           ]
+from .color_change_rule         import *
+from .bialgebra_rule            import *
+from .fuse_rule                 import *
+from .remove_id_rule            import *
+from .copy_rule                 import *
+from .z_to_z_box_rule           import *
+from .pivot_rule                import *
+from .lcomp_rule                import *
+from .hopf_rule                 import *
+from .self_loops_rule           import *
+from .add_identity_rule         import *
+from .push_pauli_rule           import *
+from .euler_rule                import *
+from .pi_commute_rule           import *
+from .hbox_not_remove_rule      import *
+from .zero_hbox_rule            import *
+from .fuse_hboxes_rule          import *
+from .had_edge_hbox_rule        import *
+from .hpivot_rule               import *
+from .merge_phase_gadget_rule   import *
+from .supplementarity_rule      import *
+from .gadget_phasepoly_rule     import *
+from .par_hbox_rule             import *

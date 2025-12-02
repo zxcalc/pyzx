@@ -19,13 +19,15 @@ NEW VERSION
 """
 
 import json
-from collections import defaultdict
 from fractions import Fraction
 
 from typing import Callable, Optional, List, Dict, Tuple
 
+from pyzx import pivot_simp
 from pyzx.utils import EdgeType, VertexType, FractionLike, phase_is_pauli, toggle_edge, vertex_is_zx, toggle_vertex
 from pyzx.graph.base import BaseGraph, VT, ET, upair
+from pyzx.rewrite_rules import *
+
 import pyzx.rewrite_rules.rules as rules
 import pyzx.rewrite_rules.hrules as hrules
 
@@ -235,8 +237,8 @@ MATCHES_EDGES = 2
 operations = {
     "spider": {"text": "fuse spiders", 
                "tooltip": "Fuses connected spiders of the same color",
-               "matcher": rules.match_spider_parallel, 
-               "rule": rules.spider, 
+               "matcher": check_fuse,
+               "rule": fuse,
                "type": MATCHES_VERTICES},
     "to_z": {"text": "change color to Z", 
                "tooltip": "Changes X spiders into Z spiders by pushing out Hadamards",
@@ -260,8 +262,8 @@ operations = {
                "type": MATCHES_EDGES},
     "z_to_z_box": {"text": "Convert Z-spider to Z-box",
                 "tooltip": "Converts a Z-spider into a Z-box",
-                "matcher": rules.match_z_to_z_box_parallel,
-                "rule": rules.z_to_z_box,
+                "matcher": check_z_to_z_box,
+                "rule": z_to_z_box,
                 "type": MATCHES_VERTICES},
     "hopf": {"text": "Hopf rule",
              "tooltip": "Applies the Hopf rule between pairs of spiders that share parallel edges",
@@ -275,28 +277,28 @@ operations = {
                         "type": MATCHES_VERTICES},
     "had2edge": {"text": "Convert H-box", 
                "tooltip": "Converts an arity 2 H-box into an H-edge.",
-               "matcher": hrules.match_hadamards, 
-               "rule": hrules.hadamard_to_h_edge, 
+               "matcher": check_hadamard,
+               "rule": replace_hadamard,
                "type": MATCHES_VERTICES},
     "fuse_hbox": {"text": "Fuse H-boxes", 
                "tooltip": "Merges two adjacent H-boxes together",
-               "matcher": hrules.match_connected_hboxes, 
-               "rule": hrules.fuse_hboxes, 
+               "matcher": check_connected_hboxes,
+               "rule": fuse_hboxes,
                "type": MATCHES_EDGES},
     "mult_hbox": {"text": "Multiply H-boxes", 
                "tooltip": "Merges groups of H-boxes that have the same connectivity",
-               "matcher": hrules.match_par_hbox, 
-               "rule": hrules.par_hbox, 
+               "matcher": check_par_hbox_for_simp,
+               "rule": par_hbox,
                "type": MATCHES_VERTICES},
     "fuse_w": {"text": "fuse W nodes",
                "tooltip": "Merges two connected W nodes together",
-               "matcher": rules.match_w_fusion_parallel,
-                "rule": rules.w_fusion,
+               "matcher": check_fuse,
+                "rule": fuse,
                 "type": MATCHES_EDGES},
     "copy": {"text": "copy 0/pi spider", 
                "tooltip": "Copies a single-legged spider with a 0/pi phase through its neighbor",
-               "matcher": hrules.match_copy, 
-               "rule": hrules.apply_copy, 
+               "matcher": check_copy,
+               "rule": copy,
                "type": MATCHES_VERTICES},
     "pauli": {"text": "push Pauli", 
                "tooltip": "Pushes an arity 2 pi-phase through a selected neighbor",
@@ -315,8 +317,8 @@ operations = {
                "type": MATCHES_VERTICES},
     "pivot": {"text": "pivot", 
                "tooltip": "Deletes a pair of spiders with 0/pi phases by performing a pivot",
-               "matcher": lambda g, matchf: rules.match_pivot_parallel(g, matchf, check_edge_types=True), 
-               "rule": rules.pivot, 
+               "matcher": lambda g, matchf: pivot_simp(g),
+               "rule": pivot,
                "type": MATCHES_EDGES}
 }
 

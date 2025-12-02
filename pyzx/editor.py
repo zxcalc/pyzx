@@ -32,7 +32,7 @@ from .graph.graph import GraphS
 from .rewrite_rules import rules
 from . import tikz
 
-from .editor_actions import MATCHES_VERTICES, MATCHES_EDGES, operations, operations_to_js
+from .rewrite_rules.editor_actions import MATCHES_VERTICES, MATCHES_EDGES, operations, operations_to_js
 
 if get_mode() == 'notebook':
 	import ipywidgets as widgets

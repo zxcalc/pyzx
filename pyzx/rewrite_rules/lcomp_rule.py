@@ -47,7 +47,8 @@ def check_lcomp(
     va = g.phase(v)
 
     if vt != VertexType.Z: return False
-    if not phase_is_clifford(va) or phase_is_pauli(va): return False
+    if not (va == Fraction(1, 2) or va == Fraction(3, 2)): return False
+    # if not phase_is_clifford(va) or phase_is_pauli(va): return False
 
     if g.is_ground(v): return False
 
