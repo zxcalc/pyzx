@@ -16,11 +16,11 @@
 
 from .simplify import spider_simp, id_simp
 from .simplify import pivot_simp, lcomp_simp, pivot_gadget_simp, pivot_boundary_simp
-from .rewrite_rules.hrules import *
 from .simplify import to_gh, copy_simp
 from .rewrite_rules import *
 from .rewrite import *
-
+from typing import Tuple, List
+from pyzx.utils import EdgeType, VertexType
 
 def hadamard_simp(g: BaseGraph[VT,ET], quiet:bool=False) -> int:
     """Converts as many Hadamards represented by H-boxes to Hadamard-edges."""
