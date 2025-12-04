@@ -45,7 +45,7 @@ def check_self_loop(g: BaseGraph[VT, ET], v: VT) -> bool:
 
 
 def remove_self_loop(g: BaseGraph[VT, ET], v: VT) -> bool:
-    if check_self_loop(g, g):
+    if check_self_loop(g, v):
         return unsafe_remove_self_loop(g, v)
     return False
 

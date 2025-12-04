@@ -126,7 +126,7 @@ def hpivot(g: BaseGraph[VT,ET], v: VT, w:VT) -> bool:
 
 
 def unsafe_hpivot(g: BaseGraph[VT, ET], m: hpivot_match_output) -> bool:
-    if len(m) == 0: return None
+    if len(m) == 0: return False
 
     types = g.types()
 

@@ -30,7 +30,7 @@ __all__ = [
         ]
 
 
-from typing import Tuple, List, Dict, Set, Callable, Optional
+from typing import Tuple, List, Dict, Set, Optional
 
 from collections import Counter
 from fractions import Fraction
@@ -203,12 +203,12 @@ def match_pivot_boundary(
 
 def match_pivot_gadget(
         g: BaseGraph[VT,ET],
-        vertices: Optional[List[VT]] = None,
+        vertices: Optional[List[ET]] = None,
         num:int=-1) -> List[MatchPivotType[VT]]:
     """Like :func:`match_pivot_parallel`, but except for pairings of
     Pauli vertices, it looks for a pair of an interior Pauli vertex and an
     interior non-Clifford vertex in order to gadgetize the non-Clifford vertex."""
-    if vertices is not None: candidates_set = set(vertices)
+    if vertices is not None: candidates_set = set(g.edge(vertices[0], vertices[1]))
 
     else: candidates_set = g.edge_set()
     candidates = list(Counter(candidates_set).elements())
@@ -294,9 +294,9 @@ def unsafe_pivot(g: BaseGraph[VT,ET], v0: VT, v1: VT) -> bool:
     rem_edges: List[ET] = []
     etab: Dict[Tuple[VT,VT],List[int]] = dict()
 
-    b0: List[VT] = boundary_list_for_vertex(g, v0)
+    b0: Optional[list[VT]] = boundary_list_for_vertex(g, v0)
     assert b0 is not None
-    b1: List[VT] = boundary_list_for_vertex(g, v1)
+    b1: Optional[list[VT]] = boundary_list_for_vertex(g, v1)
     assert b1 is not None
 
     m = ((v0, v1), (b0, b1))

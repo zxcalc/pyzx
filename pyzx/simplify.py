@@ -163,8 +163,8 @@ def phase_free_simp(g: BaseGraph[VT,ET]) -> bool:
     '''Performs the following set of simplifications on the graph:
     spider -> bialg'''
     i1 = spider_simp(g)
-    i3 = bialg_simp(g)
-    return (i1 or i2 or i3)
+    i2 = bialg_simp(g)
+    return i1 or i2
 
 def basic_simp(g: BaseGraph[VT,ET]) -> bool:
     """Keeps doing the simplifications ``id_simp`` and ``spider_simp`` until none of them can be applied anymore. If

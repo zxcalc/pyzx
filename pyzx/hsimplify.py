@@ -163,7 +163,7 @@ def hpivot_simp(g: BaseGraph[VT,ET], quiet:bool=False) -> bool:
         from_hypergraph_form(g)
         spider_simp(g)
         id_simp(g)
-        if (i and j) == False: break
+        if not (i or j): break
         count += 1
     return count > 0
 
@@ -175,15 +175,15 @@ def zh_simp(g: BaseGraph[VT,ET], quiet:bool=False) -> int:
     count = 0
     while True:
         to_gh(g)
-        i = spider_simp(g)
-        i += id_simp(g)
+        i1 = spider_simp(g)
+        i2 = id_simp(g)
         from_hypergraph_form(g)
-        i += spider_simp(g)
-        i += id_simp(g)
-        if hspider_simp(g): i+=1
+        i3 = spider_simp(g)
+        i4 = id_simp(g)
+        i5 = hspider_simp(g)
 
 
-        if i > 0: 
+        if i1 or i2 or i3 or i4 or i5:
             count += 1
             continue
         if copy_simp(g):
@@ -198,9 +198,9 @@ def zh_simp(g: BaseGraph[VT,ET], quiet:bool=False) -> int:
         if hbox_parallel_not_remove_simp(g):
             count += 1
             continue
-        i = pivot_simp(g)
-        i += lcomp_simp(g)
-        if i> 0: 
+        i6 = pivot_simp(g)
+        i7 = lcomp_simp(g)
+        if i6 or i7:
             count += 1
             continue
         if pivot_gadget_simp(g):
@@ -212,12 +212,12 @@ def zh_simp(g: BaseGraph[VT,ET], quiet:bool=False) -> int:
 
         to_hypergraph_form(g)
 
-        i = just_hpivot_simp(g)
-        j = par_hbox_simp(g)
+        i8 = just_hpivot_simp(g)
+        i9 = par_hbox_simp(g)
 
         from_hypergraph_form(g)
         id_simp(g)
-        if (i or j) == True:
+        if i8 or i9:
             count += 1
             continue
         
