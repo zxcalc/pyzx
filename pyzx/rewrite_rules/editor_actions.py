@@ -29,7 +29,6 @@ from pyzx.graph.base import BaseGraph, VT, ET, upair
 from pyzx.rewrite_rules import *
 
 import pyzx.rewrite_rules.rules as rules
-import pyzx.rewrite_rules.hrules as hrules
 
 
 def match_X_spiders(

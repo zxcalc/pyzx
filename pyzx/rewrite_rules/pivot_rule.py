@@ -203,7 +203,7 @@ def match_pivot_gadget(
     """Like :func:`match_pivot_parallel`, but except for pairings of
     Pauli vertices, it looks for a pair of an interior Pauli vertex and an
     interior non-Clifford vertex in order to gadgetize the non-Clifford vertex."""
-    if vertices is not None: candidates_set = set(g.edge(vertices[0], vertices[1]))
+    if vertices is not None: candidates_set = {g.edge(vertices[0], vertices[1])}
 
     else: candidates_set = g.edge_set()
     candidates = list(Counter(candidates_set).elements())
