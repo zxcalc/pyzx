@@ -116,15 +116,15 @@ def simp(
 
 pivot_simp = RewriteSimpDoubleVertex(check_pivot_parallel, unsafe_pivot)
 
-pivot_gadget_simp = RewriteSimpGraph(check_pivot_gadget_for_apply, pivot_gadget_for_apply, check_pivot_gadget_for_simp, pivot_gadget_for_simp)
+pivot_gadget_simp = RewriteSimpGraph(check_pivot_gadget_for_apply, pivot_gadget_for_apply, placeholder_check_for_pivot, pivot_gadget_for_simp)
 
-pivot_boundary_simp = RewriteSimpGraph(check_pivot_boundary_for_apply, pivot_boundary_for_apply, check_pivot_boundary_for_simp, pivot_boundary_for_simp)
+pivot_boundary_simp = RewriteSimpGraph(check_pivot_boundary_for_apply, pivot_boundary_for_apply, placeholder_check_for_pivot, pivot_boundary_for_simp)
 
 lcomp_simp = RewriteSimpSingleVertex(check_lcomp, unsafe_lcomp)
 
 bialg_simp = RewriteSimpDoubleVertex(check_bialgebra, unsafe_bialgebra, check_bialgebra_reduce)
 
-fuse_simp = RewriteSimpDoubleVertex(check_fuse, unsafe_fuse)
+fuse_simp = RewriteSimpDoubleVertex(check_fuse, unsafe_fuse,None, False, True)
 
 remove_self_loop_simp = RewriteSimpSingleVertex(check_self_loop, unsafe_remove_self_loop)
 
@@ -134,7 +134,7 @@ def spider_simp(g: BaseGraph[VT,ET]) -> bool:
     j = remove_self_loop_simp(g)
     return i or j
 
-id_simp = RewriteSimpSingleVertex(check_remove_id, unsafe_remove_id)
+id_simp = RewriteSimpSingleVertex(check_remove_id, unsafe_remove_id, None, True)
 
 add_identity_rewrite = RewriteDoubleVertex(check_edge, unsafe_add_Z_identity)
 

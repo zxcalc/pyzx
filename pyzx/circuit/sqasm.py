@@ -1,7 +1,7 @@
 # PyZX - Python library for quantum circuit rewriting 
 #        and optimization using the ZX-calculus
 # Copyright (C) 2018 - Aleks Kissinger and John van de Wetering
-
+from build.lib.pyzx.circuit.sqasm import spider_nocheck
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -15,24 +15,35 @@
 # limitations under the License.
 
 from .qasmparser import QASMParser
-from ..rewrite_rules.rules import *
+from .. import rewrite
+from ..rewrite_rules import *
 from ..simplify import simp
-from ..graph.base import BaseGraph
+from ..rewrite import *
+
+from typing import Tuple, List, Dict
+from pyzx.utils import VertexType
+from pyzx.graph.base import BaseGraph, VT, ET
+
 
 __all__ = ['sqasm']
+
+RewriteOutputType = Tuple[Dict[Tuple[VT,VT],List[int]], List[VT], List[ET], bool]
+
 
 #TODO: Improve the type annotation of these functions
 
 # versions of these rules which instruct the simplifier *not* to remove
 # isolated vertices. n.b. remove_ids already does this, but this might change
 # in the future...
-def spider_nocheck(g: BaseGraph, ms: List) -> RewriteOutputType:
-    etab,rem_v,rem_e,check = spider(g, ms)
-    return (etab, rem_v, rem_e, False)
 
-def remove_ids_nocheck(g: BaseGraph, ms: List) -> RewriteOutputType:
-    etab,rem_v,rem_e,check = remove_ids(g, ms)
-    return (etab, rem_v, rem_e, False)
+spider_nocheck = RewriteSimpDoubleVertex(check_fuse, unsafe_fuse,None, False, False)
+
+# def spider_nocheck(g: BaseGraph, ms: List) -> RewriteOutputType:
+#     etab,rem_v,rem_e,check = spider(g, ms)
+#     return (etab, rem_v, rem_e, False)
+
+remove_ids_nocheck = RewriteSimpSingleVertex(check_remove_id, unsafe_remove_id, None, False)
+
 
 def sqasm(s: str, simplify=True) -> BaseGraph:
     p = QASMParser()
@@ -67,9 +78,9 @@ def sqasm(s: str, simplify=True) -> BaseGraph:
     g.set_outputs(tuple(x for x in outputs if not x is None))
     
     while simplify:
-        i = simp(g, '', match_spider_parallel, spider_nocheck, quiet=True)
-        i += simp(g, '', match_ids_parallel, remove_ids_nocheck, quiet=True)
-        if i == 0: break
+        i1 = spider_nocheck(c)
+        i2 = remove_ids_nocheck(c)
+        if not (i1 or i2): break
     
     g.pack_circuit_rows()
     return g

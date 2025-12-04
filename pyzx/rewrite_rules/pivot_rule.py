@@ -20,11 +20,10 @@ __all__ = [
         'pivot',
         'unsafe_pivot',
         'check_pivot_boundary_for_apply',
-        'check_pivot_boundary_for_simp',
+        'placeholder_check_for_pivot',
         'pivot_boundary_for_simp',
         'pivot_boundary_for_apply',
         'check_pivot_gadget_for_apply',
-        'check_pivot_gadget_for_simp',
         'pivot_gadget_for_simp',
         'pivot_gadget_for_apply'
         ]
@@ -100,7 +99,11 @@ def check_pivot_boundary_for_apply(g: BaseGraph[VT,ET], v: VT, w:VT) -> bool:
     matches = match_pivot_boundary(g, [v, w])
     return len(matches) != 0
 
-def check_pivot_boundary_for_simp(g: BaseGraph[VT,ET]) -> bool:
+def check_pivot_gadget_for_apply(g: BaseGraph[VT,ET], v: VT, w:VT) -> bool:
+    matches = match_pivot_gadget(g, [v, w])
+    return len(matches) != 0
+
+def placeholder_check_for_pivot(g: BaseGraph[VT,ET]) -> bool:
     return True
 
 def pivot_boundary_for_simp(g: BaseGraph[VT,ET]) -> bool:
@@ -110,14 +113,6 @@ def pivot_boundary_for_simp(g: BaseGraph[VT,ET]) -> bool:
 def pivot_boundary_for_apply(g: BaseGraph[VT,ET], v: VT, w:VT) -> bool:
     matches = match_pivot_boundary(g, [v, w])
     return pivot_NOT_REWORKED(g, matches)
-
-
-def check_pivot_gadget_for_apply(g: BaseGraph[VT,ET], v: VT, w:VT) -> bool:
-    matches = match_pivot_gadget(g, [v, w])
-    return len(matches) != 0
-
-def check_pivot_gadget_for_simp(g: BaseGraph[VT,ET]) -> bool:
-    return True
 
 def pivot_gadget_for_simp(g: BaseGraph[VT,ET]) -> bool:
     matches = match_pivot_gadget(g)
@@ -203,7 +198,7 @@ def match_pivot_boundary(
 
 def match_pivot_gadget(
         g: BaseGraph[VT,ET],
-        vertices: Optional[List[ET]] = None,
+        vertices: Optional[List[VT]] = None,
         num:int=-1) -> List[MatchPivotType[VT]]:
     """Like :func:`match_pivot_parallel`, but except for pairings of
     Pauli vertices, it looks for a pair of an interior Pauli vertex and an

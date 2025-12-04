@@ -36,27 +36,33 @@ class Rewrite(Generic[VT, ET]):
 class RewriteSingleVertex(Rewrite[VT, ET]):
     applier: Callable[[BaseGraph[VT, ET], VT], bool]
     is_match: Callable[[BaseGraph[VT, ET], VT], bool]
+    rmv_isolated: bool
 
     def __init__(self, is_match: Callable[[BaseGraph[VT, ET], VT], bool],
-                 applier: Callable[[BaseGraph[VT, ET], VT], bool]) -> None:
+                 applier: Callable[[BaseGraph[VT, ET], VT], bool],
+                 rmv_isolated: bool = False) -> None:
         super().__init__()
         self.is_match = is_match
         self.applier = applier
+        self.rmv_isolated = rmv_isolated
         self.__doc__ = is_match.__doc__
 
     def apply(self, graph: BaseGraph[VT, ET], v: VT) -> bool:
+        applied: bool = False
         if self.is_match(graph, v):
-            self.applier(graph, v)
-            return True
-        return False
+            applied = self.applier(graph, v)
+            if self.rmv_isolated:
+                graph.remove_isolated_vertices()
+        return applied
 
 class RewriteSimpSingleVertex(RewriteSingleVertex[VT, ET]):
     simp_match: Optional[Callable[[BaseGraph[VT, ET], VT], bool]]
 
     def __init__(self, is_match: Callable[[BaseGraph[VT, ET], VT], bool],
                  applier: Callable[[BaseGraph[VT, ET], VT], bool],
-                 simp_match: Optional[Callable[[BaseGraph[VT, ET], VT], bool]] = None) -> None:
-        super().__init__(is_match, applier)
+                 simp_match: Optional[Callable[[BaseGraph[VT, ET], VT], bool]] = None,
+                 rmv_isolated: bool = False) -> None:
+        super().__init__(is_match, applier, rmv_isolated)
         self.simp_match = simp_match
 
     def find_all_matches (self, graph: BaseGraph[VT, ET]) -> Set[VT]:
@@ -85,6 +91,8 @@ class RewriteSimpSingleVertex(RewriteSingleVertex[VT, ET]):
                     j += 1
                     self.applier(graph, m)
                     applied = True
+                    if self.rmv_isolated:
+                        graph.remove_isolated_vertices()
             if j == 0: break
         return applied
 
@@ -93,17 +101,21 @@ class RewriteDoubleVertex(Rewrite[VT, ET]):
     is_match: Callable[[BaseGraph[VT, ET], VT, VT], bool]
 
     def __init__(self, is_match: Callable[[BaseGraph[VT, ET], VT, VT], bool],
-                 applier: Callable[[BaseGraph[VT, ET], VT, VT], bool]) -> None:
+                 applier: Callable[[BaseGraph[VT, ET], VT, VT], bool],
+                 rmv_isolated: bool = False) -> None:
         super().__init__()
         self.is_match = is_match
         self.applier = applier
+        self.rmv_isolated = rmv_isolated
         self.__doc__ = is_match.__doc__
 
     def apply(self, graph: BaseGraph[VT, ET], v1: VT, v2: VT) -> bool:
+        applied: bool = False
         if self.is_match(graph, v1, v2):
-            self.applier(graph, v1, v2)
-            return True
-        return False
+            applied = self.applier(graph, v1, v2)
+            if self.rmv_isolated:
+                graph.remove_isolated_vertices()
+        return applied
 
 
 class RewriteSimpDoubleVertex(RewriteDoubleVertex[VT, ET]):
@@ -113,8 +125,9 @@ class RewriteSimpDoubleVertex(RewriteDoubleVertex[VT, ET]):
     def __init__(self, is_match: Callable[[BaseGraph[VT, ET], VT, VT], bool],
                  applier: Callable[[BaseGraph[VT, ET], VT, VT], bool],
                  simp_match: Optional[Callable[[BaseGraph[VT, ET], VT, VT], bool]] = None,
-                 is_ordered: bool = False) -> None:
-        super().__init__(is_match, applier)
+                 is_ordered: bool = False,
+                 rmv_isolated: bool = False) -> None:
+        super().__init__(is_match, applier, rmv_isolated)
         self.simp_match = simp_match
         self.is_ordered = is_ordered
 
@@ -149,6 +162,8 @@ class RewriteSimpDoubleVertex(RewriteDoubleVertex[VT, ET]):
                     j += 1
                     self.applier(graph, m[0], m[1])
                     applied = True
+                    if self.rmv_isolated:
+                        graph.remove_isolated_vertices()
             if j == 0:
                 break
         return applied

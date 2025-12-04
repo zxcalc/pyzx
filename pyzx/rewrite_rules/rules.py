@@ -68,26 +68,23 @@ RewriteOutputType = Tuple[Dict[Tuple[VT,VT],List[int]], List[VT], List[ET], bool
 
 
 MatchObject = TypeVar('MatchObject')
+#
+# def apply_rule(
+#         g: BaseGraph[VT,ET],
+#         rewrite: Callable[[BaseGraph[VT,ET], List[MatchObject]],RewriteOutputType[VT,ET]],
+#         m: List[MatchObject],
+#         check_isolated_vertices:bool=True
+#         ) -> None:
+#     etab, rem_verts, rem_edges, check_isolated_vertices = rewrite(g, m)
+#
+#     g.add_edge_table(etab)
+#     g.remove_vertices(rem_verts)
+#     g.remove_edges(rem_edges)
+#     if check_isolated_vertices: g.remove_isolated_vertices()
 
-def apply_rule(
-        g: BaseGraph[VT,ET],
-        rewrite: Callable[[BaseGraph[VT,ET], List[MatchObject]],RewriteOutputType[VT,ET]],
-        m: List[MatchObject],
-        check_isolated_vertices:bool=True
-        ) -> None:
-    etab, rem_verts, rem_edges, check_isolated_vertices = rewrite(g, m)
-
-    g.add_edge_table(etab)
-    g.remove_vertices(rem_verts)
-    g.remove_edges(rem_edges)
-    if check_isolated_vertices: g.remove_isolated_vertices()
-
-
-MatchBialgType = Tuple[VT,VT,List[VT],List[VT]]
 
 
 ####    z_to_z_box_rule
-
 # def match_z_to_z_box(g: BaseGraph[VT,ET]) -> List[VT]:
 #     """Does the same as :func:`match_z_to_z_box_parallel` but with ``num=1``."""
 #
@@ -101,7 +98,6 @@ MatchBialgType = Tuple[VT,VT,List[VT],List[VT]]
 
 
 ####    fuse_rule
-
 # def match_spider(g: BaseGraph[VT,ET]) -> List[MatchSpiderType[VT]]:
 #     """Does the same as :func:`match_spider_parallel` but with ``num=1``."""
 #     return match_spider_parallel(g, num=1)
@@ -202,155 +198,28 @@ def unspider(g: BaseGraph[VT,ET], m: List[Any], qubit:FloatInt=-1, row:FloatInt=
 #     """
 #
 
-MatchPivotType = Tuple[Tuple[VT,VT],Tuple[List[VT],List[VT]]]
 
-def match_pivot_gadget(
-        g: BaseGraph[VT,ET],
-        matchf:Optional[Callable[[ET],bool]]=None,
-        num:int=-1) -> List[MatchPivotType[VT]]:
-    """Like :func:`match_pivot_parallel`, but except for pairings of
-    Pauli vertices, it looks for a pair of an interior Pauli vertex and an
-    interior non-Clifford vertex in order to gadgetize the non-Clifford vertex."""
-    if matchf is not None: candidates_set = set([e for e in g.edges() if matchf(e)])
-    else: candidates_set = g.edge_set()
-    candidates = list(Counter(candidates_set).elements())
-    types = g.types()
-    phases = g.phases()
-    rs = g.rows()
+###### pivot_gadget_for_simp and pivot_gadget_for_apply
 
-    edge_list: List[Tuple[VT,VT]] = []
-    i = 0
-    m: List[MatchPivotType[VT]] = []
-    while (num == -1 or i < num) and len(candidates) > 0:
-        e = candidates.pop()
-        v0, v1 = g.edge_st(e)
+# def match_pivot_gadget(
+#         g: BaseGraph[VT,ET],
+#         matchf:Optional[Callable[[ET],bool]]=None,
+#         num:int=-1) -> List[MatchPivotType[VT]]:
+#     """Like :func:`match_pivot_parallel`, but except for pairings of
+#     Pauli vertices, it looks for a pair of an interior Pauli vertex and an
+#     interior non-Clifford vertex in order to gadgetize the non-Clifford vertex."""
+#
 
-        if not (types[v0] == VertexType.Z and types[v1] == VertexType.Z): continue
+###### pivot_boundary_for_simp and pivot_boundary_for_apply
 
-        v0a = phases[v0]
-        v1a = phases[v1]
-
-        if not phase_is_pauli(v0a):
-            if phase_is_pauli(v1a):
-                v0, v1 = v1, v0
-                v0a, v1a = v1a, v0a
-            else: continue
-        elif phase_is_pauli(v1a): continue
-        # Now v0 has a Pauli phase and v1 has a non-Pauli phase
-
-        if g.is_ground(v0):
-            continue
-
-        v0n = list(g.neighbors(v0))
-        v1n = list(g.neighbors(v1))
-        if len(v1n) == 1: continue # It is a phase gadget
-        bad_match = False
-        discard_edges: List[ET] = []
-        for i,l in enumerate((v0n, v1n)):
-            for n in l:
-                if types[n] != VertexType.Z:
-                    bad_match = True
-                    break
-                ne = list(g.incident_edges(n))
-                if i==0 and len(ne) == 1 and not (e == ne[0]): # v0 is a phase gadget
-                    bad_match = True
-                    break
-                discard_edges.extend(ne)
-            if bad_match: break
-        if bad_match: continue
-
-        if any(types[w]!=VertexType.Z for w in v0n): continue
-        if any(types[w]!=VertexType.Z for w in v1n): continue
-        # Both v0 and v1 are interior
-
-        v = g.add_vertex(VertexType.Z,-2,rs[v0],v1a)
-        g.set_phase(v1, 0)
-        g.set_qubit(v0,-1)
-        g.update_phase_index(v1,v)
-        edge_list.append((v,v1))
-
-        m.append(((v0,v1),([],[v])))
-        i += 1
-        for c in discard_edges:
-            if c in candidates:
-                candidates.remove(c)
-    g.add_edges(edge_list,EdgeType.SIMPLE)
-    return m
-
-
-def match_pivot_boundary(
-        g: BaseGraph[VT,ET],
-        matchf:Optional[Callable[[VT],bool]]=None,
-        num:int=-1) -> List[MatchPivotType[VT]]:
-    """Like :func:`match_pivot_parallel`, but except for pairings of
-    Pauli vertices, it looks for a pair of an interior Pauli vertex and a
-    boundary non-Pauli Clifford vertex in order to gadgetize the non-Pauli vertex."""
-    if matchf is not None: candidates = set([v for v in g.vertices() if matchf(v)])
-    else: candidates = g.vertex_set()
-    types = g.types()
-    phases = g.phases()
-    rs = g.rows()
-
-    edge_list: List[Tuple[VT,VT]] = []
-    consumed_vertices : Set[VT] = set()
-    i = 0
-    m: List[MatchPivotType[VT]] = []
-    inputs = g.inputs()
-    while (num == -1 or i < num) and len(candidates) > 0:
-        v = candidates.pop()
-        if types[v] != VertexType.Z or not phase_is_pauli(phases[v]) or g.is_ground(v):
-            continue
-
-        good_vert = True
-        w = None
-        bound = None
-        for n in g.neighbors(v):
-            if types[n] != VertexType.Z:
-                good_vert = False
-                break
-            if len(g.neighbors(n)) == 1: # v is a phase gadget
-                good_vert = False
-                break
-            if n in consumed_vertices:
-                good_vert = False
-                break
-            if g.is_ground(n) in consumed_vertices:
-                good_vert = False
-                break
-            boundaries: List[VT] = []
-            wrong_match = False
-            for b in g.neighbors(n):
-                if types[b] == VertexType.BOUNDARY:
-                    boundaries.append(b)
-                elif types[b] != VertexType.Z:
-                    wrong_match = True
-            if len(boundaries) != 1 or wrong_match: # n is not on the boundary,
-                continue             # has too many boundaries or has neighbors of wrong type
-            if not phase_is_pauli(phases[n]) and phase_is_clifford(phases[n]):
-                w = n
-                bound = boundaries[0]
-            if not w:
-                w = n
-                bound = boundaries[0]
-        if not good_vert or w is None: continue
-        if bound in inputs: mod = 0.5
-        else: mod = -0.5
-        v1 = g.add_vertex(VertexType.Z,-2,rs[w]+mod,phases[w])
-        v2 = g.add_vertex(VertexType.Z,-1,rs[w]+mod,0)
-        g.set_phase(w, 0)
-        g.update_phase_index(w,v1)
-        edge_list.append((w,v2))
-        edge_list.append((v1,v2))
-        for n in g.neighbors(v): consumed_vertices.add(n)
-        for n in g.neighbors(w): consumed_vertices.add(n)
-        assert bound is not None
-        m.append(((v,w),([],[bound])))
-        i += 1
-        for n in g.neighbors(v): candidates.discard(n)
-        for n in g.neighbors(w): candidates.discard(n)
-
-    g.add_edges(edge_list, EdgeType.HADAMARD)
-    return m
+# def match_pivot_boundary(
+#         g: BaseGraph[VT,ET],
+#         matchf:Optional[Callable[[VT],bool]]=None,
+#         num:int=-1) -> List[MatchPivotType[VT]]:
+#     """Like :func:`match_pivot_parallel`, but except for pairings of
+#     Pauli vertices, it looks for a pair of an interior Pauli vertex and a
+#     boundary non-Pauli Clifford vertex in order to gadgetize the non-Pauli vertex."""
+#
 
 
 #pivot: pivot_rule
@@ -870,79 +739,3 @@ def apply_gadget_phasepoly(g: BaseGraph[VT,ET], matches: List[MatchPhasePolyType
         g.set_phase(v, phase + Fraction(7,4))
 
 
-
-def pivot(g: BaseGraph[VT,ET], matches: List[MatchPivotType[VT]]) -> RewriteOutputType[VT,ET]:
-    """Perform a pivoting rewrite, given a list of matches as returned by
-    ``match_pivot(_parallel)``. A match is itself a list where:
-
-    ``m[0][0]`` : first vertex in pivot.
-    ``m[0][1]`` : second vertex in pivot.
-    ``m[1][0]`` : list of zero or one boundaries adjacent to ``m[0]``.
-    ``m[1][1]`` : list of zero or one boundaries adjacent to ``m[1]``.
-    """
-    rem_verts: List[VT] = []
-    rem_edges: List[ET] = []
-    etab: Dict[Tuple[VT,VT],List[int]] = dict()
-
-
-    for m in matches:
-        # compute:
-        #  n[0] <- non-boundary neighbors of m[0] only
-        #  n[1] <- non-boundary neighbors of m[1] only
-        #  n[2] <- non-boundary neighbors of m[0] and m[1]
-        g.update_phase_index(m[0][0],m[0][1])
-        n = [set(g.neighbors(m[0][0])), set(g.neighbors(m[0][1]))]
-        for i in range(2):
-            n[i].remove(m[0][1-i])
-            if len(m[1][i]) == 1: n[i].remove(m[1][i][0])
-        n.append(n[0] & n[1])
-        n[0] = n[0] - n[2]
-        n[1] = n[1] - n[2]
-        es = ([(s,t) for s in n[0] for t in n[1]] +
-              [(s,t) for s in n[1] for t in n[2]] +
-              [(s,t) for s in n[0] for t in n[2]])
-        k0, k1, k2 = len(n[0]), len(n[1]), len(n[2])
-        g.scalar.add_power(k0*k2 + k1*k2 + k0*k1)
-
-        for v in n[2]:
-            if not g.is_ground(v):
-                g.add_to_phase(v, 1)
-
-        if g.phase(m[0][0]) and g.phase(m[0][1]): g.scalar.add_phase(Fraction(1))
-        if not m[1][0] and not m[1][1]:
-            g.scalar.add_power(-(k0+k1+2*k2-1))
-        elif not m[1][0]:
-            g.scalar.add_power(-(k1+k2))
-        else: g.scalar.add_power(-(k0+k2))
-
-        for i in 0, 1:
-            # if m[i] has a phase, it will get copied on to the neighbors of m[1-i]:
-            a = g.phase(m[0][i])
-            if a:
-                for v in n[1-i]:
-                    if not g.is_ground(v):
-                        g.add_to_phase(v, a)
-                for v in n[2]:
-                    if not g.is_ground(v):
-                        g.add_to_phase(v, a)
-
-            if not m[1][i]:
-                # if there is no boundary, the other vertex is destroyed
-                rem_verts.append(m[0][1-i])
-            else:
-                # if there is a boundary, toggle whether it is an h-edge or a normal edge
-                # and point it at the other vertex
-                e = (m[0][i], m[1][i][0])
-                new_e = (m[0][1-i], m[1][i][0])
-                ne,nhe = etab.get(new_e) or [0,0]
-                if g.edge_type(g.edge(e[0],e[1])) == EdgeType.SIMPLE: nhe += 1
-                elif g.edge_type(g.edge(e[0],e[1])) == EdgeType.HADAMARD: ne += 1
-                etab[new_e] = [ne,nhe]
-                rem_edges.append(g.edge(e[0], e[1]))
-
-
-        for e in es:
-            nhe = etab.get(e, (0,0))[1]
-            etab[e] = [0,nhe+1]
-
-    return (etab, rem_verts, rem_edges, True)
