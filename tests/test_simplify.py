@@ -147,7 +147,7 @@ class TestSimplify(unittest.TestCase):
 
     def test_teleport_reduce(self):
         """Tests whether teleport_reduce preserves semantics on a set of circuits that have been broken before."""
-        for i,s in enumerate([qasm_1,qasm_2,qasm_3,qasm_4]):
+        for i,s in enumerate([qasm_1,qasm_2,qasm_3,qasm_4,qasm_5]):
             with self.subTest(i=i):
                 c = qasm(s)
                 g = c.to_graph()

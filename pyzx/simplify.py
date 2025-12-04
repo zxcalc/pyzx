@@ -34,6 +34,7 @@ from .rewrite_rules.rules import *
 from .circuit import Circuit
 from .rewrite_rules import *
 from .rewrite import *
+from .tensor import compare_tensors
 
 class Stats(object):
     def __init__(self) -> None:
@@ -162,22 +163,20 @@ def phase_free_simp(g: BaseGraph[VT,ET]) -> bool:
     '''Performs the following set of simplifications on the graph:
     spider -> bialg'''
     i1 = spider_simp(g)
-    i2 = remove_self_loop_simp(g)
     i3 = bialg_simp(g)
-    return i1 or i2 or i3
+    return (i1 or i2 or i3)
 
 def basic_simp(g: BaseGraph[VT,ET]) -> bool:
     """Keeps doing the simplifications ``id_simp`` and ``spider_simp`` until none of them can be applied anymore. If
     starting from a circuit, the result should still have causal flow."""
     spider_simp(g)
-    remove_self_loop_simp(g)
     to_gh(g)
     i = 0
     while True:
         i1 = id_simp(g)
         i2 = spider_simp(g)
         i3 = remove_self_loop_simp(g)
-        if i1 and i2 and i3 == False: break
+        if not (i1 or i2 or i3): break
         i += 1
     return i != 0
 
@@ -192,10 +191,9 @@ def interior_clifford_simp(g: BaseGraph[VT,ET]) -> bool:
     while True:
         i1 = id_simp(g)
         i2 = spider_simp(g)
-        i3 = remove_self_loop_simp(g)
-        i4 = pivot_simp(g)
-        i5 = lcomp_simp(g)
-        if  (i1 and i2 and i3 and i4 and i5) == False: break
+        i3 = pivot_simp(g)
+        i4 = lcomp_simp(g)
+        if not (i1 or i2 or i3 or i4): break
         i += 1
     return i != 0
 
@@ -250,9 +248,55 @@ def full_reduce(g: BaseGraph[VT,ET], matchf: Optional[Callable[[Union[VT, ET]],b
         k = copy_simp(g)
         l = supplementarity_simp(g)
         j = pivot_gadget_simp(g)
-        if not (i and j and k and l):
+        if not (i or j or k or l):
             g.remove_isolated_vertices()
             break
+
+def _debug_full_reduce(g: BaseGraph[VT,ET]) -> None:
+    """A utility to debug full_reduce. It compares tensors after each simplification step to identify the first step that causes graphs to diverge."""
+    if any(g.types()[h] == VertexType.H_BOX for h in g.vertices()):
+        raise ValueError("Input graph is not a ZX-diagram as it contains an H-box. "
+                         "Maybe call pyzx.hsimplify.from_hypergraph_form(g) first?")
+
+    initial_tensor = g.to_tensor()
+
+    class SanityCheckError(RuntimeError):
+        def __init__(self, message: str, g: BaseGraph[VT,ET]):
+            super().__init__(message)
+            self.g = g
+
+    def sanity_check(g1: BaseGraph[VT,ET], message: str):
+        if not compare_tensors(g1.to_tensor(), initial_tensor, True):
+            raise SanityCheckError(f"full_reduce step failed: {message}", g1)
+    print("starting interior_clifford_simp")
+    interior_clifford_simp(g)
+    print("completed interior_clifford_simp")
+    sanity_check(g, "initial interior_clifford_simp")
+    print("starting pivot_gadget_simp")
+    pivot_gadget_simp(g)
+    print("completed pivot_gadget_simp")
+    sanity_check(g, "initial pivot_gadget_simp")
+    iteration = 0
+    while True:
+        iteration += 1
+        print(f"iteration {iteration}")
+        clifford_simp(g)
+        sanity_check(g, f"clifford_simp step {iteration}")
+        i = gadget_simp(g)
+        sanity_check(g, f"gadget_simp step {iteration}")
+        interior_clifford_simp(g)
+        sanity_check(g, f"interior_clifford_simp step {iteration}")
+        k = copy_simp(g)
+        sanity_check(g, f"copy_simp step {iteration}")
+        l = supplementarity_simp(g)
+        sanity_check(g, f"supplementarity_simp step {iteration}")
+        j = pivot_gadget_simp(g)
+        sanity_check(g, f"pivot_gadget_simp step {iteration}")
+        if not (i or j or k or l):
+            g.remove_isolated_vertices()
+            sanity_check(g, f"remove_isolated_vertices step {iteration}")
+            break
+    print("done")
 
 def teleport_reduce(g: BaseGraph[VT,ET]) -> BaseGraph[VT,ET]:
     """This simplification procedure runs :func:`full_reduce` in a way
@@ -260,6 +304,12 @@ def teleport_reduce(g: BaseGraph[VT,ET]) -> BaseGraph[VT,ET]:
     The only thing that is different in the output graph are the location and value of the phases."""
     s = Simplifier(g)
     s.full_reduce()
+    return s.mastergraph
+
+def _debug_teleport_reduce(g: BaseGraph[VT,ET]) -> BaseGraph[VT,ET]:
+    """A utility to debug teleport_reduce. It internally calls _debug_full_reduce."""
+    s = Simplifier(g)
+    s._debug_full_reduce()
     return s.mastergraph
 
 
@@ -316,6 +366,8 @@ class Simplifier(Generic[VT, ET]):
     def full_reduce(self) -> None:
         full_reduce(self.simplifygraph)
 
+    def _debug_full_reduce(self) -> None:
+        _debug_full_reduce(self.simplifygraph)
 
 
 def to_gh(g: BaseGraph[VT,ET],quiet:bool=True) -> None:

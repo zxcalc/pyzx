@@ -53,14 +53,29 @@ def unsafe_fuse(g: BaseGraph[VT,ET], v1: VT, v2: VT) -> bool:
     if vertex_is_w(g.type(v1)):
         return unsafe_fuse_w(g, v1, v2)
 
-    if g.type(v1) == VertexType.Z_BOX or g.type(v2) == VertexType.Z_BOX:
+    if g.row(v1) == 0:
+        v1, v2 = v2, v1
+
+    ground = g.is_ground(v1) or g.is_ground(v2)
+
+    if ground:
+        g.set_phase(v1, 0)
+        g.set_ground(v1)
+    elif g.type(v1) == VertexType.Z_BOX or g.type(v2) == VertexType.Z_BOX:
         if g.type(v1) == VertexType.Z:
             unsafe_z_to_z_box(g, v1)
         if g.type(v2) == VertexType.Z:
             unsafe_z_to_z_box(g, v2)
+        g.set_phase(v1, 0)
         set_z_box_label(g, v1, get_z_box_label(g, v1) * get_z_box_label(g, v2))
     else:
         g.add_to_phase(v1, g.phase(v2))
+
+    if g.track_phases:
+        g.fuse_phases(v1, v2)
+
+
+    etab: Dict[Tuple[VT, VT], List[int]] = dict()
 
     for e in g.incident_edges(v2):
         source, target = g.edge_st(e)
@@ -71,9 +86,12 @@ def unsafe_fuse(g: BaseGraph[VT,ET], v1: VT, v2: VT) -> bool:
             other_vertex = target
         else: #self-loop
             other_vertex = v1
-        if other_vertex == v1 and g.edge_type(e) == EdgeType.SIMPLE:
-            continue
-        g.add_edge((v1,other_vertex), edgetype=g.edge_type(e))
+        new_e = (v1, other_vertex)
+        if new_e not in etab: etab[new_e] = [0, 0]
+        etab[new_e][g.edge_type(e) - 1] += 1
+    etab[(v1, v1)][0] = 0  # remove simple edge loops
+
+    g.add_edge_table(etab)
     g.remove_vertex(v2)
     return True
 

@@ -31,12 +31,23 @@ __all__ = [
 MatchGadgetType = Tuple[VT,VT,FractionLike,List[VT],List[VT]]
 
 def check_phase_gadgets_for_simp(g: BaseGraph[VT,ET]) -> bool:
-    matches = match_phase_gadgets(g)
-    return len(matches) != 0
+    # matches = match_phase_gadgets(g)
+    return True
 
 def check_phase_gadgets_for_apply(g: BaseGraph[VT,ET], v: VT, w: VT) -> bool:
     matches = match_phase_gadgets(g, [v, w])
     return len(matches) != 0
+
+
+def merge_phase_gadgets_for_simp(g: BaseGraph[VT,ET]) -> bool:
+    matches = match_phase_gadgets(g)
+    return merge_phase_gadgets(g, matches)
+
+def merge_phase_gadgets_for_apply(g: BaseGraph[VT,ET], v: VT, w: VT) -> bool:
+    matches = match_phase_gadgets(g, [v, w])
+    return merge_phase_gadgets(g, matches)
+
+
 
 def match_phase_gadgets(g: BaseGraph[VT,ET], vertices:Optional[List[VT]]=None) -> List[MatchGadgetType[VT]]:
     """Determines which phase gadgets act on the same vertices, so that they can be fused together.
@@ -91,17 +102,11 @@ def match_phase_gadgets(g: BaseGraph[VT,ET], vertices:Optional[List[VT]]=None) -
             m.append((v,n,totphase, gad, [gadgets[n] for n in gad]))
     return m
 
-def merge_phase_gadgets_for_simp(g: BaseGraph[VT,ET]) -> bool:
-    matches = match_phase_gadgets(g)
-    return merge_phase_gadgets(g, matches)
-
-def merge_phase_gadgets_for_apply(g: BaseGraph[VT,ET], v: VT, w: VT) -> bool:
-    matches = match_phase_gadgets(g, [v, w])
-    return merge_phase_gadgets(g, matches)
-
 def merge_phase_gadgets(g: BaseGraph[VT,ET], matches: List[MatchGadgetType[VT]]) -> bool:
     """Given the output of :func:``match_phase_gadgets``, removes phase gadgets that act on the same set of targets."""
     rem: List[VT] = []
+
+    if len(matches) <= 0: return False
 
     for v, n, phase, othergadgets, othertargets in matches:
         g.set_phase(v, phase)

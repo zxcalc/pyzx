@@ -46,7 +46,7 @@ def do_tests(qubits, depth, iterations, test_clifford_graph=True):
             circ = cliffordT(qubits,depth,p_t=0.2)
             t = circ.to_tensor()
             g = circ.copy()
-            clifford_simp(g,quiet=True)
+            clifford_simp(g)
             steps.append("clifford_simp")
             if test_clifford_graph: compare(t, g)
             
@@ -64,7 +64,7 @@ def do_tests(qubits, depth, iterations, test_clifford_graph=True):
 
             steps = []
             g = circ.copy()
-            full_reduce(g, quiet=True)
+            full_reduce(g)
             steps.append("full_reduce")
             if test_clifford_graph: compare(t, g)
 
