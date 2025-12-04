@@ -24,7 +24,8 @@ from typing import Callable, Optional, List, Tuple, Dict
 from pyzx.utils import EdgeType, VertexType, is_pauli
 from pyzx.graph.base import BaseGraph, VT, ET, upair
 
-from pyzx.rewrite_rules.rules import RewriteOutputType
+RewriteOutputType = Tuple[Dict[Tuple[VT,VT],List[int]], List[VT], List[ET], bool]
+
 
 def check_bialgebra(g: BaseGraph[VT,ET], v1: VT, v2: VT) -> bool:
     """Checks if the bialgebra rule can be applied to a given pair of vertices."""

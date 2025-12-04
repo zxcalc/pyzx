@@ -19,13 +19,6 @@
 NEW VERSION 
 """
 
-from fractions import Fraction
-from itertools import combinations
-from typing import Dict, List, Tuple, Callable, Optional, Set, FrozenSet
-from pyzx.utils import EdgeType, VertexType, toggle_edge, FractionLike, FloatInt
-from pyzx.graph.base import BaseGraph, ET, VT
-import pyzx.rewrite_rules.rules as rules
-
 
 # check_hadamard: had_edge_to_hbox_rule
 # def is_hadamard(g: BaseGraph[VT,ET], v: VT) -> bool:

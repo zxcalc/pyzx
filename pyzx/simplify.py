@@ -36,6 +36,9 @@ from .rewrite_rules import *
 from .rewrite import *
 from .tensor import compare_tensors
 
+RewriteOutputType = Tuple[Dict[Tuple[VT,VT],List[int]], List[VT], List[ET], bool]
+MatchObject = TypeVar('MatchObject')
+
 class Stats(object):
     def __init__(self) -> None:
         self.num_rewrites: Dict[str,int] = {}

@@ -1,7 +1,6 @@
 # PyZX - Python library for quantum circuit rewriting 
 #        and optimization using the ZX-calculus
 # Copyright (C) 2018 - Aleks Kissinger and John van de Wetering
-from build.lib.pyzx.circuit.sqasm import spider_nocheck
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -15,9 +14,7 @@ from build.lib.pyzx.circuit.sqasm import spider_nocheck
 # limitations under the License.
 
 from .qasmparser import QASMParser
-from .. import rewrite
 from ..rewrite_rules import *
-from ..simplify import simp
 from ..rewrite import *
 
 from typing import Tuple, List, Dict

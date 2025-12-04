@@ -27,9 +27,7 @@ from pyzx.utils import EdgeType, VertexType, FractionLike, phase_is_pauli, toggl
 from pyzx.graph.base import BaseGraph, VT, ET, upair
 from pyzx.rewrite_rules import *
 
-
-import pyzx.rewrite_rules.rules as rules
-
+RewriteOutputType = Tuple[Dict[Tuple[VT,VT],List[int]], List[VT], List[ET], bool]
 
 def match_X_spiders(
         g: BaseGraph[VT, ET],
@@ -53,7 +51,7 @@ def match_Z_spiders(
     return [v for v in candidates if types[v] == VertexType.Z]
 
 
-def color_change_editor(g: BaseGraph[VT,ET], matches: List[VT]) -> rules.RewriteOutputType[VT,ET]:
+def color_change_editor(g: BaseGraph[VT,ET], matches: List[VT]) -> RewriteOutputType[VT,ET]:
     for v in matches:
         g.set_type(v, toggle_vertex(g.type(v)))
         for e in g.incident_edges(v):
@@ -99,7 +97,7 @@ def pauli_matcher(
 
 def pauli_push_editor(g: BaseGraph[VT,ET],
                matches: List[Tuple[VT,VT]]
-               ) -> rules.RewriteOutputType[VT,ET]:
+               ) -> RewriteOutputType[VT,ET]:
     """Pushes a Pauli (i.e. a pi phase) through another spider."""
     rem_verts: List[VT] = []
     rem_edges: List[ET] = []
@@ -170,7 +168,7 @@ def match_hadamard_edge(
 
 def euler_expansion_editor(g: BaseGraph[VT,ET],
                     matches: List[ET]
-                    ) -> rules.RewriteOutputType[VT,ET]:
+                    ) -> RewriteOutputType[VT,ET]:
     """Expands the given Hadamard-edges into pi/2 phases using its Euler decomposition."""
     types = g.types()
     phases = g.phases()
@@ -216,7 +214,7 @@ def euler_expansion_editor(g: BaseGraph[VT,ET],
 
 def add_Z_identity_editor(g: BaseGraph[VT,ET],
         matches: List[ET]
-        ) -> rules.RewriteOutputType[VT,ET]:
+        ) -> RewriteOutputType[VT,ET]:
     rem_edges = []
     etab = {}
     for e in matches:
