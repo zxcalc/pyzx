@@ -272,7 +272,7 @@ def match_pivot_gadget(
 
 
 def pivot(g: BaseGraph[VT,ET], v: VT, v1: VT) -> bool:
-    if check_pivot_parallel(g, v, v1):
+    if check_pivot(g, v, v1):
         return unsafe_pivot(g, v, v1)
     return False
 
