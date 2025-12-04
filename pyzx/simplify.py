@@ -114,7 +114,7 @@ def simp(
     return i
 
 
-pivot_simp = RewriteSimpDoubleVertex(check_pivot_parallel, unsafe_pivot)
+pivot_simp = RewriteSimpDoubleVertex(check_pivot, unsafe_pivot)
 
 pivot_gadget_simp = RewriteSimpGraph(check_pivot_gadget_for_apply, pivot_gadget_for_apply, placeholder_check_for_pivot, pivot_gadget_for_simp)
 

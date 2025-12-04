@@ -16,7 +16,7 @@
 
 
 __all__ = [
-        'check_pivot_parallel',
+        'check_pivot',
         'pivot',
         'unsafe_pivot',
         'check_pivot_boundary_for_apply',
@@ -57,7 +57,7 @@ def boundary_list_for_vertex(
     return v0b
 
 
-def check_pivot_parallel(
+def check_pivot(
         g: BaseGraph[VT,ET],
         v0: VT,
         v1: VT

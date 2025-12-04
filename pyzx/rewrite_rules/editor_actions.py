@@ -23,10 +23,10 @@ from fractions import Fraction
 
 from typing import Callable, Optional, List, Dict, Tuple
 
-from pyzx import pivot_simp
 from pyzx.utils import EdgeType, VertexType, FractionLike, phase_is_pauli, toggle_edge, vertex_is_zx, toggle_vertex
 from pyzx.graph.base import BaseGraph, VT, ET, upair
 from pyzx.rewrite_rules import *
+
 
 import pyzx.rewrite_rules.rules as rules
 
@@ -53,7 +53,7 @@ def match_Z_spiders(
     return [v for v in candidates if types[v] == VertexType.Z]
 
 
-def color_change(g: BaseGraph[VT,ET], matches: List[VT]) -> rules.RewriteOutputType[VT,ET]:
+def color_change_editor(g: BaseGraph[VT,ET], matches: List[VT]) -> rules.RewriteOutputType[VT,ET]:
     for v in matches:
         g.set_type(v, toggle_vertex(g.type(v)))
         for e in g.incident_edges(v):
@@ -97,7 +97,7 @@ def pauli_matcher(
     return m
 
 
-def pauli_push(g: BaseGraph[VT,ET],
+def pauli_push_editor(g: BaseGraph[VT,ET],
                matches: List[Tuple[VT,VT]]
                ) -> rules.RewriteOutputType[VT,ET]:
     """Pushes a Pauli (i.e. a pi phase) through another spider."""
@@ -168,7 +168,7 @@ def match_hadamard_edge(
     return [e for e in candidates if g.edge_type(e)==EdgeType.HADAMARD]
 
 
-def euler_expansion(g: BaseGraph[VT,ET], 
+def euler_expansion_editor(g: BaseGraph[VT,ET],
                     matches: List[ET]
                     ) -> rules.RewriteOutputType[VT,ET]:
     """Expands the given Hadamard-edges into pi/2 phases using its Euler decomposition."""
@@ -214,7 +214,7 @@ def euler_expansion(g: BaseGraph[VT,ET],
             
     return (etab, [], rem_edges, False)
 
-def add_Z_identity(g: BaseGraph[VT,ET], 
+def add_Z_identity_editor(g: BaseGraph[VT,ET],
         matches: List[ET]
         ) -> rules.RewriteOutputType[VT,ET]:
     rem_edges = []
@@ -242,22 +242,22 @@ operations = {
     "to_z": {"text": "change color to Z", 
                "tooltip": "Changes X spiders into Z spiders by pushing out Hadamards",
                "matcher": match_X_spiders, 
-               "rule": color_change, 
+               "rule": color_change_editor,
                "type": MATCHES_VERTICES},
     "to_x": {"text": "change color to X", 
                "tooltip": "Changes Z spiders into X spiders by pushing out Hadamards",
                "matcher": match_Z_spiders, 
-               "rule": color_change, 
+               "rule": color_change_editor,
                "type": MATCHES_VERTICES},
     "rem_id": {"text": "remove identity", 
                "tooltip": "Removes a 2-ary phaseless spider",
-               "matcher": rules.match_ids_parallel, 
-               "rule": rules.remove_ids, 
+               "matcher": check_remove_id,
+               "rule": remove_id,
                "type": MATCHES_VERTICES},
     "id_z": {"text": "Add Z identity", 
                "tooltip": "Adds a phaseless arity 2 Z spider on the selected edges",
                "matcher": match_edge, 
-               "rule": add_Z_identity, 
+               "rule": add_Z_identity,
                "type": MATCHES_EDGES},
     "z_to_z_box": {"text": "Convert Z-spider to Z-box",
                 "tooltip": "Converts a Z-spider into a Z-box",
@@ -266,13 +266,13 @@ operations = {
                 "type": MATCHES_VERTICES},
     "hopf": {"text": "Hopf rule",
              "tooltip": "Applies the Hopf rule between pairs of spiders that share parallel edges",
-             "matcher": rules.match_hopf,
-             "rule": rules.hopf,
+             "matcher": check_hopf,
+             "rule": hopf,
              "type": MATCHES_VERTICES},
     "remove_self_loops": {"text": "remove self-loops",
                         "tooltip": "Removes all self-loops on a spider",
-                        "matcher": rules.match_self_loop,
-                        "rule": rules.remove_self_loops,
+                        "matcher": check_self_loop,
+                        "rule": remove_self_loop,
                         "type": MATCHES_VERTICES},
     "had2edge": {"text": "Convert H-box", 
                "tooltip": "Converts an arity 2 H-box into an H-edge.",
@@ -302,21 +302,21 @@ operations = {
     "pauli": {"text": "push Pauli", 
                "tooltip": "Pushes an arity 2 pi-phase through a selected neighbor",
                "matcher": pauli_matcher, 
-               "rule": pauli_push, 
+               "rule": pauli_push_editor,
                "type": MATCHES_VERTICES},
     "euler": {"text": "decompose Hadamard", 
                "tooltip": "Expands a Hadamard-edge into its component spiders using its Euler decomposition",
                "matcher": match_hadamard_edge, 
-               "rule": euler_expansion, 
+               "rule": euler_expansion_editor,
                "type": MATCHES_EDGES},
     "lcomp": {"text": "local complementation", 
                "tooltip": "Deletes a spider with a pi/2 phase by performing a local complementation on its neighbors",
-               "matcher": rules.match_lcomp_parallel, 
-               "rule": rules.lcomp, 
+               "matcher": check_lcomp,
+               "rule": lcomp,
                "type": MATCHES_VERTICES},
     "pivot": {"text": "pivot", 
                "tooltip": "Deletes a pair of spiders with 0/pi phases by performing a pivot",
-               "matcher": lambda g, matchf: pivot_simp(g),
+               "matcher": check_pivot,
                "rule": pivot,
                "type": MATCHES_EDGES}
 }
