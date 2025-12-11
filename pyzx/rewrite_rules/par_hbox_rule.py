@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+This module contains the implementation of two parallel hbox rules: multiply rule and intro rule.
+These rules act on an entire graph and should be called using hsimplify.par_hbox_simp and hsimplify.par_hbox_intro_simp
+"""
+
 __all__ = ['check_par_hbox_for_apply',
            'check_par_hbox_for_simp',
            'par_hbox',
@@ -27,13 +32,30 @@ from pyzx.utils import EdgeType, VertexType
 from pyzx.graph.base import BaseGraph, ET, VT
 
 
+## Multiply rule:
+
 def check_par_hbox_for_apply(g: BaseGraph[VT,ET], v: VT, w: VT) -> bool:
+    """Runs :func:`match_par_hbox` on given vertices and returns whether any matches were found."""
     matches = match_par_hbox(g, [v, w])
     return len(matches) > 0
 
 def check_par_hbox_for_simp(g: BaseGraph[VT,ET]) -> bool:
+    """Runs :func:`match_par_hbox` and returns whether any matches were found."""
     matches = match_par_hbox(g)
     return len(matches) > 0
+
+def simp_par_hbox(g: BaseGraph[VT,ET]) -> bool:
+    """Runs :func:`match_par_hbox` and if any matches are found runs :func:`unsafe_par_hbox`"""
+    matches = match_par_hbox(g)
+    if len(matches) == 0: return False
+    return unsafe_par_hbox(g, matches)
+
+def par_hbox(g: BaseGraph[VT,ET], v: VT, w: VT) -> bool:
+    """Runs :func:`match_par_hbox` on given vertices and if any matches are found runs :func:`unsafe_par_hbox`"""
+    matches = match_par_hbox(g, [v, w])
+    if len(matches) == 0: return False
+    return unsafe_par_hbox(g, matches)
+
 
 TYPE_MATCH_PAR_HBOX = Tuple[List[VT],List[VT],List[VT]]
 
@@ -95,14 +117,6 @@ def match_par_hbox(
         m.append((hs, firstNOTs, NOTs))
     return m
 
-def simp_par_hbox(g: BaseGraph[VT,ET]) -> bool:
-    matches = match_par_hbox(g)
-    return unsafe_par_hbox(g, matches)
-
-def par_hbox(g: BaseGraph[VT,ET], v: VT, w: VT) -> bool:
-    matches = match_par_hbox(g, [v, w])
-    return unsafe_par_hbox(g, matches)
-
 def unsafe_par_hbox(g: BaseGraph[VT, ET], matches: List[TYPE_MATCH_PAR_HBOX]) -> bool:
     """Implements the `multiply rule' (M) from https://arxiv.org/abs/1805.02175"""
     rem_verts = []
@@ -121,13 +135,30 @@ def unsafe_par_hbox(g: BaseGraph[VT, ET], matches: List[TYPE_MATCH_PAR_HBOX]) ->
     return True
 
 
+## Intro rule:
+
 def check_par_hbox_intro_for_apply(g: BaseGraph[VT,ET], v: VT, w: VT) -> bool:
+    """Runs :func:`match_par_hbox_intro` on given vertices and returns whether any matches were found."""
     matches = match_par_hbox_intro(g, [v, w])
     return len(matches) != 0
 
 def check_par_hbox_intro_for_simp(g: BaseGraph[VT,ET]) -> bool:
+    """Runs :func:`match_par_hbox_intro` and returns whether any matches were found."""
     matches = match_par_hbox_intro(g)
     return len(matches) != 0
+
+def simp_par_hbox_intro(g: BaseGraph[VT,ET]) -> bool:
+    """Runs :func:`match_par_hbox_intro` and if any matches are found runs :func:`unsafe_par_hbox_intro`"""
+    matches = match_par_hbox_intro(g)
+    if len(matches) == 0: return False
+    return unsafe_par_hbox_intro(g, matches)
+
+def par_hbox_intro(g: BaseGraph[VT,ET], v: VT, w: VT) -> bool:
+    """Runs :func:`match_par_hbox_intro` on given vertices and if any matches are found runs :func:`unsafe_par_hbox_intro`"""
+    matches = match_par_hbox_intro(g, [v, w])
+    if len(matches) == 0: return False
+    return unsafe_par_hbox_intro(g, matches)
+
 
 TYPE_MATCH_PAR_HBOX_INTRO = Tuple[VT, VT, VT, List[VT], Set[VT]]
 def match_par_hbox_intro(g: BaseGraph[VT, ET], vertices: Optional[List[VT]]=None) -> List[TYPE_MATCH_PAR_HBOX_INTRO]:
@@ -202,13 +233,6 @@ def match_par_hbox_intro(g: BaseGraph[VT, ET], vertices: Optional[List[VT]]=None
     return []
 
 
-def simp_par_hbox_intro(g: BaseGraph[VT,ET]) -> bool:
-    matches = match_par_hbox_intro(g)
-    return unsafe_par_hbox_intro(g, matches)
-
-def par_hbox_intro(g: BaseGraph[VT,ET], v: VT, w: VT) -> bool:
-    matches = match_par_hbox_intro(g, [v, w])
-    return unsafe_par_hbox_intro(g, matches)
 
 def unsafe_par_hbox_intro(g: BaseGraph[VT, ET], matches: List[TYPE_MATCH_PAR_HBOX_INTRO]) -> bool:
     """Removes an H-box according to the Intro rule (See Section 3.2 of arxiv:2103.06610)."""

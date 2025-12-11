@@ -14,6 +14,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+This module contains the implementation to convert z spiders to z-boxes.
+
+The check function returns a boolean indicating whether the rule can be applied.
+The standard version of the applier will automatically call the basic checker, while the unsafe version
+of the applier will assume that the given input is correct and will apply the rule without running the check first.
+
+This rewrite rule can be called using simplify.z_to_z_box_simp.
+"""
 
 __all__ = [
         'z_to_z_box',

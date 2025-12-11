@@ -137,41 +137,6 @@ from pyzx.symbolic import Poly
 #     '''Performs W fusion given a list of matchings from ``match_w_fusion(_parallel)``
 #     '''
 
-
-def unspider(g: BaseGraph[VT,ET], m: List[Any], qubit:FloatInt=-1, row:FloatInt=-1) -> VT:
-    """Undoes a single spider fusion, given a match ``m``. A match is a list with 3
-    elements given by::
-
-      m[0] : a vertex to unspider
-      m[1] : the neighbors of the new node, which should be a subset of the
-             neighbors of m[0]
-      m[2] : the phase of the new node. If omitted, the new node gets all of the phase of m[0]
-
-    Returns the index of the new node. Optional parameters ``qubit`` and ``row`` can be used
-    to position the new node. If they are omitted, they are set as the same as the old node.
-    """
-    u = m[0]
-    v = g.add_vertex(ty=g.type(u))
-    u_is_ground = g.is_ground(u)
-    g.set_qubit(v, qubit if qubit != -1 else g.qubit(u))
-    g.set_row(v, row if row != -1 else g.row(u))
-
-    g.add_edge((u, v))
-    for n in m[1]:
-        e = g.edge(u,n)
-        g.add_edge((v,n), edgetype=g.edge_type(e))
-        g.remove_edge(e)
-    if len(m) >= 3:
-        g.add_to_phase(v, m[2])
-        if not u_is_ground:
-            g.add_to_phase(u, Fraction(0) - m[2])
-    else:
-        g.set_phase(v, g.phase(u))
-        g.set_phase(u, 0)
-    return v
-
-
-
 #####   'check_pivot_parallel': pivot_rule
 #
 # def match_pivot(g: BaseGraph[VT,ET]) -> List[MatchPivotType[VT]]:

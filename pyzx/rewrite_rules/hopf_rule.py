@@ -14,11 +14,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+This module contains the implementation of the hopf rule.
+
+The check function returns a boolean indicating whether the rule can be applied.
+The standard version of the applier will automatically call the basic checker, while the unsafe version
+of the applier will assume that the given input is correct and will apply the rule without running the check first.
+
+This rewrite rule can be called using simplify.hopf_simp
+"""
+
 __all__ = ['check_hopf',
            'hopf',
            'unsafe_hopf']
 
-from typing import Tuple, List, Dict, Callable, Optional
+from typing import Tuple, List, Dict
 from pyzx.utils import EdgeType, vertex_is_z_like, vertex_is_zx_like
 from pyzx.graph.base import BaseGraph, VT, ET
 
@@ -26,16 +36,10 @@ MatchHopfType = Tuple[VT, VT, EdgeType]
 
 
 def check_hopf(g: BaseGraph[VT, ET], v: VT, w: VT) -> bool:
-    """Finds parallel edges between spiders that can be removed.
-    :param g: An instance of a ZX-graph.
-    :param vertexf: An optional filtering function for candidate vertices, should
-    return True if a vertex should be considered as a match. Passing None will
-    consider all vertices.
-    :rtype: List of 2-tuples ``(vertex, neighbors)``.
+    """Checks if input vertices are connected by parallel edges and whether they can be removed.
     """
 
     types = g.types()
-
     if not (v in g.vertices()) or not (w in g.vertices()): return False
 
 
@@ -58,18 +62,13 @@ def check_hopf(g: BaseGraph[VT, ET], v: VT, w: VT) -> bool:
 
 
 def hopf(g: BaseGraph[VT, ET], v: VT, w: VT) -> bool:
+    """First checks if the rule can be applied, and then removes parallel edges between the given vertices."""
     if check_hopf(g, v, w):
         return unsafe_hopf(g, v, w)
     return False
 
 def unsafe_hopf(g: BaseGraph[VT, ET], v: VT, w: VT) -> bool:
-    """Performs a Hopf rule rewrite on the given graph with the
-    given ``matches`` returned from ``match_hopf``. Removes all parallel edges of the given type
-    A match is itself a list where:
-
-    ``m[0]`` : first vertex in Hopf.
-    ``m[1]`` : second vertex in Hopf.
-    ``m[2]`` : edge type of the edge to remove.
+    """Removes parallel edges between the given vertices.
     """
     etab: Dict[Tuple[VT, VT], List[int]] = dict()
     rem_edges: List[ET] = []

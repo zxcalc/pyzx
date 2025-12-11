@@ -14,6 +14,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+This module contains the implementation of the supplementarity rule.
+This rule acts on an entire graph, so it should only be run
+using the using simplify.supplementarity_simp(g) or simplify.supplementarity_simp.apply(g).
+"""
+
 __all__ = ['check_supplementarity_for_simp',
            'check_supplementarity_for_apply',
            'safe_apply_supplementarity',
@@ -30,12 +36,26 @@ from pyzx.graph.base import BaseGraph, VT, ET
 MatchSupplementarityType = Tuple[VT, VT, Literal[1, 2], FrozenSet[VT]]
 
 def check_supplementarity_for_simp(g: BaseGraph[VT,ET]) -> bool:
+    """Runs :func:`match_supplementarity` and returns whether any matches were found."""
     matches = match_supplementarity(g)
     return len(matches) != 0
 
 def check_supplementarity_for_apply(g: BaseGraph[VT,ET], v: VT, w: VT) -> bool:
+    """Runs :func:`match_supplementarity` on the input vertices and returns whether any matches were found."""
     matches = match_supplementarity(g, [v, w])
     return len(matches) != 0
+
+def simp_supplementarity(g: BaseGraph[VT,ET]) -> bool:
+    """Runs :func:`match_supplementarity` and if any matches are found runs :func:`unsafe_apply_supplementarity`"""
+    matches = match_supplementarity(g)
+    if len(matches) <= 0: return False
+    return unsafe_apply_supplementarity(g, matches)
+
+def safe_apply_supplementarity(g: BaseGraph[VT,ET], v: VT, w: VT) -> bool:
+    """Runs :func:`match_supplementarity` on the input vertices and if any matches are found runs :func:`unsafe_apply_supplementarity`"""
+    matches = match_supplementarity(g, [v, w])
+    if len(matches) <= 0: return False
+    return unsafe_apply_supplementarity(g, matches)
 
 def match_supplementarity(g: BaseGraph[VT,ET], vertices: Optional[List[VT]]=None) -> List[MatchSupplementarityType[VT]]:
     """Finds pairs of non-Clifford spiders that are connected to exactly the same set of vertices.
@@ -80,14 +100,6 @@ def match_supplementarity(g: BaseGraph[VT,ET], vertices: Optional[List[VT]]=None
                     candidates.difference_update(neigh)
                     break
     return m
-
-def simp_supplementarity(g: BaseGraph[VT,ET]) -> bool:
-    matches = match_supplementarity(g)
-    return unsafe_apply_supplementarity(g, matches)
-
-def safe_apply_supplementarity(g: BaseGraph[VT,ET], v: VT, w: VT) -> bool:
-    matches = match_supplementarity(g, [v, w])
-    return unsafe_apply_supplementarity(g, matches)
 
 def unsafe_apply_supplementarity(
         g: BaseGraph[VT,ET],

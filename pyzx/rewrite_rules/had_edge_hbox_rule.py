@@ -12,6 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+This module contains the implementation to convert a hadamard edge into a h-box vertex, and vice versa
+
+The check function returns a boolean indicating whether the rule can be applied.
+The standard version of the applier will automatically call the basic checker, while the unsafe version
+of the applier will assume that the given input is correct and will apply the rule without running the check first.
+
+This rewrite rule can be called using the hsimplify.had_edge_to_hbox_simp and hsimplify.hbox_to_had_edge_simp
+"""
+
 __all__ = ['check_hadamard',
            'replace_hadamard',
            'unsafe_replace_hadamard',
@@ -30,7 +40,7 @@ def check_hadamard(g: BaseGraph[VT ,ET], v: VT) -> bool:
     return True
 
 def replace_hadamard(g: BaseGraph[VT ,ET], v: VT) -> bool:
-    """Replaces a Hadamard gate with a Hadamard edge."""
+    """First checks if the vertex is a h-box and then replaces it with a Hadamard edge."""
     if check_hadamard(g, v): return unsafe_replace_hadamard(g, v)
     return False
 
@@ -49,6 +59,7 @@ def unsafe_replace_hadamard(g: BaseGraph[VT ,ET], v: VT) -> bool:
 
 
 def had_edge_to_hbox(g: BaseGraph[VT, ET], v: VT, w: VT) -> bool:
+    """First checks if the vertices are connected by a hadamard edge and then converts it to a Hadamard gate."""
     if check_hadamard_edge(g, v, w): return unsafe_had_edge_to_hbox(g, v, w)
     return False
 

@@ -14,6 +14,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+This module contains the implementation to delete self loops.
+
+The check function returns a boolean indicating whether the rule can be applied.
+The standard version of the applier will automatically call the basic checker, while the unsafe version
+of the applier will assume that the given input is correct and will apply the rule without running the check first.
+
+This rewrite rule can be called using simplify.remove_self_loop_simp.
+"""
+
 __all__ = ['check_self_loop',
            'remove_self_loop',
            'unsafe_remove_self_loop']
@@ -45,6 +55,8 @@ def check_self_loop(g: BaseGraph[VT, ET], v: VT) -> bool:
 
 
 def remove_self_loop(g: BaseGraph[VT, ET], v: VT) -> bool:
+    """Checks if the given vertex has self-loops then removes them.
+      """
     if check_self_loop(g, v):
         return unsafe_remove_self_loop(g, v)
     return False
@@ -70,5 +82,3 @@ def unsafe_remove_self_loop(g: BaseGraph[VT, ET], v: VT) -> bool:
     g.remove_edges(rem_edges)
 
     return True
-
-remove_self_loop_simp = RewriteSimpSingleVertex(check_self_loop, unsafe_remove_self_loop,)

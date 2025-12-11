@@ -14,6 +14,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+This module contains the implementation of the pauli push rule.
+
+The check function returns a boolean indicating whether the rule can be applied.
+The standard version of the applier will automatically call the basic checker, while the unsafe version
+of the applier will assume that the given input is correct and will apply the rule without running the check first.
+
+This rewrite rule can be called using simplify.push_pauli_rewrite.apply(g, v, w).
+"""
+
 __all__ = ['check_pauli',
            'pauli_push',
            'unsafe_pauli_push',]

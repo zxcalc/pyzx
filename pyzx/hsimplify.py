@@ -14,8 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .simplify import spider_simp, id_simp
-from .simplify import pivot_simp, lcomp_simp, pivot_gadget_simp, pivot_boundary_simp
+from .simplify import pivot_simp, lcomp_simp, pivot_gadget_simp, pivot_boundary_simp, spider_simp, id_simp
 from .simplify import to_gh, copy_simp
 from .rewrite_rules import *
 from .rewrite import *
@@ -123,22 +122,13 @@ hbox_to_had_edge = RewriteSimpSingleVertex(check_hadamard, unsafe_replace_hadama
 
 zero_hbox_simp = RewriteSimpSingleVertex(check_zero_hbox, unsafe_zero_hbox)
 
-
 par_hbox_simp = RewriteSimpGraph(check_par_hbox_for_apply, par_hbox, check_par_hbox_for_simp, simp_par_hbox)
-# def par_hbox_simp(g: BaseGraph[VT,ET], matchf:Optional[Callable[[VT],bool]]=None, quiet:bool=False, stats:Optional[Stats]=None) -> int:
-#     return simp(g, 'par_hbox_simp', match_par_hbox, par_hbox, matchf=matchf, quiet=quiet, stats=stats)
 
 par_hbox_intro_simp = RewriteSimpGraph(check_par_hbox_intro_for_apply, par_hbox_intro, check_par_hbox_intro_for_simp, simp_par_hbox_intro)
-# def par_hbox_intro_simp(g: BaseGraph[VT,ET], matchf:Optional[Callable[[VT],bool]]=None, quiet:bool=False, stats:Optional[Stats]=None) -> int:
-#     return simp(g, 'par_hbox_intro_simp', match_par_hbox_intro, par_hbox_intro, matchf=matchf, quiet=quiet, stats=stats)
 
 hspider_simp = RewriteSimpDoubleVertex(check_connected_hboxes, unsafe_fuse_hboxes)
-# def hspider_simp(g: BaseGraph[VT,ET], matchf:Optional[Callable[[ET],bool]]=None, quiet:bool=False, stats:Optional[Stats]=None) -> int:
-#     return simp(g, 'hspider_simp', match_connected_hboxes, fuse_hboxes, matchf=matchf, quiet=quiet, stats=stats)
 
 hbox_parallel_not_remove_simp = RewriteSimpDoubleVertex(check_hbox_parallel_not, unsafe_hbox_parallel_not_remove, is_ordered=True)
-# def hbox_parallel_not_remove_simp(g: BaseGraph[VT,ET], matchf:Optional[Callable[[VT],bool]]=None, quiet:bool=False, stats:Optional[Stats]=None) -> int:
-#     return simp(g, 'hbox_parallel_not_remove_simp', match_hbox_parallel_not, hbox_parallel_not_remove, matchf=matchf, quiet=quiet, stats=stats)
 
 had_edge_to_hbox_simp = RewriteSimpDoubleVertex(check_hadamard_edge, unsafe_had_edge_to_hbox)
 

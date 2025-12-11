@@ -14,6 +14,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+This module contains the implementation of the copy rule
+
+This rule acts on one vertex. The check function returns a boolean indicating whether
+the rule can be applied to the two given vertices. The standard version of the applier will automatically
+call the basic checker, while the unsafe version of the applier will assume that the given input is correct and will apply
+the rule without running the check first.
+
+This rewrite rule can be called using simplify.copy_simp.apply(g, v) or simplify.copy_simp(g).
+"""
 
 __all__ = ['check_copy',
            'copy',
@@ -24,14 +34,12 @@ from pyzx.utils import EdgeType, VertexType, toggle_vertex, vertex_is_zx
 
 from pyzx.graph.base import BaseGraph, ET, VT
 
-#rework to not have extra info
-
 
 def check_copy(
         g: BaseGraph[VT,ET],
         v: VT
         ) -> bool:
-    """Finds arity-1 spiders (with a 0 or pi phase) that can be copied through their neighbor."""
+    """Checks if input is an arity-1 spider (with a 0 or pi phase) that can be copied through its neighbor."""
 
     if not (v in g.vertices()): return False
 
@@ -61,7 +69,7 @@ def check_copy_zx(
         g: BaseGraph[VT,ET],
         v: VT,
         w: VT) -> Optional[VertexType]:
-
+    """Checks if the two given vertices are zx spiders and if v can be copied through its neighbor."""
     tv = g.types()[v]
     tw = g.types()[w]
     et = g.edge_type(g.edge(v, w))
@@ -81,7 +89,7 @@ def check_copy_h(
         g: BaseGraph[VT,ET],
         v: VT,
         w: VT) -> Optional[VertexType]:
-
+    """Checks if the w is a H-box and if v can be copied through its neighbor."""
     tv = g.types()[v]
     tw = g.types()[w]
     et = g.edge_type(g.edge(v, w))
@@ -112,6 +120,7 @@ def check_copy_h(
 
 
 def copy(g: BaseGraph[VT,ET], v: VT) -> bool:
+    """Checks if the given vertex can be copied through its neighbor, and then applies the rule"""
     match: bool
     if check_copy(g, v):
         unsafe_copy(g, v)

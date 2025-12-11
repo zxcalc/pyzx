@@ -14,6 +14,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+This module contains the implementation of the pi commutation rule.
+
+The check function returns a boolean indicating whether the rule can be applied.
+The standard version of the applier will automatically call the basic checker, while the unsafe version
+of the applier will assume that the given input is correct and will apply the rule without running the check first.
+
+This rewrite rule can be called using simplify.lcomp_simp.apply(g, v, w) or simplify.lcomp_simp(g).
+"""
 
 __all__ = [
         'check_pi_commute',
@@ -23,20 +32,22 @@ __all__ = [
 from pyzx.graph.base import BaseGraph, VT, ET
 from pyzx.rewrite_rules.color_change_rule import color_change_diagram
 
-from pyzx.utils import EdgeType, VertexType
+from pyzx.utils import EdgeType, VertexType, vertex_is_zx
 
 
 
 def check_pi_commute(g: BaseGraph[VT, ET], v: VT) -> bool:
-    return g.type(v) == VertexType.Z or g.type(v) == VertexType.X
+    """Checks if vertex is Z or X spider."""
+    return vertex_is_zx(g.type(v))
 
 
 def pi_commute(g: BaseGraph[VT, ET], v: VT) -> bool:
+    """Checks if vertex is Z or X spider and then pushes a pi phase out of the given vertex."""
     if check_pi_commute(g, v): return unsafe_pi_commute(g, v)
     return False
 
 def unsafe_pi_commute(g: BaseGraph[VT, ET], v: VT) -> bool:
-
+    """Pushes a pi phase out of the given vertex."""
     swap_color = False
 
     if g.type(v) == VertexType.X:

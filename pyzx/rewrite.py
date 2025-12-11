@@ -14,9 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""This module contains the ZX-diagram rewrite class of PyZX.
-It is part of a major reworking of how the rule and simplify files 
-work to perform the rewrite rules on diagrams."""
+"""This module contains the ZX-diagram rewrite class of PyZX."""
 
 from typing import Callable, Optional, Generic, Set, Tuple
 
@@ -34,9 +32,22 @@ class Rewrite(Generic[VT, ET]):
         return self.simp(graph)
 
 class RewriteSingleVertex(Rewrite[VT, ET]):
+    """
+    Rewrite class that works on a single vertex. Can only be run manually on specific vertices, otherwise may enter an infinite loop.
+    Parameters
+    ----------
+    applier : Callable[[BaseGraph[VT, ET], VT], bool]
+        function that will perform the rewrite rule.
+    is_match : Callable[[BaseGraph[VT, ET], VT], bool]
+        function that checks whether a given vertex can be rewritten.
+    rmv_isolated : bool
+        whether to remove isolated vertices after running the applier.
+    """
+
     applier: Callable[[BaseGraph[VT, ET], VT], bool]
     is_match: Callable[[BaseGraph[VT, ET], VT], bool]
     rmv_isolated: bool
+
 
     def __init__(self, is_match: Callable[[BaseGraph[VT, ET], VT], bool],
                  applier: Callable[[BaseGraph[VT, ET], VT], bool],
@@ -45,7 +56,6 @@ class RewriteSingleVertex(Rewrite[VT, ET]):
         self.is_match = is_match
         self.applier = applier
         self.rmv_isolated = rmv_isolated
-        self.__doc__ = is_match.__doc__
 
     def apply(self, graph: BaseGraph[VT, ET], v: VT) -> bool:
         applied: bool = False
@@ -56,6 +66,19 @@ class RewriteSingleVertex(Rewrite[VT, ET]):
         return applied
 
 class RewriteSimpSingleVertex(RewriteSingleVertex[VT, ET]):
+    """
+    Rewrite class that works on a single vertex. Can be run automatically using simp(g)
+    Parameters
+    ----------
+    applier : Callable[[BaseGraph[VT, ET], VT], bool]
+        function that will perform the rewrite rule.
+    is_match : Callable[[BaseGraph[VT, ET], VT], bool]
+        function that checks whether a given vertex can be rewritten.
+    simp_match : Optional[Callable[[BaseGraph[VT, ET], VT], bool]]
+        optional function that checks whether graph can be rewritten automatically.
+    rmv_isolated : bool
+        whether to remove isolated vertices after running the applier.
+    """
     simp_match: Optional[Callable[[BaseGraph[VT, ET], VT], bool]]
 
     def __init__(self, is_match: Callable[[BaseGraph[VT, ET], VT], bool],
@@ -72,7 +95,7 @@ class RewriteSimpSingleVertex(RewriteSingleVertex[VT, ET]):
         else:
             match = self.is_match
 
-        for v in graph.vertices():          #make optional subset of vertices
+        for v in graph.vertices():          #make a subset of vertices
             if match(graph, v):
                 all_matches.add(v)
         return all_matches
@@ -97,6 +120,17 @@ class RewriteSimpSingleVertex(RewriteSingleVertex[VT, ET]):
         return applied
 
 class RewriteDoubleVertex(Rewrite[VT, ET]):
+    """
+    Rewrite class that works on two vertices. Can only be run manually on specific vertices, otherwise may enter an infinite loop.
+    Parameters
+    ----------
+    applier : Callable[[BaseGraph[VT, ET], VT, VT], bool]
+        function that will perform the rewrite rule.
+    is_match : Callable[[BaseGraph[VT, ET], VT, VT], bool]
+        function that checks whether the given vertices can be rewritten.
+    rmv_isolated : bool
+        whether to remove isolated vertices after running the applier.
+    """
     applier: Callable[[BaseGraph[VT, ET], VT, VT], bool]
     is_match: Callable[[BaseGraph[VT, ET], VT, VT], bool]
 
@@ -107,7 +141,6 @@ class RewriteDoubleVertex(Rewrite[VT, ET]):
         self.is_match = is_match
         self.applier = applier
         self.rmv_isolated = rmv_isolated
-        self.__doc__ = is_match.__doc__
 
     def apply(self, graph: BaseGraph[VT, ET], v1: VT, v2: VT) -> bool:
         applied: bool = False
@@ -119,6 +152,21 @@ class RewriteDoubleVertex(Rewrite[VT, ET]):
 
 
 class RewriteSimpDoubleVertex(RewriteDoubleVertex[VT, ET]):
+    """
+    Rewrite class that works on two vertices. Can be run automatically using simp(g)
+    Parameters
+    ----------
+    applier : Callable[[BaseGraph[VT, ET], VT, VT], bool]
+        function that will perform the rewrite rule.
+    is_match : Callable[[BaseGraph[VT, ET], VT, VT], bool]
+        function that checks whether the given vertices can be rewritten.
+    simp_match : Optional[Callable[[BaseGraph[VT, ET], VT, VT], bool]]
+        optional function that checks whether graph can be rewritten automatically.
+    rmv_isolated : bool
+        whether to remove isolated vertices after running the applier.
+    is_ordered : bool
+        whether to order vertices after running the check.
+    """
     simp_match: Optional[Callable[[BaseGraph[VT, ET], VT, VT], bool]]
     is_ordered: bool
 
@@ -169,6 +217,18 @@ class RewriteSimpDoubleVertex(RewriteDoubleVertex[VT, ET]):
         return applied
 
 class RewriteSimpGraph(RewriteDoubleVertex[VT, ET]):
+    """Applies the rewrite rule on the entire graph, running manually on specific vertices will result in undefined behavior
+    Parameters
+    ----------
+    applier : Callable[[BaseGraph[VT, ET], VT, VT], bool]
+        function that both checks if a rewrite can be done and performs the rule.
+    is_match : Callable[[BaseGraph[VT, ET], VT], bool]
+        function that checks whether the given vertices can be rewritten.
+    simp_match : Optional[Callable[[BaseGraph[VT, ET], VT], bool]]
+        function that checks whether graph can be rewritten automatically (may be a placeholder function)
+    simp_applier : Callable[[BaseGraph[VT, ET]], bool]
+        that both checks if a rewrite can be done and performs the rule on the entire graph.
+    """
     simp_match: Callable[[BaseGraph[VT, ET]], bool]
     simp_applier: Callable[[BaseGraph[VT, ET]], bool]
     is_ordered: bool

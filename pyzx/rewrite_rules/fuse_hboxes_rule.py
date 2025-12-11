@@ -12,15 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+This module contains the implementation of the h-box fuse rule
+
+This rule acts on two connected vertices. The check function returns a boolean indicating whether
+the rule can be applied to the given vertices. The standard version of the applier will automatically
+call the basic checker, while the unsafe version of the applier will assume that the given input is correct and will apply
+the rule without running the check first.
+
+This rewrite rule can be called using simplify.euler_expansion_rewrite.apply(g, v, w).
+"""
+
 __all__ = ['check_connected_hboxes',
            'fuse_hboxes',
            'unsafe_fuse_hboxes']
 
 
-from typing import Dict, List, Tuple, Callable, Optional, Set
+from typing import Dict, List, Tuple, Set
 from pyzx.utils import EdgeType, VertexType
 from pyzx.graph.base import BaseGraph, ET, VT, upair
-import pyzx.rewrite_rules.rules as rules
 
 
 def check_connected_hboxes(g: BaseGraph[VT ,ET], v: VT, w: VT) -> bool:
@@ -46,6 +56,8 @@ def check_connected_hboxes(g: BaseGraph[VT ,ET], v: VT, w: VT) -> bool:
     return True
 
 def fuse_hboxes(g: BaseGraph[VT ,ET], v1: VT, v2: VT) -> bool:
+    """Fuses two neighboring H-boxes together, if they can be fused.
+        See rule (HS1) of https://arxiv.org/pdf/1805.02175.pdf."""
     if check_connected_hboxes(g, v1, v2): return unsafe_fuse_hboxes(g, v1, v2)
     return False
 

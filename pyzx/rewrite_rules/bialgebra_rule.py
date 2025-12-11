@@ -14,6 +14,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+This module contains the implementation of the bialgebra rule
+
+This rule acts on two connected vertices. The check functions return a boolean indicating whether
+the rule can be applied to the two given vertices. The safe version of the applier (bialgebra) will automatically
+call the basic checker, while the unsafe version of the applier will assume that the given input is correct and will apply
+the rule without running the check first.
+
+This rewrite rule can be called using simplify.bialg_simp.apply(g, v, w) or simplify.bialg_simp(g).
+"""
+
+
 __all__ = ['check_bialgebra_reduce',
            'check_bialgebra',
            'bialgebra',
@@ -42,8 +54,7 @@ def check_bialgebra(g: BaseGraph[VT,ET], v1: VT, v2: VT) -> bool:
 
 def check_bialgebra_reduce(g: BaseGraph[VT,ET], v1: VT, v2: VT) -> bool:
     """Checks if the bialgebra rule can be applied to a given pair of vertices.
-    NOTE: only returns true if the match of the spiders are neighbouring other
-    spiders not a boundary vertex."""
+    NOTE: only returns true if the spiders are not neighbouring any boundary vertices."""
     if not (v1 in g.vertices() and v2 in g.vertices()): return False
 
     v1n = [n for n in g.neighbors(v1) if not n == v2]

@@ -14,28 +14,37 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+This module contains the implementation of the Euler decomposition
+
+This rule acts on one edge, taken as an input of two vertices. The check function returns a boolean indicating whether
+the rule can be applied to the given edge. The standard version of the applier will automatically
+call the basic checker, while the unsafe version of the applier will assume that the given input is correct and will apply
+the rule without running the check first.
+
+This rewrite rule can be called using simplify.euler_expansion_rewrite.apply(g, v, w).
+"""
+
 __all__ = ['check_hadamard_edge',
            'euler_expansion',
            'unsafe_euler_expansion',]
 
 
 from fractions import Fraction
-
-from typing import Callable, Optional, List
-
 from pyzx.utils import EdgeType, VertexType, vertex_is_zx, toggle_vertex
 from pyzx.graph.base import BaseGraph, VT, ET, upair
-import pyzx.rewrite_rules.rules as rules
 
 
 def check_hadamard_edge(g: BaseGraph[VT, ET], v:VT, w:VT) -> bool:
+    """Checks whether two vertices are hadamard edges."""
     if not (v in g.vertices() and w in g.vertices()): return False
     if not g.connected(v, w): return False
     return g.edge_type(g.edge(v, w)) == EdgeType.HADAMARD
 
 
-
 def euler_expansion(g: BaseGraph[VT, ET], v:VT, w:VT) -> bool:
+    """First checks if the rule can be applied, then expands the given Hadamard-edges
+    into pi/2 phases using its Euler decomposition."""
     if check_hadamard_edge(g,v,w): return unsafe_euler_expansion(g,v,w)
     return False
 

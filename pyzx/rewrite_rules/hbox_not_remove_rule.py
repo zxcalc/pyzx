@@ -12,12 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+This module contains the implementation of the hbox_parallel_not rule.
+
+The check function returns a boolean indicating whether the rule can be applied.
+The standard version of the applier will automatically call the basic checker, while the unsafe version
+of the applier will assume that the given input is correct and will apply the rule without running the check first.
+
+This rewrite rule can be called using hsimplify.hbox_parallel_not_remove_simp
+"""
+
 __all__ = ['check_hbox_parallel_not',
            'hbox_parallel_not_remove',
            'unsafe_hbox_parallel_not_remove']
 
 
-from typing import Dict, List, Tuple, Callable, Optional
+from typing import Dict, List, Tuple
 from pyzx.utils import EdgeType, VertexType
 from pyzx.graph.base import BaseGraph, ET, VT, upair
 
@@ -36,8 +46,6 @@ def is_NOT_gate(g, v, n1, n2):
         )
     )
 
-
-#change this to take in h and n only and that guarantees v (2 vertex)
 
 def check_hbox_parallel_not(
         g: BaseGraph[VT,ET],
@@ -68,16 +76,16 @@ def check_hbox_parallel_not(
     return True
 
 
-def hbox_parallel_not_remove(g: BaseGraph[VT,ET], h: VT, n: VT, v: VT) -> bool:
+def hbox_parallel_not_remove(g: BaseGraph[VT,ET], h: VT, n: VT) -> bool:
+    """If a Z-spider is connected to an H-box via a regular wire and a NOT, then they disconnect, and the H-box is turned into a Z-spider."""
     if check_hbox_parallel_not(g,h,n): return unsafe_hbox_parallel_not_remove(g,h,n)
     return False
 
 
 def unsafe_hbox_parallel_not_remove(g: BaseGraph[VT,ET], h: VT, n: VT) -> bool:
-    """If a Z-spider is connected to an H-box via a regular wire and a NOT, then they disconnect, and the H-box is turned into a Z-spider.
+    """Disconnects the Z-spider and H-box, and the H-box is turned into a Z-spider.
     :param g: Graph to check.
     :param h: H-box to check.
-    :param v: Z-spider connected to hbox and NOT.
     :param n: NOT connecting hbox and Z-spider."""
 
     rem = []

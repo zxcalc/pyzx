@@ -17,14 +17,11 @@ from .qasmparser import QASMParser
 from ..rewrite_rules import *
 from ..rewrite import *
 
-from typing import Tuple, List, Dict
 from pyzx.utils import VertexType
-from pyzx.graph.base import BaseGraph, VT, ET
+from pyzx.graph.base import BaseGraph
 
 
 __all__ = ['sqasm']
-
-RewriteOutputType = Tuple[Dict[Tuple[VT,VT],List[int]], List[VT], List[ET], bool]
 
 
 #TODO: Improve the type annotation of these functions

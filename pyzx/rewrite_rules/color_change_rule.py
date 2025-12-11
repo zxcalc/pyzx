@@ -14,6 +14,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+This module contains the implementation of the color change rule
+
+This rule acts on one vertex. The check function returns a boolean indicating whether
+the rule can be applied to the two given vertices. The standard version of the applier will automatically
+call the basic checker, while the unsafe version of the applier will assume that the given input is correct and will apply
+the rule without running the check first.
+
+This rewrite rule can be called using simplify.color_change_rewrite.apply(g, v).
+"""
 
 __all__ = [
         'color_change_diagram',
@@ -22,8 +32,7 @@ __all__ = [
         'check_color_change']
 
 from pyzx.graph.base import BaseGraph, VT, ET
-from pyzx.utils import (EdgeType, VertexType, get_w_io, get_z_box_label, is_pauli,
-                    set_z_box_label, vertex_is_w, vertex_is_z_like, toggle_vertex, toggle_edge)
+from pyzx.utils import VertexType, toggle_vertex, toggle_edge
 
 
 def color_change_diagram(g: BaseGraph[VT,ET]) -> bool:

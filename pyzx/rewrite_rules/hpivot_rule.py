@@ -12,6 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+This module contains the implementation of the hpivot rule.
+
+This rule acts on an entire graph and should be called only using simplify.hpivot_simp(g).
+"""
+
 __all__ = ['check_hpivot_for_apply',
            'check_hpivot_for_simp',
            'hpivot',
@@ -35,12 +41,26 @@ hpivot_match_output = List[Tuple[
 ]]
 
 def check_hpivot_for_apply(g: BaseGraph[VT,ET], v: VT, w:VT) -> bool:
+    """Dummy function, may have undefined behavior"""
     matches = match_hpivot(g, [v])
     return len(matches) != 0
 
 def check_hpivot_for_simp(g: BaseGraph[VT,ET]) -> bool:
+    """Runs :func:`match_hpivot` and returns whether any matches were found."""
     matches = match_hpivot(g)
     return len(matches) != 0
+
+def simp_hpivot(g: BaseGraph[VT,ET]) -> bool:
+    """Runs :func:`match_hpivot` and if any matches are found runs :func:`unsafe_hpivot`"""
+    matches = match_hpivot(g)
+    if len(matches) == 0: return False
+    return unsafe_hpivot(g, matches)
+
+def hpivot(g: BaseGraph[VT,ET], v: VT, w:VT) -> bool:
+    """Dummy function, may have undefined behavior"""
+    matches = match_hpivot(g, [v])
+    if len(matches) == 0: return False
+    return unsafe_hpivot(g, matches)
 
 
 # hpivot
@@ -116,26 +136,11 @@ def match_hpivot(
     return m
 
 
-def simp_hpivot(g: BaseGraph[VT,ET]) -> bool:
-    matches = match_hpivot(g)
-    return unsafe_hpivot(g, matches)
-
-def hpivot(g: BaseGraph[VT,ET], v: VT, w:VT) -> bool:
-    matches = match_hpivot(g, [v])
-    return unsafe_hpivot(g, matches)
-
 
 def unsafe_hpivot(g: BaseGraph[VT, ET], m: hpivot_match_output) -> bool:
-    if len(m) == 0: return False
+
 
     types = g.types()
-
-    # # cache hboxes
-    # hboxes = dict()
-    # for h in g.vertices():
-    #     if types[h] != VertexType.H_BOX: continue
-    #     nhd = tuple(sorted(g.neighbors(h)))
-    #     hboxes[nhd] = h
 
     h, v0, v1, v0b, v1b, v0nn, v1nn = m[0]
     g.remove_vertices([v for v in g.neighbors(v0) if types[v] == VertexType.H_BOX])
@@ -184,11 +189,6 @@ def unsafe_hpivot(g: BaseGraph[VT, ET], m: hpivot_match_output) -> bool:
                 g.set_row(h0, r / len(us) + 0.4)
 
     return True
-
-
-
-
-
 
 
 

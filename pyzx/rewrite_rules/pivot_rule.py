@@ -14,6 +14,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+This module contains the implementation of the pivot rule, and three different matching functions.
+
+The default pivot should be called using simplify.pivot_simp
+
+Pivot boundary and pivot gadget act on an entire graph and the matchers modify the graph, so these rule should only be run
+using the using simplify.pivot_gadget_simp(g) or simplify.pivot_boundary_simp(g).
+"""
 
 __all__ = [
         'check_pivot',
@@ -44,6 +52,7 @@ def boundary_list_for_vertex(
         g: BaseGraph[VT,ET],
         v0: VT
 ) -> Optional[List[VT]]:
+    """Returns the list of boundary vertices for a given vertex."""
     types = g.types()
     v0n = list(g.neighbors(v0))
     v0b: List[VT] = []
@@ -59,74 +68,88 @@ def boundary_list_for_vertex(
 
 def check_pivot(
         g: BaseGraph[VT,ET],
-        v0: VT,
-        v1: VT
+        v: VT,
+        w: VT
         ) -> bool:
     """Checks if an edge can be simplified using the pivot rule.
 
     :param g: An instance of a ZX-graph.
-    :param v0: The source vertex of the edge to check.
-    :param v1: The target vertex of the edge  to check.
+    :param v: The source vertex of the edge to check.
+    :param w: The target vertex of the edge  to check.
     """
 
     types = g.types()
     phases = g.phases()
-    if not (v0 in g.vertices() and v1 in g.vertices()): return False
-    if not g.connected(v0,v1): return False
+    if not (v in g.vertices() and w in g.vertices()): return False
+    if not g.connected(v, w): return False
 
-    if g.edge_type(g.edge(v0, v1)) != EdgeType.HADAMARD: return False
+    if g.edge_type(g.edge(v, w)) != EdgeType.HADAMARD: return False
 
-    if not (types[v0] == VertexType.Z and types[v1] == VertexType.Z): return False
+    if not (types[v] == VertexType.Z and types[w] == VertexType.Z): return False
 
-    v0a = phases[v0]
-    v1a = phases[v1]
+    v0a = phases[v]
+    v1a = phases[w]
     if not ((v0a in (0,1)) and (v1a in (0,1))): return False
-    if g.is_ground(v0) or g.is_ground(v1):
+    if g.is_ground(v) or g.is_ground(w):
         return False
 
-    maybe_v0b = boundary_list_for_vertex(g, v0)
+    maybe_v0b = boundary_list_for_vertex(g, v)
     if maybe_v0b is None: return False
     b0: List[VT] = maybe_v0b
 
-    maybe_v1b = boundary_list_for_vertex(g, v1)
+    maybe_v1b = boundary_list_for_vertex(g, w)
     if maybe_v1b is None: return False
     b1: List[VT] = maybe_v1b
 
     return len(b0) + len(b1) <= 1
 
+def placeholder_check_for_pivot(g: BaseGraph[VT,ET]) -> bool:
+    """Dummy function"""
+    return True
+
+## Pivot Boundary
 
 def check_pivot_boundary_for_apply(g: BaseGraph[VT,ET], v: VT, w:VT) -> bool:
+    """Runs :func:`match_pivot_boundary` and returns whether any matches were found."""
     matches = match_pivot_boundary(g, [v, w])
     return len(matches) != 0
 
-def check_pivot_gadget_for_apply(g: BaseGraph[VT,ET], v: VT, w:VT) -> bool:
-    matches = match_pivot_gadget(g, [v, w])
-    return len(matches) != 0
-
-def placeholder_check_for_pivot(g: BaseGraph[VT,ET]) -> bool:
-    return True
-
 def pivot_boundary_for_simp(g: BaseGraph[VT,ET]) -> bool:
+    """Runs :func:`match_pivot_boundary`, and if any matches are found runs :func:`pivot_NOT_REWORKED`"""
     matches = match_pivot_boundary(g)
+    if len(matches) <= 0: return False
     return pivot_NOT_REWORKED(g, matches)
 
 def pivot_boundary_for_apply(g: BaseGraph[VT,ET], v: VT, w:VT) -> bool:
+    """Runs :func:`match_pivot_boundary` on the given vertices, and if any matches are found runs :func:`pivot_NOT_REWORKED`"""
     matches = match_pivot_boundary(g, [v, w])
+    if len(matches) <= 0: return False
     return pivot_NOT_REWORKED(g, matches)
 
+## Pivot Gadget
+
+def check_pivot_gadget_for_apply(g: BaseGraph[VT,ET], v: VT, w:VT) -> bool:
+    """Runs :func:`match_pivot_gadget` and returns whether any matches were found."""
+    matches = match_pivot_gadget(g, [v, w])
+    return len(matches) != 0
+
 def pivot_gadget_for_simp(g: BaseGraph[VT,ET]) -> bool:
+    """Runs :func:`match_pivot_gadget`, and if any matches are found runs :func:`pivot_NOT_REWORKED`"""
     matches = match_pivot_gadget(g)
+    if len(matches) <= 0: return False
     return pivot_NOT_REWORKED(g, matches)
 
 def pivot_gadget_for_apply(g: BaseGraph[VT,ET], v: VT, w:VT) -> bool:
+    """Runs :func:`match_pivot_gadget` on the given vertices, and if any matches are found runs :func:`pivot_NOT_REWORKED`"""
     matches = match_pivot_gadget(g, [v, w])
+    if len(matches) <= 0: return False
     return pivot_NOT_REWORKED(g, matches)
 
 def match_pivot_boundary(
         g: BaseGraph[VT,ET],
         vertices: Optional[List[VT]] = None,
         num:int=-1) -> List[MatchPivotType[VT]]:
-    """Like :func:`match_pivot_parallel`, but except for pairings of
+    """Like :func:`check_pivot`, but except for pairings of
     Pauli vertices, it looks for a pair of an interior Pauli vertex and a
     boundary non-Pauli Clifford vertex in order to gadgetize the non-Pauli vertex."""
     if vertices is not None: candidates = set(vertices)
@@ -200,7 +223,7 @@ def match_pivot_gadget(
         g: BaseGraph[VT,ET],
         vertices: Optional[List[VT]] = None,
         num:int=-1) -> List[MatchPivotType[VT]]:
-    """Like :func:`match_pivot_parallel`, but except for pairings of
+    """Like :func:`check_pivot`, but except for pairings of
     Pauli vertices, it looks for a pair of an interior Pauli vertex and an
     interior non-Clifford vertex in order to gadgetize the non-Clifford vertex."""
     if vertices is not None: candidates_set = {g.edge(vertices[0], vertices[1])}
@@ -270,21 +293,15 @@ def match_pivot_gadget(
     g.add_edges(edge_list,EdgeType.SIMPLE)
     return m
 
-
 def pivot(g: BaseGraph[VT,ET], v: VT, v1: VT) -> bool:
+    """Checks if a pivot can be applied and then performs a pivoting rewrite"""
     if check_pivot(g, v, v1):
         return unsafe_pivot(g, v, v1)
     return False
 
 def unsafe_pivot(g: BaseGraph[VT,ET], v0: VT, v1: VT) -> bool:
-    """Perform a pivoting rewrite, given a list of matches as returned by
-    ``match_pivot(_parallel)``. A match is itself a list where:
+    """Perform a pivoting rewrite"""
 
-    ``m[0][0]`` : first vertex in pivot.
-    ``m[0][1]`` : second vertex in pivot.
-    ``m[1][0]`` : list of zero or one boundaries adjacent to ``m[0]``.
-    ``m[1][1]`` : list of zero or one boundaries adjacent to ``m[1]``.
-    """
     rem_verts: List[VT] = []
     rem_edges: List[ET] = []
     etab: Dict[Tuple[VT,VT],List[int]] = dict()
@@ -364,7 +381,7 @@ def unsafe_pivot(g: BaseGraph[VT,ET], v0: VT, v1: VT) -> bool:
 
 def pivot_NOT_REWORKED(g: BaseGraph[VT,ET], matches: List[MatchPivotType[VT]]) -> bool:
     """Perform a pivoting rewrite, given a list of matches as returned by
-    ``match_pivot(_parallel)``. A match is itself a list where:
+    ``match_pivot(_gadget)``. A match is itself a list where:
 
     ``m[0][0]`` : first vertex in pivot.
     ``m[0][1]`` : second vertex in pivot.
@@ -374,8 +391,6 @@ def pivot_NOT_REWORKED(g: BaseGraph[VT,ET], matches: List[MatchPivotType[VT]]) -
     rem_verts: List[VT] = []
     rem_edges: List[ET] = []
     etab: Dict[Tuple[VT,VT],List[int]] = dict()
-
-    if len(matches) <= 0: return False
 
     for m in matches:
         # compute:

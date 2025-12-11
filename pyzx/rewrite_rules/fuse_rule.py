@@ -14,11 +14,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
+"""
+This module contains the implementation of the spider fuse rule
+
+This rule acts on two connected vertices. The check function returns a boolean indicating whether
+the rule can be applied to the given vertices. The standard version of the applier will automatically
+call the basic checker, while the unsafe version of the applier will assume that the given input is correct and will apply
+the rule without running the check first.
+
+This rewrite rule can be called using simplify.fuse_simp.apply(g, v, w) or simplify.fuse_simp(g).
+"""
+
 __all__ = [
         'check_fuse',
         'fuse',
-        'unsafe_fuse',
-        'unfuse']
+        'unsafe_fuse']
 
 
 from pyzx.utils import (get_w_io, get_z_box_label, EdgeType, VertexType,
@@ -32,95 +43,100 @@ from pyzx.graph.base import BaseGraph, VT, ET
 
 # Fuse spiders
 
-def check_fuse(g: BaseGraph[VT,ET], v1: VT, v2: VT) -> bool:
-    if check_fuse_w(g, v1, v2):
+def check_fuse(g: BaseGraph[VT,ET], v: VT, w: VT) -> bool:
+    """Checks if two vertices can be fused."""
+    if check_fuse_w(g, v, w):
         return True
 
-    if not (v1 in g.vertices() and v2 in g.vertices()): return False
+    if not (v in g.vertices() and w in g.vertices()): return False
 
-    if (g.connected(v1,v2) and
-        ((g.type(v1) == VertexType.X and g.type(v2) == VertexType.X) or
-        (vertex_is_z_like(g.type(v1)) and vertex_is_z_like(g.type(v2)))) and
-        EdgeType.SIMPLE in [g.edge_type(edge) for edge in g.edges(v1,v2)]):
+    if (g.connected(v, w) and
+        ((g.type(v) == VertexType.X and g.type(w) == VertexType.X) or
+         (vertex_is_z_like(g.type(v)) and vertex_is_z_like(g.type(w)))) and
+        EdgeType.SIMPLE in [g.edge_type(edge) for edge in g.edges(v, w)]):
         return True
     return False
 
-def fuse(g: BaseGraph[VT,ET], v1: VT, v2: VT) -> bool:
-    if not check_fuse(g, v1, v2): return False
-    return unsafe_fuse(g, v1, v2)
+def fuse(g: BaseGraph[VT,ET], v: VT, w: VT) -> bool:
+    """Checks if two vertices can be fused and then fuses them."""
+    if not check_fuse(g, v, w): return False
+    return unsafe_fuse(g, v, w)
 
-def unsafe_fuse(g: BaseGraph[VT,ET], v1: VT, v2: VT) -> bool:
-    if vertex_is_w(g.type(v1)):
-        return unsafe_fuse_w(g, v1, v2)
+def unsafe_fuse(g: BaseGraph[VT,ET], v: VT, w: VT) -> bool:
+    """Fuses two vertices into one"""
+    if vertex_is_w(g.type(v)):
+        return unsafe_fuse_w(g, v, w)
 
-    if g.row(v1) == 0:
-        v1, v2 = v2, v1
+    if g.row(v) == 0:
+        v, w = w, v
 
-    ground = g.is_ground(v1) or g.is_ground(v2)
+    ground = g.is_ground(v) or g.is_ground(w)
 
     if ground:
-        g.set_phase(v1, 0)
-        g.set_ground(v1)
-    elif g.type(v1) == VertexType.Z_BOX or g.type(v2) == VertexType.Z_BOX:
-        if g.type(v1) == VertexType.Z:
-            unsafe_z_to_z_box(g, v1)
-        if g.type(v2) == VertexType.Z:
-            unsafe_z_to_z_box(g, v2)
-        g.set_phase(v1, 0)
-        set_z_box_label(g, v1, get_z_box_label(g, v1) * get_z_box_label(g, v2))
+        g.set_phase(v, 0)
+        g.set_ground(v)
+    elif g.type(v) == VertexType.Z_BOX or g.type(w) == VertexType.Z_BOX:
+        if g.type(v) == VertexType.Z:
+            unsafe_z_to_z_box(g, v)
+        if g.type(w) == VertexType.Z:
+            unsafe_z_to_z_box(g, w)
+        g.set_phase(v, 0)
+        set_z_box_label(g, v, get_z_box_label(g, v) * get_z_box_label(g, w))
     else:
-        g.add_to_phase(v1, g.phase(v2))
+        g.add_to_phase(v, g.phase(w))
 
     if g.track_phases:
-        g.fuse_phases(v1, v2)
+        g.fuse_phases(v, w)
 
 
     etab: Dict[Tuple[VT, VT], List[int]] = dict()
 
-    for e in g.incident_edges(v2):
+    for e in g.incident_edges(w):
         source, target = g.edge_st(e)
-        other_vertex = source if source != v2 else target
-        if source != v2:
+        other_vertex = source if source != w else target
+        if source != w:
             other_vertex = source
-        elif target != v2:
+        elif target != w:
             other_vertex = target
         else: #self-loop
-            other_vertex = v1
-        new_e = (v1, other_vertex)
+            other_vertex = v
+        new_e = (v, other_vertex)
         if new_e not in etab: etab[new_e] = [0, 0]
         etab[new_e][g.edge_type(e) - 1] += 1
-    etab[(v1, v1)][0] = 0  # remove simple edge loops
+    etab[(v, v)][0] = 0  # remove simple edge loops
 
     g.add_edge_table(etab)
-    g.remove_vertex(v2)
+    g.remove_vertex(w)
     return True
 
 
 # Fuse w
 
-def check_fuse_w(g: BaseGraph[VT,ET], v1: VT, v2: VT) -> bool:
-    if not (v1 in g.vertices() and v2 in g.vertices()): return False
+def check_fuse_w(g: BaseGraph[VT,ET], v: VT, w: VT) -> bool:
+    """Checks if two vertices are either w_input or w_output and whether they can be fused."""
+    if not (v in g.vertices() and w in g.vertices()): return False
 
-    if vertex_is_w(g.type(v1)) and vertex_is_w(g.type(v2)):
-        v1_in, v1_out = get_w_io(g, v1)
-        v2_in, v2_out = get_w_io(g, v2)
+    if vertex_is_w(g.type(v)) and vertex_is_w(g.type(w)):
+        v1_in, v1_out = get_w_io(g, v)
+        v2_in, v2_out = get_w_io(g, w)
         if (g.connected(v1_in, v2_out) and g.edge_type(g.edge(v1_in, v2_out)) == EdgeType.SIMPLE) or \
            (g.connected(v2_in, v1_out) and g.edge_type(g.edge(v2_in, v1_out)) == EdgeType.SIMPLE):
             return True
     return False
 
-def fuse_w(g: BaseGraph[VT,ET], v1: VT, v2: VT) -> bool:
-    if not check_fuse_w(g, v1, v2): return False
-    return unsafe_fuse_w(g, v1, v2)
+def fuse_w(g: BaseGraph[VT,ET], v: VT, w: VT) -> bool:
+    """Checks and then performs W fusion on a given set of vertices."""
+    if not check_fuse_w(g, v, w): return False
+    return unsafe_fuse_w(g, v, w)
 
-def unsafe_fuse_w(g: BaseGraph[VT,ET], v1: VT, v2: VT) -> bool:
+def unsafe_fuse_w(g: BaseGraph[VT,ET], v: VT, w: VT) -> bool:
     """Performs W fusion on a given set of vertices.
     Note: Does not check if fuse can be applied before applying the rule"""
     rem_verts: List[VT] = []
     etab: Dict[Tuple[VT,VT],List[int]] = dict()
 
-    v1_in, v1_out = get_w_io(g, v1)
-    v2_in, v2_out = get_w_io(g, v2)
+    v1_in, v1_out = get_w_io(g, v)
+    v2_in, v2_out = get_w_io(g, w)
     if not g.connected(v1_out, v2_in):
         v1_in, v2_in = v2_in, v1_in
         v1_out, v2_out = v2_out, v1_out

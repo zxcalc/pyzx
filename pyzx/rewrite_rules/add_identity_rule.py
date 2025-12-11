@@ -15,7 +15,16 @@
 # limitations under the License.
 
 
+"""
+This module contains the implementation of the identity rule
 
+This rule acts on a single edge, taken as an input of two vertices. The check function returns a boolean indicating
+whether the two vertices are connected in the graph. The safe version of the applier (add_Z_identity) will automatically
+call the check_edge, while the unsafe version of the applier will assume that the given input is correct and will apply
+the rule without running the check first.
+
+This rewrite rule can be called using the simplify.add_identity_rewrite.apply(g, v, w)
+"""
 
 
 
@@ -23,29 +32,27 @@ __all__ = ['check_edge',
            'add_Z_identity',
            'unsafe_add_Z_identity']
 
-
-
-from typing import Tuple
-
 from pyzx.utils import EdgeType, VertexType
 from pyzx.graph.base import BaseGraph, VT, ET, upair
 
-MatchSelfLoopType = Tuple[VT, int, int]
 
 
-
-def check_edge( g: BaseGraph[VT,ET], v:VT, w:VT) -> bool:
+def check_edge(g: BaseGraph[VT,ET], v:VT, w:VT) -> bool:
+    """Checks if two vertices are connected in the graph.
+     """
     if not (v in g.vertices() and w in g.vertices()): return False
     if not g.connected(v,w): return False
     return True
 
 def add_Z_identity( g: BaseGraph[VT,ET], v:VT, w:VT) -> bool:
+    """First checks if the 2 given vertices are connected by an edge, and then adds a Z spider to that edge.
+     """
     if check_edge(g,v,w): return unsafe_add_Z_identity(g,v,w)
     return False
 
 
 def unsafe_add_Z_identity(g: BaseGraph[VT,ET], v:VT, w:VT) -> bool:
-
+    """Adds a Z spider to the edge given by the input vertices"""
     etab = {}
 
     e = g.edge(v, w)

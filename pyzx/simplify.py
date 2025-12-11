@@ -28,7 +28,7 @@ __all__ = ['bialg_simp','spider_simp', 'id_simp', 'phase_free_simp', 'pivot_simp
         'to_clifford_normal_form_graph', 'to_graph_like', 'is_graph_like']
 
 
-from typing import cast, Iterator
+from typing import cast
 
 from .rewrite_rules.rules import *
 from .circuit import Circuit
@@ -36,7 +36,6 @@ from .rewrite_rules import *
 from .rewrite import *
 from .tensor import compare_tensors
 
-RewriteOutputType = Tuple[Dict[Tuple[VT,VT],List[int]], List[VT], List[ET], bool]
 MatchObject = TypeVar('MatchObject')
 
 class Stats(object):
@@ -56,67 +55,6 @@ class Stats(object):
         s += "%s TOTAL" % str(nt).rjust(6)
         return s
 
-
-def simp(
-    g: BaseGraph[VT,ET],
-    name: str,
-    match: Callable[..., List[MatchObject]],
-    rewrite: Callable[[BaseGraph[VT,ET],List[MatchObject]],RewriteOutputType[VT,ET]],
-    auto_simplify_parallel_edges: bool = False,
-    matchf:Optional[Union[Callable[[ET],bool], Callable[[VT],bool]]]=None,
-    quiet:bool=True,
-    stats:Optional[Stats]=None) -> int:
-    """Helper method for constructing simplification strategies based on the rules present in rules_.
-    It uses the ``match`` function to find matches, and then rewrites ``g`` using ``rewrite``.
-    If ``matchf`` is supplied, only the vertices or edges for which matchf() returns True are considered for matches.
-
-    Example:
-        ``simp(g, 'spider_simp', rules.match_spider_parallel, rules.spider)``
-
-    Args:
-        g: The graph that needs to be simplified.
-        str name: The name to display if ``quiet`` is set to False.
-        match: One of the ``match_*`` functions of rules_.
-        rewrite: One of the rewrite functions of rules_.
-        auto_simplify_parallel_edges: whether to automatically combine parallel edges between vertices if the graph is a Multigraph
-        matchf: An optional filtering function on candidate vertices or edges, which
-           is passed as the second argument to the match function.
-        quiet: Suppress output on numbers of matches found during simplification.
-
-    Returns:
-        Number of iterations of ``rewrite`` that had to be applied before no more matches were found."""
-
-    auto_simp_value = g.get_auto_simplify()
-    if auto_simplify_parallel_edges:
-        g.set_auto_simplify(True)
-    i = 0
-    new_matches = True
-    while new_matches:
-        new_matches = False
-        if matchf is not None:
-            m = match(g, matchf)
-        else:
-            m = match(g)
-        if len(m) > 0:
-            i += 1
-            if i == 1 and not quiet: print("{}: ".format(name),end='')
-            if not quiet: print(len(m), end='')
-            #print(len(m), end='', flush=True) #flush only supported on Python >3.3
-            etab, rem_verts, rem_edges, check_isolated_vertices = rewrite(g, m)
-            g.add_edge_table(etab)
-            g.remove_edges(rem_edges)
-            g.remove_vertices(rem_verts)
-            if check_isolated_vertices: g.remove_isolated_vertices()
-            if not quiet: print('. ', end='')
-            #print('. ', end='', flush=True)
-            new_matches = True
-            if stats is not None: stats.count_rewrites(name, len(m))
-    if not quiet and i>0: print(' {!s} iterations'.format(i))
-    if auto_simplify_parallel_edges:
-        g.set_auto_simplify(auto_simp_value)
-    return i
-
-
 pivot_simp = RewriteSimpDoubleVertex(check_pivot, unsafe_pivot)
 
 pivot_gadget_simp = RewriteSimpGraph(check_pivot_gadget_for_apply, pivot_gadget_for_apply, placeholder_check_for_pivot, pivot_gadget_for_simp)
@@ -126,10 +64,13 @@ pivot_boundary_simp = RewriteSimpGraph(check_pivot_boundary_for_apply, pivot_bou
 lcomp_simp = RewriteSimpSingleVertex(check_lcomp, unsafe_lcomp)
 
 bialg_simp = RewriteSimpDoubleVertex(check_bialgebra, unsafe_bialgebra, check_bialgebra_reduce)
+"""Applies the bialgebra rule to a given pair of Z and X spiders. Can be run automatically"""
 
 fuse_simp = RewriteSimpDoubleVertex(check_fuse, unsafe_fuse,None, False, True)
 
+
 remove_self_loop_simp = RewriteSimpSingleVertex(check_self_loop, unsafe_remove_self_loop)
+"""Removes all self loops on a vertex. Can be run automatically."""
 
 def spider_simp(g: BaseGraph[VT,ET]) -> bool:
     """Performs spider fusion and then removes any self loops"""
@@ -137,9 +78,12 @@ def spider_simp(g: BaseGraph[VT,ET]) -> bool:
     j = remove_self_loop_simp(g)
     return i or j
 
+
 id_simp = RewriteSimpSingleVertex(check_remove_id, unsafe_remove_id, None, True)
+"""Removes an identity spider. Can be run automatically."""
 
 add_identity_rewrite = RewriteDoubleVertex(check_edge, unsafe_add_Z_identity)
+"""Add a Z spider to an edge."""
 
 gadget_simp = RewriteSimpGraph(check_phase_gadgets_for_apply, merge_phase_gadgets_for_apply, check_phase_gadgets_for_simp, merge_phase_gadgets_for_simp)
 
@@ -156,6 +100,7 @@ z_to_z_box_simp = RewriteSimpSingleVertex(check_z_to_z_box, unsafe_z_to_z_box)
 gadget_phasepoly_simp = RewriteSimpGraph(check_gadgets_phasepoly_for_apply, gadgets_phasepoly_for_apply, check_gadgets_phasepoly_for_simp, gadgets_phasepoly_for_simp)
 
 push_pauli_rewrite = RewriteDoubleVertex(check_pauli, unsafe_pauli_push)
+"""Pushes a Pauli (i.e. a pi phase) through another spider."""
 
 euler_expansion_rewrite = RewriteDoubleVertex(check_hadamard_edge, unsafe_euler_expansion)
 

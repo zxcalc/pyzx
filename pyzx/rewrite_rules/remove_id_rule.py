@@ -14,17 +14,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+This module contains the implementation to remove spider identities.
+
+The check function returns a boolean indicating whether the rule can be applied.
+The standard version of the applier will automatically call the basic checker, while the unsafe version
+of the applier will assume that the given input is correct and will apply the rule without running the check first.
+
+This rewrite rule can be called using simplify.id_simp.
+"""
+
 __all__ = ['check_remove_id',
            'remove_id',
            'unsafe_remove_id']
-
-## seperate into 3 parts: overarching, zx remove, w remove. have overarching be in __all__
 
 from pyzx.graph.base import BaseGraph, VT, ET
 from pyzx.utils import EdgeType, VertexType, get_z_box_label, vertex_is_w, get_w_io
 
 
 def check_remove_id(g: BaseGraph[VT,ET], v: VT) -> bool:
+    """Checks if the given vertex can be removed."""
     if not (v in g.vertices()): return False
 
     if vertex_is_w(g.type(v)):
@@ -34,6 +43,7 @@ def check_remove_id(g: BaseGraph[VT,ET], v: VT) -> bool:
 
 
 def remove_id(g: BaseGraph[VT,ET], v: VT) -> bool:
+    """Checks if the spider v can be removed and then does so"""
     if vertex_is_w(g.type(v)) and check_remove_id_w(g, v):
         return unsafe_remove_id_w(g, v)
 
@@ -44,16 +54,18 @@ def remove_id(g: BaseGraph[VT,ET], v: VT) -> bool:
 
 
 def unsafe_remove_id(g: BaseGraph[VT,ET], v: VT) -> bool:
+    """Removes the identity spider v"""
+
     if vertex_is_w(g.type(v)):
         return unsafe_remove_id_w(g, v)
 
     return unsafe_remove_zx(g, v)
 
 
-
 # Remove identity subrules
 
 def check_remove_zx(g: BaseGraph[VT,ET], v: VT) -> bool:
+    """Checks if the given vertex of type zx can be removed."""
     if not g.vertex_degree(v) == 2:
         return False
     if g.type(v) == VertexType.Z_BOX and get_z_box_label(g, v) == 1:
@@ -63,6 +75,7 @@ def check_remove_zx(g: BaseGraph[VT,ET], v: VT) -> bool:
     return False
 
 def unsafe_remove_zx(g: BaseGraph[VT,ET], v: VT) -> bool:
+    """Removes the identity spider v of type ZX"""
     neighbors = list(g.neighbors(v))
     if len(neighbors) == 2:
         v1, v2 = neighbors[0], neighbors[1]
@@ -75,10 +88,12 @@ def unsafe_remove_zx(g: BaseGraph[VT,ET], v: VT) -> bool:
     return True
 
 def check_remove_id_w(g: BaseGraph[VT, ET], v: VT) -> bool:
+    """Checks if the given vertex of type w can be removed."""
     w_in, w_out = get_w_io(g, v)
     return g.vertex_degree(w_out) == 2
 
 def unsafe_remove_id_w(g: BaseGraph[VT, ET], v: VT) -> bool:
+    """Removes the identity spider v of type W"""
     w_in, w_out = get_w_io(g, v)
     v1 = [n for n in g.neighbors(w_out) if n != w_in][0]
     v2 = [n for n in g.neighbors(w_in) if n != w_out][0]

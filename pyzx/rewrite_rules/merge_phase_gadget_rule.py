@@ -14,8 +14,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
+"""
+This module contains the implementation of the hpivot rule.
+This rule acts on an entire graph and the matcher modifies the graph, so this rule should only be run
+using the using simplify.hpivot_simp(g) or simplify.hpivot_simp.apply(g).
+"""
+
 from typing import Tuple, List, Dict, FrozenSet
-from typing import Callable, Optional
+from typing import Optional
 
 from pyzx.utils import  FractionLike, phase_is_pauli
 from pyzx.graph.base import BaseGraph, VT, ET
@@ -31,29 +38,31 @@ __all__ = [
 MatchGadgetType = Tuple[VT,VT,FractionLike,List[VT],List[VT]]
 
 def check_phase_gadgets_for_simp(g: BaseGraph[VT,ET]) -> bool:
-    # matches = match_phase_gadgets(g)
+    """Dummy function"""
     return True
 
 def check_phase_gadgets_for_apply(g: BaseGraph[VT,ET], v: VT, w: VT) -> bool:
-    matches = match_phase_gadgets(g, [v, w])
-    return len(matches) != 0
-
+    """Dummy function."""
+    return True
 
 def merge_phase_gadgets_for_simp(g: BaseGraph[VT,ET]) -> bool:
+    """Runs :func:`match_phase_gadgets` and if any matches are found runs :func:`merge_phase_gadgets`"""
     matches = match_phase_gadgets(g)
+    if len(matches) <= 0: return False
     return merge_phase_gadgets(g, matches)
 
 def merge_phase_gadgets_for_apply(g: BaseGraph[VT,ET], v: VT, w: VT) -> bool:
+    """Runs :func:`match_phase_gadgets` on the input vertices and if any matches are found runs :func:`merge_phase_gadgets`"""
     matches = match_phase_gadgets(g, [v, w])
+    if len(matches) <= 0: return False
     return merge_phase_gadgets(g, matches)
-
-
 
 def match_phase_gadgets(g: BaseGraph[VT,ET], vertices:Optional[List[VT]]=None) -> List[MatchGadgetType[VT]]:
     """Determines which phase gadgets act on the same vertices, so that they can be fused together.
 
     :param g: An instance of a ZX-graph.
     :rtype: List of 5-tuples ``(axel,leaf, total combined phase, other axels with same targets, other leafs)``.
+    .. warning:: Matcher function modifies the graph. Do not run multiple times without calling the applier between calls.
     """
     if vertices is not None: candidates = set(vertices)
     else: candidates = g.vertex_set()
@@ -106,7 +115,6 @@ def merge_phase_gadgets(g: BaseGraph[VT,ET], matches: List[MatchGadgetType[VT]])
     """Given the output of :func:``match_phase_gadgets``, removes phase gadgets that act on the same set of targets."""
     rem: List[VT] = []
 
-    if len(matches) <= 0: return False
 
     for v, n, phase, othergadgets, othertargets in matches:
         g.set_phase(v, phase)

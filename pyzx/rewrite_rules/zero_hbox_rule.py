@@ -12,14 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+This module contains the implementation to delete h-boxes with phase 0 or 2pi.
+
+The check function returns a boolean indicating whether the rule can be applied.
+The standard version of the applier will automatically call the basic checker, while the unsafe version
+of the applier will assume that the given input is correct and will apply the rule without running the check first.
+
+This rewrite rule can be called using hsimplify.zero_hbox_simp.
+"""
+
 __all__ = ['check_zero_hbox',
            'zero_hbox',
            'unsafe_zero_hbox']
 
 
-from typing import Dict, List, Tuple, Callable, Optional
-from pyzx.utils import EdgeType, VertexType
-from pyzx.graph.base import BaseGraph, ET, VT, upair
+from pyzx.utils import VertexType
+from pyzx.graph.base import BaseGraph, ET, VT
 
 
 def check_zero_hbox(g: BaseGraph[VT,ET], v:VT) -> bool:
@@ -31,6 +40,7 @@ def check_zero_hbox(g: BaseGraph[VT,ET], v:VT) -> bool:
 
 
 def zero_hbox(g: BaseGraph[VT,ET], v: VT) -> bool:
+    """Checks if the given vertex can be removed, then removes H-boxes with a phase of 2pi=0."""
     if check_zero_hbox(g, v): return unsafe_zero_hbox(g, v)
     return False
 

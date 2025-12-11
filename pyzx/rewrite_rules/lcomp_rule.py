@@ -14,6 +14,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+This module contains the implementation of the local complementation rule
+
+The check function returns a boolean indicating whether the rule can be applied.
+The standard version of the applier will automatically call the basic checker, while the unsafe version
+of the applier will assume that the given input is correct and will apply the rule without running the check first.
+
+This rewrite rule can be called using simplify.lcomp_simp.apply(g, v, w) or simplify.lcomp_simp(g).
+"""
 
 __all__ = [
         'check_lcomp',
@@ -25,7 +34,7 @@ from typing import Tuple, List, Dict
 
 from fractions import Fraction
 
-from pyzx.utils import (EdgeType, VertexType, phase_is_pauli, phase_is_clifford)
+from pyzx.utils import EdgeType, VertexType
 from pyzx.graph.base import BaseGraph, VT, ET
 
 
@@ -62,6 +71,9 @@ def check_lcomp(
 
 
 def lcomp(g: BaseGraph[VT,ET], v: VT) -> bool:
+    """First checks if the rule can be applied, then performs a local complementation based rewrite rule on the given graph and vertex.
+    See "Graph Theoretic Simplification of Quantum Circuits using the ZX calculus" (arXiv:1902.03178)
+    for more details on the rewrite"""
     if check_lcomp(g,v):
         return unsafe_lcomp(g, v)
     return False
@@ -69,8 +81,7 @@ def lcomp(g: BaseGraph[VT,ET], v: VT) -> bool:
 
 def unsafe_lcomp(g: BaseGraph[VT,ET], v: VT) -> bool:
     """Performs a local complementation based rewrite rule on the given graph with the
-    given ``matches`` returned from ``match_lcomp(_parallel)``. See "Graph Theoretic
-    Simplification of Quantum Circuits using the ZX calculus" (arXiv:1902.03178)
+    given vertex. See "Graph Theoretic Simplification of Quantum Circuits using the ZX calculus" (arXiv:1902.03178)
     for more details on the rewrite"""
     etab: Dict[Tuple[VT,VT],List[int]] = dict()
     rem: List[VT] = []
