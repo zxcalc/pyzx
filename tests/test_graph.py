@@ -19,7 +19,9 @@ import unittest
 from fractions import Fraction
 import itertools
 import json
+import os
 import sys
+import tempfile
 if __name__ == '__main__':
     sys.path.append('..')
     sys.path.append('.')
@@ -245,4 +247,107 @@ class TestGraphCircuitMethods(unittest.TestCase):
         g2 = g.adjoint()
         g2.compose(g)
         self.assertTrue(compare_tensors(g2,identity(2), False))
+
+
+class TestGraphSaveLoad(unittest.TestCase):
+    """Tests for graph save/load functionality."""
+
+    def setUp(self):
+        """Create a simple test graph."""
+        self.graph = Graph()
+        g = self.graph
+        v1 = g.add_vertex(VertexType.BOUNDARY, 0, 0)
+        v2 = g.add_vertex(VertexType.Z, 0, 1, Fraction(1, 4))
+        v3 = g.add_vertex(VertexType.X, 0, 2)
+        v4 = g.add_vertex(VertexType.BOUNDARY, 0, 3)
+        g.add_edge((v1, v2))
+        g.add_edge((v2, v3), EdgeType.HADAMARD)
+        g.add_edge((v3, v4))
+        g.set_inputs((v1,))
+        g.set_outputs((v4,))
+
+    def test_save_load_json(self):
+        """Test saving and loading a graph in JSON format."""
+        with tempfile.NamedTemporaryFile(suffix='.json', delete=False) as f:
+            filename = f.name
+        try:
+            self.graph.save(filename)
+            loaded = Graph.load(filename)
+            self.assertEqual(self.graph.num_vertices(), loaded.num_vertices())
+            self.assertEqual(self.graph.num_edges(), loaded.num_edges())
+        finally:
+            os.unlink(filename)
+
+    def test_save_load_json_explicit_format(self):
+        """Test saving and loading with explicit format specification."""
+        with tempfile.NamedTemporaryFile(suffix='.txt', delete=False) as f:
+            filename = f.name
+        try:
+            self.graph.save(filename, fmt='json')
+            loaded = Graph.load(filename, fmt='json')
+            self.assertEqual(self.graph.num_vertices(), loaded.num_vertices())
+            self.assertEqual(self.graph.num_edges(), loaded.num_edges())
+        finally:
+            os.unlink(filename)
+
+    def test_save_load_tikz(self):
+        """Test saving and loading a graph in TikZ format."""
+        with tempfile.NamedTemporaryFile(suffix='.tikz', delete=False) as f:
+            filename = f.name
+        try:
+            self.graph.save(filename)
+            loaded = Graph.load(filename, warn_overlap=False)
+            self.assertEqual(self.graph.num_vertices(), loaded.num_vertices())
+            self.assertEqual(self.graph.num_edges(), loaded.num_edges())
+        finally:
+            os.unlink(filename)
+
+    def test_save_unknown_format_raises(self):
+        """Test that saving with unknown format raises ValueError."""
+        with tempfile.NamedTemporaryFile(suffix='.xyz', delete=False) as f:
+            filename = f.name
+        try:
+            with self.assertRaises(ValueError) as ctx:
+                self.graph.save(filename)
+            self.assertIn("Cannot infer format", str(ctx.exception))
+        finally:
+            os.unlink(filename)
+
+    def test_save_unsupported_format_raises(self):
+        """Test that saving with unsupported format raises ValueError."""
+        with tempfile.NamedTemporaryFile(suffix='.json', delete=False) as f:
+            filename = f.name
+        try:
+            with self.assertRaises(ValueError) as ctx:
+                self.graph.save(filename, fmt='xml')
+            self.assertIn("Unsupported format", str(ctx.exception))
+        finally:
+            os.unlink(filename)
+
+    def test_load_unknown_format_raises(self):
+        """Test that loading with unknown format raises ValueError."""
+        with tempfile.NamedTemporaryFile(suffix='.xyz', delete=False) as f:
+            f.write(b'test')
+            filename = f.name
+        try:
+            with self.assertRaises(ValueError) as ctx:
+                Graph.load(filename)
+            self.assertIn("Cannot infer format", str(ctx.exception))
+        finally:
+            os.unlink(filename)
+
+    def test_qgraph_extension(self):
+        """Test that .qgraph extension is recognized as JSON."""
+        with tempfile.NamedTemporaryFile(suffix='.qgraph', delete=False) as f:
+            filename = f.name
+        try:
+            self.graph.save(filename)
+            loaded = Graph.load(filename)
+            self.assertEqual(self.graph.num_vertices(), loaded.num_vertices())
+        finally:
+            os.unlink(filename)
+
+
+if __name__ == '__main__':
+    unittest.main()
 
