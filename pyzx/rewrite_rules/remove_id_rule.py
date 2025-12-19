@@ -90,7 +90,7 @@ def unsafe_remove_zx(g: BaseGraph[VT,ET], v: VT) -> bool:
 def check_remove_id_w(g: BaseGraph[VT, ET], v: VT) -> bool:
     """Checks if the given vertex of type w can be removed."""
     w_in, w_out = get_w_io(g, v)
-    return g.vertex_degree(w_out) == 2
+    return g.vertex_degree(w_in) == 2 and g.vertex_degree(w_out) == 2
 
 def unsafe_remove_id_w(g: BaseGraph[VT, ET], v: VT) -> bool:
     """Removes the identity spider v of type W"""
