@@ -155,7 +155,7 @@ def interior_clifford_simp(g: BaseGraph[VT,ET]) -> bool:
         i += 1
     return i != 0
 
-def clifford_simp(g: BaseGraph[VT,ET]) -> int:
+def clifford_simp(g: BaseGraph[VT,ET], matchf: Optional[Callable[[Union[VT, ET]],bool]]=None, quiet:bool=True, stats:Optional[Stats]=None) -> int:
     """Keeps doing rounds of :func:`interior_clifford_simp` and
     :func:`pivot_boundary_simp` until they can't be applied anymore."""
     i = False
@@ -166,7 +166,7 @@ def clifford_simp(g: BaseGraph[VT,ET]) -> int:
             break
     return i
 
-def reduce_scalar(g: BaseGraph[VT,ET]) -> int:
+def reduce_scalar(g: BaseGraph[VT,ET], quiet:bool=True, stats:Optional[Stats]=None) -> int:
     """Modification of ``full_reduce`` that is tailered for scalar ZX-diagrams.
     It skips the boundary pivots."""
     i = 0
@@ -191,7 +191,7 @@ def reduce_scalar(g: BaseGraph[VT,ET]) -> int:
     return i
 
 
-def full_reduce(g: BaseGraph[VT,ET]) -> None:
+def full_reduce(g: BaseGraph[VT,ET], matchf: Optional[Callable[[Union[VT, ET]],bool]]=None, quiet:bool=True, stats:Optional[Stats]=None) -> None:
     """The main simplification routine of PyZX. It uses a combination of :func:`clifford_simp` and
     the gadgetization strategies :func:`pivot_gadget_simp` and :func:`gadget_simp`. It also attempts to run :func:`supplementarity_simp` and :func:`copy_simp`."""
     if any(g.types()[h] == VertexType.H_BOX for h in g.vertices()):
