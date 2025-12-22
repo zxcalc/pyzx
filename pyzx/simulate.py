@@ -70,7 +70,7 @@ class SumGraph(object):
         for i, g in enumerate(self.graphs):
             if not quiet:
                 print("Graph {:d}:".format(i))
-            simplify.full_reduce(g, quiet=quiet)
+            simplify.full_reduce(g)
             if not g.scalar.is_zero: terms.append(g)
             elif not quiet: print("Graph {:d} is zero".format(i))
         self.graphs = terms
@@ -80,7 +80,7 @@ class SumGraph(object):
         for i, g in enumerate(self.graphs):
             if not quiet:
                 print("Graph {:d}:".format(i))
-            simplify.reduce_scalar(g, quiet=quiet)
+            simplify.reduce_scalar(g)
             if not g.scalar.is_zero: terms.append(g)
             elif not quiet: print("Graph {:d} is zero".format(i))
         self.graphs = terms
