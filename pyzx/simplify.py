@@ -25,7 +25,7 @@ __all__ = ['bialg_simp','spider_simp', 'id_simp', 'phase_free_simp', 'pivot_simp
         'pivot_gadget_simp', 'pivot_boundary_simp', 'gadget_simp',
         'lcomp_simp', 'clifford_simp', 'tcount', 'to_gh', 'to_rg',
         'full_reduce', 'teleport_reduce', 'reduce_scalar', 'supplementarity_simp',
-        'to_clifford_normal_form_graph', 'to_graph_like', 'is_graph_like']
+        'to_clifford_normal_form_graph', 'to_graph_like', 'is_graph_like', 'copy_simp']
 
 
 from typing import cast
@@ -56,18 +56,22 @@ class Stats(object):
         return s
 
 pivot_simp = RewriteSimpDoubleVertex(check_pivot, unsafe_pivot)
+"""Performs a pivot rewrite. Can be run automatically on the entire graph."""
 
 pivot_gadget_simp = RewriteSimpGraph(check_pivot_gadget_for_apply, pivot_gadget_for_apply, placeholder_check_for_pivot, pivot_gadget_for_simp)
+"""Performs pivot rewrite on an interior Pauli vertex and an interior non-Clifford vertex. Should only be run on the entire graph."""
 
 pivot_boundary_simp = RewriteSimpGraph(check_pivot_boundary_for_apply, pivot_boundary_for_apply, placeholder_check_for_pivot, pivot_boundary_for_simp)
+"""Performs pivot rewrite on an interior Pauli vertex and a boundary non-Pauli Clifford vertex. Should only be run on the entire graph."""
 
 lcomp_simp = RewriteSimpSingleVertex(check_lcomp, unsafe_lcomp)
+"""Performs a local complementation rewrite on a given vertex. Can be run automatically on the entire graph."""
 
 bialg_simp = RewriteSimpDoubleVertex(check_bialgebra, unsafe_bialgebra, check_bialgebra_reduce)
-"""Applies the bialgebra rule to a given pair of Z and X spiders. Can be run automatically"""
+"""Applies the bialgebra rule to a given pair of Z and X spiders. Can be run automatically on the entire graph."""
 
 fuse_simp = RewriteSimpDoubleVertex(check_fuse, unsafe_fuse,None, False, True)
-
+"""Performs spider fusion by fusing two matching Z X or w spiders into one. Can be run automatically on the entire graph."""
 
 remove_self_loop_simp = RewriteSimpSingleVertex(check_self_loop, unsafe_remove_self_loop)
 """Removes all self loops on a vertex. Can be run automatically."""
@@ -86,26 +90,34 @@ add_identity_rewrite = RewriteDoubleVertex(check_edge, unsafe_add_Z_identity)
 """Add a Z spider to an edge."""
 
 gadget_simp = RewriteSimpGraph(check_phase_gadgets_for_apply, merge_phase_gadgets_for_apply, check_phase_gadgets_for_simp, merge_phase_gadgets_for_simp)
+"""Finds and removes phase gadgets that act on the same set of targets. Should only be run on the entire graph."""
 
 supplementarity_simp = RewriteSimpGraph(check_supplementarity_for_apply, safe_apply_supplementarity, check_supplementarity_for_simp, simp_supplementarity)
+"""Performs a supplementarity rewrite by removing non-Clifford spiders that act on the same set of targets. Should only be run on the entire graph."""
 
 copy_simp = RewriteSimpSingleVertex(check_copy, unsafe_copy)
+"""Copies a given vertex through its neighbor. Can be run automatically on the entire graph."""
 
 color_change_rewrite = RewriteSimpSingleVertex(check_color_change, unsafe_color_change)
+"""Changes the color of a given vertex. CANNOT be run automatically on the entire graph."""
 
 hopf_simp = RewriteSimpDoubleVertex(check_hopf, unsafe_hopf)
+"""Removes parallel edges between the given vertices. Can be run automatically on the entire graph."""
 
 z_to_z_box_simp = RewriteSimpSingleVertex(check_z_to_z_box, unsafe_z_to_z_box)
+"""Turns a given z-spider into a z-box. Can be run automatically on the entire graph."""
 
 gadget_phasepoly_simp = RewriteSimpGraph(check_gadgets_phasepoly_for_apply, gadgets_phasepoly_for_apply, check_gadgets_phasepoly_for_simp, gadgets_phasepoly_for_simp)
+"""Applies a rewrite based on rule R_13 of the paper *A Finite Presentation of CNOT-Dihedral Operators*. Should only be run on the entire graph."""
 
 push_pauli_rewrite = RewriteDoubleVertex(check_pauli, unsafe_pauli_push)
-"""Pushes a Pauli (i.e. a pi phase) through another spider."""
+"""Pushes a Pauli (i.e. a pi phase) through another spider. CANNOT be run automatically on the entire graph."""
 
-euler_expansion_rewrite = RewriteDoubleVertex(check_hadamard_edge, unsafe_euler_expansion)
+euler_expansion_rewrite = RewriteSimpDoubleVertex(check_hadamard_edge, unsafe_euler_expansion)
+"""Expands a given hadamard edge into its euler decomposition. Can be run automatically on the entire graph."""
 
 pi_commute_rewrite = RewriteSingleVertex(check_pi_commute, unsafe_pi_commute)
-
+"""Pushes a pi phase out of the given vertex. CANNOT be run automatically on the entire graph."""
 
 def phase_free_simp(g: BaseGraph[VT,ET]) -> bool:
     '''Performs the following set of simplifications on the graph:
@@ -132,8 +144,6 @@ def interior_clifford_simp(g: BaseGraph[VT,ET]) -> bool:
     """Keeps doing the simplifications ``id_simp``, ``spider_simp``,
     ``pivot_simp`` and ``lcomp_simp`` until none of them can be applied anymore."""
     spider_simp(g)
-    remove_self_loop_simp(g)
-
     to_gh(g)
     i = 0
     while True:
@@ -145,7 +155,7 @@ def interior_clifford_simp(g: BaseGraph[VT,ET]) -> bool:
         i += 1
     return i != 0
 
-def clifford_simp(g: BaseGraph[VT,ET], matchf: Optional[Callable[[Union[VT, ET]],bool]]=None, quiet:bool=True, stats:Optional[Stats]=None) -> int:
+def clifford_simp(g: BaseGraph[VT,ET]) -> int:
     """Keeps doing rounds of :func:`interior_clifford_simp` and
     :func:`pivot_boundary_simp` until they can't be applied anymore."""
     i = False
@@ -156,7 +166,7 @@ def clifford_simp(g: BaseGraph[VT,ET], matchf: Optional[Callable[[Union[VT, ET]]
             break
     return i
 
-def reduce_scalar(g: BaseGraph[VT,ET], quiet:bool=True, stats:Optional[Stats]=None) -> int:
+def reduce_scalar(g: BaseGraph[VT,ET]) -> int:
     """Modification of ``full_reduce`` that is tailered for scalar ZX-diagrams.
     It skips the boundary pivots."""
     i = 0
@@ -181,7 +191,7 @@ def reduce_scalar(g: BaseGraph[VT,ET], quiet:bool=True, stats:Optional[Stats]=No
     return i
 
 
-def full_reduce(g: BaseGraph[VT,ET], matchf: Optional[Callable[[Union[VT, ET]],bool]]=None, quiet:bool=True, stats:Optional[Stats]=None) -> None:
+def full_reduce(g: BaseGraph[VT,ET]) -> None:
     """The main simplification routine of PyZX. It uses a combination of :func:`clifford_simp` and
     the gadgetization strategies :func:`pivot_gadget_simp` and :func:`gadget_simp`. It also attempts to run :func:`supplementarity_simp` and :func:`copy_simp`."""
     if any(g.types()[h] == VertexType.H_BOX for h in g.vertices()):
@@ -318,7 +328,7 @@ class Simplifier(Generic[VT, ET]):
         _debug_full_reduce(self.simplifygraph)
 
 
-def to_gh(g: BaseGraph[VT,ET],quiet:bool=True) -> None:
+def to_gh(g: BaseGraph[VT,ET]) -> None:
     """Turns every red node into a green node by applying a Hadamard to the edges incident to red nodes"""
     ty = g.types()
     for v in g.vertices():

@@ -127,7 +127,7 @@ NEW VERSION
 
 
 
-# zer_hbox_rules
+# zero_hbox_rules
 # def match_zero_hbox(g: BaseGraph[VT,ET]) -> List[VT]:
 #     """Matches H-boxes that have a phase of 2pi==0."""
 #     types = g.types()

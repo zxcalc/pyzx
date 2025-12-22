@@ -36,7 +36,7 @@ from pyzx.graph.base import BaseGraph, VT, ET, upair
 
 
 def check_hadamard_edge(g: BaseGraph[VT, ET], v:VT, w:VT) -> bool:
-    """Checks whether two vertices are hadamard edges."""
+    """Checks whether two vertices are connected by a hadamard edge."""
     if not (v in g.vertices() and w in g.vertices()): return False
     if not g.connected(v, w): return False
     return g.edge_type(g.edge(v, w)) == EdgeType.HADAMARD

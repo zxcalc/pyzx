@@ -44,7 +44,7 @@ from pyzx.graph.base import BaseGraph, VT, ET
 # Fuse spiders
 
 def check_fuse(g: BaseGraph[VT,ET], v: VT, w: VT) -> bool:
-    """Checks if two vertices can be fused."""
+    """Checks if two vertices can be fused. Accepts Z, X or w_input/output vertices"""
     if check_fuse_w(g, v, w):
         return True
 

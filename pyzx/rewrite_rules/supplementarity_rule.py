@@ -105,7 +105,7 @@ def unsafe_apply_supplementarity(
         g: BaseGraph[VT,ET],
         matches: List[MatchSupplementarityType[VT]]
         ) -> bool:
-    """Given the output of :func:``match_supplementarity``, removes non-Clifford spiders that act on the same set of targets trough supplementarity."""
+    """Given the output of :func:``match_supplementarity``, removes non-Clifford spiders that act on the same set of targets through supplementarity."""
     rem: List[VT] = []
     for v, w, t, neigh in matches:
         rem.append(v)
