@@ -17,6 +17,7 @@
 
 import unittest
 import sys
+import warnings
 from types import ModuleType
 from typing import Optional
 
@@ -40,6 +41,10 @@ try:
     import quimb.tensor as qtn
 except ImportError:
     qu = None
+except AttributeError as e:
+    # Fail gracefully if quimb and scipy versions are incompatible (issue #210).
+    qu = None
+    warnings.warn(f"quimb is installed but has compatibility issues: {e}")
 
 
 @unittest.skipUnless(np, "numpy needs to be installed for this to run")
