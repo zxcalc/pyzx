@@ -29,14 +29,13 @@ from .utils import settings, get_mode, phase_to_s, FloatInt
 from .drawing import matrix_to_latex
 from .graph import Scalar
 from .graph.graph import GraphS
-from .rewrite_rules import rules
 from . import tikz
 
-from .editor_actions import MATCHES_VERTICES, MATCHES_EDGES, operations, operations_to_js
+from pyzx.editor_actions import MATCHES_EDGES, operations, operations_to_js
 
 if get_mode() == 'notebook':
 	import ipywidgets as widgets
-	from traitlets import Unicode, validate, Bool, Int, Float
+	from traitlets import Unicode, Float
 	from IPython.display import display, HTML
 else:
 	# Make some dummy classes to prevent errors with the definition

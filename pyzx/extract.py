@@ -22,8 +22,8 @@ import itertools
 
 from .utils import EdgeType, VertexType, toggle_edge
 from .linalg import Mat2, Z2
-from .simplify import id_simp, tcount,full_reduce, is_graph_like
-from .rewrite_rules.rules import apply_rule, pivot, match_spider_parallel, spider
+from .simplify import id_simp, tcount, full_reduce, is_graph_like, pivot_simp
+from .rewrite_rules import *
 from .circuit import Circuit
 from .circuit.gates import Gate, ParityPhase, CNOT, HAD, ZPhase, XPhase, CZ, XCX, SWAP, InitAncilla
 
@@ -580,7 +580,8 @@ def remove_gadget(g: BaseGraph[VT, ET], frontier: List[VT], qubit_map: Dict[VT, 
         if w not in gadgets: continue
         for v in g.neighbors(w):
             if v in frontier:
-                apply_rule(g, pivot, [((w, v), ([], [o for o in g.neighbors(v) if o in outputs]))])  # type: ignore
+                # apply_rule(g, pivot, [((w, v), ([], [o for o in g.neighbors(v) if o in outputs]))])  # type: ignore
+                pivot_simp.apply(g, w,v)
                 frontier.remove(v)
                 del gadgets[w]
                 frontier.append(w)
@@ -707,7 +708,7 @@ def extract_circuit(
     if optimize_czs:
         if not quiet: print("CZ gates saved:", czs_saved)
     # Outside of loop. Finish up the permutation
-    id_simp(g, quiet=True)  # Now the graph should only contain inputs and outputs
+    id_simp(g)  # Now the graph should only contain inputs and outputs
     # Since we were extracting from right to left, we reverse the order of the gates
     c.gates = list(reversed(c.gates))
     return graph_to_swaps(g, up_to_perm) + c
@@ -1029,7 +1030,7 @@ class LookaheadNode:
         c = c + self.c
         if not self.expanded:
             self.collected = True
-            id_simp(self.g, quiet=True)
+            id_simp(self.g)
             c.gates = list(reversed(c.gates))
             c = graph_to_swaps(self.g, up_to_perm) + c
             d = get_optimize_value(c, self.opt_depth, True)
@@ -1052,7 +1053,7 @@ class LookaheadNode:
         """
         if not self.expanded and not self.collected and len(self.frontier) == 0:
             self.collected = True
-            id_simp(self.g, quiet=True)
+            id_simp(self.g)
             self.c.gates = list(reversed(self.c.gates))
             self.c = graph_to_swaps(self.g, up_to_perm) + self.c
             d = get_optimize_value(self.c, self.opt_depth, True)

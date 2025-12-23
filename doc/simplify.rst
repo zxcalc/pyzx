@@ -17,7 +17,7 @@ To use the ZX-diagram simplification routines, the circuit must first be convert
 
 We can now use any of the built-in simplification strategies for ZX-diagrams. The most powerful of these is :func:`~pyzx.simplify.full_reduce`::
 
-	zx.full_reduce(g, quiet=False) # simplifies the Graph in-place, and show the rewrite steps taken.
+	zx.full_reduce(g) # simplifies the Graph in-place, and show the rewrite steps taken.
 	g.normalize() # Makes the graph more suitable for displaying
 	zx.draw(g) # Display the resulting diagram
 

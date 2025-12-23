@@ -109,7 +109,7 @@ class TestCircuit(unittest.TestCase):
         random.seed(SEED)
         g = cliffordT(5, 70, 0.15)
         t = g.to_tensor(False)
-        clifford_simp(g, quiet=True)
+        clifford_simp(g)
         c = extract_circuit(g)
         t2 = c.to_tensor(False)
         self.assertTrue(compare_tensors(t,t2,False))

@@ -15,28 +15,28 @@
 # limitations under the License.
 
 """This module contains the ZX-diagram simplification strategies of PyZX.
-Each strategy is based on applying some combination of the rewrite rules in the rules_ module.
+Each strategy is an instance of the Rewrite class, based on the rule functions found in rewrite_rules.
 The main procedures of interest are :func:`clifford_simp` for simple reductions,
 :func:`full_reduce` for the full rewriting power of PyZX, and :func:`teleport_reduce` to
 use the power of :func:`full_reduce` while not changing the structure of the graph.
 """
 
-__all__ = ['bialg_simp','spider_simp', 'id_simp', 'phase_free_simp', 'pivot_simp',
+__all__ = ['bialg_simp','spider_simp', 'id_simp', 'phase_free_simp', 'pivot_simp', 'remove_self_loop_simp',
         'pivot_gadget_simp', 'pivot_boundary_simp', 'gadget_simp',
         'lcomp_simp', 'clifford_simp', 'tcount', 'to_gh', 'to_rg',
         'full_reduce', 'teleport_reduce', 'reduce_scalar', 'supplementarity_simp',
-        'to_clifford_normal_form_graph', 'to_graph_like', 'is_graph_like']
+        'to_clifford_normal_form_graph', 'to_graph_like', 'is_graph_like', 'copy_simp']
 
-from ast import Mult
-from functools import reduce
-from optparse import Option
-from typing import List, Callable, Optional, Union, Generic, Tuple, Dict, Iterator, cast
 
-from .utils import EdgeType, VertexType, phase_is_clifford, toggle_edge, vertex_is_zx, toggle_vertex
+from typing import cast
+
 from .rewrite_rules.rules import *
-from .graph.base import BaseGraph, VT, ET
-from .graph.multigraph import Multigraph
 from .circuit import Circuit
+from .rewrite_rules import *
+from .rewrite import *
+from .tensor import compare_tensors
+
+MatchObject = TypeVar('MatchObject')
 
 class Stats(object):
     def __init__(self) -> None:
@@ -55,162 +55,114 @@ class Stats(object):
         s += "%s TOTAL" % str(nt).rjust(6)
         return s
 
+pivot_simp = RewriteSimpDoubleVertex(check_pivot, unsafe_pivot)
+"""Performs a pivot rewrite. Can be run automatically on the entire graph."""
 
-def simp(
-    g: BaseGraph[VT,ET],
-    name: str,
-    match: Callable[..., List[MatchObject]],
-    rewrite: Callable[[BaseGraph[VT,ET],List[MatchObject]],RewriteOutputType[VT,ET]],
-    auto_simplify_parallel_edges: bool = False,
-    matchf:Optional[Union[Callable[[ET],bool], Callable[[VT],bool]]]=None,
-    quiet:bool=True,
-    stats:Optional[Stats]=None) -> int:
-    """Helper method for constructing simplification strategies based on the rules present in rules_.
-    It uses the ``match`` function to find matches, and then rewrites ``g`` using ``rewrite``.
-    If ``matchf`` is supplied, only the vertices or edges for which matchf() returns True are considered for matches.
+pivot_gadget_simp = RewriteSimpGraph(check_pivot_gadget_for_apply, pivot_gadget_for_apply, placeholder_check_for_pivot, pivot_gadget_for_simp)
+"""Performs pivot rewrite on an interior Pauli vertex and an interior non-Clifford vertex. Should only be run on the entire graph."""
 
-    Example:
-        ``simp(g, 'spider_simp', rules.match_spider_parallel, rules.spider)``
+pivot_boundary_simp = RewriteSimpGraph(check_pivot_boundary_for_apply, pivot_boundary_for_apply, placeholder_check_for_pivot, pivot_boundary_for_simp)
+"""Performs pivot rewrite on an interior Pauli vertex and a boundary non-Pauli Clifford vertex. Should only be run on the entire graph."""
 
-    Args:
-        g: The graph that needs to be simplified.
-        str name: The name to display if ``quiet`` is set to False.
-        match: One of the ``match_*`` functions of rules_.
-        rewrite: One of the rewrite functions of rules_.
-        auto_simplify_parallel_edges: whether to automatically combine parallel edges between vertices if the graph is a Multigraph
-        matchf: An optional filtering function on candidate vertices or edges, which
-           is passed as the second argument to the match function.
-        quiet: Suppress output on numbers of matches found during simplification.
+lcomp_simp = RewriteSimpSingleVertex(check_lcomp, unsafe_lcomp)
+"""Performs a local complementation rewrite on a given vertex. Can be run automatically on the entire graph."""
 
-    Returns:
-        Number of iterations of ``rewrite`` that had to be applied before no more matches were found."""
+bialg_simp = RewriteSimpDoubleVertex(check_bialgebra, unsafe_bialgebra, check_bialgebra_reduce)
+"""Applies the bialgebra rule to a given pair of Z and X spiders. Can be run automatically on the entire graph."""
 
-    auto_simp_value = g.get_auto_simplify()
-    if auto_simplify_parallel_edges:
-        g.set_auto_simplify(True)
-    i = 0
-    new_matches = True
-    while new_matches:
-        new_matches = False
-        if matchf is not None:
-            m = match(g, matchf)
-        else:
-            m = match(g)
-        if len(m) > 0:
-            i += 1
-            if i == 1 and not quiet: print("{}: ".format(name),end='')
-            if not quiet: print(len(m), end='')
-            #print(len(m), end='', flush=True) #flush only supported on Python >3.3
-            etab, rem_verts, rem_edges, check_isolated_vertices = rewrite(g, m)
-            g.add_edge_table(etab)
-            g.remove_edges(rem_edges)
-            g.remove_vertices(rem_verts)
-            if check_isolated_vertices: g.remove_isolated_vertices()
-            if not quiet: print('. ', end='')
-            #print('. ', end='', flush=True)
-            new_matches = True
-            if stats is not None: stats.count_rewrites(name, len(m))
-    if not quiet and i>0: print(' {!s} iterations'.format(i))
-    if auto_simplify_parallel_edges:
-        g.set_auto_simplify(auto_simp_value)
-    return i
+fuse_simp = RewriteSimpDoubleVertex(check_fuse, unsafe_fuse,None, False, True)
+"""Performs spider fusion by fusing two matching Z X or w spiders into one. Can be run automatically on the entire graph."""
 
-def pivot_simp(g: BaseGraph[VT,ET], matchf:Optional[Callable[[ET],bool]]=None, quiet:bool=True, stats:Optional[Stats]=None) -> int:
-    """Keeps performing a pivoting rewrite until the list of matches supplied by :func:`match_pivot_parallel` is empty."""
-    return simp(g, 'pivot_simp', match_pivot_parallel, pivot, 
-                auto_simplify_parallel_edges=True, matchf=matchf, quiet=quiet, stats=stats)
+remove_self_loop_simp = RewriteSimpSingleVertex(check_self_loop, unsafe_remove_self_loop)
+"""Removes all self loops on a vertex. Can be run automatically."""
 
-def pivot_gadget_simp(g: BaseGraph[VT,ET], matchf:Optional[Callable[[ET],bool]]=None, quiet:bool=True, stats:Optional[Stats]=None) -> int:
-    """Keeps performing a pivoting rewrite until the list of matches supplied by :func:`match_pivot_gadget` is empty."""
-    return simp(g, 'pivot_gadget_simp', match_pivot_gadget, pivot, 
-                auto_simplify_parallel_edges=True, matchf=matchf, quiet=quiet, stats=stats)
+def spider_simp(g: BaseGraph[VT,ET]) -> bool:
+    """Performs spider fusion and then removes any self loops"""
+    i = fuse_simp(g)
+    j = remove_self_loop_simp(g)
+    return i or j
 
-def pivot_boundary_simp(g: BaseGraph[VT,ET], matchf:Optional[Callable[[ET],bool]]=None, quiet:bool=True, stats:Optional[Stats]=None) -> int:
-    """Keeps performing  a pivoting rewrite until the list of matches supplied by :func:`match_pivot_boundary` is empty."""
-    return simp(g, 'pivot_boundary_simp', match_pivot_boundary, pivot, 
-                auto_simplify_parallel_edges=True, matchf=matchf, quiet=quiet, stats=stats)
 
-def lcomp_simp(g: BaseGraph[VT,ET], matchf:Optional[Callable[[VT],bool]]=None, quiet:bool=True, stats:Optional[Stats]=None) -> int:
-    """Keeps performing a local complementation based rewrite until the list of matches supplied by :func:`match_lcomp_parallel` is empty."""
-    return simp(g, 'lcomp_simp', match_lcomp_parallel, lcomp, 
-                auto_simplify_parallel_edges=True, matchf=matchf, quiet=quiet, stats=stats)
+id_simp = RewriteSimpSingleVertex(check_remove_id, unsafe_remove_id, None, True)
+"""Removes an identity spider. Can be run automatically."""
 
-def bialg_simp(g: BaseGraph[VT,ET], quiet:bool=True, stats: Optional[Stats]=None) -> int:
-    """Keeps performing a bialgebra rewrite until the list of matches supplied by :func:`match_bialg(_parallel)` is empty."""
-    return simp(g, 'bialg_simp', match_bialg_parallel, bialg, quiet=quiet, stats=stats)
+add_identity_rewrite = RewriteDoubleVertex(check_edge, unsafe_add_Z_identity)
+"""Add a Z spider to an edge."""
 
-def spider_simp(g: BaseGraph[VT,ET], matchf:Optional[Callable[[VT],bool]]=None, quiet:bool=True, stats:Optional[Stats]=None) -> int:
-    """Keeps performing spider fusion until the list of matches supplied by :func:`match_spider_parallel` is empty. Self-loops are removed."""
-    result = simp(g, 'spider_simp', match_spider_parallel, spider,
-                auto_simplify_parallel_edges=True, matchf=matchf, quiet=quiet, stats=stats)
+gadget_simp = RewriteSimpGraph(check_phase_gadgets_for_apply, merge_phase_gadgets_for_apply, check_phase_gadgets_for_simp, merge_phase_gadgets_for_simp)
+"""Finds and removes phase gadgets that act on the same set of targets. Should only be run on the entire graph."""
 
-    # Convert any remaining self-loops to phases, and count them.
-    result += simp(g, 'spider_simp_self_loop_cleanup', match_self_loop, remove_self_loops, quiet=quiet, stats=stats)
+supplementarity_simp = RewriteSimpGraph(check_supplementarity_for_apply, safe_apply_supplementarity, check_supplementarity_for_simp, simp_supplementarity)
+"""Performs a supplementarity rewrite by removing non-Clifford spiders that act on the same set of targets. Should only be run on the entire graph."""
 
-    return result
+copy_simp = RewriteSimpSingleVertex(check_copy, unsafe_copy)
+"""Copies a given vertex through its neighbor. Can be run automatically on the entire graph."""
 
-def id_simp(g: BaseGraph[VT,ET], matchf:Optional[Callable[[VT],bool]]=None, quiet:bool=True, stats:Optional[Stats]=None) -> int:
-    """Removes all non-interacting identity vertices found by :func:`match_ids_parallel`."""
-    return simp(g, 'id_simp', match_ids_parallel, remove_ids, matchf=matchf, quiet=quiet, stats=stats)
+color_change_rewrite = RewriteSimpSingleVertex(check_color_change, unsafe_color_change)
+"""Changes the color of a given vertex. CANNOT be run automatically on the entire graph."""
 
-def gadget_simp(g: BaseGraph[VT,ET], matchf: Optional[Callable[[VT],bool]]=None, quiet:bool=True, stats:Optional[Stats]=None) -> int:
-    """Removes all phase gadgets that act on the same set of targets found by :func:`match_phase_gadgets`."""
-    return simp(g, 'gadget_simp', match_phase_gadgets, merge_phase_gadgets, 
-                auto_simplify_parallel_edges=True, matchf=matchf, quiet=quiet, stats=stats)
+hopf_simp = RewriteSimpDoubleVertex(check_hopf, unsafe_hopf)
+"""Removes parallel edges between the given vertices. Can be run automatically on the entire graph."""
 
-def supplementarity_simp(g: BaseGraph[VT,ET], quiet:bool=True, stats:Optional[Stats]=None) -> int:
-    """Keeps performing supplementarity to remove non-Clifford spiders that act on the same set of targets until the list of matches found by :func:`match_supplementarity` is empty."""
-    return simp(g, 'supplementarity_simp', match_supplementarity, apply_supplementarity, 
-                auto_simplify_parallel_edges=True, quiet=quiet, stats=stats)
+z_to_z_box_simp = RewriteSimpSingleVertex(check_z_to_z_box, unsafe_z_to_z_box)
+"""Turns a given z-spider into a z-box. Can be run automatically on the entire graph."""
 
-def copy_simp(g: BaseGraph[VT,ET], quiet:bool=True, stats:Optional[Stats]=None) -> int:
-    """Copies 1-ary spiders with 0/pi phase through neighbors.
-    WARNING: only use on maximally fused diagrams consisting solely of Z-spiders."""
-    return simp(g, 'copy_simp', match_copy, apply_copy, quiet=quiet, stats=stats)
+gadget_phasepoly_simp = RewriteSimpGraph(check_gadgets_phasepoly_for_apply, gadgets_phasepoly_for_apply, check_gadgets_phasepoly_for_simp, gadgets_phasepoly_for_simp)
+"""Applies a rewrite based on rule R_13 of the paper *A Finite Presentation of CNOT-Dihedral Operators*. Should only be run on the entire graph."""
 
-def phase_free_simp(g: BaseGraph[VT,ET], quiet:bool=True, stats:Optional[Stats]=None) -> int:
+push_pauli_rewrite = RewriteDoubleVertex(check_pauli, unsafe_pauli_push)
+"""Pushes a Pauli (i.e. a pi phase) through another spider. CANNOT be run automatically on the entire graph."""
+
+euler_expansion_rewrite = RewriteSimpDoubleVertex(check_hadamard_edge, unsafe_euler_expansion)
+"""Expands a given hadamard edge into its euler decomposition. Can be run automatically on the entire graph."""
+
+pi_commute_rewrite = RewriteSingleVertex(check_pi_commute, unsafe_pi_commute)
+"""Pushes a pi phase out of the given vertex. CANNOT be run automatically on the entire graph."""
+
+def phase_free_simp(g: BaseGraph[VT,ET]) -> bool:
     '''Performs the following set of simplifications on the graph:
     spider -> bialg'''
-    i1 = spider_simp(g, quiet=quiet, stats=stats)
-    i2 = bialg_simp(g, quiet=quiet, stats=stats)
-    return i1+i2
+    i1 = spider_simp(g)
+    i2 = bialg_simp(g)
+    return i1 or i2
 
-def basic_simp(g: BaseGraph[VT,ET], matchf: Optional[Callable[[Union[VT, ET]],bool]]=None, quiet:bool=True, stats:Optional[Stats]=None) -> int:
+def basic_simp(g: BaseGraph[VT,ET]) -> bool:
     """Keeps doing the simplifications ``id_simp`` and ``spider_simp`` until none of them can be applied anymore. If
     starting from a circuit, the result should still have causal flow."""
-    spider_simp(g, matchf=matchf, quiet=quiet, stats=stats)
+    spider_simp(g)
     to_gh(g)
     i = 0
     while True:
-        i1 = id_simp(g, matchf=matchf, quiet=quiet, stats=stats)
-        i2 = spider_simp(g, matchf=matchf, quiet=quiet, stats=stats)
-        if i1+i2==0: break
+        i1 = id_simp(g)
+        i2 = spider_simp(g)
+        i3 = remove_self_loop_simp(g)
+        if not (i1 or i2 or i3): break
         i += 1
-    return i
+    return i != 0
 
-def interior_clifford_simp(g: BaseGraph[VT,ET], matchf: Optional[Callable[[Union[VT, ET]],bool]]=None, quiet:bool=True, stats:Optional[Stats]=None) -> int:
+def interior_clifford_simp(g: BaseGraph[VT,ET]) -> bool:
     """Keeps doing the simplifications ``id_simp``, ``spider_simp``,
     ``pivot_simp`` and ``lcomp_simp`` until none of them can be applied anymore."""
-    spider_simp(g, matchf=matchf, quiet=quiet, stats=stats)
+    spider_simp(g)
     to_gh(g)
     i = 0
     while True:
-        i1 = id_simp(g, matchf=matchf, quiet=quiet, stats=stats)
-        i2 = spider_simp(g, matchf=matchf, quiet=quiet, stats=stats)
-        i3 = pivot_simp(g, matchf=matchf, quiet=quiet, stats=stats)
-        i4 = lcomp_simp(g, matchf=matchf, quiet=quiet, stats=stats)
-        if i1+i2+i3+i4==0: break
+        i1 = id_simp(g)
+        i2 = spider_simp(g)
+        i3 = pivot_simp(g)
+        i4 = lcomp_simp(g)
+        if not (i1 or i2 or i3 or i4): break
         i += 1
-    return i
+    return i != 0
 
 def clifford_simp(g: BaseGraph[VT,ET], matchf: Optional[Callable[[Union[VT, ET]],bool]]=None, quiet:bool=True, stats:Optional[Stats]=None) -> int:
     """Keeps doing rounds of :func:`interior_clifford_simp` and
     :func:`pivot_boundary_simp` until they can't be applied anymore."""
-    i = 0
+    i = False
     while True:
-        i += interior_clifford_simp(g, matchf=matchf, quiet=quiet, stats=stats)
-        i2 = pivot_boundary_simp(g, matchf=matchf, quiet=quiet, stats=stats)
-        if i2 == 0:
+        i = interior_clifford_simp(g)
+        i2 = pivot_boundary_simp(g)
+        if not i2:
             break
     return i
 
@@ -219,20 +171,21 @@ def reduce_scalar(g: BaseGraph[VT,ET], quiet:bool=True, stats:Optional[Stats]=No
     It skips the boundary pivots."""
     i = 0
     while True:
-        i1 = id_simp(g, quiet=quiet, stats=stats)
-        i2 = spider_simp(g, quiet=quiet, stats=stats)
-        i3 = pivot_simp(g, quiet=quiet, stats=stats)
-        i4 = lcomp_simp(g, quiet=quiet, stats=stats)
-        if i1+i2+i3+i4:
+        i1 = id_simp(g)
+        i2 = spider_simp(g)
+        i3 = remove_self_loop_simp(g)
+        i4 = pivot_simp(g)
+        i5 = lcomp_simp(g)
+        if i1 or i2 or i3 or i4 or i5:
             i += 1
             continue
-        i5 = pivot_gadget_simp(g,quiet=quiet, stats=stats)
-        i6 = gadget_simp(g, quiet=quiet, stats=stats)
-        i7 = copy_simp(g, quiet=quiet, stats=stats)
-        if i5 + i6 + i7:
+        i5 = pivot_gadget_simp(g)
+        i6 = gadget_simp(g)
+        i7 = copy_simp(g)
+        if i5 or i6 or i7:
             i += 1
             continue
-        i8 = supplementarity_simp(g,quiet=quiet, stats=stats)
+        i8 = supplementarity_simp(g)
         if not i8: break
         i += 1
     return i
@@ -244,25 +197,77 @@ def full_reduce(g: BaseGraph[VT,ET], matchf: Optional[Callable[[Union[VT, ET]],b
     if any(g.types()[h] == VertexType.H_BOX for h in g.vertices()):
         raise ValueError("Input graph is not a ZX-diagram as it contains an H-box. "
                          "Maybe call pyzx.hsimplify.from_hypergraph_form(g) first?")
-    interior_clifford_simp(g, matchf=matchf, quiet=quiet, stats=stats)
-    pivot_gadget_simp(g, matchf=matchf, quiet=quiet, stats=stats)
+    interior_clifford_simp(g)
+    pivot_gadget_simp(g)
     while True:
-        clifford_simp(g, matchf=matchf, quiet=quiet, stats=stats)
-        i = gadget_simp(g, matchf=matchf, quiet=quiet, stats=stats)
-        interior_clifford_simp(g, matchf=matchf, quiet=quiet, stats=stats)
-        k = copy_simp(g, quiet=quiet, stats=stats)
-        l = supplementarity_simp(g,quiet=True, stats=stats)
-        j = pivot_gadget_simp(g, matchf=matchf, quiet=quiet, stats=stats)
-        if i+j+k+l == 0:
+        clifford_simp(g)
+        i = gadget_simp(g)
+        interior_clifford_simp(g)
+        k = copy_simp(g)
+        l = supplementarity_simp(g)
+        j = pivot_gadget_simp(g)
+        if not (i or j or k or l):
             g.remove_isolated_vertices()
             break
 
-def teleport_reduce(g: BaseGraph[VT,ET], quiet:bool=True, stats:Optional[Stats]=None) -> BaseGraph[VT,ET]:
+def _debug_full_reduce(g: BaseGraph[VT,ET]) -> None:
+    """A utility to debug full_reduce. It compares tensors after each simplification step to identify the first step that causes graphs to diverge."""
+    if any(g.types()[h] == VertexType.H_BOX for h in g.vertices()):
+        raise ValueError("Input graph is not a ZX-diagram as it contains an H-box. "
+                         "Maybe call pyzx.hsimplify.from_hypergraph_form(g) first?")
+
+    initial_tensor = g.to_tensor()
+
+    class SanityCheckError(RuntimeError):
+        def __init__(self, message: str, g: BaseGraph[VT,ET]):
+            super().__init__(message)
+            self.g = g
+
+    def sanity_check(g1: BaseGraph[VT,ET], message: str):
+        if not compare_tensors(g1.to_tensor(), initial_tensor, True):
+            raise SanityCheckError(f"full_reduce step failed: {message}", g1)
+    print("starting interior_clifford_simp")
+    interior_clifford_simp(g)
+    print("completed interior_clifford_simp")
+    sanity_check(g, "initial interior_clifford_simp")
+    print("starting pivot_gadget_simp")
+    pivot_gadget_simp(g)
+    print("completed pivot_gadget_simp")
+    sanity_check(g, "initial pivot_gadget_simp")
+    iteration = 0
+    while True:
+        iteration += 1
+        print(f"iteration {iteration}")
+        clifford_simp(g)
+        sanity_check(g, f"clifford_simp step {iteration}")
+        i = gadget_simp(g)
+        sanity_check(g, f"gadget_simp step {iteration}")
+        interior_clifford_simp(g)
+        sanity_check(g, f"interior_clifford_simp step {iteration}")
+        k = copy_simp(g)
+        sanity_check(g, f"copy_simp step {iteration}")
+        l = supplementarity_simp(g)
+        sanity_check(g, f"supplementarity_simp step {iteration}")
+        j = pivot_gadget_simp(g)
+        sanity_check(g, f"pivot_gadget_simp step {iteration}")
+        if not (i or j or k or l):
+            g.remove_isolated_vertices()
+            sanity_check(g, f"remove_isolated_vertices step {iteration}")
+            break
+    print("done")
+
+def teleport_reduce(g: BaseGraph[VT,ET]) -> BaseGraph[VT,ET]:
     """This simplification procedure runs :func:`full_reduce` in a way
     that does not change the graph structure of the resulting diagram.
     The only thing that is different in the output graph are the location and value of the phases."""
     s = Simplifier(g)
-    s.full_reduce(quiet=quiet, stats=stats)
+    s.full_reduce()
+    return s.mastergraph
+
+def _debug_teleport_reduce(g: BaseGraph[VT,ET]) -> BaseGraph[VT,ET]:
+    """A utility to debug teleport_reduce. It internally calls _debug_full_reduce."""
+    s = Simplifier(g)
+    s._debug_full_reduce()
     return s.mastergraph
 
 
@@ -316,12 +321,14 @@ class Simplifier(Generic[VT, ET]):
 
         self.simplifygraph.phase_mult[i2] = 1
 
-    def full_reduce(self, quiet:bool=True, stats:Optional[Stats]=None) -> None:
-        full_reduce(self.simplifygraph,quiet=quiet, stats=stats)
+    def full_reduce(self) -> None:
+        full_reduce(self.simplifygraph)
+
+    def _debug_full_reduce(self) -> None:
+        _debug_full_reduce(self.simplifygraph)
 
 
-
-def to_gh(g: BaseGraph[VT,ET],quiet:bool=True) -> None:
+def to_gh(g: BaseGraph[VT,ET]) -> None:
     """Turns every red node into a green node by applying a Hadamard to the edges incident to red nodes"""
     ty = g.types()
     for v in g.vertices():
@@ -433,112 +440,112 @@ def tcount(g: Union[BaseGraph[VT,ET], Circuit]) -> int:
             count += 1
     return count
 
-#The functions below haven't been updated in a while. Use at your own risk.
+# The iterator functions below have been deprecated
 
-def simp_iter(
-        g: BaseGraph[VT,ET],
-        name: str,
-        match: Callable[..., List[MatchObject]],
-        rewrite: Callable[[BaseGraph[VT,ET],List[MatchObject]],RewriteOutputType[VT,ET]]
-        ) -> Iterator[Tuple[BaseGraph[VT,ET],str]]:
-    """Version of :func:`simp` that instead of performing all rewrites at once, returns an iterator."""
-    i = 0
-    new_matches = True
-    while new_matches:
-        i += 1
-        new_matches = False
-        m = match(g)
-        if len(m) > 0:
-            etab, rem_verts, rem_edges, check_isolated_vertices = rewrite(g, m)
-            g.add_edge_table(etab)
-            g.remove_edges(rem_edges)
-            g.remove_vertices(rem_verts)
-            if check_isolated_vertices: g.remove_isolated_vertices()
-            yield g, name+str(i)
-            new_matches = True
-
-def pivot_iter(g: BaseGraph[VT,ET]) -> Iterator[Tuple[BaseGraph[VT,ET],str]]:
-    """Returns an iterator for the pivot rule, using a list of matches supplied by :func:`match_pivot_parallel`."""
-    return simp_iter(g, 'pivot', match_pivot_parallel, pivot)
-
-def pivot_gadget_iter(g: BaseGraph[VT,ET]) -> Iterator[Tuple[BaseGraph[VT,ET],str]]:
-    """Returns an iterator for the pivoting rewrite, using a list of matches supplied by :func:`match_pivot_gadget`."""
-    return simp_iter(g, 'pivot_gadget', match_pivot_gadget, pivot)
-
-def pivot_boundary_iter(g: BaseGraph[VT,ET]) -> Iterator[Tuple[BaseGraph[VT,ET],str]]:
-    """Returns an iterator for the pivoting rewrite, using a list of matches supplied by :func:`match_pivot_boundary`."""
-    return simp_iter(g, 'pivot_boundary', match_pivot_boundary, pivot)
-
-def lcomp_iter(g: BaseGraph[VT,ET]) -> Iterator[Tuple[BaseGraph[VT,ET],str]]:
-    """Returns an iterator for the local complementation based rewrite rule, using a list of matches supplied by :func:`match_lcomp_parallel`."""
-    return simp_iter(g, 'lcomp', match_lcomp_parallel, lcomp)
-
-def bialg_iter(g: BaseGraph[VT,ET]) -> Iterator[Tuple[BaseGraph[VT,ET],str]]:
-    """Returns an iterator for the bialgebra rewrite rule, using a list of matches supplied by :func:`match_bialg(_parallel)`."""
-    return simp_iter(g, 'bialg', match_bialg_parallel, bialg)
-
-def spider_iter(g: BaseGraph[VT,ET]) -> Iterator[Tuple[BaseGraph[VT,ET],str]]:
-    """Returns an iterator for spider fusion, using a list of matches supplied by :func:`match_spider_parallel`."""
-    return simp_iter(g, 'spider', match_spider_parallel, spider)
-
-def id_iter(g: BaseGraph[VT,ET]) -> Iterator[Tuple[BaseGraph[VT,ET],str]]:
-    """Returns an iterator for removing non-interacting identity vertices, as found by :func:`match_ids_parallel`."""
-    return simp_iter(g, 'id', match_ids_parallel, remove_ids)
-
-def gadget_iter(g: BaseGraph[VT,ET]) -> Iterator[Tuple[BaseGraph[VT,ET],str]]:
-    """Returns an iterator for removing phase gadgets that act on the same set of targets, as found by :func:`match_phase_gadgets`"""
-    return simp_iter(g, 'gadget', match_phase_gadgets, merge_phase_gadgets)
-
-
-def clifford_iter(g: BaseGraph[VT,ET]) -> Iterator[Tuple[BaseGraph[VT,ET],str]]:
-    """Like :func:`clifford_simp`, but returns an iterator instead of performing the rewrites all at once."""
-    ok = True
-    while ok:
-        ok = False
-        for g, step in interior_clifford_iter(g):
-            yield g, step
-        for g, step in pivot_boundary_iter(g):
-            ok = True
-            yield g, step
-
-def interior_clifford_iter(g: BaseGraph[VT,ET]) -> Iterator[Tuple[BaseGraph[VT,ET],str]]:
-    """Like :func:`interior_clifford_simp`, but returns an iterator instead of performing the rewrites all at once."""
-    yield from spider_iter(g)
-    to_gh(g)
-    yield g, "to_gh"
-    ok = True
-    while ok:
-        ok = False
-        for g, step in id_iter(g):
-            ok = True
-            yield g, step
-        for g, step in spider_iter(g):
-            ok = True
-            yield g, step
-        for g, step in pivot_iter(g):
-            ok = True
-            yield g, step
-        for g, step in lcomp_iter(g):
-            ok = True
-            yield g, step
-
-def full_reduce_iter(g: BaseGraph[VT,ET]) -> Iterator[Tuple[BaseGraph[VT,ET],str]]:
-    """Like :func:`full_reduce`, but returns an iterator instead of performing the rewrites all at once."""
-    yield from interior_clifford_iter(g)
-    yield from pivot_gadget_iter(g)
-    ok = True
-    while ok:
-        ok = False
-        for g, step in clifford_iter(g):
-            yield g, f"clifford -> {step}"
-        for g, step in gadget_iter(g):
-            ok = True
-            yield g, f"gadget -> {step}"
-        for g, step in interior_clifford_iter(g):
-            yield g, f"interior_clifford -> {step}"
-        for g, step in pivot_gadget_iter(g):
-            ok = True
-            yield g, f"pivot_gadget -> {step}"
+# def simp_iter(
+#         g: BaseGraph[VT,ET],
+#         name: str,
+#         match: Callable[..., List[MatchObject]],
+#         rewrite: Callable[[BaseGraph[VT,ET],List[MatchObject]],RewriteOutputType[VT,ET]]
+#         ) -> Iterator[Tuple[BaseGraph[VT,ET],str]]:
+#     """Version of :func:`simp` that instead of performing all rewrites at once, returns an iterator."""
+#     i = 0
+#     new_matches = True
+#     while new_matches:
+#         i += 1
+#         new_matches = False
+#         m = match(g)
+#         if len(m) > 0:
+#             etab, rem_verts, rem_edges, check_isolated_vertices = rewrite(g, m)
+#             g.add_edge_table(etab)
+#             g.remove_edges(rem_edges)
+#             g.remove_vertices(rem_verts)
+#             if check_isolated_vertices: g.remove_isolated_vertices()
+#             yield g, name+str(i)
+#             new_matches = True
+#
+# def pivot_iter(g: BaseGraph[VT,ET]) -> Iterator[Tuple[BaseGraph[VT,ET],str]]:
+#     """Returns an iterator for the pivot rule, using a list of matches supplied by :func:`match_pivot_parallel`."""
+#     return simp_iter(g, 'pivot', pivot_simp)
+#
+# def pivot_gadget_iter(g: BaseGraph[VT,ET]) -> Iterator[Tuple[BaseGraph[VT,ET],str]]:
+#     """Returns an iterator for the pivoting rewrite, using a list of matches supplied by :func:`match_pivot_gadget`."""
+#     return simp_iter(g, 'pivot_gadget', match_pivot_gadget, pivot)
+#
+# def pivot_boundary_iter(g: BaseGraph[VT,ET]) -> Iterator[Tuple[BaseGraph[VT,ET],str]]:
+#     """Returns an iterator for the pivoting rewrite, using a list of matches supplied by :func:`match_pivot_boundary`."""
+#     return simp_iter(g, 'pivot_boundary', match_pivot_boundary, pivot)
+#
+# def lcomp_iter(g: BaseGraph[VT,ET]) -> Iterator[Tuple[BaseGraph[VT,ET],str]]:
+#     """Returns an iterator for the local complementation based rewrite rule, using a list of matches supplied by :func:`match_lcomp_parallel`."""
+#     return simp_iter(g, 'lcomp', lcomp_simp)
+#
+# def bialg_iter(g: BaseGraph[VT,ET]) -> Iterator[Tuple[BaseGraph[VT,ET],str]]:
+#     """Returns an iterator for the bialgebra rewrite rule, using a list of matches supplied by :func:`match_bialg(_parallel)`."""
+#     return simp_iter(g, 'bialg', bialg_simp)
+#
+# def spider_iter(g: BaseGraph[VT,ET]) -> Iterator[Tuple[BaseGraph[VT,ET],str]]:
+#     """Returns an iterator for spider fusion, using a list of matches supplied by :func:`match_spider_parallel`."""
+#     return simp_iter(g, 'spider', match_spider_parallel, spider)
+#
+# def id_iter(g: BaseGraph[VT,ET]) -> Iterator[Tuple[BaseGraph[VT,ET],str]]:
+#     """Returns an iterator for removing non-interacting identity vertices, as found by :func:`match_ids_parallel`."""
+#     return simp_iter(g, 'id', match_ids_parallel, remove_ids)
+#
+# def gadget_iter(g: BaseGraph[VT,ET]) -> Iterator[Tuple[BaseGraph[VT,ET],str]]:
+#     """Returns an iterator for removing phase gadgets that act on the same set of targets, as found by :func:`match_phase_gadgets`"""
+#     return simp_iter(g, 'gadget', match_phase_gadgets, merge_phase_gadgets)
+#
+#
+# def clifford_iter(g: BaseGraph[VT,ET]) -> Iterator[Tuple[BaseGraph[VT,ET],str]]:
+#     """Like :func:`clifford_simp`, but returns an iterator instead of performing the rewrites all at once."""
+#     ok = True
+#     while ok:
+#         ok = False
+#         for g, step in interior_clifford_iter(g):
+#             yield g, step
+#         for g, step in pivot_boundary_iter(g):
+#             ok = True
+#             yield g, step
+#
+# def interior_clifford_iter(g: BaseGraph[VT,ET]) -> Iterator[Tuple[BaseGraph[VT,ET],str]]:
+#     """Like :func:`interior_clifford_simp`, but returns an iterator instead of performing the rewrites all at once."""
+#     yield from spider_iter(g)
+#     to_gh(g)
+#     yield g, "to_gh"
+#     ok = True
+#     while ok:
+#         ok = False
+#         for g, step in id_iter(g):
+#             ok = True
+#             yield g, step
+#         for g, step in spider_iter(g):
+#             ok = True
+#             yield g, step
+#         for g, step in pivot_iter(g):
+#             ok = True
+#             yield g, step
+#         for g, step in lcomp_iter(g):
+#             ok = True
+#             yield g, step
+#
+# def full_reduce_iter(g: BaseGraph[VT,ET]) -> Iterator[Tuple[BaseGraph[VT,ET],str]]:
+#     """Like :func:`full_reduce`, but returns an iterator instead of performing the rewrites all at once."""
+#     yield from interior_clifford_iter(g)
+#     yield from pivot_gadget_iter(g)
+#     ok = True
+#     while ok:
+#         ok = False
+#         for g, step in clifford_iter(g):
+#             yield g, f"clifford -> {step}"
+#         for g, step in gadget_iter(g):
+#             ok = True
+#             yield g, f"gadget -> {step}"
+#         for g, step in interior_clifford_iter(g):
+#             yield g, f"interior_clifford -> {step}"
+#         for g, step in pivot_gadget_iter(g):
+#             ok = True
+#             yield g, f"pivot_gadget -> {step}"
 
 def is_graph_like(g: BaseGraph[VT,ET], strict:bool=False) -> bool:
     """Checks if a ZX-diagram is graph-like: 
@@ -591,7 +598,7 @@ def to_graph_like(g: BaseGraph[VT,ET]) -> None:
     to_gh(g)
 
     # simplify: remove excess HAD's, fuse along non-HAD edges, remove parallel edges and self-loops
-    spider_simp(g, quiet=True)
+    spider_simp(g)
 
     # ensure all I/O are connected to a Z-spider
     bs = [v for v in g.vertices() if g.type(v) == VertexType.BOUNDARY]

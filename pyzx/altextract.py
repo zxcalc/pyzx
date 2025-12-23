@@ -3,14 +3,12 @@ import itertools
 import math
 
 from .utils import EdgeType, VertexType, toggle_edge
-from .linalg import Mat2, Z2
-from .simplify import id_simp, tcount
-from .rewrite_rules.rules import apply_rule, pivot, match_spider_parallel, spider
+from .linalg import Mat2
+from .simplify import pivot_simp
 from .circuit import Circuit
-from .circuit.gates import Gate, ParityPhase, CNOT, HAD, ZPhase, CZ, InitAncilla
 from .graph.base import BaseGraph, VT, ET
 
-from typing import List, Optional, Tuple, Dict, Set, Union
+from typing import Dict, Union
 
 from .extract import bi_adj, connectivity_from_biadj, max_overlap
 # , greedy_reduction, find_minimal_sums, xor_rows, column_optimal_swap
@@ -192,7 +190,8 @@ def alt_extract_circuit(
             if w not in gadgets: continue
             for v in g.neighbors(w):
                 if v in frontier:
-                    apply_rule(g,pivot,[(w,v,[],[o for o in g.neighbors(v) if o in g.outputs])]) # type: ignore
+                    # apply_rule(g,pivot,[(w,v,[],[o for o in g.neighbors(v) if o in g.outputs])]) # type: ignore
+                    pivot_simp.apply(g, w, v)
                     frontier.remove(v)
                     del gadgets[w]
                     frontier.append(w)

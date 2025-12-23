@@ -14,33 +14,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Callable, List
+from .simplify import pivot_simp, lcomp_simp, pivot_gadget_simp, pivot_boundary_simp, spider_simp, id_simp
+from .simplify import to_gh, copy_simp
+from .rewrite_rules import *
+from .rewrite import *
+from typing import Tuple, List
+from pyzx.utils import EdgeType, VertexType
 
-from .simplify import simp, Stats, spider_simp, id_simp
-from .simplify import pivot_simp, lcomp_simp, pivot_gadget_simp, pivot_boundary_simp
-from .utils import EdgeType, VertexType
-from .graph.base import BaseGraph, VT,ET
-from .rewrite_rules.hrules import *
-from .rewrite_rules.rules import MatchObject
-
-
-def hadamard_simp(g: BaseGraph[VT,ET], matchf:Optional[Callable[[VT],bool]]=None, quiet:bool=False) -> int:
+def hadamard_simp(g: BaseGraph[VT,ET], quiet:bool=False) -> int:
     """Converts as many Hadamards represented by H-boxes to Hadamard-edges."""
     # We can't use the regular simp function, because removing H-nodes could lead to an infinite loop,
     # since sometimes g.add_edge_table() decides that we can't change an H-box into an H-edge.
     i = 0
     while True:
         vcount = g.num_vertices()
-        m = match_hadamards(g, matchf)
+        m = hbox_to_had_edge.find_all_matches(g)
         if len(m) == 0: break
         i += 1
         if i == 1 and not quiet: print("hadamard_simp: ",end='')
         if not quiet: print(len(m), end='')
-        etab, rem_verts, rem_edges, check_isolated_vertices = hadamard_to_h_edge(g, m)
-        g.add_edge_table(etab)
-        g.remove_edges(rem_edges)
-        g.remove_vertices(rem_verts)
-        if check_isolated_vertices: g.remove_isolated_vertices()
+        hbox_to_had_edge(g)
         if not quiet: print('. ', end='')
         if g.num_vertices() >= vcount: break # To make sure we don't get in an infinite loop
     if not quiet and i>0: print(' {!s} iterations'.format(i))
@@ -48,10 +41,10 @@ def hadamard_simp(g: BaseGraph[VT,ET], matchf:Optional[Callable[[VT],bool]]=None
 
 def to_hypergraph_form(g: BaseGraph[VT,ET]) -> None:
     """Convert a Graph g to hypergraph form (see https://arxiv.org/abs/2003.13564)
-    First, all X spiders are turned into Z-spiders by color-change, 
-    then all interior Hadamard edges are replaced by arity-2 hboxes 
+    First, all X spiders are turned into Z-spiders by color-change,
+    then all interior Hadamard edges are replaced by arity-2 hboxes
     and all Z-phases are replaced by arity-1 hboxes.
-    Finally, to ensure H-boxes are only connected to white spiders, 
+    Finally, to ensure H-boxes are only connected to white spiders,
     additional identities are introduced"""
     to_gh(g)
     del_e: List[ET] = []
@@ -124,110 +117,106 @@ def from_hypergraph_form(g: BaseGraph[VT,ET]) -> None:
     hadamard_simp(g,quiet=True)
 
 
-def par_hbox_simp(g: BaseGraph[VT,ET], matchf:Optional[Callable[[VT],bool]]=None, quiet:bool=False, stats:Optional[Stats]=None) -> int:
-    return simp(g, 'par_hbox_simp', match_par_hbox, par_hbox, matchf=matchf, quiet=quiet, stats=stats)
 
-def par_hbox_intro_simp(g: BaseGraph[VT,ET], matchf:Optional[Callable[[VT],bool]]=None, quiet:bool=False, stats:Optional[Stats]=None) -> int:
-    return simp(g, 'par_hbox_intro_simp', match_par_hbox_intro, par_hbox_intro, matchf=matchf, quiet=quiet, stats=stats)
+hbox_to_had_edge = RewriteSimpSingleVertex(check_hadamard, unsafe_replace_hadamard)
+"""Replaces a given hadamard gate with a hadamard edge. Can be run automatically on the entire graph."""
 
-def copy_simp(g: BaseGraph[VT,ET], matchf:Optional[Callable[[VT],bool]]=None, quiet:bool=False, stats:Optional[Stats]=None) -> int:
-    return simp(g, 'copy_simp', match_copy, apply_copy, matchf=matchf, quiet=quiet, stats=stats)
+zero_hbox_simp = RewriteSimpSingleVertex(check_zero_hbox, unsafe_zero_hbox)
+"""Removes a given H-box with a phase of 2pi=0. Can be run automatically on the entire graph."""
 
-def hspider_simp(g: BaseGraph[VT,ET], matchf:Optional[Callable[[ET],bool]]=None, quiet:bool=False, stats:Optional[Stats]=None) -> int:
-    return simp(g, 'hspider_simp', match_connected_hboxes, fuse_hboxes, matchf=matchf, quiet=quiet, stats=stats)
+par_hbox_simp = RewriteSimpGraph(check_par_hbox_for_apply, par_hbox, check_par_hbox_for_simp, simp_par_hbox)
+"""Performs the `multiply rule'. Can be run automatically on the entire graph."""
 
-def hbox_parallel_not_remove_simp(g: BaseGraph[VT,ET], matchf:Optional[Callable[[VT],bool]]=None, quiet:bool=False, stats:Optional[Stats]=None) -> int:
-    return simp(g, 'hbox_parallel_not_remove_simp', match_hbox_parallel_not, hbox_parallel_not_remove, matchf=matchf, quiet=quiet, stats=stats)
+par_hbox_intro_simp = RewriteSimpGraph(check_par_hbox_intro_for_apply, par_hbox_intro, check_par_hbox_intro_for_simp, simp_par_hbox_intro)
+"""Removes an H-box according to the Intro rule. Can be run automatically on the entire graph."""
 
+hspider_simp = RewriteSimpDoubleVertex(check_connected_hboxes, unsafe_fuse_hboxes)
+"""Fuses two neighboring H-boxes together. Can be run automatically on the entire graph."""
 
-# a stripped-down version of "simp", since hrules don't return edge tables etc
-def hsimp(
-        g: BaseGraph[VT,ET], 
-        name:str, 
-        match: Callable[..., List[MatchObject]],
-        rule: Callable[[BaseGraph[VT,ET],List[MatchObject]],None], 
-        iterations:int=-1, 
-        quiet:bool=False
-        ) -> int:
-    i = 0
-    while iterations == -1 or i < iterations:
-        ms = match(g)
-        if len(ms) > 0:
-            rule(g, ms)
-            i += 1
-            if i == 1 and not quiet: print("{}: ".format(name),end='')
-            if not quiet: print(len(ms), end='. ')
-        else:
-            break
-    if not quiet and i>0: print(' {!s} iterations'.format(i))
-    return i
+hbox_parallel_not_remove_simp = RewriteSimpDoubleVertex(check_hbox_parallel_not, unsafe_hbox_parallel_not_remove, is_ordered=True)
+"""Disconnects a Z-spider and H-box that are connected via a regular wire and a NOT, and turns the H-box into a Z-spider. Can be run automatically on the entire graph."""
 
-def hpivot_simp(g: BaseGraph[VT,ET], quiet:bool=False) -> int:
-    spider_simp(g, quiet=quiet)
-    id_simp(g, quiet=quiet)
+had_edge_to_hbox_simp = RewriteSimpDoubleVertex(check_hadamard_edge, unsafe_had_edge_to_hbox)
+"""Converts a hadamard edge into an h-box connecting the given vertices. Can be run automatically on the entire graph."""
+
+hbox_to_had_edge_simp = RewriteSimpSingleVertex(check_hadamard, unsafe_replace_hadamard)
+"""Converts an h-box connecting the given vertices into a hadamard edge. Can be run automatically on the entire graph."""
+
+just_hpivot_simp = RewriteSimpGraph(check_hpivot_for_apply, hpivot, check_hpivot_for_simp, simp_hpivot)
+"""Performs hyper-pivot rewrite. This should only be called through :func:`hpivot_simp`."""
+
+def hpivot_simp(g: BaseGraph[VT,ET]) -> bool:
+    """Performs the hyper-pivot rewrite. Also does the necessary rewrites to prepare the graph before applying the rule. Should only be run on the entire graph."""
+    spider_simp(g)
+    id_simp(g)
     from_hypergraph_form(g)
-    spider_simp(g, quiet=quiet)
-    id_simp(g, quiet=quiet)
+    spider_simp(g)
+    id_simp(g)
     count = 0
+
     while True:
         to_hypergraph_form(g)
-        i = hsimp(g, 'hpivot', match_hpivot, hpivot, iterations=1, quiet=quiet)
+        i = just_hpivot_simp(g)
         #i += hsimp(g, 'zero_hbox', match_zero_hbox, zero_hbox, quiet=quiet)
-        i += par_hbox_simp(g,quiet=quiet)
+        j = par_hbox_simp(g)
         from_hypergraph_form(g)
-        spider_simp(g, quiet=quiet)
-        id_simp(g, quiet=quiet)
-        if i == 0: break
+        spider_simp(g)
+        id_simp(g)
+        if not (i or j): break
         count += 1
-    return count
+    return count > 0
 
-def zh_simp(g: BaseGraph[VT,ET], quiet:bool=False) -> int:
-    """Does a whole bunch of rewrites to simplify diagrams containing
+def zh_simp(g: BaseGraph[VT,ET]) -> int:
+    """Does a bunch of rewrites to simplify diagrams containing
     arbitrary Z-spiders, X-spiders and H-boxes. 
     Tries to do as many "non-complicating" rewrites before doing
     rewrites that can make a diagram look more complex."""
     count = 0
     while True:
         to_gh(g)
-        i = spider_simp(g, quiet=quiet)
-        i += id_simp(g, quiet=quiet)
+        i1 = spider_simp(g)
+        i2 = id_simp(g)
         from_hypergraph_form(g)
-        i += spider_simp(g, quiet=quiet)
-        i += id_simp(g, quiet=quiet)
-        i += hspider_simp(g, quiet=quiet)
-        if i > 0: 
+        i3 = spider_simp(g)
+        i4 = id_simp(g)
+        i5 = hspider_simp(g)
+
+
+        if i1 or i2 or i3 or i4 or i5:
             count += 1
             continue
-        if copy_simp(g, quiet=quiet):
+        if copy_simp(g):
             count += 1
             continue
-        if par_hbox_simp(g,quiet=quiet):
+        if par_hbox_simp(g):
             count += 1
             continue
-        if par_hbox_intro_simp(g,quiet=quiet):
+        if par_hbox_intro_simp(g):
             count += 1
             continue
-        if hbox_parallel_not_remove_simp(g,quiet=quiet):
+        if hbox_parallel_not_remove_simp(g):
             count += 1
             continue
-        i = pivot_simp(g, quiet=quiet)
-        i += lcomp_simp(g, quiet=quiet)
-        if i> 0: 
+        i6 = pivot_simp(g)
+        i7 = lcomp_simp(g)
+        if i6 or i7:
             count += 1
             continue
-        if pivot_gadget_simp(g, quiet=quiet):
+        if pivot_gadget_simp(g):
             count += 1
             continue
-        if pivot_boundary_simp(g, quiet=quiet):
+        if pivot_boundary_simp(g):
             count += 1
             continue
 
         to_hypergraph_form(g)
-        i = hsimp(g, 'hpivot', match_hpivot, hpivot, iterations=1, quiet=quiet)
-        i += par_hbox_simp(g,quiet=quiet)
+
+        i8 = just_hpivot_simp(g)
+        i9 = par_hbox_simp(g)
+
         from_hypergraph_form(g)
-        id_simp(g, quiet=True)
-        if i > 0:
+        id_simp(g)
+        if i8 or i9:
             count += 1
             continue
         
