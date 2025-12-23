@@ -168,6 +168,8 @@ class GraphS(BaseGraph[int,Tuple[int,int]]):
                 else:
                     raise ValueError(f'Got unexpected edge types: {t1}, {t2}')
             else:
+                if (vertex_is_z_like(t1) and t2 == VertexType.H_BOX) or (vertex_is_z_like(t2) and t1 == VertexType.H_BOX):
+                    if edgetype == EdgeType.SIMPLE: return edge_pair # Parallel simple edges between Z and H-boxes just reduce to a single edge
                 raise ValueError(f'Attempted to add unreducible parallel edge {edge_pair}, types: {t1}, {t2}')
 
 
