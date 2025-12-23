@@ -805,9 +805,10 @@ class CHAD(Gate):
 class ParityPhase(Gate):
     name = 'ParityPhase'
     print_phase = True
-    def __init__(self, phase: FractionLike, *targets: int):
+    def __init__(self, phase: FractionLike, *targets: int, as_gadget: bool = False):
         self.targets = targets
         self.phase = phase
+        self.as_gadget = as_gadget
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, ParityPhase): return False
@@ -817,10 +818,16 @@ class ParityPhase(Gate):
         return False
 
     def __str__(self) -> str:
+        if self.as_gadget:
+            return "ParityPhase({!s}, {!s}, as_gadget=True)".format(
+                self.phase, ", ".join(str(t) for t in self.targets))
         return "ParityPhase({!s}, {!s})".format(self.phase, ", ".join(str(t) for t in self.targets))
 
     def _max_target(self) -> int:
         return max(self.targets)
+
+    def copy(self) -> 'ParityPhase':
+        return type(self)(self.phase, *self.targets, as_gadget=self.as_gadget)
 
     def reposition(self, mask, bit_mask = None):
         g = self.copy()
@@ -828,16 +835,38 @@ class ParityPhase(Gate):
         return g
 
     def to_basic_gates(self):
+        if self.as_gadget:
+            # Keep as-is so to_graph() can create the phase gadget structure.
+            return [self]
         cnots = [CNOT(self.targets[i],self.targets[i+1]) for i in range(len(self.targets)-1)]
         p = ZPhase(self.targets[-1], self.phase)
         return cnots + [p] + list(reversed(cnots))
 
     def to_graph(self, g, q_mapper, c_mapper):
-        for gate in self.to_basic_gates():
-            gate.to_graph(g, q_mapper, c_mapper)
+        if self.as_gadget:
+            # Create phase gadget structure directly in the graph.
+            anchors = []
+            for t in self.targets:
+                v = self.graph_add_node(g, q_mapper, VertexType.Z, t, q_mapper.next_row(t))
+                anchors.append(v)
+                q_mapper.advance_next_row(t)
+            g.add_phase_gadget(self.phase, anchors)
+        else:
+            # Decompose to CNOTs + ZPhase.
+            for gate in self.to_basic_gates():
+                gate.to_graph(g, q_mapper, c_mapper)
 
     def tcount(self):
         return 1 if self.phase.denominator > 2 else 0
+
+
+class PhaseGadget(ParityPhase):
+    """A ParityPhase gate that will be represented as a phase gadget in ZX-diagrams.
+
+    This is equivalent to ParityPhase(phase, *targets, as_gadget=True).
+    """
+    def __init__(self, phase: FractionLike, *targets: int):
+        super().__init__(phase, *targets, as_gadget=True)
 
 
 class RZZ(ParityPhase):
@@ -848,6 +877,7 @@ class RZZ(ParityPhase):
         self.target = target
         self.targets = (control, target)
         self.phase = phase
+        self.as_gadget = False
 
 
 class FSim(Gate):
@@ -1300,6 +1330,7 @@ gate_types: Dict[str,Type[Gate]] = {
     "CNOT": CNOT,
     "CZ": CZ,
     "ParityPhase": ParityPhase,
+    "PhaseGadget": PhaseGadget,
     "XCX": XCX,
     "SWAP": SWAP,
     "CSWAP": CSWAP,
