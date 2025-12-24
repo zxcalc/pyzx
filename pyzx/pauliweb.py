@@ -20,7 +20,7 @@ from .gflow import gflow
 from .utils import EdgeType, VertexType, vertex_is_zx, phase_is_clifford
 from .graph.base import BaseGraph, VT, ET
 
-from typing import Any, Optional, Set, Dict, Tuple, Generic
+from typing import Any, Optional, Dict, Tuple, Generic, Iterable
 import random
 
 def multiply_paulis(p1: str, p2: str) -> str:
@@ -58,6 +58,9 @@ class PauliWeb(Generic[VT, ET]):
         self.g = g
         self.es: Dict[Tuple[VT,VT], str] = dict()
     
+    def __getitem__(self, edge: Tuple[VT, VT]):
+        return self.es.get(edge, 'I')
+
     @staticmethod
     def random(g: BaseGraph[VT,ET], pX=0.1, pY=0.1, pZ=0.1):
         w = PauliWeb(g)
@@ -93,6 +96,11 @@ class PauliWeb(Generic[VT, ET]):
         self.add_half_edge((s,t), pauli)
         self.add_half_edge((t,s), pauli if et == EdgeType.SIMPLE else h_pauli(pauli))
     
+    def remove_edges(self, v_pairs: Iterable[Tuple[VT, VT]]):
+        for s, t in v_pairs:
+            self.es.pop((s, t), '')
+            self.es.pop((t, s), '')
+
     def vertices(self):
         return set(v for (v,_) in self.es)
 
