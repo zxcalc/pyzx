@@ -126,14 +126,14 @@ def simp_bialgebra_op(g: BaseGraph[VT,ET]) -> bool:
     """Runs :func:`match_bialgebra_op` and if any matches are found runs :func:`unasfe_bialgebra_op`"""
     matches = match_bialgebra_op(g)
     if matches is None: return False
-    return unasfe_bialgebra_op(g, matches)
+    return unsafe_bialgebra_op(g, matches)
 
 def safe_apply_bialgebra_op(g: BaseGraph[VT,ET], vertices: List[VT]) -> bool:
     """Runs :func:`match_bialgebra_op` on the input vertices and if any matches are found runs :func:`unasfe_bialgebra_op`"""
     checked_vertices = list([v for v in g.vertices() if (v in vertices)])
     matches = match_bialgebra_op(g, checked_vertices)
     if matches is None: return False
-    return unasfe_bialgebra_op(g, matches)
+    return unsafe_bialgebra_op(g, matches)
 
 
 def match_bialgebra_op(g: BaseGraph[VT,ET],
@@ -174,7 +174,7 @@ def match_bialgebra_op(g: BaseGraph[VT,ET],
                 return None
     return type1_vertices, type2_vertices
 
-def unasfe_bialgebra_op(g: BaseGraph[VT,ET],
+def unsafe_bialgebra_op(g: BaseGraph[VT,ET],
         matches: Tuple[List[VT], List[VT]],
         edge_type: Optional[EdgeType] = EdgeType.SIMPLE
         ) -> bool:
