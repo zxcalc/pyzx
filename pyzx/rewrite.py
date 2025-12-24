@@ -165,7 +165,7 @@ class RewriteDoubleVertex(Rewrite[VT, ET]):
 
 class RewriteSimpDoubleVertex(RewriteDoubleVertex[VT, ET]):
     """
-    Rewrite class that works on two vertices. Can be run automatically using simp(g)
+    Rewrite class that works on two neighbouring vertices. Can be run automatically using simp(g)
     Parameters
     ----------
     applier : Callable[[BaseGraph[VT, ET], VT, VT], bool]
@@ -191,7 +191,7 @@ class RewriteSimpDoubleVertex(RewriteDoubleVertex[VT, ET]):
         self.simp_match = simp_match
         self.is_ordered = is_ordered
 
-    def find_all_matches (self, graph: BaseGraph[VT, ET]) -> Set[Tuple[VT, VT]]:
+    def find_all_matches(self, graph: BaseGraph[VT, ET]) -> Set[Tuple[VT, VT]]:
         all_matches: Set[Tuple[VT, VT]] = set()
         if self.simp_match is not None:
             match = self.simp_match
