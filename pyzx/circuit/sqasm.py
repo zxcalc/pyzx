@@ -72,8 +72,8 @@ def sqasm(s: str, simplify=True) -> BaseGraph:
     g.set_outputs(tuple(x for x in outputs if not x is None))
     
     while simplify:
-        i1 = spider_nocheck(c)
-        i2 = remove_ids_nocheck(c)
+        i1 = spider_nocheck(g)
+        i2 = remove_ids_nocheck(g)
         if not (i1 or i2): break
     
     g.pack_circuit_rows()
