@@ -24,9 +24,7 @@ This rule acts on an entire graph and should only be called using the using
 simplify.gadget_phasepoly_simp(g).
 """
 
-__all__ = ['check_gadgets_phasepoly_for_apply',
-           'check_gadgets_phasepoly_for_simp',
-           'gadgets_phasepoly_for_simp',
+__all__ = ['gadgets_phasepoly_for_simp',
            'gadgets_phasepoly_for_apply']
 
 from typing import Tuple, List, Dict, Set, FrozenSet
@@ -42,14 +40,6 @@ from pyzx.graph.base import BaseGraph, VT, ET
 MatchPhasePolyType = Tuple[List[VT], Dict[FrozenSet[VT],Union[VT,Tuple[VT,VT]]]]
 
 
-def check_gadgets_phasepoly_for_apply(g: BaseGraph[VT,ET], v: VT, w: VT) -> bool:
-    """Dummy function, do not use"""
-    return False
-
-def check_gadgets_phasepoly_for_simp(g: BaseGraph[VT,ET]) -> bool:
-    """Runs :func:`match_gadgets_phasepoly` and returns whether any matches were found."""
-    matches = match_gadgets_phasepoly(g)
-    return len(matches) != 0
 
 def match_gadgets_phasepoly(g: BaseGraph[VT,ET]) -> List[MatchPhasePolyType[VT]]:
     """Finds 4 groups of phase-gadgets that act on the same set of 4 vertices in order to apply a rewrite based on
@@ -102,14 +92,14 @@ def match_gadgets_phasepoly(g: BaseGraph[VT,ET]) -> List[MatchPhasePolyType[VT]]
     return m
 
 
-def gadgets_phasepoly_for_apply(g: BaseGraph[VT,ET], v: VT, w: VT) -> bool:
+def gadgets_phasepoly_for_apply(g: BaseGraph[VT,ET], vertices: List[VT]) -> bool:
     """Dummy function, do not use"""
     return False
 
 def gadgets_phasepoly_for_simp(g: BaseGraph[VT,ET]) -> bool:
     """Runs :func:`match_gadgets_phasepoly` and if any matches are found runs :func:`apply_gadget_phasepoly`"""
     matches = match_gadgets_phasepoly(g)
-    if(len(matches)==0): return False
+    if (len(matches)==0): return False
     return apply_gadget_phasepoly(g, matches)
 
 

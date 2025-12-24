@@ -29,21 +29,10 @@ from pyzx.graph.base import BaseGraph, VT, ET
 from pyzx.symbolic import Poly
 
 
-__all__ = [
-        'check_phase_gadgets_for_simp',
-        'check_phase_gadgets_for_apply',
-        'merge_phase_gadgets_for_simp',
+__all__ = ['merge_phase_gadgets_for_simp',
         'merge_phase_gadgets_for_apply']
 
 MatchGadgetType = Tuple[VT,VT,FractionLike,List[VT],List[VT]]
-
-def check_phase_gadgets_for_simp(g: BaseGraph[VT,ET]) -> bool:
-    """Dummy function"""
-    return True
-
-def check_phase_gadgets_for_apply(g: BaseGraph[VT,ET], v: VT, w: VT) -> bool:
-    """Dummy function."""
-    return True
 
 def merge_phase_gadgets_for_simp(g: BaseGraph[VT,ET]) -> bool:
     """Runs :func:`match_phase_gadgets` and if any matches are found runs :func:`merge_phase_gadgets`"""
@@ -51,9 +40,10 @@ def merge_phase_gadgets_for_simp(g: BaseGraph[VT,ET]) -> bool:
     if len(matches) == 0: return False
     return merge_phase_gadgets(g, matches)
 
-def merge_phase_gadgets_for_apply(g: BaseGraph[VT,ET], v: VT, w: VT) -> bool:
+def merge_phase_gadgets_for_apply(g: BaseGraph[VT,ET], vertices: List[VT]) -> bool:
     """Runs :func:`match_phase_gadgets` on the input vertices and if any matches are found runs :func:`merge_phase_gadgets`"""
-    matches = match_phase_gadgets(g, [v, w])
+    checked_vertices = list([v for v in g.vertices() if (v in vertices)])
+    matches = match_phase_gadgets(g, checked_vertices)
     if len(matches) == 0: return False
     return merge_phase_gadgets(g, matches)
 

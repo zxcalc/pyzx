@@ -18,7 +18,7 @@
 Rewrites in pyzx are usually specified by a matcher function and an applier function.
 Depending on the rule, the matcher might match on one vertex, two vertices, or something more complicated.
 The applier then performs the rewrite on the matched vertices.
-We matcher and applier functions are then wrapped in a Rewrite class instance to provide additional functionality.
+The matcher and applier functions are then wrapped in a Rewrite class instance to provide additional functionality.
 
 The Rewrite class comes in several variants, depending on whether the rewrite can be applied automatically
 on the entire graph or only manually on specific vertices.
@@ -28,7 +28,7 @@ The RewriteSimpGraph class is for rewrites that act on the entire graph at once,
 because their behaviour is too complex to fit into these other cases.
 """
 
-from typing import Callable, Optional, Generic, Set, Tuple
+from typing import Callable, Optional, Generic, Set, Tuple, List
 
 from .graph.base import BaseGraph, VT, ET
 
@@ -228,7 +228,7 @@ class RewriteSimpDoubleVertex(RewriteDoubleVertex[VT, ET]):
                 break
         return applied
 
-class RewriteSimpGraph(RewriteDoubleVertex[VT, ET]):
+class RewriteSimpGraph(Rewrite[VT, ET]):
     """Applies the rewrite rule on the entire graph, running manually on specific vertices will result in undefined behavior
     Parameters
     ----------
@@ -241,21 +241,23 @@ class RewriteSimpGraph(RewriteDoubleVertex[VT, ET]):
     simp_applier : Callable[[BaseGraph[VT, ET]], bool]
         that both checks if a rewrite can be done and performs the rule on the entire graph.
     """
+    applier: Callable[[BaseGraph[VT, ET], List[VT]], bool]
+    is_match: Callable[[BaseGraph[VT, ET], List[VT]], bool]
     simp_match: Callable[[BaseGraph[VT, ET]], bool]
     simp_applier: Callable[[BaseGraph[VT, ET]], bool]
     is_ordered: bool
 
-    def __init__(self, is_match: Callable[[BaseGraph[VT, ET], VT, VT], bool],
-                 applier: Callable[[BaseGraph[VT, ET], VT, VT], bool],
-                 simp_match: Callable[[BaseGraph[VT, ET]], bool],
+    def __init__(self,
+                 applier: Callable[[BaseGraph[VT, ET], List[VT]], bool],
                  simp_applier: Callable[[BaseGraph[VT, ET]], bool]) -> None:
-        super().__init__(is_match, applier)
-        self.simp_match = simp_match
+        super().__init__()
+        self.applier = applier
         self.simp_applier = simp_applier
 
+
+    def apply(self, graph: BaseGraph[VT, ET], vertices: List[VT]) -> bool:
+        return self.applier(graph, vertices)
+
     def simp(self, graph: BaseGraph[VT, ET]) -> bool:
-        applied: bool = False
-        if self.simp_match(graph):
-            applied = self.simp_applier(graph)
-        return applied
+        return  self.simp_applier(graph)
 

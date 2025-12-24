@@ -69,10 +69,10 @@ class Stats(object):
 pivot_simp = RewriteSimpDoubleVertex(check_pivot, unsafe_pivot)
 """Performs a pivot rewrite. Can be run automatically on the entire graph."""
 
-pivot_gadget_simp = RewriteSimpGraph(check_pivot_gadget_for_apply, pivot_gadget_for_apply, placeholder_check_for_pivot, pivot_gadget_for_simp)
+pivot_gadget_simp = RewriteSimpGraph(pivot_gadget_for_apply, pivot_gadget_for_simp)
 """Performs pivot rewrite on an interior Pauli vertex and an interior non-Clifford vertex. Should only be run on the entire graph."""
 
-pivot_boundary_simp = RewriteSimpGraph(check_pivot_boundary_for_apply, pivot_boundary_for_apply, placeholder_check_for_pivot, pivot_boundary_for_simp)
+pivot_boundary_simp = RewriteSimpGraph(pivot_boundary_for_apply, pivot_boundary_for_simp)
 """Performs pivot rewrite on an interior Pauli vertex and a boundary non-Pauli Clifford vertex. Should only be run on the entire graph."""
 
 lcomp_simp = RewriteSimpSingleVertex(check_lcomp, unsafe_lcomp)
@@ -100,10 +100,10 @@ id_simp = RewriteSimpSingleVertex(check_remove_id, unsafe_remove_id, None, True)
 add_identity_rewrite = RewriteDoubleVertex(check_edge, unsafe_add_Z_identity)
 """Add a Z spider to an edge."""
 
-gadget_simp = RewriteSimpGraph(check_phase_gadgets_for_apply, merge_phase_gadgets_for_apply, check_phase_gadgets_for_simp, merge_phase_gadgets_for_simp)
+gadget_simp = RewriteSimpGraph(merge_phase_gadgets_for_apply, merge_phase_gadgets_for_simp)
 """Finds and removes phase gadgets that act on the same set of targets. Should only be run on the entire graph."""
 
-supplementarity_simp = RewriteSimpGraph(check_supplementarity_for_apply, safe_apply_supplementarity, check_supplementarity_for_simp, simp_supplementarity)
+supplementarity_simp = RewriteSimpGraph(safe_apply_supplementarity, simp_supplementarity)
 """Performs a supplementarity rewrite by removing non-Clifford spiders that act on the same set of targets. Should only be run on the entire graph."""
 
 copy_simp = RewriteSimpSingleVertex(check_copy, unsafe_copy)
@@ -118,7 +118,7 @@ hopf_simp = RewriteSimpDoubleVertex(check_hopf, unsafe_hopf)
 z_to_z_box_simp = RewriteSimpSingleVertex(check_z_to_z_box, unsafe_z_to_z_box)
 """Turns a given z-spider into a z-box. Can be run automatically on the entire graph."""
 
-gadget_phasepoly_simp = RewriteSimpGraph(check_gadgets_phasepoly_for_apply, gadgets_phasepoly_for_apply, check_gadgets_phasepoly_for_simp, gadgets_phasepoly_for_simp)
+gadget_phasepoly_simp = RewriteSimpGraph(gadgets_phasepoly_for_apply, gadgets_phasepoly_for_simp)
 """Applies a rewrite based on rule R_13 of the paper *A Finite Presentation of CNOT-Dihedral Operators*. Should only be run on the entire graph."""
 
 push_pauli_rewrite = RewriteDoubleVertex(check_pauli, unsafe_pauli_push)
