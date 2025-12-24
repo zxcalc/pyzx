@@ -13,7 +13,8 @@
 # limitations under the License.
 
 """
-This module contains the implementation of the hpivot rule.
+This module contains the implementation of the hpivot rule (i.e. hyperpivoting).
+See https://arxiv.org/abs/2003.13564 for more information.
 
 This rule acts on an entire graph and should be called only using simplify.hpivot_simp(g).
 """

@@ -14,6 +14,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""This file is structured the same way as `simplify.py`, but instead contains the rewrites
+that deal specifically with H-boxes and ZH-diagrams."""
+
 from .simplify import pivot_simp, lcomp_simp, pivot_gadget_simp, pivot_boundary_simp, spider_simp, id_simp
 from .simplify import to_gh, copy_simp
 from .rewrite_rules import *

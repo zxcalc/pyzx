@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """
-This module contains the implementation to convert a hadamard edge into a h-box vertex, and vice versa
+This module contains the implementation to convert a hadamard edge into a H-box vertex, and vice versa
 
 The check function returns a boolean indicating whether the rule can be applied.
 The standard version of the applier will automatically call the basic checker, while the unsafe version
@@ -40,7 +40,7 @@ def check_hadamard(g: BaseGraph[VT ,ET], v: VT) -> bool:
     return True
 
 def replace_hadamard(g: BaseGraph[VT ,ET], v: VT) -> bool:
-    """First checks if the vertex is a h-box and then replaces it with a Hadamard edge."""
+    """First checks if the vertex is a H-box and then replaces it with a Hadamard edge."""
     if check_hadamard(g, v): return unsafe_replace_hadamard(g, v)
     return False
 

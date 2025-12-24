@@ -16,6 +16,7 @@
 
 """
 This module contains the implementation of the hopf rule.
+This looks for multiple parallel edges between two spiders and removes them in pairs according to the Hopf law.
 
 The check function returns a boolean indicating whether the rule can be applied.
 The standard version of the applier will automatically call the basic checker, while the unsafe version

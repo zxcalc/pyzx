@@ -15,10 +15,17 @@
 # limitations under the License.
 
 """This module contains the ZX-diagram simplification strategies of PyZX.
-Each strategy is an instance of the Rewrite class, based on the rule functions found in rewrite_rules.
+Each strategy is an instance of the class :class:`.rewrite.Rewrite`, based on the rule functions found in rewrite_rules.
 The main procedures of interest are :func:`clifford_simp` for simple reductions,
 :func:`full_reduce` for the full rewriting power of PyZX, and :func:`teleport_reduce` to
 use the power of :func:`full_reduce` while not changing the structure of the graph.
+
+The individual rewrites can also be called directly. 
+For methods that terminate, they can be called using their `simp` method, e.g.: ``spider_simp.simp(g)``.
+As a shorthand you can just call it directly: ``spider_simp(g)``.
+The rewrites can also be applied manually to specific vertices using their `apply` method, e.g.: ``spider_simp.apply(g, v, w)``.
+Whether the `apply` method takes one or two vertices depends on the rewrite.
+You can find all the matches of a rewrite on a graph using the `find_all_matches` method, e.g.: ``spider_simp.find_all_matches(g)``.
 """
 
 __all__ = ['bialg_simp','spider_simp', 'id_simp', 'phase_free_simp', 'pivot_simp', 'remove_self_loop_simp',
@@ -28,13 +35,17 @@ __all__ = ['bialg_simp','spider_simp', 'id_simp', 'phase_free_simp', 'pivot_simp
         'to_clifford_normal_form_graph', 'to_graph_like', 'is_graph_like', 'copy_simp']
 
 
-from typing import cast
+from typing import cast, Tuple, Dict, Set, Callable, TypeVar, Optional, Union
+from typing_extensions import Literal
+import itertools
 
-from .rewrite_rules.rules import *
 from .circuit import Circuit
 from .rewrite_rules import *
 from .rewrite import *
 from .tensor import compare_tensors
+
+from .utils import EdgeType, VertexType, toggle_edge, vertex_is_zx, phase_is_clifford
+from .graph.base import BaseGraph, VT, ET
 
 MatchObject = TypeVar('MatchObject')
 
@@ -70,7 +81,7 @@ lcomp_simp = RewriteSimpSingleVertex(check_lcomp, unsafe_lcomp)
 bialg_simp = RewriteSimpDoubleVertex(check_bialgebra, unsafe_bialgebra, check_bialgebra_reduce)
 """Applies the bialgebra rule to a given pair of Z and X spiders. Can be run automatically on the entire graph."""
 
-fuse_simp = RewriteSimpDoubleVertex(check_fuse, unsafe_fuse,None, False, True)
+fuse_simp = RewriteSimpDoubleVertex(check_fuse, unsafe_fuse, None, False, True)
 """Performs spider fusion by fusing two matching Z X or w spiders into one. Can be run automatically on the entire graph."""
 
 remove_self_loop_simp = RewriteSimpSingleVertex(check_self_loop, unsafe_remove_self_loop)
@@ -127,8 +138,8 @@ def phase_free_simp(g: BaseGraph[VT,ET]) -> bool:
     return i1 or i2
 
 def basic_simp(g: BaseGraph[VT,ET]) -> bool:
-    """Keeps doing the simplifications ``id_simp`` and ``spider_simp`` until none of them can be applied anymore. If
-    starting from a circuit, the result should still have causal flow."""
+    """Keeps doing the simplifications ``id_simp`` and ``spider_simp`` until none of them can be applied anymore. 
+    If starting from a circuit, the result should still have causal flow."""
     spider_simp(g)
     to_gh(g)
     i = 0

@@ -14,6 +14,8 @@
 
 """
 This module contains the implementation of the hbox_parallel_not rule.
+This finds H-boxes that are connected to a Z-spider both directly and via a NOT.
+We can then disconnect them, and the H-box is turned into a Z-spider.
 
 The check function returns a boolean indicating whether the rule can be applied.
 The standard version of the applier will automatically call the basic checker, while the unsafe version

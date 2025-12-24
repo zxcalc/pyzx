@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """
-This module contains the implementation to delete h-boxes with phase 0 or 2pi.
+This module contains the implementation to delete H-boxes with phase 0 or 2pi.
 
 The check function returns a boolean indicating whether the rule can be applied.
 The standard version of the applier will automatically call the basic checker, while the unsafe version

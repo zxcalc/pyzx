@@ -15,7 +15,10 @@
 # limitations under the License.
 
 """
-This module contains the implementation of the gadget phasepoly rule.
+This module contains the implementation of the gadget phasepoly rule. 
+This finds 4 groups of phase-gadgets that act on the same set of 4 vertices 
+in order to apply a rewrite based on rule R_13 of 
+the paper *A Finite Presentation of CNOT-Dihedral Operators*.
 
 This rule acts on an entire graph and should only be called using the using
 simplify.gadget_phasepoly_simp(g).

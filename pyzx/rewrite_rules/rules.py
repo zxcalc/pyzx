@@ -15,8 +15,12 @@
 # limitations under the License.
 
 """
-NEW VERSION This module contains the implementation of all the rewrite rules on ZX-diagrams in PyZX.
+DEPRECATED 
+This module used to contain the implementation of all the rewrite rules on ZX-diagrams in PyZX.
+These have now been moved to their own files in order to improve maintainability and readability.
+The commented out rule names below show where each rewrite rule has moved to.
 
+OLD DOCUMENTATION:
 Each rewrite rule consists of two methods: a matcher and a rewriter.
 The matcher finds as many non-overlapping places where the rewrite rule can be applied.
 The rewriter takes in a list of matches, and performs the necessary changes on the graph to implement the rewrite.

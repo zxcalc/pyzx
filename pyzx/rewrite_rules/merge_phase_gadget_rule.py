@@ -16,9 +16,9 @@
 
 
 """
-This module contains the implementation of the hpivot rule.
+This module contains the implementation of the phase gadgets merging rule.
 This rule acts on an entire graph and the matcher modifies the graph, so this rule should only be run
-using the using simplify.hpivot_simp(g) or simplify.hpivot_simp.apply(g).
+using the using simplify.gadget_simp(g) or simplify.gadget_simp.apply(g).
 """
 
 from typing import Tuple, List, Dict, FrozenSet
@@ -48,13 +48,13 @@ def check_phase_gadgets_for_apply(g: BaseGraph[VT,ET], v: VT, w: VT) -> bool:
 def merge_phase_gadgets_for_simp(g: BaseGraph[VT,ET]) -> bool:
     """Runs :func:`match_phase_gadgets` and if any matches are found runs :func:`merge_phase_gadgets`"""
     matches = match_phase_gadgets(g)
-    if len(matches) <= 0: return False
+    if len(matches) == 0: return False
     return merge_phase_gadgets(g, matches)
 
 def merge_phase_gadgets_for_apply(g: BaseGraph[VT,ET], v: VT, w: VT) -> bool:
     """Runs :func:`match_phase_gadgets` on the input vertices and if any matches are found runs :func:`merge_phase_gadgets`"""
     matches = match_phase_gadgets(g, [v, w])
-    if len(matches) <= 0: return False
+    if len(matches) == 0: return False
     return merge_phase_gadgets(g, matches)
 
 def match_phase_gadgets(g: BaseGraph[VT,ET], vertices:Optional[List[VT]]=None) -> List[MatchGadgetType[VT]]:

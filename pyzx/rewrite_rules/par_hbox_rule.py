@@ -15,6 +15,8 @@
 """
 This module contains the implementation of two parallel hbox rules: multiply rule and intro rule.
 These rules act on an entire graph and should be called using hsimplify.par_hbox_simp and hsimplify.par_hbox_intro_simp
+
+These rules are based on the axioms of the corresponding name in the paper https://arxiv.org/abs/2103.06610
 """
 
 __all__ = ['check_par_hbox_for_apply',

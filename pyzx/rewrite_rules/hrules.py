@@ -16,7 +16,8 @@
 
 
 """
-NEW VERSION 
+This file originally contained many rewrites, which now have moved into their own files. 
+Below is a reference for the original function name and signature and the new name it has now gotten.
 """
 
 

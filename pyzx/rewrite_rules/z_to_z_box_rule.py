@@ -15,7 +15,7 @@
 # limitations under the License.
 
 """
-This module contains the implementation to convert z spiders to z-boxes.
+This module contains the implementation to convert Z-spiders to Z-boxes.
 
 The check function returns a boolean indicating whether the rule can be applied.
 The standard version of the applier will automatically call the basic checker, while the unsafe version
