@@ -4,6 +4,8 @@ Full API documentation
 Below is listed the documentation for all the supported functions, classes and methods in PyZX.
 Some functionality of PyZX is still experimental or not well-tested (like the ZH-diagram interface and rewrite rules), so it is not listed here.
 
+Consider also looking at the `AllFeatures notebook <https://github.com/zxcalc/pyzx/blob/master/demos/AllFeatures.ipynb>`_ for demonstrations of many of this functionality in practice.
+
 Graph API
 ---------
 ZX-graphs are internally represented by instances of classes that implement the methods of :class:`~pyzx.graph.base.BaseGraph`. These methods are listed below. The only complete implementation currently is :class:`~pyzx.graph.graph_s.GraphS`.
@@ -69,26 +71,12 @@ List of simplifications
 -----------------------
 
 Below is listed the content of ``simplify.py``.
+An overview of all the different rewrite rules can 
+also be found in `the rules notebook <notebooks/rules.ipynb>`_.
 
 .. module:: simplify
 
 .. automodule:: pyzx.simplify
-   :members:
-   :undoc-members:
-
-   .. autofunction:: simp
-
-
-.. _rules:
-
-List of rewrite rules
----------------------
-
-Below is listed the content of ``rules.py``.
-
-.. module:: rules
-
-.. automodule:: pyzx.rules
    :members:
    :undoc-members:
 
@@ -164,8 +152,8 @@ Below is listed the content of ``tikz.py``.
    :undoc-members:
 
 
-Local Search Functions
-----------------------
+Heuristics for global optimization
+-------------------------------------
 
 .. _local_search:
 
@@ -180,7 +168,7 @@ Below listed is the content of ``genetic.py``.
 
 Below listed is the content of ``simulated_annealing.py``.
 
-.. module:: local_search
+.. module:: local_search.simulated_annealing
 
 .. automodule:: pyzx.local_search.simulated_annealing
    :members:
@@ -189,7 +177,7 @@ Below listed is the content of ``simulated_annealing.py``.
 
 Below listed is the content of ``congruences.py``.
 
-.. module:: local_search
+.. module:: local_search.congruences
 
 .. automodule:: pyzx.local_search.congruences
    :members:
@@ -198,7 +186,7 @@ Below listed is the content of ``congruences.py``.
 
 Below listed is the content of ``scores.py``.
 
-.. module:: local_search
+.. module:: local_search.scores
 
 .. automodule:: pyzx.local_search.scores
    :members:

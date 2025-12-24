@@ -611,10 +611,10 @@ def extract_circuit(
         quiet: Whether to print detailed output of the extraction process.
 
     Warning:
-        Note that this function changes the graph `g` in place. 
-        In particular, if the extraction fails, the modified `g` shows 
-        how far the extraction got. If you want to keep the original `g`
-        then input `g.copy()` into `extract_circuit`.
+        Note that this function changes the graph ``g`` in place. 
+        In particular, if the extraction fails, the modified ``g`` shows 
+        how far the extraction got. If you want to keep the original ``g``
+        then input ``g.copy()`` into ``extract_circuit``.
     """
 
     gadgets = {}

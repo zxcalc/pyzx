@@ -12,7 +12,7 @@ PyZX
    
    quickintro
    faq
-   notebooks/simplify
+   Optimizing and simplifying circuits <notebooks/simplify>
    graph
    representations
    api
@@ -22,6 +22,7 @@ PyZX
 
    notebooks/gettingstarted
    notebooks/gates
+   notebooks/rules
 
 Indices and tables
 ==================
