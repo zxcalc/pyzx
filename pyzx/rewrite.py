@@ -234,16 +234,10 @@ class RewriteSimpGraph(Rewrite[VT, ET]):
     ----------
     applier : Callable[[BaseGraph[VT, ET], VT, VT], bool]
         function that both checks if a rewrite can be done and performs the rule.
-    is_match : Callable[[BaseGraph[VT, ET], VT], bool]
-        function that checks whether the given vertices can be rewritten.
-    simp_match : Optional[Callable[[BaseGraph[VT, ET], VT], bool]]
-        function that checks whether graph can be rewritten automatically (may be a placeholder function)
     simp_applier : Callable[[BaseGraph[VT, ET]], bool]
         that both checks if a rewrite can be done and performs the rule on the entire graph.
     """
     applier: Callable[[BaseGraph[VT, ET], List[VT]], bool]
-    is_match: Callable[[BaseGraph[VT, ET], List[VT]], bool]
-    simp_match: Callable[[BaseGraph[VT, ET]], bool]
     simp_applier: Callable[[BaseGraph[VT, ET]], bool]
     is_ordered: bool
 

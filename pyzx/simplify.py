@@ -28,7 +28,7 @@ Whether the `apply` method takes one or two vertices depends on the rewrite.
 You can find all the matches of a rewrite on a graph using the `find_all_matches` method, e.g.: ``spider_simp.find_all_matches(g)``.
 """
 
-__all__ = ['bialg_simp','spider_simp', 'id_simp', 'phase_free_simp', 'pivot_simp', 'remove_self_loop_simp',
+__all__ = ['bialg_simp','bialg_op_simp','spider_simp', 'id_simp', 'phase_free_simp', 'pivot_simp', 'remove_self_loop_simp',
         'pivot_gadget_simp', 'pivot_boundary_simp', 'gadget_simp',
         'lcomp_simp', 'clifford_simp', 'tcount', 'to_gh', 'to_rg',
         'full_reduce', 'teleport_reduce', 'reduce_scalar', 'supplementarity_simp',
@@ -80,6 +80,9 @@ lcomp_simp = RewriteSimpSingleVertex(check_lcomp, unsafe_lcomp)
 
 bialg_simp = RewriteSimpDoubleVertex(check_bialgebra, unsafe_bialgebra, check_bialgebra_reduce)
 """Applies the bialgebra rule to a given pair of Z and X spiders. Can be run automatically on the entire graph."""
+
+bialg_op_simp = RewriteSimpGraph(safe_apply_bialgebra_op, simp_bialgebra_op)
+"""Applies the bialgebra rule in reverse to a given pair of Z and X spiders. Can be run automatically on the entire graph."""
 
 fuse_simp = RewriteSimpDoubleVertex(check_fuse, unsafe_fuse, None, False, True)
 """Performs spider fusion by fusing two matching Z X or w spiders into one. Can be run automatically on the entire graph."""
