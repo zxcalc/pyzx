@@ -19,11 +19,9 @@ These rules act on an entire graph and should be called using hsimplify.par_hbox
 These rules are based on the axioms of the corresponding name in the paper https://arxiv.org/abs/2103.06610
 """
 
-__all__ = ['check_par_hbox_for_apply',
-           'check_par_hbox_for_simp',
+__all__ = ['check_par_hbox_for_simp',
            'par_hbox',
            'simp_par_hbox',
-           'check_par_hbox_intro_for_apply',
            'check_par_hbox_intro_for_simp',
            'simp_par_hbox_intro',
            'par_hbox_intro',]
@@ -36,10 +34,6 @@ from pyzx.graph.base import BaseGraph, ET, VT
 
 ## Multiply rule:
 
-def check_par_hbox_for_apply(g: BaseGraph[VT,ET], v: VT, w: VT) -> bool:
-    """Runs :func:`match_par_hbox` on given vertices and returns whether any matches were found."""
-    matches = match_par_hbox(g, [v, w])
-    return len(matches) > 0
 
 def check_par_hbox_for_simp(g: BaseGraph[VT,ET]) -> bool:
     """Runs :func:`match_par_hbox` and returns whether any matches were found."""
@@ -52,9 +46,10 @@ def simp_par_hbox(g: BaseGraph[VT,ET]) -> bool:
     if len(matches) == 0: return False
     return unsafe_par_hbox(g, matches)
 
-def par_hbox(g: BaseGraph[VT,ET], v: VT, w: VT) -> bool:
+def par_hbox(g: BaseGraph[VT,ET], vertices: List[VT]) -> bool:
     """Runs :func:`match_par_hbox` on given vertices and if any matches are found runs :func:`unsafe_par_hbox`"""
-    matches = match_par_hbox(g, [v, w])
+    checked_vertices = list([v for v in g.vertices() if (v in vertices)])
+    matches = match_par_hbox(g, checked_vertices)
     if len(matches) == 0: return False
     return unsafe_par_hbox(g, matches)
 
@@ -139,11 +134,6 @@ def unsafe_par_hbox(g: BaseGraph[VT, ET], matches: List[TYPE_MATCH_PAR_HBOX]) ->
 
 ## Intro rule:
 
-def check_par_hbox_intro_for_apply(g: BaseGraph[VT,ET], v: VT, w: VT) -> bool:
-    """Runs :func:`match_par_hbox_intro` on given vertices and returns whether any matches were found."""
-    matches = match_par_hbox_intro(g, [v, w])
-    return len(matches) != 0
-
 def check_par_hbox_intro_for_simp(g: BaseGraph[VT,ET]) -> bool:
     """Runs :func:`match_par_hbox_intro` and returns whether any matches were found."""
     matches = match_par_hbox_intro(g)
@@ -155,9 +145,10 @@ def simp_par_hbox_intro(g: BaseGraph[VT,ET]) -> bool:
     if len(matches) == 0: return False
     return unsafe_par_hbox_intro(g, matches)
 
-def par_hbox_intro(g: BaseGraph[VT,ET], v: VT, w: VT) -> bool:
+def par_hbox_intro(g: BaseGraph[VT,ET], vertices: List[VT]) -> bool:
     """Runs :func:`match_par_hbox_intro` on given vertices and if any matches are found runs :func:`unsafe_par_hbox_intro`"""
-    matches = match_par_hbox_intro(g, [v, w])
+    checked_vertices = list([v for v in g.vertices() if (v in vertices)])
+    matches = match_par_hbox_intro(g, checked_vertices)
     if len(matches) == 0: return False
     return unsafe_par_hbox_intro(g, matches)
 

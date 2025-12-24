@@ -29,7 +29,9 @@ This rewrite rule can be called using simplify.bialg_simp.apply(g, v, w) or simp
 __all__ = ['check_bialgebra_reduce',
            'check_bialgebra',
            'bialgebra',
-           'unsafe_bialgebra']
+           'unsafe_bialgebra',
+           'simp_bialgebra_op',
+           'safe_apply_bialgebra_op']
 
 from collections import defaultdict
 from typing import Callable, Optional, List, Tuple, Dict
@@ -120,20 +122,33 @@ def unsafe_bialgebra(g: BaseGraph[VT,ET], v1: VT, v2: VT ) -> bool:
     g.add_edge_table(etab)
     return True
 
+def simp_bialgebra_op(g: BaseGraph[VT,ET]) -> bool:
+    """Runs :func:`match_bialgebra_op` and if any matches are found runs :func:`unasfe_bialgebra_op`"""
+    matches = match_bialgebra_op(g)
+    if matches is None: return False
+    return unsafe_bialgebra_op(g, matches)
 
-#TODO: fix this to work with Rewrite class
+def safe_apply_bialgebra_op(g: BaseGraph[VT,ET], vertices: List[VT]) -> bool:
+    """Runs :func:`match_bialgebra_op` on the input vertices and if any matches are found runs :func:`unasfe_bialgebra_op`"""
+    checked_vertices = list([v for v in g.vertices() if (v in vertices)])
+    matches = match_bialgebra_op(g, checked_vertices)
+    if matches is None: return False
+    return unsafe_bialgebra_op(g, matches)
+
 
 def match_bialgebra_op(g: BaseGraph[VT,ET],
-        vertexf: Optional[Callable[[VT], bool]] = None,
+        vertices: Optional[List[VT]]=None,
         vertex_type: Optional[Tuple[VertexType, VertexType]] = None,
         edge_type: Optional[EdgeType] = None
         ) -> Optional[Tuple[List[VT], List[VT]]]:
-    if vertexf is not None: candidates = set([v for v in g.vertices() if vertexf(v)])
+    if vertices is not None: candidates = set(vertices)
     else: candidates = g.vertex_set()
+
     if vertex_type is not None:
         vtype1, vtype2 = vertex_type
     else:
         vtype1, vtype2 = VertexType.Z, VertexType.X
+
     if edge_type is None:
         edge_type = EdgeType.SIMPLE
     type1_vertices = [v for v in candidates if g.type(v) == vtype1]
@@ -159,10 +174,10 @@ def match_bialgebra_op(g: BaseGraph[VT,ET],
                 return None
     return type1_vertices, type2_vertices
 
-def bialgebra_op(g: BaseGraph[VT,ET],
+def unsafe_bialgebra_op(g: BaseGraph[VT,ET],
         matches: Tuple[List[VT], List[VT]],
         edge_type: Optional[EdgeType] = EdgeType.SIMPLE
-        ) -> RewriteOutputType[VT,ET]:
+        ) -> bool:
     """Applies the bialgebra rule to a connected pair of Z and X spiders in the opposite direction"""
     def get_neighbors_and_loops(type1_vertices: List[VT], type2_vertices: List[VT]) -> Tuple[List[Tuple[VT, EdgeType]], List[EdgeType]]:
         neighbors: List[Tuple[VT, EdgeType]] = []
@@ -206,4 +221,7 @@ def bialgebra_op(g: BaseGraph[VT,ET],
 
     g.scalar.add_power(-(len(neighbors1)-1)*(len(neighbors2)-1))
 
-    return (etab, type1_vertices + type2_vertices, [], False)
+    g.add_edge_table(etab)
+    g.remove_vertices(type1_vertices + type2_vertices)
+
+    return True

@@ -27,11 +27,8 @@ __all__ = [
         'check_pivot',
         'pivot',
         'unsafe_pivot',
-        'check_pivot_boundary_for_apply',
-        'placeholder_check_for_pivot',
         'pivot_boundary_for_simp',
         'pivot_boundary_for_apply',
-        'check_pivot_gadget_for_apply',
         'pivot_gadget_for_simp',
         'pivot_gadget_for_apply'
         ]
@@ -103,16 +100,7 @@ def check_pivot(
 
     return len(b0) + len(b1) <= 1
 
-def placeholder_check_for_pivot(g: BaseGraph[VT,ET]) -> bool:
-    """Dummy function"""
-    return True
-
 ## Pivot Boundary
-
-def check_pivot_boundary_for_apply(g: BaseGraph[VT,ET], v: VT, w:VT) -> bool:
-    """Runs :func:`match_pivot_boundary` and returns whether any matches were found."""
-    matches = match_pivot_boundary(g, [v, w])
-    return len(matches) != 0
 
 def pivot_boundary_for_simp(g: BaseGraph[VT,ET]) -> bool:
     """Runs :func:`match_pivot_boundary`, and if any matches are found runs :func:`pivot_NOT_REWORKED`"""
@@ -120,18 +108,14 @@ def pivot_boundary_for_simp(g: BaseGraph[VT,ET]) -> bool:
     if len(matches) <= 0: return False
     return pivot_NOT_REWORKED(g, matches)
 
-def pivot_boundary_for_apply(g: BaseGraph[VT,ET], v: VT, w:VT) -> bool:
+def pivot_boundary_for_apply(g: BaseGraph[VT,ET], vertices: List[VT]) -> bool:
     """Runs :func:`match_pivot_boundary` on the given vertices, and if any matches are found runs :func:`pivot_NOT_REWORKED`"""
-    matches = match_pivot_boundary(g, [v, w])
+    checked_vertices = list([v for v in g.vertices() if (v in vertices)])
+    matches = match_pivot_boundary(g, checked_vertices)
     if len(matches) <= 0: return False
     return pivot_NOT_REWORKED(g, matches)
 
 ## Pivot Gadget
-
-def check_pivot_gadget_for_apply(g: BaseGraph[VT,ET], v: VT, w:VT) -> bool:
-    """Runs :func:`match_pivot_gadget` and returns whether any matches were found."""
-    matches = match_pivot_gadget(g, [v, w])
-    return len(matches) != 0
 
 def pivot_gadget_for_simp(g: BaseGraph[VT,ET]) -> bool:
     """Runs :func:`match_pivot_gadget`, and if any matches are found runs :func:`pivot_NOT_REWORKED`"""
@@ -139,9 +123,10 @@ def pivot_gadget_for_simp(g: BaseGraph[VT,ET]) -> bool:
     if len(matches) <= 0: return False
     return pivot_NOT_REWORKED(g, matches)
 
-def pivot_gadget_for_apply(g: BaseGraph[VT,ET], v: VT, w:VT) -> bool:
+def pivot_gadget_for_apply(g: BaseGraph[VT,ET], vertices: List[VT]) -> bool:
     """Runs :func:`match_pivot_gadget` on the given vertices, and if any matches are found runs :func:`pivot_NOT_REWORKED`"""
-    matches = match_pivot_gadget(g, [v, w])
+    checked_vertices = list([v for v in g.vertices() if (v in vertices)])
+    matches = match_pivot_gadget(g, checked_vertices)
     if len(matches) <= 0: return False
     return pivot_NOT_REWORKED(g, matches)
 
