@@ -31,7 +31,9 @@ __all__ = ['check_bialgebra_reduce',
            'bialgebra',
            'unsafe_bialgebra',
            'simp_bialgebra_op',
-           'safe_apply_bialgebra_op']
+           'safe_apply_bialgebra_op',
+           'is_bialg_op_match',
+           ]
 
 from collections import defaultdict
 from typing import Callable, Optional, List, Tuple, Dict
@@ -123,13 +125,13 @@ def unsafe_bialgebra(g: BaseGraph[VT,ET], v1: VT, v2: VT ) -> bool:
     return True
 
 def simp_bialgebra_op(g: BaseGraph[VT,ET]) -> bool:
-    """Runs :func:`match_bialgebra_op` and if any matches are found runs :func:`unasfe_bialgebra_op`"""
+    """Runs :func:`match_bialgebra_op` and if any matches are found runs :func:`unsafe_bialgebra_op`"""
     matches = match_bialgebra_op(g)
     if matches is None: return False
     return unsafe_bialgebra_op(g, matches)
 
 def safe_apply_bialgebra_op(g: BaseGraph[VT,ET], vertices: List[VT]) -> bool:
-    """Runs :func:`match_bialgebra_op` on the input vertices and if any matches are found runs :func:`unasfe_bialgebra_op`"""
+    """Runs :func:`match_bialgebra_op` on the input vertices and if any matches are found runs :func:`unsafe_bialgebra_op`"""
     checked_vertices = list([v for v in g.vertices() if (v in vertices)])
     matches = match_bialgebra_op(g, checked_vertices)
     if matches is None: return False
@@ -173,6 +175,11 @@ def match_bialgebra_op(g: BaseGraph[VT,ET],
             if not (len(edges) == 1 and g.edge_type(edges[0]) == edge_type):
                 return None
     return type1_vertices, type2_vertices
+
+def is_bialg_op_match(g: BaseGraph[VT,ET],vertices: list[VT]) -> bool:
+    """Checks if the given vertices form a valid match for the bialgebra operation."""
+    match = match_bialgebra_op(g, vertices)
+    return match is not None
 
 def unsafe_bialgebra_op(g: BaseGraph[VT,ET],
         matches: Tuple[List[VT], List[VT]],

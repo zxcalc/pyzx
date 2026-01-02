@@ -83,6 +83,7 @@ bialg_simp = RewriteSimpDoubleVertex(check_bialgebra, unsafe_bialgebra, check_bi
 
 bialg_op_simp = RewriteSimpGraph(safe_apply_bialgebra_op, simp_bialgebra_op)
 """Applies the bialgebra rule in reverse to a given pair of Z and X spiders. Can be run automatically on the entire graph."""
+bialg_op_simp.is_match = is_bialg_op_match # type: ignore
 
 fuse_simp = RewriteSimpDoubleVertex(check_fuse, unsafe_fuse, None, False, True)
 """Performs spider fusion by fusing two matching Z X or w spiders into one. Can be run automatically on the entire graph."""
