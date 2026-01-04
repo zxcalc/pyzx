@@ -161,7 +161,7 @@ class GraphDiff(Generic[VT, ET]):
         changed_edata_str_dict = {}
         for key, value in self.changed_edata.items():
             changed_edata_str_dict[f"{key[0]},{key[1]}"] = value # type: ignore
-        changed_phases_str = {k: phase_to_s(v) for k, v in self.changed_phases.items()}
+        changed_phases_str = {k: phase_to_s(v, limit_denominator=False) for k, v in self.changed_phases.items()}
         return {
             "removed_verts": self.removed_verts,
             "new_verts": self.new_verts,
