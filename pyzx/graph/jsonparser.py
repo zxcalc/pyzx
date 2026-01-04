@@ -210,7 +210,7 @@ def graph_to_dict(g: BaseGraph[VT,ET], include_scalar: bool=True) -> Dict[str, A
             'pos': (round(g.row(v),3),round(g.qubit(v),3)),
         }
         if g.phase(v):
-            d_v['phase'] = phase_to_s(g.phase(v))
+            d_v['phase'] = phase_to_s(g.phase(v), limit_denominator=False)
         vdata_keys = g.vdata_keys(v)
         if vdata_keys:
             data_dict = {}
@@ -218,7 +218,7 @@ def graph_to_dict(g: BaseGraph[VT,ET], include_scalar: bool=True) -> Dict[str, A
                 val = g.vdata(v, k)
                 if k == 'label':
                     if isinstance(val, (Fraction, Poly)):
-                        val = phase_to_s(val)
+                        val = phase_to_s(val, limit_denominator=False)
                     elif isinstance(val, complex):
                         val = str(val)
                 data_dict[k] = val
@@ -297,10 +297,10 @@ def graph_to_dict_old(g: BaseGraph[VT,ET], include_scalar: bool=True) -> Dict[st
                 node_vs[name]["data"]["type"] = "Z_box"
                 zbox_label = g.vdata(v, 'label', 1)
                 if type(zbox_label) == Fraction:
-                    zbox_label = phase_to_s(zbox_label)
+                    zbox_label = phase_to_s(zbox_label, limit_denominator=False)
                 node_vs[name]["annotation"]["label"] = zbox_label
             else: raise Exception("Unkown vertex type "+ str(t))
-            phase = phase_to_s(g.phase(v))
+            phase = phase_to_s(g.phase(v), limit_denominator=False)
             if phase: node_vs[name]["data"]["value"] = phase
             if g.is_ground(v):
                 node_vs[name]["data"]["ground"] = True

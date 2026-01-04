@@ -85,16 +85,16 @@ def toggle_edge(ty: EdgeType) -> EdgeType:
     """Swap the regular and Hadamard edge types."""
     return EdgeType.HADAMARD if ty == EdgeType.SIMPLE else EdgeType.SIMPLE
 
-def phase_to_s(a: FractionLike, t:VertexType=VertexType.Z, poly_with_pi:bool=False) -> str:
+def phase_to_s(a: FractionLike, t:VertexType=VertexType.Z, poly_with_pi:bool=False, limit_denominator: bool = True) -> str:
     if isinstance(a, Fraction) or isinstance(a, int):
-        return phase_fraction_to_s(a, t)
+        return phase_fraction_to_s(a, t, limit_denominator=limit_denominator)
     else: # a is a Poly
         if poly_with_pi:
             return f"({a})\u03c0"
         else:
             return str(a)
 
-def phase_fraction_to_s(a: FractionLike, t:VertexType=VertexType.Z) -> str:
+def phase_fraction_to_s(a: FractionLike, t:VertexType=VertexType.Z, limit_denominator: bool = True) -> str:
     if (a == 0 and t != VertexType.H_BOX): return ''
     if (a == 1 and t == VertexType.H_BOX): return ''
     if isinstance(a, Poly):
@@ -103,7 +103,7 @@ def phase_fraction_to_s(a: FractionLike, t:VertexType=VertexType.Z) -> str:
 
     if a == 0: return '0'
     simstr = ''
-    if a.denominator > 256:
+    if limit_denominator and a.denominator > 256:
         a = a.limit_denominator(256)
         simstr = '~'
 

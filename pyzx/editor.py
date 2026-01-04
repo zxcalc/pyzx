@@ -140,7 +140,7 @@ def graph_to_json(g: GraphS, scale:FloatInt, verts:Optional[List[int]]=None,edge
 			  'x': (g.row(v) + 1) * scale,
 			  'y': (g.qubit(v) + 2) * scale,
 			  't': g.type(v),
-			  'phase': phase_to_s(g.phase(v),g.type(v)) }
+			  'phase': phase_to_s(g.phase(v), g.type(v), limit_denominator=False) }
 			 for v in verts]
 	links = [{'source': int(g.edge_s(e)),
 			  'target': int(g.edge_t(e)),
