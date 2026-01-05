@@ -26,6 +26,7 @@ from typing import Dict, List, Optional, Type, ClassVar, TypeVar, Generic, Set
 
 from ..utils import EdgeType, VertexType, FractionLike
 from ..graph.base import BaseGraph, VT, ET
+from ..symbolic import new_var
 
 # We need this type variable so that the subclasses of Gate return the correct type for functions like copy()
 Tvar = TypeVar('Tvar', bound='Gate')
@@ -1214,9 +1215,15 @@ class Measurement(Gate):
     # * (OpenQASM 2) measure q[0] -> c[0]
     # * (OpenQASM 3) c[0] = measure q[0]
 
-    def __init__(self, target: int, result_bit: Optional[int] = None) -> None:
+    def __init__(
+        self,
+        target: int,
+        result_bit: Optional[int] = None,
+        result_symbol: Optional[str] = None
+    ) -> None:
         self.target = target
         self.result_bit = result_bit
+        self.result_symbol = result_symbol
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, Measurement): return False
@@ -1231,7 +1238,8 @@ class Measurement(Gate):
             g.result_bit = bit_mask[self.result_bit]
         return g
 
-    def to_graph(self, g, q_mapper, c_mapper):
+    def to_graph_ground(self, g, q_mapper, c_mapper):
+        """Represent the measurement as a node with a ground symbol."""
         # Discard previous bit value
         if self.result_bit is not None:
             DiscardBit(self.result_bit).to_graph(g, q_mapper, c_mapper)
@@ -1255,6 +1263,25 @@ class Measurement(Gate):
                 r)
             g.add_edge((v,u), EdgeType.SIMPLE)
             c_mapper.set_next_row(self.result_bit, r+1)
+
+    def to_graph_symbolic_boolean(self, g, q_mapper):
+        """Represent the measurement as a node with symbolic boolean phases."""
+        r = q_mapper.next_row(self.target)
+        symbol_name = self.result_symbol if self.result_symbol is not None else f"m{self.target}"
+        phase = new_var(name=f"{symbol_name}", is_bool=True, registry=g.var_registry) 
+        _ = self.graph_add_node(g,
+            q_mapper,
+            VertexType.X,
+            self.target,
+            r,
+            phase=phase)
+        q_mapper.set_next_row(self.target, r+1)
+
+    def to_graph(self, g, q_mapper, c_mapper, ground=False):
+        if ground:
+            self.to_graph_ground(g, q_mapper, c_mapper)
+        else:
+            self.to_graph_symbolic_boolean(g, q_mapper)
 
 gate_types: Dict[str,Type[Gate]] = {
     "XPhase": XPhase,

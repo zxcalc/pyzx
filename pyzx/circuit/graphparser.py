@@ -17,10 +17,11 @@
 from typing import Dict, List, Optional
 
 from . import Circuit
-from .gates import TargetMapper
+from .gates import Measurement, TargetMapper
 from ..utils import EdgeType, VertexType, FloatInt, FractionLike
 from ..graph import Graph
 from ..graph.base import BaseGraph, VT, ET
+from ..symbolic import Poly, new_var
 
 def graph_to_circuit(g:BaseGraph[VT,ET], split_phases:bool=True) -> Circuit:
     inputs = g.inputs()
@@ -86,16 +87,28 @@ def graph_to_circuit(g:BaseGraph[VT,ET], split_phases:bool=True) -> Circuit:
     return c
 
 
-def circuit_to_graph(c: Circuit, compress_rows:bool=True, backend:Optional[str]=None) -> BaseGraph[VT, ET]:
+def circuit_to_graph(
+    c: Circuit, 
+    compress_rows:bool=True,
+    backend:Optional[str]=None,
+    initialize_qubits:Optional[List[bool]]=None,
+    postselect_qubits:Optional[List[int]]=None
+) -> BaseGraph[VT, ET]:
     """Turns the circuit into a ZX-Graph.
     If ``compress_rows`` is set, it tries to put single qubit gates on different qubits,
-    on the same row."""
+    on the same row.
+
+    ``initialize_qubits`` denotes whether each input should be connected to |0\ranlge,
+    ``postselect_qubits`` denotes for each measurement whether it should be 
+    postselected to |0\rangle (0) or |1\ranlge (1)."""
     g = Graph(backend)
     q_mapper: TargetMapper[VT] = TargetMapper()
     c_mapper: TargetMapper[VT] = TargetMapper()
     inputs = []
     outputs = []
+    measure_targets = set()
 
+    # Create input vertices
     for i in range(c.qubits):
         v = g.add_vertex(VertexType.BOUNDARY,i,0)
         inputs.append(v)
@@ -108,7 +121,11 @@ def circuit_to_graph(c: Circuit, compress_rows:bool=True, backend:Optional[str]=
         q_mapper.add_label(qubit, 1)
         c_mapper.set_prev_vertex(qubit, v)
 
+
     for gate in c.gates:
+        if gate.name == "Measurement":
+            assert isinstance(gate, Measurement)
+            measure_targets.add(gate.target)
         if gate.name == 'InitAncilla':
             l = gate.label # type: ignore
             try:
@@ -143,16 +160,31 @@ def circuit_to_graph(c: Circuit, compress_rows:bool=True, backend:Optional[str]=
                 q_mapper.set_all_rows_to_max()
                 c_mapper.set_all_rows_to_max()
 
+    # Create output vertices
     r = max(q_mapper.max_row(), c_mapper.max_row())
+    measure_vertices = []
     for mapper in (q_mapper, c_mapper):
         for l in mapper.labels():
             o = mapper.to_qubit(l)
-            v = g.add_vertex(VertexType.BOUNDARY, o, r)
-            outputs.append(v)
             u = mapper.prev_vertex(l)
-            g.add_edge((u,v))
+            if o not in measure_targets:
+                v = g.add_vertex(VertexType.BOUNDARY, o, r)
+                outputs.append(v)
+                g.add_edge((u,v))
+            else:
+                measure_vertices.append(u)
 
     g.set_inputs(tuple(inputs))
     g.set_outputs(tuple(outputs))
+
+    if initialize_qubits:
+        assert len(inputs) == len(initialize_qubits), "Length of init list must be equal to number of inputs!"
+        state = "".join("0" if i else "/" for i in initialize_qubits)
+        g.apply_state(state)
+
+    if postselect_qubits:
+        assert len(measure_vertices) == len(postselect_qubits), "Length of post_select list must be equal to number of measurements!"
+        for i, v in enumerate(measure_vertices):
+            g.set_phase(v, postselect_qubits[i])
 
     return g
