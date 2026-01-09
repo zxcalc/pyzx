@@ -45,14 +45,19 @@ Two circuits :math:`C_1` and :math:`C_2` are **fault-equivalent**, written :math
 __all__ = [
     'check_unfuse_4_FE',
     'unfuse_4_FE',
+    'unsafe_unfuse_4_FE',
     'check_unfuse_5_FE',
     'unfuse_5_FE',
+    'unsafe_unfuse_5_FE',
     'check_unfuse_2n_FE',
     'unfuse_2n_FE',
+    'unsafe_unfuse_2n_FE',
     'check_unfuse_2n_plus_FE',
     'unfuse_2n_plus_FE',
+    'unsafe_unfuse_2n_plus_FE',
     'check_recursive_unfuse_FE',
     'recursive_unfuse_FE',
+    'unsafe_recursive_unfuse_FE',
 ]
 
 import itertools
@@ -164,16 +169,12 @@ def _get_n_cycle_coords(N: int, q: float, r: float) -> list[tuple[float, float]]
     return coords
 
 
-def _unfuse_spider(
+def _unsafe_unfuse_spider(
         g: BaseGraph[VT, ET],
         v: VT,
-        check_func: Callable,
         coords_func: Callable
 ) -> bool:
     """A generic function to unfuse a spider into a polygon of new spiders."""
-    if not check_func(g, v):
-        return False
-
     v_type = g.type(v)
     neighs = list(g.neighbors(v))
     original_edge_types = {n: g.edge_type(g.edge(v, n)) for n in neighs}
@@ -207,7 +208,14 @@ def check_unfuse_4_FE(g: BaseGraph[VT, ET], v: VT) -> bool:
 
 def unfuse_4_FE(g: BaseGraph[VT, ET], v: VT) -> bool:
     """Unfuses a degree-4 spider into a square."""
-    return _unfuse_spider(g, v, check_unfuse_4_FE, _get_square_coords)
+    if not check_unfuse_4_FE(g, v):
+        return False
+    return unsafe_unfuse_4_FE(g, v)
+
+
+def unsafe_unfuse_4_FE(g: BaseGraph[VT, ET], v: VT) -> bool:
+    """Unfuses a degree-4 spider into a square."""
+    return _unsafe_unfuse_spider(g, v, _get_square_coords)
 
 
 def check_unfuse_5_FE(g: BaseGraph[VT, ET], v: VT) -> bool:
@@ -216,8 +224,14 @@ def check_unfuse_5_FE(g: BaseGraph[VT, ET], v: VT) -> bool:
 
 def unfuse_5_FE(g: BaseGraph[VT, ET], v: VT) -> bool:
     """Unfuses a degree-5 spider into a pentagon."""
-    return _unfuse_spider(g, v, check_unfuse_5_FE,
-                          lambda x, y: _get_n_cycle_coords(5, x, y))
+    if not check_unfuse_5_FE(g, v):
+        return False
+    return unsafe_unfuse_5_FE(g, v)
+
+
+def unsafe_unfuse_5_FE(g: BaseGraph[VT, ET], v: VT) -> bool:
+    """Unfuses a degree-5 spider into a pentagon."""
+    return _unsafe_unfuse_spider(g, v, lambda x, y: _get_n_cycle_coords(5, x, y))
 
 
 def check_unfuse_2n_FE(g: BaseGraph[VT, ET], v: VT) -> bool:
@@ -311,6 +325,17 @@ def unfuse_2n_FE(g: BaseGraph[VT, ET], v: VT, w: Optional[int] = None) -> bool:
     """
     if not check_unfuse_2n_FE(g, v):
         return False
+    return unsafe_unfuse_2n_FE(g, v, w)
+
+
+def unsafe_unfuse_2n_FE(g: BaseGraph[VT, ET], v: VT, w: Optional[int] = None) -> bool:
+    """
+    Unfuses a degree-2n spider into two degree-n spiders.
+
+    Args:
+        w (Optional[int]): If specified, the function implements the w-fault-equivalent rewrite.
+            Only the first w-1 pairs will have a full parity check gadget created between them.
+    """
     _unfuse_2n_spider_core(g, v, w)
     return True
 
@@ -325,6 +350,17 @@ def unfuse_2n_plus_FE(g: BaseGraph[VT, ET], v: VT, w: Optional[int] = None) -> b
     """
     if not check_unfuse_2n_plus_FE(g, v):
         return False
+    return unsafe_unfuse_2n_plus_FE(g, v, w)
+
+
+def unsafe_unfuse_2n_plus_FE(g: BaseGraph[VT, ET], v: VT, w: Optional[int] = None) -> bool:
+    """
+    Unfuses a degree-(2n + 1) spider into a degree-n spider and a degree-(n + 1) spider.
+
+    Args:
+        w (Optional[int]): If specified, the function implements the w-fault-equivalent rewrite.
+            Only the first w-1 pairs will have a full parity check gadget created between them.
+    """
     _unfuse_2n_spider_core(g, v, w)
     return True
 
@@ -343,7 +379,17 @@ def recursive_unfuse_FE(g: BaseGraph[VT, ET], v: VT, w: Optional[int] = None) ->
     """
     if not check_recursive_unfuse_FE(g, v):
         return False
+    return unsafe_recursive_unfuse_FE(g, v, w)
 
+
+def unsafe_recursive_unfuse_FE(g: BaseGraph[VT, ET], v: VT, w: Optional[int] = None) -> bool:
+    """
+    Recursively unfuses a spider.
+
+    Args:
+        w (Optional[int]): If specified, the function implements the w-fault-equivalent rewrite.
+            Only the first w-1 pairs will have a full parity check gadget created between them.
+    """
     degree = g.vertex_degree(v)
     if degree <= 3:
         return True
@@ -353,5 +399,5 @@ def recursive_unfuse_FE(g: BaseGraph[VT, ET], v: VT, w: Optional[int] = None) ->
         return unfuse_5_FE(g, v)
 
     inner_1, inner_2 = _unfuse_2n_spider_core(g, v, w)
-    return (recursive_unfuse_FE(g, inner_1, w) and
-            recursive_unfuse_FE(g, inner_2, w))
+    return (unsafe_recursive_unfuse_FE(g, inner_1, w) and
+            unsafe_recursive_unfuse_FE(g, inner_2, w))
