@@ -32,7 +32,8 @@ __all__ = ['bialg_simp','bialg_op_simp','spider_simp', 'id_simp', 'phase_free_si
         'pivot_gadget_simp', 'pivot_boundary_simp', 'gadget_simp',
         'lcomp_simp', 'clifford_simp', 'tcount', 'to_gh', 'to_rg',
         'full_reduce', 'teleport_reduce', 'reduce_scalar', 'supplementarity_simp',
-        'to_clifford_normal_form_graph', 'to_graph_like', 'is_graph_like', 'copy_simp']
+        'to_clifford_normal_form_graph', 'to_graph_like', 'is_graph_like', 'copy_simp',
+        'hbox_cancel_simp']
 
 
 from typing import cast, Tuple, Dict, Set, Callable, TypeVar, Optional, Union
@@ -118,6 +119,9 @@ color_change_rewrite = RewriteSimpSingleVertex(check_color_change, unsafe_color_
 
 hopf_simp = RewriteSimpDoubleVertex(check_hopf, unsafe_hopf)
 """Removes parallel edges between the given vertices. Can be run automatically on the entire graph."""
+
+hbox_cancel_simp = RewriteSimpSingleVertex(check_hbox_cancel, unsafe_hbox_cancel)
+"""Cancels H-boxes with phase 1 and arity 2 that have a Hadamard edge or an adjacent H-box. Can be run automatically on the entire graph."""
 
 z_to_z_box_simp = RewriteSimpSingleVertex(check_z_to_z_box, unsafe_z_to_z_box)
 """Turns a given z-spider into a z-box. Can be run automatically on the entire graph."""
