@@ -187,6 +187,19 @@ class TestScalar(unittest.TestCase):
         self.assertEqual(scalar.power2, -1)
         expected_sum = {0: 1, p1: 1, p2: 1, (p1 + p2) % 2: -1}
         self.assertEqual(scalar.sum_of_phases, expected_sum)
+    
+    def test_add_spider_pair_equal_non_cliffords(self):
+        """Test add_spider_pair case with two non-Clifford phases that are equal to each other. 
+        This test breaking was the reason for issue #375."""
+        scalar = Scalar()
+        p1 = Fraction(3,4)  # Non-Clifford phase
+        p2 = Fraction(3,4)  # Equal Non-Clifford phase
+        scalar.add_spider_pair(p1, p2)
+        # Should add: 2^(-1) * (1 + e^(i*pi*p1) + e^(i*pi*p2) - e^(i*pi*(p1+p2)))
+        self.assertEqual(scalar.power2, -1)
+        # Note the p1: 2 term here below.
+        expected_sum = {0: 1, p1: 2, (p1 + p2) % 2: -1}
+        self.assertEqual(scalar.sum_of_phases, expected_sum)
 
     def test_add_spider_pair_pauli_cases(self):
         """Test add_spider_pair with Pauli phases (0 and 1)"""

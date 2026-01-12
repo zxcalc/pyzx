@@ -81,7 +81,7 @@ def match_supplementarity(g: BaseGraph[VT,ET], vertices: Optional[List[VT]]=None
         for w in neigh:
             if phases[w] == 0 or (not isinstance(phases[w], Poly) and phases[w].denominator <= 2) or w in taken: continue
             diff = neigh.symmetric_difference(g.neighbors(w))
-            if len(diff) == 2: # Perfect overlap
+            if len(diff) == 2: # Perfect overlap, v and w are connected to each other, but otherwise have the same neighbourhood
                 if (phases[v] + phases[w]) % 2 == 0 or (phases[v] - phases[w]) % 2 == 1:
                     m.append((v,w,2,frozenset(neigh.difference({w}))))
                     taken.update({v,w})

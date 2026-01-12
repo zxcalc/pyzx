@@ -298,6 +298,8 @@ def auto_layout_vertex_locs(g:BaseGraph[VT, ET]): #Force-based graph drawing alg
     c3 = 1
     c4 = .1
     v_locs:Dict[VT, Tuple[float, float]] = dict()
+    if len(list(g.vertices())) == 0:
+        return {}, 0, 0
     for v in g.vertices():
         v_locs[v]=(random.random()*math.sqrt(g.num_vertices()),  random.random()*math.sqrt(g.num_vertices()))
     for i in range(100): #100 iterations of force-based drawing
@@ -393,6 +395,7 @@ def draw_d3(
 
     if(auto_layout):
         v_dict, w, h = auto_layout_vertex_locs(g)
+        if w == 0: w = 10
         if scale is None:
             scale = 800 / w
             if scale > 50: scale = 50

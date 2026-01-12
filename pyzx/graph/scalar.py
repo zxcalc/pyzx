@@ -357,7 +357,10 @@ class Scalar(object):
         # Generic case
         self.add_power(-1)
         # add the sum of phases 1 + e^(i pi p1) + e^(i pi p2) - e^(i pi (p1+p2))
-        self.multiply_sum_of_phases({0:1, p1:1, p2:1, (p1+p2)%2:-1})
+        if p1 != p2:
+            self.multiply_sum_of_phases({0:1, p1:1, p2:1, (p1+p2)%2:-1})
+        else:
+            self.multiply_sum_of_phases({0:1, p1:2, (p1+p2)%2:-1})
         return
 
 
