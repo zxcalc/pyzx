@@ -132,6 +132,14 @@ class TestTensor(unittest.TestCase):
         t_adj = adjoint(t)
         circ_adj = tensorfy(circ.adjoint())
         self.assertTrue(compare_tensors(t_adj,circ_adj))
+    
+    def test_multigraph_auto_simplify_parallel_edges(self):
+        g = Multigraph()
+        g.set_auto_simplify(True)
+        i1 = g.add_vertex(1,0,0)
+        i2 = g.add_vertex(2,1,0)
+        g.add_edges([(i1, i2)] * 3)
+        self.assertTrue(compare_tensors(g, np.array([np.sqrt(2)**(-1)]), preserve_scalar=True))
 
     def test_multiedge_scalar(self):
         g = Multigraph()

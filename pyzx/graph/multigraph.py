@@ -200,7 +200,7 @@ class Multigraph(BaseGraph[int,Tuple[int,int,EdgeType]]):
                             e.s = 1
                         if e.h > 0:
                             self.nedges = self.nedges - (e.h - e.h % 2)
-                            self.scalar.add_power(-2 * (e.h - (e.h % 2)))
+                            self.scalar.add_power(-(e.h - (e.h % 2)))
                             e.h = e.h % 2
                     else:
                         if e.h > 0:
@@ -208,7 +208,7 @@ class Multigraph(BaseGraph[int,Tuple[int,int,EdgeType]]):
                             e.h = 1
                         if e.s > 0:
                             self.nedges = self.nedges - (e.s - e.s % 2)
-                            self.scalar.add_power(-2 * (e.s - (e.s % 2)))
+                            self.scalar.add_power(-(e.s - (e.s % 2)))
                             e.s = e.s % 2
             if e.is_empty():
                 del self.graph[s][t]
