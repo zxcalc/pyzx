@@ -102,8 +102,9 @@ def unsafe_fuse(g: BaseGraph[VT,ET], v: VT, w: VT) -> bool:
             other_vertex = v
         new_e = (v, other_vertex)
         if new_e not in etab: etab[new_e] = [0, 0]
-        etab[new_e][g.edge_type(e) - 1] += 1
-    etab[(v, v)][0] = 0  # remove simple edge loops
+        etab[new_e][g.edge_type(e) - 1] += 1 # TODO: This implicitly assumes that there is only two types of edges
+    if (v, v) in etab:
+        etab[(v, v)][0] = 0  # remove simple edge loops
 
     g.add_edge_table(etab)
     g.remove_vertex(w)
