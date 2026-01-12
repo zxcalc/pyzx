@@ -9,6 +9,7 @@ sphinx_rtd_theme>=0.4
 tqdm>=4.56.0
 types-tqdm~=4.66
 nbsphinx~=0.9.3
+ipykernel>=6 # Needed for nbsphinx to execute correctly on readthedocs
 sphinxcontrib-svg2pdfconverter>=1.2.2
 lark>=1.2.2
 galois>=0.4.7
