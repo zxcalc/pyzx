@@ -64,8 +64,6 @@ import itertools
 import math
 from typing import Callable, Optional
 
-import networkx as nx
-
 from pyzx.graph.base import BaseGraph, VT, ET
 from pyzx.utils import VertexType
 
