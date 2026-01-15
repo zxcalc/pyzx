@@ -17,7 +17,7 @@
 """This file is structured the same way as `simplify.py`, but instead contains
 simplifications with using only fault-equivalent rewrites"""
 
-from pyzx.rewrite import RewriteSimpSingleVertex
+from pyzx.rewrite import RewriteSimpSingleVertex, RewriteSimpDoubleVertex
 from pyzx.rewrite_rules.fuse_1_FE_rule import *
 from pyzx.rewrite_rules.unfuse_FE_rules import *
 from pyzx.rewrite_rules.remove_id_rule import *
@@ -26,7 +26,7 @@ from pyzx.rewrite_rules.remove_id_rule import *
 elim_FE_simp = RewriteSimpSingleVertex(check_remove_id, unsafe_remove_id)
 """Performs an Elim rewrite. Can be run automatically on the entire graph."""
 
-fuse_1_FE_simp = RewriteSimpSingleVertex(check_fuse_1_FE, unsafe_fuse_1_FE)
+fuse_1_FE_simp = RewriteSimpDoubleVertex(check_fuse_1_FE, unsafe_fuse_1_FE)
 """Performs a Fuse-1 rewrite. Can be run automatically on the entire graph."""
 
 unfuse_1_FE_simp = RewriteSimpSingleVertex(check_unfuse_1_FE, unsafe_unfuse_1_FE)
