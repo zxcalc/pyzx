@@ -68,14 +68,14 @@ def check_fuse_1_FE(g: BaseGraph[VT, ET], v: VT, w: VT) -> bool:
     #return len(neighs) == 1 and g.type(neighs[0]) == g.type(v) and is_pauli(g.phase(v))
 
 
-def fuse_1_FE(g: BaseGraph[VT, ET], v: VT) -> bool:
-    if not check_fuse_1_FE(g, v):
+def fuse_1_FE(g: BaseGraph[VT, ET], v: VT, w: VT) -> bool:
+    if not check_fuse_1_FE(g, v, w):
         return False
-    return unsafe_fuse_1_FE(g, v)
+    return unsafe_fuse_1_FE(g, v, w)
 
 
-def unsafe_fuse_1_FE(g: BaseGraph[VT, ET], v: VT) -> bool:
-    if not check_fuse_1_FE(g, v):
+def unsafe_fuse_1_FE(g: BaseGraph[VT, ET], v: VT, w: VT) -> bool:
+    if not check_fuse_1_FE(g, v, w):
         return False
     [v2] = g.neighbors(v)
     return _fuse(g, v, v2)
