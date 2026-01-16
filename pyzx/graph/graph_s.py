@@ -291,7 +291,7 @@ class GraphS(BaseGraph[int,Tuple[int,int]]):
         return edge
 
     def neighbors(self, vertex):
-        return self.graph[vertex].keys()
+        return list(self.graph[vertex].keys())
 
     def vertex_degree(self, vertex):
         return len(self.graph[vertex])

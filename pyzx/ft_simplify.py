@@ -26,7 +26,7 @@ from pyzx.rewrite_rules.remove_id_rule import *
 elim_FE_simp = RewriteSimpSingleVertex(check_remove_id, unsafe_remove_id)
 """Performs an Elim rewrite. Can be run automatically on the entire graph."""
 
-fuse_1_FE_simp = RewriteSimpDoubleVertex(check_fuse_1_FE, unsafe_fuse_1_FE)
+fuse_1_FE_simp = RewriteSimpSingleVertex(check_fuse_1_FE, unsafe_fuse_1_FE)
 """Performs a Fuse-1 rewrite. Can be run automatically on the entire graph."""
 
 unfuse_1_FE_simp = RewriteSimpSingleVertex(check_unfuse_1_FE, unsafe_unfuse_1_FE)
