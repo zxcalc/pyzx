@@ -38,6 +38,9 @@ unfuse_4_FE_simp = RewriteSimpSingleVertex(check_unfuse_4_FE, unsafe_unfuse_4_FE
 unfuse_5_FE_simp = RewriteSimpSingleVertex(check_unfuse_5_FE, unsafe_unfuse_5_FE)
 """Performs a Unfuse-5 rewrite. Can be run automatically on the entire graph."""
 
+unfuse_n_2FE_simp = RewriteSimpSingleVertex(check_unfuse_n_2FE, unsafe_unfuse_n_2FE)
+"""Performs a Unfuse-n rewrite. Can be run automatically on the entire graph."""
+
 unfuse_2n_FE_simp = RewriteSimpSingleVertex(check_unfuse_2n_FE, unsafe_unfuse_2n_FE)
 """Performs a Unfuse-2n rewrite. Can be run automatically on the entire graph."""
 
