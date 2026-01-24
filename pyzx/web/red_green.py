@@ -150,8 +150,12 @@ def _euler_expand_edges(g: BaseGraph[int, Tuple[int, int]]) -> Iterable[Expanded
     for v in list(g.vertices()):
         if g.type(v) != VertexType.H_BOX:
             continue
-
-        v1, v2 = g.neighbors(v)
+        
+        try:
+            v1, v2 = g.neighbors(v)
+        except ValueError:
+            raise ValueError(f"Hadamard vertex {v} does not have exactly two neighbors.")
+        
         v1_edge_type = g.edge_type((v1, v))
         v2_edge_type = g.edge_type((v2, v))
 
