@@ -17,9 +17,10 @@
 """This file is structured the same way as `simplify.py`, but instead contains
 simplifications with using only fault-equivalent rewrites"""
 
-from pyzx.rewrite import RewriteSimpSingleVertex, RewriteSimpDoubleVertex
+from pyzx.rewrite import RewriteSimpSingleVertex, RewriteSimpGraph
 from pyzx.rewrite_rules.fuse_1_FE_rule import *
 from pyzx.rewrite_rules.unfuse_FE_rules import *
+from pyzx.rewrite_rules.fuse_FE_rules import *
 from pyzx.rewrite_rules.remove_id_rule import *
 
 
@@ -49,3 +50,7 @@ unfuse_2n_plus_FE_simp = RewriteSimpSingleVertex(check_unfuse_2n_plus_FE, unsafe
 
 recursive_unfuse_FE_simp = RewriteSimpSingleVertex(check_recursive_unfuse_FE, unsafe_recursive_unfuse_FE)
 """Performs a recursive unfusion rewrite. Can be run automatically on the entire graph."""
+
+fuse_4_FE_simp = RewriteSimpGraph(safe_fuse_4_FE, simp_fuse_4_FE)
+"""Performs a fuse-4 rewrite. Can be run automatically on the entire graph."""
+fuse_4_FE_simp.is_match = is_fuse_4_match # type: ignore

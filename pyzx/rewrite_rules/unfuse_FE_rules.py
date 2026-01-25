@@ -65,10 +65,10 @@ __all__ = [
 
 import itertools
 import math
-from typing import Callable, Optional
+from typing import Callable, Optional, List
 
 from pyzx.graph.base import BaseGraph, VT, ET
-from pyzx.utils import VertexType
+from pyzx.utils import VertexType, EdgeType, is_pauli
 
 
 def _linear_sum_assignment_itertools(cost_matrix) -> tuple[list, list]:
@@ -415,5 +415,3 @@ def unsafe_recursive_unfuse_FE(g: BaseGraph[VT, ET], v: VT, w: Optional[int] = N
     inner_1, inner_2 = _unfuse_2n_spider_core(g, v, w)
     return (unsafe_recursive_unfuse_FE(g, inner_1, w) and
             unsafe_recursive_unfuse_FE(g, inner_2, w))
-
-

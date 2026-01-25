@@ -354,7 +354,7 @@ class Multigraph(BaseGraph[int,Tuple[int,int,EdgeType]]):
         return (edge[0], edge[1])
 
     def neighbors(self, vertex):
-        return list(self.graph[vertex].keys())
+        return self.graph[vertex].keys()
 
     def vertex_degree(self, vertex):
         d = 0
