@@ -19,8 +19,10 @@ __all__ = ['string_to_phase','to_graphml']
 import json
 import re
 import ast
+import warnings
 from fractions import Fraction
 from typing import List, Dict, Tuple, Any, Optional, Callable, Union, TYPE_CHECKING
+from typing_extensions import deprecated
 
 from pyzx.graph.multigraph import Multigraph
 
@@ -65,8 +67,9 @@ def string_to_phase(string: str, g: Optional[Union[BaseGraph,'GraphDiff']] = Non
         except Exception as e:
             raise ValueError(e)
 
+@deprecated("json_to_graph_old is deprecated, use json_to_graph or dict_to_graph instead")
 def json_to_graph_old(js: Union[str,Dict[str,Any]], backend:Optional[str]=None) -> BaseGraph:
-    """This method is deprecated. Use `json_to_graph` or `dict_to_graph` instead.
+    """Deprecated: Use :func:`json_to_graph` or :func:`dict_to_graph` instead.
 
     Converts the json representation of a .qgraph Quantomatic graph into
     a pyzx graph. If JSON is given as a string, parse it first."""
@@ -242,8 +245,10 @@ def graph_to_dict(g: BaseGraph[VT,ET], include_scalar: bool=True) -> Dict[str, A
     return d
 
 
+@deprecated("graph_to_dict_old is deprecated, use graph_to_dict instead")
 def graph_to_dict_old(g: BaseGraph[VT,ET], include_scalar: bool=True) -> Dict[str, Any]:
-    """This method is deprecated, and replaced by `graph_to_dict`.
+    """Deprecated: Use :func:`graph_to_dict` instead.
+
     Converts a PyZX graph into Python dict for JSON output that is compatible with the Quantomatic format.
     If include_scalar is set to True (the default), then this includes the value
     of g.scalar with the json, which will also be loaded by the ``from_json`` method."""
@@ -356,8 +361,11 @@ def dict_to_graph(d: Dict[str,Any], backend: Optional[str]=None) -> BaseGraph:
     If backend is given, it will be used as the backend for the graph, 
     otherwise the backend will be read from the dict description."""
     if not 'version' in d:
-        # "Version is not specified in dictionary, will try to parse it as an older format")
-        return json_to_graph_old(d, backend)
+        # Version is not specified in dictionary, will try to parse it as an older format.
+        # Suppress the deprecation warning since this is an internal fallback.
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", DeprecationWarning)
+            return json_to_graph_old(d, backend)
     else:
         if d['version'] != 2:
             raise ValueError("Unsupported version "+str(d['version']))

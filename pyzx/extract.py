@@ -19,6 +19,7 @@ __all__ = ['extract_circuit', 'extract_simple', 'graph_to_swaps', 'extract_cliff
 
 from fractions import Fraction
 import itertools
+from typing_extensions import deprecated
 
 from .utils import EdgeType, VertexType, toggle_edge
 from .linalg import Mat2, Z2
@@ -52,14 +53,15 @@ def connectivity_from_biadj(
             elif not m.data[i][j] and g.connected(right[i],left[j]):
                 g.remove_edge(g.edge(right[i],left[j]))
 
+@deprecated("streaming_extract is deprecated, use extract_circuit instead")
 def streaming_extract(
-        g:BaseGraph[VT,ET], 
-        optimize_czs:bool=True, 
-        optimize_cnots:int=2, 
+        g:BaseGraph[VT,ET],
+        optimize_czs:bool=True,
+        optimize_cnots:int=2,
         quiet:bool=True
         ) -> Circuit:
-    print("This function is deprecated. Call extract_circuit() instead.")
-    return extract_circuit(g, optimize_czs, optimize_cnots, quiet)
+    """Deprecated: Use :func:`extract_circuit` instead."""
+    return extract_circuit(g, optimize_czs=optimize_czs, optimize_cnots=optimize_cnots, quiet=quiet)
 
 def permutation_as_swaps(perm:Dict[int,int]) -> List[Tuple[int,int]]:
     """Returns a series of swaps that realises the given permutation. 
