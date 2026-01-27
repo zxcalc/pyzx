@@ -432,7 +432,7 @@ def draw_d3(
     text = """<div style="overflow:auto; background-color: white" id="graph-output-{id}"></div>
 <script type="module">
 var d3;
-if (d3 == null) {{ d3 = await import("https://cdn.skypack.dev/d3@5"); }}
+if (d3 == null) {{ d3 = await import("https://esm.sh/d3@5"); }}
 var _settings_colors = JSON.parse('{colors}');
 {library_code}
 showGraph('#graph-output-{id}',
