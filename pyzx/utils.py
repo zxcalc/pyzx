@@ -14,6 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import cmath
+import math
 import os
 from argparse import ArgumentTypeError
 from enum import IntEnum
@@ -309,6 +311,36 @@ def get_z_box_label(g, v):
 def set_z_box_label(g, v, label):
     assert g.type(v) == VertexType.Z_BOX
     g.set_vdata(v, 'label', label)
+
+
+def get_h_box_label(g, v) -> complex:
+    assert g.type(v) == VertexType.H_BOX
+    label = g.vdata(v, 'label', None)
+    if label is not None:
+        return complex(label)
+    phase = g.phase(v)
+    if isinstance(phase, Poly):
+        raise ValueError("Cannot convert symbolic phase to complex label")
+    return cmath.exp(1j * math.pi * float(phase))
+
+def set_h_box_label(g, v, label: complex) -> None:
+    assert g.type(v) == VertexType.H_BOX
+    g.set_vdata(v, 'label', complex(label))
+    g.set_phase(v, 0)
+
+def is_standard_hbox(g, v) -> bool:
+    """Check if H-box has the standard Hadamard label (-1)."""
+    assert g.type(v) == VertexType.H_BOX
+    label = g.vdata(v, 'label', None)
+    if label is not None:
+        return cmath.isclose(label, -1)
+    return g.phase(v) == 1
+
+def hbox_has_complex_label(g, v) -> bool:
+    """Check if H-box uses a complex label instead of legacy phase."""
+    assert g.type(v) == VertexType.H_BOX
+    return g.vdata(v, 'label', None) is not None
+
 
 # Return position 'perc'%-distance between 2 points:
 def ave_pos(a,b,perc=1/2): return (abs(a-b))*(perc) + min(a,b)

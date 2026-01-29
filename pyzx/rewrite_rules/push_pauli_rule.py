@@ -32,7 +32,7 @@ from fractions import Fraction
 
 from typing import List, Dict, Tuple
 
-from pyzx.utils import EdgeType, VertexType, FractionLike, phase_is_pauli, vertex_is_zx, toggle_vertex
+from pyzx.utils import EdgeType, VertexType, FractionLike, phase_is_pauli, vertex_is_zx, toggle_vertex, is_standard_hbox
 from pyzx.graph.base import BaseGraph, VT, ET, upair
 
 def check_pauli(g: BaseGraph[VT,ET], v: VT, w: VT) -> bool:
@@ -58,7 +58,7 @@ def check_pauli(g: BaseGraph[VT,ET], v: VT, w: VT) -> bool:
 
     if ((types[v] == types[w] and et == EdgeType.HADAMARD) or
         (vertex_is_zx(types[v]) and types[v] != types[w] and et == EdgeType.SIMPLE) or
-        (types[v] == VertexType.H_BOX and phases[v] == 1 and (
+        (types[v] == VertexType.H_BOX and is_standard_hbox(g, v) and (
             (et == EdgeType.SIMPLE and types[w] == VertexType.X) or
             (et == EdgeType.HADAMARD and types[w] == VertexType.Z)))
         ):

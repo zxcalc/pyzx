@@ -72,9 +72,12 @@ def X_to_tensor(arity: int, phase: float) -> np.ndarray:
             m[i] -= np.exp(1j*phase)
     return np.power(np.sqrt(0.5),arity)*m.reshape([2]*arity)
 
-def H_to_tensor(arity: int, phase: float) -> np.ndarray:
+def H_to_tensor(arity: int, phase: float, label: Optional[complex] = None) -> np.ndarray:
     m = np.ones(2**arity, dtype = complex)
-    if phase != 0: m[-1] = np.exp(1j*phase)
+    if label is not None:
+        m[-1] = label
+    elif phase != 0:
+        m[-1] = np.exp(1j*phase)
     return m.reshape([2]*arity)
 
 def W_to_tensor(arity: int) -> np.ndarray:
@@ -184,7 +187,12 @@ def tensorfy_naive(g: 'BaseGraph[VT,ET]', preserve_scalar: bool = True) -> NDArr
                 elif types[v] == VertexType.X:
                     t = X_to_tensor(d,phase)
                 elif types[v] == VertexType.H_BOX:
-                    t = H_to_tensor(d,phase)
+                    # Check if H-box has a complex label.
+                    h_label = g.vdata(v, 'label', None)
+                    if h_label is not None:
+                        t = H_to_tensor(d, 0, label=complex(h_label))
+                    else:
+                        t = H_to_tensor(d, phase)
                 elif types[v] == VertexType.W_INPUT or types[v] == VertexType.W_OUTPUT:
                     if phase != 0: raise ValueError("Phase on W node")
                     t = W_to_tensor(d)
