@@ -31,6 +31,7 @@ from .pi_commute_rule           import *
 from .hbox_not_remove_rule      import *
 from .zero_hbox_rule            import *
 from .fuse_hboxes_rule          import *
+from .hbox_cancel_rule          import *
 from .had_edge_hbox_rule        import *
 from .hpivot_rule               import *
 from .merge_phase_gadget_rule   import *
