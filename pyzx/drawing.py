@@ -38,7 +38,7 @@ patches: Any = None
 lines: Any = None
 
 
-from .utils import settings, get_mode, phase_to_s, EdgeType, VertexType, FloatInt, get_z_box_label
+from .utils import settings, get_mode, phase_to_s, VertexType, FloatInt, get_z_box_label, get_h_box_label, hbox_has_complex_label
 from .graph.base import BaseGraph, VT, ET
 from .circuit import Circuit
 
@@ -241,7 +241,16 @@ def draw_matplotlib(
         t = g.type(v)
         a = g.phase(v)
         a_offset = 0.5
-        phase_str = phase_to_s(a, t)
+        # Handle H-boxes with complex labels.
+        if t == VertexType.H_BOX and hbox_has_complex_label(g, v):
+            label = get_h_box_label(g, v)
+            # Standard Hadamard (-1) is displayed as empty.
+            if cmath.isclose(label, -1):
+                phase_str = ''
+            else:
+                phase_str = str(label)
+        else:
+            phase_str = phase_to_s(a, t)
 
         if t == VertexType.Z:
             ax.add_patch(patches.Circle(p, 0.2, facecolor='#ccffcc', edgecolor='black', zorder=1))
@@ -332,12 +341,25 @@ def graph_json(g: BaseGraph[VT, ET],
                vdata: Optional[List[str]]=None,
                pauli_web: Optional[PauliWeb[VT,ET]]=None) -> str:
 
+    def get_phase_str(v):
+        """Get phase string for a vertex, handling complex labels."""
+        ty = g.type(v)
+        if ty == VertexType.Z_BOX:
+            return str(get_z_box_label(g, v))
+        elif ty == VertexType.H_BOX and hbox_has_complex_label(g, v):
+            label = get_h_box_label(g, v)
+            # Standard Hadamard (-1) is displayed as empty.
+            if cmath.isclose(label, -1):
+                return ''
+            return str(label)
+        return phase_to_s(g.phase(v), ty, poly_with_pi=True)
+
     nodes = [{'name': str(v),
               'x': float(coords[v][0]),
               'y': float(coords[v][1]),
               'z': float(coords[v][2]),
               't': g.type(v),
-              'phase': phase_to_s(g.phase(v), g.type(v), poly_with_pi=True) if g.type(v) != VertexType.Z_BOX else str(get_z_box_label(g, v)),
+              'phase': get_phase_str(v),
               'ground': g.is_ground(v),
               'vdata': [(key, g.vdata(v, key))
                   for key in vdata or [] if g.vdata(v, key, None) is not None],

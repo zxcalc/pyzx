@@ -26,8 +26,11 @@ if __name__ == '__main__':
 from fractions import Fraction
 
 from pyzx.graph import Graph
-from pyzx.utils import EdgeType, VertexType
+from pyzx.utils import (EdgeType, VertexType, get_h_box_label, set_h_box_label,
+                        is_standard_hbox, hbox_has_complex_label)
 from pyzx.rewrite_rules.hbox_cancel_rule import check_hbox_cancel, hbox_cancel
+from pyzx.rewrite_rules.zero_hbox_rule import check_zero_hbox
+from pyzx.rewrite_rules.copy_rule import check_copy
 from pyzx.hsimplify import hbox_cancel_simp
 
 np: Optional[ModuleType]
@@ -281,6 +284,141 @@ class TestHboxCancelRule(unittest.TestCase):
         rewrites = hbox_cancel_simp(g)
         self.assertGreater(rewrites, 0)
         self.assertEqual(g.num_vertices(), 2)
+
+    # Tests for H-box label helper functions.
+
+    def test_get_h_box_label_with_complex_label(self):
+        """Test get_h_box_label returns the stored complex label."""
+        g = Graph()
+        v = g.add_vertex(VertexType.H_BOX, 0, 0)
+        g.set_vdata(v, 'label', 1+2j)
+        self.assertEqual(get_h_box_label(g, v), 1+2j)
+
+    def test_get_h_box_label_phase_fallback(self):
+        """Test get_h_box_label converts phase to complex when no label set."""
+        g = Graph()
+        v = g.add_vertex(VertexType.H_BOX, 0, 0)
+        g.set_phase(v, 0)  # exp(0) = 1
+        self.assertAlmostEqual(get_h_box_label(g, v), 1, places=10)
+        g.set_phase(v, Fraction(1, 2))  # exp(i*pi/2) = i
+        self.assertAlmostEqual(get_h_box_label(g, v), 1j, places=10)
+        g.set_phase(v, 1)  # exp(i*pi) = -1
+        self.assertAlmostEqual(get_h_box_label(g, v), -1, places=10)
+
+    def test_set_h_box_label(self):
+        """Test set_h_box_label stores the complex label."""
+        g = Graph()
+        v = g.add_vertex(VertexType.H_BOX, 0, 0)
+        set_h_box_label(g, v, 3+4j)
+        self.assertEqual(g.vdata(v, 'label'), 3+4j)
+
+    def test_is_standard_hbox_with_label(self):
+        """Test is_standard_hbox with label=-1."""
+        g = Graph()
+        v = g.add_vertex(VertexType.H_BOX, 0, 0)
+        set_h_box_label(g, v, -1)
+        self.assertTrue(is_standard_hbox(g, v))
+        set_h_box_label(g, v, 2+3j)
+        self.assertFalse(is_standard_hbox(g, v))
+
+    def test_is_standard_hbox_with_phase(self):
+        """Test is_standard_hbox with legacy phase."""
+        g = Graph()
+        v = g.add_vertex(VertexType.H_BOX, 0, 0)
+        g.set_phase(v, 1)
+        self.assertTrue(is_standard_hbox(g, v))
+        g.set_phase(v, Fraction(1, 2))
+        self.assertFalse(is_standard_hbox(g, v))
+
+    def test_hbox_has_complex_label(self):
+        """Test hbox_has_complex_label detection."""
+        g = Graph()
+        v = g.add_vertex(VertexType.H_BOX, 0, 0)
+        g.set_phase(v, 1)
+        self.assertFalse(hbox_has_complex_label(g, v))
+        set_h_box_label(g, v, 1j)
+        self.assertTrue(hbox_has_complex_label(g, v))
+
+    # Tests for rewrite rules with H-box labels.
+
+    def test_check_hbox_cancel_with_standard_label(self):
+        """Test that hbox_cancel works with standard label (-1)."""
+        g = Graph()
+        v0 = g.add_vertex(VertexType.BOUNDARY, 0, 0)
+        v1 = g.add_vertex(VertexType.H_BOX, 0, 1)
+        set_h_box_label(g, v1, -1)
+        v2 = g.add_vertex(VertexType.H_BOX, 0, 2)
+        set_h_box_label(g, v2, -1)
+        v3 = g.add_vertex(VertexType.BOUNDARY, 0, 3)
+        g.add_edge((v0, v1))
+        g.add_edge((v1, v2))
+        g.add_edge((v2, v3))
+
+        self.assertTrue(check_hbox_cancel(g, v1))
+        self.assertTrue(check_hbox_cancel(g, v2))
+
+    def test_check_hbox_cancel_with_nonstandard_label(self):
+        """Test that hbox_cancel doesn't apply to non-standard labels."""
+        g = Graph()
+        v0 = g.add_vertex(VertexType.BOUNDARY, 0, 0)
+        v1 = g.add_vertex(VertexType.H_BOX, 0, 1)
+        set_h_box_label(g, v1, 1+2j)
+        v2 = g.add_vertex(VertexType.BOUNDARY, 0, 2)
+        g.add_edge((v0, v1))
+        g.add_edge((v1, v2))
+
+        self.assertFalse(check_hbox_cancel(g, v1))
+
+    def test_check_zero_hbox_with_label(self):
+        """Test that zero_hbox detects label=1 (all-ones tensor)."""
+        g = Graph()
+        v = g.add_vertex(VertexType.H_BOX, 0, 0)
+        set_h_box_label(g, v, 1)
+        self.assertTrue(check_zero_hbox(g, v))
+        set_h_box_label(g, v, -1)
+        self.assertFalse(check_zero_hbox(g, v))
+
+    def test_copy_rule_standard_hbox(self):
+        """Test that copy rule applies to standard H-boxes."""
+        g = Graph()
+        # X spider with phase 0 connected to standard H-box
+        v = g.add_vertex(VertexType.X, 0, 0)
+        g.set_phase(v, 0)
+        h = g.add_vertex(VertexType.H_BOX, 0, 1)
+        g.set_phase(h, 1)  # Standard Hadamard
+        z = g.add_vertex(VertexType.Z, 0, 2)
+        g.add_edge((v, h))
+        g.add_edge((h, z))
+
+        self.assertTrue(check_copy(g, v))
+
+    def test_copy_rule_nonstandard_hbox(self):
+        """Test that copy rule doesn't apply to non-standard H-boxes."""
+        g = Graph()
+        # X spider with phase 0 connected to non-standard H-box
+        v = g.add_vertex(VertexType.X, 0, 0)
+        g.set_phase(v, 0)
+        h = g.add_vertex(VertexType.H_BOX, 0, 1)
+        set_h_box_label(g, h, 2+3j)  # Non-standard label
+        z = g.add_vertex(VertexType.Z, 0, 2)
+        g.add_edge((v, h))
+        g.add_edge((h, z))
+
+        self.assertFalse(check_copy(g, v))
+
+    def test_copy_rule_standard_hbox_with_label(self):
+        """Test that copy rule applies to H-boxes with label=-1."""
+        g = Graph()
+        v = g.add_vertex(VertexType.X, 0, 0)
+        g.set_phase(v, 0)
+        h = g.add_vertex(VertexType.H_BOX, 0, 1)
+        set_h_box_label(g, h, -1)  # Standard Hadamard via label
+        z = g.add_vertex(VertexType.Z, 0, 2)
+        g.add_edge((v, h))
+        g.add_edge((h, z))
+
+        self.assertTrue(check_copy(g, v))
+
 
 if __name__ == '__main__':
     unittest.main()

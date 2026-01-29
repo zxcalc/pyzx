@@ -28,14 +28,14 @@ __all__ = ['check_hadamard',
            'had_edge_to_hbox',
            'unsafe_had_edge_to_hbox']
 
-from pyzx.utils import EdgeType, VertexType
+from pyzx.utils import EdgeType, VertexType, is_standard_hbox
 from pyzx.graph.base import BaseGraph, ET, VT
 from pyzx.rewrite_rules.euler_rule import check_hadamard_edge
 
 def check_hadamard(g: BaseGraph[VT ,ET], v: VT) -> bool:
     """Returns whether the vertex v in graph g is a Hadamard gate."""
     if g.type(v) != VertexType.H_BOX: return False
-    if g.phase(v) != 1: return False
+    if not is_standard_hbox(g, v): return False
     if g.vertex_degree(v) != 2: return False
     return True
 

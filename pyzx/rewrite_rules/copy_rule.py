@@ -30,7 +30,7 @@ __all__ = ['check_copy',
            'unsafe_copy',]
 
 from typing import Optional
-from pyzx.utils import EdgeType, VertexType, toggle_vertex, vertex_is_zx
+from pyzx.utils import EdgeType, VertexType, toggle_vertex, vertex_is_zx, is_standard_hbox
 
 from pyzx.graph.base import BaseGraph, ET, VT
 
@@ -95,6 +95,10 @@ def check_copy_h(
     et = g.edge_type(g.edge(v, w))
 
     if tw == VertexType.H_BOX:
+        # Only apply to standard H-boxes (label=-1 or phase=1).
+        # Non-standard H-boxes have different scalar factors.
+        if not is_standard_hbox(g, w):
+            return None
         # X pi/0 can always copy through H-box
         # But if v is Z, then it can only copy if the phase is 1
         if et == EdgeType.HADAMARD:

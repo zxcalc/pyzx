@@ -27,16 +27,19 @@ __all__ = ['check_zero_hbox',
            'unsafe_zero_hbox']
 
 
-from pyzx.utils import VertexType
+import cmath
+from pyzx.utils import VertexType, get_h_box_label, hbox_has_complex_label
 from pyzx.graph.base import BaseGraph, ET, VT
 
 
 def check_zero_hbox(g: BaseGraph[VT,ET], v:VT) -> bool:
-    """Matches H-boxes that have a phase of 2pi==0."""
+    """Matches H-boxes with label 1 (or phase 0)."""
     types = g.types()
-    phases = g.phases()
-    if types[v] == VertexType.H_BOX and phases[v] == 0: return True
-    return False
+    if types[v] != VertexType.H_BOX:
+        return False
+    if hbox_has_complex_label(g, v):
+        return cmath.isclose(get_h_box_label(g, v), 1)
+    return g.phase(v) == 0
 
 
 def zero_hbox(g: BaseGraph[VT,ET], v: VT) -> bool:
