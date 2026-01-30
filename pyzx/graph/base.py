@@ -811,6 +811,78 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         from ..tikz import tikz_to_graph
         return tikz_to_graph(tikz,warn_overlap, fuse_overlap, ignore_nonzx, cls.backend)
 
+    def save(self, filename: str, fmt: Optional[str] = None) -> None:
+        """Saves the graph to a file.
+
+        Args:
+            filename: Path to the file to write.
+            fmt: Format to use. Supported formats are 'json' and 'tikz'.
+                 If not specified, the format is inferred from the file extension.
+
+        Raises:
+            ValueError: If the format is not supported or cannot be inferred.
+        """
+        if fmt is None:
+            if filename.endswith('.json') or filename.endswith('.qgraph'):
+                fmt = 'json'
+            elif filename.endswith('.tikz'):
+                fmt = 'tikz'
+            else:
+                raise ValueError(
+                    f"Cannot infer format from filename '{filename}'. "
+                    "Please specify format explicitly using fmt parameter."
+                )
+
+        if fmt == 'json':
+            content = self.to_json()
+        elif fmt == 'tikz':
+            content = self.to_tikz()
+        else:
+            raise ValueError(f"Unsupported format '{fmt}'. Supported formats are 'json' and 'tikz'.")
+
+        with open(filename, 'w') as f:
+            f.write(content)
+
+    @classmethod
+    def load(cls, filename: str, fmt: Optional[str] = None, **kwargs: Any) -> BaseGraph[VT, ET]:
+        """Loads a graph from a file.
+
+        Args:
+            filename: Path to the file to read.
+            fmt: Format of the file. Supported formats are 'json' and 'tikz'.
+                 If not specified, the format is inferred from the file extension.
+            **kwargs: Additional keyword arguments passed to the underlying parser.
+                      For 'tikz' format: warn_overlap, fuse_overlap, ignore_nonzx.
+
+        Returns:
+            The loaded graph.
+
+        Raises:
+            ValueError: If the format is not supported or cannot be inferred.
+        """
+        if fmt is None:
+            if filename.endswith('.json') or filename.endswith('.qgraph'):
+                fmt = 'json'
+            elif filename.endswith('.tikz'):
+                fmt = 'tikz'
+            else:
+                raise ValueError(
+                    f"Cannot infer format from filename '{filename}'. "
+                    "Please specify format explicitly using fmt parameter."
+                )
+
+        with open(filename, 'r') as f:
+            content = f.read()
+
+        if fmt == 'json':
+            return cls.from_json(content)
+        elif fmt == 'tikz':
+            tikz_kwargs = {k: v for k, v in kwargs.items()
+                           if k in ('warn_overlap', 'fuse_overlap', 'ignore_nonzx')}
+            return cls.from_tikz(content, **tikz_kwargs)
+        else:
+            raise ValueError(f"Unsupported format '{fmt}'. Supported formats are 'json' and 'tikz'.")
+
     def is_id(self) -> bool:
         """Returns whether the graph is just a set of identity wires,
         i.e. a graph where all the vertices are either inputs or outputs,
