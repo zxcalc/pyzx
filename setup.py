@@ -36,7 +36,7 @@ setup(
         "pyzx.scripts",
     ],
     python_requires='>=3.9',
-    install_requires=["typing_extensions>=3.7.4",
+    install_requires=["typing_extensions>=4.5.0",
                       "numpy>=1.14",
                       "pyperclip>=1.8.1",
                       "tqdm>=4.56.0",
