@@ -34,6 +34,7 @@ setup(
         "pyzx.routing",
         "pyzx.local_search",
         "pyzx.scripts",
+        "pyzx.web"
     ],
     python_requires='>=3.9',
     install_requires=["typing_extensions>=4.5.0",
@@ -41,6 +42,7 @@ setup(
                       "pyperclip>=1.8.1",
                       "tqdm>=4.56.0",
                       "ipywidgets>=7.5",
-                      "lark>=1.2.2"],
+                      "lark>=1.2.2",
+                      "galois>=0.4.7"],
     include_package_data=True,
 )
