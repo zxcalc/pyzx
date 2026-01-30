@@ -55,3 +55,11 @@ recursive_unfuse_FE_simp = RewriteSimpSingleVertex_ft(check_recursive_unfuse_FE,
 fuse_4_FE_simp = RewriteSimpGraph(safe_fuse_4_FE, simp_fuse_4_FE)
 """Performs a fuse-4 rewrite. Can be run automatically on the entire graph."""
 fuse_4_FE_simp.is_match = is_fuse_4_match # type: ignore
+
+fuse_5_FE_simp = RewriteSimpGraph(safe_fuse_5_FE, simp_fuse_5_FE)
+"""Performs a fuse-5 rewrite. Can be run automatically on the entire graph."""
+fuse_5_FE_simp.is_match = is_fuse_5_match # type: ignore
+
+fuse_n_2FE_simp = RewriteSimpGraph(safe_fuse_n_2FE, simp_fuse_n_2FE)
+"""Performs a fuse-n rewrite. Can be run automatically on the entire graph."""
+fuse_n_2FE_simp.is_match = is_fuse_n_match # type: ignore
