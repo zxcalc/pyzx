@@ -132,7 +132,8 @@ def circuit_to_graph(
                 q_mapper.add_label(l, q_mapper.next_row_or_default(l, q_mapper.max_row() - 1))
             except ValueError:
                 raise ValueError("Ancilla label {} already in use".format(str(l)))
-            v = g.add_vertex(VertexType.Z, q_mapper.to_qubit(l), q_mapper.next_row(l))
+            vtype, phase = gate.get_vertex_info() # type: ignore
+            v = g.add_vertex(vtype, q_mapper.to_qubit(l), q_mapper.next_row(l), phase)
             q_mapper.set_prev_vertex(l, v)
             q_mapper.advance_next_row(l)
         elif gate.name == 'PostSelect':
@@ -145,7 +146,8 @@ def circuit_to_graph(
                 q_mapper.remove_label(l)
             except ValueError:
                 raise ValueError("PostSelect label {} is not in use".format(str(l)))
-            v = g.add_vertex(VertexType.Z, q, r)
+            vtype, phase = gate.get_vertex_info() # type: ignore
+            v = g.add_vertex(vtype, q, r, phase)
             g.add_edge((u,v),EdgeType.SIMPLE)
         else:
             if not compress_rows: #or not isinstance(gate, (ZPhase, XPhase, HAD)):

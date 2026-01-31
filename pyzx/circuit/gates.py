@@ -1167,20 +1167,84 @@ class CU(Gate):
         for gate in self.to_basic_gates():
             gate.to_graph(g, q_mapper, c_mapper)
 
+_state_map = {
+    '+': (VertexType.Z, Fraction(0)),
+    '-': (VertexType.Z, Fraction(1)),
+    '0': (VertexType.X, Fraction(0)),
+    '1': (VertexType.X, Fraction(1)),
+}
+
+
 class InitAncilla(Gate):
+    """Initialize an ancilla qubit in a specified state.
+
+    Args:
+        label: The qubit label/index.
+        state: The initial state. One of '+', '-', '0', '1' for the
+            respective kets |+⟩, |-⟩, |0⟩, |1⟩. Defaults to '+'.
+    """
     name = 'InitAncilla'
-    def __init__(self, label):
+    STATE_MAP = _state_map
+
+    def __init__(self, label: int, state: str = '+'):
         self.label = label
         self.target = label
+        if state not in self.STATE_MAP:
+            raise ValueError(
+                f"Invalid state '{state}'. Must be one of: "
+                f"{', '.join(repr(k) for k in self.STATE_MAP.keys())}"
+            )
+        self.state = state
+
+    def __str__(self) -> str:
+        if self.state == '+':
+            return f"InitAncilla({self.label})"
+        return f"InitAncilla({self.label}, state={self.state!r})"
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, InitAncilla):
+            return False
+        return self.label == other.label and self.state == other.state
+
+    def get_vertex_info(self):
+        """Returns (VertexType, phase) for this ancilla state."""
+        return self.STATE_MAP[self.state]
+
 
 class PostSelect(Gate):
+    """Post-select a qubit in a specified state.
+
+    Args:
+        label: The qubit label/index.
+        state: The post-selection state. One of '+', '-', '0', '1' for the
+            respective bras ⟨+|, ⟨-|, ⟨0|, ⟨1|. Defaults to '+'.
+    """
     name = 'PostSelect'
-    def __init__(self, label):
+    STATE_MAP = _state_map
+
+    def __init__(self, label: int, state: str = '+'):
         self.label = label
         self.target = label
+        if state not in self.STATE_MAP:
+            raise ValueError(
+                f"Invalid state '{state}'. Must be one of: "
+                f"{', '.join(repr(k) for k in self.STATE_MAP.keys())}"
+            )
+        self.state = state
 
-    def to_graph(self, g, labels, qs, _cs, rs, _crs):
-        v = g.add_vertex(VertexType.Z, self.label, 0)
+    def __str__(self) -> str:
+        if self.state == '+':
+            return f"PostSelect({self.label})"
+        return f"PostSelect({self.label}, state={self.state!r})"
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, PostSelect):
+            return False
+        return self.label == other.label and self.state == other.state
+
+    def get_vertex_info(self):
+        """Returns (VertexType, phase) for this post-selection state."""
+        return self.STATE_MAP[self.state]
 
 class DiscardBit(Gate):
     name = 'DiscardBit'
