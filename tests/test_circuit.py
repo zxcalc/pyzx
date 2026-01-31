@@ -27,11 +27,13 @@ if __name__ == '__main__':
     sys.path.append('..')
     sys.path.append('.')
 mydir = os.path.dirname(__file__)
+from fractions import Fraction
 from pyzx.generate import cliffordT, cliffords
 from pyzx.simplify import clifford_simp
 from pyzx.extract import extract_circuit
 from pyzx.circuit import Circuit, PhaseGadget
-from pyzx.circuit.gates import ParityPhase, FSim
+from pyzx.circuit.gates import ParityPhase, FSim, ZPhase, XPhase
+from pyzx.symbolic import Poly, Term, Var, new_var
 from pyzx.utils import VertexType, EdgeType
 from fractions import Fraction
 
@@ -251,6 +253,37 @@ class TestPhaseGadgetGate(unittest.TestCase):
         # Original should be unchanged.
         self.assertEqual(g.control, 0)
         self.assertEqual(g.target, 1)
+
+class TestGateAdjointComplexPhase(unittest.TestCase):
+
+    def test_zphase_adjoint_real_phase(self):
+        gate = ZPhase(0, Fraction(1, 4))
+        adj = gate.to_adjoint()
+        self.assertEqual(adj.phase, Fraction(-1, 4))
+
+    def test_zphase_adjoint_symbolic_real_phase(self):
+        phase = new_var('theta', is_bool=False)
+        gate = ZPhase(0, phase)
+        adj = gate.to_adjoint()
+        self.assertEqual(adj.phase, -phase)
+
+    def test_zphase_adjoint_complex_phase(self):
+        var = Var('x')
+        phase = Poly([((3+2j), Term([(var, 1)]))])
+        gate = ZPhase(0, phase)
+        adj = gate.to_adjoint()
+
+        self.assertEqual(len(adj.phase.terms), 1)
+        self.assertEqual(adj.phase.terms[0][0], (-3+2j))
+
+    def test_xphase_adjoint_complex_phase(self):
+        var = Var('y')
+        phase = Poly([((1+1j), Term([(var, 1)]))])
+        gate = XPhase(0, phase)
+        adj = gate.to_adjoint()
+
+        self.assertEqual(adj.phase.terms[0][0], (-1+1j))
+
 
 if __name__ == '__main__':
     unittest.main()

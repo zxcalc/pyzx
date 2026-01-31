@@ -115,17 +115,20 @@ class Scalar(object):
         Returns:
             A copy of the Scalar
         """
+        def conjugate_phase(phase: FractionLike) -> FractionLike:
+            return -phase.conjugate()
+
         s = Scalar()
         s.power2 = self.power2
-        s.phase = self.phase if not conjugate else -self.phase
-        s.phasenodes = copy.copy(self.phasenodes) if not conjugate else [-p for p in self.phasenodes]
+        s.phase = self.phase if not conjugate else conjugate_phase(self.phase)
+        s.phasenodes = copy.copy(self.phasenodes) if not conjugate else [conjugate_phase(p) for p in self.phasenodes]
         s.floatfactor = self.floatfactor if not conjugate else self.floatfactor.conjugate()
         s.is_unknown = self.is_unknown
         s.is_zero = self.is_zero
         if not conjugate:
             s.sum_of_phases = copy.deepcopy(self.sum_of_phases)
         else:
-            s.sum_of_phases = {-phase: coeff for phase, coeff in self.sum_of_phases.items()}
+            s.sum_of_phases = {conjugate_phase(phase): coeff for phase, coeff in self.sum_of_phases.items()}
         return s
 
     def conjugate(self) -> 'Scalar':

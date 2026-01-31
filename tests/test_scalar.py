@@ -19,7 +19,7 @@ import sys
 import numpy as np
 from fractions import Fraction
 from pyzx.graph.scalar import Scalar
-from pyzx.symbolic import Poly, new_var
+from pyzx.symbolic import Poly, Term, Var, new_var
 
 if __name__ == '__main__':
     sys.path.append('..')
@@ -514,6 +514,37 @@ class TestScalar(unittest.TestCase):
         unicode_repr = scalar.to_unicode()
         self.assertIsInstance(unicode_repr, str)
 
+    def test_scalar_conjugate_complex_poly_phase(self):
+        var = Var('a')
+        phase = Poly([((2+3j), Term([(var, 1)]))])
+        s = Scalar()
+        s.phase = phase
+        conj = s.conjugate()
+
+        self.assertEqual(len(conj.phase.terms), 1)
+        self.assertEqual(conj.phase.terms[0][0], (-2+3j))
+
+    def test_scalar_conjugate_phasenodes_complex(self):
+        var = Var('b')
+        node_phase = Poly([((1+2j), Term([(var, 1)]))])
+        s = Scalar()
+        s.phasenodes = [node_phase]
+        conj = s.conjugate()
+
+        self.assertEqual(len(conj.phasenodes), 1)
+        self.assertEqual(conj.phasenodes[0].terms[0][0], (-1+2j))
+
+    def test_scalar_conjugate_sum_of_phases_complex(self):
+        var = Var('c')
+        phase_key = Poly([((4+5j), Term([(var, 1)]))])
+        s = Scalar()
+        s.sum_of_phases = {phase_key: 2}
+        conj = s.conjugate()
+
+        self.assertEqual(len(conj.sum_of_phases), 1)
+        conjugated_key = list(conj.sum_of_phases.keys())[0]
+        self.assertEqual(conjugated_key.terms[0][0], (-4+5j))
+        self.assertEqual(conj.sum_of_phases[conjugated_key], 2)
 
 
 if __name__ == '__main__':
