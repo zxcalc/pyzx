@@ -31,8 +31,9 @@ from pyzx.generate import cliffordT, cliffords
 from pyzx.simplify import clifford_simp
 from pyzx.extract import extract_circuit
 from pyzx.circuit import Circuit, PhaseGadget
-from pyzx.circuit.gates import ParityPhase
+from pyzx.circuit.gates import ParityPhase, FSim
 from pyzx.utils import VertexType, EdgeType
+from fractions import Fraction
 
 np: Optional[ModuleType]
 try:
@@ -242,6 +243,14 @@ class TestPhaseGadgetGate(unittest.TestCase):
         pp2_copy = pp2.copy()
         self.assertFalse(pp2_copy.as_gadget)
 
+    def test_fsim_reposition(self):
+        g = FSim(0, 1, Fraction(1, 2), Fraction(1, 4))
+        g2 = g.reposition([2, 3, 0, 1])
+        self.assertEqual(g2.control, 2)
+        self.assertEqual(g2.target, 3)
+        # Original should be unchanged.
+        self.assertEqual(g.control, 0)
+        self.assertEqual(g.target, 1)
 
 if __name__ == '__main__':
     unittest.main()
