@@ -27,7 +27,6 @@ from pyzx.circuit.gates import InitAncilla, PostSelect
 from pyzx.utils import VertexType
 
 
-# Expected (VertexType, phase) for each state.
 STATE_EXPECTED = {
     '+': (VertexType.Z, Fraction(0)),
     '-': (VertexType.Z, Fraction(1)),
@@ -101,6 +100,21 @@ class TestPostSelect(unittest.TestCase):
         self.assertNotEqual(PostSelect(0, '+'), PostSelect(0, '-'))
         self.assertNotEqual(PostSelect(0), PostSelect(1))
         self.assertNotEqual(PostSelect(0), InitAncilla(0))
+
+
+class TestReposition(unittest.TestCase):
+    """Tests for repositioning InitAncilla/PostSelect gates."""
+
+    def test_reposition(self):
+        """Test that reposition updates both label and target."""
+        mask = [0, 5, 2, 3]
+        for gate_class in [InitAncilla, PostSelect]:
+            with self.subTest(gate=gate_class.__name__):
+                g1 = gate_class(1, '0')
+                g2 = g1.reposition(mask)
+                self.assertEqual(g2.label, 5)
+                self.assertEqual(g2.target, 5)
+                self.assertEqual(g2.state, '0')
 
 
 class TestToGraph(unittest.TestCase):

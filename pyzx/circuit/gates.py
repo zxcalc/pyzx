@@ -1210,6 +1210,12 @@ class InitAncilla(Gate):
         """Returns (VertexType, phase) for this ancilla state."""
         return self.STATE_MAP[self.state]
 
+    def reposition(self, mask, bit_mask=None):
+        g = self.copy()
+        g.label = mask[self.label]
+        g.target = g.label
+        return g
+
 
 class PostSelect(Gate):
     """Post-select a qubit in a specified state.
@@ -1245,6 +1251,13 @@ class PostSelect(Gate):
     def get_vertex_info(self):
         """Returns (VertexType, phase) for this post-selection state."""
         return self.STATE_MAP[self.state]
+
+    def reposition(self, mask, bit_mask=None):
+        g = self.copy()
+        g.label = mask[self.label]
+        g.target = g.label
+        return g
+
 
 class DiscardBit(Gate):
     name = 'DiscardBit'
