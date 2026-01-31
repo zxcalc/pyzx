@@ -21,6 +21,7 @@ except ImportError:
 	ig = None
 
 from .base import BaseGraph, VertexType, EdgeType
+from ..utils import assert_phase_real
 
 class GraphIG(BaseGraph):
 	"""Implementation of :class:`~graph.base.BaseGraph` using ``python-igraph`` 
@@ -135,6 +136,7 @@ class GraphIG(BaseGraph):
 		return [a if a != None else 0 for a in self.graph.vs['_a']]
 
 	def set_phase(self, vertex, phase):
+		assert_phase_real(phase)
 		self.graph.vs[vertex]['_a'] = phase % 2
 
 	def qubit(self, vertex):
