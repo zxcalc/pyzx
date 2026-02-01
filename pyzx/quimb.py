@@ -28,10 +28,17 @@ import importlib
 qu: Any = None
 qtn: Any = None
 
-from .utils import EdgeType, VertexType
+from .utils import EdgeType, VertexType, FractionLike
 from .graph.base import BaseGraph
 from .simplify import to_gh
 from .symbolic import Poly
+
+
+def _cexp(phase: FractionLike) -> complex:
+    """Compute e^(i*pi*phase), raising if phase is symbolic."""
+    if isinstance(phase, Poly):
+        raise NotImplementedError("Quimb does not support symbolic phases")
+    return np.exp(1j * np.pi * float(phase))
 
 
 def to_quimb_tensor(g: BaseGraph) -> "qtn.TensorNetwork": # type:ignore
@@ -57,10 +64,7 @@ def to_quimb_tensor(g: BaseGraph) -> "qtn.TensorNetwork": # type:ignore
     # Here we have phase tensors corresponding to Z-spiders with only one output and no input.
     for v in g.vertices():
         if g.type(v) == VertexType.Z and g.phase(v) != 0:
-            phase = g.phase(v)
-            if isinstance(phase, Poly):
-                raise NotImplementedError("Quimb does not support symbolic phases")
-            tensors.append(qtn.Tensor(data = [1, np.exp(1j * np.pi * phase)],
+            tensors.append(qtn.Tensor(data = [1, _cexp(g.phase(v))],
                                       inds = (f'{v}',),
                                       tags = ("V",)))
     
@@ -74,18 +78,20 @@ def to_quimb_tensor(g: BaseGraph) -> "qtn.TensorNetwork": # type:ignore
                        tags = ("H",) if isHadamard else ("N",))
         tensors.append(t)
 
-    # TODO: This is not taking care of all the stuff that can be in g.scalar
-    # In particular, it doesn't check g.scalar.phasenodes
-    # TODO: This will give the wrong tensor when g.scalar.is_zero == True.
-    # Grab the float factor and exponent from the scalar
-    phase = g.scalar.phase
-    if isinstance(phase, Poly):
-        raise NotImplementedError("Quimb does not support symbolic phases")
-    scalar_float = np.exp(1j * np.pi * phase) * g.scalar.floatfactor
-    for node in g.scalar.phasenodes:    # Each node is a Fraction
-        if isinstance(node, Poly):
-            raise NotImplementedError("Quimb does not support symbolic phases")
-        scalar_float *= 1 + np.exp(1j * np.pi * node)
+    # scalar is zero, return a zero tensor
+    if g.scalar.is_zero:
+        return qtn.TensorNetwork([qtn.Tensor(data=0j, inds=(), tags=("S",))])
+
+    scalar_float = _cexp(g.scalar.phase) * g.scalar.floatfactor
+
+    # phasenodes contribute factor (1 + e^(i*pi*node))
+    for node in g.scalar.phasenodes:
+        scalar_float *= 1 + _cexp(node)
+
+    # sum_of_phases contributes factor sum(coeff * e^(i*pi*phase))
+    if g.scalar.sum_of_phases:
+        scalar_float *= sum(coeff * _cexp(p) for p, coeff in g.scalar.sum_of_phases.items())
+
     scalar_exp = math.log10(math.sqrt(2)) * g.scalar.power2
 
     # If the TN is empty, create a single 0-tensor with scalar factor, otherwise
