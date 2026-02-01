@@ -348,6 +348,68 @@ class TestGraphSaveLoad(unittest.TestCase):
             os.unlink(filename)
 
 
+class TestPhaseGadget(unittest.TestCase):
+
+    def test_add_phase_gadget_basic(self):
+        g = Graph()
+        v1 = g.add_vertex(VertexType.Z, 0, 0)
+        v2 = g.add_vertex(VertexType.Z, 1, 0)
+        v3 = g.add_vertex(VertexType.Z, 2, 0)
+
+        hub, phase_v = g.add_phase_gadget(Fraction(1, 4), [v1, v2, v3])
+
+        self.assertEqual(g.phase(hub), 0)
+        self.assertEqual(g.vertex_degree(hub), 4)
+        self.assertEqual(g.phase(phase_v), Fraction(1, 4))
+        self.assertEqual(g.vertex_degree(phase_v), 1)
+        self.assertTrue(g.is_phase_gadget(hub))
+
+    def test_add_phase_gadget_single_target(self):
+        g = Graph()
+        v1 = g.add_vertex(VertexType.Z, 0, 0)
+
+        hub, phase_v = g.add_phase_gadget(Fraction(1, 2), [v1])
+
+        self.assertEqual(g.phase(hub), 0)
+        self.assertEqual(g.phase(phase_v), Fraction(1, 2))
+        self.assertEqual(g.vertex_degree(hub), 2)
+
+    def test_add_phase_gadget_empty_targets_error(self):
+        g = Graph()
+        with self.assertRaises(ValueError):
+            g.add_phase_gadget(Fraction(1, 4), [])
+
+    def test_add_phase_gadget_custom_vertex_type(self):
+        g = Graph()
+        v1 = g.add_vertex(VertexType.X, 0, 0)
+        v2 = g.add_vertex(VertexType.X, 1, 0)
+
+        hub, phase_v = g.add_phase_gadget(
+            Fraction(3, 4), [v1, v2],
+            vertex_type=VertexType.X
+        )
+
+        self.assertEqual(g.type(hub), VertexType.X)
+        self.assertEqual(g.type(phase_v), VertexType.X)
+
+    def test_add_phase_gadget_custom_edge_type(self):
+        g = Graph()
+        v1 = g.add_vertex(VertexType.Z, 0, 0)
+        v2 = g.add_vertex(VertexType.Z, 1, 0)
+
+        hub, phase_v = g.add_phase_gadget(
+            Fraction(1, 4), [v1, v2],
+            edge_type=EdgeType.SIMPLE
+        )
+
+        e1 = g.edge(hub, v1)
+        e2 = g.edge(hub, v2)
+        self.assertEqual(g.edge_type(e1), EdgeType.SIMPLE)
+        self.assertEqual(g.edge_type(e2), EdgeType.SIMPLE)
+
+        e_phase = g.edge(hub, phase_v)
+        self.assertEqual(g.edge_type(e_phase), EdgeType.HADAMARD)
+
+
 if __name__ == '__main__':
     unittest.main()
-

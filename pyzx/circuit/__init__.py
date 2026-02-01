@@ -21,7 +21,7 @@ import numpy as np
 
 from .gates import (Gate, gate_types, NOT, Y, Z, HAD, XPhase, YPhase, ZPhase, U2, U3, S, T, SX, SWAP, RXX, RZZ, CNOT,
                     CY, CZ, CHAD, CSX, XCX, CRX, CRY, CRZ, CPhase, CU3, CU, CSWAP, Tofolli, CCZ, ParityPhase, FSim,
-                    Measurement)
+                    Measurement, PhaseGadget)
 
 from ..graph.base import BaseGraph
 from ..utils import EdgeType

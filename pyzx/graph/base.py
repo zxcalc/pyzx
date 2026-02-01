@@ -1153,5 +1153,30 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
                 return True
         return False
 
+    def add_phase_gadget(
+        self,
+        phase: FractionLike,
+        targets: Iterable[VT],
+        edge_type: EdgeType = EdgeType.HADAMARD,
+        vertex_type: VertexType = VertexType.Z
+    ) -> Tuple[VT, VT]:
+        """Add a phase gadget acting on the given target vertices.
+        Returns a tuple (hub, phase_vertex) of the created vertices."""
+        target_list = list(targets)
+        if not target_list:
+            raise ValueError("Phase gadget requires at least one target")
+
+        max_row = max(self.row(v) for v in target_list)
+        avg_qubit = sum(self.qubit(v) for v in target_list) / len(target_list)
+
+        hub = self.add_vertex(vertex_type, avg_qubit, max_row + 0.5, phase=0)
+        phase_vertex = self.add_vertex(vertex_type, avg_qubit, max_row + 1.0, phase=phase)
+
+        for t in target_list:
+            self.add_edge((hub, t), edge_type)
+        self.add_edge((hub, phase_vertex), EdgeType.HADAMARD)
+
+        return (hub, phase_vertex)
+
 
 
