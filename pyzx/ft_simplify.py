@@ -25,41 +25,41 @@ from pyzx.rewrite_rules.remove_id_rule import *
 from pyzx.ft_rewrite import RewriteSimpSingleVertex_ft
 
 
-elim_FE_simp = RewriteSimpSingleVertex(check_remove_id, unsafe_remove_id)
+elim_FE_simp: RewriteSimpSingleVertex = RewriteSimpSingleVertex(check_remove_id, unsafe_remove_id)
 """Performs an Elim rewrite. Can be run automatically on the entire graph."""
 
-fuse_1_FE_simp = RewriteSimpSingleVertex(check_fuse_1_FE, unsafe_fuse_1_FE)
+fuse_1_FE_simp: RewriteSimpSingleVertex = RewriteSimpSingleVertex(check_fuse_1_FE, unsafe_fuse_1_FE)
 """Performs a Fuse-1 rewrite. Can be run automatically on the entire graph."""
 
-unfuse_1_FE_simp = RewriteSimpSingleVertex(check_unfuse_1_FE, unsafe_unfuse_1_FE)
+unfuse_1_FE_simp: RewriteSimpSingleVertex = RewriteSimpSingleVertex(check_unfuse_1_FE, unsafe_unfuse_1_FE)
 """Performs a Unfuse-1 rewrite. Can be run automatically on the entire graph."""
 
-unfuse_4_FE_simp = RewriteSimpSingleVertex(check_unfuse_4_FE, unsafe_unfuse_4_FE)
+unfuse_4_FE_simp: RewriteSimpSingleVertex = RewriteSimpSingleVertex(check_unfuse_4_FE, unsafe_unfuse_4_FE)
 """Performs a Unfuse-4 rewrite. Can be run automatically on the entire graph."""
 
-unfuse_5_FE_simp = RewriteSimpSingleVertex(check_unfuse_5_FE, unsafe_unfuse_5_FE)
+unfuse_5_FE_simp: RewriteSimpSingleVertex = RewriteSimpSingleVertex(check_unfuse_5_FE, unsafe_unfuse_5_FE)
 """Performs a Unfuse-5 rewrite. Can be run automatically on the entire graph."""
 
-unfuse_n_2FE_simp = RewriteSimpSingleVertex(check_unfuse_n_2FE, unsafe_unfuse_n_2FE)
+unfuse_n_2FE_simp: RewriteSimpSingleVertex = RewriteSimpSingleVertex(check_unfuse_n_2FE, unsafe_unfuse_n_2FE)
 """Performs a Unfuse-n rewrite. Can be run automatically on the entire graph."""
 
-unfuse_2n_FE_simp = RewriteSimpSingleVertex_ft(check_unfuse_2n_FE, unsafe_unfuse_2n_FE)
+unfuse_2n_FE_simp: RewriteSimpSingleVertex_ft = RewriteSimpSingleVertex_ft(check_unfuse_2n_FE, unsafe_unfuse_2n_FE)
 """Performs a Unfuse-2n rewrite. Can be run automatically on the entire graph."""
 
-unfuse_2n_plus_FE_simp = RewriteSimpSingleVertex_ft(check_unfuse_2n_plus_FE, unsafe_unfuse_2n_plus_FE)
+unfuse_2n_plus_FE_simp: RewriteSimpSingleVertex_ft = RewriteSimpSingleVertex_ft(check_unfuse_2n_plus_FE, unsafe_unfuse_2n_plus_FE)
 """Performs a Unfuse-2n^+ rewrite. Can be run automatically on the entire graph."""
 
-recursive_unfuse_FE_simp = RewriteSimpSingleVertex_ft(check_recursive_unfuse_FE, unsafe_recursive_unfuse_FE)
+recursive_unfuse_FE_simp: RewriteSimpSingleVertex_ft = RewriteSimpSingleVertex_ft(check_recursive_unfuse_FE, unsafe_recursive_unfuse_FE)
 """Performs a recursive unfusion rewrite. Can be run automatically on the entire graph."""
 
-fuse_4_FE_simp = RewriteSimpGraph(safe_fuse_4_FE, simp_fuse_4_FE)
+fuse_4_FE_simp: RewriteSimpGraph = RewriteSimpGraph(safe_fuse_4_FE, simp_fuse_4_FE)
 """Performs a fuse-4 rewrite. Can be run automatically on the entire graph."""
 fuse_4_FE_simp.is_match = is_fuse_4_match # type: ignore
 
-fuse_5_FE_simp = RewriteSimpGraph(safe_fuse_5_FE, simp_fuse_5_FE)
+fuse_5_FE_simp: RewriteSimpGraph = RewriteSimpGraph(safe_fuse_5_FE, simp_fuse_5_FE)
 """Performs a fuse-5 rewrite. Can be run automatically on the entire graph."""
 fuse_5_FE_simp.is_match = is_fuse_5_match # type: ignore
 
-fuse_n_2FE_simp = RewriteSimpGraph(safe_fuse_n_2FE, simp_fuse_n_2FE)
+fuse_n_2FE_simp: RewriteSimpGraph = RewriteSimpGraph(safe_fuse_n_2FE, simp_fuse_n_2FE)
 """Performs a fuse-n rewrite. Can be run automatically on the entire graph."""
 fuse_n_2FE_simp.is_match = is_fuse_n_match # type: ignore
