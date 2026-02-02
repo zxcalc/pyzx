@@ -19,6 +19,7 @@ import unittest
 import random
 import sys
 import os
+from fractions import Fraction
 from types import ModuleType
 from typing import Optional
 
@@ -29,7 +30,9 @@ mydir = os.path.dirname(__file__)
 from pyzx.generate import cliffordT, cliffords
 from pyzx.simplify import clifford_simp
 from pyzx.extract import extract_circuit
-from pyzx.circuit import Circuit
+from pyzx.circuit import Circuit, PhaseGadget
+from pyzx.circuit.gates import ParityPhase
+from pyzx.utils import VertexType, EdgeType
 
 np: Optional[ModuleType]
 try:
@@ -125,11 +128,11 @@ class TestCircuit(unittest.TestCase):
         self.assertTrue(compare_tensors(c.to_matrix(),cz_matrix))
 
     def test_measurement_gate(self):
-        c = Circuit(2) 
+        c = Circuit(2)
         c1 = Circuit(2)
         c.add_gate("Measurement", 0)
         c1.add_gate("Measurement", 0, None)
-        
+
         self.assertTrue(c.gates[0] == c1.gates[0])
         g = c.to_graph()
         g1 = c1.to_graph()
@@ -142,6 +145,103 @@ class TestCircuit(unittest.TestCase):
         c2.add_gate("SWAP",0,1)
         self.assertTrue(c1.verify_equality(c2,up_to_swaps=True))
         self.assertFalse(c1.verify_equality(c2,up_to_swaps=False))
+
+@unittest.skipUnless(np, "numpy needs to be installed for this to run")
+class TestPhaseGadgetGate(unittest.TestCase):
+    def test_gate_creation(self):
+        # PhaseGadget is a convenience function that returns ParityPhase with as_gadget=True.
+        pg = PhaseGadget(Fraction(1, 4), 0, 1, 2)
+        self.assertIsInstance(pg, ParityPhase)
+        self.assertEqual(pg.name, 'ParityPhase')
+        self.assertEqual(pg.phase, Fraction(1, 4))
+        self.assertEqual(pg.targets, (0, 1, 2))
+        self.assertTrue(pg.as_gadget)
+
+    def test_as_gadget_parameter(self):
+        # Test direct use of as_gadget parameter on ParityPhase.
+        pp = ParityPhase(Fraction(1, 4), 0, 1, 2, as_gadget=True)
+        self.assertTrue(pp.as_gadget)
+        self.assertEqual(pp.phase, Fraction(1, 4))
+        self.assertEqual(pp.targets, (0, 1, 2))
+
+        # Default should be False.
+        pp2 = ParityPhase(Fraction(1, 4), 0, 1, 2)
+        self.assertFalse(pp2.as_gadget)
+
+    def test_add_to_circuit(self):
+        c = Circuit(3)
+        c.add_gate("PhaseGadget", Fraction(1, 2), 0, 1, 2)
+        self.assertIsInstance(c.gates[0], ParityPhase)
+        self.assertEqual(c.gates[0].phase, Fraction(1, 2))
+        self.assertEqual(c.gates[0].targets, (0, 1, 2))
+        self.assertTrue(c.gates[0].as_gadget)
+
+        c2 = Circuit(3)
+        c2.add_gate(PhaseGadget(Fraction(1, 4), 0, 2))
+        self.assertEqual(c2.gates[0].phase, Fraction(1, 4))
+        self.assertEqual(c2.gates[0].targets, (0, 2))
+        self.assertTrue(c2.gates[0].as_gadget)
+
+    def test_to_graph_structure(self):
+        c = Circuit(3)
+        c.add_gate("PhaseGadget", Fraction(1, 4), 0, 1, 2)
+        g = c.to_graph()
+
+        leaf_candidates = [v for v in g.vertices()
+                           if g.type(v) == VertexType.Z
+                           and g.phase(v) == Fraction(1, 4)
+                           and g.vertex_degree(v) == 1]
+
+        self.assertEqual(len(leaf_candidates), 1, "Should find exactly one phase gadget leaf")
+        leaf = leaf_candidates[0]
+
+        hub = list(g.neighbors(leaf))[0]
+        self.assertEqual(g.type(hub), VertexType.Z)
+        self.assertEqual(g.phase(hub), 0)
+
+        self.assertEqual(g.vertex_degree(hub), 4)
+
+        self.assertEqual(g.edge_type(g.edge(leaf, hub)), EdgeType.HADAMARD)
+
+        neighbors = list(g.neighbors(hub))
+        neighbors.remove(leaf)
+        for n in neighbors:
+            self.assertEqual(g.edge_type(g.edge(hub, n)), EdgeType.HADAMARD)
+            self.assertEqual(g.type(n), VertexType.Z)
+            self.assertEqual(g.phase(n), 0)
+
+    def test_extract_phase_gadget(self):
+        c = Circuit(3)
+        c.add_gate("PhaseGadget", Fraction(1, 4), 0, 1, 2)
+        g = c.to_graph()
+
+        c2 = extract_circuit(g)
+        self.assertEqual(c.qubits, c2.qubits)
+
+        self.assertTrue(compare_tensors(c.to_tensor(), c2.to_tensor(), False))
+
+    def test_gadget_vs_basic_gates_semantics(self):
+        # ParityPhase with as_gadget=True and as_gadget=False should have the same semantics.
+        c_gadget = Circuit(3)
+        c_gadget.add_gate(ParityPhase(Fraction(1, 4), 0, 1, 2, as_gadget=True))
+
+        c_basic = Circuit(3)
+        c_basic.add_gate(ParityPhase(Fraction(1, 4), 0, 1, 2, as_gadget=False))
+
+        # The tensors should be equivalent.
+        self.assertTrue(compare_tensors(c_gadget.to_tensor(), c_basic.to_tensor(), False))
+
+    def test_parity_phase_copy_preserves_as_gadget(self):
+        pp = ParityPhase(Fraction(1, 4), 0, 1, 2, as_gadget=True)
+        pp_copy = pp.copy()
+        self.assertTrue(pp_copy.as_gadget)
+        self.assertEqual(pp_copy.phase, pp.phase)
+        self.assertEqual(pp_copy.targets, pp.targets)
+
+        pp2 = ParityPhase(Fraction(1, 4), 0, 1, 2, as_gadget=False)
+        pp2_copy = pp2.copy()
+        self.assertFalse(pp2_copy.as_gadget)
+
 
 if __name__ == '__main__':
     unittest.main()

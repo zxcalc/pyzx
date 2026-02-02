@@ -145,7 +145,10 @@ had_edge_to_hbox_simp: RewriteSimpDoubleVertex = RewriteSimpDoubleVertex(check_h
 hbox_to_had_edge_simp: RewriteSimpSingleVertex = RewriteSimpSingleVertex(check_hadamard, unsafe_replace_hadamard)
 """Converts an h-box connecting the given vertices into a hadamard edge. Can be run automatically on the entire graph."""
 
-just_hpivot_simp: RewriteSimpGraph = RewriteSimpGraph(hpivot, simp_hpivot)
+hbox_cancel_simp = RewriteSimpSingleVertex(check_hbox_cancel, unsafe_hbox_cancel)
+"""Cancels H-boxes with phase 1 and arity 2 that have a Hadamard edge or an adjacent H-box. Can be run automatically on the entire graph."""
+
+just_hpivot_simp = RewriteSimpGraph(hpivot, simp_hpivot)
 """Performs hyper-pivot rewrite. This should only be called through :func:`hpivot_simp`."""
 
 def hpivot_simp(g: BaseGraph[VT,ET]) -> bool:
