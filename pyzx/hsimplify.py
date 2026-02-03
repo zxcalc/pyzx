@@ -121,28 +121,28 @@ def from_hypergraph_form(g: BaseGraph[VT,ET]) -> None:
 
 
 
-hbox_to_had_edge = RewriteSimpSingleVertex(check_hadamard, unsafe_replace_hadamard)
+hbox_to_had_edge: RewriteSimpSingleVertex = RewriteSimpSingleVertex(check_hadamard, unsafe_replace_hadamard)
 """Replaces a given hadamard gate with a hadamard edge. Can be run automatically on the entire graph."""
 
-zero_hbox_simp = RewriteSimpSingleVertex(check_zero_hbox, unsafe_zero_hbox)
+zero_hbox_simp: RewriteSimpSingleVertex = RewriteSimpSingleVertex(check_zero_hbox, unsafe_zero_hbox)
 """Removes a given H-box with a phase of 2pi=0. Can be run automatically on the entire graph."""
 
-par_hbox_simp = RewriteSimpGraph(par_hbox, simp_par_hbox)
+par_hbox_simp: RewriteSimpGraph = RewriteSimpGraph(par_hbox, simp_par_hbox)
 """Performs the `multiply rule'. Can be run automatically on the entire graph."""
 
-par_hbox_intro_simp = RewriteSimpGraph(par_hbox_intro, simp_par_hbox_intro)
+par_hbox_intro_simp: RewriteSimpGraph = RewriteSimpGraph(par_hbox_intro, simp_par_hbox_intro)
 """Removes an H-box according to the Intro rule. Can be run automatically on the entire graph."""
 
-hspider_simp = RewriteSimpDoubleVertex(check_connected_hboxes, unsafe_fuse_hboxes)
+hspider_simp: RewriteSimpDoubleVertex = RewriteSimpDoubleVertex(check_connected_hboxes, unsafe_fuse_hboxes)
 """Fuses two neighboring H-boxes together. Can be run automatically on the entire graph."""
 
-hbox_parallel_not_remove_simp = RewriteSimpDoubleVertex(check_hbox_parallel_not, unsafe_hbox_parallel_not_remove, is_ordered=True)
+hbox_parallel_not_remove_simp: RewriteSimpDoubleVertex = RewriteSimpDoubleVertex(check_hbox_parallel_not, unsafe_hbox_parallel_not_remove, is_ordered=True)
 """Disconnects a Z-spider and H-box that are connected via a regular wire and a NOT, and turns the H-box into a Z-spider. Can be run automatically on the entire graph."""
 
-had_edge_to_hbox_simp = RewriteSimpDoubleVertex(check_hadamard_edge, unsafe_had_edge_to_hbox)
+had_edge_to_hbox_simp: RewriteSimpDoubleVertex = RewriteSimpDoubleVertex(check_hadamard_edge, unsafe_had_edge_to_hbox)
 """Converts a hadamard edge into an h-box connecting the given vertices. Can be run automatically on the entire graph."""
 
-hbox_to_had_edge_simp = RewriteSimpSingleVertex(check_hadamard, unsafe_replace_hadamard)
+hbox_to_had_edge_simp: RewriteSimpSingleVertex = RewriteSimpSingleVertex(check_hadamard, unsafe_replace_hadamard)
 """Converts an h-box connecting the given vertices into a hadamard edge. Can be run automatically on the entire graph."""
 
 hbox_cancel_simp = RewriteSimpSingleVertex(check_hbox_cancel, unsafe_hbox_cancel)
