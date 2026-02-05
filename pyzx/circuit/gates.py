@@ -1248,6 +1248,45 @@ class InitAncilla(Gate):
         return g
 
 
+class Reset(Gate):
+    """Reset an existing qubit to |0⟩.
+
+    Corresponds to the OpenQASM ``reset`` instruction.
+
+    In the ZX-diagram this is represented as a post-selection effect
+    vertex (X spider, phase 0 → ``⟨0|``) followed by a disconnected
+    state preparation vertex (X spider, phase 0 → ``|0⟩``).  This
+    models the operation ``|0⟩⟨0|``, which is a post-selection rather
+    than a true quantum reset (a CPTP map that traces out the qubit
+    and prepares ``|0⟩`` unconditionally).  The distinction matters for
+    scalar tracking and mixed-state analysis, but the resulting
+    ZX-diagram is correct for reasoning about the stabiliser structure
+    of circuits that use reset (e.g., syndrome extraction).
+    """
+    name = 'Reset'
+
+    def __init__(self, target: int):
+        self.target = target
+        self.label = target
+
+    def __str__(self) -> str:
+        return "Reset({})".format(self.target)
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Reset):
+            return False
+        return self.target == other.target
+
+    def to_qasm(self) -> str:
+        return "reset q[{:d}];".format(self.target)
+
+    def reposition(self, mask, bit_mask=None):
+        g = self.copy()
+        g.target = mask[self.target]
+        g.label = g.target
+        return g
+
+
 class PostSelect(Gate):
     """Post-select a qubit in a specified state.
 
@@ -1337,7 +1376,16 @@ class Measurement(Gate):
         if not isinstance(other, Measurement): return False
         if self.target != other.target: return False
         if self.result_bit != other.result_bit: return False
+        if self.result_symbol != other.result_symbol: return False
         return True
+
+    def to_qasm(self) -> str:
+        if self.result_symbol is not None:
+            return "measure q[{:d}] -> {};".format(self.target, self.result_symbol)
+        if self.result_bit is not None:
+            return "measure q[{:d}] -> c[{:d}];".format(self.target, self.result_bit)
+        raise TypeError("Measurement on qubit {} has no result destination".format(
+            self.target))
 
     def reposition(self, mask, bit_mask = None):
         g = self.copy()
@@ -1429,6 +1477,7 @@ gate_types: Dict[str,Type[Gate]] = {
     "RXX": RXX,
     "FSim": FSim,
     "InitAncilla": InitAncilla,
+    "Reset": Reset,
     "PostSelect": PostSelect,
     "DiscardBit": DiscardBit,
     "Measurement": Measurement,
