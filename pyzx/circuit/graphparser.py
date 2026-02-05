@@ -17,7 +17,7 @@
 from typing import Dict, List, Optional
 
 from . import Circuit
-from .gates import Measurement, TargetMapper
+from .gates import InitAncilla, Measurement, Reset, TargetMapper
 from ..utils import EdgeType, VertexType, FloatInt, FractionLike
 from ..graph import Graph
 from ..graph.base import BaseGraph, VT, ET
@@ -30,9 +30,17 @@ def graph_to_circuit(g:BaseGraph[VT,ET], split_phases:bool=True) -> Circuit:
     ty = g.types()
     phases = g.phases()
     rows: Dict[FloatInt,List[VT]] = {}
+    # Map (vertex_type, phase) → InitAncilla state string.
+    _reverse_state_map: Dict[tuple, str] = {
+        (VertexType.Z, 0): '+',
+        (VertexType.Z, 1): '-',
+        (VertexType.X, 0): '0',
+        (VertexType.X, 1): '1',
+    }
+    input_qubits = set(qs[v] for v in inputs)
 
     c = Circuit(len(inputs))
-    
+
     for v in g.vertices():
         if v in inputs: continue
         r = g.row(v)
@@ -44,6 +52,23 @@ def graph_to_circuit(g:BaseGraph[VT,ET], split_phases:bool=True) -> Circuit:
             phase = phases[v]
             t = ty[v]
             neigh = [w for w in g.neighbors(v) if rs[w]<r]
+            if len(neigh) == 0:
+                # No backward neighbour: state preparation vertex.
+                qi = int(q)
+                if t == VertexType.X and phase == 0 and q in input_qubits:
+                    # Qubit already has an input boundary → mid-circuit reset.
+                    # NOTE: this heuristic assumes any disconnected X(0) spider
+                    # on an input qubit is a reset.  It could misidentify a
+                    # manually constructed graph that uses X(0) preparation on
+                    # an input qubit for a different purpose.
+                    c.add_gate(Reset(qi))
+                    continue
+                state = _reverse_state_map.get((t, phase))
+                if state is not None:
+                    c.add_gate(InitAncilla(qi, state))
+                    continue
+                raise TypeError("Graph doesn't seem circuit like: "
+                                "vertex {} has no parents".format(v))
             if len(neigh) != 1:
                 raise TypeError("Graph doesn't seem circuit like: multiple parents")
             n = neigh[0]
@@ -52,6 +77,11 @@ def graph_to_circuit(g:BaseGraph[VT,ET], split_phases:bool=True) -> Circuit:
             if g.edge_type(g.edge(n,v)) == EdgeType.HADAMARD:
                 c.add_gate("HAD", q)
             if t == VertexType.BOUNDARY: #vertex is an output
+                continue
+            if g.is_ground(v):
+                # Ground vertex: discard/trace-out, part of a Reset pair.
+                # (The corresponding Reset gate is emitted when the state
+                # preparation vertex on this qubit is processed.)
                 continue
             if phase!=0 and not split_phases:
                 if t == VertexType.Z: c.add_gate("ZPhase", q, phase=phase)
@@ -118,8 +148,9 @@ def circuit_to_graph(
         qubit = i+c.qubits
         v = g.add_vertex(VertexType.BOUNDARY, qubit, 0)
         inputs.append(v)
-        q_mapper.add_label(qubit, 1)
-        c_mapper.set_prev_vertex(qubit, v)
+        c_mapper.add_label(i, 1)
+        c_mapper.set_qubit(i, qubit)
+        c_mapper.set_prev_vertex(i, v)
 
 
     for gate in c.gates:
@@ -128,24 +159,41 @@ def circuit_to_graph(
             measure_targets.add(gate.target)
         if gate.name == 'InitAncilla':
             l = gate.label # type: ignore
-            try:
-                q_mapper.add_label(l, q_mapper.next_row_or_default(l, q_mapper.max_row() - 1))
-            except ValueError:
+            if l in q_mapper.labels():
                 raise ValueError("Ancilla label {} already in use".format(str(l)))
             vtype, phase = gate.get_vertex_info() # type: ignore
+            q_mapper.add_label(l, q_mapper.next_row_or_default(l, q_mapper.max_row() - 1))
             v = g.add_vertex(vtype, q_mapper.to_qubit(l), q_mapper.next_row(l), phase)
             q_mapper.set_prev_vertex(l, v)
             q_mapper.advance_next_row(l)
+        elif gate.name == 'Reset':
+            # Model reset as discard (ground) then preparation |0⟩,
+            # creating a wire break.  The ground connection traces out
+            # the qubit, modelling reset as a CPTP map.
+            l = gate.label # type: ignore
+            q = q_mapper.to_qubit(l)
+            # The qubit is being reused, so clear any pending measurement
+            # marker.  If the qubit is measured again later without a
+            # subsequent reset, it will be re-added.
+            measure_targets.discard(q)
+            r = q_mapper.next_row(l)
+            u = q_mapper.prev_vertex(l)
+            # Effect vertex: discard the old state by tracing out.
+            effect_v = g.add_vertex(VertexType.Z, q, r, 0, ground=True)
+            g.add_edge((u, effect_v), EdgeType.SIMPLE)
+            # State vertex: prepare the new |0⟩ state.
+            state_v = g.add_vertex(VertexType.X, q, r + 1, 0)
+            q_mapper.set_prev_vertex(l, state_v)
+            q_mapper.set_next_row(l, r + 2)
         elif gate.name == 'PostSelect':
             l = gate.label # type: ignore
-            try:
-                q = q_mapper.to_qubit(l)
-                r = q_mapper.next_row(l)
-                u = q_mapper.prev_vertex(l)
-                q_mapper.set_next_row(l, r + 1)
-                q_mapper.remove_label(l)
-            except ValueError:
+            if l not in q_mapper.labels():
                 raise ValueError("PostSelect label {} is not in use".format(str(l)))
+            q = q_mapper.to_qubit(l)
+            r = q_mapper.next_row(l)
+            u = q_mapper.prev_vertex(l)
+            q_mapper.set_next_row(l, r + 1)
+            q_mapper.remove_label(l)
             vtype, phase = gate.get_vertex_info() # type: ignore
             v = g.add_vertex(vtype, q, r, phase)
             g.add_edge((u,v),EdgeType.SIMPLE)

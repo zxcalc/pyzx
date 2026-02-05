@@ -1295,6 +1295,42 @@ class InitAncilla(Gate):
         return g
 
 
+class Reset(Gate):
+    """Reset an existing qubit to |0⟩.
+
+    Corresponds to the OpenQASM ``reset`` instruction, which discards
+    the current qubit state and unconditionally prepares ``|0⟩``.
+
+    In the ZX-diagram this is represented as a Z spider connected to
+    ground (tracing out / discarding the qubit) followed by a
+    disconnected X spider with phase 0 (state preparation ``|0⟩``).
+    This mirrors the ``DiscardBit`` pattern and models reset as a CPTP
+    map.
+    """
+    name = 'Reset'
+
+    def __init__(self, target: int):
+        self.target = target
+        self.label = target
+
+    def __str__(self) -> str:
+        return "Reset({})".format(self.target)
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Reset):
+            return False
+        return self.target == other.target
+
+    def to_qasm(self) -> str:
+        return "reset q[{:d}];".format(self.target)
+
+    def reposition(self, mask, bit_mask=None):
+        g = self.copy()
+        g.target = mask[self.target]
+        g.label = g.target
+        return g
+
+
 class PostSelect(Gate):
     """Post-select a qubit in a specified state.
 
@@ -1384,7 +1420,16 @@ class Measurement(Gate):
         if not isinstance(other, Measurement): return False
         if self.target != other.target: return False
         if self.result_bit != other.result_bit: return False
+        if self.result_symbol != other.result_symbol: return False
         return True
+
+    def to_qasm(self) -> str:
+        if self.result_symbol is not None:
+            return "measure q[{:d}] -> {};".format(self.target, self.result_symbol)
+        if self.result_bit is not None:
+            return "measure q[{:d}] -> c[{:d}];".format(self.target, self.result_bit)
+        raise TypeError("Measurement on qubit {} has no result destination".format(
+            self.target))
 
     def reposition(self, mask, bit_mask = None):
         g = self.copy()
@@ -1476,6 +1521,7 @@ gate_types: Dict[str,Type[Gate]] = {
     "RXX": RXX,
     "FSim": FSim,
     "InitAncilla": InitAncilla,
+    "Reset": Reset,
     "PostSelect": PostSelect,
     "DiscardBit": DiscardBit,
     "Measurement": Measurement,
