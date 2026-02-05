@@ -49,6 +49,9 @@ __all__ = [
     'check_unfuse_5_FE',
     'unfuse_5_FE',
     'unsafe_unfuse_5_FE',
+    'check_unfuse_n_2FE',
+    'unfuse_n_2FE',
+    'unsafe_unfuse_n_2FE',
     'check_unfuse_2n_FE',
     'unfuse_2n_FE',
     'unsafe_unfuse_2n_FE',
@@ -62,10 +65,10 @@ __all__ = [
 
 import itertools
 import math
-from typing import Callable, Optional
+from typing import Callable, Optional, List
 
 from pyzx.graph.base import BaseGraph, VT, ET
-from pyzx.utils import VertexType
+from pyzx.utils import VertexType, EdgeType, is_pauli
 
 
 def _linear_sum_assignment_itertools(cost_matrix) -> tuple[list, list]:
@@ -230,6 +233,19 @@ def unfuse_5_FE(g: BaseGraph[VT, ET], v: VT) -> bool:
 def unsafe_unfuse_5_FE(g: BaseGraph[VT, ET], v: VT) -> bool:
     """Unfuses a degree-5 spider into a pentagon."""
     return _unsafe_unfuse_spider(g, v, lambda x, y: _get_n_cycle_coords(5, x, y))
+
+def check_unfuse_n_2FE(g: BaseGraph[VT, ET], v: VT) -> bool:
+    return g.type(v) in (VertexType.X, VertexType.Z) and g.phase(v) == 0 
+
+def unfuse_n_2FE(g: BaseGraph[VT, ET], v: VT) -> bool:
+    """Unfuses a degree-n spider into a n-sided polygon"""
+    if not check_unfuse_n_2FE(g, v):
+        return False
+    return unsafe_unfuse_n_2FE(g, v)
+
+def unsafe_unfuse_n_2FE(g: BaseGraph[VT, ET], v: VT) -> bool:
+    """Unfuses a degree-n spider into a n-sided polygon"""
+    return _unsafe_unfuse_spider(g, v, lambda x, y: _get_n_cycle_coords(g.vertex_degree(v), x, y))
 
 
 def check_unfuse_2n_FE(g: BaseGraph[VT, ET], v: VT) -> bool:

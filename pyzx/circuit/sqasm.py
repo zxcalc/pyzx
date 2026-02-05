@@ -30,13 +30,13 @@ __all__ = ['sqasm']
 # isolated vertices. n.b. remove_ids already does this, but this might change
 # in the future...
 
-spider_nocheck = RewriteSimpDoubleVertex(check_fuse, unsafe_fuse,None, False, False)
+spider_nocheck: RewriteSimpDoubleVertex = RewriteSimpDoubleVertex(check_fuse, unsafe_fuse,None, False, False)
 
 # def spider_nocheck(g: BaseGraph, ms: List) -> RewriteOutputType:
 #     etab,rem_v,rem_e,check = spider(g, ms)
 #     return (etab, rem_v, rem_e, False)
 
-remove_ids_nocheck = RewriteSimpSingleVertex(check_remove_id, unsafe_remove_id, None, False)
+remove_ids_nocheck: RewriteSimpSingleVertex = RewriteSimpSingleVertex(check_remove_id, unsafe_remove_id, None, False)
 
 
 def sqasm(s: str, simplify=True) -> BaseGraph:
