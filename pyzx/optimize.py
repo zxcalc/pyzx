@@ -19,11 +19,13 @@ The function :func:`basic_optimization` runs a set of back-and-forth gate commut
 :func:`phase_block_optimize` does phase polynomial optimization using the TODD algorithm,
 and :func:`full_optimize` combines these two methods."""
 
+from fractions import Fraction
 from typing import overload, Tuple, List, Union, Dict, Set
 from typing_extensions import Literal
 
 from .circuit import Circuit
 from .circuit.gates import Gate, ZPhase, XPhase, CNOT, CZ, ParityPhase, NOT, HAD, SWAP, S, Z
+from .utils import settings
 from .extract import permutation_as_swaps
 from .todd import todd_simp
 
@@ -512,6 +514,22 @@ class Optimizer(object):
             else: # Only the control has a hadamard gate in front of it
                 self.add_hadamard(c)
                 self.add_cnot(g)
+
+        elif isinstance(g, XPhase):
+            # XPhase(θ) = HAD·ZPhase(θ)·HAD, so we handle it by toggling hadamards and
+            # processing as a ZPhase.
+            toggle_element(self.hadamards, t)
+            # Normalize phase to Fraction if needed (skip for symbolic Poly phases).
+            if isinstance(g.phase, (int, float, Fraction)):
+                if isinstance(g.phase, float):
+                    phase = Fraction(g.phase).limit_denominator(settings.float_to_fraction_max_denominator)
+                else:
+                    phase = Fraction(g.phase)
+            else:
+                phase = g.phase  # Symbolic phase, pass through.
+            zphase_gate = ZPhase(t, phase)
+            self.parse_gate(zphase_gate)
+            toggle_element(self.hadamards, t)
 
         else:
             raise TypeError("Unknown gate {}. Maybe simplify the gates with circuit.to_basic_gates()?".format(str(g)))
