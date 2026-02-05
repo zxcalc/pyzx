@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""
+r"""
 This module contains the implementation of the fault-equivalent Fuse-1 rule and its reverse, Unfuse-1.
 
 The check function returns a boolean indicating whether the rule can be applied.
