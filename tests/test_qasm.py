@@ -359,6 +359,464 @@ class TestQASM(unittest.TestCase):
 
         self.assertTrue(compare_tensors(t1, t3))
 
+    def test_reset_single_qubit(self):
+        """Test that 'reset' command is parsed for a single qubit."""
+        from pyzx.circuit.gates import Reset
+        c = Circuit.from_qasm("""
+        OPENQASM 2.0;
+        include "qelib1.inc";
+        qreg q[2];
+        reset q[0];
+        h q[0];
+        """)
+        self.assertEqual(c.qubits, 2)
+        self.assertEqual(len(c.gates), 2)
+        self.assertIsInstance(c.gates[0], Reset)
+        self.assertEqual(c.gates[0].target, 0)
+
+    def test_reset_entire_register(self):
+        """Test that 'reset' command broadcasts over entire register."""
+        from pyzx.circuit.gates import Reset
+        c = Circuit.from_qasm("""
+        OPENQASM 2.0;
+        include "qelib1.inc";
+        qreg q[3];
+        reset q;
+        """)
+        self.assertEqual(c.qubits, 3)
+        self.assertEqual(len(c.gates), 3)
+        for i, gate in enumerate(c.gates):
+            self.assertIsInstance(gate, Reset)
+            self.assertEqual(gate.target, i)
+
+    def test_reset_openqasm3(self):
+        """Test that 'reset' command works with OpenQASM 3."""
+        from pyzx.circuit.gates import Reset
+        c = Circuit.from_qasm("""
+        OPENQASM 3;
+        include "stdgates.inc";
+        qubit[2] q;
+        reset q[1];
+        x q[1];
+        """)
+        self.assertEqual(c.qubits, 2)
+        self.assertEqual(len(c.gates), 2)
+        self.assertIsInstance(c.gates[0], Reset)
+        self.assertEqual(c.gates[0].target, 1)
+
+    def test_reset_to_graph(self):
+        """Test that reset creates appropriate vertices when converted to graph."""
+        from pyzx.utils import VertexType
+        c = Circuit.from_qasm("""
+        OPENQASM 2.0;
+        include "qelib1.inc";
+        qreg q[1];
+        reset q[0];
+        """)
+        g = c.to_graph()
+
+        # Effect vertex: Z spider connected to ground (discard).
+        ground_verts = list(g.grounds())
+        self.assertEqual(len(ground_verts), 1)
+        self.assertEqual(g.type(ground_verts[0]), VertexType.Z)
+
+        # State vertex: X spider phase 0 (|0⟩ preparation).
+        x_vertices = [v for v in g.vertices() if g.type(v) == VertexType.X]
+        self.assertEqual(len(x_vertices), 1)
+        self.assertEqual(g.phase(x_vertices[0]), 0)
+
+    def test_reset_to_graph_has_output(self):
+        """Test that a qubit has an output boundary after reset."""
+        c = Circuit.from_qasm("""
+        OPENQASM 2.0;
+        include "qelib1.inc";
+        qreg q[1];
+        reset q[0];
+        h q[0];
+        """)
+        g = c.to_graph()
+        self.assertEqual(len(g.inputs()), 1)
+        self.assertEqual(len(g.outputs()), 1)
+
+    def test_measure_reset_has_output(self):
+        """Test that a qubit has an output after measure followed by reset."""
+        c = Circuit.from_qasm("""
+        OPENQASM 2.0;
+        include "qelib1.inc";
+        qreg q[1];
+        creg c[1];
+        h q[0];
+        measure q[0] -> c[0];
+        reset q[0];
+        x q[0];
+        """)
+        g = c.to_graph()
+        # 1 qubit + 1 classical bit.
+        self.assertEqual(len(g.inputs()), 2)
+        # q[0] after reset+x gets output, c[0] gets pass-through output.
+        self.assertEqual(len(g.outputs()), 2)
+
+    def test_measure_reset_measure_no_output(self):
+        """Test that a qubit ending with measurement has no output boundary."""
+        c = Circuit.from_qasm("""
+        OPENQASM 2.0;
+        include "qelib1.inc";
+        qreg q[2];
+        creg c[1];
+        h q[0];
+        measure q[0] -> c[0];
+        reset q[0];
+        h q[0];
+        measure q[0] -> c[0];
+        """)
+        g = c.to_graph()
+        # 2 qubits + 1 classical bit.
+        self.assertEqual(len(g.inputs()), 3)
+        # q[0] ends with a measurement (no output), q[1] and c[0] get outputs.
+        self.assertEqual(len(g.outputs()), 2)
+
+    def test_reset_qasm_round_trip(self):
+        """Test that reset survives a QASM round-trip."""
+        from pyzx.circuit.gates import Reset
+        qasm_in = """
+        OPENQASM 2.0;
+        include "qelib1.inc";
+        qreg q[2];
+        h q[0];
+        reset q[0];
+        cx q[0],q[1];
+        """
+        c1 = Circuit.from_qasm(qasm_in)
+        qasm_out = c1.to_qasm()
+        c2 = Circuit.from_qasm(qasm_out)
+        self.assertEqual(len(c1.gates), len(c2.gates))
+        for g1, g2 in zip(c1.gates, c2.gates):
+            self.assertEqual(type(g1), type(g2))
+            if isinstance(g1, Reset):
+                self.assertEqual(g1.target, g2.target)
+
+
+    def test_measure_register_broadcast(self):
+        """Test that 'measure q -> c' broadcasts over entire register."""
+        from pyzx.circuit.gates import Measurement
+        c = Circuit.from_qasm("""
+        OPENQASM 2.0;
+        include "qelib1.inc";
+        qreg q[3];
+        creg c[3];
+        h q[0];
+        h q[1];
+        h q[2];
+        measure q -> c;
+        """)
+        self.assertEqual(c.qubits, 3)
+        self.assertEqual(len(c.gates), 6)
+        for i in range(3):
+            gate = c.gates[3 + i]
+            self.assertIsInstance(gate, Measurement)
+            self.assertEqual(gate.target, i)
+
+
+    def test_graph_to_circuit_reset(self):
+        """Test that graph_to_circuit recovers Reset gates."""
+        from pyzx.circuit.gates import Reset
+        from pyzx.circuit.graphparser import graph_to_circuit
+        c1 = Circuit.from_qasm("""
+        OPENQASM 2.0;
+        include "qelib1.inc";
+        qreg q[1];
+        h q[0];
+        reset q[0];
+        x q[0];
+        """)
+        g = c1.to_graph()
+        c2 = graph_to_circuit(g)
+
+        # The extracted circuit should contain a Reset gate.
+        reset_gates = [gt for gt in c2.gates if isinstance(gt, Reset)]
+        self.assertEqual(len(reset_gates), 1)
+        self.assertEqual(reset_gates[0].target, 0)
+
+
+    def test_issue_345_circuit1_measure_reset(self):
+        """End-to-end test for issue #345 circuit 1 (Steane code with reset).
+
+        Verifies the full workflow: QASM with measure+reset parses, converts
+        to a valid ZX-graph, and round-trips through QASM.
+        """
+        qasm = """
+        OPENQASM 2.0;
+        include "qelib1.inc";
+        qreg q[8];
+        creg c[1];
+        h q[0];
+        cx q[0],q[1];
+        cx q[0],q[2];
+        cx q[0],q[3];
+        cx q[0],q[4];
+        h q[0];
+        measure q[0] -> c[0];
+        reset q[0];
+        h q[0];
+        cx q[0],q[1];
+        cx q[0],q[2];
+        cx q[0],q[5];
+        cx q[0],q[6];
+        h q[0];
+        measure q[0] -> c[0];
+        reset q[0];
+        h q[0];
+        cx q[0],q[1];
+        cx q[0],q[3];
+        cx q[0],q[5];
+        cx q[0],q[7];
+        h q[0];
+        measure q[0] -> c[0];
+        """
+        # Parse.
+        c = Circuit.from_qasm(qasm)
+        self.assertEqual(c.qubits, 8)
+
+        # Convert to graph.
+        g = c.to_graph()
+        # 8 qubits + 1 classical bit.
+        self.assertEqual(len(g.inputs()), 9)
+        # q[0] ends with measurement (no reset after); 7 qubit + 1 classical output.
+        self.assertEqual(len(g.outputs()), 8)
+
+        # QASM round-trip.
+        c2 = Circuit.from_qasm(c.to_qasm())
+        self.assertEqual(len(c.gates), len(c2.gates))
+        for g1, g2 in zip(c.gates, c2.gates):
+            self.assertEqual(type(g1), type(g2))
+
+    def test_issue_345_circuit2_ancilla_measure(self):
+        """End-to-end test for issue #345 circuit 2 (Steane code, no reset).
+
+        Uses three separate ancilla qubits instead of resetting one qubit.
+        Verifies that QASM with multiple registers and measurements parses
+        and converts to a valid ZX-graph.
+        """
+        qasm = """
+        OPENQASM 2.0;
+        include "qelib1.inc";
+        qreg ancilla[3];
+        qreg data[7];
+        creg bits[3];
+        h ancilla[0];
+        cx ancilla[0],data[0];
+        cx ancilla[0],data[1];
+        cx ancilla[0],data[2];
+        cx ancilla[0],data[3];
+        h ancilla[0];
+        measure ancilla[0] -> bits[0];
+        h ancilla[1];
+        cx ancilla[1],data[0];
+        cx ancilla[1],data[1];
+        cx ancilla[1],data[4];
+        cx ancilla[1],data[5];
+        h ancilla[1];
+        measure ancilla[1] -> bits[1];
+        h ancilla[2];
+        cx ancilla[2],data[0];
+        cx ancilla[2],data[2];
+        cx ancilla[2],data[4];
+        cx ancilla[2],data[6];
+        h ancilla[2];
+        measure ancilla[2] -> bits[2];
+        """
+        # Parse.
+        c = Circuit.from_qasm(qasm)
+        self.assertEqual(c.qubits, 10)
+
+        # Convert to graph.
+        g = c.to_graph()
+        # 10 qubits + 3 classical bits.
+        self.assertEqual(len(g.inputs()), 13)
+        # Ancilla qubits 0-2 are measured (no output), data qubits 3-9 and
+        # 3 classical bits get outputs.
+        self.assertEqual(len(g.outputs()), 10)
+
+        # QASM round-trip.
+        c2 = Circuit.from_qasm(c.to_qasm())
+        self.assertEqual(len(c.gates), len(c2.gates))
+        for g1, g2 in zip(c.gates, c2.gates):
+            self.assertEqual(type(g1), type(g2))
+
+    def test_measure_multi_register_offset(self):
+        """Measure on a register that is not the first declared uses
+        the correct global qubit index."""
+        from pyzx.circuit.gates import Measurement
+        qasm = """
+        OPENQASM 2.0;
+        include "qelib1.inc";
+        qreg data[4];
+        qreg anc[2];
+        creg c[2];
+        measure anc[0] -> c[0];
+        measure anc[1] -> c[1];
+        """
+        c = Circuit.from_qasm(qasm)
+        measurements = [g for g in c.gates if isinstance(g, Measurement)]
+        self.assertEqual(len(measurements), 2)
+        # anc[0] is global qubit 4, anc[1] is global qubit 5.
+        self.assertEqual(measurements[0].target, 4)
+        self.assertEqual(measurements[1].target, 5)
+
+    def test_measure_qasm_round_trip(self):
+        """Test that measure survives a QASM round-trip."""
+        from pyzx.circuit.gates import Measurement
+        qasm_in = """
+        OPENQASM 2.0;
+        include "qelib1.inc";
+        qreg q[2];
+        creg c[2];
+        h q[0];
+        h q[1];
+        measure q[0] -> c[0];
+        measure q[1] -> c[1];
+        """
+        c1 = Circuit.from_qasm(qasm_in)
+        self.assertEqual(c1.bits, 2)
+        qasm_out = c1.to_qasm()
+        self.assertIn("creg c[2]", qasm_out)
+        c2 = Circuit.from_qasm(qasm_out)
+        self.assertEqual(c2.bits, 2)
+        self.assertEqual(len(c1.gates), len(c2.gates))
+        for g1, g2 in zip(c1.gates, c2.gates):
+            self.assertEqual(type(g1), type(g2))
+            if isinstance(g1, Measurement):
+                self.assertEqual(g1.target, g2.target)
+
+    def test_circuit_bits_from_creg(self):
+        """Test that Circuit.bits reflects declared classical registers."""
+        c = Circuit.from_qasm("""
+        OPENQASM 2.0;
+        include "qelib1.inc";
+        qreg q[2];
+        creg a[3];
+        creg b[2];
+        measure q[0] -> a[0];
+        measure q[1] -> b[1];
+        """)
+        self.assertEqual(c.bits, 5)
+
+    def test_measure_undeclared_creg(self):
+        """Test that measure into an undeclared classical register raises."""
+        with self.assertRaises(TypeError) as ctx:
+            Circuit.from_qasm("""
+            OPENQASM 2.0;
+            include "qelib1.inc";
+            qreg q[1];
+            measure q[0] -> c[0];
+            """)
+        self.assertIn("Undeclared classical register", str(ctx.exception))
+
+    def test_measure_creg_index_out_of_range(self):
+        """Test that an out-of-range classical index raises."""
+        with self.assertRaises(TypeError) as ctx:
+            Circuit.from_qasm("""
+            OPENQASM 2.0;
+            include "qelib1.inc";
+            qreg q[1];
+            creg c[1];
+            measure q[0] -> c[1];
+            """)
+        self.assertIn("out of range", str(ctx.exception))
+
+    def test_measure_broadcast_undeclared_creg(self):
+        """Test that broadcast measure into an undeclared creg raises."""
+        with self.assertRaises(TypeError) as ctx:
+            Circuit.from_qasm("""
+            OPENQASM 2.0;
+            include "qelib1.inc";
+            qreg q[2];
+            measure q -> c;
+            """)
+        self.assertIn("Undeclared classical register", str(ctx.exception))
+
+    def test_measure_broadcast_creg_too_small(self):
+        """Test that broadcast measure into a too-small creg raises."""
+        with self.assertRaises(TypeError) as ctx:
+            Circuit.from_qasm("""
+            OPENQASM 2.0;
+            include "qelib1.inc";
+            qreg q[3];
+            creg c[2];
+            measure q -> c;
+            """)
+        self.assertIn("is larger than", str(ctx.exception))
+
+    def test_classical_bits_in_c_mapper(self):
+        """Classical bit labels should be in c_mapper, not q_mapper."""
+        from pyzx.circuit.graphparser import circuit_to_graph
+        c = Circuit(2, bit_amount=1)
+        g = circuit_to_graph(c)
+        # 2 quantum inputs + 1 classical input = 3 inputs.
+        self.assertEqual(len(g.inputs()), 3)
+        # All wires are straight-through, so 3 outputs.
+        self.assertEqual(len(g.outputs()), 3)
+
+    def test_classical_bits_output_positions(self):
+        """Classical output boundaries should have the right qubit positions."""
+        from pyzx.circuit.graphparser import circuit_to_graph
+        c = Circuit(2, bit_amount=2)
+        g = circuit_to_graph(c)
+        self.assertEqual(len(g.inputs()), 4)
+        self.assertEqual(len(g.outputs()), 4)
+        # Output boundary qubits should be 0, 1, 2, 3.
+        output_qubits = sorted(g.qubit(v) for v in g.outputs())
+        self.assertEqual(output_qubits, [0, 1, 2, 3])
+
+    def test_measurement_ground_mode_with_result_bit(self):
+        """Measurement with result_bit in ground mode should use c_mapper."""
+        from pyzx.circuit.gates import Measurement
+        from pyzx.circuit.graphparser import circuit_to_graph
+        c = Circuit(1, bit_amount=1)
+        c.gates = [Measurement(0, result_bit=0)]
+        g = circuit_to_graph(c)
+        # 1 quantum input + 1 classical input = 2 inputs.
+        self.assertEqual(len(g.inputs()), 2)
+        # Measurement consumes the qubit (no quantum output), but
+        # the classical bit still gets an output boundary.
+        self.assertEqual(len(g.outputs()), 1)
+
+    def test_measurement_ground_mode_graph_structure(self):
+        """Ground-mode measurement should create correct graph structure."""
+        from pyzx.circuit.gates import Measurement
+        from pyzx.circuit.graphparser import circuit_to_graph
+        from pyzx.utils import VertexType
+        c = Circuit(1, bit_amount=1)
+        m = Measurement(0, result_bit=0)
+        c.gates = [m]
+        g = circuit_to_graph(c)
+        # Count vertex types.
+        types = [g.type(v) for v in g.vertices()]
+        n_boundary = types.count(VertexType.BOUNDARY)
+        # 1 quantum input + 1 classical input + 1 classical output = 3.
+        self.assertEqual(n_boundary, 3)
+
+    def test_measurement_ground_mode_direct(self):
+        """Directly test to_graph_ground with c_mapper labels."""
+        from pyzx.circuit.gates import Measurement, TargetMapper
+        from pyzx.utils import VertexType
+        from pyzx.graph import Graph
+        g = Graph()
+        q_mapper = TargetMapper()
+        c_mapper = TargetMapper()
+        # Set up one quantum wire and one classical wire.
+        q_in = g.add_vertex(VertexType.BOUNDARY, 0, 0)
+        c_in = g.add_vertex(VertexType.BOUNDARY, 1, 0)
+        q_mapper.add_label(0, 1)
+        q_mapper.set_prev_vertex(0, q_in)
+        c_mapper.add_label(0, 1)
+        c_mapper.set_qubit(0, 1)
+        c_mapper.set_prev_vertex(0, c_in)
+        # Call to_graph_ground directly.
+        m = Measurement(0, result_bit=0)
+        m.to_graph_ground(g, q_mapper, c_mapper)
+        # Should not crash, and the graph should have vertices.
+        self.assertGreater(len(list(g.vertices())), 2)
 
 if __name__ == '__main__':
     unittest.main()

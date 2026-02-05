@@ -403,7 +403,8 @@ class Circuit(object):
     @staticmethod
     def from_qasm(s: str) -> 'Circuit':
         """Produces a :class:`Circuit` based on a QASM input string.
-        It ignores all the non-unitary instructions like measurements in the file.
+        Supports OpenQASM 2 and 3, including ``reset`` and ``measure``
+        statements.
         It currently doesn't support custom gates that have parameters."""
         from .qasmparser import QASMParser
         p = QASMParser()
@@ -412,7 +413,8 @@ class Circuit(object):
     @staticmethod
     def from_qasm_file(fname: str) -> 'Circuit':
         """Produces a :class:`Circuit` based on a QASM description of a circuit.
-        It ignores all the non-unitary instructions like measurements in the file.
+        Supports OpenQASM 2 and 3, including ``reset`` and ``measure``
+        statements.
         It currently doesn't support custom gates that have parameters."""
         from .qasmparser import QASMParser
         p = QASMParser()
@@ -438,6 +440,21 @@ class Circuit(object):
         else:
             s = """OPENQASM 2.0;\ninclude "qelib1.inc";\n"""
             s += "qreg q[{!s}];\n".format(self.qubits)
+        # Collect classical register declarations from measurement gates.
+        cregs: Dict[str, int] = {}
+        for g in self.gates:
+            if isinstance(g, Measurement) and g.result_symbol is not None:
+                # result_symbol is e.g. "c[2]"; extract register name and index.
+                if '[' in g.result_symbol:
+                    regname, idx_str = g.result_symbol.split('[', 1)
+                    idx = int(idx_str.rstrip(']')) + 1
+                    cregs[regname] = max(cregs.get(regname, 0), idx)
+        if version == 3:
+            for regname, size in cregs.items():
+                s += "bit[{!s}] {};\n".format(size, regname)
+        else:
+            for regname, size in cregs.items():
+                s += "creg {}[{!s}];\n".format(regname, size)
         for g in self.gates:
             s += g.to_qasm() + "\n"
         return s
