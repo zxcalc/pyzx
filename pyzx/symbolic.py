@@ -263,7 +263,7 @@ class Poly:
         return self * (self ** (other - 1))
 
     def __mod__(self, other: int) -> 'Poly':
-        return Poly([(c % other, t) for c, t in self.terms if not isinstance(c, complex)])
+        return Poly([(c if isinstance(c, complex) else c % other, t) for c, t in self.terms])
 
     def __repr__(self) -> str:
         return f'Poly({str(self)})'

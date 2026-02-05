@@ -280,6 +280,29 @@ class TestPolyConjugate(unittest.TestCase):
         self.assertEqual(p.conjugate().terms[0][0], -2j)
 
 
+class TestPolyModulo(unittest.TestCase):
+
+    def test_modulo_real_coefficients(self):
+        p = Poly([(5, Term([])), (3, Term([]))])
+        result = p % 2
+        coeffs = [c for c, _ in result.terms]
+        self.assertEqual(coeffs, [1, 1])
+
+    def test_modulo_preserves_complex_coefficients(self):
+        var = Var('x')
+        p = Poly([((2+3j), Term([(var, 1)])), (5, Term([]))])
+        result = p % 2
+        coeffs = {str(t): c for c, t in result.terms}
+
+        self.assertEqual(coeffs['x'], (2+3j))
+        self.assertEqual(coeffs[''], 1)
+
+    def test_modulo_pure_complex(self):
+        p = Poly([((1+2j), Term([]))])
+        result = p % 2
+        self.assertEqual(len(result.terms), 1)
+        self.assertEqual(result.terms[0][0], (1+2j))
+
 
 if __name__ == '__main__':
     unittest.main()

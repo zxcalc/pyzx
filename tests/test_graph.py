@@ -171,6 +171,19 @@ class TestGraphBasicMethods(unittest.TestCase):
         g_adj = g.adjoint()
         self.assertAlmostEqual(g_adj.scalar.to_number(), scalar.to_number().conjugate())
 
+    def test_adjoint_complex_vertex_phase(self):
+        from pyzx.symbolic import Poly, Term, Var
+        g = Graph()
+        var = Var('z')
+        phase = Poly([((2+3j), Term([(var, 1)]))])
+        v = g.add_vertex(VertexType.Z, phase=phase)
+        g_adj = g.adjoint()
+        adj_v = list(g_adj.vertices())[0]
+        adj_phase = g_adj.phase(adj_v)
+
+        self.assertEqual(len(adj_phase.terms), 1)
+        self.assertEqual(adj_phase.terms[0][0], (-2+3j))
+
     @unittest.skipUnless(np, "numpy needs to be installed for this to run")
     def test_remove_isolated_vertex_preserves_semantics(self):
         g = Graph()
