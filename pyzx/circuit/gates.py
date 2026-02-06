@@ -904,9 +904,10 @@ class FSim(Gate):
     def __str__(self) -> str:
         return "FSim({!s}, {!s}, {!s}, {!s})".format(self.control, self.target, self.theta, self.phi)
 
-    def reposition(self, mask, bit_mask = None):
+    def reposition(self, mask, bit_mask=None):
         g = self.copy()
-        g.targets = [mask[t] for t in g.targets]
+        g.control = mask[self.control]
+        g.target = mask[self.target]
         return g
 
     def to_basic_gates(self):
