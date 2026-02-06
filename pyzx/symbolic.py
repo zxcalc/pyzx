@@ -263,7 +263,7 @@ class Poly:
         return self * (self ** (other - 1))
 
     def __mod__(self, other: int) -> 'Poly':
-        return Poly([(c % other, t) for c, t in self.terms if not isinstance(c, complex)])
+        return Poly([(c if isinstance(c, complex) else c % other, t) for c, t in self.terms])
 
     def __repr__(self) -> str:
         return f'Poly({str(self)})'
@@ -363,6 +363,14 @@ class Poly:
     def copy(self) -> 'Poly':
         """Return a shallow copy of the polynomial."""
         return Poly([(c, t) for c, t in self.terms])
+
+    def conjugate(self) -> 'Poly':
+        """Return the complex conjugate of the polynomial."""
+        def conj_coeff(c):
+            if isinstance(c, complex):
+                return c.conjugate()
+            return c
+        return Poly([(conj_coeff(c), t) for c, t in self.terms])
 
     def rebind_variables_to_registry(self, new_registry: VarRegistry) -> None:
         """Rebind all variables in this polynomial to the given registry."""

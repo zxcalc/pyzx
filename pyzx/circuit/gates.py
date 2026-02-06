@@ -26,7 +26,7 @@ from typing import Dict, List, Optional, Type, ClassVar, TypeVar, Generic, Set
 
 from ..utils import EdgeType, VertexType, FractionLike
 from ..graph.base import BaseGraph, VT, ET
-from ..symbolic import new_var
+from ..symbolic import new_var, Poly
 
 # We need this type variable so that the subclasses of Gate return the correct type for functions like copy()
 Tvar = TypeVar('Tvar', bound='Gate')
@@ -233,7 +233,11 @@ class Gate(object):
     def to_adjoint(self: Tvar) -> Tvar:
         g = self.copy()
         if hasattr(g, "phase"):
-            g.phase = -g.phase
+            phase = g.phase
+            if isinstance(phase, Poly):
+                g.phase = -phase.conjugate()
+            else:
+                g.phase = -phase
         if hasattr(g, "adjoint"):
             g.adjoint = not g.adjoint
         return g

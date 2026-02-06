@@ -484,9 +484,8 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         g.merge_vdata = self.merge_vdata # type: ignore
         for name in self.var_registry.vars():
             g.var_registry.set_type(name, self.var_registry.get_type(name))
-        mult:int = 1
-        if adjoint:
-            mult = -1
+        def adjoint_phase(phase: FractionLike) -> FractionLike:
+            return -phase.conjugate()
 
         #g.add_vertices(self.num_vertices())
         ty = self.types()
@@ -496,7 +495,8 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         maxr = self.depth()
         vtab = dict()
         for v in self.vertices():
-            i = g.add_vertex(ty[v],phase=mult*ph[v])
+            phase = ph[v] if not adjoint else adjoint_phase(ph[v])
+            i = g.add_vertex(ty[v], phase=phase)
             if v in qs: g.set_qubit(i,qs[v])
             if v in rs:
                 if adjoint: g.set_row(i, maxr-rs[v])
