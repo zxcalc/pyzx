@@ -28,7 +28,7 @@ __all__ = ['check_par_hbox_for_simp',
 
 
 from typing import Dict, List, Tuple, Optional, Set, FrozenSet
-from pyzx.utils import EdgeType, VertexType
+from pyzx.utils import EdgeType, VertexType, hbox_has_complex_label
 from pyzx.graph.base import BaseGraph, ET, VT
 
 
@@ -68,6 +68,7 @@ def match_par_hbox(
     ty = g.types()
     for h in candidates:
         if ty[h] != VertexType.H_BOX: continue
+        if hbox_has_complex_label(g, h): continue
         suitable = True
         neighbors_regular = set()
         neighbors_NOT = set()
@@ -164,6 +165,7 @@ def match_par_hbox_intro(g: BaseGraph[VT, ET], vertices: Optional[List[VT]]=None
     ty = g.types()
     for h in candidates:
         if ty[h] != VertexType.H_BOX: continue
+        if hbox_has_complex_label(g, h): continue
         suitable = True
         neighbors_regular = set()
         neighbors_NOT = set()

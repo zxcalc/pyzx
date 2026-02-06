@@ -25,7 +25,7 @@ __all__ = ['hpivot',
 from fractions import Fraction
 from itertools import combinations
 from typing import List, Tuple, Optional
-from pyzx.utils import VertexType, toggle_edge, FractionLike, FloatInt
+from pyzx.utils import VertexType, toggle_edge, FractionLike, FloatInt, is_standard_hbox
 from pyzx.graph.base import BaseGraph, ET, VT
 
 
@@ -79,7 +79,7 @@ def match_hpivot(
                 (vertices is None or (vertices[0] == h)) and
                 g.vertex_degree(h) == 2 and
                 types[h] == VertexType.H_BOX and
-                phases[h] == 1
+                is_standard_hbox(g, h)
         ): continue
 
         v0, v1 = g.neighbors(h)
@@ -94,10 +94,9 @@ def match_hpivot(
         v1b = [v for v in v1n if types[v] == VertexType.BOUNDARY]
         v1h = [v for v in v1n if types[v] == VertexType.H_BOX and v != h]
 
-        # check that at least one of v0 or v1 has all pi phases on adjacent
-        # hboxes.
-        if not (all(phases[v] == 1 for v in v0h)):
-            if not (all(phases[v] == 1 for v in v1h)):
+        # check that at least one of v0 or v1 has all standard H-boxes adjacent.
+        if not (all(is_standard_hbox(g, v) for v in v0h)):
+            if not (all(is_standard_hbox(g, v) for v in v1h)):
                 continue
             else:
                 # interchange the roles of v0 <-> v1

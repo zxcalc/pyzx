@@ -37,7 +37,8 @@ __all__ = ['check_bialgebra_reduce',
 
 from collections import defaultdict
 from typing import Callable, Optional, List, Tuple, Dict
-from pyzx.utils import EdgeType, VertexType, is_pauli
+from pyzx.utils import (EdgeType, VertexType, is_pauli,
+                        hbox_has_complex_label, get_h_box_label, set_h_box_label)
 from pyzx.graph.base import BaseGraph, VT, ET, upair
 
 RewriteOutputType = Tuple[Dict[Tuple[VT,VT],List[int]], List[VT], List[ET], bool]
@@ -94,6 +95,9 @@ def unsafe_bialgebra(g: BaseGraph[VT,ET], v1: VT, v2: VT ) -> bool:
                 r = 0.4*g.row(other_vertex) + 0.6*g.row(v[i])
                 newv = g.add_vertex(g.type(v[j]), qubit=q, row=r)
                 g.set_phase(newv, g.phase(v[j]))
+                # Copy complex label if H-box has one.
+                if g.type(v[j]) == VertexType.H_BOX and hbox_has_complex_label(g, v[j]):
+                    set_h_box_label(g, newv, get_h_box_label(g, v[j]))
                 new_verts[i].append(newv)
                 if other_vertex == v[j]:
                     q = 0.4*g.qubit(v[i]) + 0.6*g.qubit(other_vertex)
