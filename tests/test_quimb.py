@@ -132,6 +132,41 @@ class TestMapping(unittest.TestCase):
         expected_val = 1 + np.exp(1j * np.pi * 3 / 4)
         self.assertTrue(abs(val - expected_val) < 1e-9)
 
+    def test_sum_of_phases_scalar(self):
+        # Regression test for issue #373: two non-Clifford Z-spiders connected
+        # by Hadamard edge populate sum_of_phases when removed.
+        from fractions import Fraction
+
+        g = Graph()
+        v1 = g.add_vertex(VertexType.Z, phase=Fraction(1, 8))
+        v2 = g.add_vertex(VertexType.Z, phase=Fraction(3, 8))
+        g.add_edge(g.edge(v1, v2), edgetype=EdgeType.HADAMARD)
+
+        val_before = tensorfy(g)
+        g.remove_isolated_vertices()
+        self.assertGreater(len(g.scalar.sum_of_phases), 0)
+
+        val_tensorfy = tensorfy(g)
+        val_quimb = to_quimb_tensor(g).contract(output_inds=())
+        self.assertTrue(np.isclose(val_before, val_tensorfy))
+        self.assertTrue(np.isclose(val_tensorfy, val_quimb))
+
+    def test_empty_sum_of_phases(self):
+        # Test that an empty sum_of_phases is treated as factor of 1.
+        g = Graph()
+        self.assertEqual(g.scalar.sum_of_phases, {})
+
+        val_tensorfy = tensorfy(g)
+        val_quimb = to_quimb_tensor(g).contract(output_inds=())
+        self.assertTrue(np.isclose(val_tensorfy, 1.0))
+        self.assertTrue(np.isclose(val_quimb, 1.0))
+
+    def test_zero_scalar(self):
+        g = Graph()
+        g.scalar.is_zero = True
+        val = to_quimb_tensor(g).contract(output_inds=())
+        self.assertEqual(val, 0j)
+
 
 if __name__ == '__main__':
     unittest.main()
