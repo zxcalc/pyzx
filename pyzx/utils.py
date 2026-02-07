@@ -185,6 +185,9 @@ grayscale_colors = {
 class Settings(object): # namespace class
     mode: Literal["notebook", "browser", "shell", ""] = "shell"
     drawing_backend: Literal["d3","matplotlib"] = "d3"
+    # Maximum denominator when converting floats to fractions (e.g., for phase values).
+    # Higher values preserve more precision but may produce larger fractions.
+    float_to_fraction_max_denominator: int = 2**20
     drawing_auto_hbox: bool = False
     javascript_location: str = "" # Path to javascript files of pyzx
     d3_load_string: str = ""

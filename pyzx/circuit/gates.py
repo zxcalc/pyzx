@@ -24,7 +24,7 @@ import math
 from fractions import Fraction
 from typing import Dict, List, Optional, Type, ClassVar, TypeVar, Generic, Set
 
-from ..utils import EdgeType, VertexType, FractionLike
+from ..utils import EdgeType, VertexType, FractionLike, settings
 from ..graph.base import BaseGraph, VT, ET
 from ..symbolic import new_var
 
@@ -449,6 +449,31 @@ class XPhase(Gate):
             return super().to_quipper()
         return 'QRot["exp(-i%X)",{!s}]({!s})'.format(math.pi*self.phase/2,self.target)
 
+    def to_basic_gates(self) -> List['Gate']:
+        # Handle symbolic (Poly) phases - return self unchanged.
+        if not isinstance(self.phase, (int, float, Fraction)):
+            return [self]
+
+        # Normalize phase to Fraction for consistent handling.
+        if isinstance(self.phase, float):
+            phase = Fraction(self.phase).limit_denominator(settings.float_to_fraction_max_denominator)
+        else:
+            phase = Fraction(self.phase)
+
+        # Normalize to [0, 2) range.
+        phase = phase % 2
+
+        # Identity gate - return empty list.
+        if phase == 0:
+            return []
+
+        # NOT/X gate - return as basic gate.
+        if phase == 1:
+            return [NOT(self.target)]
+
+        # General case: return normalized XPhase (keeps it as a basic gate).
+        return [XPhase(self.target, phase)]
+
     def tcount(self):
         return 1 if self.phase.denominator > 2 else 0
 
@@ -516,8 +541,27 @@ class YPhase(Gate):
     def __str__(self) -> str:
         return 'QRot["exp(-i%Y)",{!s}]({!s})'.format(math.pi*self.phase/2,self.target)
 
-    def to_basic_gates(self):
-        return [ZPhase(self.target, Fraction(1,2)), XPhase(self.target, -self.phase), ZPhase(self.target, -Fraction(1,2))]
+    def to_basic_gates(self) -> List['Gate']:
+        # Handle symbolic (Poly) phases - use original decomposition.
+        if not isinstance(self.phase, (int, float, Fraction)):
+            return [ZPhase(self.target, Fraction(1,2)), XPhase(self.target, -self.phase), ZPhase(self.target, -Fraction(1,2))]
+
+        # Normalize phase for the XPhase component.
+        if isinstance(self.phase, float):
+            x_phase = Fraction(-self.phase).limit_denominator(settings.float_to_fraction_max_denominator)
+        else:
+            x_phase = Fraction(-self.phase)
+        x_phase = x_phase % 2
+
+        gates: List['Gate'] = [ZPhase(self.target, Fraction(1,2))]
+        if x_phase == 0:
+            pass  # Identity - skip the XPhase gate.
+        elif x_phase == 1:
+            gates.append(NOT(self.target))
+        else:
+            gates.append(XPhase(self.target, x_phase))
+        gates.append(ZPhase(self.target, -Fraction(1,2)))
+        return gates
 
     def to_graph(self, g, q_mapper, c_mapper):
         for gate in self.to_basic_gates():
@@ -559,6 +603,9 @@ class NOT(XPhase):
     print_phase = False
     def __init__(self, target: int) -> None:
         super().__init__(target, phase = Fraction(1,1))
+
+    def to_basic_gates(self) -> List['Gate']:
+        return [self]
 
 class HAD(Gate):
     name = 'HAD'
