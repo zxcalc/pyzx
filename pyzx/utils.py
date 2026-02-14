@@ -26,6 +26,21 @@ from .symbolic import Poly
 FloatInt = Union[float,int]
 FractionLike = Union[Fraction,int,Poly]
 
+def assert_phase_real(phase: FractionLike) -> None:
+    """Raise a TypeError if ``phase`` contains complex coefficients.
+
+    Phases represent multiples of pi and must be real-valued.  Complex
+    coefficients are only valid in Z-box labels, which are stored as
+    vertex data rather than as phases.
+    """
+    if isinstance(phase, complex) and phase.imag != 0:
+        raise TypeError(f"Phase must be real, got {phase}")
+    if isinstance(phase, Poly):
+        for c, _ in phase.terms:
+            if isinstance(c, complex) and c.imag != 0:
+                raise TypeError(
+                    f"Phase must have real coefficients, got {c}")
+
 
 class VertexType(IntEnum):
     """Type of a vertex in the graph."""

@@ -19,7 +19,7 @@ from typing import Optional, Tuple, Dict, Set, Any
 
 from .base import BaseGraph
 
-from ..utils import VertexType, EdgeType, FractionLike, FloatInt, vertex_is_zx_like, vertex_is_z_like, set_z_box_label, get_z_box_label
+from ..utils import VertexType, EdgeType, FractionLike, FloatInt, vertex_is_zx_like, vertex_is_z_like, set_z_box_label, get_z_box_label, assert_phase_real
 
 class GraphS(BaseGraph[int,Tuple[int,int]]):
     """Purely Pythonic implementation of :class:`~graph.base.BaseGraph`."""
@@ -326,11 +326,13 @@ class GraphS(BaseGraph[int,Tuple[int,int]]):
     def phases(self):
         return self._phase
     def set_phase(self, vertex, phase):
+        assert_phase_real(phase)
         try:
             self._phase[vertex] = phase % 2
         except Exception:
             self._phase[vertex] = phase
     def add_to_phase(self, vertex, phase):
+        assert_phase_real(phase)
         old_phase = self._phase.get(vertex, Fraction(1))
         try:
             self._phase[vertex] = (old_phase + phase) % 2
