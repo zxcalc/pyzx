@@ -133,6 +133,9 @@ par_hbox_simp: RewriteSimpGraph = RewriteSimpGraph(par_hbox, simp_par_hbox)
 par_hbox_intro_simp: RewriteSimpGraph = RewriteSimpGraph(par_hbox_intro, simp_par_hbox_intro)
 """Removes an H-box according to the Intro rule. Can be run automatically on the entire graph."""
 
+par_hbox_avg_simp: RewriteSimpGraph = RewriteSimpGraph(par_hbox_avg, simp_par_hbox_avg)
+"""Performs the average rule on two H-boxes connected through a NOT gate. Can be run automatically on the entire graph."""
+
 hspider_simp: RewriteSimpDoubleVertex = RewriteSimpDoubleVertex(check_connected_hboxes, unsafe_fuse_hboxes)
 """Fuses two neighboring H-boxes together. Can be run automatically on the entire graph."""
 
@@ -198,6 +201,9 @@ def zh_simp(g: BaseGraph[VT,ET]) -> int:
             count += 1
             continue
         if par_hbox_intro_simp(g):
+            count += 1
+            continue
+        if par_hbox_avg_simp(g):
             count += 1
             continue
         if hbox_parallel_not_remove_simp(g):

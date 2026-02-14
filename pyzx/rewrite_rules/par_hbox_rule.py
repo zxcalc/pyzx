@@ -13,10 +13,12 @@
 # limitations under the License.
 
 """
-This module contains the implementation of two parallel hbox rules: multiply rule and intro rule.
-These rules act on an entire graph and should be called using hsimplify.par_hbox_simp and hsimplify.par_hbox_intro_simp
+This module contains the implementation of three parallel hbox rules: multiply, intro, and average.
+These rules act on an entire graph and should be called using hsimplify.par_hbox_simp,
+hsimplify.par_hbox_intro_simp, and hsimplify.par_hbox_avg_simp respectively.
 
-These rules are based on the axioms of the corresponding name in the paper https://arxiv.org/abs/2103.06610
+The multiply and intro rules are based on the axioms of the corresponding name in the paper https://arxiv.org/abs/2103.06610
+The average rule is based on rule (A) from https://arxiv.org/abs/1805.02175
 """
 
 __all__ = ['check_par_hbox_for_simp',
@@ -24,11 +26,14 @@ __all__ = ['check_par_hbox_for_simp',
            'simp_par_hbox',
            'check_par_hbox_intro_for_simp',
            'simp_par_hbox_intro',
-           'par_hbox_intro',]
+           'par_hbox_intro',
+           'check_par_hbox_avg_for_simp',
+           'simp_par_hbox_avg',
+           'par_hbox_avg',]
 
 
 from typing import Dict, List, Tuple, Optional, Set, FrozenSet
-from pyzx.utils import EdgeType, VertexType, hbox_has_complex_label
+from pyzx.utils import EdgeType, VertexType, hbox_has_complex_label, get_h_box_label, set_h_box_label
 from pyzx.graph.base import BaseGraph, ET, VT
 
 
@@ -244,5 +249,158 @@ def unsafe_par_hbox_intro(g: BaseGraph[VT, ET], matches: List[TYPE_MATCH_PAR_HBO
     g.remove_edges(rem_edges)
     g.remove_vertices(rem_verts)
     g.remove_isolated_vertices()
+
+    return True
+
+
+## Average rule:
+
+def check_par_hbox_avg_for_simp(g: BaseGraph[VT,ET]) -> bool:
+    """Runs :func:`match_par_hbox_avg` and returns whether any matches were found."""
+    matches = match_par_hbox_avg(g)
+    return len(matches) > 0
+
+def simp_par_hbox_avg(g: BaseGraph[VT,ET]) -> bool:
+    """Runs :func:`match_par_hbox_avg` and if any matches are found runs :func:`unsafe_par_hbox_avg`."""
+    matches = match_par_hbox_avg(g)
+    if len(matches) == 0: return False
+    return unsafe_par_hbox_avg(g, matches)
+
+def par_hbox_avg(g: BaseGraph[VT,ET], vertices: List[VT]) -> bool:
+    """Runs :func:`match_par_hbox_avg` on given vertices and if any matches are found runs :func:`unsafe_par_hbox_avg`."""
+    checked_vertices = list([v for v in g.vertices() if (v in vertices)])
+    matches = match_par_hbox_avg(g, checked_vertices)
+    if len(matches) == 0: return False
+    return unsafe_par_hbox_avg(g, matches)
+
+
+TYPE_MATCH_PAR_HBOX_AVG = Tuple[VT, VT, VT]
+
+def match_par_hbox_avg(
+        g: BaseGraph[VT, ET],
+        vertices: Optional[List[VT]] = None) -> List[TYPE_MATCH_PAR_HBOX_AVG]:
+    """Matches pairs of H-boxes connected through a NOT gate (degree-2 spider with
+    phase pi) that share the same neighbourhood: Z-spiders via SIMPLE edges and
+    X-spiders via HADAMARD edges.
+
+    This implements the matching for the average rule (A) from
+    https://arxiv.org/abs/1805.02175, Figure 1. The LHS consists of two H-boxes
+    with the same neighbours, connected to each other through a NOT gate.
+    """
+    if vertices is not None: candidates = set(vertices)
+    else: candidates = g.vertex_set()
+
+    ty = g.types()
+    matched: Set[VT] = set()
+    matches: List[TYPE_MATCH_PAR_HBOX_AVG] = []
+
+    for h in candidates:
+        if ty[h] != VertexType.H_BOX: continue
+        if h in matched: continue
+
+        suitable = True
+        neighbors_regular: Set[VT] = set()
+        partner: Optional[VT] = None
+        not_gate: Optional[VT] = None
+
+        for v in g.neighbors(h):
+            e = g.edge(v, h)
+            etype = g.edge_type(e)
+            if etype == EdgeType.SIMPLE:
+                if ty[v] == VertexType.Z:
+                    neighbors_regular.add(v)
+                elif (ty[v] == VertexType.X and g.vertex_degree(v) == 2
+                      and g.phase(v) == 1):
+                    # NOT gate (X-spider, degree 2, phase pi) via simple edges.
+                    w = [w for w in g.neighbors(v) if w != h][0]
+                    if (ty[w] == VertexType.H_BOX
+                            and g.edge_type(g.edge(v, w)) == EdgeType.SIMPLE):
+                        if partner is not None:
+                            suitable = False
+                            break
+                        partner = w
+                        not_gate = v
+                    else:
+                        suitable = False
+                        break
+                else:
+                    suitable = False
+                    break
+            elif etype == EdgeType.HADAMARD:
+                if ty[v] == VertexType.X:
+                    neighbors_regular.add(v)
+                elif (ty[v] == VertexType.Z and g.vertex_degree(v) == 2
+                      and g.phase(v) == 1):
+                    # NOT gate (Z-spider, degree 2, phase pi) via Hadamard edges.
+                    w = [w for w in g.neighbors(v) if w != h][0]
+                    if (ty[w] == VertexType.H_BOX
+                            and g.edge_type(g.edge(v, w)) == EdgeType.HADAMARD):
+                        if partner is not None:
+                            suitable = False
+                            break
+                        partner = w
+                        not_gate = v
+                    else:
+                        suitable = False
+                        break
+                else:
+                    suitable = False
+                    break
+            else:
+                suitable = False
+                break
+
+        if not suitable or partner is None: continue
+        if partner in matched: continue
+
+        # Verify the partner H-box has the same regular neighbours.
+        partner_regular: Set[VT] = set()
+        partner_ok = True
+        for v in g.neighbors(partner):
+            if v == not_gate: continue
+            e = g.edge(v, partner)
+            etype = g.edge_type(e)
+            if etype == EdgeType.SIMPLE:
+                if ty[v] == VertexType.Z:
+                    partner_regular.add(v)
+                else:
+                    partner_ok = False
+                    break
+            elif etype == EdgeType.HADAMARD:
+                if ty[v] == VertexType.X:
+                    partner_regular.add(v)
+                else:
+                    partner_ok = False
+                    break
+            else:
+                partner_ok = False
+                break
+        if not partner_ok: continue
+        if neighbors_regular != partner_regular: continue
+
+        matches.append((h, partner, not_gate))
+        matched.add(h)
+        matched.add(partner)
+
+    return matches
+
+
+def unsafe_par_hbox_avg(g: BaseGraph[VT, ET], matches: List[TYPE_MATCH_PAR_HBOX_AVG]) -> bool:
+    """Implements the average rule (A) from https://arxiv.org/abs/1805.02175.
+
+    Replaces two H-boxes connected through a NOT gate with a single H-box
+    whose label is the average of the two original labels. Multiplies the
+    scalar by 2.
+    """
+    rem_verts: List[VT] = []
+    for h1, h2, not_gate in matches:
+        a = get_h_box_label(g, h1)
+        b = get_h_box_label(g, h2)
+        set_h_box_label(g, h1, (a + b) / 2)
+        rem_verts.append(h2)
+        rem_verts.append(not_gate)
+        g.scalar.add_power(2)
+
+    g.remove_vertices(rem_verts)
 
     return True
