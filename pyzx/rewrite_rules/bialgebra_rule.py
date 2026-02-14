@@ -37,7 +37,8 @@ __all__ = ['check_bialgebra_reduce',
 
 from collections import defaultdict
 from typing import Callable, Optional, List, Tuple, Dict
-from pyzx.utils import EdgeType, VertexType, is_pauli
+from pyzx.utils import (EdgeType, VertexType, is_pauli,
+                        hbox_has_complex_label, get_h_box_label, set_h_box_label)
 from pyzx.graph.base import BaseGraph, VT, ET, upair
 
 RewriteOutputType = Tuple[Dict[Tuple[VT,VT],List[int]], List[VT], List[ET], bool]

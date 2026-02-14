@@ -294,6 +294,12 @@ def graph_to_dict_old(g: BaseGraph[VT,ET], include_scalar: bool=True) -> Dict[st
             elif t==VertexType.H_BOX:
                 node_vs[name]["data"]["type"] = "hadamard"
                 node_vs[name]["data"]["is_edge"] = "false"
+                # Only export label if set; legacy H-boxes use phase field instead.
+                hbox_label = g.vdata(v, 'label', None)
+                if hbox_label is not None:
+                    if isinstance(hbox_label, Fraction):
+                        hbox_label = phase_to_s(hbox_label, limit_denominator=False)
+                    node_vs[name]["annotation"]["label"] = hbox_label
             elif t==VertexType.W_INPUT:
                 node_vs[name]["data"]["type"] = "W_input"
             elif t==VertexType.W_OUTPUT:
@@ -301,7 +307,7 @@ def graph_to_dict_old(g: BaseGraph[VT,ET], include_scalar: bool=True) -> Dict[st
             elif t==VertexType.Z_BOX:
                 node_vs[name]["data"]["type"] = "Z_box"
                 zbox_label = g.vdata(v, 'label', 1)
-                if type(zbox_label) == Fraction:
+                if isinstance(zbox_label, Fraction):
                     zbox_label = phase_to_s(zbox_label, limit_denominator=False)
                 node_vs[name]["annotation"]["label"] = zbox_label
             else: raise Exception("Unkown vertex type "+ str(t))

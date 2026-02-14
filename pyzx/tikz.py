@@ -27,7 +27,9 @@ import time
 from fractions import Fraction
 from typing import List, Dict, Tuple, Union, Optional, Set
 
-from .utils import get_z_box_label, set_z_box_label, settings, EdgeType, VertexType, FloatInt
+import cmath
+from .utils import (get_z_box_label, set_z_box_label, get_h_box_label, set_h_box_label,
+                    hbox_has_complex_label, settings, EdgeType, VertexType, FloatInt)
 from .graph.base import BaseGraph, VT, ET
 from .graph.graph import Graph
 from .circuit import Circuit
@@ -74,6 +76,8 @@ def _to_tikz(g: BaseGraph[VT,ET], draw_scalar:bool = False,
             continue
         if ty == VertexType.Z_BOX:
             p = get_z_box_label(g,v)
+        elif ty == VertexType.H_BOX and hbox_has_complex_label(g, v):
+            p = get_h_box_label(g, v)
         else:
             p = g.phase(v)
         if ty == VertexType.BOUNDARY:
@@ -93,7 +97,14 @@ def _to_tikz(g: BaseGraph[VT,ET], draw_scalar:bool = False,
             else:
                 if ty==VertexType.Z: style = settings.tikz_classes['Z']
                 else: style = settings.tikz_classes['X']
-        if ((ty == VertexType.H_BOX or ty == VertexType.Z_BOX) and p == 1) or\
+        # Determine whether to display the phase/label.
+        if ty == VertexType.H_BOX and hbox_has_complex_label(g, v):
+            # For H-boxes with complex labels, hide if standard (-1).
+            if cmath.isclose(p, -1):
+                phase = ""
+            else:
+                phase = r"$%s$" % str(p)
+        elif ((ty == VertexType.H_BOX or ty == VertexType.Z_BOX) and p == 1) or\
             (ty != VertexType.H_BOX and p == 0):
             phase = ""
         elif type(p) == Fraction:
@@ -331,12 +342,29 @@ def tikz_to_graph(
         elif label == r'\neg':
             set_phase(v,1)
         elif label:
-            if label.find('pi') == -1 and ty != VertexType.Z_BOX:
-                if not ignore_nonzx and not ignore_invalid_phases:
-                    raise ValueError("Node definition %s has invalid phase label" % l)
-                elif ignore_invalid_phases:
-                    set_phase(v, default_phase)
-            else:
+            # Check if label might be a complex number for H-box or Z-box.
+            is_complex_label = ty in (VertexType.Z_BOX, VertexType.H_BOX) and label.find('pi') == -1
+            if is_complex_label:
+                # Try to parse as complex number.
+                try:
+                    complex_val = complex(label)
+                    if ty == VertexType.H_BOX:
+                        set_h_box_label(g, v, complex_val)
+                    else:
+                        set_phase(v, complex_val)
+                    continue
+                except ValueError:
+                    # Not a valid complex, fall through to standard parsing.
+                    if ty == VertexType.Z_BOX:
+                        pass  # Z-box will be handled below.
+                    elif not ignore_nonzx or ignore_invalid_phases:
+                        handle_phase_error("Node definition %s has invalid phase label" % l)
+                        continue
+            elif label.find('pi') == -1:
+                if not ignore_nonzx or ignore_invalid_phases:
+                    handle_phase_error("Node definition %s has invalid phase label" % l)
+                    continue
+            if label.find('pi') != -1 or ty == VertexType.Z_BOX:
                 label = label.replace(r'\pi','').strip()
                 if label == '' or label == '-' or label == '-1':
                     set_phase(v,1)
