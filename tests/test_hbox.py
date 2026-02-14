@@ -420,5 +420,168 @@ class TestHboxCancelRule(unittest.TestCase):
         self.assertTrue(check_copy(g, v))
 
 
+class TestParHboxAvgRule(unittest.TestCase):
+    """Tests for the average rule (A) from arXiv:1805.02175."""
+
+    def _make_avg_graph(self, a, b, use_hadamard_not=False):
+        """Build a graph with two H-boxes connected through a NOT gate.
+
+        Structure: boundary -> Z-spider -> {H_a, H_b} -> NOT(X or Z) gate
+        """
+        g = Graph()
+        inp = g.add_vertex(VertexType.BOUNDARY, 0, 0)
+        z = g.add_vertex(VertexType.Z, 0, 1)
+        ha = g.add_vertex(VertexType.H_BOX, -1, 2)
+        hb = g.add_vertex(VertexType.H_BOX, 1, 2)
+        set_h_box_label(g, ha, a)
+        set_h_box_label(g, hb, b)
+        g.add_edge((inp, z), EdgeType.SIMPLE)
+        g.add_edge((z, ha), EdgeType.SIMPLE)
+        g.add_edge((z, hb), EdgeType.SIMPLE)
+        if use_hadamard_not:
+            not_gate = g.add_vertex(VertexType.Z, 0, 3, phase=1)
+            g.add_edge((ha, not_gate), EdgeType.HADAMARD)
+            g.add_edge((hb, not_gate), EdgeType.HADAMARD)
+        else:
+            not_gate = g.add_vertex(VertexType.X, 0, 3, phase=1)
+            g.add_edge((ha, not_gate), EdgeType.SIMPLE)
+            g.add_edge((hb, not_gate), EdgeType.SIMPLE)
+        g.set_inputs((inp,))
+        g.set_outputs(())
+        return g, ha, hb, not_gate
+
+    def _make_expected_graph(self, avg_label):
+        """Build the semantically expected RHS graph for tensor comparison."""
+        g = Graph()
+        inp = g.add_vertex(VertexType.BOUNDARY, 0, 0)
+        h = g.add_vertex(VertexType.H_BOX, 0, 1)
+        set_h_box_label(g, h, avg_label)
+        g.add_edge((inp, h), EdgeType.SIMPLE)
+        g.set_inputs((inp,))
+        g.set_outputs(())
+        g.scalar.add_power(2)
+        return g
+
+    def test_match_basic(self):
+        """Test that the matcher finds a valid average rule match."""
+        from pyzx.rewrite_rules.par_hbox_rule import match_par_hbox_avg
+        g, ha, hb, not_gate = self._make_avg_graph(2+3j, 1-2j)
+        matches = match_par_hbox_avg(g)
+        self.assertEqual(len(matches), 1)
+        h1, h2, ng = matches[0]
+        self.assertEqual(ng, not_gate)
+        self.assertSetEqual({h1, h2}, {ha, hb})
+
+    def test_match_hadamard_not(self):
+        """Test matching with a Z-spider NOT gate via Hadamard edges."""
+        from pyzx.rewrite_rules.par_hbox_rule import match_par_hbox_avg
+        g, ha, hb, not_gate = self._make_avg_graph(1+1j, -1-1j,
+                                                     use_hadamard_not=True)
+        matches = match_par_hbox_avg(g)
+        self.assertEqual(len(matches), 1)
+
+    def test_no_match_without_not(self):
+        """Test that two H-boxes without a NOT gate are not matched."""
+        from pyzx.rewrite_rules.par_hbox_rule import match_par_hbox_avg
+        g = Graph()
+        inp = g.add_vertex(VertexType.BOUNDARY, 0, 0)
+        z = g.add_vertex(VertexType.Z, 0, 1)
+        ha = g.add_vertex(VertexType.H_BOX, -1, 2)
+        hb = g.add_vertex(VertexType.H_BOX, 1, 2)
+        set_h_box_label(g, ha, 2+0j)
+        set_h_box_label(g, hb, 3+0j)
+        g.add_edge((inp, z), EdgeType.SIMPLE)
+        g.add_edge((z, ha), EdgeType.SIMPLE)
+        g.add_edge((z, hb), EdgeType.SIMPLE)
+        g.set_inputs((inp,))
+        matches = match_par_hbox_avg(g)
+        self.assertEqual(len(matches), 0)
+
+    def test_no_match_different_neighbors(self):
+        """Test no match when H-boxes have different Z-spider neighbours."""
+        from pyzx.rewrite_rules.par_hbox_rule import match_par_hbox_avg
+        g = Graph()
+        z1 = g.add_vertex(VertexType.Z, 0, 0)
+        z2 = g.add_vertex(VertexType.Z, 1, 0)
+        ha = g.add_vertex(VertexType.H_BOX, 0, 1)
+        hb = g.add_vertex(VertexType.H_BOX, 1, 1)
+        set_h_box_label(g, ha, 1+0j)
+        set_h_box_label(g, hb, 2+0j)
+        not_gate = g.add_vertex(VertexType.X, 0.5, 2, phase=1)
+        g.add_edge((z1, ha), EdgeType.SIMPLE)
+        g.add_edge((z2, hb), EdgeType.SIMPLE)
+        g.add_edge((ha, not_gate), EdgeType.SIMPLE)
+        g.add_edge((hb, not_gate), EdgeType.SIMPLE)
+        matches = match_par_hbox_avg(g)
+        self.assertEqual(len(matches), 0)
+
+    @unittest.skipUnless(np, "numpy not installed")
+    def test_tensor_simple_not(self):
+        """Test that the average rule preserves the tensor (X-spider NOT)."""
+        from pyzx.rewrite_rules.par_hbox_rule import simp_par_hbox_avg
+        a, b = 0.3+0.7j, 0.5+0.4j
+        g, _, _, _ = self._make_avg_graph(a, b)
+        expected = self._make_expected_graph((a + b) / 2)
+        t_before = g.to_tensor(preserve_scalar=True)
+        simp_par_hbox_avg(g)
+        t_after = g.to_tensor(preserve_scalar=True)
+        self.assertTrue(compare_tensors(t_before, t_after, preserve_scalar=True))
+        self.assertTrue(compare_tensors(g, expected, preserve_scalar=True))
+
+    @unittest.skipUnless(np, "numpy not installed")
+    def test_tensor_hadamard_not(self):
+        """Test that the average rule preserves the tensor (Z-spider NOT)."""
+        from pyzx.rewrite_rules.par_hbox_rule import simp_par_hbox_avg
+        a, b = -1+2j, 3-1j
+        g, _, _, _ = self._make_avg_graph(a, b, use_hadamard_not=True)
+        expected = self._make_expected_graph((a + b) / 2)
+        t_before = g.to_tensor(preserve_scalar=True)
+        simp_par_hbox_avg(g)
+        t_after = g.to_tensor(preserve_scalar=True)
+        self.assertTrue(compare_tensors(t_before, t_after, preserve_scalar=True))
+        self.assertTrue(compare_tensors(g, expected, preserve_scalar=True))
+
+    @unittest.skipUnless(np, "numpy not installed")
+    def test_tensor_multiple_shared_neighbors(self):
+        """Test with H-boxes sharing multiple Z-spider neighbours."""
+        from pyzx.rewrite_rules.par_hbox_rule import simp_par_hbox_avg
+        a, b = 2+1j, -1+3j
+        g = Graph()
+        b0 = g.add_vertex(VertexType.BOUNDARY, 0, 0)
+        b1 = g.add_vertex(VertexType.BOUNDARY, 1, 0)
+        z1 = g.add_vertex(VertexType.Z, 0, 1)
+        z2 = g.add_vertex(VertexType.Z, 1, 1)
+        ha = g.add_vertex(VertexType.H_BOX, 0, 2)
+        hb = g.add_vertex(VertexType.H_BOX, 1, 2)
+        set_h_box_label(g, ha, a)
+        set_h_box_label(g, hb, b)
+        not_gate = g.add_vertex(VertexType.X, 0.5, 3, phase=1)
+        g.add_edge((b0, z1), EdgeType.SIMPLE)
+        g.add_edge((b1, z2), EdgeType.SIMPLE)
+        g.add_edge((z1, ha), EdgeType.SIMPLE)
+        g.add_edge((z1, hb), EdgeType.SIMPLE)
+        g.add_edge((z2, ha), EdgeType.SIMPLE)
+        g.add_edge((z2, hb), EdgeType.SIMPLE)
+        g.add_edge((ha, not_gate), EdgeType.SIMPLE)
+        g.add_edge((hb, not_gate), EdgeType.SIMPLE)
+        g.set_inputs((b0, b1))
+        g.set_outputs(())
+        t_before = g.to_tensor(preserve_scalar=True)
+        simp_par_hbox_avg(g)
+        t_after = g.to_tensor(preserve_scalar=True)
+        self.assertTrue(compare_tensors(t_before, t_after, preserve_scalar=True))
+
+    @unittest.skipUnless(np, "numpy not installed")
+    def test_tensor_standard_hboxes(self):
+        """Test average rule with standard H-boxes (label -1)."""
+        from pyzx.rewrite_rules.par_hbox_rule import simp_par_hbox_avg
+        a, b = -1+0j, -1+0j
+        g, _, _, _ = self._make_avg_graph(a, b)
+        t_before = g.to_tensor(preserve_scalar=True)
+        simp_par_hbox_avg(g)
+        t_after = g.to_tensor(preserve_scalar=True)
+        self.assertTrue(compare_tensors(t_before, t_after, preserve_scalar=True))
+
+
 if __name__ == '__main__':
     unittest.main()
