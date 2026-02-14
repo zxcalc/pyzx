@@ -818,5 +818,74 @@ class TestQASM(unittest.TestCase):
         # Should not crash, and the graph should have vertices.
         self.assertGreater(len(list(g.vertices())), 2)
 
+    def test_hththt_t_injection_feedforward(self):
+        """HTHTHT... circuit with T gates implemented via injection.
+
+        This is the T-injection protocol example from tqec/tqec#708: prepare an
+        ancilla in |T>, CNOT with the data qubit, measure the ancilla, and
+        conditionally apply S-dagger. Three rounds are performed.
+
+        The ``if(c==1) sdg q[0];`` conditional corrections are not yet
+        supported by the parser (they require classical control / feedforward).
+        For now they are omitted, and the test verifies the structural
+        skeleton: reset, gates, measure, and QASM round-trip.
+        """
+        from pyzx.circuit.gates import Measurement, Reset
+
+        # Full circuit would include ``if(c==1) sdg q[0];`` after each
+        # measure, but that requires feedforward support (ConditionalGate).
+        qasm = """
+        OPENQASM 2.0;
+        include "qelib1.inc";
+        qreg q[2];
+        creg c[1];
+        h q[0];
+        reset q[1];
+        h q[1];
+        t q[1];
+        cx q[0],q[1];
+        h q[1];
+        measure q[1] -> c[0];
+        h q[0];
+        reset q[1];
+        h q[1];
+        t q[1];
+        cx q[0],q[1];
+        h q[1];
+        measure q[1] -> c[0];
+        h q[0];
+        reset q[1];
+        h q[1];
+        t q[1];
+        cx q[0],q[1];
+        h q[1];
+        measure q[1] -> c[0];
+        """
+
+        # Parse.
+        c = Circuit.from_qasm(qasm)
+        self.assertEqual(c.qubits, 2)
+
+        # Count gate types.
+        measurements = [g for g in c.gates if isinstance(g, Measurement)]
+        resets = [g for g in c.gates if isinstance(g, Reset)]
+        self.assertEqual(len(measurements), 3)
+        self.assertEqual(len(resets), 3)
+        # TODO: once feedforward is implemented, assert 3 ConditionalGate
+        # instances wrapping sdg on q[0], each conditioned on c==1.
+
+        # Convert to graph.
+        g = c.to_graph()
+        self.assertEqual(len(g.inputs()), 3)   # 2 qubits + 1 classical bit
+        self.assertEqual(len(g.outputs()), 2)  # q[0] + c[0]; q[1] consumed by measurement
+
+        # QASM round-trip.
+        qasm_out = c.to_qasm()
+        c2 = Circuit.from_qasm(qasm_out)
+        self.assertEqual(len(c.gates), len(c2.gates))
+        for g1, g2 in zip(c.gates, c2.gates):
+            self.assertEqual(type(g1), type(g2))
+
+
 if __name__ == '__main__':
     unittest.main()
