@@ -45,6 +45,12 @@ try:
 except ImportError:
     QuantumCircuit = None
 
+stim: Optional[ModuleType]
+try:
+    import stim  # type: ignore[no-redef,import]
+except ImportError:
+    stim = None
+
 
 @unittest.skipUnless(np, "numpy needs to be installed for this to run")
 class TestQASM(unittest.TestCase):
@@ -885,6 +891,131 @@ class TestQASM(unittest.TestCase):
         self.assertEqual(len(c.gates), len(c2.gates))
         for g1, g2 in zip(c.gates, c2.gates):
             self.assertEqual(type(g1), type(g2))
+
+
+@unittest.skipUnless(stim, "stim needs to be installed for this to run")
+class TestStimQASMInterop(unittest.TestCase):
+    """Test loading Stim-generated QASMs into PyZX.
+
+    Stim can export circuits to QASM via circuit.to_qasm().  These tests
+    verify that PyZX can parse the resulting QASM for a range of QEC
+    circuits.  See tqec/tqec#708 for context.
+
+    QASM 2 with skip_dets_and_obs=True is the primary interop path.
+    QASM 3 works when Stim does not use its MR subroutine definition.
+    """
+
+    def _load_stim_qasm2(self, stim_circuit):
+        """Export a Stim circuit to QASM 2, parse it in PyZX, and return
+        the PyZX Circuit."""
+        qasm = stim_circuit.to_qasm(
+            open_qasm_version=2, skip_dets_and_obs=True)
+        return Circuit.from_qasm(qasm)
+
+    def test_bell_pair_measurement(self):
+        c_stim = stim.Circuit("H 0\nCNOT 0 1\nM 0 1")
+        c = self._load_stim_qasm2(c_stim)
+        self.assertEqual(c.qubits, 2)
+        self.assertEqual(len(c.gates), 4)
+
+    def test_measure_reset_reuse(self):
+        c_stim = stim.Circuit("H 0\nM 0\nR 0\nH 0\nM 0")
+        c = self._load_stim_qasm2(c_stim)
+        self.assertEqual(c.qubits, 1)
+        self.assertEqual(len(c.gates), 5)
+
+    def test_entangle_measure_reset_cycle(self):
+        c_stim = stim.Circuit(
+            "H 0\nCNOT 0 1\nM 0 1\nR 0 1\n"
+            "H 0\nCNOT 0 1\nM 0 1")
+        c = self._load_stim_qasm2(c_stim)
+        self.assertEqual(c.qubits, 2)
+        self.assertEqual(len(c.gates), 10)
+
+    def test_mr_combined_gate(self):
+        """Stim's MR (combined measure-reset) decomposes to separate
+        measure + reset on a single line in QASM 2."""
+        c_stim = stim.Circuit("H 0\nCNOT 0 1\nMR 0\nH 0\nM 0 1")
+        c = self._load_stim_qasm2(c_stim)
+        self.assertEqual(c.qubits, 2)
+        self.assertEqual(len(c.gates), 7)
+
+    def test_surface_code_d3(self):
+        c_stim = stim.Circuit.generated(
+            "surface_code:rotated_memory_z",
+            rounds=2, distance=3,
+            after_clifford_depolarization=0,
+            after_reset_flip_probability=0,
+            before_measure_flip_probability=0,
+            before_round_data_depolarization=0)
+        c = self._load_stim_qasm2(c_stim)
+        # d=3 rotated surface code uses 9 data + 8 ancilla = 17 qubits,
+        # but Stim may allocate more. Just check it parses and round-trips.
+        self.assertGreater(c.qubits, 0)
+        g = c.to_graph()
+        self.assertGreater(len(list(g.vertices())), 0)
+        # QASM round-trip.
+        c2 = Circuit.from_qasm(c.to_qasm())
+        self.assertEqual(len(c.gates), len(c2.gates))
+
+    def test_surface_code_d5(self):
+        c_stim = stim.Circuit.generated(
+            "surface_code:rotated_memory_z",
+            rounds=3, distance=5,
+            after_clifford_depolarization=0,
+            after_reset_flip_probability=0,
+            before_measure_flip_probability=0,
+            before_round_data_depolarization=0)
+        c = self._load_stim_qasm2(c_stim)
+        self.assertGreater(c.qubits, 0)
+        g = c.to_graph()
+        self.assertGreater(len(list(g.vertices())), 0)
+
+    def test_repetition_code(self):
+        c_stim = stim.Circuit.generated(
+            "repetition_code:memory",
+            rounds=3, distance=3,
+            after_clifford_depolarization=0,
+            after_reset_flip_probability=0,
+            before_measure_flip_probability=0,
+            before_round_data_depolarization=0)
+        c = self._load_stim_qasm2(c_stim)
+        self.assertGreater(c.qubits, 0)
+        g = c.to_graph()
+        self.assertGreater(len(list(g.vertices())), 0)
+
+    def test_colour_code(self):
+        c_stim = stim.Circuit.generated(
+            "color_code:memory_xyz",
+            rounds=2, distance=3,
+            after_clifford_depolarization=0,
+            after_reset_flip_probability=0,
+            before_measure_flip_probability=0,
+            before_round_data_depolarization=0)
+        c = self._load_stim_qasm2(c_stim)
+        self.assertGreater(c.qubits, 0)
+        g = c.to_graph()
+        self.assertGreater(len(list(g.vertices())), 0)
+
+    def test_qasm3_without_mr(self):
+        """QASM 3 works when Stim uses separate M + R (not MR)."""
+        c_stim = stim.Circuit(
+            "H 0\nCNOT 0 1\nM 0\nR 0\nH 0\nM 0 1")
+        qasm3 = c_stim.to_qasm(
+            open_qasm_version=3, skip_dets_and_obs=True)
+        c = Circuit.from_qasm(qasm3)
+        self.assertEqual(c.qubits, 2)
+        self.assertEqual(len(c.gates), 7)
+
+    def test_qasm3_mr_subroutine_fails(self):
+        """QASM 3 with Stim's MR subroutine definition is not supported."""
+        c_stim = stim.Circuit("H 0\nMR 0\nH 0\nM 0")
+        qasm3 = c_stim.to_qasm(
+            open_qasm_version=3, skip_dets_and_obs=True)
+        # Stim emits `def mr(qubit q0) -> bit { ... }` which PyZX
+        # cannot parse.
+        with self.assertRaises((TypeError, ValueError)):
+            Circuit.from_qasm(qasm3)
 
 
 if __name__ == '__main__':
