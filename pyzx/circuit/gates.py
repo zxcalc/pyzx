@@ -283,7 +283,11 @@ class Gate(object):
         param = ""
         if self.print_phase:
             if hasattr(self, "phase"):
-                param = "({}*pi)".format(float(self.phase))
+                try:
+                    param = "({}*pi)".format(float(self.phase))
+                except (TypeError, ValueError):
+                    # Symbolic (Poly) phase — emit as-is.
+                    param = "({}*pi)".format(self.phase)
             elif hasattr(self, "phases"):
                 param = "({})".format(",".join("{}*pi".format(float(p)) for p in self.phases))
         return "{}{} {};".format(n, param, ", ".join(args))
@@ -1373,6 +1377,117 @@ class PostSelect(Gate):
         return g
 
 
+class ConditionalGate(Gate):
+    """A gate that is applied only when a classical register equals a given value.
+
+    Corresponds to the OpenQASM 2 ``if (creg == val) gate args;`` syntax.
+    In the ZX-diagram, single-qubit Z/X-rotation inner gates are represented
+    by multiplying the gate's phase by a boolean condition polynomial built
+    from the register bits.
+
+    Limitations:
+
+    * Only single-qubit Z and X rotations (ZPhase, Z, S, T, XPhase, NOT,
+      and their subclasses) are supported as inner gates.  Multi-qubit
+      gates such as HAD, CNOT, and CZ raise ``NotImplementedError`` in
+      ``to_graph()``.
+
+    * Conditional X rotations (XPhase, NOT) convert to the graph correctly
+      but cannot be recovered by ``graph_to_circuit()`` because X-type
+      vertices with boolean phases are indistinguishable from measurement
+      outcome vertices.  They are emitted as raw ``XPhase`` gates with a
+      symbolic ``Poly`` phase instead.  The QASM round-trip (Circuit →
+      QASM string → Circuit) is unaffected.
+    """
+    name = 'ConditionalGate'
+
+    def __init__(self, condition_register: str, condition_value: int,
+                 inner_gate: 'Gate', register_size: int) -> None:
+        if condition_value < 0 or condition_value >= (1 << register_size):
+            raise ValueError(
+                "Condition value {} is out of range for a {}-bit register "
+                "(must be 0..{})".format(
+                    condition_value, register_size, (1 << register_size) - 1))
+        self.condition_register = condition_register
+        self.condition_value = condition_value
+        self.inner_gate = inner_gate
+        self.register_size = register_size
+        self.target = inner_gate.target  # type: ignore
+
+    def __str__(self) -> str:
+        return "if({}=={}) {}".format(
+            self.condition_register, self.condition_value, self.inner_gate)
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, ConditionalGate):
+            return False
+        return (self.condition_register == other.condition_register
+                and self.condition_value == other.condition_value
+                and self.inner_gate == other.inner_gate
+                and self.register_size == other.register_size)
+
+    def _max_target(self) -> int:
+        return self.inner_gate._max_target()
+
+    def copy(self) -> 'ConditionalGate':
+        return ConditionalGate(
+            self.condition_register, self.condition_value,
+            self.inner_gate.copy(), self.register_size)
+
+    def reposition(self, mask, bit_mask=None):
+        g = self.copy()
+        g.inner_gate = g.inner_gate.reposition(mask, bit_mask)
+        g.target = g.inner_gate.target  # type: ignore
+        return g
+
+    def to_qasm(self) -> str:
+        inner_qasm = self.inner_gate.to_qasm()
+        return "if({}=={}) {}".format(
+            self.condition_register, self.condition_value, inner_qasm)
+
+    def _build_condition_poly(self, g: BaseGraph[VT, ET]) -> 'Poly':  # type: ignore[name-defined]
+        """Build a boolean polynomial representing the register condition.
+
+        For ``if (reg == val)`` with an *n*-bit register, the condition is
+        the product over all bits *i* of either ``bit_var_i`` (when bit *i*
+        of *val* is 1) or ``(1 - bit_var_i)`` (when bit *i* is 0).
+        """
+        from ..symbolic import Poly, new_var as sym_new_var, new_const
+        result: Poly = new_const(1)
+        for i in range(self.register_size):
+            bit_var = sym_new_var(
+                "{}[{}]".format(self.condition_register, i),
+                is_bool=True, registry=g.var_registry)
+            if (self.condition_value >> i) & 1:
+                result = result * bit_var
+            else:
+                result = result * (new_const(1) - bit_var)
+        return result
+
+    def to_graph(self, g: BaseGraph[VT, ET], q_mapper: TargetMapper[VT],
+                 c_mapper: TargetMapper[VT]) -> None:
+        inner = self.inner_gate
+        # Single-qubit Z or X rotations: multiply phase by condition polynomial.
+        if isinstance(inner, ZPhase):
+            cond = self._build_condition_poly(g)
+            phase = cond * inner.phase
+            self.graph_add_node(g, q_mapper, VertexType.Z, inner.target,
+                                q_mapper.next_row(inner.target), phase)
+            q_mapper.advance_next_row(inner.target)
+        elif isinstance(inner, XPhase):
+            cond = self._build_condition_poly(g)
+            phase = cond * inner.phase
+            self.graph_add_node(g, q_mapper, VertexType.X, inner.target,
+                                q_mapper.next_row(inner.target), phase)
+            q_mapper.advance_next_row(inner.target)
+        else:
+            raise NotImplementedError(
+                "ConditionalGate.to_graph() is not supported for gate type "
+                "'{}'. Only single-qubit Z and X rotations (ZPhase, Z, S, T, "
+                "XPhase, NOT, and their subclasses) are currently "
+                "supported.".format(type(inner).__name__))
+
+
 class DiscardBit(Gate):
     name = 'DiscardBit'
     def __init__(self, target):
@@ -1425,6 +1540,11 @@ class Measurement(Gate):
 
     def to_qasm(self) -> str:
         if self.result_symbol is not None:
+            if '[' not in self.result_symbol:
+                raise TypeError(
+                    "Measurement result_symbol '{}' is not a valid QASM "
+                    "classical bit reference (expected 'reg[index]')".format(
+                        self.result_symbol))
             return "measure q[{:d}] -> {};".format(self.target, self.result_symbol)
         if self.result_bit is not None:
             return "measure q[{:d}] -> c[{:d}];".format(self.target, self.result_bit)
@@ -1467,8 +1587,13 @@ class Measurement(Gate):
     def to_graph_symbolic_boolean(self, g, q_mapper):
         """Represent the measurement as a node with symbolic boolean phases."""
         r = q_mapper.next_row(self.target)
-        symbol_name = self.result_symbol if self.result_symbol is not None else f"m{self.target}"
-        phase = new_var(name=f"{symbol_name}", is_bool=True, registry=g.var_registry) 
+        if self.result_symbol is not None:
+            symbol_name = self.result_symbol
+        elif self.result_bit is not None:
+            symbol_name = "c[{}]".format(self.result_bit)
+        else:
+            symbol_name = "m{}".format(self.target)
+        phase = new_var(name=symbol_name, is_bool=True, registry=g.var_registry)
         _ = self.graph_add_node(g,
             q_mapper,
             VertexType.X,
@@ -1525,6 +1650,7 @@ gate_types: Dict[str,Type[Gate]] = {
     "PostSelect": PostSelect,
     "DiscardBit": DiscardBit,
     "Measurement": Measurement,
+    "ConditionalGate": ConditionalGate,
 }
 
 qasm_gate_table: Dict[str, Type[Gate]] = {

@@ -753,6 +753,405 @@ class TestQASM(unittest.TestCase):
             """)
         self.assertIn("is larger than", str(ctx.exception))
 
+
+    # --- Classical control / feedforward tests (issue #345, item 11) ---
+
+    def test_parse_if_single_bit(self):
+        """Test parsing a single-bit conditional gate."""
+        from pyzx.circuit.gates import ConditionalGate, NOT
+        c = Circuit.from_qasm("""
+        OPENQASM 2.0;
+        include "qelib1.inc";
+        qreg q[1];
+        creg c[1];
+        if(c==1) x q[0];
+        """)
+        self.assertEqual(len(c.gates), 1)
+        gate = c.gates[0]
+        self.assertIsInstance(gate, ConditionalGate)
+        self.assertEqual(gate.condition_register, "c")
+        self.assertEqual(gate.condition_value, 1)
+        self.assertIsInstance(gate.inner_gate, NOT)
+        self.assertEqual(gate.inner_gate.target, 0)
+        self.assertEqual(gate.register_size, 1)
+
+    def test_parse_if_multi_bit(self):
+        """Test parsing a conditional gate with a multi-bit register."""
+        from pyzx.circuit.gates import ConditionalGate, ZPhase
+        c = Circuit.from_qasm("""
+        OPENQASM 2.0;
+        include "qelib1.inc";
+        qreg q[1];
+        creg c[3];
+        if(c==5) rz(pi) q[0];
+        """)
+        self.assertEqual(len(c.gates), 1)
+        gate = c.gates[0]
+        self.assertIsInstance(gate, ConditionalGate)
+        self.assertEqual(gate.condition_register, "c")
+        self.assertEqual(gate.condition_value, 5)
+        self.assertIsInstance(gate.inner_gate, ZPhase)
+        self.assertEqual(gate.register_size, 3)
+
+    def test_parse_if_zero_condition(self):
+        """Test parsing if (c == 0), which negates all bits."""
+        from pyzx.circuit.gates import ConditionalGate
+        c = Circuit.from_qasm("""
+        OPENQASM 2.0;
+        include "qelib1.inc";
+        qreg q[1];
+        creg c[2];
+        if(c==0) z q[0];
+        """)
+        self.assertEqual(len(c.gates), 1)
+        gate = c.gates[0]
+        self.assertIsInstance(gate, ConditionalGate)
+        self.assertEqual(gate.condition_value, 0)
+        self.assertEqual(gate.register_size, 2)
+
+    def test_conditional_gate_to_graph_z(self):
+        """Test that a conditional Z gate creates a vertex with symbolic boolean phase."""
+        from pyzx.circuit.gates import ConditionalGate, Measurement, Z
+        from pyzx.symbolic import Poly
+        c = Circuit(1)
+        c.gates = [
+            Measurement(0, result_symbol="c[0]"),
+            ConditionalGate("c", 1, Z(0), 1),
+        ]
+        g = c.to_graph()
+        # Find vertices with symbolic phases.
+        sym_verts = [v for v in g.vertices() if isinstance(g.phase(v), Poly)]
+        # Should have at least 2: the measurement outcome and the conditional gate.
+        self.assertGreaterEqual(len(sym_verts), 2)
+
+    def test_conditional_gate_to_graph_negated(self):
+        """Test that if(c==0) round-trips through graph extraction."""
+        from pyzx.circuit.gates import ConditionalGate, Z
+        from pyzx.circuit.graphparser import graph_to_circuit
+        from pyzx.symbolic import Poly
+        c1 = Circuit(1)
+        c1.gates = [ConditionalGate("c", 0, Z(0), 1)]
+        g = c1.to_graph()
+        sym_verts = [v for v in g.vertices() if isinstance(g.phase(v), Poly)]
+        self.assertEqual(len(sym_verts), 1)
+        # Extract back and verify the condition is recovered.
+        c2 = graph_to_circuit(g)
+        cond_gates = [gt for gt in c2.gates if isinstance(gt, ConditionalGate)]
+        self.assertEqual(len(cond_gates), 1)
+        self.assertEqual(cond_gates[0].condition_register, "c")
+        self.assertEqual(cond_gates[0].condition_value, 0)
+
+    def test_conditional_gate_multi_bit_graph_extraction(self):
+        """Test that multi-bit Z conditions (including 0-bits) round-trip through graph."""
+        from pyzx.circuit.gates import ConditionalGate, Z
+        from pyzx.circuit.graphparser import graph_to_circuit
+        # if(c==1) with a 2-bit register: bit 0 set, bit 1 clear.
+        c1 = Circuit(1)
+        c1.gates = [ConditionalGate("c", 1, Z(0), 2)]
+        g = c1.to_graph()
+        c2 = graph_to_circuit(g)
+        cond_gates = [gt for gt in c2.gates if isinstance(gt, ConditionalGate)]
+        self.assertEqual(len(cond_gates), 1)
+        self.assertEqual(cond_gates[0].condition_value, 1)
+        self.assertEqual(cond_gates[0].register_size, 2)
+        # if(c==0) with a 2-bit register: both bits clear.
+        c3 = Circuit(1)
+        c3.gates = [ConditionalGate("c", 0, Z(0), 2)]
+        g = c3.to_graph()
+        c4 = graph_to_circuit(g)
+        cond_gates = [gt for gt in c4.gates if isinstance(gt, ConditionalGate)]
+        self.assertEqual(len(cond_gates), 1)
+        self.assertEqual(cond_gates[0].condition_value, 0)
+        self.assertEqual(cond_gates[0].register_size, 2)
+
+    def test_conditional_gate_qasm_round_trip(self):
+        """Test that conditional gates survive a QASM round-trip."""
+        from pyzx.circuit.gates import ConditionalGate
+        qasm_in = """
+        OPENQASM 2.0;
+        include "qelib1.inc";
+        qreg q[2];
+        creg c[1];
+        h q[0];
+        measure q[0] -> c[0];
+        if(c==1) x q[1];
+        """
+        c1 = Circuit.from_qasm(qasm_in)
+        qasm_out = c1.to_qasm()
+        self.assertIn("if(c==1)", qasm_out)
+        self.assertIn("creg c[1]", qasm_out)
+        c2 = Circuit.from_qasm(qasm_out)
+        self.assertEqual(len(c1.gates), len(c2.gates))
+        for g1, g2 in zip(c1.gates, c2.gates):
+            self.assertEqual(type(g1), type(g2))
+
+    def test_conditional_gate_graph_extraction(self):
+        """Test that a conditional gate round-trips through the graph."""
+        from pyzx.circuit.gates import ConditionalGate, Z
+        from pyzx.circuit.graphparser import graph_to_circuit
+        c1 = Circuit(1)
+        c1.gates = [ConditionalGate("c", 1, Z(0), 1)]
+        g = c1.to_graph()
+        c2 = graph_to_circuit(g)
+        cond_gates = [gt for gt in c2.gates if isinstance(gt, ConditionalGate)]
+        self.assertEqual(len(cond_gates), 1)
+        self.assertEqual(cond_gates[0].condition_register, "c")
+        self.assertEqual(cond_gates[0].condition_value, 1)
+
+    def test_qec_measure_conditional_correction(self):
+        """End-to-end test: measure + conditional Pauli correction (QEC pattern)."""
+        from pyzx.circuit.gates import ConditionalGate, Measurement
+        qasm = """
+        OPENQASM 2.0;
+        include "qelib1.inc";
+        qreg q[3];
+        creg c[1];
+        cx q[0],q[1];
+        cx q[0],q[2];
+        h q[0];
+        measure q[0] -> c[0];
+        if(c==1) z q[1];
+        if(c==1) z q[2];
+        """
+        c = Circuit.from_qasm(qasm)
+        # 2 CNOTs + 1 HAD + 1 measure + 2 conditional gates = 6.
+        self.assertEqual(len(c.gates), 6)
+        self.assertIsInstance(c.gates[3], Measurement)
+        self.assertIsInstance(c.gates[4], ConditionalGate)
+        self.assertIsInstance(c.gates[5], ConditionalGate)
+
+        # Convert to graph and back.
+        g = c.to_graph()
+        qasm_out = c.to_qasm()
+        c2 = Circuit.from_qasm(qasm_out)
+        self.assertEqual(len(c.gates), len(c2.gates))
+
+    def test_conditional_unsupported_gate(self):
+        """Test that unsupported conditional gates raise NotImplementedError."""
+        from pyzx.circuit.gates import ConditionalGate, HAD
+        c = Circuit(1)
+        c.gates = [ConditionalGate("c", 1, HAD(0), 1)]
+        with self.assertRaises(NotImplementedError):
+            c.to_graph()
+
+    def test_conditional_gate_with_spaces(self):
+        """Test that if statement parsing tolerates whitespace variations."""
+        from pyzx.circuit.gates import ConditionalGate
+        c = Circuit.from_qasm("""
+        OPENQASM 2.0;
+        include "qelib1.inc";
+        qreg q[1];
+        creg c[1];
+        if ( c == 1 ) x q[0];
+        """)
+        self.assertEqual(len(c.gates), 1)
+        self.assertIsInstance(c.gates[0], ConditionalGate)
+
+    def test_parse_if_braced_block_qasm3(self):
+        """Test parsing OpenQASM 3 braced if-block with multiple gates."""
+        from pyzx.circuit.gates import ConditionalGate, NOT, Z
+        c = Circuit.from_qasm("""
+        OPENQASM 3;
+        include "stdgates.inc";
+        qubit[2] q;
+        bit[1] c;
+        if (c == 1) { x q[0]; z q[1]; }
+        """)
+        self.assertEqual(len(c.gates), 2)
+        self.assertIsInstance(c.gates[0], ConditionalGate)
+        self.assertIsInstance(c.gates[1], ConditionalGate)
+        self.assertIsInstance(c.gates[0].inner_gate, NOT)
+        self.assertIsInstance(c.gates[1].inner_gate, Z)
+        self.assertEqual(c.gates[0].inner_gate.target, 0)
+        self.assertEqual(c.gates[1].inner_gate.target, 1)
+
+    def test_parse_if_braced_block_qasm2(self):
+        """Test that braced if-blocks also work in OpenQASM 2."""
+        from pyzx.circuit.gates import ConditionalGate
+        c = Circuit.from_qasm("""
+        OPENQASM 2.0;
+        include "qelib1.inc";
+        qreg q[2];
+        creg c[1];
+        if(c==1) { x q[0]; z q[1]; }
+        """)
+        self.assertEqual(len(c.gates), 2)
+        for gate in c.gates:
+            self.assertIsInstance(gate, ConditionalGate)
+            self.assertEqual(gate.condition_register, "c")
+            self.assertEqual(gate.condition_value, 1)
+
+    def test_parse_if_braced_single_gate(self):
+        """Test that a braced if-block with a single gate works."""
+        from pyzx.circuit.gates import ConditionalGate, NOT
+        c = Circuit.from_qasm("""
+        OPENQASM 2.0;
+        include "qelib1.inc";
+        qreg q[1];
+        creg c[1];
+        if(c==1) { x q[0]; }
+        """)
+        self.assertEqual(len(c.gates), 1)
+        self.assertIsInstance(c.gates[0], ConditionalGate)
+        self.assertIsInstance(c.gates[0].inner_gate, NOT)
+
+    def test_parse_if_nested_braces_rejected(self):
+        """Nested if-blocks should raise a clear error."""
+        with self.assertRaises(TypeError) as ctx:
+            Circuit.from_qasm("""
+            OPENQASM 2.0;
+            include "qelib1.inc";
+            qreg q[1];
+            creg c[1];
+            if(c==1) { if(c==0) { x q[0]; } }
+            """)
+        self.assertIn("Nested if-blocks", str(ctx.exception))
+
+    def test_expand_if_blocks_static_method(self):
+        """_expand_if_blocks is a static method callable on the parser class."""
+        from pyzx.circuit.qasmparser import QASMParser
+        result = QASMParser._expand_if_blocks(
+            "if (c==1) { x q[0]; z q[1]; }")
+        self.assertIn("if (c==1) x q[0]", result)
+        self.assertIn("if (c==1) z q[1]", result)
+        self.assertNotIn("{", result)
+
+    def test_creg_declaration_for_result_bit(self):
+        """Measurement with result_bit should produce a creg declaration."""
+        from pyzx.circuit.gates import Measurement
+        c = Circuit(2)
+        c.gates = [Measurement(0, result_bit=0), Measurement(1, result_bit=2)]
+        qasm = c.to_qasm()
+        self.assertIn("creg c[3]", qasm)
+
+    def test_invalid_result_symbol_rejected(self):
+        """Measurement with result_symbol missing '[' should raise in to_qasm."""
+        from pyzx.circuit.gates import Measurement
+        m = Measurement(0, result_symbol="bad_name")
+        with self.assertRaises(TypeError) as ctx:
+            m.to_qasm()
+        self.assertIn("not a valid QASM", str(ctx.exception))
+
+    def test_conditional_value_out_of_range(self):
+        """Condition value exceeding register capacity should raise ValueError."""
+        from pyzx.circuit.gates import ConditionalGate, Z
+        with self.assertRaises(ValueError) as ctx:
+            ConditionalGate("c", 5, Z(0), 2)  # 5 >= 2^2
+        self.assertIn("out of range", str(ctx.exception))
+        # Boundary: 3 fits in 2 bits, 4 does not.
+        ConditionalGate("c", 3, Z(0), 2)  # should not raise
+        with self.assertRaises(ValueError):
+            ConditionalGate("c", 4, Z(0), 2)
+        with self.assertRaises(ValueError):
+            ConditionalGate("c", -1, Z(0), 2)
+
+    def test_measurement_result_bit_variable_name(self):
+        """Measurement with result_bit should create a c[i] variable matching ConditionalGate."""
+        from pyzx.circuit.gates import Measurement, ConditionalGate, Z
+        from pyzx.symbolic import Poly
+        c = Circuit(2, bit_amount=1)
+        c.gates = [
+            Measurement(0, result_bit=0),
+            ConditionalGate("c", 1, Z(1), 1),
+        ]
+        g = c.to_graph()
+        # Both should use the same variable name "c[0]".
+        sym_phases = [g.phase(v) for v in g.vertices()
+                      if isinstance(g.phase(v), Poly)]
+        var_names = set()
+        for p in sym_phases:
+            for _, term in p.terms:
+                for var, _ in term.vars:
+                    var_names.add(var.name)
+        self.assertEqual(var_names, {"c[0]"})
+
+    def test_measure_not_extracted_as_conditional(self):
+        """Measurement X spiders must not be misidentified as conditional gates."""
+        from pyzx.circuit.gates import ConditionalGate, Measurement, Z
+        from pyzx.circuit.graphparser import graph_to_circuit
+        c1 = Circuit(2)
+        c1.gates = [
+            Measurement(0, result_symbol="c[0]"),
+            ConditionalGate("c", 1, Z(0), 1),
+        ]
+        g = c1.to_graph()
+        c2 = graph_to_circuit(g)
+        # Only the Z-type conditional should be extracted; the measurement
+        # X spider should NOT become a second ConditionalGate.
+        cond_gates = [gt for gt in c2.gates if isinstance(gt, ConditionalGate)]
+        self.assertEqual(len(cond_gates), 1)
+        self.assertEqual(cond_gates[0].condition_value, 1)
+
+    def test_conditional_s_graph_round_trip(self):
+        """Test that conditional S gate preserves phase through graph."""
+        from pyzx.circuit.gates import ConditionalGate, S
+        from pyzx.circuit.graphparser import graph_to_circuit
+        c1 = Circuit(1)
+        c1.gates = [ConditionalGate("c", 1, S(0), 1)]
+        g = c1.to_graph()
+        c2 = graph_to_circuit(g)
+        cond_gates = [gt for gt in c2.gates if isinstance(gt, ConditionalGate)]
+        self.assertEqual(len(cond_gates), 1)
+        self.assertIsInstance(cond_gates[0].inner_gate, S)
+        self.assertEqual(cond_gates[0].inner_gate.phase, Fraction(1, 2))
+
+    def test_conditional_sdg_qasm_round_trip(self):
+        """Test that conditional sdg survives QASM round-trip."""
+        from pyzx.circuit.gates import ConditionalGate, S
+        c1 = Circuit.from_qasm("""
+        OPENQASM 2.0;
+        include "qelib1.inc";
+        qreg q[1];
+        creg c[1];
+        if(c==1) sdg q[0];
+        """)
+        qasm_out = c1.to_qasm()
+        self.assertIn("sdg", qasm_out)
+        c2 = Circuit.from_qasm(qasm_out)
+        self.assertEqual(len(c2.gates), 1)
+        self.assertIsInstance(c2.gates[0], ConditionalGate)
+        self.assertIsInstance(c2.gates[0].inner_gate, S)
+        self.assertTrue(c2.gates[0].inner_gate.adjoint)
+
+    def test_conditional_broadcast_over_register(self):
+        """Test that if(c==1) x q; broadcasts over the entire register."""
+        from pyzx.circuit.gates import ConditionalGate
+        c = Circuit.from_qasm("""
+        OPENQASM 2.0;
+        include "qelib1.inc";
+        qreg q[3];
+        creg c[1];
+        if(c==1) x q;
+        """)
+        self.assertEqual(len(c.gates), 3)
+        for i, gate in enumerate(c.gates):
+            self.assertIsInstance(gate, ConditionalGate)
+            self.assertEqual(gate.inner_gate.target, i)
+
+    def test_conditional_unknown_register_error(self):
+        """Test that referencing an undeclared creg raises TypeError."""
+        with self.assertRaises(TypeError) as ctx:
+            Circuit.from_qasm("""
+            OPENQASM 2.0;
+            include "qelib1.inc";
+            qreg q[1];
+            if(c==1) x q[0];
+            """)
+        self.assertIn("Unknown classical register", str(ctx.exception))
+
+    def test_conditional_multi_bit_partial_value_graph_round_trip(self):
+        """Test if(c==2) with 2-bit register (bit 1 set, bit 0 clear)."""
+        from pyzx.circuit.gates import ConditionalGate, Z
+        from pyzx.circuit.graphparser import graph_to_circuit
+        c1 = Circuit(1)
+        c1.gates = [ConditionalGate("c", 2, Z(0), 2)]
+        g = c1.to_graph()
+        c2 = graph_to_circuit(g)
+        cond_gates = [gt for gt in c2.gates if isinstance(gt, ConditionalGate)]
+        self.assertEqual(len(cond_gates), 1)
+        self.assertEqual(cond_gates[0].condition_value, 2)
+        self.assertEqual(cond_gates[0].register_size, 2)
+
     def test_classical_bits_in_c_mapper(self):
         """Classical bit labels should be in c_mapper, not q_mapper."""
         from pyzx.circuit.graphparser import circuit_to_graph
@@ -830,16 +1229,9 @@ class TestQASM(unittest.TestCase):
         This is the T-injection protocol example from tqec/tqec#708: prepare an
         ancilla in |T>, CNOT with the data qubit, measure the ancilla, and
         conditionally apply S-dagger. Three rounds are performed.
-
-        The ``if(c==1) sdg q[0];`` conditional corrections are not yet
-        supported by the parser (they require classical control / feedforward).
-        For now they are omitted, and the test verifies the structural
-        skeleton: reset, gates, measure, and QASM round-trip.
         """
-        from pyzx.circuit.gates import Measurement, Reset
+        from pyzx.circuit.gates import ConditionalGate, Measurement, Reset
 
-        # Full circuit would include ``if(c==1) sdg q[0];`` after each
-        # measure, but that requires feedforward support (ConditionalGate).
         qasm = """
         OPENQASM 2.0;
         include "qelib1.inc";
@@ -852,6 +1244,7 @@ class TestQASM(unittest.TestCase):
         cx q[0],q[1];
         h q[1];
         measure q[1] -> c[0];
+        if(c==1) sdg q[0];
         h q[0];
         reset q[1];
         h q[1];
@@ -859,6 +1252,7 @@ class TestQASM(unittest.TestCase):
         cx q[0],q[1];
         h q[1];
         measure q[1] -> c[0];
+        if(c==1) sdg q[0];
         h q[0];
         reset q[1];
         h q[1];
@@ -866,6 +1260,7 @@ class TestQASM(unittest.TestCase):
         cx q[0],q[1];
         h q[1];
         measure q[1] -> c[0];
+        if(c==1) sdg q[0];
         """
 
         # Parse.
@@ -874,11 +1269,17 @@ class TestQASM(unittest.TestCase):
 
         # Count gate types.
         measurements = [g for g in c.gates if isinstance(g, Measurement)]
+        conditionals = [g for g in c.gates if isinstance(g, ConditionalGate)]
         resets = [g for g in c.gates if isinstance(g, Reset)]
         self.assertEqual(len(measurements), 3)
+        self.assertEqual(len(conditionals), 3)
         self.assertEqual(len(resets), 3)
-        # TODO: once feedforward is implemented, assert 3 ConditionalGate
-        # instances wrapping sdg on q[0], each conditioned on c==1.
+
+        # Each conditional should be sdg on q[0].
+        for cg in conditionals:
+            self.assertEqual(cg.condition_register, "c")
+            self.assertEqual(cg.condition_value, 1)
+            self.assertEqual(cg.inner_gate.target, 0)
 
         # Convert to graph.
         g = c.to_graph()

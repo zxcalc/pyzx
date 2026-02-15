@@ -21,7 +21,7 @@ from fractions import Fraction
 from typing import List, Dict, Tuple, Optional
 
 from . import Circuit
-from .gates import Gate, qasm_gate_table, Measurement, Reset
+from .gates import Gate, qasm_gate_table, Measurement, Reset, ConditionalGate
 from ..utils import settings
 
 
@@ -76,7 +76,8 @@ class QASMParser(object):
             j = data.find("}", i)
             self.parse_custom_gate(data[i:j+1])
             data = data[:i] + data[j+1:]
-        # parse the regular commands
+        data = self._expand_if_blocks(data)
+        # Parse the regular commands.
         commands = [s.strip() for s in data.split(";") if s.strip()]
         for c in commands:
             self.gates.extend(self.parse_command(c, self.registers))
@@ -86,6 +87,37 @@ class QASMParser(object):
         circ.gates = self.gates
         self.circuit = circ
         return self.circuit
+
+    @staticmethod
+    def _expand_if_blocks(s: str) -> str:
+        """Expand braced if-blocks into flat if-statements.
+
+        E.g. ``if (c==1) { x q[0]; z q[1]; }`` becomes
+        ``if (c==1) x q[0]; if (c==1) z q[1];``
+
+        This is done before semicolon-splitting so that the braces do
+        not break the command boundaries.  Nested if-blocks (e.g.
+        ``if (c==1) { if (c==0) { x q[0]; } }``) are rejected.
+        """
+        pattern = re.compile(r'if\s*\([^)]*\)\s*\{')
+        while True:
+            m = pattern.search(s)
+            if m is None:
+                break
+            prefix = m.group()          # e.g. "if (c==1) {"
+            condition = prefix[:prefix.rfind('{')].strip()  # "if (c==1)"
+            brace_start = m.end()
+            brace_end = s.index('}', brace_start)
+            body = s[brace_start:brace_end]
+            # Reject nested if-blocks.
+            if '{' in body:
+                raise TypeError(
+                    "Nested if-blocks are not supported: {}".format(
+                        s[m.start():brace_end + 1].strip()))
+            inner_cmds = [c.strip() for c in body.split(';') if c.strip()]
+            expanded = '; '.join(condition + ' ' + c for c in inner_cmds) + ';'
+            s = s[:m.start()] + expanded + s[brace_end + 1:]
+        return s
 
     def parse_custom_gate(self, data: str) -> None:
         data = data[5:]
@@ -136,7 +168,7 @@ class QASMParser(object):
         phases = []
         if left_bracket != -1:
             if right_bracket == -1:
-                raise TypeError(f"Mismatched bracket: {name}.")
+                raise TypeError("Mismatched bracket: {}.".format(name))
             vals = name[left_bracket+1:right_bracket].split(',')
             phases = [self.parse_phase_arg(val) for val in vals]
             name = name[:left_bracket]
@@ -144,6 +176,20 @@ class QASMParser(object):
 
     def parse_command(self, c: str, registers: Dict[str,Tuple[int,int]]) -> List[Gate]:
         gates: List[Gate] = []
+        # Handle `if (creg == val) gate args;` before extract_command_parts,
+        # because the parentheses in `if(...)` confuse the phase parser.
+        if_match = re.match(r'if\s*\(\s*(\w+)\s*==\s*(\d+)\s*\)\s*(.*)', c)
+        if if_match:
+            reg_name = if_match.group(1)
+            cond_val = int(if_match.group(2))
+            inner_cmd = if_match.group(3)
+            if reg_name not in self.cregisters:
+                raise TypeError("Unknown classical register '{}'".format(reg_name))
+            reg_size = self.cregisters[reg_name]
+            inner_gates = self.parse_command(inner_cmd, registers)
+            for ig in inner_gates:
+                gates.append(ConditionalGate(reg_name, cond_val, ig, reg_size))
+            return gates
         name, phases, args = self.extract_command_parts(c)
         if name in ("barrier", "id"): return gates
         if name == "creg":
@@ -172,7 +218,7 @@ class QASMParser(object):
                         "of size {}".format(
                             result_index, result_reg_name,
                             self.cregisters[result_reg_name]))
-                gate = Measurement(target_qbit, result_symbol=f"{result_reg_name}[{result_index}]")
+                gate = Measurement(target_qbit, result_symbol="{}[{}]".format(result_reg_name, result_index))
                 gates.append(gate)
             else:
                 # Register broadcast: measure q -> c.
@@ -189,7 +235,7 @@ class QASMParser(object):
                             target, size, result_bit,
                             self.cregisters[result_bit]))
                 for i in range(size):
-                    gate = Measurement(start + i, result_symbol=f"{result_bit}[{i}]")
+                    gate = Measurement(start + i, result_symbol="{}[{}]".format(result_bit, i))
                     gates.append(gate)
             return gates
         if name == "reset":
@@ -210,7 +256,7 @@ class QASMParser(object):
                     for i in range(size):
                         gates.append(Reset(start + i))
             return gates
-        if name in ("opaque", "if"):
+        if name in ("opaque",):
             raise TypeError("Unsupported operation {}".format(c))
         if name == "qreg":
             regname, sizep = args[0].split("[",1)
@@ -315,7 +361,7 @@ class QASMParser(object):
                     elif val == '-': phase = -1
                     else: phase = float(val)
             except: raise TypeError("Invalid specification {}".format(val))
-        phase = Fraction(phase).limit_denominator(100000000)
+        phase = Fraction(phase).limit_denominator(settings.float_to_fraction_max_denominator)
         return phase
 
 
