@@ -21,7 +21,7 @@ from fractions import Fraction
 from typing import List, Dict, Tuple, Optional
 
 from . import Circuit
-from .gates import Gate, qasm_gate_table, Measurement
+from .gates import Gate, qasm_gate_table, Measurement, Reset
 from ..utils import settings
 
 
@@ -33,6 +33,7 @@ class QASMParser(object):
         self.gates: List[Gate] = []
         self.custom_gates: Dict[str,Circuit] = {}
         self.registers: Dict[str,Tuple[int,int]] = {}
+        self.cregisters: Dict[str,int] = {}
         self.qubit_count: int = 0
         self.bit_count: int = 0
         self.circuit: Optional[Circuit] = None
@@ -41,7 +42,9 @@ class QASMParser(object):
         self.gates = []
         self.custom_gates = {}
         self.registers = {}
+        self.cregisters = {}
         self.qubit_count = 0
+        self.bit_count = 0
         self.circuit = None
         lines = s.splitlines()
         r = []
@@ -78,7 +81,8 @@ class QASMParser(object):
         for c in commands:
             self.gates.extend(self.parse_command(c, self.registers))
 
-        circ = Circuit(self.qubit_count)
+        self.bit_count = sum(self.cregisters.values())
+        circ = Circuit(self.qubit_count, bit_amount=self.bit_count)
         circ.gates = self.gates
         self.circuit = circ
         return self.circuit
@@ -141,16 +145,70 @@ class QASMParser(object):
     def parse_command(self, c: str, registers: Dict[str,Tuple[int,int]]) -> List[Gate]:
         gates: List[Gate] = []
         name, phases, args = self.extract_command_parts(c)
-        if name in ("barrier","creg", "id"): return gates
+        if name in ("barrier", "id"): return gates
+        if name == "creg":
+            regname, sizep = args[0].split("[", 1)
+            size = int(sizep[:-1])
+            self.cregisters[regname] = size
+            return gates
         if name == "measure":
-            target, result_bit = args[0].split(' -> ')
-            # Extract the register name and index separately for both target and result
-            _, target_idx = target.split('[')
-            result_reg_name, result_idx = result_bit.split('[')
-            # Remove the trailing ']' and convert to int
-            target_qbit = int(target_idx[:-1])
-            gate = Measurement(target_qbit, result_symbol=f"{result_reg_name}[{result_idx[:-1]}]")
-            gates.append(gate)
+            # Strip all spaces so we can split on '->' regardless of spacing.
+            raw = args[0].replace(' ', '')
+            target, result_bit = raw.split('->')
+            if '[' in target:
+                # Single qubit: measure q[0] -> c[0];
+                regname, target_idx = target.split('[', 1)
+                if regname not in registers:
+                    raise TypeError("Invalid register {}".format(regname))
+                target_qbit = registers[regname][0] + int(target_idx[:-1])
+                result_reg_name, result_idx = result_bit.split('[', 1)
+                result_index = int(result_idx[:-1])
+                if result_reg_name not in self.cregisters:
+                    raise TypeError("Undeclared classical register {}".format(
+                        result_reg_name))
+                if result_index >= self.cregisters[result_reg_name]:
+                    raise TypeError(
+                        "Index {} out of range for classical register {} "
+                        "of size {}".format(
+                            result_index, result_reg_name,
+                            self.cregisters[result_reg_name]))
+                gate = Measurement(target_qbit, result_symbol=f"{result_reg_name}[{result_index}]")
+                gates.append(gate)
+            else:
+                # Register broadcast: measure q -> c.
+                if target not in registers:
+                    raise TypeError("Invalid register {}".format(target))
+                if result_bit not in self.cregisters:
+                    raise TypeError("Undeclared classical register {}".format(
+                        result_bit))
+                start, size = registers[target]
+                if size > self.cregisters[result_bit]:
+                    raise TypeError(
+                        "Quantum register {} (size {}) is larger than "
+                        "classical register {} (size {})".format(
+                            target, size, result_bit,
+                            self.cregisters[result_bit]))
+                for i in range(size):
+                    gate = Measurement(start + i, result_symbol=f"{result_bit}[{i}]")
+                    gates.append(gate)
+            return gates
+        if name == "reset":
+            # Reset initializes a qubit to |0⟩ state.
+            # In OpenQASM: `reset q[0];` or `reset q;` (for entire register)
+            for a in args:
+                if "[" in a:
+                    regname, valp = a.split("[", 1)
+                    val = int(valp[:-1])
+                    if regname not in registers:
+                        raise TypeError("Invalid register {}".format(regname))
+                    qubit = registers[regname][0] + val
+                    gates.append(Reset(qubit))
+                else:
+                    if a not in registers:
+                        raise TypeError("Invalid register {}".format(a))
+                    start, size = registers[a]
+                    for i in range(size):
+                        gates.append(Reset(start + i))
             return gates
         if name in ("opaque", "if"):
             raise TypeError("Unsupported operation {}".format(c))

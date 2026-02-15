@@ -23,7 +23,7 @@ if __name__ == '__main__':
     sys.path.append('.')
 
 from pyzx.circuit import Circuit
-from pyzx.circuit.gates import InitAncilla, PostSelect
+from pyzx.circuit.gates import InitAncilla, Measurement, PostSelect, Reset
 from pyzx.utils import VertexType
 
 
@@ -100,6 +100,66 @@ class TestPostSelect(unittest.TestCase):
         self.assertNotEqual(PostSelect(0, '+'), PostSelect(0, '-'))
         self.assertNotEqual(PostSelect(0), PostSelect(1))
         self.assertNotEqual(PostSelect(0), InitAncilla(0))
+
+
+class TestReset(unittest.TestCase):
+    """Tests for Reset gate."""
+
+    def test_str(self):
+        self.assertEqual(str(Reset(0)), "Reset(0)")
+        self.assertEqual(str(Reset(3)), "Reset(3)")
+
+    def test_equality(self):
+        self.assertEqual(Reset(0), Reset(0))
+        self.assertNotEqual(Reset(0), Reset(1))
+        self.assertNotEqual(Reset(0), InitAncilla(0, '0'))
+
+    def test_to_qasm(self):
+        self.assertEqual(Reset(2).to_qasm(), "reset q[2];")
+
+    def test_reposition(self):
+        mask = [0, 5, 2, 3]
+        g1 = Reset(1)
+        g2 = g1.reposition(mask)
+        self.assertEqual(g2.target, 5)
+        self.assertEqual(g2.label, 5)
+
+    def test_to_graph(self):
+        """Test that Reset on an existing qubit produces ground + state vertices."""
+        c = Circuit(1)
+        c.add_gate(Reset(0))
+        g = c.to_graph()
+
+        # Effect vertex: Z spider connected to ground (discard).
+        ground_verts = list(g.grounds())
+        self.assertEqual(len(ground_verts), 1)
+        self.assertEqual(g.type(ground_verts[0]), VertexType.Z)
+        self.assertEqual(g.phase(ground_verts[0]), 0)
+
+        # State vertex: X spider phase 0 (|0⟩ preparation).
+        x_verts = [v for v in g.vertices() if g.type(v) == VertexType.X]
+        self.assertEqual(len(x_verts), 1)
+        self.assertEqual(g.phase(x_verts[0]), 0)
+
+
+class TestMeasurementEquality(unittest.TestCase):
+    """Tests for Measurement equality."""
+
+    def test_same(self):
+        self.assertEqual(Measurement(0, result_symbol="c[0]"),
+                         Measurement(0, result_symbol="c[0]"))
+
+    def test_different_target(self):
+        self.assertNotEqual(Measurement(0, result_symbol="c[0]"),
+                            Measurement(1, result_symbol="c[0]"))
+
+    def test_different_result_symbol(self):
+        self.assertNotEqual(Measurement(0, result_symbol="c[0]"),
+                            Measurement(0, result_symbol="d[0]"))
+
+    def test_different_result_bit(self):
+        self.assertNotEqual(Measurement(0, result_bit=0),
+                            Measurement(0, result_bit=1))
 
 
 class TestReposition(unittest.TestCase):
