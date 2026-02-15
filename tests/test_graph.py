@@ -180,6 +180,28 @@ class TestGraphBasicMethods(unittest.TestCase):
         adj_v = list(g_adj.vertices())[0]
         self.assertEqual(get_z_box_label(g_adj, adj_v), (2-3j))
 
+    def test_adjoint_h_box_label(self):
+        from pyzx.utils import get_h_box_label, set_h_box_label
+        g = Graph()
+        v = g.add_vertex(VertexType.H_BOX)
+        set_h_box_label(g, v, (2+3j))
+        g_adj = g.adjoint()
+        adj_v = list(g_adj.vertices())[0]
+        self.assertEqual(get_h_box_label(g_adj, adj_v), (2-3j))
+
+    def test_adjoint_h_box_phase(self):
+        """Adjoint of a phase-based H-box should negate the phase
+        without converting to a complex label."""
+        from pyzx.utils import hbox_has_complex_label
+        g = Graph()
+        phase = Fraction(1, 2)
+        v = g.add_vertex(VertexType.H_BOX, phase=phase)
+        self.assertFalse(hbox_has_complex_label(g, v))
+        g_adj = g.adjoint()
+        adj_v = list(g_adj.vertices())[0]
+        self.assertEqual(g_adj.phase(adj_v), (-phase) % 2)
+        self.assertFalse(hbox_has_complex_label(g_adj, adj_v))
+
     def test_set_phase_rejects_complex(self):
         g = Graph()
         v = g.add_vertex(VertexType.Z)
