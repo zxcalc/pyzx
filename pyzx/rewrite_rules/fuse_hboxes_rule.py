@@ -29,7 +29,7 @@ __all__ = ['check_connected_hboxes',
 
 
 from typing import Dict, List, Tuple, Set
-from pyzx.utils import EdgeType, VertexType
+from pyzx.utils import EdgeType, VertexType, is_standard_hbox
 from pyzx.graph.base import BaseGraph, ET, VT, upair
 
 
@@ -50,7 +50,7 @@ def check_connected_hboxes(g: BaseGraph[VT ,ET], v: VT, w: VT) -> bool:
     if g.edge_type(e) != EdgeType.HADAMARD: return False
     v1 ,v2 = g.edge_st(e)
     if ty[v1] != VertexType.H_BOX or ty[v2] != VertexType.H_BOX: return False
-    if g.phase(v1) != 1 and g.phase(v2) != 1: return False
+    if not is_standard_hbox(g, v1) and not is_standard_hbox(g, v2): return False
     m.add(e)
 
     return True
@@ -67,7 +67,7 @@ def unsafe_fuse_hboxes(g: BaseGraph[VT ,ET], v1: VT, v2: VT) -> bool:
     rem_verts = []
     etab: Dict[Tuple[VT ,VT], List[int]] = {}
 
-    if g.phase(v2) != 1: # at most one of v1 and v2 has a phase different from 1
+    if not is_standard_hbox(g, v2):  # Ensure v2 is the standard one.
         v1, v2 = v2, v1
     rem_verts.append(v2)
     g.scalar.add_power(1)

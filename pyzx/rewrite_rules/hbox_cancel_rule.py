@@ -31,7 +31,7 @@ __all__ = ['check_hbox_cancel',
            'unsafe_hbox_cancel']
 
 from pyzx.graph.base import BaseGraph, VT, ET
-from pyzx.utils import EdgeType, VertexType
+from pyzx.utils import EdgeType, VertexType, is_standard_hbox
 
 
 def check_hbox_cancel(g: BaseGraph[VT, ET], v: VT) -> bool:
@@ -40,7 +40,7 @@ def check_hbox_cancel(g: BaseGraph[VT, ET], v: VT) -> bool:
         return False
     if g.type(v) != VertexType.H_BOX:
         return False
-    if g.phase(v) != 1:
+    if not is_standard_hbox(g, v):
         return False
     if g.vertex_degree(v) != 2:
         return False
@@ -51,7 +51,7 @@ def check_hbox_cancel(g: BaseGraph[VT, ET], v: VT) -> bool:
         e = g.edge(v, n)
         if g.edge_type(e) == EdgeType.SIMPLE:
             if (g.type(n) == VertexType.H_BOX and
-                g.phase(n) == 1 and
+                is_standard_hbox(g, n) and
                 g.vertex_degree(n) == 2):
                 return True
 
@@ -79,7 +79,7 @@ def unsafe_hbox_cancel(g: BaseGraph[VT, ET], v: VT) -> bool:
         e = g.edge(v, n)
         if g.edge_type(e) == EdgeType.SIMPLE:
             if (g.type(n) == VertexType.H_BOX and
-                g.phase(n) == 1 and
+                is_standard_hbox(g, n) and
                 g.vertex_degree(n) == 2):
 
                 # Found two adjacent H-boxes connected by a simple edge.

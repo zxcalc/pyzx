@@ -30,7 +30,7 @@ __all__ = ['check_hbox_parallel_not',
 
 
 from typing import Dict, List, Tuple
-from pyzx.utils import EdgeType, VertexType
+from pyzx.utils import EdgeType, VertexType, is_standard_hbox
 from pyzx.graph.base import BaseGraph, ET, VT, upair
 
 
@@ -63,7 +63,7 @@ def check_hbox_parallel_not(
     types = g.types()
 
     if not (h in g.vertices() and n in g.vertices()): return False
-    if types[h] != VertexType.H_BOX or phases[h] != 1: return False
+    if types[h] != VertexType.H_BOX or not is_standard_hbox(g, h): return False
 
     if g.vertex_degree(n) != 2 or phases[n] != 1: return False # If it turns out to be useful, this rule can be generalised to allow spiders of arbitrary phase here
 

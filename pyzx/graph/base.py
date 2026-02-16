@@ -340,7 +340,9 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
                    ) -> VT:
         """Add a single vertex to the graph and return its index.
         The optional parameters allow you to respectively set
-        the type, qubit index, row index and phase of the vertex."""
+        the type, qubit index, row index and phase of the vertex.
+        For H-boxes and Z-boxes with complex labels, use set_h_box_label
+        or set_z_box_label after creating the vertex."""
         if index is not None:
             self.add_vertex_indexed(index)
             v = index
