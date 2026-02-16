@@ -2,7 +2,7 @@ import sys
 import unittest
 from fractions import Fraction
 
-from pyzx.symbolic import Poly, VarRegistry, new_const, new_var, parse
+from pyzx.symbolic import Poly, Term, Var, VarRegistry, new_const, new_var, parse
 
 if __name__ == '__main__':
     sys.path.append('..')
@@ -255,6 +255,29 @@ class TestSymbolicParsing(unittest.TestCase):
         self.assertEqual(result, expected)
 
 
+class TestPolyConjugate(unittest.TestCase):
+
+    def test_conjugate_real_coefficients(self):
+        self.assertEqual(Poly([(3, Term([]))]).conjugate(), Poly([(3, Term([]))]))
+        self.assertEqual(Poly([(Fraction(1, 2), Term([]))]).conjugate(), Poly([(Fraction(1, 2), Term([]))]))
+        self.assertEqual(Poly([(2.5, Term([]))]).conjugate(), Poly([(2.5, Term([]))]))
+
+    def test_conjugate_complex_coefficients(self):
+        p = Poly([((3+2j), Term([]))])
+        result = p.conjugate()
+        self.assertEqual(len(result.terms), 1)
+        self.assertEqual(result.terms[0][0], (3-2j))
+
+        var = Var('x')
+        p = Poly([((1+2j), Term([(var, 1)])), ((3-4j), Term([]))])
+        result = p.conjugate()
+        coeffs = {t: c for c, t in result.terms}
+        self.assertEqual(coeffs[Term([(var, 1)])], (1-2j))
+        self.assertEqual(coeffs[Term([])], (3+4j))
+
+    def test_conjugate_pure_imaginary(self):
+        p = Poly([(2j, Term([]))])
+        self.assertEqual(p.conjugate().terms[0][0], -2j)
 
 
 

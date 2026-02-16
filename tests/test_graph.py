@@ -159,7 +159,7 @@ class TestGraphBasicMethods(unittest.TestCase):
         self.assertEqual(g.num_edges(),g2.num_edges())
         v1, v2 = list(g2.vertices())
         self.assertEqual(g.edge_type(g.edge(v1,v2)),EdgeType.HADAMARD)
-        
+
     def test_adjoint_scalar(self):
         g = Graph()
         scalar = Scalar()
@@ -170,6 +170,29 @@ class TestGraphBasicMethods(unittest.TestCase):
         g.scalar = scalar
         g_adj = g.adjoint()
         self.assertAlmostEqual(g_adj.scalar.to_number(), scalar.to_number().conjugate())
+
+    def test_adjoint_z_box_label(self):
+        from pyzx.utils import get_z_box_label, set_z_box_label
+        g = Graph()
+        v = g.add_vertex(VertexType.Z_BOX)
+        set_z_box_label(g, v, (2+3j))
+        g_adj = g.adjoint()
+        adj_v = list(g_adj.vertices())[0]
+        self.assertEqual(get_z_box_label(g_adj, adj_v), (2-3j))
+
+    def test_set_phase_rejects_complex(self):
+        g = Graph()
+        v = g.add_vertex(VertexType.Z)
+        with self.assertRaises(TypeError):
+            g.set_phase(v, (1+2j))
+
+    def test_add_vertex_rejects_complex_phase(self):
+        from pyzx.symbolic import Poly, Term, Var
+        g = Graph()
+        var = Var('x')
+        phase = Poly([((3+2j), Term([(var, 1)]))])
+        with self.assertRaises(TypeError):
+            g.add_vertex(VertexType.Z, phase=phase)
 
     @unittest.skipUnless(np, "numpy needs to be installed for this to run")
     def test_remove_isolated_vertex_preserves_semantics(self):

@@ -364,6 +364,14 @@ class Poly:
         """Return a shallow copy of the polynomial."""
         return Poly([(c, t) for c, t in self.terms])
 
+    def conjugate(self) -> 'Poly':
+        """Return the complex conjugate of the polynomial."""
+        def conj_coeff(c):
+            if isinstance(c, complex):
+                return c.conjugate()
+            return c
+        return Poly([(conj_coeff(c), t) for c, t in self.terms])
+
     def rebind_variables_to_registry(self, new_registry: VarRegistry) -> None:
         """Rebind all variables in this polynomial to the given registry."""
         for _, term in self.terms:
