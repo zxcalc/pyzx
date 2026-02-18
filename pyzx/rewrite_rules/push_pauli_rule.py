@@ -68,7 +68,7 @@ def check_pauli(g: BaseGraph[VT,ET], v: VT, w: VT) -> bool:
 
 def pauli_push(g: BaseGraph[VT,ET], v:VT,w:VT) -> bool:
     """Pushes a Pauli (i.e. a pi phase) through another spider."""
-    if check_pauli(g, v, w): return unsafe_pauli_push(g, w, v)
+    if check_pauli(g, v, w): return unsafe_pauli_push(g, v, w)
     return False
 
 
@@ -84,6 +84,8 @@ def unsafe_pauli_push(g: BaseGraph[VT,ET], v:VT, w:VT) -> bool:
 
     # w is a Pauli and v is the spider we are going to push it through
 
+    pauli_phase = g.phase(w)
+
     if g.vertex_degree(w) == 2:
         rem_verts.append(w)
         l = list(g.neighbors(w))
@@ -98,9 +100,9 @@ def unsafe_pauli_push(g: BaseGraph[VT,ET], v:VT, w:VT) -> bool:
     new_verts = []
     if vertex_is_zx(g.type(v)):
         g.scalar.add_phase(g.phase(v))
-        g.set_phase(v,((1 - 2 * g.phase(w)) * g.phase(v)) % 2) # 1-2a is -1 if a=1 (i.e. pi) and 1 if a=0 (i.e. 0). We need to do it this way to handle boolean symbolic phases
+        g.set_phase(v,((1 - 2 * pauli_phase) * g.phase(v)) % 2) # 1-2a is -1 if a=1 (i.e. pi) and 1 if a=0 (i.e. 0). We need to do it this way to handle boolean symbolic phases.
         t = toggle_vertex(g.type(v))
-        p: FractionLike = g.phase(w)
+        p: FractionLike = pauli_phase
     else:
         t = VertexType.Z
         p = 0
