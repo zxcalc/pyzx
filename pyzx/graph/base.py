@@ -25,7 +25,7 @@ from typing_extensions import Literal, GenericMeta # type: ignore # https://gith
 import numpy as np
 
 from ..symbolic import Poly, VarRegistry
-from ..utils import EdgeType, VertexType, toggle_edge, vertex_is_zx, get_z_box_label, set_z_box_label
+from ..utils import EdgeType, VertexType, toggle_edge, vertex_is_zx, get_z_box_label, set_z_box_label, get_h_box_label, set_h_box_label, hbox_has_complex_label
 from ..utils import FloatInt, FractionLike
 from ..tensor import tensorfy, tensor_to_matrix
 
@@ -509,6 +509,9 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
             if adjoint and ty[v] == VertexType.Z_BOX:
                 label = get_z_box_label(self, v)
                 set_z_box_label(g, i, label.conjugate())
+            if adjoint and ty[v] == VertexType.H_BOX and hbox_has_complex_label(self, v):
+                label = get_h_box_label(self, v)
+                set_h_box_label(g, i, label.conjugate())
         for v in self.grounds():
             g.set_ground(vtab[v], True)
 
