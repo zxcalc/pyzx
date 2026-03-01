@@ -281,35 +281,6 @@ def _extract_tikz_metadata(s: str) -> Tuple[str, Dict[str, bool]]:
     return clean_tikz, {}
 
 
-def _restore_symbolic_tikz_phases(
-    g: BaseGraph[VT, ET],
-    index_dict: Dict[int, VT],
-    node_lines: List[Tuple[int, str, str]],
-) -> None:
-    """Set phases for nodes whose label is symbolic (e.g. 'ff') that the main parser skipped."""
-    style_to_type: Dict[str, VertexType] = {
-        "z phase dot": VertexType.Z,
-        "x phase dot": VertexType.X,
-        "z dot": VertexType.Z,
-        "x dot": VertexType.X,
-    }
-    for vid, style, label in node_lines:
-        if style_to_type.get(style) not in (VertexType.Z, VertexType.X):
-            continue
-        if not any(ch.isalpha() for ch in label):
-            continue
-        if vid not in index_dict:
-            continue
-        v = index_dict[vid]
-        if v not in g.vertices():
-            continue
-        try:
-            phase = string_to_phase(label, g)
-            g.set_phase(v, phase)
-        except Exception:
-            continue
-
-
 def tikz_to_graph(
     s: str,
     warn_overlap:bool= True,
@@ -350,10 +321,12 @@ def tikz_to_graph(
         raise ValueError(tikz_error_message)
 
     g = Graph(backend)
+    if variable_types and hasattr(g, "var_registry"):
+        for name, is_bool in variable_types.items():
+            g.var_registry.set_type(name, is_bool)
     index_dict: Dict[int,VT] = {} # type: ignore
     position_dict: Dict[str,List[int]] = {}
     none_style_vertices: Set[VT] = set()  # type: ignore
-    node_lines_for_phase: List[Tuple[int, str, str]] = []  # (vid, style, label)
     for c,l in enumerate(lines[2:]):
         if l == r'\end{pgfonlayer}': break
         # l should look like
@@ -378,8 +351,6 @@ def tikz_to_graph(
             if ignore_parse_errors:
                 continue
             raise ValueError("Failed to parse node definition '%s': %s" % (orig_line, str(ex)))
-
-        node_lines_for_phase.append((vid, style.lower(), label))
 
         ty: VertexType
         is_none_style = False
@@ -436,6 +407,18 @@ def tikz_to_graph(
         elif label == r'\neg':
             set_phase(v,1)
         elif label:
+            phase_dot_styles = {"z phase dot", "x phase dot", "z dot", "x dot"}
+            if (
+                ty in (VertexType.Z, VertexType.X)
+                and style.lower() in phase_dot_styles
+                and any(ch.isalpha() for ch in label)
+            ):
+                try:
+                    phase = string_to_phase(label, g)
+                    set_phase(v, phase)
+                    continue
+                except Exception:
+                    pass  # fall through to numeric or handle_phase_error
             # Check if label might be a complex number for H-box or Z-box.
             is_complex_label = ty in (VertexType.Z_BOX, VertexType.H_BOX) and label.find('pi') == -1
             if is_complex_label:
@@ -517,10 +500,7 @@ def tikz_to_graph(
                     set_phase(v, phase)
 
     if variable_types and hasattr(g, "var_registry"):
-        for name, is_bool in variable_types.items():
-            g.var_registry.set_type(name, is_bool)
         g.rebind_variables_to_registry()
-    _restore_symbolic_tikz_phases(g, index_dict, node_lines_for_phase)
 
     # done parsing the vertices, now we parse the edges
     etab: Dict[ET, List[int]] = {} # type: ignore
