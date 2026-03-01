@@ -19,6 +19,9 @@ These tikz files are designed to be easily readable by the program `Tikzit <http
 """
 
 
+import base64
+import json
+import re
 import tempfile
 import os
 import subprocess
@@ -32,6 +35,7 @@ from .utils import (get_z_box_label, set_z_box_label, get_h_box_label, set_h_box
                     hbox_has_complex_label, settings, EdgeType, VertexType, FloatInt)
 from .graph.base import BaseGraph, VT, ET
 from .graph.graph import Graph
+from .graph.jsonparser import string_to_phase
 from .circuit import Circuit
 
 TIKZ_BASE = """
@@ -145,10 +149,32 @@ def _to_tikz(g: BaseGraph[VT,ET], draw_scalar:bool = False,
 
     return (verts, edges)
 
-def to_tikz(g: BaseGraph[VT,ET], draw_scalar:bool=False) -> str:
-    """Converts a ZX-graph ``g`` to a string representing a tikz diagram."""
+
+def _encode_tikz_metadata(g: BaseGraph[VT, ET]) -> Optional[str]:
+    """Base64-encoded JSON of var_registry types for TikZ comment. None if no variables."""
+    if not hasattr(g, "var_registry"):
+        return None
+    variable_types = {
+        str(name): bool(g.var_registry.get_type(name, False))
+        for name in g.var_registry.vars()
+    }
+    if not variable_types:
+        return None
+    payload = json.dumps({"variable_types": variable_types}, separators=(",", ":")).encode("utf-8")
+    return base64.urlsafe_b64encode(payload).decode("ascii")
+
+
+def to_tikz(g: BaseGraph[VT,ET], draw_scalar:bool=False, preserve_metadata:bool=True) -> str:
+    """Converts a ZX-graph ``g`` to a string representing a tikz diagram.
+    If preserve_metadata is True and the graph has a var_registry with variables,
+    prepends a comment line with variable types so round-trip preserves them."""
     verts, edges = _to_tikz(g,draw_scalar)
-    return TIKZ_BASE.format(vertices="\n".join(verts), edges="\n".join(edges))
+    tikz = TIKZ_BASE.format(vertices="\n".join(verts), edges="\n".join(edges))
+    if preserve_metadata:
+        payload = _encode_tikz_metadata(g)
+        if payload is not None:
+            return "% pyzx-metadata: " + payload + "\n" + tikz
+    return tikz
 
 def to_tikz_sequence(graphs:List[BaseGraph], draw_scalar:bool=False, maxwidth:FloatInt=10) -> str:
     """Given a list of ZX-graphs, outputs a single tikz diagram with the graphs presented in a grid.
@@ -220,6 +246,70 @@ synonyms_hedge = ['hadamard edge']
 synonyms_wedge = ['w edge', 'w io edge']
 
 tikz_error_message = "Not a valid tikz picture. Please use Tikzit to generate correct output."
+
+# Supports both "% zxlive-metadata: <base64payload>" and "% pyzx-metadata: <base64payload>"
+_TIKZ_METADATA_RE = re.compile(
+    r"^\s*%\s*(?:zxlive-metadata|pyzx-metadata):\s*(\S+)\s*$"
+)
+
+
+def _extract_tikz_metadata(s: str) -> Tuple[str, Dict[str, bool]]:
+    """Strip optional metadata comment from tikz string; return (clean_tikz, variable_types)."""
+    lines = s.splitlines()
+    match = None
+    line_index = -1
+    for i, line in enumerate(lines):
+        m = _TIKZ_METADATA_RE.match(line)
+        if m is not None:
+            match = m
+            line_index = i
+            break
+    if match is None:
+        return s, {}
+
+    payload_str = match.group(1)
+    lines_without_metadata = lines[:line_index] + lines[line_index + 1:]
+    clean_tikz = "\n".join(lines_without_metadata)
+    try:
+        payload_bytes = base64.urlsafe_b64decode(payload_str.encode("ascii"))
+        metadata = json.loads(payload_bytes.decode("utf-8"))
+        variable_types = metadata.get("variable_types", {})
+        if isinstance(variable_types, dict):
+            return clean_tikz, {str(k): bool(v) for k, v in variable_types.items()}
+    except Exception:
+        pass
+    return clean_tikz, {}
+
+
+def _restore_symbolic_tikz_phases(
+    g: BaseGraph[VT, ET],
+    index_dict: Dict[int, VT],
+    node_lines: List[Tuple[int, str, str]],
+) -> None:
+    """Set phases for nodes whose label is symbolic (e.g. 'ff') that the main parser skipped."""
+    style_to_type: Dict[str, VertexType] = {
+        "z phase dot": VertexType.Z,
+        "x phase dot": VertexType.X,
+        "z dot": VertexType.Z,
+        "x dot": VertexType.X,
+    }
+    for vid, style, label in node_lines:
+        if style_to_type.get(style) not in (VertexType.Z, VertexType.X):
+            continue
+        if not any(ch.isalpha() for ch in label):
+            continue
+        if vid not in index_dict:
+            continue
+        v = index_dict[vid]
+        if v not in g.vertices():
+            continue
+        try:
+            phase = string_to_phase(label, g)
+            g.set_phase(v, phase)
+        except Exception:
+            continue
+
+
 def tikz_to_graph(
     s: str,
     warn_overlap:bool= True,
@@ -250,6 +340,7 @@ def tikz_to_graph(
     	Vertices that might look connected in the output of the tikz are not necessarily connected
 		at the level of tikz itself, and won't be treated as such in pyzx.
     """
+    s, variable_types = _extract_tikz_metadata(s)
     lines = [l.strip() for l in s.strip().splitlines() if l.strip() != '']
     if not lines[0].startswith(r'\begin{tikzpicture}'):
         raise ValueError(tikz_error_message)
@@ -262,6 +353,7 @@ def tikz_to_graph(
     index_dict: Dict[int,VT] = {} # type: ignore
     position_dict: Dict[str,List[int]] = {}
     none_style_vertices: Set[VT] = set()  # type: ignore
+    node_lines_for_phase: List[Tuple[int, str, str]] = []  # (vid, style, label)
     for c,l in enumerate(lines[2:]):
         if l == r'\end{pgfonlayer}': break
         # l should look like
@@ -286,6 +378,8 @@ def tikz_to_graph(
             if ignore_parse_errors:
                 continue
             raise ValueError("Failed to parse node definition '%s': %s" % (orig_line, str(ex)))
+
+        node_lines_for_phase.append((vid, style.lower(), label))
 
         ty: VertexType
         is_none_style = False
@@ -421,6 +515,12 @@ def tikz_to_graph(
                         handle_phase_error("Node definition %s has invalid phase label '%s'" % (l,label))
                         continue
                     set_phase(v, phase)
+
+    if variable_types and hasattr(g, "var_registry"):
+        for name, is_bool in variable_types.items():
+            g.var_registry.set_type(name, is_bool)
+        g.rebind_variables_to_registry()
+    _restore_symbolic_tikz_phases(g, index_dict, node_lines_for_phase)
 
     # done parsing the vertices, now we parse the edges
     etab: Dict[ET, List[int]] = {} # type: ignore
