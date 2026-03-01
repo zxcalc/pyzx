@@ -174,20 +174,29 @@ def match_par_hbox_intro(g: BaseGraph[VT, ET], vertices: Optional[List[VT]]=None
         suitable = True
         neighbors_regular = set()
         neighbors_NOT = set()
-        neighbors_single = set()  # Single-arity Z-spiders connected to the H-box.
+        neighbors_single = set()  # Single-arity spiders connected to the H-box.
         NOTs = []
         for v in g.neighbors(h):
             e = g.edge(v, h)
             if g.edge_type(e) == EdgeType.HADAMARD:
-                if ty[v] != VertexType.Z or g.vertex_degree(v) != 2 or g.phase(v) != 1:
+                if ty[v] == VertexType.X:
+                    if g.vertex_degree(v) == 1:
+                        if g.phase(v) != 0:
+                            suitable = False
+                            break
+                        neighbors_single.add(v)
+                    else:
+                        neighbors_regular.add(v)
+                elif ty[v] == VertexType.Z and g.vertex_degree(v) == 2 and g.phase(v) == 1:
+                    w = [w for w in g.neighbors(v) if w != h][0]  # unique other neighbor
+                    if ty[w] != VertexType.Z or g.edge_type(g.edge(v, w)) != EdgeType.HADAMARD:
+                        suitable = False
+                        break
+                    neighbors_NOT.add(w)
+                    NOTs.append(v)
+                else:
                     suitable = False
                     break
-                w = [w for w in g.neighbors(v) if w != h][0]  # unique other neighbor
-                if ty[w] != VertexType.Z or g.edge_type(g.edge(v, w)) != EdgeType.HADAMARD:
-                    suitable = False
-                    break
-                neighbors_NOT.add(w)
-                NOTs.append(v)
             else:  # e == EdgeType.SIMPLE
                 if ty[v] == VertexType.Z:
                     if g.vertex_degree(v) == 1:
