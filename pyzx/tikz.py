@@ -491,13 +491,12 @@ def tikz_to_graph(
                 else:
                     try:
                         if ty == VertexType.Z_BOX:
-                            phase = complex(label)
+                            set_phase(v, complex(label))
                         else:
-                            phase = int(label)
+                            set_phase(v, int(label))
                     except:
                         handle_phase_error("Node definition %s has invalid phase label '%s'" % (l,label))
                         continue
-                    set_phase(v, phase)
 
     if variable_types and hasattr(g, "var_registry"):
         g.rebind_variables_to_registry()
