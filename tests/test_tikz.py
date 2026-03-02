@@ -16,6 +16,7 @@
 
 import unittest
 import sys
+from fractions import Fraction
 
 if __name__ == '__main__':
     sys.path.append('..')
@@ -165,6 +166,45 @@ class TestTikzErrorHandling(unittest.TestCase):
                          ignore_invalid_phases=True, ignore_parse_errors=True)
         self.assertEqual(g.num_vertices(), 3)
         self.assertEqual(g.num_edges(), 2)
+
+    def test_latex_symbolic_phase_label(self):
+        """LaTeX symbolic labels are normalised before parsing."""
+        tikz = r'''\begin{tikzpicture}
+\begin{pgfonlayer}{nodelayer}
+\node [style=z phase dot] (0) at (0, 0) {$\alpha$};
+\end{pgfonlayer}
+\begin{pgfonlayer}{edgelayer}
+\end{pgfonlayer}
+\end{tikzpicture}'''
+        g = tikz_to_graph(tikz, warn_overlap=False)
+        v = list(g.vertices())[0]
+        self.assertEqual(str(g.phase(v)), "alpha")
+
+    def test_latex_fraction_symbolic_phase_label(self):
+        """LaTeX fractions over symbolic labels are normalised to parser syntax."""
+        tikz = r'''\begin{tikzpicture}
+\begin{pgfonlayer}{nodelayer}
+\node [style=z phase dot] (0) at (0, 0) {$\frac{\alpha}{2}$};
+\end{pgfonlayer}
+\begin{pgfonlayer}{edgelayer}
+\end{pgfonlayer}
+\end{tikzpicture}'''
+        g = tikz_to_graph(tikz, warn_overlap=False)
+        v = list(g.vertices())[0]
+        self.assertEqual(str(g.phase(v)), "1/2⋅alpha")
+
+    def test_latex_fraction_numeric_phase_label(self):
+        """Numeric LaTeX fractions take the string_to_phase path after normalisation."""
+        tikz = r'''\begin{tikzpicture}
+\begin{pgfonlayer}{nodelayer}
+\node [style=z phase dot] (0) at (0, 0) {$\frac{\pi}{4}$};
+\end{pgfonlayer}
+\begin{pgfonlayer}{edgelayer}
+\end{pgfonlayer}
+\end{tikzpicture}'''
+        g = tikz_to_graph(tikz, warn_overlap=False)
+        v = list(g.vertices())[0]
+        self.assertEqual(g.phase(v), Fraction(1, 4))
 
 
 class TestTikzIdentityNodeRemoval(unittest.TestCase):

@@ -253,6 +253,105 @@ _TIKZ_METADATA_RE = re.compile(
 )
 
 
+def _extract_braced_group(s: str, start: int) -> Tuple[Optional[str], int]:
+    """Return the contents of the braced group starting at ``start`` and the next index."""
+    if start >= len(s) or s[start] != "{":
+        return None, start
+    depth = 0
+    for i in range(start, len(s)):
+        if s[i] == "{":
+            depth += 1
+        elif s[i] == "}":
+            depth -= 1
+            if depth == 0:
+                return s[start + 1:i], i + 1
+    return None, start
+
+
+def _normalise_tikzit_phase_expr(expr: str) -> Optional[str]:
+    """Convert simple Tikzit LaTeX syntax into the expression syntax accepted by string_to_phase."""
+    expr = expr.strip()
+    if not expr:
+        return expr
+
+    if expr.startswith(r"\frac"):
+        rest = expr[len(r"\frac"):].lstrip()
+        numerator, next_index = _extract_braced_group(rest, 0)
+        if numerator is None:
+            return None
+        denominator, final_index = _extract_braced_group(rest, next_index)
+        if denominator is None or rest[final_index:].strip():
+            return None
+
+        normalised_numerator = _normalise_tikzit_phase_expr(numerator)
+        normalised_denominator = _normalise_tikzit_phase_expr(denominator)
+        if normalised_numerator is None or normalised_denominator is None:
+            return None
+        if not re.fullmatch(r"-?\d+", normalised_denominator):
+            return None
+        return f"({normalised_numerator})*1/{normalised_denominator}"
+
+    tokens: List[str] = []
+    i = 0
+    while i < len(expr):
+        c = expr[i]
+        if c.isspace():
+            i += 1
+            continue
+        if c == "\\":
+            j = i + 1
+            while j < len(expr) and expr[j].isalpha():
+                j += 1
+            command = expr[i + 1:j]
+            if not command or command == "frac":
+                return None
+            tokens.append("pi" if command == "pi" else command)
+            i = j
+            continue
+        if c in "{}":
+            tokens.append("(" if c == "{" else ")")
+            i += 1
+            continue
+        if c in "()+-*/^":
+            tokens.append(c)
+            i += 1
+            continue
+        if c.isdigit():
+            j = i + 1
+            while j < len(expr) and (expr[j].isdigit() or expr[j] in ".eE"):
+                j += 1
+            tokens.append(expr[i:j])
+            i = j
+            continue
+        if c.isalpha() or c == "_":
+            j = i + 1
+            while j < len(expr) and (expr[j].isalnum() or expr[j] in "_[]"):
+                j += 1
+            tokens.append(expr[i:j])
+            i = j
+            continue
+        return None
+
+    output: List[str] = []
+    for token in tokens:
+        if output:
+            prev = output[-1]
+            prev_is_factor = prev not in ("(", "+", "-", "*", "/", "^")
+            token_is_factor = token not in (")", "+", "-", "*", "/", "^")
+            if prev_is_factor and (token_is_factor or token == "("):
+                output.append("*")
+        output.append(token)
+    return "".join(output)
+
+
+def _normalise_tikzit_phase_label(label: str) -> Optional[str]:
+    """Normalise Tikzit labels before parsing them with string_to_phase."""
+    label = label.strip()
+    if not label:
+        return label
+    return _normalise_tikzit_phase_expr(label)
+
+
 def _extract_tikz_metadata(s: str) -> Tuple[str, Dict[str, bool]]:
     """Strip optional metadata comment from tikz string; return (clean_tikz, variable_types)."""
     lines = s.splitlines()
@@ -408,13 +507,18 @@ def tikz_to_graph(
             set_phase(v,1)
         elif label:
             phase_dot_styles = {"z phase dot", "x phase dot", "z dot", "x dot"}
+            normalised_label = _normalise_tikzit_phase_label(label)
             if (
                 ty in (VertexType.Z, VertexType.X)
                 and style.lower() in phase_dot_styles
-                and any(ch.isalpha() for ch in label)
+                and normalised_label is not None
+                and (
+                    normalised_label != label
+                    or any(ch.isalpha() for ch in normalised_label)
+                )
             ):
                 try:
-                    phase = string_to_phase(label, g)
+                    phase = string_to_phase(normalised_label, g)
                     set_phase(v, phase)
                     continue
                 except Exception:
