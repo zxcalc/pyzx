@@ -247,9 +247,9 @@ synonyms_wedge = ['w edge', 'w io edge']
 
 tikz_error_message = "Not a valid tikz picture. Please use Tikzit to generate correct output."
 
-# Supports both "% zxlive-metadata: <base64payload>" and "% pyzx-metadata: <base64payload>"
+# Supports "% pyzx-metadata: <base64payload>"
 _TIKZ_METADATA_RE = re.compile(
-    r"^\s*%\s*(?:zxlive-metadata|pyzx-metadata):\s*(\S+)\s*$"
+    r"^\s*%\s*pyzx-metadata:\s*(\S+)\s*$"
 )
 
 
