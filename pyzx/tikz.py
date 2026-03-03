@@ -506,23 +506,7 @@ def tikz_to_graph(
         elif label == r'\neg':
             set_phase(v,1)
         elif label:
-            phase_dot_styles = {"z phase dot", "x phase dot", "z dot", "x dot"}
             normalised_label = _normalise_tikzit_phase_label(label)
-            if (
-                ty in (VertexType.Z, VertexType.X)
-                and style.lower() in phase_dot_styles
-                and normalised_label is not None
-                and (
-                    normalised_label != label
-                    or any(ch.isalpha() for ch in normalised_label)
-                )
-            ):
-                try:
-                    phase = string_to_phase(normalised_label, g)
-                    set_phase(v, phase)
-                    continue
-                except Exception:
-                    pass  # fall through to numeric or handle_phase_error
             # Check if label might be a complex number for H-box or Z-box.
             is_complex_label = ty in (VertexType.Z_BOX, VertexType.H_BOX) and label.find('pi') == -1
             if is_complex_label:
@@ -535,13 +519,16 @@ def tikz_to_graph(
                         set_phase(v, complex_val)
                     continue
                 except ValueError:
-                    # Not a valid complex, fall through to standard parsing.
-                    if ty == VertexType.Z_BOX:
-                        pass  # Z-box will be handled below.
-                    elif not ignore_nonzx or ignore_invalid_phases:
-                        handle_phase_error("Node definition %s has invalid phase label" % l)
-                        continue
-            elif label.find('pi') == -1:
+                    # Not a valid complex, fall through to phase parsing.
+                    pass
+            if normalised_label is not None:
+                try:
+                    phase = string_to_phase(normalised_label, g)
+                    set_phase(v, phase)
+                    continue
+                except Exception:
+                    pass  # fall through to legacy parsing
+            if label.find('pi') == -1 and ty != VertexType.Z_BOX:
                 if not ignore_nonzx or ignore_invalid_phases:
                     handle_phase_error("Node definition %s has invalid phase label" % l)
                     continue

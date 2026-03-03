@@ -33,7 +33,7 @@ class TestTikzErrorHandling(unittest.TestCase):
         """Invalid phase raises error by default."""
         tikz = r'''\begin{tikzpicture}
 \begin{pgfonlayer}{nodelayer}
-\node [style=z spider] (0) at (0, 0) {$invalid_phase$};
+\node [style=z spider] (0) at (0, 0) {$bad($};
 \end{pgfonlayer}
 \begin{pgfonlayer}{edgelayer}
 \end{pgfonlayer}
@@ -45,7 +45,7 @@ class TestTikzErrorHandling(unittest.TestCase):
         """Invalid phase uses default (0) for Z spider."""
         tikz = r'''\begin{tikzpicture}
 \begin{pgfonlayer}{nodelayer}
-\node [style=z spider] (0) at (0, 0) {$invalid_phase$};
+\node [style=z spider] (0) at (0, 0) {$bad($};
 \end{pgfonlayer}
 \begin{pgfonlayer}{edgelayer}
 \end{pgfonlayer}
@@ -59,7 +59,7 @@ class TestTikzErrorHandling(unittest.TestCase):
         """Invalid phase uses default (0) for X spider."""
         tikz = r'''\begin{tikzpicture}
 \begin{pgfonlayer}{nodelayer}
-\node [style=x spider] (0) at (0, 0) {$bad_phase$};
+\node [style=x spider] (0) at (0, 0) {$bad($};
 \end{pgfonlayer}
 \begin{pgfonlayer}{edgelayer}
 \end{pgfonlayer}
@@ -73,7 +73,7 @@ class TestTikzErrorHandling(unittest.TestCase):
         """Invalid phase uses default (1) for H-box."""
         tikz = r'''\begin{tikzpicture}
 \begin{pgfonlayer}{nodelayer}
-\node [style=hadamard] (0) at (0, 0) {$xyz$};
+\node [style=hadamard] (0) at (0, 0) {$bad($};
 \end{pgfonlayer}
 \begin{pgfonlayer}{edgelayer}
 \end{pgfonlayer}
@@ -167,11 +167,24 @@ class TestTikzErrorHandling(unittest.TestCase):
         self.assertEqual(g.num_vertices(), 3)
         self.assertEqual(g.num_edges(), 2)
 
-    def test_latex_symbolic_phase_label(self):
-        """LaTeX symbolic labels are normalised before parsing."""
+    def test_latex_symbolic_phase_label_z_spider(self):
+        """LaTeX symbolic labels are normalised for non-phase-dot Z styles."""
         tikz = r'''\begin{tikzpicture}
 \begin{pgfonlayer}{nodelayer}
-\node [style=z phase dot] (0) at (0, 0) {$\alpha$};
+\node [style=z spider] (0) at (0, 0) {$\alpha$};
+\end{pgfonlayer}
+\begin{pgfonlayer}{edgelayer}
+\end{pgfonlayer}
+\end{tikzpicture}'''
+        g = tikz_to_graph(tikz, warn_overlap=False)
+        v = list(g.vertices())[0]
+        self.assertEqual(str(g.phase(v)), "alpha")
+
+    def test_latex_symbolic_phase_label_green_dot(self):
+        """Style synonyms such as green dot use the same symbolic parser path."""
+        tikz = r'''\begin{tikzpicture}
+\begin{pgfonlayer}{nodelayer}
+\node [style=green dot] (0) at (0, 0) {$\alpha$};
 \end{pgfonlayer}
 \begin{pgfonlayer}{edgelayer}
 \end{pgfonlayer}
@@ -184,7 +197,7 @@ class TestTikzErrorHandling(unittest.TestCase):
         """LaTeX fractions over symbolic labels are normalised to parser syntax."""
         tikz = r'''\begin{tikzpicture}
 \begin{pgfonlayer}{nodelayer}
-\node [style=z phase dot] (0) at (0, 0) {$\frac{\alpha}{2}$};
+\node [style=z spider] (0) at (0, 0) {$\frac{\alpha}{2}$};
 \end{pgfonlayer}
 \begin{pgfonlayer}{edgelayer}
 \end{pgfonlayer}
@@ -197,7 +210,7 @@ class TestTikzErrorHandling(unittest.TestCase):
         """Numeric LaTeX fractions take the string_to_phase path after normalisation."""
         tikz = r'''\begin{tikzpicture}
 \begin{pgfonlayer}{nodelayer}
-\node [style=z phase dot] (0) at (0, 0) {$\frac{\pi}{4}$};
+\node [style=green dot] (0) at (0, 0) {$\frac{\pi}{4}$};
 \end{pgfonlayer}
 \begin{pgfonlayer}{edgelayer}
 \end{pgfonlayer}
@@ -205,6 +218,32 @@ class TestTikzErrorHandling(unittest.TestCase):
         g = tikz_to_graph(tikz, warn_overlap=False)
         v = list(g.vertices())[0]
         self.assertEqual(g.phase(v), Fraction(1, 4))
+
+    def test_latex_symbolic_hbox_phase_label(self):
+        """H-box labels use the normalised phase parser when not complex."""
+        tikz = r'''\begin{tikzpicture}
+\begin{pgfonlayer}{nodelayer}
+\node [style=hadamard] (0) at (0, 0) {$\alpha$};
+\end{pgfonlayer}
+\begin{pgfonlayer}{edgelayer}
+\end{pgfonlayer}
+\end{tikzpicture}'''
+        g = tikz_to_graph(tikz, warn_overlap=False)
+        v = list(g.vertices())[0]
+        self.assertEqual(str(g.phase(v)), "alpha")
+
+    def test_latex_symbolic_z_box_label(self):
+        """Z-box labels use the normalised parser path for symbolic labels."""
+        tikz = r'''\begin{tikzpicture}
+\begin{pgfonlayer}{nodelayer}
+\node [style=z box] (0) at (0, 0) {$\alpha$};
+\end{pgfonlayer}
+\begin{pgfonlayer}{edgelayer}
+\end{pgfonlayer}
+\end{tikzpicture}'''
+        g = tikz_to_graph(tikz, warn_overlap=False)
+        v = list(g.vertices())[0]
+        self.assertEqual(str(g.vdata(v, 'label')), "alpha")
 
 
 class TestTikzIdentityNodeRemoval(unittest.TestCase):
