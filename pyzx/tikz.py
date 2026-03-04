@@ -164,16 +164,15 @@ def _encode_tikz_metadata(g: BaseGraph[VT, ET]) -> Optional[str]:
     return base64.urlsafe_b64encode(payload).decode("ascii")
 
 
-def to_tikz(g: BaseGraph[VT,ET], draw_scalar:bool=False, preserve_metadata:bool=True) -> str:
+def to_tikz(g: BaseGraph[VT,ET], draw_scalar:bool=False) -> str:
     """Converts a ZX-graph ``g`` to a string representing a tikz diagram.
-    If preserve_metadata is True and the graph has a var_registry with variables,
-    prepends a comment line with variable types so round-trip preserves them."""
+    If the graph has a var_registry with variables, prepend a metadata comment
+    so symbolic variable types survive a TikZ round-trip."""
     verts, edges = _to_tikz(g,draw_scalar)
     tikz = TIKZ_BASE.format(vertices="\n".join(verts), edges="\n".join(edges))
-    if preserve_metadata:
-        payload = _encode_tikz_metadata(g)
-        if payload is not None:
-            return "% pyzx-metadata: " + payload + "\n" + tikz
+    payload = _encode_tikz_metadata(g)
+    if payload is not None:
+        return "% pyzx-metadata: " + payload + "\n" + tikz
     return tikz
 
 def to_tikz_sequence(graphs:List[BaseGraph], draw_scalar:bool=False, maxwidth:FloatInt=10) -> str:
@@ -280,7 +279,7 @@ def _normalise_tikzit_phase_expr(expr: str) -> Optional[str]:
         if numerator is None:
             return None
         denominator, final_index = _extract_braced_group(rest, next_index)
-        if denominator is None or rest[final_index:].strip():
+        if denominator is None:
             return None
 
         normalised_numerator = _normalise_tikzit_phase_expr(numerator)
@@ -289,7 +288,14 @@ def _normalise_tikzit_phase_expr(expr: str) -> Optional[str]:
             return None
         if not re.fullmatch(r"-?\d+", normalised_denominator):
             return None
-        return f"({normalised_numerator})*1/{normalised_denominator}"
+        normalised_fraction = f"({normalised_numerator})*1/{normalised_denominator}"
+        suffix = rest[final_index:].strip()
+        if not suffix:
+            return normalised_fraction
+        normalised_suffix = _normalise_tikzit_phase_expr(suffix)
+        if normalised_suffix is None:
+            return None
+        return f"({normalised_fraction})*({normalised_suffix})"
 
     tokens: List[str] = []
     i = 0
@@ -372,10 +378,13 @@ def _extract_tikz_metadata(s: str) -> Tuple[str, Dict[str, bool]]:
     try:
         payload_bytes = base64.urlsafe_b64decode(payload_str.encode("ascii"))
         metadata = json.loads(payload_bytes.decode("utf-8"))
+        if not isinstance(metadata, dict):
+            raise ValueError("TikZ metadata must decode to a JSON object")
         variable_types = metadata.get("variable_types", {})
-        if isinstance(variable_types, dict):
-            return clean_tikz, {str(k): bool(v) for k, v in variable_types.items()}
-    except Exception:
+        if not isinstance(variable_types, dict):
+            raise ValueError("TikZ metadata variable_types must be a JSON object")
+        return clean_tikz, {str(k): bool(v) for k, v in variable_types.items()}
+    except ValueError:
         pass
     return clean_tikz, {}
 
@@ -526,68 +535,12 @@ def tikz_to_graph(
                     phase = string_to_phase(normalised_label, g)
                     set_phase(v, phase)
                     continue
-                except Exception:
-                    pass  # fall through to legacy parsing
-            if label.find('pi') == -1 and ty != VertexType.Z_BOX:
-                if not ignore_nonzx or ignore_invalid_phases:
-                    handle_phase_error("Node definition %s has invalid phase label" % l)
-                    continue
-            if label.find('pi') != -1 or ty == VertexType.Z_BOX:
-                label = label.replace(r'\pi','').strip()
-                if label == '' or label == '-' or label == '-1':
-                    set_phase(v,1)
-                elif label.find(r'\frac') != -1:
-                    label = label.replace(r'\frac','').strip()
-                    if label.find('}{') == -1:
-                        n = 1
-                        try:
-                            m = int(label)
-                        except:
-                            handle_phase_error("Node definition %s has invalid phase label" % l)
-                            continue
-                    else:
-                        num, denom = label.split('}{',1)
-                        num = num.replace('{','').strip()
-                        denom = denom.replace('}','').strip()
-                        if num == '': n = 1
-                        elif num == '-': n = -1
-                        else:
-                            try:
-                                n = int(num)
-                            except:
-                                handle_phase_error("Node definition %s has invalid phase label" % l)
-                                continue
-                        try:
-                            m = int(denom)
-                        except:
-                            handle_phase_error("Node definition %s has invalid phase label" % l)
-                            continue
-                    set_phase(v, Fraction(n,m))
-                elif label.find('/') != -1:
-                    num, denom = label.split('/',1)
-                    if num == '': n = 1
-                    elif num == '-': n = -1
-                    else:
-                        try:
-                            n = int(num)
-                        except:
-                            handle_phase_error("Node definition %s has invalid phase label" % l)
-                            continue
-                    try:
-                        m = int(denom)
-                    except:
-                        handle_phase_error("Node definition %s has invalid phase label" % l)
-                        continue
-                    set_phase(v, Fraction(n,m))
-                else:
-                    try:
-                        if ty == VertexType.Z_BOX:
-                            set_phase(v, complex(label))
-                        else:
-                            set_phase(v, int(label))
-                    except:
-                        handle_phase_error("Node definition %s has invalid phase label '%s'" % (l,label))
-                        continue
+                except ValueError:
+                    pass
+            if label.find('pi') == -1 and ty != VertexType.Z_BOX and ignore_nonzx and not ignore_invalid_phases:
+                continue
+            handle_phase_error("Node definition %s has invalid phase label '%s'" % (l,label))
+            continue
 
     if variable_types and hasattr(g, "var_registry"):
         g.rebind_variables_to_registry()
