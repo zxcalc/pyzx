@@ -295,7 +295,7 @@ def _normalise_tikzit_phase_expr(expr: str) -> Optional[str]:
         normalised_suffix = _normalise_tikzit_phase_expr(suffix)
         if normalised_suffix is None:
             return None
-        return f"({normalised_fraction})*({normalised_suffix})"
+        return f"({normalised_fraction})*{normalised_suffix}"
 
     tokens: List[str] = []
     i = 0
@@ -311,7 +311,24 @@ def _normalise_tikzit_phase_expr(expr: str) -> Optional[str]:
             command = expr[i + 1:j]
             if not command or command == "frac":
                 return None
-            tokens.append("pi" if command == "pi" else command)
+            token = "pi" if command == "pi" else command
+            # Keep simple LaTeX subscripts attached to commands, e.g. \alpha_1.
+            if j < len(expr) and expr[j] == "_":
+                k = j + 1
+                if k < len(expr) and expr[k] == "{":
+                    subscript, next_k = _extract_braced_group(expr, k)
+                    if subscript is None:
+                        return None
+                    token += "_" + subscript.strip()
+                    j = next_k
+                else:
+                    while k < len(expr) and (expr[k].isalnum() or expr[k] in "_[]"):
+                        k += 1
+                    if k == j + 1:
+                        return None
+                    token += expr[j:k]
+                    j = k
+            tokens.append(token)
             i = j
             continue
         if c in "{}":
@@ -320,6 +337,10 @@ def _normalise_tikzit_phase_expr(expr: str) -> Optional[str]:
             continue
         if c in "()+-*/^":
             tokens.append(c)
+            i += 1
+            continue
+        if c == "⋅":
+            tokens.append("*")
             i += 1
             continue
         if c.isdigit():
