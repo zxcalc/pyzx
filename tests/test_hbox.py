@@ -582,6 +582,179 @@ class TestParHboxAvgRule(unittest.TestCase):
         t_after = g.to_tensor(preserve_scalar=True)
         self.assertTrue(compare_tensors(t_before, t_after, preserve_scalar=True))
 
+    def test_no_match_z_hadamard_neighbors(self):
+        """Test that the average rule does not match Z-spider neighbours via Hadamard edges.
+
+        The average rule identity only holds for the canonical edge types
+        (Z+simple, X+Hadamard). Z+Hadamard produces a different tensor.
+        """
+        from pyzx.rewrite_rules.par_hbox_rule import match_par_hbox_avg
+        g = Graph()
+        inp = g.add_vertex(VertexType.BOUNDARY, 0, 0)
+        z = g.add_vertex(VertexType.Z, 0, 1)
+        ha = g.add_vertex(VertexType.H_BOX, -1, 2)
+        hb = g.add_vertex(VertexType.H_BOX, 1, 2)
+        set_h_box_label(g, ha, 0.3+0.7j)
+        set_h_box_label(g, hb, 0.5+0.4j)
+        not_gate = g.add_vertex(VertexType.X, 0, 3, phase=1)
+        g.add_edge((inp, z), EdgeType.SIMPLE)
+        g.add_edge((z, ha), EdgeType.HADAMARD)
+        g.add_edge((z, hb), EdgeType.HADAMARD)
+        g.add_edge((ha, not_gate), EdgeType.SIMPLE)
+        g.add_edge((hb, not_gate), EdgeType.SIMPLE)
+        g.set_inputs((inp,))
+        g.set_outputs(())
+        matches = match_par_hbox_avg(g)
+        self.assertEqual(len(matches), 0)
+
+    def test_no_match_x_simple_neighbors(self):
+        """Test that the average rule does not match X-spider neighbours via simple edges.
+
+        X+simple is not colour-equivalent to Z+simple; the rule does not apply.
+        """
+        from pyzx.rewrite_rules.par_hbox_rule import match_par_hbox_avg
+        g = Graph()
+        inp = g.add_vertex(VertexType.BOUNDARY, 0, 0)
+        x = g.add_vertex(VertexType.X, 0, 1)
+        ha = g.add_vertex(VertexType.H_BOX, -1, 2)
+        hb = g.add_vertex(VertexType.H_BOX, 1, 2)
+        set_h_box_label(g, ha, 0.3+0.7j)
+        set_h_box_label(g, hb, 0.5+0.4j)
+        not_gate = g.add_vertex(VertexType.X, 0, 3, phase=1)
+        g.add_edge((inp, x), EdgeType.SIMPLE)
+        g.add_edge((x, ha), EdgeType.SIMPLE)
+        g.add_edge((x, hb), EdgeType.SIMPLE)
+        g.add_edge((ha, not_gate), EdgeType.SIMPLE)
+        g.add_edge((hb, not_gate), EdgeType.SIMPLE)
+        g.set_inputs((inp,))
+        g.set_outputs(())
+        matches = match_par_hbox_avg(g)
+        self.assertEqual(len(matches), 0)
+
+
+class TestParHboxIntroRuleEdgeTypes(unittest.TestCase):
+    """Tests for the intro rule with non-standard edge type combinations."""
+
+    def test_match_x_hadamard_regular_neighbor(self):
+        """Test that the intro rule matches with X+Hadamard regular neighbours."""
+        from pyzx.rewrite_rules.par_hbox_rule import match_par_hbox_intro, unsafe_par_hbox_intro
+        g = Graph()
+        b1 = g.add_vertex(VertexType.BOUNDARY, 0, 0)
+        b2 = g.add_vertex(VertexType.BOUNDARY, 1, 0)
+        x = g.add_vertex(VertexType.X, 0, 1)
+        z = g.add_vertex(VertexType.Z, 1, 1)
+        ha = g.add_vertex(VertexType.H_BOX, 0, 2)
+        hb = g.add_vertex(VertexType.H_BOX, 1, 2)
+        g.set_phase(ha, Fraction(1, 2))
+        g.set_phase(hb, Fraction(1, 2))
+        not_gate = g.add_vertex(VertexType.X, 1, 3, phase=1)
+        g.add_edge((b1, x), EdgeType.SIMPLE)
+        g.add_edge((b2, z), EdgeType.SIMPLE)
+        g.add_edge((x, ha), EdgeType.HADAMARD)
+        g.add_edge((x, hb), EdgeType.HADAMARD)
+        g.add_edge((z, ha), EdgeType.SIMPLE)
+        g.add_edge((z, not_gate), EdgeType.SIMPLE)
+        g.add_edge((not_gate, hb), EdgeType.SIMPLE)
+        g.set_inputs((b1, b2))
+        g.set_outputs(())
+        t_before = g.to_tensor(preserve_scalar=True)
+        matches = match_par_hbox_intro(g)
+        self.assertEqual(len(matches), 1)
+        unsafe_par_hbox_intro(g, matches)
+        t_after = g.to_tensor(preserve_scalar=True)
+        self.assertTrue(compare_tensors(t_before, t_after, preserve_scalar=True))
+
+    def test_match_x_hadamard_single_neighbor(self):
+        """Test that the intro rule matches with degree-1 X+Hadamard single neighbours."""
+        from pyzx.rewrite_rules.par_hbox_rule import match_par_hbox_intro, unsafe_par_hbox_intro
+        g = Graph()
+        b = g.add_vertex(VertexType.BOUNDARY, 0, 0)
+        z = g.add_vertex(VertexType.Z, 0, 1)
+        ha = g.add_vertex(VertexType.H_BOX, -1, 2)
+        hb = g.add_vertex(VertexType.H_BOX, 1, 2)
+        g.set_phase(ha, Fraction(1, 2))
+        g.set_phase(hb, Fraction(1, 2))
+        not_gate = g.add_vertex(VertexType.X, 0, 3, phase=1)
+        x_single_a = g.add_vertex(VertexType.X, -2, 2)
+        x_single_b = g.add_vertex(VertexType.X, 2, 2)
+        g.add_edge((b, z), EdgeType.SIMPLE)
+        g.add_edge((z, ha), EdgeType.SIMPLE)
+        g.add_edge((z, not_gate), EdgeType.SIMPLE)
+        g.add_edge((not_gate, hb), EdgeType.SIMPLE)
+        g.add_edge((ha, x_single_a), EdgeType.HADAMARD)
+        g.add_edge((hb, x_single_b), EdgeType.HADAMARD)
+        g.set_inputs((b,))
+        g.set_outputs(())
+        t_before = g.to_tensor(preserve_scalar=True)
+        matches = match_par_hbox_intro(g)
+        self.assertEqual(len(matches), 1)
+        unsafe_par_hbox_intro(g, matches)
+        t_after = g.to_tensor(preserve_scalar=True)
+        self.assertTrue(compare_tensors(t_before, t_after, preserve_scalar=True))
+
+
+class TestParHboxMultiplyRuleEdgeTypes(unittest.TestCase):
+    """Tests for the multiply rule with non-standard edge type combinations."""
+
+    def test_match_x_hadamard_neighbors(self):
+        """Test that the multiply rule matches and preserves the tensor with
+        X+Hadamard regular neighbours."""
+        from pyzx.rewrite_rules.par_hbox_rule import match_par_hbox, unsafe_par_hbox
+        g = Graph()
+        inp = g.add_vertex(VertexType.BOUNDARY, 0, 0)
+        x = g.add_vertex(VertexType.X, 0, 1)
+        ha = g.add_vertex(VertexType.H_BOX, -1, 2)
+        hb = g.add_vertex(VertexType.H_BOX, 1, 2)
+        g.set_phase(ha, Fraction(1, 2))
+        g.set_phase(hb, Fraction(1, 3))
+        g.add_edge((inp, x), EdgeType.HADAMARD)
+        g.add_edge((x, ha), EdgeType.HADAMARD)
+        g.add_edge((x, hb), EdgeType.HADAMARD)
+        g.set_inputs((inp,))
+        g.set_outputs(())
+        t_before = g.to_tensor(preserve_scalar=True)
+        matches = match_par_hbox(g)
+        self.assertEqual(len(matches), 1)
+        unsafe_par_hbox(g, matches)
+        t_after = g.to_tensor(preserve_scalar=True)
+        self.assertTrue(compare_tensors(t_before, t_after, preserve_scalar=True))
+
+    def test_no_match_z_hadamard_neighbors(self):
+        """Test that the multiply rule does not match Z+Hadamard neighbours."""
+        from pyzx.rewrite_rules.par_hbox_rule import match_par_hbox
+        g = Graph()
+        inp = g.add_vertex(VertexType.BOUNDARY, 0, 0)
+        z = g.add_vertex(VertexType.Z, 0, 1)
+        ha = g.add_vertex(VertexType.H_BOX, -1, 2)
+        hb = g.add_vertex(VertexType.H_BOX, 1, 2)
+        g.set_phase(ha, Fraction(1, 2))
+        g.set_phase(hb, Fraction(1, 3))
+        g.add_edge((inp, z), EdgeType.SIMPLE)
+        g.add_edge((z, ha), EdgeType.HADAMARD)
+        g.add_edge((z, hb), EdgeType.HADAMARD)
+        g.set_inputs((inp,))
+        g.set_outputs(())
+        matches = match_par_hbox(g)
+        self.assertEqual(len(matches), 0)
+
+    def test_no_match_x_simple_neighbors(self):
+        """Test that the multiply rule does not match X+simple neighbours."""
+        from pyzx.rewrite_rules.par_hbox_rule import match_par_hbox
+        g = Graph()
+        inp = g.add_vertex(VertexType.BOUNDARY, 0, 0)
+        x = g.add_vertex(VertexType.X, 0, 1)
+        ha = g.add_vertex(VertexType.H_BOX, -1, 2)
+        hb = g.add_vertex(VertexType.H_BOX, 1, 2)
+        g.set_phase(ha, Fraction(1, 2))
+        g.set_phase(hb, Fraction(1, 3))
+        g.add_edge((inp, x), EdgeType.SIMPLE)
+        g.add_edge((x, ha), EdgeType.SIMPLE)
+        g.add_edge((x, hb), EdgeType.SIMPLE)
+        g.set_inputs((inp,))
+        g.set_outputs(())
+        matches = match_par_hbox(g)
+        self.assertEqual(len(matches), 0)
+
 
 if __name__ == '__main__':
     unittest.main()
