@@ -19,6 +19,9 @@ These tikz files are designed to be easily readable by the program `Tikzit <http
 """
 
 
+import base64
+import json
+import re
 import tempfile
 import os
 import subprocess
@@ -32,6 +35,7 @@ from .utils import (get_z_box_label, set_z_box_label, get_h_box_label, set_h_box
                     hbox_has_complex_label, settings, EdgeType, VertexType, FloatInt)
 from .graph.base import BaseGraph, VT, ET
 from .graph.graph import Graph
+from .graph.jsonparser import string_to_phase
 from .circuit import Circuit
 
 TIKZ_BASE = """
@@ -145,10 +149,31 @@ def _to_tikz(g: BaseGraph[VT,ET], draw_scalar:bool = False,
 
     return (verts, edges)
 
+
+def _encode_tikz_metadata(g: BaseGraph[VT, ET]) -> Optional[str]:
+    """Base64-encoded JSON of var_registry types for TikZ comment. None if no variables."""
+    if not hasattr(g, "var_registry"):
+        return None
+    variable_types = {
+        str(name): bool(g.var_registry.get_type(name, False))
+        for name in g.var_registry.vars()
+    }
+    if not variable_types:
+        return None
+    payload = json.dumps({"variable_types": variable_types}, separators=(",", ":")).encode("utf-8")
+    return base64.urlsafe_b64encode(payload).decode("ascii")
+
+
 def to_tikz(g: BaseGraph[VT,ET], draw_scalar:bool=False) -> str:
-    """Converts a ZX-graph ``g`` to a string representing a tikz diagram."""
+    """Converts a ZX-graph ``g`` to a string representing a tikz diagram.
+    If the graph has a var_registry with variables, prepend a metadata comment
+    so symbolic variable types survive a TikZ round-trip."""
     verts, edges = _to_tikz(g,draw_scalar)
-    return TIKZ_BASE.format(vertices="\n".join(verts), edges="\n".join(edges))
+    tikz = TIKZ_BASE.format(vertices="\n".join(verts), edges="\n".join(edges))
+    payload = _encode_tikz_metadata(g)
+    if payload is not None:
+        return "% pyzx-metadata: " + payload + "\n" + tikz
+    return tikz
 
 def to_tikz_sequence(graphs:List[BaseGraph], draw_scalar:bool=False, maxwidth:FloatInt=10) -> str:
     """Given a list of ZX-graphs, outputs a single tikz diagram with the graphs presented in a grid.
@@ -220,6 +245,171 @@ synonyms_hedge = ['hadamard edge']
 synonyms_wedge = ['w edge', 'w io edge']
 
 tikz_error_message = "Not a valid tikz picture. Please use Tikzit to generate correct output."
+
+# Supports "% pyzx-metadata: <base64payload>"
+_TIKZ_METADATA_RE = re.compile(
+    r"^\s*%\s*pyzx-metadata:\s*(\S+)\s*$"
+)
+
+
+def _extract_braced_group(s: str, start: int) -> Tuple[Optional[str], int]:
+    """Return the contents of the braced group starting at ``start`` and the next index."""
+    if start >= len(s) or s[start] != "{":
+        return None, start
+    depth = 0
+    for i in range(start, len(s)):
+        if s[i] == "{":
+            depth += 1
+        elif s[i] == "}":
+            depth -= 1
+            if depth == 0:
+                return s[start + 1:i], i + 1
+    return None, start
+
+
+def _normalise_tikzit_phase_expr(expr: str) -> Optional[str]:
+    """Convert simple Tikzit LaTeX syntax into the expression syntax accepted by string_to_phase."""
+    expr = expr.strip()
+    if not expr:
+        return expr
+
+    if expr.startswith(r"\frac"):
+        rest = expr[len(r"\frac"):].lstrip()
+        numerator, next_index = _extract_braced_group(rest, 0)
+        if numerator is None:
+            return None
+        denominator, final_index = _extract_braced_group(rest, next_index)
+        if denominator is None:
+            return None
+
+        normalised_numerator = _normalise_tikzit_phase_expr(numerator)
+        normalised_denominator = _normalise_tikzit_phase_expr(denominator)
+        if normalised_numerator is None or normalised_denominator is None:
+            return None
+        if not re.fullmatch(r"-?\d+", normalised_denominator):
+            return None
+        normalised_fraction = f"({normalised_numerator})*1/{normalised_denominator}"
+        suffix = rest[final_index:].strip()
+        if not suffix:
+            return normalised_fraction
+        normalised_suffix = _normalise_tikzit_phase_expr(suffix)
+        if normalised_suffix is None:
+            return None
+        return f"({normalised_fraction})*{normalised_suffix}"
+
+    tokens: List[str] = []
+    i = 0
+    while i < len(expr):
+        c = expr[i]
+        if c.isspace():
+            i += 1
+            continue
+        if c == "\\":
+            j = i + 1
+            while j < len(expr) and expr[j].isalpha():
+                j += 1
+            command = expr[i + 1:j]
+            if not command or command == "frac":
+                return None
+            token = "pi" if command == "pi" else command
+            # Keep simple LaTeX subscripts attached to commands, e.g. \alpha_1.
+            if j < len(expr) and expr[j] == "_":
+                k = j + 1
+                if k < len(expr) and expr[k] == "{":
+                    subscript, next_k = _extract_braced_group(expr, k)
+                    if subscript is None:
+                        return None
+                    token += "_" + subscript.strip()
+                    j = next_k
+                else:
+                    while k < len(expr) and (expr[k].isalnum() or expr[k] in "_[]"):
+                        k += 1
+                    if k == j + 1:
+                        return None
+                    token += expr[j:k]
+                    j = k
+            tokens.append(token)
+            i = j
+            continue
+        if c in "{}":
+            tokens.append("(" if c == "{" else ")")
+            i += 1
+            continue
+        if c in "()+-*/^":
+            tokens.append(c)
+            i += 1
+            continue
+        if c == "⋅":
+            tokens.append("*")
+            i += 1
+            continue
+        if c.isdigit():
+            j = i + 1
+            while j < len(expr) and (expr[j].isdigit() or expr[j] in ".eE"):
+                j += 1
+            tokens.append(expr[i:j])
+            i = j
+            continue
+        if c.isalpha() or c == "_":
+            j = i + 1
+            while j < len(expr) and (expr[j].isalnum() or expr[j] in "_[]"):
+                j += 1
+            tokens.append(expr[i:j])
+            i = j
+            continue
+        return None
+
+    output: List[str] = []
+    for token in tokens:
+        if output:
+            prev = output[-1]
+            prev_is_factor = prev not in ("(", "+", "-", "*", "/", "^")
+            token_is_factor = token not in (")", "+", "-", "*", "/", "^")
+            if prev_is_factor and (token_is_factor or token == "("):
+                output.append("*")
+        output.append(token)
+    return "".join(output)
+
+
+def _normalise_tikzit_phase_label(label: str) -> Optional[str]:
+    """Normalise Tikzit labels before parsing them with string_to_phase."""
+    label = label.strip()
+    if not label:
+        return label
+    return _normalise_tikzit_phase_expr(label)
+
+
+def _extract_tikz_metadata(s: str) -> Tuple[str, Dict[str, bool]]:
+    """Strip optional metadata comment from tikz string; return (clean_tikz, variable_types)."""
+    lines = s.splitlines()
+    match = None
+    line_index = -1
+    for i, line in enumerate(lines):
+        m = _TIKZ_METADATA_RE.match(line)
+        if m is not None:
+            match = m
+            line_index = i
+            break
+    if match is None:
+        return s, {}
+
+    payload_str = match.group(1)
+    lines_without_metadata = lines[:line_index] + lines[line_index + 1:]
+    clean_tikz = "\n".join(lines_without_metadata)
+    try:
+        payload_bytes = base64.urlsafe_b64decode(payload_str.encode("ascii"))
+        metadata = json.loads(payload_bytes.decode("utf-8"))
+        if not isinstance(metadata, dict):
+            raise ValueError("TikZ metadata must decode to a JSON object")
+        variable_types = metadata.get("variable_types", {})
+        if not isinstance(variable_types, dict):
+            raise ValueError("TikZ metadata variable_types must be a JSON object")
+        return clean_tikz, {str(k): bool(v) for k, v in variable_types.items()}
+    except ValueError:
+        pass
+    return clean_tikz, {}
+
+
 def tikz_to_graph(
     s: str,
     warn_overlap:bool= True,
@@ -250,6 +440,7 @@ def tikz_to_graph(
     	Vertices that might look connected in the output of the tikz are not necessarily connected
 		at the level of tikz itself, and won't be treated as such in pyzx.
     """
+    s, variable_types = _extract_tikz_metadata(s)
     lines = [l.strip() for l in s.strip().splitlines() if l.strip() != '']
     if not lines[0].startswith(r'\begin{tikzpicture}'):
         raise ValueError(tikz_error_message)
@@ -259,6 +450,9 @@ def tikz_to_graph(
         raise ValueError(tikz_error_message)
 
     g = Graph(backend)
+    if variable_types and hasattr(g, "var_registry"):
+        for name, is_bool in variable_types.items():
+            g.var_registry.set_type(name, is_bool)
     index_dict: Dict[int,VT] = {} # type: ignore
     position_dict: Dict[str,List[int]] = {}
     none_style_vertices: Set[VT] = set()  # type: ignore
@@ -342,6 +536,7 @@ def tikz_to_graph(
         elif label == r'\neg':
             set_phase(v,1)
         elif label:
+            normalised_label = _normalise_tikzit_phase_label(label)
             # Check if label might be a complex number for H-box or Z-box.
             is_complex_label = ty in (VertexType.Z_BOX, VertexType.H_BOX) and label.find('pi') == -1
             if is_complex_label:
@@ -354,73 +549,22 @@ def tikz_to_graph(
                         set_phase(v, complex_val)
                     continue
                 except ValueError:
-                    # Not a valid complex, fall through to standard parsing.
-                    if ty == VertexType.Z_BOX:
-                        pass  # Z-box will be handled below.
-                    elif not ignore_nonzx or ignore_invalid_phases:
-                        handle_phase_error("Node definition %s has invalid phase label" % l)
-                        continue
-            elif label.find('pi') == -1:
-                if not ignore_nonzx or ignore_invalid_phases:
-                    handle_phase_error("Node definition %s has invalid phase label" % l)
-                    continue
-            if label.find('pi') != -1 or ty == VertexType.Z_BOX:
-                label = label.replace(r'\pi','').strip()
-                if label == '' or label == '-' or label == '-1':
-                    set_phase(v,1)
-                elif label.find(r'\frac') != -1:
-                    label = label.replace(r'\frac','').strip()
-                    if label.find('}{') == -1:
-                        n = 1
-                        try:
-                            m = int(label)
-                        except:
-                            handle_phase_error("Node definition %s has invalid phase label" % l)
-                            continue
-                    else:
-                        num, denom = label.split('}{',1)
-                        num = num.replace('{','').strip()
-                        denom = denom.replace('}','').strip()
-                        if num == '': n = 1
-                        elif num == '-': n = -1
-                        else:
-                            try:
-                                n = int(num)
-                            except:
-                                handle_phase_error("Node definition %s has invalid phase label" % l)
-                                continue
-                        try:
-                            m = int(denom)
-                        except:
-                            handle_phase_error("Node definition %s has invalid phase label" % l)
-                            continue
-                    set_phase(v, Fraction(n,m))
-                elif label.find('/') != -1:
-                    num, denom = label.split('/',1)
-                    if num == '': n = 1
-                    elif num == '-': n = -1
-                    else:
-                        try:
-                            n = int(num)
-                        except:
-                            handle_phase_error("Node definition %s has invalid phase label" % l)
-                            continue
-                    try:
-                        m = int(denom)
-                    except:
-                        handle_phase_error("Node definition %s has invalid phase label" % l)
-                        continue
-                    set_phase(v, Fraction(n,m))
-                else:
-                    try:
-                        if ty == VertexType.Z_BOX:
-                            phase = complex(label)
-                        else:
-                            phase = int(label)
-                    except:
-                        handle_phase_error("Node definition %s has invalid phase label '%s'" % (l,label))
-                        continue
+                    # Not a valid complex, fall through to phase parsing.
+                    pass
+            if normalised_label is not None:
+                try:
+                    phase = string_to_phase(normalised_label, g)
                     set_phase(v, phase)
+                    continue
+                except ValueError:
+                    pass
+            if label.find('pi') == -1 and ty != VertexType.Z_BOX and ignore_nonzx and not ignore_invalid_phases:
+                continue
+            handle_phase_error("Node definition %s has invalid phase label '%s'" % (l,label))
+            continue
+
+    if variable_types and hasattr(g, "var_registry"):
+        g.rebind_variables_to_registry()
 
     # done parsing the vertices, now we parse the edges
     etab: Dict[ET, List[int]] = {} # type: ignore

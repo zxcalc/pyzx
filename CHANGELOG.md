@@ -24,6 +24,7 @@ Other changes include much better support for rewriting diagrams that involve sy
 ### Changed
 - Refactor of the structure of all the rewrites. Rewrites are now built out of a matcher and applier function grouped together in an `Rewrite` instance. The rewrites are all in the submodule `rewrite_rules`, with their `Rewrite` instances still part of `simplify.py` and `hsimplify.py`. The user-facing API is left intact as much as possible, so this should not affect users who have only used the top-level rewrite functions like `full_reduce`. Implemented by @lara-madison.
 - `full_reduce` now also calls `copy_simp` and `supplementarity_simp` so that it indeed does all the rewrites that would simplify a graph. It now throws an exception when the diagram contains an H-box so to not get unexpected behaviour. Implemented by @lara-madison.
+- TikZ export for graphs with symbolic phases now prepends a metadata comment carrying variable type information so `to_tikz`/`tikz_to_graph` round-trips preserve symbolic variables. This is an intentional breaking change for older PyZX versions, which will fail fast when opening such files.
 
 ### Fixed
 - Many fixes to using and rewriting Multigraphs (by @RazinShaikh, @boldar99 and @lara-madison).

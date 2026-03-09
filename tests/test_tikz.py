@@ -16,13 +16,16 @@
 
 import unittest
 import sys
+from fractions import Fraction
 
 if __name__ == '__main__':
     sys.path.append('..')
     sys.path.append('.')
 
-from pyzx.utils import EdgeType
-from pyzx.tikz import tikz_to_graph
+from pyzx.utils import EdgeType, VertexType
+from pyzx.tikz import tikz_to_graph, to_tikz
+from pyzx.graph.graph import Graph
+from pyzx.graph.jsonparser import string_to_phase
 
 
 class TestTikzErrorHandling(unittest.TestCase):
@@ -32,7 +35,7 @@ class TestTikzErrorHandling(unittest.TestCase):
         """Invalid phase raises error by default."""
         tikz = r'''\begin{tikzpicture}
 \begin{pgfonlayer}{nodelayer}
-\node [style=z spider] (0) at (0, 0) {$invalid_phase$};
+\node [style=z spider] (0) at (0, 0) {$bad($};
 \end{pgfonlayer}
 \begin{pgfonlayer}{edgelayer}
 \end{pgfonlayer}
@@ -44,7 +47,7 @@ class TestTikzErrorHandling(unittest.TestCase):
         """Invalid phase uses default (0) for Z spider."""
         tikz = r'''\begin{tikzpicture}
 \begin{pgfonlayer}{nodelayer}
-\node [style=z spider] (0) at (0, 0) {$invalid_phase$};
+\node [style=z spider] (0) at (0, 0) {$bad($};
 \end{pgfonlayer}
 \begin{pgfonlayer}{edgelayer}
 \end{pgfonlayer}
@@ -58,7 +61,7 @@ class TestTikzErrorHandling(unittest.TestCase):
         """Invalid phase uses default (0) for X spider."""
         tikz = r'''\begin{tikzpicture}
 \begin{pgfonlayer}{nodelayer}
-\node [style=x spider] (0) at (0, 0) {$bad_phase$};
+\node [style=x spider] (0) at (0, 0) {$bad($};
 \end{pgfonlayer}
 \begin{pgfonlayer}{edgelayer}
 \end{pgfonlayer}
@@ -72,7 +75,7 @@ class TestTikzErrorHandling(unittest.TestCase):
         """Invalid phase uses default (1) for H-box."""
         tikz = r'''\begin{tikzpicture}
 \begin{pgfonlayer}{nodelayer}
-\node [style=hadamard] (0) at (0, 0) {$xyz$};
+\node [style=hadamard] (0) at (0, 0) {$bad($};
 \end{pgfonlayer}
 \begin{pgfonlayer}{edgelayer}
 \end{pgfonlayer}
@@ -165,6 +168,112 @@ class TestTikzErrorHandling(unittest.TestCase):
                          ignore_invalid_phases=True, ignore_parse_errors=True)
         self.assertEqual(g.num_vertices(), 3)
         self.assertEqual(g.num_edges(), 2)
+
+    def test_latex_symbolic_phase_label_z_spider(self):
+        """LaTeX symbolic labels are normalised for non-phase-dot Z styles."""
+        tikz = r'''\begin{tikzpicture}
+\begin{pgfonlayer}{nodelayer}
+\node [style=z spider] (0) at (0, 0) {$\alpha$};
+\end{pgfonlayer}
+\begin{pgfonlayer}{edgelayer}
+\end{pgfonlayer}
+\end{tikzpicture}'''
+        g = tikz_to_graph(tikz, warn_overlap=False)
+        v = list(g.vertices())[0]
+        self.assertEqual(str(g.phase(v)), "alpha")
+
+    def test_latex_symbolic_phase_label_green_dot(self):
+        """Style synonyms such as green dot use the same symbolic parser path."""
+        tikz = r'''\begin{tikzpicture}
+\begin{pgfonlayer}{nodelayer}
+\node [style=green dot] (0) at (0, 0) {$\alpha$};
+\end{pgfonlayer}
+\begin{pgfonlayer}{edgelayer}
+\end{pgfonlayer}
+\end{tikzpicture}'''
+        g = tikz_to_graph(tikz, warn_overlap=False)
+        v = list(g.vertices())[0]
+        self.assertEqual(str(g.phase(v)), "alpha")
+
+    def test_latex_fraction_symbolic_phase_label(self):
+        """LaTeX fractions over symbolic labels are normalised to parser syntax."""
+        tikz = r'''\begin{tikzpicture}
+\begin{pgfonlayer}{nodelayer}
+\node [style=z spider] (0) at (0, 0) {$\frac{\alpha}{2}$};
+\end{pgfonlayer}
+\begin{pgfonlayer}{edgelayer}
+\end{pgfonlayer}
+\end{tikzpicture}'''
+        g = tikz_to_graph(tikz, warn_overlap=False)
+        v = list(g.vertices())[0]
+        self.assertEqual(str(g.phase(v)), "1/2⋅alpha")
+
+    def test_latex_fraction_numeric_phase_label(self):
+        """Numeric LaTeX fractions take the string_to_phase path after normalisation."""
+        tikz = r'''\begin{tikzpicture}
+\begin{pgfonlayer}{nodelayer}
+\node [style=green dot] (0) at (0, 0) {$\frac{\pi}{4}$};
+\end{pgfonlayer}
+\begin{pgfonlayer}{edgelayer}
+\end{pgfonlayer}
+\end{tikzpicture}'''
+        g = tikz_to_graph(tikz, warn_overlap=False)
+        v = list(g.vertices())[0]
+        self.assertEqual(g.phase(v), Fraction(1, 4))
+
+    def test_latex_fraction_pi_suffix_phase_label(self):
+        """The normaliser also handles fraction forms with a trailing pi."""
+        tikz = r'''\begin{tikzpicture}
+\begin{pgfonlayer}{nodelayer}
+\node [style=z spider] (0) at (0, 0) {$\frac{3}{2}\pi$};
+\end{pgfonlayer}
+\begin{pgfonlayer}{edgelayer}
+\end{pgfonlayer}
+\end{tikzpicture}'''
+        g = tikz_to_graph(tikz, warn_overlap=False)
+        v = list(g.vertices())[0]
+        self.assertEqual(g.phase(v), Fraction(3, 2))
+
+    def test_latex_symbolic_hbox_phase_label(self):
+        """H-box labels use the normalised phase parser when not complex."""
+        tikz = r'''\begin{tikzpicture}
+\begin{pgfonlayer}{nodelayer}
+\node [style=hadamard] (0) at (0, 0) {$\alpha$};
+\end{pgfonlayer}
+\begin{pgfonlayer}{edgelayer}
+\end{pgfonlayer}
+\end{tikzpicture}'''
+        g = tikz_to_graph(tikz, warn_overlap=False)
+        v = list(g.vertices())[0]
+        self.assertEqual(str(g.phase(v)), "alpha")
+
+    def test_latex_symbolic_z_box_label(self):
+        """Z-box labels use the normalised parser path for symbolic labels."""
+        tikz = r'''\begin{tikzpicture}
+\begin{pgfonlayer}{nodelayer}
+\node [style=z box] (0) at (0, 0) {$\alpha$};
+\end{pgfonlayer}
+\begin{pgfonlayer}{edgelayer}
+\end{pgfonlayer}
+\end{tikzpicture}'''
+        g = tikz_to_graph(tikz, warn_overlap=False)
+        v = list(g.vertices())[0]
+        self.assertEqual(str(g.vdata(v, 'label')), "alpha")
+
+    def test_metadata_round_trip_preserves_symbolic_variable_types(self):
+        """Symbolic phases survive to_tikz and tikz_to_graph with variable types preserved."""
+        g = Graph()
+        g.var_registry.set_type("theta", False)
+        g.var_registry.set_type("b", True)
+        v = g.add_vertex(VertexType.Z, 0, 0)
+        g.set_phase(v, string_to_phase("theta + b + 1/2", g))
+
+        round_tripped = tikz_to_graph(to_tikz(g), warn_overlap=False)
+        v2 = list(round_tripped.vertices())[0]
+
+        self.assertEqual(round_tripped.phase(v2), string_to_phase("theta + b + 1/2", round_tripped))
+        self.assertFalse(round_tripped.var_registry.get_type("theta"))
+        self.assertTrue(round_tripped.var_registry.get_type("b"))
 
 
 class TestTikzIdentityNodeRemoval(unittest.TestCase):
