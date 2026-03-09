@@ -1,7 +1,7 @@
 ## PyZX
 
-[![Unitary Fund](https://img.shields.io/badge/Supported%20By-UNITARY%20FUND-brightgreen.svg?style=for-the-badge)](http://unitary.fund)
-[![CQC Support](https://github.com/zxcalc/pyzx/raw/master/images/cqc-banner-small.png)](https://cambridgequantum.com/)
+[![Unitary Foundation](https://img.shields.io/badge/Supported%20By-UNITARY%20FOUNDATION-yellow.svg?style=for-the-badge)](https://unitary.foundation/)
+[![Quantinuum Support](https://img.shields.io/badge/Supported%20By-QUANTINUUM-black.svg?style=for-the-badge)](https://www.quantinuum.com/)
 [![PyPI version](https://badge.fury.io/py/pyzx.svg)](https://badge.fury.io/py/pyzx)
 
 PyZX (pronounce as *Pisics*) is a **Py**thon tool implementing the theory of **ZX**-calculus for the creation, visualisation, and automated rewriting of large-scale quantum circuits. Please watch [this 2-minute video](https://www.youtube.com/watch?v=iC-KVdB8pf0) for a short introduction.
@@ -58,7 +58,9 @@ zx.draw(circuit)
 ```
 
 PyZX can also be run from the commandline. To optimise a circuit you can for instance run
-```python -m pyzx opt input_circuit.qasm```
+```
+python -m pyzx opt input_circuit.qasm
+```
 
 ## Attribution
 
@@ -77,6 +79,8 @@ If you wish to cite PyZX in an academic work, please cite the [accompanying pape
     doi = {10.4204/EPTCS.318.14}
 }
 </pre>
+
+We gratefully acknowledge support from the Unitary Foundation, Quantinuum, and the Engineering and Physical Sciences Research Council grant number EP/Z002230/1, *(De)constructing quantum software (DeQS)* and a Veni grant from the Dutch Research Council (NWO).
 
 Here's a plane that says PYZX:
 ![PYZX](https://github.com/zxcalc/pyzx/raw/master/images/F-PYZX.jpg)
