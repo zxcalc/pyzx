@@ -211,7 +211,7 @@ def tensorfy_naive(g: 'BaseGraph[VT,ET]', preserve_scalar: bool = True) -> NDArr
                     raise NotImplementedError(f"Tensor contraction with {repr(sl)} self-loops is not implemented.")
             nn = list(filter(lambda n: rows[n]<r or (rows[n]==r and n<v), neigh)) # TODO: allow ordering on vertex indices?
             ety = {n:g.edge_type(g.edge(v,n)) for n in nn}
-            nn.sort(key=lambda n: ety[n])
+            nn.sort(key=lambda n: ety[n] == EdgeType.HADAMARD)
             for n in nn:
                 if ety[n] == EdgeType.HADAMARD:
                     t = np.tensordot(t,had,(0,0)) # Hadamard edges are moved to the last index of t
