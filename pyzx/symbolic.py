@@ -154,6 +154,11 @@ class Term:
             if c1 != c2: return c1 < c2
         return False
 
+    @property
+    def is_bool(self) -> bool:
+        """Check if this term is a Boolean term (i.e. all variables are Boolean)"""
+        return all(v.is_bool for v, _ in self.vars)
+
     def substitute(self, var_map: Dict[Var, Union[float, complex, 'Fraction']]) -> Tuple[Union[float, complex, 'Fraction'], 'Term']:
         """Evaluate variables present in ``var_map`` and return residual term.
 
@@ -263,7 +268,13 @@ class Poly:
         return self * (self ** (other - 1))
 
     def __mod__(self, other: int) -> 'Poly':
-        return Poly([(c % other, t) for c, t in self.terms if not isinstance(c, complex)])
+        new_terms = []
+        for c, t in self.terms:
+            if isinstance(c, complex) or not t.is_bool:
+                new_terms.append((c, t))
+            else:
+                new_terms.append((c % other, t))
+        return Poly(new_terms)
 
     def __repr__(self) -> str:
         return f'Poly({str(self)})'
