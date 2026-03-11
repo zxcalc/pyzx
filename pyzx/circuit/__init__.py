@@ -21,7 +21,7 @@ import numpy as np
 
 from .gates import (Gate, gate_types, NOT, Y, Z, HAD, XPhase, YPhase, ZPhase, U2, U3, S, T, SX, SWAP, RXX, RZZ, CNOT,
                     CY, CZ, CHAD, CSX, XCX, CRX, CRY, CRZ, CPhase, CU3, CU, CSWAP, Tofolli, CCZ, ParityPhase, FSim,
-                    Measurement, PhaseGadget)
+                    Measurement, PhaseGadget, ConditionalGate)
 
 from ..graph.base import BaseGraph
 from ..utils import EdgeType
@@ -403,8 +403,8 @@ class Circuit(object):
     @staticmethod
     def from_qasm(s: str) -> 'Circuit':
         """Produces a :class:`Circuit` based on a QASM input string.
-        Supports OpenQASM 2 and 3, including ``reset`` and ``measure``
-        statements.
+        Supports OpenQASM 2 and 3, including ``reset``, ``measure``,
+        and ``if`` (classical control / feedforward) statements.
         It currently doesn't support custom gates that have parameters."""
         from .qasmparser import QASMParser
         p = QASMParser()
@@ -413,8 +413,8 @@ class Circuit(object):
     @staticmethod
     def from_qasm_file(fname: str) -> 'Circuit':
         """Produces a :class:`Circuit` based on a QASM description of a circuit.
-        Supports OpenQASM 2 and 3, including ``reset`` and ``measure``
-        statements.
+        Supports OpenQASM 2 and 3, including ``reset``, ``measure``,
+        and ``if`` (classical control / feedforward) statements.
         It currently doesn't support custom gates that have parameters."""
         from .qasmparser import QASMParser
         p = QASMParser()
@@ -440,15 +440,21 @@ class Circuit(object):
         else:
             s = """OPENQASM 2.0;\ninclude "qelib1.inc";\n"""
             s += "qreg q[{!s}];\n".format(self.qubits)
-        # Collect classical register declarations from measurement gates.
+        # Collect classical register declarations from measurement and conditional gates.
         cregs: Dict[str, int] = {}
         for g in self.gates:
-            if isinstance(g, Measurement) and g.result_symbol is not None:
-                # result_symbol is e.g. "c[2]"; extract register name and index.
-                if '[' in g.result_symbol:
+            if isinstance(g, Measurement):
+                if g.result_symbol is not None and '[' in g.result_symbol:
+                    # result_symbol is e.g. "c[2]"; extract register name and index.
                     regname, idx_str = g.result_symbol.split('[', 1)
                     idx = int(idx_str.rstrip(']')) + 1
                     cregs[regname] = max(cregs.get(regname, 0), idx)
+                elif g.result_bit is not None:
+                    # result_bit uses the default "c" register.
+                    cregs["c"] = max(cregs.get("c", 0), g.result_bit + 1)
+            if isinstance(g, ConditionalGate):
+                regname = g.condition_register
+                cregs[regname] = max(cregs.get(regname, 0), g.register_size)
         if version == 3:
             for regname, size in cregs.items():
                 s += "bit[{!s}] {};\n".format(size, regname)
