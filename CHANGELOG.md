@@ -13,13 +13,16 @@ The big change in this version is that the structure of the rewrite rules has be
 Other changes include much better support for rewriting diagrams that involve symbolic (Clifford) phases; parsing qasm circuits that include measurements (and loading them in symbolic phases); representing CSS codes and Pauli webs; and many bug fixes that improve the reliability of `Multigraph`, transforming graphs to json and calculating the tensor of diagrams.
 
 ### Added
-- Improved support for circuits and qasm files involving ancilla preparations and measurements. In particular, a measurement outcome can now be represented by a symbolic variable.
+- Improved support for circuits and qasm files involving ancilla preparations and measurements. In particular, a measurement outcome can now be represented by a symbolic variable. This includes support for openQASM reset and measure operations. Implemented by  @dlyongemallo and @Zhaoyilunnn.
 - Better support for doing rewrites involving symbolic phases. In particular, symbolic Clifford phases can now be used in graph-theoretic rewrites like local complementation and pivoting. Implemented by @RazinShaikh.
 - Can now calculate all Pauliwebs in arbitrary Clifford diagrams (see demos/PauliWebs on Clifford circuits with measurements.ipynb). Implemented by @maximilianruesch.
 - New `css.py` file with some utilities for working with CSS codes. In particular, `generate_css_encoder_graph` which generates a normal form diagram from a set of stabilizer generators. Implemented by @tinghui2012.
 - Some big improvements to documentation. Functionality regarding routing, using symbolic variables and using a genetic coding heuristic for rewriting are now properly documented. In addition you can check out the `rules.ipynb` notebook in the docs for a full overview of all the rewrites in PyZX.
 - New `auto_layout` option in `zx.draw` for graphs that don't have their own position information set. Implemented by @akissinger.
 - New graphical Fourier transform function to go between phase gadgets and H-boxes in `fourier.py`. Implemented by @akissinger.
+- Functions for `Graph.load` and `Graph.save` to load and directly from files (by @dlyongemallo).
+- Several new H-box rewrite rules (by @dlyongemallo).
+- Support for fault-equivalent rewrites (by @lunarr-eclipse and @boldar99)
 
 ### Changed
 - Refactor of the structure of all the rewrites. Rewrites are now built out of a matcher and applier function grouped together in an `Rewrite` instance. The rewrites are all in the submodule `rewrite_rules`, with their `Rewrite` instances still part of `simplify.py` and `hsimplify.py`. The user-facing API is left intact as much as possible, so this should not affect users who have only used the top-level rewrite functions like `full_reduce`. Implemented by @lara-madison.
@@ -28,7 +31,7 @@ Other changes include much better support for rewriting diagrams that involve sy
 
 ### Fixed
 - Many fixes to using and rewriting Multigraphs (by @RazinShaikh, @boldar99 and @lara-madison).
-- Fixed several bugs in the jsonparser for transforming graphs into json and back.
+- Fixed several bugs in the jsonparser for transforming graphs into json and back (by @dlyongemallo).
 - Fixed several bugs in calculating the tensor of a diagram in several edge-cases, in particular for scalar diagrams.
 
 ### Removed
