@@ -1,0 +1,99 @@
+[build-system]
+requires = ["setuptools>=64", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pyzx"
+version = "0.10.0"
+description = "Library for quantum circuit rewriting and optimisation using the ZX-calculus"
+readme = "readme.md"
+license = {text = "Apache-2.0"}
+authors = [
+    {name = "Quantomatic", email = "john@vdwetering.name"}
+]
+requires-python = ">=3.9"
+classifiers = [
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Development Status :: 4 - Beta",
+]
+dependencies = [
+    "typing_extensions>=4.5.0",
+    "numpy>=1.14",
+    "pyperclip>=1.8.1",
+    "tqdm>=4.56.0",
+    "ipywidgets>=7.5",
+    "lark>=1.2.2",
+]
+
+[project.urls]
+Homepage = "https://github.com/zxcalc/pyzx"
+Repository = "https://github.com/zxcalc/pyzx.git"
+Documentation = "https://pyzx.readthedocs.io/"
+
+[project.optional-dependencies]
+dev = [
+    "matplotlib>=2.2",
+    "mypy~=1.5.1",
+    "types-tqdm~=4.66",
+]
+test = [
+    "qiskit~=1.0.0",
+    "qiskit_qasm3_import~=0.4.2",
+    "mypy~=1.5.1",
+]
+docs = [
+    "matplotlib>=2.2",
+    "sphinx>=2.3,<7",
+    "sphinx_autodoc_typehints>=1.10",
+    "sphinx_rtd_theme>=0.4",
+    "nbsphinx~=0.9.3",
+    "ipykernel>=6",
+    "sphinxcontrib-svg2pdfconverter>=1.2.2",
+]
+web = [
+    "galois>=0.4.7",
+]
+all = [
+    "pyzx[web]",
+    "matplotlib>=2.2",
+    "quimb>=1.4",
+]
+
+[tool.setuptools.packages.find]
+include = ["pyzx*"]
+
+[tool.setuptools.package-data]
+pyzx = ["js/*.js", "py.typed"]
+
+[tool.mypy]
+python_version = "3.9"
+warn_return_any = false
+warn_unused_configs = true
+
+[[tool.mypy.overrides]]
+module = "pyzx.optimize"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = [
+    "numpy.*",
+    "igraph.*",
+    "graph_tool.*",
+    "networkx.*",
+    "pyquil.*",
+    "matplotlib.*",
+    "pandas.*",
+    "ipywidgets.*",
+    "traitlets.*",
+    "IPython.*",
+    "galois.*",
+    "quimb.*",
+    "qiskit.*",
+]
+ignore_missing_imports = true

@@ -15,6 +15,9 @@ Hence, occasionally changes will be backwards incompatible (although they will a
 - Fixed `Term.__mul__` not reducing boolean variable exponents, e.g., `x^2 = x`. (by @dlyongemallo).
 - Incorrect scalar in the Z-X bialgebra rule when both spiders carry Pauli phases, including symbolic Boolean phases (by @dlyongemallo).
 
+### Changed
+- Migrated project configuration from `setup.py` to `pyproject.toml`. Make the `galois` package an optional dependency, as it is only used in `pyzx.web`. (by @dlyongemallo)
+
 ## [0.10.0] - 2026-03-12
 
 The big change in this version is that the structure of the rewrite rules has been completely refactored. This shouldn't change anything for most users that just want to use the built-in simplification routines, but it might change how you use single rule calls. In particular, the simplification routines in `simplify`, like `spider_simp` are now no longer functions, but instances of the `Rewrite` class. This exposes a way to match, rewrite and automatically simplify with this rewrite rule. If you call it like a function as before, then it will have the same behaviour as the original simplification routine based on that rewrite rule.
