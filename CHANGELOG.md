@@ -18,6 +18,7 @@ Hence, occasionally changes will be backwards incompatible (although they will a
 
 ### Changed
 - Migrated project configuration from `setup.py` to `pyproject.toml`. Make the `galois` package an optional dependency, as it is only used in `pyzx.web`. (by @dlyongemallo)
+- Dropped support for Python 3.9 (end of life). Added support for Python 3.13. (by @dlyongemallo)
 
 ## [0.10.0] - 2026-03-12
 
