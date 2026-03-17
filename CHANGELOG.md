@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 Right now this project is in Beta and does not yet follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Hence, occasionally changes will be backwards incompatible (although they will all be documented here).
 
+## [Unreleased]
+
+### Added
+- X-H bialgebra support and tests for both Z-X and X-H bialgebra (by @dlyongemallo).
+
 ## [0.10.0] - 2026-03-12
 
 The big change in this version is that the structure of the rewrite rules has been completely refactored. This shouldn't change anything for most users that just want to use the built-in simplification routines, but it might change how you use single rule calls. In particular, the simplification routines in `simplify`, like `spider_simp` are now no longer functions, but instances of the `Rewrite` class. This exposes a way to match, rewrite and automatically simplify with this rewrite rule. If you call it like a function as before, then it will have the same behaviour as the original simplification routine based on that rewrite rule.
