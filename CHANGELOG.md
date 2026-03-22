@@ -10,7 +10,7 @@ Hence, occasionally changes will be backwards incompatible (although they will a
 
 ### Added
 - X-H bialgebra support and tests for both Z-X and X-H bialgebra (by @dlyongemallo).
-- `BaseGraph.substitute_variables()` and `Scalar.substitute_variables()` methods to substitute values into symbolic variables in graph phases, Z-box labels, and scalars (by @dlyongemallo).
+- `substitute_variables()` methods on `BaseGraph` and `Scalar` to substitute values into symbolic variables in graph phases, Z-box labels, and scalars, including symbolic-to-symbolic substitution via `Poly` values (by @dlyongemallo).
 
 ### Fixed
 - Fixed `Term.__mul__` not reducing boolean variable exponents, e.g., `x^2 = x`. (by @dlyongemallo).
