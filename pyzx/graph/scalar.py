@@ -20,16 +20,36 @@ import math
 import cmath
 import copy
 from fractions import Fraction
-from typing import Dict, List, Any, Union
+from typing import Any, Dict, List, Mapping, Set, Union
 import json
 
 from ..utils import FractionLike, phase_is_pauli, phase_is_clifford
-from ..symbolic import Poly
+from ..symbolic import Poly, Var
 
 __all__ = ['Scalar']
 
 def cexp(val) -> complex:
     return cmath.exp(1j*math.pi*val)
+
+def simplify_poly(p: Poly) -> Union[int, complex, Fraction, Poly]:
+    """Unwrap a constant Poly to its scalar value, or return the Poly as-is.
+
+    Float and purely-real complex values are normalized to Fraction so
+    that callers expecting FractionLike phases do not receive
+    unsupported types.
+    """
+    if len(p.terms) == 0:
+        return Fraction(0)
+    if len(p.terms) == 1 and len(p.terms[0][1].vars) == 0:
+        val = p.terms[0][0]
+        if isinstance(val, complex):
+            if val.imag == 0:
+                return Fraction(val.real)
+            return val
+        if isinstance(val, float):
+            return Fraction(val)
+        return val
+    return p
 
 unicode_superscript = {
     '0': '⁰',
@@ -131,6 +151,62 @@ class Scalar(object):
     def conjugate(self) -> 'Scalar':
         """Returns a new Scalar equal to the complex conjugate"""
         return self.copy(conjugate=True)
+
+    def free_vars(self) -> Set[Var]:
+        """Return all symbolic variables appearing in this scalar."""
+        result: Set[Var] = set()
+        if isinstance(self.phase, Poly):
+            result.update(self.phase.free_vars())
+        for node in self.phasenodes:
+            if isinstance(node, Poly):
+                result.update(node.free_vars())
+        for phase in self.sum_of_phases:
+            if isinstance(phase, Poly):
+                result.update(phase.free_vars())
+        return result
+
+    def substitute_variables(self, var_map: Mapping[Var, Union[float, complex, Fraction]]) -> 'Scalar':
+        """Substitute values for symbolic variables in the scalar.
+
+        Args:
+            var_map: Mapping from Var objects to their substitution values
+                     (float, complex, or Fraction).
+
+        Returns:
+            A new Scalar with variables substituted.
+        """
+        s = Scalar()
+        s.power2 = self.power2
+        s.floatfactor = self.floatfactor
+        s.is_unknown = self.is_unknown
+        s.is_zero = self.is_zero
+
+        # Substitute in phase.
+        if isinstance(self.phase, Poly):
+            s.phase = simplify_poly(self.phase.substitute(var_map))  # type: ignore[assignment]
+        else:
+            s.phase = self.phase
+
+        # Substitute in phasenodes.
+        s.phasenodes = []
+        for node in self.phasenodes:
+            if isinstance(node, Poly):
+                s.phasenodes.append(simplify_poly(node.substitute(var_map)))  # type: ignore[arg-type]
+            else:
+                s.phasenodes.append(node)
+
+        # Substitute in sum_of_phases keys.
+        s.sum_of_phases = {}
+        for phase, coeff in self.sum_of_phases.items():
+            if isinstance(phase, Poly):
+                new_phase = simplify_poly(phase.substitute(var_map))
+            else:
+                new_phase = phase
+            s.sum_of_phases[new_phase] = s.sum_of_phases.get(new_phase, 0) + coeff  # type: ignore[index,arg-type]
+            if s.sum_of_phases[new_phase] == 0:  # type: ignore[index]
+                del s.sum_of_phases[new_phase]  # type: ignore[arg-type]
+
+        return s
 
     def to_number(self) -> complex:
         if self.is_zero: return 0

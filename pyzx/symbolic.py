@@ -21,7 +21,7 @@ and Poly is a sum of terms.
 Lark is used to define a parser that can translate a string into a Poly.
 """
 
-from typing import Any, Callable, Union, Optional, Dict, List, Tuple, Set
+from typing import Any, Callable, Mapping, Union, Optional, Dict, List, Tuple, Set
 from lark import Lark, Transformer
 from functools import reduce
 from operator import add, mul
@@ -159,7 +159,7 @@ class Term:
         """Check if this term is a Boolean term (i.e. all variables are Boolean)"""
         return all(v.is_bool for v, _ in self.vars)
 
-    def substitute(self, var_map: Dict[Var, Union[float, complex, 'Fraction']]) -> Tuple[Union[float, complex, 'Fraction'], 'Term']:
+    def substitute(self, var_map: Mapping[Var, Union[float, complex, 'Fraction']]) -> Tuple[Union[int, float, complex, 'Fraction'], 'Term']:
         """Evaluate variables present in ``var_map`` and return residual term.
 
         The method extracts the numerical coefficient contributed by
@@ -169,7 +169,7 @@ class Term:
 
         Example: substituting {x: 2} in x^2*y^3 gives (4, Term([(y, 3)]))
         """
-        coeff: Union[float, complex, 'Fraction'] = 1.
+        coeff: Union[int, float, complex, 'Fraction'] = 1
         new_vars = []
         for v, c in self.vars:
             if v in var_map:
@@ -388,7 +388,7 @@ class Poly:
         for _, term in self.terms:
             term.rebind_variables_to_registry(new_registry)
 
-    def substitute(self, var_map: Dict[Var, Union[float, complex, 'Fraction']]) -> 'Poly':
+    def substitute(self, var_map: Mapping[Var, Union[float, complex, 'Fraction']]) -> 'Poly':
         """Partially evaluate the polynomial with the provided variable values."""
         p = Poly([])
         for c, t in self.terms:

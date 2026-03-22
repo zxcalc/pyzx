@@ -80,7 +80,7 @@ def _poly_phase_to_conditional_gate(
     cond_value: Optional[int] = None
     inner_phase_value: Optional[Fraction] = None
     for val in range(1 << reg_size):
-        var_map: Dict[Var, Union[float, complex, Fraction]] = {}
+        var_map: Dict[Var, Fraction] = {}
         for idx, var in bit_vars.items():
             var_map[var] = Fraction((val >> idx) & 1)
         result = phase.substitute(var_map)
