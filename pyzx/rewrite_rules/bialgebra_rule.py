@@ -15,14 +15,18 @@
 # limitations under the License.
 
 """
-This module contains the implementation of the bialgebra rule
+This module contains the implementation of the bialgebra rule.
 
-This rule acts on two connected vertices. The check functions return a boolean indicating whether
-the rule can be applied to the two given vertices. The safe version of the applier (bialgebra) will automatically
-call the basic checker, while the unsafe version of the applier will assume that the given input is correct and will apply
-the rule without running the check first.
+This rule acts on two connected vertices, supporting both Z-X bialgebra
+and X-H bialgebra (X spider with standard H-box). The check functions
+return a boolean indicating whether the rule can be applied to the two
+given vertices. The safe version of the applier (bialgebra) will
+automatically call the basic checker, while the unsafe version of the
+applier will assume that the given input is correct and will apply the
+rule without running the check first.
 
-This rewrite rule can be called using simplify.bialg_simp.apply(g, v, w) or simplify.bialg_simp(g).
+This rewrite rule can be called using simplify.bialg_simp.apply(g, v, w)
+or simplify.bialg_simp(g).
 """
 
 
@@ -37,36 +41,57 @@ __all__ = ['check_bialgebra_reduce',
 
 from collections import defaultdict
 from typing import Callable, Optional, List, Tuple, Dict
-from pyzx.utils import (EdgeType, VertexType, is_pauli,
-                        hbox_has_complex_label, get_h_box_label, set_h_box_label)
+from pyzx.utils import (EdgeType, FractionLike, VertexType, is_pauli,
+                        is_standard_hbox)
 from pyzx.graph.base import BaseGraph, VT, ET, upair
 
 RewriteOutputType = Tuple[Dict[Tuple[VT,VT],List[int]], List[VT], List[ET], bool]
 
 
 def check_bialgebra(g: BaseGraph[VT,ET], v1: VT, v2: VT) -> bool:
-    """Checks if the bialgebra rule can be applied to a given pair of vertices."""
+    """Checks if the bialgebra rule can be applied to a given pair of vertices.
+    Supports both Z-X bialgebra and X-H bialgebra (X spider with standard H-box)."""
     if not (v1 in g.vertices() and v2 in g.vertices()): return False
 
-    return (((g.type(v1) == VertexType.X and g.type(v2) == VertexType.Z) or
-             (g.type(v1) == VertexType.Z and g.type(v2) == VertexType.X)) and
-            is_pauli(g.phase(v1)) and
-            is_pauli(g.phase(v2)) and
-            g.num_edges(v1, v2) == 1 and  # there is exactly 1 edge between vertices
-            g.num_edges(v1, v1) == 0 and  # there are no self-loops on v1
-            g.num_edges(v2, v2) == 0 and  # there are no self-loops on v2
-            EdgeType.SIMPLE in [g.edge_type(edge) for edge in g.edges(v1,v2)])
+    if not (g.num_edges(v1, v2) == 1 and
+            g.num_edges(v1, v1) == 0 and
+            g.num_edges(v2, v2) == 0 and
+            EdgeType.SIMPLE in [g.edge_type(edge) for edge in g.edges(v1,v2)]):
+        return False
+
+    # Z-X bialgebra: both vertices must be Pauli.
+    if ((g.type(v1) == VertexType.X and g.type(v2) == VertexType.Z) or
+        (g.type(v1) == VertexType.Z and g.type(v2) == VertexType.X)):
+        return is_pauli(g.phase(v1)) and is_pauli(g.phase(v2))
+
+    # X-H bialgebra: X spider must be phase-free, H-box must be standard.
+    if g.type(v1) == VertexType.X and g.type(v2) == VertexType.H_BOX:
+        return g.phase(v1) == 0 and is_standard_hbox(g, v2)
+    if g.type(v1) == VertexType.H_BOX and g.type(v2) == VertexType.X:
+        return is_standard_hbox(g, v1) and g.phase(v2) == 0
+
+    return False
+
+def _is_valid_reduce_neighbor(g: BaseGraph[VT,ET], n: VT, expected_type: VertexType) -> bool:
+    """Checks if a neighbour is valid for bialgebra reduction.
+    For H-boxes, requires a standard H-box. For spiders, requires phase 0."""
+    if g.type(n) != expected_type:
+        return False
+    if expected_type == VertexType.H_BOX:
+        return is_standard_hbox(g, n)
+    return g.phase(n) == 0
 
 def check_bialgebra_reduce(g: BaseGraph[VT,ET], v1: VT, v2: VT) -> bool:
     """Checks if the bialgebra rule can be applied to a given pair of vertices.
+    Supports both Z-X and X-H bialgebra.
     NOTE: only returns true if the spiders are not neighbouring any boundary vertices."""
     if not (v1 in g.vertices() and v2 in g.vertices()): return False
 
     v1n = [n for n in g.neighbors(v1) if not n == v2]
     v2n = [n for n in g.neighbors(v2) if not n == v1]
     if (check_bialgebra(g, v1, v2) and
-        all([g.type(n) == g.type(v2) and g.phase(n) == 0 for n in v1n]) and  # all neighbors of v1 are of the same type as v2
-        all([g.type(n) ==  g.type(v1) and g.phase(n) == 0 for n in v2n]) and  # all neighbors of v0 are of the same type as v1
+        all([_is_valid_reduce_neighbor(g, n, g.type(v2)) for n in v1n]) and
+        all([_is_valid_reduce_neighbor(g, n, g.type(v1)) for n in v2n]) and
         EdgeType.SIMPLE in [g.edge_type(edge) for edge in g.edges(v1,v2)]):
         return True
     return False
@@ -76,7 +101,7 @@ def bialgebra(g: BaseGraph[VT, ET], v1: VT, v2: VT) -> bool:
     return unsafe_bialgebra(g, v1, v2)
 
 def unsafe_bialgebra(g: BaseGraph[VT,ET], v1: VT, v2: VT ) -> bool:
-    """Applies the bialgebra rule to a given pair of Z and X spiders"""
+    """Applies the bialgebra rule to a given pair of spiders (Z-X or X-H)."""
     rem_verts = []
     etab = {}
 
@@ -84,6 +109,24 @@ def unsafe_bialgebra(g: BaseGraph[VT,ET], v1: VT, v2: VT ) -> bool:
     rem_verts.append(v2)
     v = (v1,v2)
     new_verts: Tuple[List[VT],List[VT]] = ([],[]) # new vertices for v1 and v2
+
+    # Determine the vertex type and phase for copies placed at each side's
+    # neighbours. copy_type[i] is the type for new vertices at v[i]'s
+    # neighbours; copy_phase[i] is the corresponding phase.
+    # For Z-X bialgebra: neighbours of v[i] get copies of v[j].
+    # For X-H bialgebra: neighbours of X get H-box copies (phase 1), but
+    # neighbours of the H-box get Z spiders (phase 0), not X spiders.
+    copy_phase: Tuple[FractionLike, FractionLike]
+    if g.type(v1) == VertexType.H_BOX or g.type(v2) == VertexType.H_BOX:
+        if g.type(v1) == VertexType.X:
+            copy_type = (VertexType.H_BOX, VertexType.Z)
+            copy_phase = (1, 0)
+        else:
+            copy_type = (VertexType.Z, VertexType.H_BOX)
+            copy_phase = (0, 1)
+    else:
+        copy_type = (g.type(v2), g.type(v1))
+        copy_phase = (g.phase(v2), g.phase(v1))
 
     for i, j in [(0, 1), (1, 0)]:
         multi_edge_found = False
@@ -93,13 +136,14 @@ def unsafe_bialgebra(g: BaseGraph[VT,ET], v1: VT, v2: VT ) -> bool:
             if other_vertex != v[j] or multi_edge_found:
                 q = 0.4*g.qubit(other_vertex) + 0.6*g.qubit(v[i])
                 r = 0.4*g.row(other_vertex) + 0.6*g.row(v[i])
-                newv = g.add_vertex(g.type(v[j]), qubit=q, row=r)
-                g.set_phase(newv, g.phase(v[j]))
+                newv = g.add_vertex(copy_type[i], qubit=q, row=r)
+                g.set_phase(newv, copy_phase[i])
                 new_verts[i].append(newv)
                 if other_vertex == v[j]:
                     q = 0.4*g.qubit(v[i]) + 0.6*g.qubit(other_vertex)
                     r = 0.4*g.row(v[i]) + 0.6*g.row(other_vertex)
-                    newv2 = g.add_vertex(g.type(v[i]), qubit=q, row=r)
+                    newv2 = g.add_vertex(copy_type[j], qubit=q, row=r)
+                    g.set_phase(newv2, copy_phase[j])
                     new_verts[j].append(newv2)
                     other_vertex = newv2
                 if upair(newv, other_vertex) not in etab:
@@ -117,7 +161,7 @@ def unsafe_bialgebra(g: BaseGraph[VT,ET], v1: VT, v2: VT ) -> bool:
 
     if g.type(v1) == VertexType.H_BOX or g.type(v2) == VertexType.H_BOX: # x-h bialgebra
         x_vertex = v1 if g.type(v2) == VertexType.H_BOX else v2
-        g.scalar.add_power(g.vertex_degree(x_vertex)-2)
+        g.scalar.add_power(-(g.vertex_degree(x_vertex)-2))
     else: # z-x bialgebra
         g.scalar.add_power((g.vertex_degree(v1)-2)*(g.vertex_degree(v2)-2))
         # Phase interaction contributes a factor of (-1)^(phase1 * phase2).

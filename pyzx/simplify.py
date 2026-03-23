@@ -20,7 +20,7 @@ The main procedures of interest are :func:`clifford_simp` for simple reductions,
 :func:`full_reduce` for the full rewriting power of PyZX, and :func:`teleport_reduce` to
 use the power of :func:`full_reduce` while not changing the structure of the graph.
 
-The individual rewrites can also be called directly. 
+The individual rewrites can also be called directly.
 For methods that terminate, they can be called using their `simp` method, e.g.: ``spider_simp.simp(g)``.
 As a shorthand you can just call it directly: ``spider_simp(g)``.
 The rewrites can also be applied manually to specific vertices using their `apply` method, e.g.: ``spider_simp.apply(g, v, w)``.
@@ -79,7 +79,7 @@ lcomp_simp: RewriteSimpSingleVertex = RewriteSimpSingleVertex(check_lcomp, unsaf
 """Performs a local complementation rewrite on a given vertex. Can be run automatically on the entire graph."""
 
 bialg_simp: RewriteSimpDoubleVertex = RewriteSimpDoubleVertex(check_bialgebra, unsafe_bialgebra, check_bialgebra_reduce)
-"""Applies the bialgebra rule to a given pair of Z and X spiders. Can be run automatically on the entire graph."""
+"""Applies the bialgebra rule to a given pair of spiders (Z-X or X-H). Can be run automatically on the entire graph."""
 
 bialg_op_simp: RewriteSimpGraph = RewriteSimpGraph(safe_apply_bialgebra_op, simp_bialgebra_op)
 """Applies the bialgebra rule in reverse to a given pair of Z and X spiders. Can be run automatically on the entire graph."""
@@ -142,7 +142,7 @@ def phase_free_simp(g: BaseGraph[VT,ET]) -> bool:
     return i1 or i2
 
 def basic_simp(g: BaseGraph[VT,ET]) -> bool:
-    """Keeps doing the simplifications ``id_simp`` and ``spider_simp`` until none of them can be applied anymore. 
+    """Keeps doing the simplifications ``id_simp`` and ``spider_simp`` until none of them can be applied anymore.
     If starting from a circuit, the result should still have causal flow."""
     spider_simp(g)
     to_gh(g)
@@ -377,7 +377,7 @@ def max_cut(g: BaseGraph[VT,ET], vs0: Optional[Set[VT]]=None, vs1: Optional[Set[
                 v_max = v
                 in0 = wt0 >= wt1
         # print(f'choosing {v_max} for set {"vs0" if in0 else "vs1"}')
-        
+
         if v_max is None: raise RuntimeError("No max found")
         remaining.remove(v_max)
         if in0: vs0.add(v_max)
@@ -563,7 +563,7 @@ def tcount(g: Union[BaseGraph[VT,ET], Circuit]) -> int:
 #             yield g, f"pivot_gadget -> {step}"
 
 def is_graph_like(g: BaseGraph[VT,ET], strict:bool=False) -> bool:
-    """Checks if a ZX-diagram is graph-like: 
+    """Checks if a ZX-diagram is graph-like:
     only contains Z-spiders which are connected by Hadamard edges.
     If `strict` is True, then also checks that each boundary vertex is connected to a Z-spider,
     and that each Z-spider is connected to at most one boundary."""
@@ -688,7 +688,7 @@ def unfuse_non_cliffords(g: BaseGraph[VT,ET]) -> None:
 def to_clifford_normal_form_graph(g: BaseGraph[VT,ET]) -> None:
     """Converts a graph that is Clifford into the form described by the right-hand side of eq. (11) of
     *Graph-theoretic Simplification of Quantum Circuits with the ZX-calculus* (https://arxiv.org/abs/1902.03178).
-    That is, writes it as a series of layers: 
+    That is, writes it as a series of layers:
     Hadamards, phase gates, CZ gates, parity form of Z-spiders to X-spiders, Hadamards, CZ gates, phase gates, Hadamards.
     Changes the graph in place.
     """
@@ -709,8 +709,8 @@ def to_clifford_normal_form_graph(g: BaseGraph[VT,ET]) -> None:
         g.set_row(v,  5)
     for o in outputs:
         g.set_row(o, 8)
-    
-    # Separate out the Hadamards 
+
+    # Separate out the Hadamards
     for q in range(len(inputs)):
         v = v_inputs[q]
         i = inputs[q]
@@ -723,7 +723,7 @@ def to_clifford_normal_form_graph(g: BaseGraph[VT,ET]) -> None:
             g.remove_edge(e)
             g.set_phase(v,0)
             inputs[q] = h
-    
+
     for q in range(len(outputs)):
         v = v_outputs[q]
         o = outputs[q]
@@ -736,7 +736,7 @@ def to_clifford_normal_form_graph(g: BaseGraph[VT,ET]) -> None:
             g.remove_edge(e)
             g.set_phase(v,0)
             outputs[q] = h
-    
+
     # Unfuse the czs on the inputs
     czs = []
     cz_qubits = set()
@@ -756,7 +756,7 @@ def to_clifford_normal_form_graph(g: BaseGraph[VT,ET]) -> None:
         cz_v[q] = w
     for q1,q2 in czs:
         g.add_edge((cz_v[q1],cz_v[q2]),EdgeType.HADAMARD)
-    
+
     # Unfuse the czs on the outputs
     czs = []
     cz_qubits = set(range(len(outputs))) # We actually definitely need to add another spider at every position, as we are going to introduce Hadamards everywhere later
@@ -776,6 +776,6 @@ def to_clifford_normal_form_graph(g: BaseGraph[VT,ET]) -> None:
         cz_v[q] = w
     for q1,q2 in czs:
         g.add_edge((cz_v[q1],cz_v[q2]),EdgeType.HADAMARD)
-    
+
     # TODO: re-introduce correct to_rg behaviour here
     #to_rg(g,select=lambda v: v in v_outputs)

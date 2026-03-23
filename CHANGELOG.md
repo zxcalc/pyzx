@@ -8,6 +8,9 @@ Hence, occasionally changes will be backwards incompatible (although they will a
 
 ## [Unreleased]
 
+### Added
+- X-H bialgebra support and tests for both Z-X and X-H bialgebra (by @dlyongemallo).
+
 ### Fixed
 - Fixed `Term.__mul__` not reducing boolean variable exponents, e.g., `x^2 = x`. (by @dlyongemallo).
 - Incorrect scalar in the Z-X bialgebra rule when both spiders carry Pauli phases, including symbolic Boolean phases (by @dlyongemallo).
