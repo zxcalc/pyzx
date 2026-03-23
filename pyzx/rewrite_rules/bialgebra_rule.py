@@ -164,6 +164,10 @@ def unsafe_bialgebra(g: BaseGraph[VT,ET], v1: VT, v2: VT ) -> bool:
         g.scalar.add_power(-(g.vertex_degree(x_vertex)-2))
     else: # z-x bialgebra
         g.scalar.add_power((g.vertex_degree(v1)-2)*(g.vertex_degree(v2)-2))
+        # Phase interaction contributes a factor of (-1)^(phase1 * phase2).
+        phase_correction = (g.phase(v1) * g.phase(v2)) % 2
+        if phase_correction != 0:
+            g.scalar.add_phase(phase_correction)
 
     g.remove_vertices(rem_verts)
     g.add_edge_table(etab)
