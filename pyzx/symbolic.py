@@ -128,14 +128,14 @@ class Term:
 
         Example: (x^2 * y) * (y^3 * z) = x^2 * y^4 * z
         Boolean variables are treated idempotently (x^2 = x), ensuring their
-        exponent isreduced to 1 when multiplying.
+        exponent is reduced to 1 when multiplying.
         """
         vs = dict()
         for v, c in self.vars + other.vars:
             if v not in vs: vs[v] = c
             else: vs[v] += c
             # TODO deal with fractional / symbolic powers
-            if v.is_bool and c > 1:
+            if v.is_bool and vs[v] > 1:
                 vs[v] = 1
         return Term([(v, c) for v, c in vs.items()])
 

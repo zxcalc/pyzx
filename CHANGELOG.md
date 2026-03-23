@@ -9,6 +9,7 @@ Hence, occasionally changes will be backwards incompatible (although they will a
 ## [Unreleased]
 
 ### Fixed
+- Fixed `Term.__mul__` not reducing boolean variable exponents, e.g., `x^2 = x`. (by @dlyongemallo).
 - Incorrect scalar in the Z-X bialgebra rule when both spiders carry Pauli phases, including symbolic Boolean phases (by @dlyongemallo).
 
 ## [0.10.0] - 2026-03-12

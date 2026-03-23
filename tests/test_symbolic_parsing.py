@@ -276,6 +276,25 @@ class TestSymbolicParsing(unittest.TestCase):
         self.assertEqual(result, expected)
 
 
+class TestBooleanIdempotency(unittest.TestCase):
+
+    def test_term_mul_bool_idempotent(self):
+        """Multiplying a boolean variable by itself must reduce a^2 to a."""
+        a = Var('a', is_bool=True)
+        t = Term([(a, 1)])
+        self.assertEqual(t * t, t)
+
+    def test_poly_mul_bool_idempotent(self):
+        """a * a must equal a for boolean variable a."""
+        a = new_var('a', is_bool=True)
+        self.assertEqual(a * a, a)
+
+    def test_poly_bool_annihilation(self):
+        """a * (1 + a) must be zero for boolean a, since a^2 = a."""
+        a = new_var('a', is_bool=True)
+        self.assertEqual(a * (1 + a), Poly([]))
+
+
 class TestPolyConjugate(unittest.TestCase):
 
     def test_conjugate_real_coefficients(self):
