@@ -711,15 +711,29 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
 
         vert_map = dict()
         for v in verts:
-            w = g.add_vertex(ty[v], qs[v], rs[v], phase[v], v in grounds, index=v)
+            p = copy.deepcopy(phase[v]) if isinstance(phase[v], Poly) else phase[v]
+            w = g.add_vertex(ty[v], qs[v], rs[v], p, v in grounds, index=v)
             vert_map[v] = w
-            g.set_vdata_dict(w, self.vdata_dict(v))
+            vd = self.vdata_dict(v)
+            for k, val in vd.items():
+                if isinstance(val, Poly):
+                    vd[k] = copy.deepcopy(val)
+            g.set_vdata_dict(w, vd)
         for e in edges:
             s,t = self.edge_st(e)
             new_e = g.add_edge((vert_map[s], vert_map[t]), self.edge_type(e))
             g.set_edata_dict(new_e, self.edata_dict(e))
 
-        for name in self.var_registry.vars():
+        used_var_names: Set[str] = set()
+        for v in verts:
+            p = phase[v]
+            if isinstance(p, Poly):
+                used_var_names.update(var.name for var in p.free_vars())
+            if ty[v] == VertexType.Z_BOX:
+                label = get_z_box_label(self, v)
+                if isinstance(label, Poly):
+                    used_var_names.update(var.name for var in label.free_vars())
+        for name in used_var_names:
             g.var_registry.set_type(name, self.var_registry.get_type(name))
         g.rebind_variables_to_registry()
 
