@@ -53,7 +53,7 @@ def check_bialgebra(g: BaseGraph[VT,ET], v1: VT, v2: VT) -> bool:
     Supports both Z-X bialgebra and X-H bialgebra (X spider with standard H-box)."""
     if not (v1 in g.vertices() and v2 in g.vertices()): return False
 
-    if not (g.num_edges(v1, v2) == 1 and
+    if not (g.num_edges(v1, v2) >= 1 and
             g.num_edges(v1, v1) == 0 and
             g.num_edges(v2, v2) == 0 and
             EdgeType.SIMPLE in [g.edge_type(edge) for edge in g.edges(v1,v2)]):
@@ -130,18 +130,36 @@ def unsafe_bialgebra(g: BaseGraph[VT,ET], v1: VT, v2: VT ) -> bool:
 
     for i, j in [(0, 1), (1, 0)]:
         multi_edge_found = False
+        neighbour_edge_count: dict = {}
         for e in g.incident_edges(v[i]):
             source, target = g.edge_st(e)
             other_vertex = source if source != v[i] else target
             if other_vertex != v[j] or multi_edge_found:
                 q = 0.4*g.qubit(other_vertex) + 0.6*g.qubit(v[i])
                 r = 0.4*g.row(other_vertex) + 0.6*g.row(v[i])
+                # Offset vertices from parallel edges to the same
+                # neighbour so they don't overlap.
+                n = neighbour_edge_count.get(other_vertex, 0)
+                if n > 0:
+                    dq_n = g.qubit(other_vertex) - g.qubit(v[i])
+                    dr_n = g.row(other_vertex) - g.row(v[i])
+                    len_n = (dq_n**2 + dr_n**2)**0.5
+                    if len_n > 0:
+                        pq, pr = -dr_n / len_n, dq_n / len_n
+                    else:
+                        pq, pr = 1.0, 0.0
+                    q += n * 0.5 * pq
+                    r += n * 0.5 * pr
+                neighbour_edge_count[other_vertex] = n + 1
                 newv = g.add_vertex(copy_type[i], qubit=q, row=r)
                 g.set_phase(newv, copy_phase[i])
                 new_verts[i].append(newv)
                 if other_vertex == v[j]:
                     q = 0.4*g.qubit(v[i]) + 0.6*g.qubit(other_vertex)
                     r = 0.4*g.row(v[i]) + 0.6*g.row(other_vertex)
+                    if n > 0:
+                        q += n * 0.5 * pq
+                        r += n * 0.5 * pr
                     newv2 = g.add_vertex(copy_type[j], qubit=q, row=r)
                     g.set_phase(newv2, copy_phase[j])
                     new_verts[j].append(newv2)

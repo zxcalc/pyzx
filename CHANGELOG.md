@@ -18,6 +18,7 @@ Hence, occasionally changes will be backwards incompatible (although they will a
 - `subgraph_from_vertices` copies only variables used in the subgraph (by @dlyongemallo).
 - `extract_circuit` raises `ValueError` for graphs containing ground vertices or mismatched input/output counts, instead of a `KeyError` crash (by @dlyongemallo).
 - Missed copying `_grounds` in `clone()`, incorrectly checking destination `is_ground` instead of source in `tensor()` (by @dlyongemallo).
+- Bialgebra rule to accept parallel edges; spread out the resulting vertices so they don't overlap (by @dlyongemallo).
 
 ### Changed
 - Migrated project configuration from `setup.py` to `pyproject.toml`. Make the `galois` package an optional dependency, as it is only used in `pyzx.web`. (by @dlyongemallo)
