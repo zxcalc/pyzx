@@ -165,12 +165,12 @@ class Scalar(object):
                 result.update(phase.free_vars())
         return result
 
-    def substitute_variables(self, var_map: Mapping[Var, Union[float, complex, Fraction]]) -> 'Scalar':
+    def substitute_variables(self, var_map: Mapping[Var, Union[float, complex, Fraction, Poly]]) -> 'Scalar':
         """Substitute values for symbolic variables in the scalar.
 
         Args:
             var_map: Mapping from Var objects to their substitution values
-                     (float, complex, or Fraction).
+                     (float, complex, Fraction, or Poly).
 
         Returns:
             A new Scalar with variables substituted.

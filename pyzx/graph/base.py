@@ -26,7 +26,7 @@ import numpy as np
 
 from ..symbolic import Poly, VarRegistry, Var
 from ..utils import EdgeType, VertexType, toggle_edge, vertex_is_zx, get_z_box_label, set_z_box_label, get_h_box_label, set_h_box_label, hbox_has_complex_label
-from ..utils import FloatInt, FractionLike
+from ..utils import FloatInt, FractionLike, assert_phase_real
 from .scalar import simplify_poly
 from ..tensor import tensorfy, tensor_to_matrix
 
@@ -1155,7 +1155,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
             if isinstance(attr, Poly):
                 attr.rebind_variables_to_registry(self.var_registry)
 
-    def substitute_variables(self, var_values: Mapping[str, Union[float, complex, Fraction]],
+    def substitute_variables(self, var_values: Mapping[str, Union[float, complex, Fraction, Poly]],
                    in_place: bool = False) -> 'BaseGraph[VT, ET]':
         """Substitute values for symbolic variables in all phases and Z-box labels.
 
@@ -1164,7 +1164,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
 
         Args:
             var_values: Mapping from variable names (strings) to their
-                        substitution values (float, complex, or Fraction).
+                        substitution values (float, complex, Fraction, or Poly).
                         Complex values are only valid for Z-box labels; phases
                         must be real-valued.
             in_place: If True, modify this graph. If False (default), return
@@ -1194,7 +1194,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
                     all_vars.update(label.free_vars())
         all_vars.update(result.scalar.free_vars())
 
-        var_map: Dict[Var, Union[float, complex, Fraction]] = {
+        var_map: Dict[Var, Union[float, complex, Fraction, Poly]] = {
             var: var_values[var.name] for var in all_vars if var.name in var_values
         }
         if not var_map:
@@ -1214,9 +1214,13 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
                     new_labels[v] = simplify_poly(label.substitute(var_map))
         new_scalar = result.scalar.substitute_variables(var_map)
 
-        # Validate phases before mutating: reject complex values for non-Z-box vertices.
+        # Validate phases before mutating: reject complex values for non-Z-box
+        # vertices. This catches both plain complex scalars and Poly instances
+        # with complex coefficients.
         for v, new_phase in new_phases.items():
-            if isinstance(new_phase, complex) and new_phase.imag != 0:
+            try:
+                assert_phase_real(new_phase)  # type: ignore[arg-type]
+            except TypeError:
                 raise TypeError(
                     f"Substitution produced complex phase {new_phase} for "
                     f"vertex {v}; only Z-box labels may be complex.")
@@ -1227,6 +1231,11 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         for v, new_label in new_labels.items():
             set_z_box_label(result, v, new_label)
         result.scalar = new_scalar
+
+        # Poly substitution values may carry variables bound to a different
+        # registry. Rebind so all variables use the graph's own registry.
+        if any(isinstance(val, Poly) for val in var_map.values()):
+            result.rebind_variables_to_registry()
 
         return result
 
