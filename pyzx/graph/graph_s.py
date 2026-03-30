@@ -59,6 +59,7 @@ class GraphS(BaseGraph[int,Tuple[int,int]]):
         cpy._maxr = self._maxr
         cpy._vdata = self._vdata.copy()
         cpy.scalar = self.scalar.copy()
+        cpy._grounds = self._grounds.copy()
         cpy._inputs = tuple(list(self._inputs))
         cpy._outputs = tuple(list(self._outputs))
         cpy.track_phases = self.track_phases
