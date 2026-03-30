@@ -489,6 +489,52 @@ class TestVarRegistryPropagation(unittest.TestCase):
         g, v = self._make_bool_var_circuit()
         self._check_bool_var(g.subgraph_from_vertices([v]))
 
+    def test_subgraph_from_vertices_excludes_unused_vars(self):
+        """Only variables used by subgraph vertices should be copied."""
+        from pyzx.symbolic import new_var
+        g = Graph()
+        alpha = new_var('alpha', is_bool=False, registry=g.var_registry)
+        beta = new_var('beta', is_bool=True, registry=g.var_registry)
+        v1 = g.add_vertex(VertexType.Z, 0, 0, phase=alpha)
+        v2 = g.add_vertex(VertexType.Z, 0, 1, phase=beta)
+        g.add_edge((v1, v2))
+
+        sub = g.subgraph_from_vertices([v1])
+        self.assertIn('alpha', sub.var_registry.vars())
+        self.assertNotIn('beta', sub.var_registry.vars())
+
+    def test_subgraph_from_vertices_z_box_label_vars(self):
+        """Variables in Z-box labels should be copied to the subgraph."""
+        from pyzx.symbolic import new_var
+        from pyzx.utils import get_z_box_label, set_z_box_label
+        g = Graph()
+        alpha = new_var('alpha', is_bool=False, registry=g.var_registry)
+        beta = new_var('beta', is_bool=True, registry=g.var_registry)
+        v1 = g.add_vertex(VertexType.Z_BOX, 0, 0)
+        set_z_box_label(g, v1, alpha)
+        v2 = g.add_vertex(VertexType.Z, 0, 1, phase=beta)
+        g.add_edge((v1, v2))
+
+        sub = g.subgraph_from_vertices([v1])
+        self.assertIn('alpha', sub.var_registry.vars())
+        self.assertNotIn('beta', sub.var_registry.vars())
+
+    def test_subgraph_from_vertices_does_not_mutate_parent(self):
+        """Creating a subgraph should not rebind the parent graph's Vars."""
+        from pyzx.symbolic import new_var
+        g = Graph()
+        alpha = new_var('alpha', is_bool=False, registry=g.var_registry)
+        v1 = g.add_vertex(VertexType.Z, 0, 0, phase=alpha)
+
+        parent_var = next(iter(g.phase(v1).free_vars()))
+        self.assertIs(parent_var._registry, g.var_registry)
+
+        sub = g.subgraph_from_vertices([v1])
+
+        self.assertIs(parent_var._registry, g.var_registry)
+        sub_var = next(iter(sub.phase(v1).free_vars()))
+        self.assertIs(sub_var._registry, sub.var_registry)
+
     def test_merge_preserves_var_registry(self):
         g, _ = self._make_bool_var_circuit()
         target = Graph()
