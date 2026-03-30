@@ -113,6 +113,23 @@ class TestGraphSubstitute(unittest.TestCase):
         g_subst = g.substitute_variables({'phi': Fraction(1, 4)})  # phi doesn't exist
         self.assertIsInstance(g_subst.phase(v1), Poly)  # still has theta
 
+    def test_substitute_with_symbolic(self):
+        """Test substituting one symbolic variable with another expression."""
+        g = Graph()
+        v1 = g.add_vertex(VertexType.Z, 0, 0)
+
+        theta = new_var('theta', is_bool=False, registry=g.var_registry)
+        g.set_phase(v1, theta)
+
+        phi = new_var('phi', is_bool=False, registry=g.var_registry)
+        two_phi = Poly([(2, Term([(list(phi.free_vars())[0], 1)]))])
+
+        g_subst = g.substitute_variables({'theta': two_phi})
+
+        phase = g_subst.phase(v1)
+        self.assertEqual(phase, two_phi)
+
+
 class TestZBoxLabelSubstitute(unittest.TestCase):
     """Tests for substitution into Z-box labels (stored as vdata)."""
 
@@ -127,6 +144,21 @@ class TestZBoxLabelSubstitute(unittest.TestCase):
         v_subst = list(g_subst.vertices())[0]
         self.assertEqual(get_z_box_label(g_subst, v_subst), 2+3j)
 
+    def test_substitute_z_box_label_symbolic(self):
+        """Test substituting one symbolic variable for another in a Z-box label."""
+        g = Graph()
+        v = g.add_vertex(VertexType.Z_BOX, 0, 0)
+        alpha = new_var('alpha', is_bool=False, registry=g.var_registry)
+        set_z_box_label(g, v, alpha)
+
+        beta = new_var('beta', is_bool=False, registry=g.var_registry)
+        g_subst = g.substitute_variables({'alpha': beta})
+        v_subst = list(g_subst.vertices())[0]
+        label = get_z_box_label(g_subst, v_subst)
+        self.assertIsInstance(label, Poly)
+        self.assertEqual(len(label.free_vars()), 1)
+        self.assertEqual(list(label.free_vars())[0].name, 'beta')
+
     def test_substitute_z_box_label_not_poly(self):
         """Test that concrete Z-box labels are left unchanged."""
         g = Graph()
@@ -136,6 +168,53 @@ class TestZBoxLabelSubstitute(unittest.TestCase):
         g_subst = g.substitute_variables({'anything': 0.5})
         v_subst = list(g_subst.vertices())[0]
         self.assertEqual(get_z_box_label(g_subst, v_subst), 2+3j)
+
+
+class TestPolySubstitute(unittest.TestCase):
+    """Tests for Poly.substitute() with symbolic values."""
+
+    def test_substitute_poly_for_variable(self):
+        """Test substituting a Poly for a variable."""
+        x = Var('x')
+        y = Var('y')
+        # p = x + 1
+        p = Poly([(1, Term([(x, 1)])), (1, Term([]))])
+        y_poly = Poly([(1, Term([(y, 1)]))])
+        result = p.substitute({x: y_poly})
+        expected = Poly([(1, Term([(y, 1)])), (1, Term([]))])
+        self.assertEqual(result, expected)
+        for c, _ in result.terms:
+            self.assertNotIsInstance(c, Poly)
+
+    def test_substitute_sum_for_variable(self):
+        """Test substituting a multi-term Poly expands correctly."""
+        x = Var('x')
+        y = Var('y')
+        z = Var('z')
+        # p = x^2
+        p = Poly([(1, Term([(x, 2)]))])
+        yz = Poly([(1, Term([(y, 1)])), (1, Term([(z, 1)]))])
+        result = p.substitute({x: yz})
+        # (y+z)^2 = y^2 + 2yz + z^2
+        expected = Poly([
+            (1, Term([(y, 2)])),
+            (2, Term([(y, 1), (z, 1)])),
+            (1, Term([(z, 2)])),
+        ])
+        self.assertEqual(result, expected)
+
+    def test_substitute_preserves_unmatched_variables(self):
+        """Test that variables not in var_map are left alone."""
+        x = Var('x')
+        y = Var('y')
+        z = Var('z')
+        # p = x * y
+        p = Poly([(1, Term([(x, 1), (y, 1)]))])
+        z_poly = Poly([(1, Term([(z, 1)]))])
+        result = p.substitute({x: z_poly})
+        # Should get z * y.
+        expected = Poly([(1, Term([(y, 1), (z, 1)]))])
+        self.assertEqual(result, expected)
 
 
 class TestScalarSubstitute(unittest.TestCase):

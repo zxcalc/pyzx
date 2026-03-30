@@ -600,21 +600,30 @@ def extract_circuit(
         up_to_perm: bool = False,
         quiet: bool = True
         ) -> Circuit:
-    """Given a graph put into semi-normal form by :func:`~pyzx.simplify.full_reduce`, 
+    """Given a graph put into semi-normal form by :func:`~pyzx.simplify.full_reduce`,
     it extracts its equivalent set of gates into an instance of :class:`~pyzx.circuit.Circuit`.
     This function implements a more optimized version of the algorithm described in
     `There and back again: A circuit extraction tale <https://arxiv.org/abs/2003.01664>`_
 
+    The graph must be a unitary (non-hybrid) diagram with equal numbers of
+    inputs and outputs.  Graphs containing ground vertices (e.g., from
+    circuits with measurements or resets) are not supported and will raise
+    :class:`ValueError`.
+
     Args:
         g: The ZX-diagram graph to be extracted into a Circuit.
-        optimize_czs: Whether to try to optimize the CZ-subcircuits by exploiting overlap between the CZ gates
+        optimize_czs: Whether to try to optimize the CZ-subcircuits by exploiting overlap between the CZ gates.
         optimize_cnots: (0,1,2,3) Level of CNOT optimization to apply.
         up_to_perm: If true, returns a circuit that is equivalent to the given graph up to a permutation of the inputs.
         quiet: Whether to print detailed output of the extraction process.
 
+    Raises:
+        ValueError: If the graph contains ground vertices or has differing
+            numbers of inputs and outputs.
+
     Warning:
-        Note that this function changes the graph ``g`` in place. 
-        In particular, if the extraction fails, the modified ``g`` shows 
+        Note that this function changes the graph ``g`` in place.
+        In particular, if the extraction fails, the modified ``g`` shows
         how far the extraction got. If you want to keep the original ``g``
         then input ``g.copy()`` into ``extract_circuit``.
     """
@@ -622,6 +631,18 @@ def extract_circuit(
     gadgets = {}
     inputs = g.inputs()
     outputs = g.outputs()
+
+    if g.is_hybrid():
+        raise ValueError(
+            "extract_circuit cannot handle graphs that contain ground "
+            "vertices (e.g., from circuits with measurements or resets)."
+        )
+
+    if len(inputs) != len(outputs):
+        raise ValueError(
+            "extract_circuit does not support graphs with differing numbers "
+            "of inputs and outputs (e.g., from circuits with measurements)."
+        )
 
     c = Circuit(len(outputs))
 
@@ -793,6 +814,16 @@ def graph_to_swaps(g: BaseGraph[VT, ET], no_swaps: bool = False) -> Circuit:
     leftover_swaps = False
     inputs = g.inputs()
     outputs = g.outputs()
+
+    if g.is_hybrid():
+        raise ValueError(
+            "graph_to_swaps cannot handle graphs that contain ground vertices"
+        )
+
+    if len(inputs) != len(outputs):
+        raise ValueError(
+            "graph_to_swaps requires equal numbers of inputs and outputs"
+        )
 
     if not is_graph_like(g):
         raise ValueError("Input graph is not graph-like")
