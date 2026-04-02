@@ -160,6 +160,31 @@ class TestGraphBasicMethods(unittest.TestCase):
         v1, v2 = list(g2.vertices())
         self.assertEqual(g.edge_type(g.edge(v1,v2)),EdgeType.HADAMARD)
 
+    def test_clone_grounds(self):
+        """clone() should preserve ground status of vertices."""
+        for backend in ["simple", "multigraph"]:
+            with self.subTest(backend=backend):
+                g = Graph(backend=backend)
+                v1 = g.add_vertex(VertexType.Z, 0, 0)
+                v2 = g.add_vertex(VertexType.Z, 0, 1, ground=True)
+                g.add_edge((v1, v2))
+                g2 = g.clone()
+                self.assertTrue(g2.is_ground(v2))
+                self.assertFalse(g2.is_ground(v1))
+
+    def test_tensor_grounds(self):
+        """tensor() should preserve grounds from the other graph."""
+        for backend in ["simple", "multigraph"]:
+            with self.subTest(backend=backend):
+                g1 = Graph(backend=backend)
+                g1.add_vertex(VertexType.Z, 0, 0)
+
+                g2 = Graph(backend=backend)
+                g2.add_vertex(VertexType.Z, 0, 0, ground=True)
+
+                g = g1.tensor(g2)
+                self.assertEqual(len(g.grounds()), 1)
+
     def test_adjoint_scalar(self):
         g = Graph()
         scalar = Scalar()

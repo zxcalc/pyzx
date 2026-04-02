@@ -620,7 +620,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         phases = other.phases()
         vertex_map = dict()
         for v in other.vertices():
-            w = g.add_vertex(ts[v],qs[v]+height,rs[v],phases[v],g.is_ground(v))
+            w = g.add_vertex(ts[v],qs[v]+height,rs[v],phases[v],other.is_ground(v))
             g.set_vdata_dict(w, other.vdata_dict(v))
             vertex_map[v] = w
         for e in other.edges():
