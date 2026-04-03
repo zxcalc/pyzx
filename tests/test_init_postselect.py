@@ -125,21 +125,45 @@ class TestReset(unittest.TestCase):
         self.assertEqual(g2.label, 5)
 
     def test_to_graph(self):
-        """Test that Reset on an existing qubit produces ground + state vertices."""
+        """Test that Reset produces Z(0) + X(_r) discard leaf + X(0) prep."""
+        from pyzx.symbolic import Poly
         c = Circuit(1)
         c.add_gate(Reset(0))
-        g = c.to_graph()
+        # Opt out of initial-reset elision so the discard chain is emitted.
+        g = c.to_graph(elide_initial_resets=False)
 
-        # Effect vertex: Z spider connected to ground (discard).
-        ground_verts = list(g.grounds())
-        self.assertEqual(len(ground_verts), 1)
-        self.assertEqual(g.type(ground_verts[0]), VertexType.Z)
-        self.assertEqual(g.phase(ground_verts[0]), 0)
+        # No ground vertices.
+        self.assertEqual(len(list(g.grounds())), 0)
 
-        # State vertex: X spider phase 0 (|0⟩ preparation).
-        x_verts = [v for v in g.vertices() if g.type(v) == VertexType.X]
-        self.assertEqual(len(x_verts), 1)
-        self.assertEqual(g.phase(x_verts[0]), 0)
+        # Implicit measurement: Z(0) spider on the wire.
+        z_spiders = [v for v in g.vertices()
+                     if g.type(v) == VertexType.Z
+                     and v not in g.inputs() and v not in g.outputs()]
+        self.assertEqual(len(z_spiders), 1)
+        self.assertEqual(g.phase(z_spiders[0]), 0)
+
+        # Discard outcome: X leaf with symbolic phase, tagged.
+        discard_leaves = [v for v in g.vertices()
+                          if g.type(v) == VertexType.X
+                          and g.vdata(v, 'outcome_type') == 'reset_discard']
+        self.assertEqual(len(discard_leaves), 1)
+        self.assertEqual(g.vertex_degree(discard_leaves[0]), 1)
+        self.assertIsInstance(g.phase(discard_leaves[0]), Poly)
+        self.assertTrue(str(g.phase(discard_leaves[0])).startswith("_r"))
+
+        # |0⟩ prep: X(0) leaf, tagged.
+        prep_leaves = [v for v in g.vertices()
+                       if g.type(v) == VertexType.X
+                       and g.vdata(v, 'outcome_type') == 'reset_state']
+        self.assertEqual(len(prep_leaves), 1)
+        self.assertEqual(g.phase(prep_leaves[0]), 0)
+        self.assertEqual(g.vertex_degree(prep_leaves[0]), 1)
+
+        # No inner BOUNDARY vertices: prep is an on-wire X(0) leaf.
+        inner_boundaries = [v for v in g.vertices()
+                            if g.type(v) == VertexType.BOUNDARY
+                            and v not in g.inputs() and v not in g.outputs()]
+        self.assertEqual(inner_boundaries, [])
 
 
 class TestMeasurementEquality(unittest.TestCase):

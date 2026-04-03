@@ -293,18 +293,27 @@ class Circuit(object):
         zh:bool=False,
         compress_rows:bool=True,
         backend:Optional[str]=None,
+        elide_initial_resets:bool=False,
     ) -> BaseGraph:
         """Turns the circuit into a ZX-Graph.
         If ``compress_rows`` is set, it tries to put single qubit gates on different qubits,
-        on the same row."""
+        on the same row.
+
+        ``elide_initial_resets`` (default False) skips the discard chain
+        for a ``Reset`` on an unmodified input wire. Defaults to False
+        because programmatically-constructed circuits may have
+        uninitialized inputs, where a leading ``Reset`` is not
+        redundant. Set to True for circuits known to have OpenQASM-style
+        implicit |0⟩ inputs. See :func:`circuit_to_graph` for details."""
         from .graphparser import circuit_to_graph
 
         return circuit_to_graph(
             self if zh else self.to_basic_gates(),
-            compress_rows, 
-            backend, 
-            initialize_qubits=self._initialize_qubits, 
-            postselect_qubits=self._postselect_qubits
+            compress_rows,
+            backend,
+            initialize_qubits=self._initialize_qubits,
+            postselect_qubits=self._postselect_qubits,
+            elide_initial_resets=elide_initial_resets,
         )
 
     def to_tensor(self, preserve_scalar:bool=True, strategy:str='naive') -> np.ndarray:

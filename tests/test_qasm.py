@@ -411,25 +411,49 @@ class TestQASM(unittest.TestCase):
         self.assertEqual(c.gates[0].target, 1)
 
     def test_reset_to_graph(self):
-        """Test that reset creates appropriate vertices when converted to graph."""
+        """Test that reset creates Z(0) + X(_r) discard leaf + X(0) prep."""
         from pyzx.utils import VertexType
+        from pyzx.symbolic import Poly
         c = Circuit.from_qasm("""
         OPENQASM 2.0;
         include "qelib1.inc";
         qreg q[1];
         reset q[0];
         """)
-        g = c.to_graph()
+        # Opt out of initial-reset elision so the discard chain is emitted.
+        g = c.to_graph(elide_initial_resets=False)
 
-        # Effect vertex: Z spider connected to ground (discard).
-        ground_verts = list(g.grounds())
-        self.assertEqual(len(ground_verts), 1)
-        self.assertEqual(g.type(ground_verts[0]), VertexType.Z)
+        # No ground vertices.
+        self.assertEqual(len(list(g.grounds())), 0)
 
-        # State vertex: X spider phase 0 (|0⟩ preparation).
-        x_vertices = [v for v in g.vertices() if g.type(v) == VertexType.X]
-        self.assertEqual(len(x_vertices), 1)
-        self.assertEqual(g.phase(x_vertices[0]), 0)
+        # Implicit measurement: Z(0) spider.
+        z_spiders = [v for v in g.vertices()
+                     if g.type(v) == VertexType.Z]
+        self.assertEqual(len(z_spiders), 1)
+        self.assertEqual(g.phase(z_spiders[0]), 0)
+
+        # Discard outcome: X leaf with symbolic phase, tagged.
+        discard_leaves = [v for v in g.vertices()
+                          if g.type(v) == VertexType.X
+                          and g.vdata(v, 'outcome_type') == 'reset_discard']
+        self.assertEqual(len(discard_leaves), 1)
+        self.assertEqual(g.vertex_degree(discard_leaves[0]), 1)
+        self.assertIsInstance(g.phase(discard_leaves[0]), Poly)
+        self.assertTrue(str(g.phase(discard_leaves[0])).startswith("_r"))
+
+        # |0⟩ prep: X(0) leaf, tagged.
+        prep_leaves = [v for v in g.vertices()
+                       if g.type(v) == VertexType.X
+                       and g.vdata(v, 'outcome_type') == 'reset_state']
+        self.assertEqual(len(prep_leaves), 1)
+        self.assertEqual(g.phase(prep_leaves[0]), 0)
+        self.assertEqual(g.vertex_degree(prep_leaves[0]), 1)
+
+        # No inner BOUNDARY vertices: prep is an on-wire X(0) leaf.
+        inner_boundaries = [v for v in g.vertices()
+                            if g.type(v) == VertexType.BOUNDARY
+                            and v not in g.inputs() and v not in g.outputs()]
+        self.assertEqual(inner_boundaries, [])
 
     def test_reset_to_graph_has_output(self):
         """Test that a qubit has an output boundary after reset."""
@@ -443,6 +467,89 @@ class TestQASM(unittest.TestCase):
         g = c.to_graph()
         self.assertEqual(len(g.inputs()), 1)
         self.assertEqual(len(g.outputs()), 1)
+
+    def test_initial_reset_elided(self):
+        """Initial reset on a fresh qreg input wire is elided when
+        ``elide_initial_resets=True`` is requested.
+
+        OpenQASM treats ``qreg q[i]`` as implicitly |0⟩, so a leading
+        ``reset`` is redundant and should not produce a discard chain.
+        """
+        from pyzx.utils import VertexType
+        from pyzx.symbolic import Poly
+        c = Circuit.from_qasm("""
+        OPENQASM 2.0;
+        include "qelib1.inc";
+        qreg q[2];
+        reset q[0];
+        reset q[1];
+        h q[0];
+        """)
+        g = c.to_graph(elide_initial_resets=True)
+
+        # No reset-discard leaves should exist.
+        discard = [v for v in g.vertices()
+                   if g.vdata(v, 'outcome_type') == 'reset_discard']
+        self.assertEqual(discard, [])
+
+        # No reset-state prep leaves should exist either (chain elided).
+        prep = [v for v in g.vertices()
+                if g.vdata(v, 'outcome_type') == 'reset_state']
+        self.assertEqual(prep, [])
+
+        # No symbolic _rN phases anywhere in the graph.
+        for v in g.vertices():
+            p = g.phase(v)
+            if isinstance(p, Poly):
+                self.assertNotIn('_r', str(p))
+
+        # Inputs are preserved: 2 qubit inputs, no extra "inner" boundaries.
+        self.assertEqual(len(g.inputs()), 2)
+        boundaries = [v for v in g.vertices()
+                      if g.type(v) == VertexType.BOUNDARY]
+        self.assertEqual(len(boundaries), len(g.inputs()) + len(g.outputs()))
+
+    def test_elide_initial_resets_toggle(self):
+        """``elide_initial_resets`` controls emission of the discard chain."""
+        from pyzx.utils import VertexType
+        c = Circuit.from_qasm("""
+        OPENQASM 2.0;
+        include "qelib1.inc";
+        qreg q[2];
+        reset q[0];
+        reset q[1];
+        """)
+        g_elide = c.to_graph(elide_initial_resets=True)
+        g_keep = c.to_graph(elide_initial_resets=False)
+
+        # Enabling elision yields strictly fewer vertices (no chains).
+        self.assertLess(g_elide.num_vertices(), g_keep.num_vertices())
+
+        keep_discard = [v for v in g_keep.vertices()
+                        if g_keep.vdata(v, 'outcome_type') == 'reset_discard']
+        self.assertEqual(len(keep_discard), 2)
+        keep_prep = [v for v in g_keep.vertices()
+                     if g_keep.vdata(v, 'outcome_type') == 'reset_state']
+        self.assertEqual(len(keep_prep), 2)
+
+    def test_initial_reset_elided_mid_circuit_kept(self):
+        """With ``elide_initial_resets=True`` the initial reset is elided,
+        but a subsequent mid-circuit reset (after intervening gates)
+        still emits its ``_rN`` discard leaf."""
+        c = Circuit.from_qasm("""
+        OPENQASM 2.0;
+        include "qelib1.inc";
+        qreg q[1];
+        reset q[0];
+        h q[0];
+        reset q[0];
+        """)
+        g = c.to_graph(elide_initial_resets=True)
+
+        # Exactly one reset-discard leaf survives (the mid-circuit one).
+        leaves = [v for v in g.vertices()
+                  if g.vdata(v, 'outcome_type') == 'reset_discard']
+        self.assertEqual(len(leaves), 1)
 
     def test_measure_reset_has_output(self):
         """Test that a qubit has an output after measure followed by reset."""
@@ -543,6 +650,134 @@ class TestQASM(unittest.TestCase):
         self.assertEqual(len(reset_gates), 1)
         self.assertEqual(reset_gates[0].target, 0)
 
+    def test_reset_circuit_tensorize(self):
+        """Tensor extraction must work for circuits containing Reset."""
+        from fractions import Fraction
+        from pyzx.circuit.gates import Reset, HAD
+        c = Circuit(1)
+        c.gates = [HAD(0), Reset(0), HAD(0)]
+        g = c.to_graph()
+        # tensorfy rejects symbolic phases, so substitute the reset's
+        # _rN boolean to a concrete value first.
+        for v in list(g.vertices()):
+            p = g.phase(v)
+            if hasattr(p, 'terms'):
+                g.set_phase(v, Fraction(0))
+        g.to_tensor()
+
+
+    def test_measure_reset_graph_round_trip(self):
+        """Test that measure+reset survives a circuit-graph-circuit round-trip."""
+        from pyzx.circuit.gates import Measurement, Reset
+        from pyzx.circuit.graphparser import graph_to_circuit
+        c1 = Circuit.from_qasm("""
+        OPENQASM 2.0;
+        include "qelib1.inc";
+        qreg q[2];
+        creg c[1];
+        h q[0];
+        cx q[0], q[1];
+        measure q[0] -> c[0];
+        reset q[0];
+        h q[0];
+        """)
+        g = c1.to_graph()
+
+        # Verify vdata tags on the intermediate graph.
+        meas_leaves = [v for v in g.vertices()
+                       if g.vdata(v, 'outcome_type') == 'measurement']
+        reset_leaves = [v for v in g.vertices()
+                        if g.vdata(v, 'outcome_type') == 'reset_discard']
+        self.assertEqual(len(meas_leaves), 1)
+        self.assertEqual(len(reset_leaves), 1)
+
+        c2 = graph_to_circuit(g)
+
+        measurements = [gt for gt in c2.gates if isinstance(gt, Measurement)]
+        resets = [gt for gt in c2.gates if isinstance(gt, Reset)]
+        self.assertEqual(len(measurements), 1)
+        self.assertEqual(measurements[0].target, 0)
+        self.assertEqual(measurements[0].result_symbol, "c[0]")
+        self.assertEqual(len(resets), 1)
+        self.assertEqual(resets[0].target, 0)
+
+    def test_postselect_qubits_targets_outcome_leaf(self):
+        """``postselect_qubits`` must fix the symbolic measurement
+        outcome by setting the phase on the X-leaf (where the outcome
+        symbol lives), not on the on-wire Z(0) measurement spider."""
+        from pyzx.utils import VertexType
+        c = Circuit.from_qasm("""
+        OPENQASM 2.0;
+        include "qelib1.inc";
+        qreg q[1];
+        creg c[1];
+        h q[0];
+        measure q[0] -> c[0];
+        """)
+        c.postselect_qubits([1])
+        g = c.to_graph()
+
+        # The on-wire Z(0) measurement spider must keep phase 0;
+        # the postselect value lives on the tagged X-leaf.
+        meas_leaves = [v for v in g.vertices()
+                       if g.vdata(v, 'outcome_type') == 'measurement']
+        self.assertEqual(len(meas_leaves), 1)
+        leaf = meas_leaves[0]
+        self.assertEqual(g.phase(leaf), 1,
+            "postselect_qubits did not fix the X-leaf outcome phase")
+        # The leaf's on-wire Z(0) parent should still be Z(0), not Z(1).
+        z_parents = [n for n in g.neighbors(leaf)
+                     if g.type(n) == VertexType.Z]
+        self.assertEqual(len(z_parents), 1)
+        self.assertEqual(g.phase(z_parents[0]), 0,
+            "postselect_qubits incorrectly set the on-wire Z spider phase")
+
+    def test_outcome_tags_respected_after_substitution(self):
+        """Tagged outcome leaves round-trip even after the Poly phase
+        on the leaf has been substituted to a concrete value.
+
+        ``graph_to_circuit`` must consult the ``outcome_type`` vdata
+        before falling back to phase-shape extraction; otherwise a
+        substituted ``_rN=1`` reset-discard leaf would be mis-extracted
+        as a ``NOT`` gate, and a substituted measurement leaf would
+        stop round-tripping as ``Measurement``.
+        """
+        from fractions import Fraction
+        from pyzx.circuit.gates import Measurement, Reset
+        from pyzx.circuit.graphparser import graph_to_circuit
+        c1 = Circuit.from_qasm("""
+        OPENQASM 2.0;
+        include "qelib1.inc";
+        qreg q[1];
+        creg c[1];
+        h q[0];
+        measure q[0] -> c[0];
+        reset q[0];
+        h q[0];
+        """)
+        g = c1.to_graph()
+
+        # Substitute every symbolic phase to 1, so reset_discard and
+        # measurement leaves both have phase 1 (which would otherwise
+        # match the X(1) -> NOT extraction rule).
+        for v in list(g.vertices()):
+            p = g.phase(v)
+            if hasattr(p, 'terms'):
+                g.set_phase(v, Fraction(1))
+
+        c2 = graph_to_circuit(g)
+        # No spurious NOT gate from the substituted leaves.
+        not_gates = [gt for gt in c2.gates if type(gt).__name__ == 'NOT']
+        self.assertEqual(not_gates, [],
+            "tagged leaves were mis-extracted as NOT after substitution")
+        # Reset and Measurement still recovered with the correct
+        # classical destination (read from vdata, not from the
+        # substituted phase, which would otherwise yield "1").
+        self.assertEqual(
+            len([gt for gt in c2.gates if isinstance(gt, Reset)]), 1)
+        measurements = [gt for gt in c2.gates if isinstance(gt, Measurement)]
+        self.assertEqual(len(measurements), 1)
+        self.assertEqual(measurements[0].result_symbol, "c[0]")
 
     def test_issue_345_circuit1_measure_reset(self):
         """End-to-end test for issue #345 circuit 1 (Steane code with reset).
@@ -1012,6 +1247,30 @@ class TestQASM(unittest.TestCase):
         self.assertEqual(len(cond_gates), 1)
         self.assertEqual(cond_gates[0].condition_register, "c")
         self.assertEqual(cond_gates[0].condition_value, 1)
+
+    def test_conditional_gate_x_type_graph_extraction(self):
+        """Test that conditional X-type gates (NOT, XPhase) round-trip through the graph."""
+        from pyzx.circuit.gates import ConditionalGate, NOT, XPhase
+        from pyzx.circuit.graphparser import graph_to_circuit
+        # Conditional NOT: phase 1 should recover as NOT.
+        c1 = Circuit(1)
+        c1.gates = [ConditionalGate("c", 1, NOT(0), 1)]
+        g = c1.to_graph()
+        c2 = graph_to_circuit(g)
+        cond_gates = [gt for gt in c2.gates if isinstance(gt, ConditionalGate)]
+        self.assertEqual(len(cond_gates), 1)
+        self.assertEqual(cond_gates[0].condition_register, "c")
+        self.assertEqual(cond_gates[0].condition_value, 1)
+        self.assertIsInstance(cond_gates[0].inner_gate, NOT)
+        # Conditional XPhase with a non-Clifford phase falls back to XPhase.
+        c3 = Circuit(1)
+        c3.gates = [ConditionalGate("c", 1, XPhase(0, Fraction(1, 4)), 1)]
+        g = c3.to_graph()
+        c4 = graph_to_circuit(g)
+        cond_gates = [gt for gt in c4.gates if isinstance(gt, ConditionalGate)]
+        self.assertEqual(len(cond_gates), 1)
+        self.assertIsInstance(cond_gates[0].inner_gate, XPhase)
+        self.assertEqual(cond_gates[0].inner_gate.phase, Fraction(1, 4))
 
     def test_qec_measure_conditional_correction(self):
         """End-to-end test: measure + conditional Pauli correction (QEC pattern)."""
