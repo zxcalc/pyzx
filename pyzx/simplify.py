@@ -32,19 +32,21 @@ __all__ = ['bialg_simp','bialg_op_simp','spider_simp', 'id_simp', 'phase_free_si
         'pivot_gadget_simp', 'pivot_boundary_simp', 'gadget_simp',
         'lcomp_simp', 'clifford_simp', 'tcount', 'to_gh', 'to_rg',
         'full_reduce', 'teleport_reduce', 'reduce_scalar', 'supplementarity_simp',
-        'to_clifford_normal_form_graph', 'to_graph_like', 'is_graph_like', 'copy_simp']
+        'to_clifford_normal_form_graph', 'to_graph_like', 'is_graph_like', 'copy_simp',
+        'drop_orphan_reset_discards']
 
 
-from typing import cast, Tuple, Dict, Set, Callable, TypeVar, Optional, Union
+from typing import cast, List, Tuple, Dict, Set, Callable, TypeVar, Optional, Union
 from typing_extensions import Literal
 import itertools
 
 from .circuit import Circuit
 from .rewrite_rules import *
 from .rewrite import *
+from .symbolic import Poly
 from .tensor import compare_tensors
 
-from .utils import EdgeType, VertexType, toggle_edge, vertex_is_zx, phase_is_clifford
+from .utils import EdgeType, VertexType, get_z_box_label, toggle_edge, vertex_is_zx, phase_is_clifford
 from .graph.base import BaseGraph, VT, ET
 
 MatchObject = TypeVar('MatchObject')
@@ -270,6 +272,130 @@ def _debug_full_reduce(g: BaseGraph[VT,ET]) -> None:
             sanity_check(g, f"remove_isolated_vertices step {iteration}")
             break
     print("done")
+
+def drop_orphan_reset_discards(g: BaseGraph[VT,ET]) -> int:
+    """Remove orphan reset-discard components.
+
+    A leading ``reset`` on a fresh ``qreg`` input emitted with
+    ``elide_initial_resets=False`` produces a disconnected component
+    rooted at an input boundary and terminating in a degree-1 leaf
+    tagged ``outcome_type='reset_discard'`` carrying a fresh boolean
+    phase ``_rN``. Two shapes are common:
+
+    * ``BOUNDARY --S-- Z(0) --S-- X(_rN)`` straight out of
+      :func:`pyzx.circuit.graphparser.circuit_to_graph`.
+    * ``BOUNDARY --H-- Z(_rN)`` after :func:`full_reduce` (which
+      converts the X-leaf to a Z-leaf via Hadamard and removes the
+      identity Z(0) middle spider).
+
+    More generally, the component must be a chain whose intermediate
+    vertices are phase-0, degree-2, untagged spiders. ``_rN`` must
+    appear nowhere else in the graph (no other vertex phases, no
+    Z-box labels, no scalar). Under those conditions, marginalising
+    over ``_rN`` collapses the component to a partial trace of the
+    input boundary, equivalent to the elided graph with |0⟩ applied
+    to that input up to a global scalar factor of ``1/sqrt(2)`` per
+    orphan, which is folded into ``g.scalar``.
+
+    :param g: The graph to clean up. Modified in place.
+    :return: The number of orphan components removed.
+    """
+    inputs_set = set(g.inputs())
+
+    def trace_chain(leaf: VT) -> Optional[List[VT]]:
+        """Walk from ``leaf`` outward through phase-0 degree-2 spiders.
+        Returns the chain ``[boundary, ..., leaf]`` if it terminates at
+        a degree-1 input boundary, or ``None`` otherwise."""
+        if g.vertex_degree(leaf) != 1:
+            return None
+        chain: List[VT] = [leaf]
+        visited: Set[VT] = {leaf}
+        current = next(iter(g.neighbors(leaf)))
+        while True:
+            if current in visited:
+                return None
+            visited.add(current)
+            chain.append(current)
+            if g.type(current) == VertexType.BOUNDARY:
+                if current in inputs_set and g.vertex_degree(current) == 1:
+                    chain.reverse()
+                    return chain
+                return None
+            # Intermediate spider must be a clean identity link:
+            # phase 0, degree 2, no vdata tags.
+            if (g.vertex_degree(current) != 2 or g.phase(current) != 0
+                    or g.vdata_dict(current)):
+                return None
+            next_vs = [n for n in g.neighbors(current) if n not in visited]
+            if len(next_vs) != 1:
+                return None
+            current = next_vs[0]
+
+    # Step 1: find candidate (chain, var_name) pairs from each tagged
+    # discard leaf with a ``1*_rN`` boolean phase.
+    candidates: List[Tuple[List[VT], str]] = []
+    for v in g.vertices():
+        if g.vdata(v, 'outcome_type') != 'reset_discard':
+            continue
+        phase = g.phase(v)
+        if not isinstance(phase, Poly) or len(phase.terms) != 1:
+            continue
+        coeff, term = phase.terms[0]
+        if coeff != 1 or len(term.vars) != 1:
+            continue
+        var, exponent = term.vars[0]
+        if exponent != 1 or not var.is_bool:
+            continue
+        chain = trace_chain(v)
+        if chain is None:
+            continue
+        candidates.append((chain, var.name))
+
+    if not candidates:
+        return 0
+
+    # Step 2: variable freshness. Each ``_rN`` must appear nowhere
+    # else: not on another vertex's phase, not on a Z-box label, and
+    # not in the scalar.
+    var_locations: Dict[str, Set[VT]] = {}
+    for v in g.vertices():
+        p = g.phase(v)
+        if isinstance(p, Poly):
+            for fv in p.free_vars():
+                var_locations.setdefault(fv.name, set()).add(v)
+        if g.type(v) == VertexType.Z_BOX:
+            label = get_z_box_label(g, v)
+            if isinstance(label, Poly):
+                for fv in label.free_vars():
+                    var_locations.setdefault(fv.name, set()).add(v)
+    scalar_var_names = {fv.name for fv in g.scalar.free_vars()}
+
+    # Step 3: collect every vertex/var to drop in one pass, then mutate
+    # the graph in a single ``remove_vertices`` batch. This keeps the
+    # accumulated vertex IDs valid for the duration of the pass:
+    # backends that reindex on deletion (e.g. igraph) only renumber
+    # once the batch is committed.
+    remove_set: Set[VT] = set()
+    removed = 0
+    for chain, var_name in candidates:
+        leaf = chain[-1]
+        if (var_locations.get(var_name, set()) != {leaf}
+                or var_name in scalar_var_names):
+            continue
+        remove_set.update(chain)
+        if var_name in g.var_registry.types:
+            del g.var_registry.types[var_name]
+        g.scalar.add_power(-1)
+        removed += 1
+
+    if remove_set:
+        # Filter inputs *before* removing vertices, while the IDs in
+        # ``g.inputs()`` are still valid.
+        new_inputs = tuple(v for v in g.inputs() if v not in remove_set)
+        g.remove_vertices(remove_set)
+        g.set_inputs(new_inputs)
+    return removed
+
 
 def teleport_reduce(g: BaseGraph[VT,ET]) -> BaseGraph[VT,ET]:
     """This simplification procedure runs :func:`full_reduce` in a way
