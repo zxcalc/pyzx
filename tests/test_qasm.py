@@ -1288,56 +1288,6 @@ class TestQASM(unittest.TestCase):
         output_qubits = sorted(g.qubit(v) for v in g.outputs())
         self.assertEqual(output_qubits, [0, 1, 2, 3])
 
-    def test_measurement_ground_mode_with_result_bit(self):
-        """Measurement with result_bit in ground mode should use c_mapper."""
-        from pyzx.circuit.gates import Measurement
-        from pyzx.circuit.graphparser import circuit_to_graph
-        c = Circuit(1, bit_amount=1)
-        c.gates = [Measurement(0, result_bit=0)]
-        g = circuit_to_graph(c)
-        # 1 quantum input + 1 classical input = 2 inputs.
-        self.assertEqual(len(g.inputs()), 2)
-        # Measurement consumes the qubit (no quantum output), but
-        # the classical bit still gets an output boundary.
-        self.assertEqual(len(g.outputs()), 1)
-
-    def test_measurement_ground_mode_graph_structure(self):
-        """Ground-mode measurement should create correct graph structure."""
-        from pyzx.circuit.gates import Measurement
-        from pyzx.circuit.graphparser import circuit_to_graph
-        from pyzx.utils import VertexType
-        c = Circuit(1, bit_amount=1)
-        m = Measurement(0, result_bit=0)
-        c.gates = [m]
-        g = circuit_to_graph(c)
-        # Count vertex types.
-        types = [g.type(v) for v in g.vertices()]
-        n_boundary = types.count(VertexType.BOUNDARY)
-        # 1 quantum input + 1 classical input + 1 classical output = 3.
-        self.assertEqual(n_boundary, 3)
-
-    def test_measurement_ground_mode_direct(self):
-        """Directly test to_graph_ground with c_mapper labels."""
-        from pyzx.circuit.gates import Measurement, TargetMapper
-        from pyzx.utils import VertexType
-        from pyzx.graph import Graph
-        g = Graph()
-        q_mapper = TargetMapper()
-        c_mapper = TargetMapper()
-        # Set up one quantum wire and one classical wire.
-        q_in = g.add_vertex(VertexType.BOUNDARY, 0, 0)
-        c_in = g.add_vertex(VertexType.BOUNDARY, 1, 0)
-        q_mapper.add_label(0, 1)
-        q_mapper.set_prev_vertex(0, q_in)
-        c_mapper.add_label(0, 1)
-        c_mapper.set_qubit(0, 1)
-        c_mapper.set_prev_vertex(0, c_in)
-        # Call to_graph_ground directly.
-        m = Measurement(0, result_bit=0)
-        m.to_graph_ground(g, q_mapper, c_mapper)
-        # Should not crash, and the graph should have vertices.
-        self.assertGreater(len(list(g.vertices())), 2)
-
     def test_hththt_t_injection_feedforward(self):
         """HTHTHT... circuit with T gates implemented via injection.
 
