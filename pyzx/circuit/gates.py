@@ -1561,32 +1561,6 @@ class Measurement(Gate):
             g.result_bit = bit_mask[self.result_bit]
         return g
 
-    def to_graph_ground(self, g, q_mapper, c_mapper):
-        """Represent the measurement as a node with a ground symbol."""
-        # Discard previous bit value
-        if self.result_bit is not None:
-            DiscardBit(self.result_bit).to_graph(g, q_mapper, c_mapper)
-        # Qubit measurement
-        r = q_mapper.next_row(self.target)
-        if self.result_bit is not None:
-            r = max(r, c_mapper.next_row(self.result_bit))
-        v = self.graph_add_node(g,
-            q_mapper,
-            VertexType.Z,
-            self.target,
-            r,
-            ground=True)
-        q_mapper.set_next_row(self.target, r+1)
-        # Classical result
-        if self.result_bit is not None:
-            u = self.graph_add_node(g,
-                c_mapper,
-                VertexType.X,
-                self.result_bit,
-                r)
-            g.add_edge((v,u), EdgeType.SIMPLE)
-            c_mapper.set_next_row(self.result_bit, r+1)
-
     def to_graph_symbolic_boolean(self, g, q_mapper):
         """Represent the measurement as a node with symbolic boolean phases."""
         r = q_mapper.next_row(self.target)
@@ -1605,11 +1579,8 @@ class Measurement(Gate):
             phase=phase)
         q_mapper.set_next_row(self.target, r+1)
 
-    def to_graph(self, g, q_mapper, c_mapper, ground=False):
-        if ground:
-            self.to_graph_ground(g, q_mapper, c_mapper)
-        else:
-            self.to_graph_symbolic_boolean(g, q_mapper)
+    def to_graph(self, g, q_mapper, _c_mapper):
+        self.to_graph_symbolic_boolean(g, q_mapper)
 
 gate_types: Dict[str,Type[Gate]] = {
     "XPhase": XPhase,
