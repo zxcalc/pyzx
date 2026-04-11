@@ -27,6 +27,7 @@ if __name__ == '__main__':
     sys.path.append('.')
 
 from pyzx.graph import Graph
+from pyzx.graph.multigraph import Multigraph
 from pyzx.symbolic import new_var
 from pyzx.utils import EdgeType, VertexType, set_h_box_label
 from pyzx.rewrite_rules.bialgebra_rule import (
@@ -325,6 +326,65 @@ class TestBialgebraApplyXH(unittest.TestCase):
         g_orig = g.copy()
         unsafe_bialgebra(g, h, x)
         self.assertTrue(compare_tensors(g, g_orig, preserve_scalar=True))
+
+
+class TestBialgebraParallelEdgePositions(unittest.TestCase):
+    """Tests that parallel-edge vertices get distinct positions.
+
+    These tests use Multigraph with auto-simplify off, since the default
+    GraphS backend does not support true parallel edges."""
+
+    def test_parallel_edges_between_matched_pair(self):
+        """Parallel edges between the matched spiders should produce
+        offset vertex pairs with distinct positions."""
+        g = Multigraph()
+        g.set_auto_simplify(False)
+        z = g.add_vertex(VertexType.Z, 0, 0)
+        x = g.add_vertex(VertexType.X, 0, 2)
+        b_in = g.add_vertex(VertexType.BOUNDARY, 0, -1)
+        b_out = g.add_vertex(VertexType.BOUNDARY, 0, 3)
+        g.add_edge((b_in, z))
+        for _ in range(3):
+            g.add_edge((z, x))
+        g.add_edge((x, b_out))
+
+        verts_before = set(g.vertices())
+        self.assertTrue(bialgebra(g, z, x))
+        new_verts = [v for v in g.vertices() if v not in verts_before
+                     and g.type(v) != VertexType.BOUNDARY]
+        positions = [(g.qubit(v), g.row(v)) for v in new_verts]
+        self.assertEqual(len(set(positions)), len(positions),
+                         f"Overlapping positions: {positions}")
+
+    def test_parallel_edges_to_third_vertex(self):
+        """Regression test for zxcalc/zxlive#306: applying bialgebra
+        to a pair where one spider has parallel edges to a third vertex
+        must not produce overlapping vertices."""
+        g = Multigraph()
+        g.set_auto_simplify(False)
+        v0 = g.add_vertex(VertexType.Z, qubit=-3.0, row=-2.5)
+        v1 = g.add_vertex(VertexType.Z, qubit=-1.75, row=-1.0)
+        v2 = g.add_vertex(VertexType.X, qubit=-1.75, row=-3.0)
+        for q, r in [(-3, -5), (-1.75, -5), (-3, 0.75),
+                      (-1.75, 0.75), (-0.5, 0.5), (-0.25, -2)]:
+            g.add_vertex(VertexType.BOUNDARY, qubit=q, row=r)
+        # Edges matching zxlive#306 test case (v0-v2 has 2 parallel edges).
+        g.add_edge((v0, 3))
+        g.add_edge((v0, v2))
+        g.add_edge((v0, v2))
+        g.add_edge((v0, 5))
+        g.add_edge((v1, v2))
+        g.add_edge((v1, 6))
+        g.add_edge((v1, 7))
+        g.add_edge((v2, 4))
+        g.add_edge((v2, 8))
+
+        self.assertTrue(bialgebra(g, v1, v2))
+        non_boundary = [v for v in g.vertices()
+                        if g.type(v) != VertexType.BOUNDARY]
+        positions = [(g.qubit(v), g.row(v)) for v in non_boundary]
+        self.assertEqual(len(set(positions)), len(positions),
+                         f"Overlapping positions: {positions}")
 
 
 class TestCheckBialgebraReduce(unittest.TestCase):
