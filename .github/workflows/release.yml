@@ -75,7 +75,7 @@ jobs:
       - name: Update changelog headers
         if: steps.check_commits.outputs.has_commits == 'true' && inputs.dry_run != true
         run: |
-          VERSION=$(bumpversion show current_version)
+          VERSION=$(bump-my-version show current_version)
           DATE=$(date +%Y-%m-%d)
           sed -i "s/^## \[Unreleased\]/## [Unreleased]\n\n## v$VERSION - $DATE/" CHANGELOG.md
           git add CHANGELOG.md
@@ -84,7 +84,7 @@ jobs:
       - name: Bump version and push
         if: steps.check_commits.outputs.has_commits == 'true' && inputs.dry_run != true
         run: |
-          bumpversion bump minor --allow-dirty
+          bump-my-version bump minor --allow-dirty
           git push --follow-tags
 
       - name: Extract changelog section and create release
@@ -92,7 +92,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          VERSION=$(bumpversion show current_version)
+          VERSION=$(bump-my-version show current_version)
           NOTES=$(awk '/^# v'"$VERSION"'/{found=1; next} found && /^# v[0-9]/{exit} found{print}' CHANGELOG.md)
           gh release create "v$VERSION" \
             --title "v$VERSION" \
