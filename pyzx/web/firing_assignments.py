@@ -16,10 +16,8 @@
 
 from typing import Dict, List, NamedTuple, Tuple
 
-from galois import GF2
-
 from ..graph.base import BaseGraph
-from ..linalg import Z2
+from ..linalg import Z2, Mat2
 from ..pauliweb import PauliWeb
 from ..utils import VertexType
 
@@ -77,14 +75,14 @@ def determine_ordering(g: BaseGraph[int, Tuple[int, int]]) -> GraphOrdering:
     return GraphOrdering(graph_to_ordering, ordering_to_graph, z_boundaries, internal_spiders, pi_2_spiders)
 
 
-def create_firing_verification(g: BaseGraph[int, Tuple[int, int]], ordering: GraphOrdering) -> GF2:
+def create_firing_verification(g: BaseGraph[int, Tuple[int, int]], ordering: GraphOrdering) -> Mat2:
     """
     Based on a graph with an accompanying vertex ordering, creates a 'firing verification matrix' that exactly has the
     space of all valid firing assignments (equivalent to Pauli webs) as its nullspace.
     """
     num_z_boundaries = len(ordering.z_boundaries)
     num_non_boundary_spiders = num_z_boundaries + len(ordering.internal_spiders)
-    adj_matrix = GF2.Zeros((num_non_boundary_spiders, num_non_boundary_spiders))
+    adj_matrix = Mat2.zeros(num_non_boundary_spiders, num_non_boundary_spiders)
 
     for s, t in g.edges():
         if g.type(s) != VertexType.BOUNDARY and g.type(t) != VertexType.BOUNDARY:
@@ -92,12 +90,17 @@ def create_firing_verification(g: BaseGraph[int, Tuple[int, int]], ordering: Gra
             adj_matrix[ordering.ord(t), ordering.ord(s)] = 1
 
     rows, cols = num_non_boundary_spiders, num_non_boundary_spiders + num_z_boundaries
-    m_d = GF2.Zeros((rows, cols))
-    m_d[0:num_z_boundaries, 0:num_z_boundaries] = GF2.Identity(num_z_boundaries)
+    m_d = Mat2.zeros(rows, cols)
+
+    if num_z_boundaries > 0:
+        m_d[0:num_z_boundaries, 0:num_z_boundaries] = Mat2.id(num_z_boundaries)
     m_d[:, num_z_boundaries:] = adj_matrix
+
     num_pi_2 = len(ordering.pi_2_spiders)
-    slice_key = (slice(rows - num_pi_2, rows), slice(cols - num_pi_2, cols))
-    m_d[slice_key] = m_d[slice_key].view(dtype=bool) ^ GF2.Identity(num_pi_2).view(dtype=bool)
+    for i in range(num_pi_2):
+        row = rows - num_pi_2 + i
+        col = cols - num_pi_2 + i
+        m_d[row, col] = (m_d[row, col] + 1) % 2
 
     return m_d
 
