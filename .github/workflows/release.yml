@@ -4,7 +4,11 @@ on:
   schedule:
     - cron: '0 9 1 * *'   # 09:00 UTC on the 1st of every month
   workflow_dispatch:        # allow manual triggers too
-
+    inputs:
+      dry_run:
+        description: 'Dry run (skip publish and tag push)'
+        type: boolean
+        default: true
 jobs:
   test:
     runs-on: ubuntu-latest
