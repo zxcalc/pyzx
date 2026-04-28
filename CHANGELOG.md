@@ -8,6 +8,8 @@ Hence, occasionally changes will be backwards incompatible (although they will a
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-04-28
+
 ### Added
 - X-H bialgebra support and tests for both Z-X and X-H bialgebra (by @dlyongemallo).
 - `substitute_variables()` methods on `BaseGraph` and `Scalar` to substitute values into symbolic variables in graph phases, Z-box labels, and scalars, including symbolic-to-symbolic substitution via `Poly` values (by @dlyongemallo).
