@@ -7,13 +7,12 @@ name = "pyzx"
 version = "0.10.0"
 description = "Library for quantum circuit rewriting and optimisation using the ZX-calculus"
 readme = "readme.md"
-license = {text = "Apache-2.0"}
+license = "Apache-2.0"
 authors = [
     {name = "Quantomatic", email = "john@vdwetering.name"}
 ]
 requires-python = ">=3.10"
 classifiers = [
-    "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
