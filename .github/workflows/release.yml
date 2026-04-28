@@ -73,6 +73,11 @@ jobs:
         if: steps.check_commits.outputs.has_commits == 'true'
         run: python -m build
 
+      - name: Configure git identity
+        run: |
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions[bot]"
+
       - name: Update changelog headers
         if: steps.check_commits.outputs.has_commits == 'true' && inputs.dry_run != true
         run: |
