@@ -1,0 +1,103 @@
+name: Monthly Release
+
+on:
+  schedule:
+    - cron: '0 9 1 * *'   # 09:00 UTC on the 1st of every month
+  workflow_dispatch:        # allow manual triggers too
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.10', '3.11', '3.12', '3.13']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install dependencies
+        run: |
+        python -m pip install --upgrade pip
+        pip install -e ".[dev,test]"
+      - name: mypy
+        run: |
+        mypy pyzx/ tests/
+      - name: Test with unittest
+        run: |
+        python -m unittest discover -s "tests" -t "." --verbose
+
+  release:
+    needs: test
+    runs-on: ubuntu-latest
+    environment: release
+    permissions:
+      contents: write
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install build tools
+        run: pip install build bump-my-version
+
+      - name: Check for new commits since last tag
+        id: check_commits
+        run: |
+          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          if [ -z "$LAST_TAG" ]; then
+            echo "No tags yet, proceeding with release"
+            echo "has_commits=true" >> $GITHUB_OUTPUT
+          else
+            COMMIT_COUNT=$(git log "$LAST_TAG"..HEAD --oneline | wc -l)
+            echo "Commits since $LAST_TAG: $COMMIT_COUNT"
+            if [ "$COMMIT_COUNT" -gt 0 ]; then
+              echo "has_commits=true" >> $GITHUB_OUTPUT
+            else
+              echo "has_commits=false" >> $GITHUB_OUTPUT
+            fi
+          fi
+
+      - name: Build
+        if: steps.check_commits.outputs.has_commits == 'true'
+        run: python -m build
+
+      - name: Update changelog headers
+        if: steps.check_commits.outputs.has_commits == 'true' && inputs.dry_run != true
+        run: |
+          VERSION=$(bumpversion show current_version)
+          DATE=$(date +%Y-%m-%d)
+          sed -i "s/^# \[Unreleased\]/# [Unreleased]\n\n# v$VERSION - $DATE/" CHANGELOG.md
+          git add CHANGELOG.md
+          git commit -m "Add Unreleased section to changelog [skip ci]"
+
+      - name: Bump version and push
+        if: steps.check_commits.outputs.has_commits == 'true' && inputs.dry_run != true
+        run: |
+          bumpversion bump minor --allow-dirty
+          git push --follow-tags
+
+      - name: Extract changelog section and create release
+        if: steps.check_commits.outputs.has_commits == 'true' && inputs.dry_run != true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION=$(bumpversion show current_version)
+          NOTES=$(awk '/^# v'"$VERSION"'/{found=1; next} found && /^# v[0-9]/{exit} found{print}' CHANGELOG.md)
+          gh release create "v$VERSION" \
+            --title "v$VERSION" \
+            --notes "$NOTES"
+
+      - name: Push changelog commit
+        if: steps.check_commits.outputs.has_commits == 'true' && inputs.dry_run != true
+        run: git push
+
+      - name: Publish to PyPI
+        if: steps.check_commits.outputs.has_commits == 'true' && inputs.dry_run != true
+        uses: pypa/gh-action-pypi-publish@release/v1
