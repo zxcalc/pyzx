@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Dict, List, NamedTuple, Tuple
+from typing import Dict, List, NamedTuple, Tuple, cast
 
 from ..graph.base import BaseGraph
 from ..linalg import Z2, Mat2
@@ -100,7 +100,8 @@ def create_firing_verification(g: BaseGraph[int, Tuple[int, int]], ordering: Gra
     for i in range(num_pi_2):
         row = rows - num_pi_2 + i
         col = cols - num_pi_2 + i
-        m_d[row, col] = (m_d[row, col] + 1) % 2
+        val = cast(int, m_d[row, col])
+        m_d[row, col] = (val + 1) % 2
 
     return m_d
 
