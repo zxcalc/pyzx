@@ -18,14 +18,14 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
         run: |
-        python -m pip install --upgrade pip
-        pip install -e ".[dev,test]"
+          python -m pip install --upgrade pip
+          pip install -e ".[dev,test]"
       - name: mypy
         run: |
-        mypy pyzx/ tests/
+          mypy pyzx/ tests/
       - name: Test with unittest
         run: |
-        python -m unittest discover -s "tests" -t "." --verbose
+          python -m unittest discover -s "tests" -t "." --verbose
 
   release:
     needs: test
