@@ -77,7 +77,7 @@ jobs:
         run: |
           VERSION=$(bumpversion show current_version)
           DATE=$(date +%Y-%m-%d)
-          sed -i "s/^# \[Unreleased\]/# [Unreleased]\n\n# v$VERSION - $DATE/" CHANGELOG.md
+          sed -i "s/^## \[Unreleased\]/## [Unreleased]\n\n## v$VERSION - $DATE/" CHANGELOG.md
           git add CHANGELOG.md
           git commit -m "Add Unreleased section to changelog [skip ci]"
 
