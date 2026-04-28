@@ -8,7 +8,7 @@ Hence, occasionally changes will be backwards incompatible (although they will a
 
 ## [Unreleased]
 
-## [0.10.0] - 2026-04-28
+## [0.10.1] - 2026-04-28
 
 ### Added
 - X-H bialgebra support and tests for both Z-X and X-H bialgebra (by @dlyongemallo).
