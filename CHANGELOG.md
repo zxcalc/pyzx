@@ -22,6 +22,7 @@ Hence, occasionally changes will be backwards incompatible (although they will a
 
 ### Removed
 - `Measurement.to_graph_ground`; measurements now always use the symbolic boolean representation (by @dlyongemallo).
+- The `galois` package dependency. PyZX now uses the internal `Mat2` class for computing Pauli webs in `pyzx.web`.
 
 ### Changed
 - Migrated project configuration from `setup.py` to `pyproject.toml`. Make the `galois` package an optional dependency, as it is only used in `pyzx.web`. (by @dlyongemallo)
