@@ -14,9 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Optional, Tuple, List
-
-import numpy as np
+from typing import Optional, Tuple, List, cast
 
 from .red_green import to_red_green_form
 from .firing_assignments import (
@@ -25,6 +23,7 @@ from .firing_assignments import (
     convert_firing_assignment_to_web_prototype,
 )
 from ..graph.base import BaseGraph
+from ..linalg import Mat2
 from ..pauliweb import PauliWeb
 
 
@@ -43,19 +42,29 @@ def _compute(
     m_d = create_firing_verification(g, ordering)
 
     # Compute row span of valid firing assignment space
-    sol_row_basis = m_d.null_space()
+    sol_row_basis_list = m_d.nullspace()
+    sol_row_basis = Mat2(sol_row_basis_list) if sol_row_basis_list else Mat2.zeros(0, m_d.cols())
 
     stabs = None
     if stabilisers:
         # Search for solutions that do not highlight boundary edges, i.e. detecting regions
-        boundary_selected_basis = sol_row_basis.transpose()[: len(ordering.z_boundaries) * 2, :]
+        limit = len(ordering.z_boundaries) * 2
+        transposed = sol_row_basis.transpose()
+        if transposed.rows() == 0:
+            boundary_selected_basis = Mat2.zeros(0, transposed.cols())
+        else:
+            limit = min(limit, transposed.rows())
+            boundary_selected_basis = cast(Mat2, transposed[0:limit, 0:transposed.cols()])
+
+        reduced = boundary_selected_basis.copy()
+        reduced.gauss(full_reduce=True)
 
         pivot_cols = []
-        for row in boundary_selected_basis.row_reduce():
-            nonzero_indices = np.nonzero(row)[0]
+        for row in reduced.data:
+            nonzero_indices = [idx for idx, val in enumerate(row) if val]
             if len(nonzero_indices) > 0:
                 pivot_cols.append(nonzero_indices[0])
-        stab_sols = [sol_row_basis[i].tolist() for i in pivot_cols]
+        stab_sols = [sol_row_basis.data[i] for i in pivot_cols]
         stabs = list(map(lambda v: convert_firing_assignment_to_web_prototype(g, ordering, v), stab_sols))
         for stab in stabs:
             additional_nodes.remove_from(g, stab)
@@ -64,13 +73,23 @@ def _compute(
     regions = None
     if detecting_regions:
         # Search for solutions that do not highlight boundary edges, i.e. detecting regions
-        boundary_selected_basis = sol_row_basis.transpose()[: len(ordering.z_boundaries) * 2, :]
-        boundary_nullspace_vectors = boundary_selected_basis.null_space()
+        limit = len(ordering.z_boundaries) * 2
+        transposed = sol_row_basis.transpose()
+        if transposed.rows() == 0:
+            boundary_selected_basis = Mat2.zeros(0, transposed.cols())
+        else:
+            limit = min(limit, transposed.rows())
+            boundary_selected_basis = cast(Mat2, transposed[0:limit, 0:transposed.cols()])
+
+        boundary_nullspace_list = boundary_selected_basis.nullspace()
+
         # Empty nullspace of boundary edges -> no webs that highlight no boundary edges -> no detecting regions
-        if len(boundary_nullspace_vectors) == 0:
+        if len(boundary_nullspace_list) == 0:
             region_sols = []
         else:
-            region_sols = (boundary_nullspace_vectors @ sol_row_basis).tolist()
+            boundary_nullspace_vectors = Mat2(boundary_nullspace_list)
+            region_sols = (boundary_nullspace_vectors * sol_row_basis).data
+
         regions = list(map(lambda v: convert_firing_assignment_to_web_prototype(g, ordering, v), region_sols))
         for region in regions:
             additional_nodes.remove_from(g, region)

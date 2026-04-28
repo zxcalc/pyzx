@@ -56,11 +56,9 @@ docs = [
     "ipykernel>=6",
     "sphinxcontrib-svg2pdfconverter>=1.2.2",
 ]
-web = [
-    "galois>=0.4.7",
-]
+
 all = [
-    "pyzx[web]",
+    "pyzx",
     "matplotlib>=2.2",
     "quimb>=1.4",
 ]
@@ -92,7 +90,6 @@ module = [
     "ipywidgets.*",
     "traitlets.*",
     "IPython.*",
-    "galois.*",
     "quimb.*",
     "qiskit.*",
 ]
