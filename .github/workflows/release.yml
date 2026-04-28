@@ -69,10 +69,6 @@ jobs:
             fi
           fi
 
-      - name: Build
-        if: steps.check_commits.outputs.has_commits == 'true'
-        run: python -m build
-
       - name: Configure git identity
         run: |
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
@@ -83,15 +79,19 @@ jobs:
         run: |
           VERSION=$(bump-my-version show current_version)
           DATE=$(date +%Y-%m-%d)
-          sed -i "s/^## \[Unreleased\]/## [Unreleased]\n\n## v$VERSION - $DATE/" CHANGELOG.md
+          sed -i "s/^## \[Unreleased\]/## [Unreleased]\n\n## [$VERSION] - $DATE/" CHANGELOG.md
           git add CHANGELOG.md
           git commit -m "Add Unreleased section to changelog [skip ci]"
 
       - name: Bump version and push
         if: steps.check_commits.outputs.has_commits == 'true' && inputs.dry_run != true
         run: |
-          bump-my-version bump minor --allow-dirty
+          bump-my-version bump patch --allow-dirty
           git push --follow-tags
+
+      - name: Build
+        if: steps.check_commits.outputs.has_commits == 'true'
+        run: python -m build
 
       - name: Extract changelog section and create release
         if: steps.check_commits.outputs.has_commits == 'true' && inputs.dry_run != true
@@ -99,7 +99,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           VERSION=$(bump-my-version show current_version)
-          NOTES=$(awk '/^# v'"$VERSION"'/{found=1; next} found && /^# v[0-9]/{exit} found{print}' CHANGELOG.md)
+          NOTES=$(awk '/^## \['"$VERSION"'\]/{found=1; next} found && /^## \[/{exit} found{print}' CHANGELOG.md)
           gh release create "v$VERSION" \
             --title "v$VERSION" \
             --notes "$NOTES"
