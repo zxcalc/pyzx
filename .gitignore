@@ -16,3 +16,5 @@ pyzx.egg-info
 pyzx/js/d3.v5.js
 *~
 .DS_store
+run jupyter.bat
+runtests.bat
