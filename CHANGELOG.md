@@ -21,6 +21,7 @@ Hence, occasionally changes will be backwards incompatible (although they will a
 - `extract_circuit` raises `ValueError` for graphs containing ground vertices or mismatched input/output counts, instead of a `KeyError` crash (by @dlyongemallo).
 - Missed copying `_grounds` in `clone()`, incorrectly checking destination `is_ground` instead of source in `tensor()` (by @dlyongemallo).
 - Bialgebra rule to accept parallel edges; spread out the resulting vertices so they don't overlap (by @dlyongemallo).
+- Reset gate representation changed from ground-based to symbolic boolean paradigm, avoiding paradigm-mixing issues that destroyed measurement phases during simplification of circuits with mid-circuit resets. As a side effect, `graph_to_circuit` now recovers conditional X-type rotations (`NOT`, `XPhase`, `SX`), since X-type vertices on the qubit wire are unambiguous now that measurement outcomes are represented as leaves. `Circuit.to_graph` gains an opt-in `elide_initial_resets` flag (default `False`) that skips the discard chain for a `Reset` on an unmodified input wire, useful for circuits with OpenQASM-style implicit |0⟩ inputs (by @dlyongemallo).
 
 ### Removed
 - `Measurement.to_graph_ground`; measurements now always use the symbolic boolean representation (by @dlyongemallo).

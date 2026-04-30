@@ -117,12 +117,19 @@ class TestExtract(unittest.TestCase):
     def test_extract_ground_vertex_raises(self):
         """extract_circuit should raise ValueError on graphs with ground
         vertices, even when input and output counts match."""
-        c = Circuit(1)
-        c.add_gate(Reset(0))
-        c.add_gate("HAD", 0)
-        g = c.to_graph()
+        import pyzx as zx
+        from pyzx.utils import VertexType, EdgeType
+        g = zx.Graph()
+        inp = g.add_vertex(VertexType.BOUNDARY, 0, 0)
+        out = g.add_vertex(VertexType.BOUNDARY, 0, 3)
+        z = g.add_vertex(VertexType.Z, 0, 1)
+        gnd = g.add_vertex(VertexType.Z, 0, 2, ground=True)
+        g.add_edge((inp, z), EdgeType.SIMPLE)
+        g.add_edge((z, gnd), EdgeType.SIMPLE)
+        g.add_edge((z, out), EdgeType.SIMPLE)
+        g.set_inputs((inp,))
+        g.set_outputs((out,))
         self.assertTrue(g.is_hybrid())
-        simplify.full_reduce(g, quiet=True)
         with self.assertRaises(ValueError) as ctx:
             extract_circuit(g)
         self.assertIn("ground", str(ctx.exception))
