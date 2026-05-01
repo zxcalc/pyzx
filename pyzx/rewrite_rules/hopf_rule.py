@@ -74,11 +74,20 @@ def unsafe_hopf(g: BaseGraph[VT, ET], v: VT, w: VT) -> bool:
     etab: Dict[Tuple[VT, VT], List[int]] = dict()
     rem_edges: List[ET] = []
 
-    et = g.edge_type(g.edge(v, w))
+    # Determine the edge type to remove from the spider colours, matching
+    # the logic in `check_hopf`. Looking up the type via `g.edge(v, w)` is
+    # unsafe on multigraphs where parallel edges of mixed types may coexist.
+    if vertex_is_z_like(g.type(v)) == vertex_is_z_like(g.type(w)):
+        et = EdgeType.HADAMARD
+    else:
+        et = EdgeType.SIMPLE
 
-    n = g.num_edges(v, w, et)
+    # Filter via ``g.edges`` rather than ``g.edge(v, w, et)``: the ``et``
+    # parameter is not supported on all graph backends.
+    matching = [e for e in g.edges(v, w) if g.edge_type(e) == et]
+    n = len(matching)
     parity = n % 2
-    rem_edges.extend([g.edge(v, w, et)] * (n - parity))
+    rem_edges.extend(matching[: n - parity])
     g.scalar.add_power(-(n - parity))
 
     g.add_edge_table(etab)

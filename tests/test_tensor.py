@@ -185,6 +185,25 @@ class TestTensor(unittest.TestCase):
         g.add_edges([(i2, i2), (i2, i3)], 2)
         self.assertTrue(compare_tensors(g, np.array([[0,0],[1,0]])))
 
+    def test_parallel_mixed_edges_map(self):
+        """An X spider connected to a Z spider by one simple AND one Hadamard
+        edge in parallel implements the X gate up to scalar; tensorfy must not
+        treat the parallel pair as if both edges were the same type."""
+        from pyzx.utils import EdgeType
+        g = Multigraph()
+        g.set_auto_simplify(False)
+        b_in  = g.add_vertex(VertexType.BOUNDARY, qubit=0, row=0)
+        x     = g.add_vertex(VertexType.X,        qubit=0, row=1)
+        b_out = g.add_vertex(VertexType.BOUNDARY, qubit=0, row=2)
+        z     = g.add_vertex(VertexType.Z,        qubit=-1, row=1)
+        g.add_edge((b_in, x),  EdgeType.SIMPLE)
+        g.add_edge((x, b_out), EdgeType.SIMPLE)
+        g.add_edge((x, z),     EdgeType.SIMPLE)
+        g.add_edge((x, z),     EdgeType.HADAMARD)
+        g.set_inputs((b_in,)); g.set_outputs((b_out,))
+        self.assertTrue(compare_tensors(g, np.array([[0,1],[1,0]]),
+                                        preserve_scalar=False))
+
     def test_to_tensor_equivalent(self):
         g = Graph()
         g.add_vertex(VertexType.Z, phase=1)

@@ -118,6 +118,38 @@ class TestSimplify(unittest.TestCase):
     def test_id_simp(self):
         self.func_test(id_simp)
 
+    def test_full_reduce_preserves_h_edge_difference_on_multigraph(self):
+        """full_reduce must preserve the semantics of multigraph diagrams
+        with parallel mixed simple/Hadamard edges. Regression test:
+        previously the (left simple, right H) variant was reduced to identity
+        instead of X because parallel mixed edges were mishandled."""
+        from pyzx.graph.multigraph import Multigraph
+        from pyzx import VertexType, EdgeType
+
+        def build(left_edge):
+            g = Multigraph()
+            b_in  = g.add_vertex(VertexType.BOUNDARY, qubit=0, row=0)
+            x1    = g.add_vertex(VertexType.X,        qubit=0, row=1)
+            x2    = g.add_vertex(VertexType.X,        qubit=0, row=2)
+            b_out = g.add_vertex(VertexType.BOUNDARY, qubit=0, row=3)
+            z     = g.add_vertex(VertexType.Z,        qubit=1, row=1)
+            g.add_edge((b_in, x1),  EdgeType.SIMPLE)
+            g.add_edge((x1, x2),    EdgeType.SIMPLE)
+            g.add_edge((x2, b_out), EdgeType.SIMPLE)
+            g.add_edge((x1, z),     left_edge)
+            g.add_edge((x2, z),     EdgeType.HADAMARD)
+            g.set_inputs((b_in,)); g.set_outputs((b_out,))
+            return g
+
+        g_id = build(EdgeType.HADAMARD)  # both H-edges → identity
+        g_x  = build(EdgeType.SIMPLE)    # mixed → X gate
+        t_id_before = g_id.to_tensor()
+        t_x_before  = g_x.to_tensor()
+        full_reduce(g_id)
+        full_reduce(g_x)
+        self.assertTrue(compare_tensors(t_id_before, g_id.to_tensor()))
+        self.assertTrue(compare_tensors(t_x_before,  g_x.to_tensor()))
+
     def test_to_gh(self):
         self.func_test(to_gh)
 

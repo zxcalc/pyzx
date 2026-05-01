@@ -164,10 +164,11 @@ def tensorfy_naive(g: 'BaseGraph[VT,ET]', preserve_scalar: bool = True) -> NDArr
         for v in sorted(verts_row[r]):
             if types[v] == VertexType.DUMMY:
                 continue
+            incident = list(g.incident_edges(v))
             neigh = list(itertools.chain.from_iterable(
-                set(g.edge_st(e)) - {v} for e in g.incident_edges(v)
+                set(g.edge_st(e)) - {v} for e in incident
             ))
-            self_loops = [e for e in g.incident_edges(v) if g.edge_s(e) == g.edge_t(e)]
+            self_loops = [e for e in incident if g.edge_s(e) == g.edge_t(e)]
             d = len(neigh) + len(self_loops) * 2
             if v in inputs:
                 if types[v] != VertexType.BOUNDARY: raise ValueError("Wrong type for input:", v, types[v])
@@ -209,11 +210,19 @@ def tensorfy_naive(g: 'BaseGraph[VT,ET]', preserve_scalar: bool = True) -> NDArr
                     t = np.trace(t)
                 else:
                     raise NotImplementedError(f"Tensor contraction with {repr(sl)} self-loops is not implemented.")
-            nn = list(filter(lambda n: rows[n]<r or (rows[n]==r and n<v), neigh)) # TODO: allow ordering on vertex indices?
-            ety = {n:g.edge_type(g.edge(v,n)) for n in nn}
-            nn.sort(key=lambda n: ety[n] == EdgeType.HADAMARD)
-            for n in nn:
-                if ety[n] == EdgeType.HADAMARD:
+            # Iterate over incident edges rather than neighbours so parallel
+            # edges of different types are kept as distinct legs.
+            leg_ety = []
+            for e in incident:
+                if g.edge_s(e) == g.edge_t(e): continue  # self-loop, handled above
+                s, tgt = g.edge_st(e)
+                n = tgt if s == v else s
+                if rows[n] < r or (rows[n] == r and n < v):
+                    leg_ety.append((n, g.edge_type(e)))
+            leg_ety.sort(key=lambda ne: ne[1] == EdgeType.HADAMARD)
+            nn = [n for n, _ in leg_ety]
+            for _, et in leg_ety:
+                if et == EdgeType.HADAMARD:
                     t = np.tensordot(t,had,(0,0)) # Hadamard edges are moved to the last index of t
             contr = pop_and_shift(nn,indices) #the last indices in contr correspond to hadamard contractions
             tensor = np.tensordot(tensor,t,axes=(contr,list(range(len(t.shape)-len(contr),len(t.shape)))))
