@@ -20,7 +20,7 @@ import copy
 from fractions import Fraction
 from typing import TYPE_CHECKING, Union, Optional, Generic, TypeVar, Any, Sequence
 from typing import List, Dict, Set, Tuple, Mapping, Iterable, Callable, ClassVar, Literal
-from typing_extensions import Literal, GenericMeta # type: ignore # https://github.com/python/mypy/issues/5753
+from typing_extensions import Literal, GenericMeta, Self# type: ignore # https://github.com/python/mypy/issues/5753
 
 import numpy as np
 
@@ -480,8 +480,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
             backend = type(self).backend
         g = Graph(backend = backend)
         if isinstance(self, Multigraph) and isinstance(g, Multigraph):
-            g.set_auto_simplify(self._auto_simplify) # type: ignore
-            # mypy issue https://github.com/python/mypy/issues/16413
+            g.set_auto_simplify(self._auto_simplify)
         g.track_phases = self.track_phases
         g.scalar = self.scalar.copy(conjugate=adjoint)
         g.merge_vdata = self.merge_vdata # type: ignore
@@ -946,7 +945,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         """Returns the number of inputs of the graph"""
         return self.num_inputs()
 
-    def auto_detect_io(self):
+    def auto_detect_io(self) -> None:
         """Adds every vertex that is of boundary-type to the list of inputs or outputs.
         Whether it is an input or output is determined by looking whether its neighbor
         is further to the right or further to the left of the input.
@@ -1253,7 +1252,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
 
         return result
 
-    def __deepcopy__(self, memo):
+    def __deepcopy__(self, memo: dict[int, Self]) -> Self:
         """Custom deepcopy implementation to ensure variable registry is properly handled
         while using Python's default deepcopy behavior."""
         cls = self.__class__
