@@ -1,4 +1,4 @@
-# PyZX - Python library for quantum circuit rewriting 
+# PyZX - Python library for quantum circuit rewriting
 #        and optimization using the ZX-calculus
 # Copyright (C) 2018 - Aleks Kissinger and John van de Wetering
 
@@ -16,7 +16,7 @@
 
 import math
 import numpy as np
-from typing import Union, Any, Tuple, List, Optional, Dict, cast
+from typing import Union, Any, Tuple, List, Optional, Dict, cast, overload
 from typing_extensions import Literal
 from numpy.typing import NDArray
 
@@ -37,12 +37,12 @@ class Mat2(object):
     @staticmethod
     def id(n: int) -> 'Mat2':
         return Mat2([[1 if i == j else 0
-            for j in range(n)] 
+            for j in range(n)]
               for i in range(n)])
     @staticmethod
     def zeros(m:int, n: int) -> 'Mat2':
         return Mat2([[0
-            for j in range(n)] 
+            for j in range(n)]
               for i in range(m)])
     @staticmethod
     def unit_vector(d: int, i: int) -> 'Mat2':
@@ -58,12 +58,25 @@ class Mat2(object):
         if self.rows() != other.rows() or self.cols() != other.cols(): return False
         return all(self.data[i][j] == other.data[i][j] for i in range(len(self.data)) for j in range(len(self.data[i])))
     def __str__(self) -> str:
-        return "\n".join("[ " + 
+        return "\n".join("[ " +
             "  ".join(str(value) for value in row) +
             " ]" for row in self.data)
     def __repr__(self) -> str:
         return str(self)
-    def __getitem__(self, key: Tuple[Union[int,slice],Union[int,slice]]) -> Union['Mat2',Z2]:
+    
+    @overload
+    def __getitem__(self, key: tuple[int, int]) -> Z2: ...
+
+    @overload
+    def __getitem__(self, key: tuple[slice, int]) -> 'Mat2': ...
+    
+    @overload
+    def __getitem__(self, key: tuple[int, slice]) -> 'Mat2': ...
+    
+    @overload
+    def __getitem__(self, key: tuple[slice, slice]) -> 'Mat2': ...
+    
+    def __getitem__(self, key: tuple[int | slice, int | slice]) -> 'Mat2 | Z2':
         # For a pair of indices: if either is a slice, return the
         # selected sub-matrix. Otherwise, return the selected element.
         if isinstance(key,tuple):
@@ -76,17 +89,26 @@ class Mat2(object):
                 return self.data[rs][cs]
         else:
             raise IndexError("Expected a pair of indices/slices.")
-    def __setitem__(self, key, val):
+    
+    
+    @overload
+    def __setitem__(self, key: tuple[int,int], val: Z2) -> None: ...
+    
+    @overload
+    def __setitem__(self, key: tuple[slice,int], val: 'Mat2') -> None: ...
+    
+    @overload
+    def __setitem__(self, key: tuple[int,slice], val: 'Mat2') -> None: ...
+    
+    @overload
+    def __setitem__(self, key: tuple[slice,slice], val: 'Mat2') -> None: ...
+
+    def __setitem__(self, key: tuple[int | slice, int | slice], val: 'Mat2 | Z2') -> None:
         # For a pair of indices: if either is a slice, expect a Mat2
         # and overwrite the selected sub-matrix. Otherwise, expect
         # Z2 and overwrite the selected element.
         if isinstance(key,tuple):
             rs,cs = key
-
-            if isinstance(val,Mat2):
-                d = val.data
-            else:
-                d = [[val]]
 
             if isinstance(rs,slice):
                 rr = range(*rs.indices(self.rows()))
@@ -100,10 +122,12 @@ class Mat2(object):
 
             for i,iin in enumerate(rr):
                 for j,jin in enumerate(cr):
-                    self.data[iin][jin] = d[i][j]
+                    if isinstance(val, Mat2):
+                        self.data[iin][jin] = val[i, j]
+                    else:
+                        self.data[iin][jin] = val
         else:
             raise IndexError("Expected a pair of indices/slices.")
-            
 
     def copy(self) -> 'Mat2':
         return Mat2([list(row) for row in self.data])
@@ -366,7 +390,7 @@ class Mat2(object):
                     best_cn = cn
             cn = best_cn
         assert cn is not None
-        return cn.cnots # list(reversed(cn.cnots)) 
+        return cn.cnots # list(reversed(cn.cnots))
 
 
 class CNOTMaker(object):
@@ -395,7 +419,7 @@ class REF:
         self.ref: List[NDArray[np.uint64]] = []
         self.pivot_cols: List[int] = []
 
-    def _add_row(self, row_arr: NDArray[np.uint64], start_col: int = 0):
+    def _add_row(self, row_arr: NDArray[np.uint64], start_col: int = 0) -> None:
         pivot_row = 0
         for col in range(start_col, self.N):
             if self.taken[col]:

@@ -59,11 +59,11 @@ class PauliWeb(Generic[VT, ET]):
         self.g = g
         self.es: Dict[Tuple[VT,VT], str] = dict()
     
-    def __getitem__(self, edge: Tuple[VT, VT]):
+    def __getitem__(self, edge: Tuple[VT, VT]) -> str:
         return self.es.get(edge, 'I')
     
     @staticmethod
-    def random(g: BaseGraph[VT,ET], pX=0.1, pY=0.1, pZ=0.1):
+    def random(g: BaseGraph[VT,ET], pX: float = 0.1, pY: float = 0.1, pZ: float = 0.1) -> PauliWeb[VT, ET]:
         w = PauliWeb(g)
         for e in g.edges():
             s,t = g.edge_st(e)
@@ -83,7 +83,7 @@ class PauliWeb(Generic[VT, ET]):
         pw.es = self.es.copy()
         return pw
     
-    def add_half_edge(self, v_pair: Tuple[VT, VT], pauli: str):
+    def add_half_edge(self, v_pair: Tuple[VT, VT], pauli: str) -> None:
         s, t = v_pair
         p = multiply_paulis(self.es.get((s,t), 'I'), pauli)
         if p == 'I':
@@ -91,24 +91,24 @@ class PauliWeb(Generic[VT, ET]):
         else:
             self.es[(s,t)] = p
     
-    def add_edge(self, v_pair: Tuple[VT, VT], pauli: str):
+    def add_edge(self, v_pair: Tuple[VT, VT], pauli: str) -> None:
         s, t = v_pair
         et = self.g.edge_type(self.g.edge(s, t))
         self.add_half_edge((s,t), pauli)
         self.add_half_edge((t,s), pauli if et == EdgeType.SIMPLE else h_pauli(pauli))
     
-    def remove_edges(self, v_pairs: Iterable[Tuple[VT, VT]]):
+    def remove_edges(self, v_pairs: Iterable[Tuple[VT, VT]]) -> None:
         for s, t in v_pairs:
             self.es.pop((s, t), '')
             self.es.pop((t, s), '')
     
-    def vertices(self):
+    def vertices(self) -> set[VT]:
         return set(v for (v,_) in self.es)
     
     def half_edges(self) -> Dict[Tuple[VT,VT],str]:
         return self.es
     
-    def __repr__(self):
+    def __repr__(self) -> str:
         return 'PauliWeb' + str(self.vertices())
     
     def __mul__(self, other: PauliWeb[VT, ET]) -> PauliWeb[VT, ET]:

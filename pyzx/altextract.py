@@ -1,4 +1,3 @@
-from fractions import Fraction
 import itertools
 import math
 
@@ -8,7 +7,7 @@ from .simplify import pivot_simp
 from .circuit import Circuit
 from .graph.base import BaseGraph, VT, ET
 
-from typing import Dict, Union
+from typing import Dict, Sequence, Union
 
 from .extract import bi_adj, connectivity_from_biadj, max_overlap
 # , greedy_reduction, find_minimal_sums, xor_rows, column_optimal_swap
@@ -18,7 +17,7 @@ from .extract import bi_adj, connectivity_from_biadj, max_overlap
 # 1s in position given by "pos"
 # TODO: this can be done in poly-time with graph matching algo
 # (e.g. Hopcroft-Karp)
-def ones_in_pos(m, pos):
+def ones_in_pos(m: Mat2, pos: Sequence[int]) -> None:
     winner = -1
 
     perm = None
@@ -37,7 +36,7 @@ def ones_in_pos(m, pos):
 
 # produce a parity matrix that extracts all of the extractable
 # vertices in convenient places and ignores the rest
-def compute_row_ops(m):
+def compute_row_ops(m: Mat2) -> Mat2:
     ops = Mat2.id(m.rows())
     m1 = m.copy()
     m1.gauss(full_reduce=True,x=ops)
@@ -64,7 +63,7 @@ def compute_row_ops(m):
     # list.sort(ops.data, reverse=True)
     
     # find pivot columns
-    pivot_cols = []
+    pivot_cols: list[int] = []
     ops.copy().gauss(pivot_cols=pivot_cols)
     #ones_in_pos(ops,pivot_cols)
 
@@ -76,9 +75,9 @@ def compute_row_ops(m):
 
 
 def alt_extract_circuit(
-        g:BaseGraph[VT,ET], 
-        optimize_czs:bool=True, 
-        optimize_cnots:int=2, 
+        g:BaseGraph[VT,ET],
+        optimize_czs:bool=True,
+        optimize_cnots:int=2,
         quiet:bool=True
         ) -> Circuit:
     """
@@ -126,7 +125,7 @@ def alt_extract_circuit(
             if g.edge_type(e) == 2: # Hadamard edge
                 c.add_gate("HAD",q)
                 g.set_edge_type(e, EdgeType.SIMPLE)
-            if phases[v]: 
+            if phases[v]:
                 c.add_gate("ZPhase", q, phases[v])
                 g.set_phase(v,0)
 

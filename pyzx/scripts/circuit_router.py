@@ -22,11 +22,10 @@ import time
 import argparse
 from typing import Any, Callable, Dict, Iterable, List, Sequence, Union
 
-from build.lib.pyzx.graph.base import VT
 from pyzx.utils import EdgeType, FloatInt, FractionLike, VertexType
 
 from pyzx.circuit.gates import CNOT
-from pyzx.graph.base import ET, BaseGraph
+from pyzx.graph.base import VT, ET, BaseGraph
 from pyzx.routing.cnot_mapper import ElimMode, gauss, genetic_elim_modes, basic_elim_modes, pso_elim_modes, sequential_gauss, elim_modes
 from pyzx.routing.parity_maps import CNOT_tracker
 

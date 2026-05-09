@@ -101,7 +101,7 @@ def create_firing_verification(g: BaseGraph[int, Tuple[int, int]], ordering: Gra
         row = rows - num_pi_2 + i
         col = cols - num_pi_2 + i
         val = cast(int, m_d[row, col])
-        m_d[row, col] = (val + 1) % 2
+        m_d[row, col] = 1 if (val + 1) % 2 else 0
 
     return m_d
 

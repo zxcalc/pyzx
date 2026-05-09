@@ -421,7 +421,7 @@ def cliffords(
         t_gates:bool=False,
         backend:Optional[str]=None,
         seed:Optional[int]=None
-        ):
+        ) -> BaseGraph:
     """Generates a circuit consisting of randomly placed Clifford gates.
     Uses a different approach to generating Clifford circuits then :func:`cliffordT`.
 
@@ -701,7 +701,7 @@ def phase_poly_from_gadgets(n_qubits: int, n_gadgets: int) -> Circuit:
     return phase_poly.rec_gray_synth("gauss", architecture=None)[0]
 
 
-def build_random_parity_map(qubits: int, n_cnots: int, circuit=None) -> MatLike:
+def build_random_parity_map(qubits: int, n_cnots: int, circuit: Circuit | list[Circuit] | None =None) -> MatLike:
     """
     Builds a random parity map.
 
@@ -718,11 +718,13 @@ def build_random_parity_map(qubits: int, n_cnots: int, circuit=None) -> MatLike:
     c = Circuit.from_graph(g)
     matrix = Mat2.id(qubits)
     for gate in c.gates:
-        if not hasattr(gate, "control") or not hasattr(gate, "target"):
+        control = getattr(gate, "control", None)
+        target = getattr(gate, "target", None)
+        if not (control and target):
             continue
-        matrix.row_add(gate.control, gate.target)
+        matrix.row_add(control, target)
         for c in circuit:
-            c.row_add(gate.control, gate.target)
+            c.row_add(control, target)
     return matrix.data
 
 

@@ -53,13 +53,13 @@ class AdditionalNodes:
     def empty() -> "AdditionalNodes":
         return AdditionalNodes([], [])
 
-    def add_extra_id_node(self, node: int):
+    def add_extra_id_node(self, node: int) -> None:
         self.extra_id_nodes.append(ExtraIdNode(node))
 
-    def add_expanded_hadamard(self, expanded_hadamard: ExpandedHadamard):
+    def add_expanded_hadamard(self, expanded_hadamard: ExpandedHadamard) -> None:
         self.expanded_hadamards.append(expanded_hadamard)
 
-    def _remove_extra_id_node(self, adj: Dict[int, Dict[int, Any]], web: PauliWeb, id_node: ExtraIdNode):
+    def _remove_extra_id_node(self, adj: Dict[int, Dict[int, Any]], web: PauliWeb, id_node: ExtraIdNode) -> None:
         v1, v2 = adj[id_node.node].keys()
         web.add_half_edge((v1, v2), web[v1, id_node.node])
         web.add_half_edge((v2, v1), web[v1, id_node.node])
@@ -71,7 +71,7 @@ class AdditionalNodes:
         del adj[id_node.node][v2]
         del adj[v2][id_node.node]
 
-    def _remove_expanded_hadamard(self, adj: Dict[int, Dict[int, Any]], web: PauliWeb, hadamard: ExpandedHadamard):
+    def _remove_expanded_hadamard(self, adj: Dict[int, Dict[int, Any]], web: PauliWeb, hadamard: ExpandedHadamard) -> None:
         w1, w2, w3 = hadamard.r1_node, hadamard.r2_node, hadamard.r3_node
         w1_left, w1_right = adj[w1].keys()
         l = w1_left if w1_right == w2 else w1_right

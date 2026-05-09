@@ -29,13 +29,14 @@ For help on the arguments for these commands run for instance 'python -m pyzx op
 """
 
 import argparse
+from typing import Sequence
 from . import circ2circ
 from . import circ2tikz
 from . import circuit_router
 from . import cnot_generator
 from . import phase_poly_generator
    
-def main(argv: list[str]) -> None:
+def main(argv: Sequence[str]) -> None:
     parser = argparse.ArgumentParser(prog="PyZX", description="PyZX commandline interface",
                                      usage=usage_string)
     parser.add_argument('command', help='Command to run')
