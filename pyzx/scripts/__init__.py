@@ -1,4 +1,4 @@
-# PyZX - Python library for quantum circuit rewriting 
+# PyZX - Python library for quantum circuit rewriting
 #        and optimization using the ZX-calculus
 # Copyright (C) 2018 - Aleks Kissinger and John van de Wetering
 
@@ -22,7 +22,7 @@ The options for command are:
     opt       -- Optimize a circuit using PyZX
     tikz      -- Convert a circuit into a Tikz file
     router    -- Map any circuit onto restricted architectures
-    cnots     -- Generate random CNOT circuits 
+    cnots     -- Generate random CNOT circuits
     phasepoly -- Generates random phase polynomial circuits and stores them as QASM files
 
 For help on the arguments for these commands run for instance 'python -m pyzx opt --help'
@@ -35,7 +35,7 @@ from . import circuit_router
 from . import cnot_generator
 from . import phase_poly_generator
    
-def main(argv):
+def main(argv: list[str]) -> None:
     parser = argparse.ArgumentParser(prog="PyZX", description="PyZX commandline interface",
                                      usage=usage_string)
     parser.add_argument('command', help='Command to run')

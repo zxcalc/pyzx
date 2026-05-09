@@ -1,4 +1,4 @@
-# PyZX - Python library for quantum circuit rewriting 
+# PyZX - Python library for quantum circuit rewriting
 #        and optimization using the ZX-calculus
 # Copyright (C) 2018 - Aleks Kissinger and John van de Wetering
 
@@ -73,7 +73,7 @@ ET = TypeVar('ET') # The type used for representing edges (e.g. a pair of intege
 def upair(v1: VT, v2: VT) -> Tuple[VT, VT]:
     """Returns the unordered pair associated to the pair of vertices.
     This method takes a pair of vertices and returns them in a canonical order. Use this
-    whenever a pair of vertices is used to reference the location of an undirected edge, 
+    whenever a pair of vertices is used to reference the location of an undirected edge,
     e.g. as a key in an edge table."""
     return (v1, v2) if v1 <= v2 else (v2, v1)
 
@@ -776,7 +776,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         new_outputs = []
         for i,s in enumerate(effect):
             v = outputs[i]
-            if s == '/': 
+            if s == '/':
                 new_outputs.append(v)
                 continue
             if s in ('0', '1'):
@@ -1305,6 +1305,3 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         self.add_edge((hub, phase_vertex), EdgeType.HADAMARD)
 
         return (hub, phase_vertex)
-
-
-

@@ -20,8 +20,13 @@ from enum import Enum
 import sys, os
 import time
 import argparse
-from typing import Any, Dict, Iterable, List, Union
+from typing import Any, Callable, Dict, Iterable, List, Sequence, Union
 
+from build.lib.pyzx.graph.base import VT
+from pyzx.utils import EdgeType, FloatInt, FractionLike, VertexType
+
+from pyzx.circuit.gates import CNOT
+from pyzx.graph.base import ET, BaseGraph
 from pyzx.routing.cnot_mapper import ElimMode, gauss, genetic_elim_modes, basic_elim_modes, pso_elim_modes, sequential_gauss, elim_modes
 from pyzx.routing.parity_maps import CNOT_tracker
 
@@ -68,23 +73,23 @@ class CompileMode(Enum):
     NO_COMPILER = "not_compiled"
     TKET_COMPILER = "tket"
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.value}"
 
 def create_dest_filename(
-    original_file,
-    outformat,
-    population=None,
-    iteration=None,
-    crossover_prob=None,
-    mutation_prob=None,
-    index=None,
-    pso_size=None,
-    pso_step=None,
-    pso_sco=None,
-    pso_pco=None,
-    pso_m=None,
-):
+    original_file: str,
+    outformat: str,
+    population: int | None = None,
+    iteration: int | None = None,
+    crossover_prob: float | None = None,
+    mutation_prob: float | None = None,
+    index: int | None =None,
+    pso_size: int | None =None,
+    pso_step: int | None = None,
+    pso_sco: float | None = None,
+    pso_pco: float | None = None,
+    pso_m: float | None = None,
+) -> str | None:
     pop_ext = "" if population is None else "pop" + str(population)
     iter_ext = "" if iteration is None else "iter" + str(iteration)
     crossover_ext = "" if crossover_prob is None else "crossover" + str(crossover_prob)
@@ -112,7 +117,7 @@ def create_dest_filename(
                 outformat
             )
         )
-        return
+        return None
     elif outformat != "match":
         extension = outformat
 
@@ -137,23 +142,23 @@ def create_dest_filename(
     return new_filename
 
 
-def read_circuit(source):
+def read_circuit(source: str) -> Circuit | None:
     if not os.path.exists(source):
         print("File {} does not exist".format(source))
-        return
+        return None
     return Circuit.load(source)
 
 
 def simple_extract_no_gadgets(
-    g,
-    extract_cnots=None,
-    quiet=True,
-    initial_qubit_placement=None,
-    allow_output_perm=False,
-):
+    g: BaseGraph[VT, ET],
+    extract_cnots: Callable[[Mat2, Sequence[FloatInt], bool], list[CNOT]] | None = None,
+    quiet: bool = True,
+    initial_qubit_placement: Sequence[FloatInt] | None = None,
+    allow_output_perm: bool = False,
+) -> tuple[BaseGraph[VT, ET], list[FloatInt]]:
     if initial_qubit_placement is None:
         initial_qubit_placement = [i for i in range(g.qubit_count())]
-    g.normalise()
+    g.normalize()
     g = preprocess_graph(g)
     qs = g.qubits()  # We are assuming that these are objects that update...
     rs = g.rows()  # ...to reflect changes to the graph, so that when...
@@ -162,41 +167,49 @@ def simple_extract_no_gadgets(
     )  # ... g.set_row/g.set_qubit is called, these things update directly to reflect that
     phases = g.phases()
     if extract_cnots is None:
-        extract_cnots = lambda mat2, p, col=False: Mat2(
-            [[mat2.data[i][j] for j in p] if col else mat2.data[i] for i in p]
-        ).to_cnots()
-
-    h = Graph()
+        
+        def default(mat2: Mat2, p: Sequence[FloatInt], col: bool) -> list[CNOT]:
+            # NOTE: this script is really old and the types used everywhere are kind of inconsistent
+            # the below is kind of a hack which was added when updating it to fix types while minimally impacting the script
+            # really, the script should probably be removed and/or rewritten from scratch
+            p = [int(i) for i in p]
+            return Mat2(
+                [[mat2.data[i][j] for j in p] if col else mat2.data[i] for i in p]
+            ).to_cnots()
+        
+        extract_cnots = default
+    
+    h: BaseGraph[VT, ET] = Graph()
 
     qindex = {}
     depth = 0
-    for i in range(len(g.inputs)):
-        v = h.add_vertex(0, i, depth)
-        h.inputs.append(v)
+    for i in range(len(g.inputs())):
+        v = h.add_vertex(VertexType.BOUNDARY, i, depth)
+        h.set_inputs((*h.inputs(), v))
         qindex[i] = v
     depth = 1
 
-    def add_phase_gate(q, phase):
+    def add_phase_gate(q: FloatInt, phase: FractionLike) -> ...:
         nonlocal depth
-        v = h.add_vertex(1, q, depth, phase)
-        h.add_edge((qindex[q], v), 1)
+        v = h.add_vertex(VertexType.Z, q, depth, phase)
+        h.add_edge((qindex[q], v), EdgeType.SIMPLE)
         qindex[q] = v
         depth += 1
         return v
 
-    def add_hadamard(q):
+    def add_hadamard(q: FloatInt) -> ...:
         nonlocal depth
-        v = h.add_vertex(1, q, depth)
-        h.add_edge((qindex[q], v), 2)
+        v = h.add_vertex(VertexType.Z, q, depth)
+        h.add_edge((qindex[q], v), EdgeType.HADAMARD)
         qindex[q] = v
         depth += 1
         return v
 
-    def add_cnot(ctrl, tgt):
+    def add_cnot(ctrl: FloatInt, tgt: FloatInt) -> ...:
         nonlocal depth
-        v1 = h.add_vertex(1, ctrl, depth)
-        v2 = h.add_vertex(2, tgt, depth)
-        h.add_edges([(qindex[ctrl], v1), (qindex[tgt], v2), (v1, v2)], 1)
+        v1 = h.add_vertex(VertexType.Z, ctrl, depth)
+        v2 = h.add_vertex(VertexType.X, tgt, depth)
+        h.add_edges([(qindex[ctrl], v1), (qindex[tgt], v2), (v1, v2)], EdgeType.SIMPLE)
         qindex[ctrl] = v1
         qindex[tgt] = v2
         depth += 1
@@ -208,10 +221,10 @@ def simple_extract_no_gadgets(
     for v in g.vertices():  # Find which vertices are gadgets
         if rs[v] > 1:
             g.set_row(v, rs[v] + 20)
-        if v in g.inputs or v in g.outputs:
+        if v in g.inputs() or v in g.outputs():
             continue
         elif all(
-            w in g.inputs or w in g.outputs or len(list(g.neighbours(w))) != 1
+            w in g.inputs() or w in g.outputs() or len(list(g.neighbours(w))) != 1
             for w in g.neighbours(v)
         ):  # regular vertex
             nodes.append(v)
@@ -242,7 +255,7 @@ def simple_extract_no_gadgets(
                 )
             if g.edge_type(g.edge(n, v)) == 2:
                 add_hadamard(q)
-                g.set_edge_type(g.edge(n, v), 1)
+                g.set_edge_type(g.edge(n, v), EdgeType.SIMPLE)
             # if t == 0: continue # it is an output
             if phase != 0:
                 add_phase_gate(q, phase)
@@ -258,13 +271,13 @@ def simple_extract_no_gadgets(
                 b = [w for w in d if w in g.outputs][0]
                 q = qs[b]
                 r = rs[b]
-                w = g.add_vertex(1, q, r - 1)
+                w = g.add_vertex(VertexType.Z, q, r - 1)
                 nodes.append(w)
                 e = g.edge(v, b)
                 et = g.edge_type(e)
                 g.remove_edge(e)
-                g.add_edge((v, w), 2)
-                g.add_edge((w, b), 3 - et)
+                g.add_edge((v, w), EdgeType.HADAMARD)
+                g.add_edge((w, b), EdgeType.HADAMARD if et == EdgeType.SIMPLE else EdgeType.SIMPLE)
                 d.remove(b)
                 d.append(w)
             neighbours.update(d)
@@ -277,7 +290,7 @@ def simple_extract_no_gadgets(
             w for w in neighbours if w in nodes
         ]  # Only get non-phase-gadget neighbours
         m = bi_adj(g, right, left)
-        cnots = extract_cnots(m, initial_qubit_placement)
+        cnots = extract_cnots(m, initial_qubit_placement, False)
         for cnot in cnots:
             m.row_add(cnot.target, cnot.control)
             add_cnot(qs[left[cnot.control]], qs[left[cnot.target]])
@@ -318,66 +331,66 @@ def simple_extract_no_gadgets(
     if not allow_output_perm:
         right.sort(key=lambda v: g.qubit(v))
         m = bi_adj(g, right, left)
-        cnots = extract_cnots(m, initial_qubit_placement, col=True)  # Does Gauss
+        cnots = extract_cnots(m, initial_qubit_placement, True)  # Does Gauss
         for cnot in cnots:
             m.row_add(cnot.target, cnot.control)
             add_cnot(cnot.control, cnot.target)
         connectivity_from_biadj(g, m, right, left)  # Removes connections from g
 
-        for i, w in enumerate(g.outputs):
+        for i, w in enumerate(g.outputs()):
             n = list(g.neighbours(w))[0]
             et = g.edge_type(g.edge(n, w))
-            v = h.add_vertex(0, i, depth)
-            h.outputs.append(v)
-            h.add_edge((qindex[i], v), 3 - et)
+            v = h.add_vertex(VertexType.BOUNDARY, i, depth)
+            h.set_outputs((*h.outputs(), v))
+            h.add_edge((qindex[i], v), EdgeType.HADAMARD if et == EdgeType.SIMPLE else EdgeType.SIMPLE)
             qindex[i] = v
-        final_placement = [i for i in range(g.qubit_count())]
+        final_placement: list[FloatInt] = [i for i in range(g.qubit_count())]
     else:
         final_placement = [g.qubit(r) for r in right]
         for q, l in enumerate(left):
             n = right[q]
-            r = [v for v in g.outputs if n == list(g.neighbours(v))[0]][0]
+            r = [v for v in g.outputs() if n == list(g.neighbours(v))[0]][0]
             et = g.edge_type(g.edge(n, r))
-            v = h.add_vertex(0, q, depth)
-            h.outputs.append(v)
-            h.add_edge((qindex[q], v), 3 - et)
+            v = h.add_vertex(VertexType.BOUNDARY, q, depth)
+            h.set_outputs((*h.outputs(), v))
+            h.add_edge((qindex[q], v), EdgeType.HADAMARD if et == EdgeType.SIMPLE else EdgeType.SIMPLE)
             qindex[q] = v
     return h, final_placement
 
 
-def preprocess_graph(g):
-    g.normalise()
+def preprocess_graph(g: BaseGraph) -> BaseGraph:
+    g.normalize()
     for v in g.vertices():  # increase the row
         if v not in g.inputs:
             r = g.row(v)
             g.set_row(v, r + 2)
-    for input in g.inputs:
+    for input in g.inputs():
         n = list(g.neighbours(input))[0]
         q = g.qubit(input)
         edge = g.edge(input, n)
         etype = g.edge_type(edge)
-        v1 = g.add_vertex(1, q, 1)
-        g.add_edge((input, v1), edgetype=1)
+        v1 = g.add_vertex(VertexType.Z, q, 1)
+        g.add_edge((input, v1), edgetype=EdgeType.SIMPLE)
         if etype == 1:  # Normal edge -> add -o-H-o-H-
-            v2 = g.add_vertex(1, q, 2)
-            g.add_edge((v1, v2), edgetype=2)
+            v2 = g.add_vertex(VertexType.Z, q, 2)
+            g.add_edge((v1, v2), edgetype=EdgeType.HADAMARD)
             v1 = v2
             # else Hadamard edge -> add -o-
-        g.add_edge((v1, n), edgetype=2)
+        g.add_edge((v1, n), edgetype=EdgeType.HADAMARD)
         g.remove_edge(edge)
-    for output in g.outputs:
+    for output in g.outputs():
         n = list(g.neighbours(output))[0]
         edge = g.edge(output, n)
         etype = g.edge_type(edge)
         r = g.row(output)
         g.set_row(output, r + 1)
-        if etype == 2:  # Normal edge -> append -o-
+        if etype == EdgeType.SIMPLE:  # Normal edge -> append -o-
             q = g.qubit(output)
-            v1 = g.add_vertex(1, q, r)
-            g.add_edge((n, v1), edgetype=2)
-            g.add_edge((v1, output), edgetype=1)
+            v1 = g.add_vertex(VertexType.Z, q, r)
+            g.add_edge((n, v1), edgetype=EdgeType.HADAMARD)
+            g.add_edge((v1, output), edgetype=EdgeType.SIMPLE)
             g.remove_edge(edge)
-    g.normalise()
+    g.normalize()
     return g
 
 

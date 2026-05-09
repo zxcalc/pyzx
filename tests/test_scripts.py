@@ -1,4 +1,4 @@
-# PyZX - Python library for quantum circuit rewriting 
+# PyZX - Python library for quantum circuit rewriting
 #        and optimization using the ZX-calculus
 # Copyright (C) 2018 - Aleks Kissinger and John van de Wetering
 
@@ -29,34 +29,34 @@ from pyzx.scripts import main
 
 class TestScripts(unittest.TestCase):
 
-    def test_scripts_wrong_command(self):
+    def test_scripts_wrong_command(self) -> None:
         sys.stdout = io.StringIO()
         with self.assertRaises(SystemExit):
             main(['fakepath', 'bla', 'bla'])
         sys.stdout = sys.__stdout__
 
-    def test_optimize_quipper_circuit_gives_quipper_circuit(self):
+    def test_optimize_quipper_circuit_gives_quipper_circuit(self) -> None:
         sys.stdout = io.StringIO()
         main(['fakepath','opt','tests/test_circuit.circuit'])
         assert os.path.isfile('tests/test_circuit.quipper')
         os.remove('tests/test_circuit.quipper')
         sys.stdout = sys.__stdout__
 
-    def test_optimize_quipper_to_qasm(self):
+    def test_optimize_quipper_to_qasm(self) -> None:
         sys.stdout = io.StringIO()
         main('fakepath opt -t qasm tests/test_circuit.circuit'.split())
         assert os.path.isfile('tests/test_circuit.qasm')
         os.remove('tests/test_circuit.qasm')
         sys.stdout = sys.__stdout__
 
-    def test_optimize_all_options(self):
+    def test_optimize_all_options(self) -> None:
         sys.stdout = io.StringIO()
         main('fakepath opt -d tests/other_name.bla -t qc -g cliff tests/test_circuit.circuit'.split())
         assert os.path.isfile('tests/other_name.bla')
         os.remove('tests/other_name.bla')
         sys.stdout = sys.__stdout__
 
-    def test_tikz_conversion(self):
+    def test_tikz_conversion(self) -> None:
         sys.stdout = io.StringIO()
         main('fakepath tikz tests/test_circuit.circuit tests/tikz_circuit.tikz'.split())
         assert os.path.isfile('tests/tikz_circuit.tikz')
