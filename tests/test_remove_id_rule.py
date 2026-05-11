@@ -23,8 +23,69 @@ if __name__ == '__main__':
     sys.path.append('.')
 
 from pyzx.graph import Graph
+from pyzx.graph.multigraph import Multigraph
 from pyzx.utils import EdgeType, VertexType
-from pyzx.rewrite_rules.remove_id_rule import check_remove_id, remove_id
+from pyzx.rewrite_rules.remove_id_rule import check_remove_id, remove_id, unsafe_remove_zx
+
+
+class TestRemoveZxId(unittest.TestCase):
+
+    def test_remove_zx_parallel_mixed_edges(self):
+        """A degree-2 Z spider whose two legs are parallel edges to the same
+        neighbour must, on removal, leave a self-loop whose edge type reflects
+        the actual parity of the original edge types (mixed simple+Hadamard
+        becomes a Hadamard self-loop)."""
+        g = Multigraph()
+        g.set_auto_simplify(False)
+        x = g.add_vertex(VertexType.X, 0, 0)
+        z = g.add_vertex(VertexType.Z, 1, 0)
+        g.add_edge((x, z), EdgeType.SIMPLE)
+        g.add_edge((x, z), EdgeType.HADAMARD)
+
+        self.assertTrue(remove_id(g, z))
+        self.assertEqual(g.num_vertices(), 1)
+        edges = list(g.edges())
+        self.assertEqual(len(edges), 1)
+        self.assertEqual(g.edge_type(edges[0]), EdgeType.HADAMARD)
+
+    def test_remove_zx_parallel_same_edges(self):
+        """Parallel edges of matching type collapse to a simple self-loop."""
+        g = Multigraph()
+        g.set_auto_simplify(False)
+        x = g.add_vertex(VertexType.X, 0, 0)
+        z = g.add_vertex(VertexType.Z, 1, 0)
+        g.add_edge((x, z), EdgeType.HADAMARD)
+        g.add_edge((x, z), EdgeType.HADAMARD)
+
+        self.assertTrue(remove_id(g, z))
+        self.assertEqual(g.num_vertices(), 1)
+        edges = list(g.edges())
+        self.assertEqual(len(edges), 1)
+        self.assertEqual(g.edge_type(edges[0]), EdgeType.SIMPLE)
+
+    def test_remove_zx_rejects_self_loop(self):
+        """A degree-2 vertex carrying a self-loop is not an identity spider;
+        the safe rule must refuse to apply."""
+        g = Multigraph()
+        g.set_auto_simplify(False)
+        z = g.add_vertex(VertexType.Z, 0, 0)
+        g.add_edge((z, z), EdgeType.SIMPLE)
+        g.add_edge((z, z), EdgeType.HADAMARD)
+
+        self.assertFalse(check_remove_id(g, z))
+        self.assertFalse(remove_id(g, z))
+        self.assertEqual(g.num_vertices(), 1)
+
+    def test_unsafe_remove_zx_self_loop_no_crash(self):
+        """``unsafe_remove_zx`` on a self-loop-only vertex must return
+        ``False`` rather than crash (a single self-loop contributes 2 to
+        ``vertex_degree`` but yields only one incident edge)."""
+        g = Graph()
+        z = g.add_vertex(VertexType.Z, 0, 0)
+        g.add_edge((z, z), EdgeType.SIMPLE)
+
+        self.assertFalse(unsafe_remove_zx(g, z))
+        self.assertEqual(g.num_vertices(), 1)
 
 
 class TestWNodeRemoveId(unittest.TestCase):

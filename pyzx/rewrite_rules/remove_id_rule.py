@@ -68,6 +68,13 @@ def check_remove_zx(g: BaseGraph[VT,ET], v: VT) -> bool:
     """Checks if the given vertex of type zx can be removed."""
     if not g.vertex_degree(v) == 2:
         return False
+    # Reject self-loops: identity removal does not cover them, and on some
+    # backends a single self-loop contributes 2 to ``vertex_degree`` while
+    # producing only one entry in ``incident_edges``.
+    for e in g.incident_edges(v):
+        s, t = g.edge_st(e)
+        if s == t:
+            return False
     if g.type(v) == VertexType.Z_BOX and get_z_box_label(g, v) == 1:
         return True
     elif g.type(v) != VertexType.Z_BOX and g.phase(v) == 0:
@@ -75,15 +82,21 @@ def check_remove_zx(g: BaseGraph[VT,ET], v: VT) -> bool:
     return False
 
 def unsafe_remove_zx(g: BaseGraph[VT,ET], v: VT) -> bool:
-    """Removes the identity spider v of type ZX"""
-    neighbors = list(g.neighbors(v))
-    if len(neighbors) == 2:
-        v1, v2 = neighbors[0], neighbors[1]
-    else: # self loop
-        v1, v2 = neighbors[0], neighbors[0]
-    g.add_edge((v1,v2), edgetype=EdgeType.SIMPLE
-    if g.edge_type(g.edge(v,v1)) == g.edge_type(g.edge(v,v2))
-    else EdgeType.HADAMARD)
+    """Removes the identity spider v of type ZX. Does not handle self-loops,
+    which ``check_remove_zx`` rejects (a single self-loop on a degree-2 vertex
+    yields only one incident edge on some backends)."""
+    incident = list(g.incident_edges(v))
+    if len(incident) != 2:
+        return False
+    e1, e2 = incident[0], incident[1]
+    s1, t1 = g.edge_st(e1)
+    s2, t2 = g.edge_st(e2)
+    v1 = t1 if s1 == v else s1
+    v2 = t2 if s2 == v else s2
+    new_type = (EdgeType.SIMPLE
+                if g.edge_type(e1) == g.edge_type(e2)
+                else EdgeType.HADAMARD)
+    g.add_edge((v1, v2), edgetype=new_type)
     g.remove_vertex(v)
     return True
 
