@@ -12,10 +12,17 @@ class StrategySpec:
 _REGISTRY = {}
 
 def simulate(kind, *args, **kwargs):
+    """Runs full_decompose and sums the resulting scalars."""
     terms = full_decompose(kind, *args, **kwargs)
     return sum(g.scalar.to_number() for g in terms) # todo - avoid using .to_number() here; also, use a JAX parallel summation perhaps?
 
 def full_decompose(kind, *args, **kwargs):
+    """Fully decomposes a given graph based on the specified decomposition strategy, returning a list of (empty scalar) graphs.
+
+    Args:
+        kind: The decomposition strategy to use, e.g. Strategy.BSS.
+        g: the graph to decompose.
+    """
     if isinstance(kind, str):
         kind = Strategy(kind)
     return get_strategy(kind)(*args, **kwargs)

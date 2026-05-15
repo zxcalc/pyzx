@@ -25,6 +25,7 @@ class DecompSpec:
 _REGISTRY = {}
 
 def apply_decomp(kind, *args, **kwargs):
+    """Applies an instance of the specified decomposition to the provided graph with the decomposition-specific arguments."""
     if isinstance(kind, str):
         kind = Decomp(kind)
     
