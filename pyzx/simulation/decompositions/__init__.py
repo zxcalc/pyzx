@@ -1,6 +1,8 @@
 from enum import Enum
 import inspect
 import warnings
+from typing import Callable
+from ..common import SumGraph
 
 class Decomp(Enum):
     BSS          = "bss"
@@ -16,7 +18,7 @@ class Decomp(Enum):
     CUT_WISHBONE = "cut_wishbone"
 
 class DecompSpec:
-    def __init__(self, fn=None, validation_fn=None, alpha=None, reference=""):
+    def __init__(self, fn:Callable|None=None, validation_fn:Callable|None=None, alpha:float|None=None, reference:str=""):
         self.fn = fn
         self.validation_fn = validation_fn
         self.alpha = alpha
@@ -24,7 +26,7 @@ class DecompSpec:
 
 _REGISTRY = {}
 
-def apply_decomp(kind, *args, **kwargs):
+def apply_decomp(kind:Decomp, *args, **kwargs) -> SumGraph:
     """Applies an instance of the specified decomposition to the provided graph with the decomposition-specific arguments."""
     if isinstance(kind, str):
         kind = Decomp(kind)
@@ -37,7 +39,7 @@ def apply_decomp(kind, *args, **kwargs):
         raise RuntimeError(f"Invalid application of decomposition {kind} with args={args} and kwargs={kwargs}.")
     return decomp_fn(*args, **kwargs)
 
-def check_valid(kind, *args, **kwargs):
+def check_valid(kind:Decomp, *args, **kwargs) -> bool:
     validity_fn = get_validity_checker(kind)
     if (validity_fn is not None):
         return validity_fn(*args, **kwargs)
@@ -49,12 +51,12 @@ def check_valid(kind, *args, **kwargs):
         )
     return True
 
-def _get_or_create_spec(kind):
+def _get_or_create_spec(kind:Decomp):
     if kind not in _REGISTRY:
         _REGISTRY[kind] = DecompSpec()
     return _REGISTRY[kind]
 
-def register_decomp(kind, alpha=None, reference=""):
+def register_decomp(kind:Decomp, alpha:float|None=None, reference:str=""):
     def decorator(fn):
         spec = _get_or_create_spec(kind)
         spec.fn = fn
@@ -64,7 +66,7 @@ def register_decomp(kind, alpha=None, reference=""):
         return fn
     return decorator
 
-def register_validity_checker(kind):
+def register_validity_checker(kind:Decomp):
     def decorator(fn):
         spec = _get_or_create_spec(kind)
         spec.validation_fn = fn
@@ -72,7 +74,7 @@ def register_validity_checker(kind):
         return fn
     return decorator
 
-def _check_signatures_match(kind,spec):
+def _check_signatures_match(kind:Decomp,spec):
     if spec.fn is not None and spec.validation_fn is not None and not (inspect.signature(spec.fn).parameters == inspect.signature(spec.validation_fn).parameters):
         raise TypeError(
             f"Signature parameters mismatch for decomposition {kind}. "
@@ -81,19 +83,19 @@ def _check_signatures_match(kind,spec):
         )
     return True
 
-def get_decomp(kind):
+def get_decomp(kind:Decomp):
     return _REGISTRY[kind].fn
 
-def get_validity_checker(kind):
+def get_validity_checker(kind:Decomp):
     return _REGISTRY[kind].validation_fn
 
-def get_alpha(kind):
+def get_alpha(kind:Decomp):
     return _REGISTRY[kind].alpha
 
-def get_reference(kind):
+def get_reference(kind:Decomp):
     return _REGISTRY[kind].reference
 
-def get_decomp_spec(kind):
+def get_decomp_spec(kind:Decomp):
     return _REGISTRY[kind]
 
 #########################################################################
