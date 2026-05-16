@@ -18,7 +18,7 @@ MAGIC_PHI = 10 - 7*sq2
     alpha=0.4678924870096,
     reference="https://arxiv.org/abs/1506.01396, https://arxiv.org/abs/2109.01076"
 )
-def decompose(g:BaseGraph[VT,ET], verts:VT) -> SumGraph:
+def decompose(g:BaseGraph[VT,ET], verts:List[VT]) -> SumGraph:
     """This function takes in a ZX-diagram in graph-like form 
     (all spiders fused, only Z spiders, only H-edges between spiders),
     and splits it into a sum over smaller diagrams by using the magic
@@ -35,7 +35,7 @@ def decompose(g:BaseGraph[VT,ET], verts:VT) -> SumGraph:
     return SumGraph(graphs)
 
 @register_validity_checker(Decomp.BSS)
-def check_valid(g:BaseGraph[VT,ET], verts:VT) -> bool:
+def check_valid(g:BaseGraph[VT,ET], verts:List[VT]) -> bool:
     assert len(verts)==6, f"Invalid application of BSS decomposition. Expected 6 vertices but {len(verts)} were specified."
     assert all(v in g.vertices() for v in verts), f"Invalid application of BSS decomposition. One or more vertex among {verts} is not a valid vertex in {g}."
     assert all(g.type(v)==VertexType.Z for v in verts), f"Invalid application of BSS decomposition. Specified vertices {verts} are not all Z-spiders."

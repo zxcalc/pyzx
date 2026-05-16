@@ -42,8 +42,8 @@ def get_reference(kind):
 def get_strategy_spec(kind):
     return _REGISTRY[kind]
 
-####################################################################
-# Import strategy modules so their @register_decomp decorators run #
-####################################################################
+######################################################################
+# Import strategy modules so their @register_strategy decorators run #
+######################################################################
 from . import bss
 from . import cut_random

@@ -26,8 +26,8 @@ def decompose(g:BaseGraph[VT,ET], v:VT, neighs:List[VT]=[], ph:FractionLike=0) -
     v_left  = g.add_vertex(qubit=g.qubit(v),row=g.row(v)-0.5,ty=g.type(v),phase=phase_left)
     v_right = g.add_vertex(qubit=g.qubit(v),row=g.row(v)+0.5,ty=g.type(v),phase=phase_right)
     
-    for i in neighs_left:  g.add_edge((v_left,i),g.edge_type((v,i)))
-    for i in neighs_right: g.add_edge((v_right,i),g.edge_type((v,i)))
+    for i in neighs_left:  g.add_edge((v_left,i),g.edge_type(g.edge(v,i)))
+    for i in neighs_right: g.add_edge((v_right,i),g.edge_type(g.edge(v,i)))
     
     g.remove_vertex(v)
     

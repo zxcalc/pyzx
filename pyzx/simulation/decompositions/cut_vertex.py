@@ -24,7 +24,7 @@ def decompose(g:BaseGraph[VT,ET], v:VT) -> SumGraph:
     vtype = toggle_vertex(g.type(v))
 
     for i in g.neighbors(v):
-        etype = g.edge_type((v,i)) # maintain edge type
+        etype = g.edge_type(g.edge(v,i)) # maintain edge type
         qubit = ave_pos(g.qubit(v),g.qubit(i),1/2)
         row   = ave_pos(g.row(v),g.row(i),1/2)
         

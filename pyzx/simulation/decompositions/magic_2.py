@@ -10,7 +10,7 @@ from fractions import Fraction
     alpha=0.5,
     reference="https://arxiv.org/pdf/2202.09202, https://arxiv.org/pdf/2109.01076"
 )
-def decompose(g:BaseGraph[VT,ET], verts:VT) -> SumGraph:
+def decompose(g:BaseGraph[VT,ET], verts:List[VT]) -> SumGraph:
     graphs = []
     replace_functions = [replace_2_S, replace_2_N]
 
@@ -21,7 +21,7 @@ def decompose(g:BaseGraph[VT,ET], verts:VT) -> SumGraph:
     return SumGraph(graphs)
 
 @register_validity_checker(Decomp.MAGIC_2)
-def check_valid(g:BaseGraph[VT,ET], verts:VT) -> bool:
+def check_valid(g:BaseGraph[VT,ET], verts:List[VT]) -> bool:
     assert len(verts)==2, f"Invalid application of magic2 decomposition. Expected 2 vertices but {len(verts)} were specified."
     assert all(v in g.vertices() for v in verts), f"Invalid application of magic2 decomposition. One or more vertex among {verts} is not a valid vertex in {g}."
     return True

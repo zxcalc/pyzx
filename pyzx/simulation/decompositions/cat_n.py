@@ -14,6 +14,7 @@ def decompose(g:BaseGraph[VT,ET], v:VT) -> SumGraph:
         case 4: return cat_4.decompose(g=g,v=v)
         case 5: return cat_5.decompose(g=g,v=v)
         case 6: return cat_6.decompose(g=g,v=v)
+    raise ValueError(f"Invalid vertex degree for cat{g.vertex_degree(v)} decomposition.")
 
 @register_validity_checker(Decomp.CAT_N)
 def check_valid(g:BaseGraph[VT,ET], v:VT) -> bool:

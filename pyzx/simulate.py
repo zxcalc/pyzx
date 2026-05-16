@@ -28,9 +28,10 @@ from .simulation import Decomp, Strategy, apply_decomp, full_decompose
 from .simulation import common
 from .simulation.common import SumGraph
 import warnings
-from typing import List
+from typing import List, Any
 from . import simplify
 from .graph.base import BaseGraph,VT,ET
+from .simulation.strategies import bss
 
 def calculate_path_sum(g: BaseGraph[VT,ET]) -> complex:
     warnings.warn(("pyzx.simulate.calculate_path_sum(g) is deprecated. Use pyzx.simulation.common.calculate_path_sum(g) instead."),DeprecationWarning,stacklevel=2)
@@ -39,6 +40,10 @@ def calculate_path_sum(g: BaseGraph[VT,ET]) -> complex:
 def find_stabilizer_decomp(g: BaseGraph[VT,ET]) -> List[BaseGraph[VT,ET]]:
     warnings.warn(("pyzx.simulate.find_stabilizer_decomp(g) is deprecated. Use pyzx.simulation.full_decompose(Strategy.BSS,g) instead."),DeprecationWarning,stacklevel=2)
     return full_decompose(Strategy.BSS,g)
+
+def replace_magic_states(g: BaseGraph[VT,ET], pick_random:Any=False) -> SumGraph:
+    warnings.warn(("pyzx.simulate.replace_magic_states(g,pick_random) is deprecated. Use pyzx.simulation.strategies.bss.replace_magic_states(g,pick_random) instead."),DeprecationWarning,stacklevel=2)
+    return bss.replace_magic_states(g,pick_random)
 
 def max_terms_needed(g: BaseGraph[VT,ET]) -> int:
     """Returns the maximum amount of stabilizer terms that g could be split in
