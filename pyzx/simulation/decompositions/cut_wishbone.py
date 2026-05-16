@@ -1,3 +1,9 @@
+"""
+Special case of edge cutting whereby the selected spider may be unfused, arbitrarily separated its phase and neighbourhood into
+two spiders connected by a simple edge which in turn may be cut to separate these two spiders at the cost of 2 terms. This was
+used in https://arxiv.org/abs/2412.17182 and https://www.cs.ox.ac.uk/people/aleks.kissinger/theses/ahmad-thesis.pdf.
+"""
+
 from . import Decomp, register_decomp, register_validity_checker
 from ...graph.base import BaseGraph,VT,ET
 from ...utils import VertexType, FractionLike

@@ -1,3 +1,8 @@
+"""
+This decomposition allows a vertex to be cut, producing two terms, as used in https://arxiv.org/pdf/2403.10964
+and https://www.cs.ox.ac.uk/people/aleks.kissinger/theses/codsi-thesis.pdf.
+"""
+
 from . import Decomp, register_decomp, register_validity_checker
 from ...graph.base import BaseGraph,VT,ET
 from ...utils import VertexType, ave_pos, toggle_vertex

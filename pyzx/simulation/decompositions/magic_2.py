@@ -1,3 +1,7 @@
+"""
+Apply the 2-to-2 decomposition shown on page 5 of https://arxiv.org/pdf/2202.09202.
+"""
+
 from . import Decomp, register_decomp, register_validity_checker
 from ...graph.base import BaseGraph,VT,ET
 from ..common import SumGraph, sq2

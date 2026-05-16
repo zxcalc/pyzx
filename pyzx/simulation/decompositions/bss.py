@@ -1,3 +1,7 @@
+"""
+The Bravyi-Smith-Smolin decomposition introduced in https://arxiv.org/abs/1506.01396 and applied with ZX-Calculus in https://arxiv.org/abs/2109.01076.
+"""
+
 from . import Decomp, register_decomp, register_validity_checker
 from ...graph.base import BaseGraph,VT,ET
 from ..common import SumGraph, sq2

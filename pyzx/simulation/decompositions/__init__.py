@@ -1,3 +1,8 @@
+"""
+This file handles the overhead for managing decompositions. See pyzx.simulation.__init__.py for details on how to add
+a new decomposition. 
+"""
+
 from enum import Enum
 import inspect
 import warnings

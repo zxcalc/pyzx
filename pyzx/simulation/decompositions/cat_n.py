@@ -1,3 +1,8 @@
+"""
+This will apply the appropriate cat_n state decomposition from https://arxiv.org/pdf/2202.09202 for any n in (3,4,5,6),
+determined by the degree of the sepcified spider.
+"""
+
 from . import Decomp, register_decomp, register_validity_checker, cat_3, cat_4, cat_5, cat_6
 from ...graph.base import BaseGraph,VT,ET
 from ..common import SumGraph, check_catn

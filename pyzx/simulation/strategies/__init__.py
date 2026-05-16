@@ -1,6 +1,10 @@
+"""
+This file handles the overhead for managing decomposition strategies. See pyzx.simulation.__init__.py for details on how to add
+a new decomposition strategy. 
+"""
+
 from enum import Enum
-from typing import Callable, List
-from ...graph.base import BaseGraph,VT,ET
+from typing import Callable
 
 class Strategy(Enum):
     BSS = "bss"

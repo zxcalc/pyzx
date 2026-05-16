@@ -1,4 +1,7 @@
-# Moved from pyzx/simulate.py
+"""
+Common data structures and helper functions used by many or all decompositions and/or strategies can be included here.
+This file largely contains code copied from the now-deprecated pyzx.simulate.py file.
+"""
 
 import random
 import math

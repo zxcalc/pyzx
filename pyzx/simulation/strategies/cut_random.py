@@ -1,3 +1,7 @@
+"""
+Recursively cut random spiders and simplify the resulting graphs until every term is reducible to a scalar.
+"""
+
 import random
 from ..decompositions import Decomp, apply_decomp
 from . import Strategy, register_strategy

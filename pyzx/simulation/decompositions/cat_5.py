@@ -1,3 +1,7 @@
+"""
+The cat5 state decomposition introduced in https://arxiv.org/pdf/2202.09202.
+"""
+
 from . import Decomp, register_decomp, register_validity_checker
 from ...graph.base import BaseGraph,VT,ET
 from ...utils import EdgeType
