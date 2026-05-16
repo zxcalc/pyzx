@@ -1,5 +1,5 @@
 """
-Apply the decomposition strategy introduced in Kissinger and van de Wetering 2021 (https://arxiv.org/pdf/2109.01076), recusrively
+Apply the decomposition strategy introduced in Kissinger and van de Wetering 2021 (https://arxiv.org/pdf/2109.01076), recursively
 applying the BSS decomposition to random sets of 6 T-spiders and, when the T-count falls below 6, using either the magic_2 or
 vertex cutting decomposition as a fallback.
 """

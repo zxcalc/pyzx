@@ -8,6 +8,7 @@ import inspect
 import warnings
 from typing import Callable
 from ..common import SumGraph
+from ...graph.base import BaseGraph,VT,ET
 
 class Decomp(Enum):
     BSS          = "bss"
@@ -23,31 +24,33 @@ class Decomp(Enum):
     CUT_WISHBONE = "cut_wishbone"
 
 class DecompSpec:
-    def __init__(self, fn:Callable|None=None, validation_fn:Callable|None=None, alpha:float|None=None, reference:str=""):
+    def __init__(self, fn:Callable|None=None, validation_fn:Callable|None=None, alpha:float|None=None, reference:str="") -> None:
         self.fn = fn
         self.validation_fn = validation_fn
         self.alpha = alpha
         self.reference = reference
 
-_REGISTRY = {}
+_REGISTRY: dict[Decomp,DecompSpec] = {} # this stores all the loaded decompositions, indexable by their enum names
 
-def apply_decomp(kind:Decomp, *args, **kwargs) -> SumGraph:
+def apply_decomp(kind:Decomp, g:BaseGraph[VT,ET], *args, **kwargs) -> SumGraph:
     """Applies an instance of the specified decomposition to the provided graph with the decomposition-specific arguments."""
     if isinstance(kind, str):
         kind = Decomp(kind)
     
     validity_fn = get_validity_checker(kind)
     decomp_fn   = get_decomp(kind)
-    if (validity_fn is not None and not validity_fn(*args, **kwargs)):
+    if (validity_fn is not None and not validity_fn(g, *args, **kwargs)):
         # Each decomposition's validity checker function should provide its own, more specific, error messages.
         # But this generic error message is included as a backup in case a decomposition is added whose validity checker simply returns false.
         raise RuntimeError(f"Invalid application of decomposition {kind} with args={args} and kwargs={kwargs}.")
-    return decomp_fn(*args, **kwargs)
+    if (decomp_fn is None):
+        raise RuntimeError(f"Decomposition {kind} is not properly registered.")
+    return decomp_fn(g, *args, **kwargs)
 
-def check_valid(kind:Decomp, *args, **kwargs) -> bool:
+def check_valid(kind:Decomp, g:BaseGraph[VT,ET], *args, **kwargs) -> bool:
     validity_fn = get_validity_checker(kind)
     if (validity_fn is not None):
-        return validity_fn(*args, **kwargs)
+        return validity_fn(g, *args, **kwargs)
     else:
         warnings.warn(
             f"Unable to validate as decomposition {kind} has no validity checker function. Assumed valid.",
@@ -56,12 +59,31 @@ def check_valid(kind:Decomp, *args, **kwargs) -> bool:
         )
     return True
 
-def _get_or_create_spec(kind:Decomp):
+def _get_or_create_spec(kind:Decomp) -> DecompSpec:
     if kind not in _REGISTRY:
         _REGISTRY[kind] = DecompSpec()
     return _REGISTRY[kind]
 
-def register_decomp(kind:Decomp, alpha:float|None=None, reference:str=""):
+def register_decomp(kind:Decomp, alpha:float|None=None, reference:str="") -> Callable:
+    """Registers a decomposition.
+
+    This decorator associates a decomposition function with a ``Decomp``
+    enum entry and stores its metadata in the decomposition registry.
+
+    When creating a new decomposition (e.g. MY_DECOMP) as an e.g. my_decomp.py file the simulation/decompositions folder,
+    one should include @register_decomp(Decomp.MY_DECOMP,...) immediately before defining the function that applies the
+    decomposition so that this function may be called via simulation.apply_decomp(Decomp.MY_DECOMP,g,...).
+
+    See simulation.decompositions.cat_3.py for a minimal example.
+
+    Args:
+        kind: The enum entry of the decomposition being registered.
+        alpha: Optional alpha coefficient associated with the decomposition.
+        reference: Optional literature reference or citation associated with the decomposition.
+
+    Returns:
+        A decorator which registers the decorated decomposition function.
+    """
     def decorator(fn):
         spec = _get_or_create_spec(kind)
         spec.fn = fn
@@ -71,7 +93,26 @@ def register_decomp(kind:Decomp, alpha:float|None=None, reference:str=""):
         return fn
     return decorator
 
-def register_validity_checker(kind:Decomp):
+def register_validity_checker(kind:Decomp) -> Callable:
+    """Registers a validity checker for the decomposition.
+
+    This decorator associates a validity checker function with a ``Decomp`` enum entry.
+
+    When creating a new decomposition (e.g. MY_DECOMP) as a my_decomp.py file the simulation/decompositions folder,
+    one should include @register_validity_checker(Decomp.MY_DECOMP) immediately before defining the function that
+    verifies whether an attempted application of the decomposition is valid. In this way, the decomposition's validity
+    checker function may be called via simulation.check_valid(Decomp.MY_DECOMP,g,...).
+
+    It is not strictly necessary for a decomposition to include a validity checker but it is highly recommended.
+
+    See simulation.decompositions.cat_3.py for a minimal example.
+
+    Args:
+        kind: The enum entry of the decomposition being registered.
+
+    Returns:
+        A decorator which registers the decorated validity checker function.
+    """
     def decorator(fn):
         spec = _get_or_create_spec(kind)
         spec.validation_fn = fn
@@ -79,7 +120,7 @@ def register_validity_checker(kind:Decomp):
         return fn
     return decorator
 
-def _check_signatures_match(kind:Decomp,spec):
+def _check_signatures_match(kind:Decomp,spec) -> bool:
     if spec.fn is not None and spec.validation_fn is not None and not (inspect.signature(spec.fn).parameters == inspect.signature(spec.validation_fn).parameters):
         raise TypeError(
             f"Signature parameters mismatch for decomposition {kind}. "
@@ -88,19 +129,19 @@ def _check_signatures_match(kind:Decomp,spec):
         )
     return True
 
-def get_decomp(kind:Decomp):
+def get_decomp(kind:Decomp) -> Callable|None:
     return _REGISTRY[kind].fn
 
-def get_validity_checker(kind:Decomp):
+def get_validity_checker(kind:Decomp) -> Callable|None:
     return _REGISTRY[kind].validation_fn
 
-def get_alpha(kind:Decomp):
+def get_alpha(kind:Decomp) -> float|None:
     return _REGISTRY[kind].alpha
 
-def get_reference(kind:Decomp):
+def get_reference(kind:Decomp) -> str:
     return _REGISTRY[kind].reference
 
-def get_decomp_spec(kind:Decomp):
+def get_decomp_spec(kind:Decomp) -> DecompSpec:
     return _REGISTRY[kind]
 
 #########################################################################

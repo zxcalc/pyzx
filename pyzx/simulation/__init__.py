@@ -33,6 +33,8 @@ from .decompositions import get_reference as _get_decomp_reference
 from .strategies import get_reference as _get_strategy_reference
 
 def get_reference(kind:Decomp|Strategy) -> str:
+    """Returns a string listing any relevant links to publications associated with the specified decomposition or strategy.
+    """
     if type(kind) == Decomp:
         return _get_decomp_reference(kind)
     elif type(kind) == Strategy:
