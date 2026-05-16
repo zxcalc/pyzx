@@ -34,7 +34,7 @@ def replace_magic_states(g: BaseGraph[VT,ET], pick_random:Any=False) -> SumGraph
     and splits it into a sum over smaller diagrams by using the magic
     state decomposition of Bravyi, Smith, and Smolin (2016), PRX 6, 021043.
     """
-    g = g.copy() # We copy here, so that the vertex labels we get will be the same ones if we copy the graph again
+    #g = g.copy() # We copy here, so that the vertex labels we get will be the same ones if we copy the graph again # MS: I think this is no longer needed as we use .clone() elsewhere now which avoids this problem
     phases = g.phases()
 
     # First we find 6 T-like spiders

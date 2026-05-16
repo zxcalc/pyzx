@@ -32,7 +32,7 @@ def decompose(g:BaseGraph[VT,ET], verts:List[VT]) -> SumGraph:
     replace_functions = [replace_B60, replace_B66, replace_E6, replace_O6, replace_K6, replace_phi1, replace_phi2]
 
     for func in replace_functions:
-        h = func(g.copy(), verts)
+        h = func(g.clone(), verts)
         h.scalar.add_float(MAGIC_GLOBAL)
         graphs.append(h)
 

@@ -19,7 +19,7 @@ def decompose(g:BaseGraph[VT,ET], verts:List[VT]) -> SumGraph:
     replace_functions = [replace_2_S, replace_2_N]
 
     for func in replace_functions:
-        h = func(g.copy(), verts)
+        h = func(g.clone(), verts)
         graphs.append(h)
 
     return SumGraph(graphs)
