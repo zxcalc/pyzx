@@ -10,7 +10,7 @@ It is organised into several submodules:
 - ``strategies``:
   Higher-level decomposition strategies which recursively apply decompositions to fully reduce diagrams.
 
-- ``simulate``:
+- ``simulation``:
   User-facing simulation API and helper utilities.
 
 To include a new decomposition, create a new file simulation/decompositions/{decomp_name}.py and follow the existing decompositions
