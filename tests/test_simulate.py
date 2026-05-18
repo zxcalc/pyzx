@@ -46,7 +46,7 @@ def rand_graph(qubits=5,depth=10):
     g.apply_effect('0'*qubits)
     return g
     
-def round_complex(scalar,decimal_places):
+def round_complex(scalar,decimal_places) -> complex:
     return round(scalar.real,decimal_places) + round(scalar.imag,decimal_places)*1j
 
 @unittest.skipUnless(np, "numpy needs to be installed for this to run")
@@ -64,12 +64,12 @@ class TestSimulate(unittest.TestCase):
         for i in range(1,repeats):
             g = rand_graph() # generate random Clifford graph
             v_cut = random.randrange(len(g.vertices()))
-            g0,g1 = cut_vertex(g,v_cut) # apply random vertex cut
-            
-            for g_i in (g,g0,g1): full_reduce(g_i)
+            gs = cut_vertex(g,v_cut) # apply random vertex cut
+            gs.full_reduce()
+            full_reduce(g)
             
             scal    = round_complex(g.scalar.to_number(),3) # the scalar from fully reducing g
-            scalCut = round_complex(g0.scalar.to_number()+g1.scalar.to_number(),3) # the sum of scalars from the cut graph
+            scalCut = round_complex(sum(g.scalar.to_number() for g in gs.graphs),3) # the sum of scalars from the cut graph
             assert(scal == scalCut)
         
     def test_edge_cut(self,repeats=20):
@@ -79,11 +79,12 @@ class TestSimulate(unittest.TestCase):
             rand_neigh = list(g.neighbors(rand_v))[random.randrange(len(g.neighbors(rand_v)))]
             e_cut = (rand_v,rand_neigh)  # apply random edge cut
             
-            g0,g1 = cut_edge(g,e_cut)
-            for g_i in (g,g0,g1): full_reduce(g_i)
-            
+            gs = cut_edge(g,e_cut)
+            gs.full_reduce()
+            full_reduce(g)
+
             scal    = round_complex(g.scalar.to_number(),3) # the scalar from fully reducing g
-            scalCut = round_complex(g0.scalar.to_number()+g1.scalar.to_number(),3) # the sum of scalars from the cut graph
+            scalCut = round_complex(sum(g.scalar.to_number() for g in gs.graphs),3) # the sum of scalars from the cut graph
             assert(scal == scalCut)
 
     def test_cat_decomp_scalar(self) -> None:
