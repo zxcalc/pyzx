@@ -15,8 +15,6 @@ Hence, occasionally changes will be backwards incompatible (although they will a
 - Refactored the simulation API to make it more formulaic and extensible. Individual decompositions are no longer included as distinct functions inside pyzx.simulate.py but now are provided their own individual files under pyzx.simulation.decompositions and share a common caller function. For example, pyzx.simulate.apply_cat3(g,v) is instead now pyzx.simulation.apply_decomp(Decomp.CAT_3,g,v), etc. (by @mjsutcliffe99).
 - Likewise, decomposition strategies are separated into individual files under pyzx.simulation.strategies and called similarly through e.g. zx.simulation.full_decompose(Strategy.BSS,g). (by @mjsutcliffe99).
 
-## [Unreleased]
-
 ### Fixed
 - Multigraph handling of parallel mixed simple/Hadamard edges in tensor contraction, several rewrite rules, and `PauliWeb` (by @dlyongemallo).
 
