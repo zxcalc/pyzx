@@ -16,7 +16,7 @@ class StrategySpec:
         self.fn = fn
         self.reference = reference
 
-_REGISTRY = {} # this stores all the loaded decomposition strategies, indexable by their enum names
+_REGISTRY: dict[Strategy,StrategySpec] = {} # this stores all the loaded decomposition strategies, indexable by their enum names
 
 def simulate(kind:Strategy, g:BaseGraph[VT,ET], *args, **kwargs) -> complex:
     """Runs full_decompose and sums the resulting scalars to return the probability amplitude.
