@@ -45,7 +45,11 @@ def full_decompose(kind:Strategy, g:BaseGraph[VT,ET], *args, **kwargs) -> List[B
     """
     if isinstance(kind, str):
         kind = Strategy(kind)
-    return get_strategy(kind)(g, *args, **kwargs)
+    
+    strat_fn = get_strategy(kind)
+    if (strat_fn is None):
+        raise RuntimeError(f"Decomposition strategy {kind} is not properly registered.")
+    return strat_fn(g, *args, **kwargs)
 
 def register_strategy(kind:Strategy, reference:str="") -> Callable:
     """Registers a decomposition strategy.
@@ -72,7 +76,7 @@ def register_strategy(kind:Strategy, reference:str="") -> Callable:
         return fn
     return decorator
 
-def get_strategy(kind:Strategy) -> Callable:
+def get_strategy(kind:Strategy) -> Callable|None:
     return _REGISTRY[kind].fn
 
 def get_reference(kind:Strategy) -> str:
