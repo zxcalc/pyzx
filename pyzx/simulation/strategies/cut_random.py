@@ -17,7 +17,7 @@ from typing import List
 def decompose(g:BaseGraph[VT,ET]) -> List[BaseGraph[VT,ET]]: #todo - return a SumGraph rather than a List
     if tcount(g) == 0: return [g]
     gsum = cut_random_spider(g)
-    gsum.reduce_scalar()
+    gsum.full_reduce()
     output = []
     for h in gsum.graphs:
         if h.scalar.is_zero: continue
