@@ -8,6 +8,9 @@ Hence, occasionally changes will be backwards incompatible (although they will a
 
 ## [Unreleased]
 
+### Added
+- The circuit generation functions in pyzx.generate now accept an additional optional argument, sigma, allowing a CNOT spread based on a Gaussian distribution rather than a uniform distribution for control over how localised the CNOTs should be. (by @mjsutcliffe99).
+
 ### Deprecated
 - Deprecated pyzx.simulate.py as it is starting to get bloated with all the new decompositions and strategies that have been added in recent years. All the functions in this file should still work (with deprecation warnings) but are rerouted to their new homes under the pyzx.simulation folder. (by @mjsutcliffe99).
 

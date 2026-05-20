@@ -21,7 +21,7 @@ def decompose(g:BaseGraph[VT,ET]) -> List[BaseGraph[VT,ET]]: #todo - return a Su
     """Apply the Kissinger and van de Wetering (2021) decomposition strategy based on BSS with a Magic2 and vertex cutting fallback when T-count < 6."""
     if tcount(g) == 0: return [g]
     gsum = replace_magic_states(g, True)
-    gsum.reduce_scalar()
+    gsum.full_reduce()
     output = []
     for h in gsum.graphs:
         if h.scalar.is_zero: continue
@@ -77,7 +77,6 @@ def replace_magic_states(g: BaseGraph[VT,ET], pick_random:Any=False) -> SumGraph
     if num_replace == 6:
         return apply_decomp(Decomp.BSS, g=g, verts=candidates)
     elif num_replace == 2:
-        #return apply_decomp(Decomp.MAGIC_2, g=g, verts=candidates)
-        return apply_decomp(Decomp.CUT_VERTEX, g=g, v=candidates[0]) #temp
+        return apply_decomp(Decomp.MAGIC_2, g=g, verts=candidates)
     else:
         return apply_decomp(Decomp.CUT_VERTEX, g=g, v=candidates[0])
