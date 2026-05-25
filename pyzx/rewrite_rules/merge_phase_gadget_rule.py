@@ -96,8 +96,8 @@ def match_phase_gadgets(g: BaseGraph[VT,ET], vertices:Optional[List[VT]]=None) -
                         gadget_phase: FractionLike = phases[v]
                     else:
                         gadget_phase = new_const(cast(Union[int, Fraction], phases[v]))
-                    neg_gadget = -gadget_phase
-                    new_phase = gadget_phase + (neg_gadget - gadget_phase) * phases[n]
+                  
+                    new_phase = gadget_phase + (-2 * gadget_phase) * phases[n]
                     m.append((v, n, new_phase, [], []))
                 else:
                     m.append((v, n, -phases[v], [], []))
