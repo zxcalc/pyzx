@@ -90,8 +90,10 @@ def match_phase_gadgets(g: BaseGraph[VT,ET], vertices:Optional[List[VT]]=None) -
                 g.scalar.add_phase(phases[v])
                 g.phase_negate(v)
                 if isinstance(phases[n], Poly):
-                    
-                    gadget_phase: FractionLike = phases[v] if isinstance(phases[v], Poly) else new_const(phases[v])
+                    if isinstance(phases[v], Poly):
+                        gadget_phase: FractionLike = phases[v]
+                    else:
+                        gadget_phase = new_const(phases[v])
                     neg_gadget = -gadget_phase
                     new_phase = gadget_phase + (neg_gadget - gadget_phase) * phases[n]
                     m.append((v, n, new_phase, [], []))
