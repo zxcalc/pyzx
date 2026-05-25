@@ -98,11 +98,11 @@ def match_phase_gadgets(g: BaseGraph[VT,ET], vertices:Optional[List[VT]]=None) -
                 else:
                     m.append((v, n, -phases[v], [], []))
         else:
-            totphase = Fraction(0)
+            totphase: FractionLike = Fraction(0)
             for n in gad:
                 gadget_phase = phases[gadgets[n]]
                 if isinstance(phases[n], Poly):
-                    gp = new_const(gadget_phase) if not isinstance(gadget_phase, Poly) else gadget_phase
+                    gp: FractionLike = gadget_phase if isinstance(gadget_phase, Poly) else new_const(gadget_phase)
                     totphase += gp + (-gp - gp) * phases[n]
                 else:
                     if phases[n] == 0:
