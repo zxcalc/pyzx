@@ -21,7 +21,7 @@ This rule acts on an entire graph and the matcher modifies the graph, so this ru
 using the using simplify.gadget_simp(g) or simplify.gadget_simp.apply(g).
 """
 
-from typing import Tuple, List, Dict, FrozenSet
+from typing import Tuple, List, Dict, FrozenSet, Union, cast
 from typing import Optional
 
 from pyzx.utils import  FractionLike, phase_is_pauli
@@ -93,7 +93,7 @@ def match_phase_gadgets(g: BaseGraph[VT,ET], vertices:Optional[List[VT]]=None) -
                     if isinstance(phases[v], Poly):
                         gadget_phase: FractionLike = phases[v]
                     else:
-                        gadget_phase = new_const(phases[v])
+                        gadget_phase = new_const(cast(Union[int, Fraction], phases[v]))
                     neg_gadget = -gadget_phase
                     new_phase = gadget_phase + (neg_gadget - gadget_phase) * phases[n]
                     m.append((v, n, new_phase, [], []))
