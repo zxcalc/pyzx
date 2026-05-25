@@ -1,7 +1,8 @@
 import sys
 import unittest
-from fractions import Fraction
 import pyzx as zx
+
+from fractions import Fraction
 from pyzx.symbolic import Poly, Term, Var, VarRegistry, new_const, new_var, parse
  
 if __name__ == '__main__':
