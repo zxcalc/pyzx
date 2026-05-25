@@ -86,10 +86,12 @@ def match_phase_gadgets(g: BaseGraph[VT,ET], vertices:Optional[List[VT]]=None) -
         if len(gad) == 1:
             n = gad[0]
             v = gadgets[n]
-            if phases[n] != 0 or isinstance(phases[n], Poly): # If the phase of the axel vertex is pi, we change the phase of the gadget
+            axel_phase = phases[n]
+            is_symbolic = isinstance(axel_phase, Poly) and len(axel_phase.free_vars()) > 0
+            if axel_phase != 0 or is_symbolic:
                 g.scalar.add_phase(phases[v])
                 g.phase_negate(v)
-                if isinstance(phases[n], Poly):
+                if is_symbolic:
                     if isinstance(phases[v], Poly):
                         gadget_phase: FractionLike = phases[v]
                     else:
