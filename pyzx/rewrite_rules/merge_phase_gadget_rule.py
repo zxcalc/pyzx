@@ -27,6 +27,7 @@ from typing import Optional
 from pyzx.utils import  FractionLike, phase_is_pauli
 from pyzx.graph.base import BaseGraph, VT, ET
 from pyzx.symbolic import Poly, new_const
+from fractions import Fraction
 
 
 __all__ = ['merge_phase_gadgets_for_simp',
@@ -90,14 +91,14 @@ def match_phase_gadgets(g: BaseGraph[VT,ET], vertices:Optional[List[VT]]=None) -
                 g.phase_negate(v)
                 if isinstance(phases[n], Poly):
                     
-                    gadget_phase = new_const(phases[v]) if not isinstance(phases[v], Poly) else phases[v]
+                    gadget_phase: FractionLike = phases[v] if isinstance(phases[v], Poly) else new_const(phases[v])
                     neg_gadget = -gadget_phase
                     new_phase = gadget_phase + (neg_gadget - gadget_phase) * phases[n]
                     m.append((v, n, new_phase, [], []))
                 else:
                     m.append((v, n, -phases[v], [], []))
         else:
-            totphase = 0
+            totphase = Fraction(0)
             for n in gad:
                 gadget_phase = phases[gadgets[n]]
                 if isinstance(phases[n], Poly):
