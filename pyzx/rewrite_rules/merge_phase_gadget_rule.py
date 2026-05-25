@@ -26,7 +26,7 @@ from typing import Optional
 
 from pyzx.utils import  FractionLike, phase_is_pauli
 from pyzx.graph.base import BaseGraph, VT, ET
-from pyzx.symbolic import Poly
+from pyzx.symbolic import Poly, new_const
 
 
 __all__ = ['merge_phase_gadgets_for_simp',
@@ -85,12 +85,30 @@ def match_phase_gadgets(g: BaseGraph[VT,ET], vertices:Optional[List[VT]]=None) -
         if len(gad) == 1:
             n = gad[0]
             v = gadgets[n]
-            if phases[n] != 0: # If the phase of the axel vertex is pi, we change the phase of the gadget
+            if phases[n] != 0 or isinstance(phases[n], Poly): # If the phase of the axel vertex is pi, we change the phase of the gadget
                 g.scalar.add_phase(phases[v])
                 g.phase_negate(v)
-                m.append((v,n,-phases[v],[],[]))
+                if isinstance(phases[n], Poly):
+                    
+                    gadget_phase = new_const(phases[v]) if not isinstance(phases[v], Poly) else phases[v]
+                    neg_gadget = -gadget_phase
+                    new_phase = gadget_phase + (neg_gadget - gadget_phase) * phases[n]
+                    m.append((v, n, new_phase, [], []))
+                else:
+                    m.append((v, n, -phases[v], [], []))
         else:
-            totphase = sum((1 if phases[n]==0 else -1)*phases[gadgets[n]] for n in gad)%2
+            totphase = 0
+            for n in gad:
+                gadget_phase = phases[gadgets[n]]
+                if isinstance(phases[n], Poly):
+                    gp = new_const(gadget_phase) if not isinstance(gadget_phase, Poly) else gadget_phase
+                    totphase += gp + (-gp - gp) * phases[n]
+                else:
+                    if phases[n] == 0:
+                        totphase += gadget_phase
+                    else:
+                        totphase += -gadget_phase
+            totphase = totphase % 2
             for n in gad:
                 if phases[n] != 0:
                     g.scalar.add_phase(phases[gadgets[n]])

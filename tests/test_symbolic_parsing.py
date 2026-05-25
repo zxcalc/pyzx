@@ -1,9 +1,9 @@
 import sys
 import unittest
 from fractions import Fraction
-
+import pyzx as zx
 from pyzx.symbolic import Poly, Term, Var, VarRegistry, new_const, new_var, parse
-
+ 
 if __name__ == '__main__':
     sys.path.append('..')
     sys.path.append('.')
@@ -318,6 +318,33 @@ class TestPolyConjugate(unittest.TestCase):
     def test_conjugate_pure_imaginary(self):
         p = Poly([(2j, Term([]))])
         self.assertEqual(p.conjugate().terms[0][0], -2j)
+
+class TestSymbolicBooleanRewrite(unittest.TestCase):
+
+    def test_t_injection_reduces_correctly(self):
+        """T injection should reduce to phase pi/4 regardless of measurement result."""
+
+        circ = zx.qasm("""
+OPENQASM 2.0;
+include "qelib1.inc";
+qreg q[2];
+creg c[1];
+reset q[1];
+h q[1];
+t q[1];
+cx q[0],q[1];
+measure q[1] -> c[0];
+if (c==1) s q[0];
+""")
+        g = circ.to_graph()
+        zx.full_reduce(g)
+
+        phases = g.phases()
+        non_zero = {v: p for v, p in phases.items() if p != 0}
+        self.assertEqual(len(non_zero), 1, f"Expected 1 non-zero phase, got {non_zero}")
+
+        actual_phase = list(non_zero.values())[0]
+        self.assertEqual(actual_phase, Fraction(1, 4), f"Expected Fraction(1,4), got {actual_phase}")
 
 
 
