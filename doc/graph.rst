@@ -4,7 +4,7 @@ ZX-diagrams in PyZX and how to modify them
 ==========================================
 
 
-ZX-diagrams are represented in PyZX by instances of the ``BaseGraph`` class, and are stored as simple graphs with some additional data on the vertices and edges. There are 4 different types of vertices: boundaries, Z-spiders, X-spiders and H-boxes. Boundary vertices represent an input or an output to the circuit and carry no further information. Z- and X-spider are the usual bread and butter of ZX-diagrams. H-boxes are used in ZH-diagrams as a generalisation of the Hadamard gate. Non-boundary vertices carry additional information in the form of a `phase`. This is a fraction ``q`` representing a phase ``pi*q``.
+ZX-diagrams are represented in PyZX by instances of the ``BaseGraph`` class. The default backend stores diagrams as simple graphs with some additional data on the vertices and edges, while other backends can choose different internal representations. There are 4 different types of vertices: boundaries, Z-spiders, X-spiders and H-boxes. Boundary vertices represent an input or an output to the circuit and carry no further information. Z- and X-spider are the usual bread and butter of ZX-diagrams. H-boxes are used in ZH-diagrams as a generalisation of the Hadamard gate. Non-boundary vertices carry additional information in the form of a `phase`. This is a fraction ``q`` representing a phase ``pi*q``.
 
 As a simple example, we could have a graph with 3 vertices. The first being a boundary acting as input, the last being a boundary acting as output. If the middle one is a Z-vertex with phase ``a`` that is connected to both the input and output, then this graph represents a Z[``pi*a``]-phase gate.
 
@@ -33,7 +33,45 @@ Similarly, the type of an edge is stored as one of the integers ``EdgeType.SIMPL
 Backends
 --------
 
-ZX-graphs can be represented internally in different ways. The only fully functioning backend right now is :class:`pyzx.graph.graph_s.GraphS`, which is written entirely in Python. A partial implementation using the ``python-igraph`` package is also available as :class:`pyzx.graph.graph_ig.GraphIG`. A new backend can be constructed by subclassing :class:`pyzx.graph.base.BaseGraph`.
+ZX-graphs can be represented internally in different ways. The default backend is :class:`pyzx.graph.graph_s.GraphS`, which is written entirely in Python and stores at most one edge between a pair of vertices. The :class:`pyzx.graph.multigraph.Multigraph` backend is also available when you need to keep parallel edges explicitly. A partial implementation using the ``python-igraph`` package is also available as :class:`pyzx.graph.graph_ig.GraphIG`. A new backend can be constructed by subclassing :class:`pyzx.graph.base.BaseGraph`.
+
+Multigraph backend
+^^^^^^^^^^^^^^^^^^
+
+A simple graph stores only one edge between two vertices. In the default ``GraphS`` backend, adding another edge between vertices that are already connected either simplifies the edge by the ZX rules or raises an error when the parallel edge cannot be reduced. This is useful for ordinary ZX-diagram manipulation, where parallel edges between spiders are normally simplified away.
+
+The ``Multigraph`` backend stores each edge separately. This is useful for diagrams and extensions where parallel edges are meaningful, such as ZH- and ZW-diagrams, or when you are developing rewrite rules that need to inspect parallel edges before reducing them.
+
+You can create a multigraph through the usual graph factory::
+
+	import pyzx as zx
+
+	g = zx.Graph("multigraph")
+
+or by constructing the backend class directly::
+
+	from pyzx.graph.multigraph import Multigraph
+
+	g = Multigraph()
+
+By default, ``Multigraph`` still tries to simplify reducible parallel edges as they are added. To preserve parallel edges exactly, disable auto-simplification before adding them::
+
+	import pyzx as zx
+
+	g = zx.Graph("multigraph")
+	g.set_auto_simplify(False)
+	v = g.add_vertex(zx.VertexType.Z)
+	w = g.add_vertex(zx.VertexType.X)
+	g.add_edge((v, w))
+	g.add_edge((v, w))
+
+	assert g.num_edges() == 2
+
+Use ``g.get_auto_simplify()`` to inspect this setting. Simple graph backends always auto-simplify and ``set_auto_simplify`` is a no-op for them. When a multigraph is written to the version 2 JSON format, the backend name and ``auto_simplify`` value are stored and restored when the graph is loaded again.
+
+The main API difference is that multigraph edges include the edge type in the edge object. For example, iterating over ``g.edges()`` yields triples ``(source, target, edge_type)`` and repeated triples can appear when there are parallel edges of the same type. ``g.edge_set()`` therefore returns a ``Counter`` for multigraphs, not a plain set.
+
+Some rewrites are specifically about parallel edges. In particular, :mod:`pyzx.rewrite_rules.hopf_rule` removes parallel edges in pairs according to the Hopf law, and the bialgebra rule supports matches that involve parallel edges. Other rewrite rules may not support multigraphs yet, or may support them only with caveats. For example, the H-box fusion rule currently says that it does not work with multigraphs. When working with multigraphs, prefer checking the documentation or docstring for the specific rewrite rule and, for experimental workflows, verify that the diagram semantics are preserved.
 
 Creating and modifying ZX-diagrams
 ----------------------------------
