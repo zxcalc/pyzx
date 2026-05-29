@@ -183,7 +183,7 @@ def clifford_simp(g: BaseGraph[VT,ET], matchf: Optional[Callable[[Union[VT, ET]]
 
 def reduce_scalar(g: BaseGraph[VT,ET], quiet:bool=True, stats:Optional[Stats]=None) -> int:
     """Modification of ``full_reduce`` that is tailered for scalar ZX-diagrams.
-    It skips the boundary pivots."""
+    It skips the boundary pivots. Input must already be in graph-like form."""
     i = 0
     while True:
         i1 = id_simp(g)
