@@ -39,28 +39,6 @@ def h_pauli(p: str) -> str:
     else: return 'X'
 
 
-def _resolve_edge(g: BaseGraph[VT, ET], s: VT, t: VT) -> ET:
-    """Resolve a single edge between `s` and `t` for PauliWeb's per-pair semantics.
-
-    PauliWeb labels edges by ordered vertex pair, which has no canonical answer
-    on multigraphs with mixed parallel edges. We prefer the SIMPLE edge when
-    both types exist; otherwise we return whatever edge is there.
-    """
-    fallback: Optional[ET] = None
-    for e in g.edges(s, t):
-        if g.edge_type(e) == EdgeType.SIMPLE:
-            return e
-        fallback = e
-    if fallback is not None:
-        return fallback
-    raise ValueError(f"No edge between {s} and {t}")
-
-
-def _resolve_edge_type(g: BaseGraph[VT, ET], s: VT, t: VT) -> EdgeType:
-    """Like :func:`_resolve_edge` but returns the resolved edge type."""
-    return g.edge_type(_resolve_edge(g, s, t))
-
-
 class PauliWeb(Generic[VT, ET]):
     """A Pauli web
     
@@ -115,7 +93,12 @@ class PauliWeb(Generic[VT, ET]):
     
     def add_edge(self, v_pair: Tuple[VT, VT], pauli: str):
         s, t = v_pair
-        et = _resolve_edge_type(self.g, s, t)
+        # Reject missing edges up front: on backends like ``GraphS`` that
+        # return a canonical pair regardless of existence, ``edge``/``edge_type``
+        # would otherwise silently label a non-existent edge.
+        if not self.g.connected(s, t):
+            raise ValueError(f"No edge between {s} and {t}")
+        et = self.g.edge_type(self.g.edge(s, t))
         self.add_half_edge((s,t), pauli)
         self.add_half_edge((t,s), pauli if et == EdgeType.SIMPLE else h_pauli(pauli))
     
@@ -153,8 +136,13 @@ class PauliWeb(Generic[VT, ET]):
         for s,t in edges:
             p0 = self.es.get((s,t), 'I')
             p1 = self.es.get((t,s), 'I')
-            
-            e = _resolve_edge(g, s, t)
+
+            # Fail clearly if the web references an edge the graph lacks: on
+            # ``GraphS``, ``edge`` returns a canonical pair even when absent, so
+            # ``remove_edge`` would otherwise raise an opaque ``KeyError``.
+            if not g.connected(s, t):
+                raise ValueError(f"No edge between {s} and {t}")
+            e = g.edge(s, t)
             et = g.edge_type(e)
             g.remove_edge(e)
             

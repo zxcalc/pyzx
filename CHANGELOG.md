@@ -11,6 +11,9 @@ Hence, occasionally changes will be backwards incompatible (although they will a
 ### Added
 - Added the "magic cat" decomposition strategy from https://arxiv.org/pdf/2202.09202 (which previously only existed in Quizx). (by @mjsutcliffe99).
 
+### Changed
+- `Multigraph.edge(s, t)` now raises `ValueError` on ambiguous mixed-type parallel edges or when no matching edge exists, instead of silently returning one; pass `et` to disambiguate. The `et` default is now `None` on `BaseGraph.edge` and its overrides (`GraphS.edge` and `GraphIG.edge` ignore it). Internal callers were updated to match (by @dlyongemallo).
+
 ## [0.10.3] - 2026-06-01
 
 ### Added

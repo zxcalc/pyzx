@@ -284,7 +284,11 @@ class GraphS(BaseGraph[int,Tuple[int,int]]):
                         if v1 > v0:
                             yield (v0,v1)
 
-    def edge(self, s, t):
+    def edge(self, s, t, et: Optional[EdgeType] = None):
+        """Return the canonical pair ``(min(s, t), max(s, t))`` whether or not the
+        edge exists; this supports the ``g.add_edge(g.edge(v, w), ...)`` pattern.
+        ``et`` is accepted for consistency with :meth:`BaseGraph.edge` but ignored,
+        as ``GraphS`` has no parallel edges of multiple types."""
         return (s,t) if s < t else (t,s)
     def edge_set(self):
         return set(self.edges())
