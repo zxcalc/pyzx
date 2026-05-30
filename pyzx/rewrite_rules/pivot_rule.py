@@ -80,7 +80,10 @@ def check_pivot(
     if not (v in g.vertices() and w in g.vertices()): return False
     if not g.connected(v, w): return False
 
-    if g.edge_type(g.edge(v, w)) != EdgeType.HADAMARD: return False
+    # Pivot acts on a HADAMARD edge; reject if any SIMPLE parallel exists
+    # alongside or if no HADAMARD edge is present.
+    if g.num_edges(v, w, EdgeType.SIMPLE) > 0: return False
+    if g.num_edges(v, w, EdgeType.HADAMARD) == 0: return False
 
     if not (types[v] == VertexType.Z and types[w] == VertexType.Z): return False
 
