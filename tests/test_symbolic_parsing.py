@@ -339,6 +339,10 @@ if (c==1) s q[0];
 """)
         g = circ.to_graph()
         zx.full_reduce(g)
+        # The leading `reset` on a fresh input leaves an orphan discard
+        # component with a fresh boolean phase that `full_reduce` does not
+        # remove. Drop it so only the injected phase remains.
+        zx.drop_orphan_reset_discards(g)
 
         phases = g.phases()
         non_zero = {v: p for v, p in phases.items() if p != 0}
