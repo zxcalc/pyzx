@@ -17,6 +17,7 @@ Hence, occasionally changes will be backwards incompatible (although they will a
 ### Changed
 - Refactored the simulation API to make it more formulaic and extensible. Individual decompositions are no longer included as distinct functions inside pyzx.simulate.py but now are provided their own individual files under pyzx.simulation.decompositions and share a common caller function. For example, pyzx.simulate.apply_cat3(g,v) is instead now pyzx.simulation.apply_decomp(Decomp.CAT_3,g,v), etc. (by @mjsutcliffe99).
 - Likewise, decomposition strategies are separated into individual files under pyzx.simulation.strategies and called similarly through e.g. zx.simulation.full_decompose(Strategy.BSS,g). (by @mjsutcliffe99).
+- `Multigraph.edge(s, t)` now raises `ValueError` on ambiguous mixed-type parallel edges or when no matching edge exists, instead of silently returning one; pass `et` to disambiguate. The `et` default is now `None` on `BaseGraph.edge` and its overrides (`GraphS.edge` and `GraphIG.edge` ignore it). Internal callers were updated to match (by @dlyongemallo).
 
 ### Added
 - `pyzx.simplify.drop_orphan_reset_discards`: opt-in cleanup pass that removes the disconnected `boundary -- Z(0) -- X(_rN)` components left behind by `Circuit.to_graph(elide_initial_resets=False)` on circuits with leading resets, matching the elided graph with |0⟩ applied to those inputs (by @dlyongemallo).
