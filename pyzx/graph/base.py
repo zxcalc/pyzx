@@ -133,7 +133,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         """Sets the outputs of the graph."""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
-    def add_vertices(self, amount: int) -> list[VT]:
+    def add_vertices(self, amount: int) -> Sequence[VT]:
         """Add the given amount of vertices, and return the indices of the
         new vertices added to the graph."""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
@@ -178,7 +178,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         """Returns a tuple of source/target of the given edge."""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
-    def incident_edges(self, vertex: VT) -> Sequence[ET]:
+    def incident_edges(self, vertex: VT) -> Iterable[ET]:
         """Returns all neighboring edges of the given vertex."""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
@@ -232,7 +232,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         """Removes all vdata associated to a vertex"""
         raise NotImplementedError("Not implemented on backend" + type(self).backend)
 
-    def vdata_keys(self, vertex: VT) -> Sequence[str]:
+    def vdata_keys(self, vertex: VT) -> Iterable[str]:
         """Returns an iterable of the vertex data key names.
         Used e.g. in making a copy of the graph in a backend-independent way."""
         raise NotImplementedError("Not implemented on backend" + type(self).backend)
@@ -250,7 +250,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         """Removes all edata associated to an edge"""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
-    def edata_keys(self, edge: ET) -> Sequence[str]:
+    def edata_keys(self, edge: ET) -> Iterable[str]:
         """Returns an iterable of the edge data key names."""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
@@ -397,7 +397,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         self.set_qubit(vertex, q)
         self.set_row(vertex, r)
 
-    def neighbors(self, vertex: VT) -> Sequence[VT]:
+    def neighbors(self, vertex: VT) -> Iterable[VT]:
         """Returns all neighboring vertices of the given vertex."""
         vs: set[VT] = set()
         for e in self.incident_edges(vertex):
@@ -407,7 +407,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
 
     def vertex_degree(self, vertex: VT) -> int:
         """Returns the degree of the given vertex."""
-        return len(self.incident_edges(vertex))
+        return len(list(self.incident_edges(vertex)))
 
     def edge_s(self, edge: ET) -> VT:
         """Returns the source of the given edge."""
@@ -481,8 +481,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         if (backend is None):
             backend = type(self).backend
         g = Graph(backend = backend)
-        if isinstance(self, Multigraph) and isinstance(g, Multigraph):
-            g.set_auto_simplify(self._auto_simplify) # TODO: this should be moved into the multigraph class
+        g.set_auto_simplify(self.get_auto_simplify())
         g.track_phases = self.track_phases
         g.scalar = self.scalar.copy(conjugate=adjoint)
         g.merge_vdata = self.merge_vdata
@@ -566,9 +565,9 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         for k in range(len(outputs)):
             o = outputs[k]
             i = inputs[k]
-            if len(self.neighbors(o)) != 1:
+            if len(list(self.neighbors(o))) != 1:
                 raise ValueError("Bad output vertex: " + str(o))
-            if len(other.neighbors(i)) != 1:
+            if len(list(other.neighbors(i))) != 1:
                 raise ValueError("Bad input vertex: " + str(i))
             no = next(iter(self.neighbors(o)))
             ni = next(iter(other.neighbors(i)))
@@ -696,11 +695,8 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
     def subgraph_from_vertices(self,verts: list[VT]) -> BaseGraph[VT,ET]:
         """Returns the subgraph consisting of the specified vertices."""
         from .graph import Graph # imported here to prevent circularity
-        from .multigraph import Multigraph
         g = Graph(backend=type(self).backend)
-        if isinstance(self, Multigraph) and isinstance(g, Multigraph):
-            g.set_auto_simplify(self._auto_simplify) # type: ignore
-            # mypy issue https://github.com/python/mypy/issues/16413
+        g.set_auto_simplify(self.get_auto_simplify())
         ty = self.types()
         rs = self.rows()
         qs = self.qubits()
