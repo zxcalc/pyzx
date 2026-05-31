@@ -17,8 +17,6 @@
 from fractions import Fraction
 from typing import Generator, Iterable, Any
 
-from pyzx.symbolic import Poly
-
 from .base import BaseGraph
 
 from ..utils import VertexType, EdgeType, FractionLike, FloatInt, vertex_is_zx_like, vertex_is_z_like, set_z_box_label, get_z_box_label, assert_phase_real
@@ -324,48 +322,60 @@ class GraphS(BaseGraph[int, tuple[int,int]]):
 
     def type(self, vertex: int) -> VertexType:
         return self.ty[vertex]
+    
     def types(self) -> dict[int, VertexType]:
         return self.ty
+    
     def set_type(self, vertex: int, t: VertexType) -> None:
         self.ty[vertex] = t
 
-    def phase(self, vertex: int) -> Fraction | int | Poly:
-        return self._phase.get(vertex,Fraction(1))
-    def phases(self) -> dict[int, Fraction | int | Poly]:
+    def phase(self, vertex: int) -> FractionLike:
+        return self._phase.get(vertex, Fraction(1))
+    
+    def phases(self) -> dict[int, FractionLike]:
         return self._phase
-    def set_phase(self, vertex: int, phase: Fraction | int | Poly) -> None:
+    
+    def set_phase(self, vertex: int, phase: FractionLike) -> None:
         assert_phase_real(phase)
         try:
             self._phase[vertex] = phase % 2
         except Exception:
             self._phase[vertex] = phase
-    def add_to_phase(self, vertex: int, phase: Fraction | int | Poly) -> None:
+    
+    def add_to_phase(self, vertex: int, phase: FractionLike) -> None:
         assert_phase_real(phase)
         old_phase = self._phase.get(vertex, Fraction(1))
         try:
             self._phase[vertex] = (old_phase + phase) % 2
         except Exception:
             self._phase[vertex] = old_phase + phase
+    
     def qubit(self, vertex: int) -> FloatInt:
         return self._qindex.get(vertex,-1)
+    
     def qubits(self) -> dict[int, FloatInt]:
         return self._qindex
+    
     def set_qubit(self, vertex: int, q: FloatInt) -> None:
         if q > self._maxq: self._maxq = q
         self._qindex[vertex] = q
 
     def row(self, vertex: int) -> FloatInt:
         return self._rindex.get(vertex, -1)
+    
     def rows(self) -> dict[int, FloatInt]:
         return self._rindex
+    
     def set_row(self, vertex: int, r: FloatInt) -> None:
         if r > self._maxr: self._maxr = r
         self._rindex[vertex] = r
 
     def is_ground(self, vertex: int) -> bool:
         return vertex in self._grounds
+    
     def grounds(self) -> set[int]:
         return self._grounds
+    
     def set_ground(self, vertex: int, flag: bool = True) -> None:
         if flag:
             self._grounds.add(vertex)
@@ -375,8 +385,10 @@ class GraphS(BaseGraph[int, tuple[int,int]]):
     def clear_vdata(self, vertex: int) -> None:
         if vertex in self._vdata:
             del self._vdata[vertex]
+    
     def vdata_keys(self, vertex: int) -> list[str]:
         return list(self._vdata.get(vertex, {}).keys())
+    
     def vdata(self, vertex: int, key: str, default: Any = None) -> Any:
         if vertex in self._vdata:
             return self._vdata[vertex].get(key,default)
@@ -390,13 +402,16 @@ class GraphS(BaseGraph[int, tuple[int,int]]):
 
     def clear_edata(self, edge: tuple[int, int]) -> None:
         self._edata.pop(edge, None)
+    
     def edata_keys(self, edge: tuple[int, int]) -> list[str]:
         return list(self._edata.get(edge, {}).keys())
+    
     def edata(self, edge: tuple[int, int], key: str, default: Any = None) -> Any:
         if edge in self._edata:
             return self._edata[edge].get(key, default)
         else:
             return default
+    
     def set_edata(self, edge: tuple[int, int], key: str, val: Any) -> None:
         if edge in self._edata:
             self._edata[edge][key] = val

@@ -1230,7 +1230,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         # with complex coefficients.
         for v, new_phase in new_phases.items():
             try:
-                assert_phase_real(new_phase)  # type: ignore[arg-type]
+                assert_phase_real(new_phase)
             except TypeError:
                 raise TypeError(
                     f"Substitution produced complex phase {new_phase} for "
@@ -1238,7 +1238,10 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
 
         # Apply all substitutions.
         for v, new_phase in new_phases.items():
-            result.set_phase(v, new_phase)  # type: ignore[arg-type]
+            assert not isinstance(new_phase, complex) # assert_phase_real would have raised an error earlier
+            if isinstance(new_phase, float):
+                new_phase = Fraction(new_phase)
+            result.set_phase(v, new_phase)
         for v, new_label in new_labels.items():
             set_z_box_label(result, v, new_label)
         result.scalar = new_scalar

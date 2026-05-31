@@ -17,7 +17,7 @@
 import itertools
 from collections import Counter
 from fractions import Fraction
-from typing import Iterable, Any
+from typing import Iterable, Any, cast
 
 from .base import BaseGraph
 
@@ -310,14 +310,14 @@ class Multigraph(BaseGraph[int, tuple[int,int,EdgeType]]):
                 yield v
 
     def edges(self, s: int | None = None, t: int | None = None) -> Iterable[tuple[int, int, EdgeType]]:
-        if s == None:
+        if s is None:
             for v0,adj in self.graph.items():
                 for v1, e in adj.items():
                     if v1 >= v0:
                         for _ in range(e.s): yield (v0, v1, EdgeType.SIMPLE)
                         for _ in range(e.h): yield (v0, v1, EdgeType.HADAMARD)
                         for _ in range(e.w_io): yield (v0, v1, EdgeType.W_IO)
-        elif t != None:
+        elif t is not None:
             s, t = (s, t) if s < t else (t, s)
             if t not in self.graph[s]:
                 return
@@ -521,4 +521,4 @@ class Multigraph(BaseGraph[int, tuple[int,int,EdgeType]]):
         """Converts the given .qgraph json string into a Multigraph.
         Works with the output of :meth:`to_json`."""
         from .jsonparser import json_to_graph
-        return json_to_graph(js, backend='multigraph')
+        return cast(Multigraph, json_to_graph(js, backend='multigraph'))
