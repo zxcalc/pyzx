@@ -21,7 +21,7 @@ from typing import Tuple, Dict, Set, Union, Any
 
 from .base import BaseGraph
 
-from ..utils import VertexType, EdgeType, FractionLike, FloatInt, vertex_is_zx_like, vertex_is_z_like, set_z_box_label, get_z_box_label, assert_phase_real
+from ..utils import VertexType, EdgeType, FractionLike, FloatInt, vertex_is_zx_like, vertex_is_z_like, set_z_box_label, get_z_box_label, assert_phase_real, normalize_phase
 
 class Edge:
     """A structure for storing the number of simple and number of Hadamard edges
@@ -411,6 +411,7 @@ class Multigraph(BaseGraph[int,Tuple[int,int,EdgeType]]):
         return self._phase
     def set_phase(self, vertex, phase):
         assert_phase_real(phase)
+        phase = normalize_phase(phase)
         try:
             if isinstance(phase, Fraction):
                 self._phase[vertex] = phase % 2
@@ -420,6 +421,7 @@ class Multigraph(BaseGraph[int,Tuple[int,int,EdgeType]]):
             self._phase[vertex] = phase
     def add_to_phase(self, vertex, phase):
         assert_phase_real(phase)
+        phase = normalize_phase(phase)
         old_phase = self._phase.get(vertex, Fraction(1))
         try:
             if isinstance(old_phase, Fraction) and isinstance(phase, Fraction):

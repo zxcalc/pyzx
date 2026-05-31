@@ -44,6 +44,19 @@ def assert_phase_real(phase: FractionLike) -> None:
                     f"Phase must have real coefficients, got {c}")
 
 
+def normalize_phase(phase: Any) -> FractionLike:
+    """Coerce a phase to a supported type (``int``, ``Fraction``, or ``Poly``).
+
+    A ``float`` is converted to a ``Fraction`` using
+    ``settings.float_to_fraction_max_denominator``.  Other types are returned
+    unchanged.
+    """
+    if isinstance(phase, float):
+        return Fraction(phase).limit_denominator(
+            settings.float_to_fraction_max_denominator)
+    return phase
+
+
 class VertexType(IntEnum):
     """Type of a vertex in the graph."""
     BOUNDARY = 0
@@ -131,16 +144,18 @@ def phase_fraction_to_s(a: FractionLike, t:VertexType=VertexType.Z, limit_denomi
     return simstr + ns + '\u03c0' + ds
 
 def phase_is_clifford(phase: FractionLike):
+    if isinstance(phase, Poly):
+        return phase.is_clifford
     if isinstance(phase, (Fraction, int)):
         return phase in [Fraction(i, 2) for i in range(4)]
-    else:
-        return phase.is_clifford
+    raise TypeError(f"phase must be FractionLike, got {type(phase).__name__}")
 
 def phase_is_pauli(phase: FractionLike):
+    if isinstance(phase, Poly):
+        return phase.is_pauli
     if isinstance(phase, (Fraction, int)):
         return phase in (0, 1)
-    else:
-        return phase.is_pauli
+    raise TypeError(f"phase must be FractionLike, got {type(phase).__name__}")
 
 tikz_classes = {
     'boundary': 'none',
