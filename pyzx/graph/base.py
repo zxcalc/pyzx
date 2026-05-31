@@ -18,7 +18,7 @@ from __future__ import annotations
 import math
 import copy
 from fractions import Fraction
-from typing import TYPE_CHECKING, Union, Optional, Generic, TypeVar, Any, Sequence
+from typing import TYPE_CHECKING, Generic, TypeVar, Any, Sequence
 from typing import Mapping, Iterable, Callable, ClassVar, Literal
 from typing_extensions import Self
 
@@ -59,7 +59,7 @@ def pack_indices(lst: list[FloatInt]) -> Mapping[FloatInt,int]:
     if len(lst) == 0: return d
     list.sort(lst)
     i: int = 0
-    x: Optional[FloatInt] = None
+    x: FloatInt | None = None
     for j in range(len(lst)):
         y = lst[j]
         if y != x:
@@ -161,7 +161,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         """Returns the amount of vertices in the graph."""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
-    def num_edges(self, s: Optional[VT]=None, t: Optional[VT]=None, et: Optional[EdgeType]=None) -> int:
+    def num_edges(self, s: VT | None = None, t: VT | None = None, et: EdgeType | None = None) -> int:
         """Returns the amount of edges in the graph"""
         return len(list(self.edges(s, t)))
 
@@ -169,7 +169,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         """Iterator over all the vertices."""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
-    def edges(self, s: Optional[VT]=None, t: Optional[VT]=None) -> Iterable[ET]:
+    def edges(self, s: VT | None = None, t: VT | None = None) -> Iterable[ET]:
         """Iterator that returns all the edges in the graph, or all the edges connecting the pair of vertices.
         Output type depends on implementation in backend."""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
@@ -334,12 +334,12 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         return False
 
     def add_vertex(self,
-                   ty:VertexType=VertexType.BOUNDARY,
-                   qubit:FloatInt=-1,
-                   row:FloatInt=-1,
-                   phase:Optional[FractionLike]=None,
-                   ground:bool=False,
-                   index: Optional[VT] = None
+                   ty: VertexType = VertexType.BOUNDARY,
+                   qubit: FloatInt = -1,
+                   row: FloatInt = -1,
+                   phase: FractionLike | None = None,
+                   ground: bool = False,
+                   index: VT | None = None
                    ) -> VT:
         """Add a single vertex to the graph and return its index.
         The optional parameters allow you to respectively set
@@ -459,7 +459,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
             s += "{:d}: {:d}\n".format(d,n)
         return s
 
-    def copy(self, adjoint:bool=False, backend:Optional[str]=None) -> BaseGraph[VT,ET]:
+    def copy(self, adjoint: bool = False, backend: str | None = None) -> BaseGraph[VT,ET]:
         """Create a copy of the graph. If ``adjoint`` is set,
         the adjoint of the graph will be returned (inputs and outputs flipped, phases reversed).
         When ``backend`` is set, a copy of the graph with the given backend is produced.
@@ -820,7 +820,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         return to_tikz(self,draw_scalar)
 
     @classmethod
-    def from_json(cls, js:Union[str,dict[str,Any]]) -> BaseGraph[VT,ET]:
+    def from_json(cls, js: str | dict[str,Any]) -> BaseGraph[VT,ET]:
         """Converts the given .qgraph json string into a Graph.
         Works with the output of :meth:`to_json`."""
         from .jsonparser import json_to_graph
@@ -845,7 +845,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         from ..tikz import tikz_to_graph
         return tikz_to_graph(tikz,warn_overlap, fuse_overlap, ignore_nonzx, cls.backend)
 
-    def save(self, filename: str, fmt: Optional[str] = None) -> None:
+    def save(self, filename: str, fmt: str | None = None) -> None:
         """Saves the graph to a file.
 
         Args:
@@ -878,7 +878,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
             f.write(content)
 
     @classmethod
-    def load(cls, filename: str, fmt: Optional[str] = None, **kwargs: Any) -> BaseGraph[VT, ET]:
+    def load(cls, filename: str, fmt: str | None = None, **kwargs: Any) -> BaseGraph[VT, ET]:
         """Loads a graph from a file.
 
         Args:
@@ -1166,7 +1166,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
             if isinstance(attr, Poly):
                 attr.rebind_variables_to_registry(self.var_registry)
 
-    def substitute_variables(self, var_values: Mapping[str, Union[float, complex, Fraction, Poly]],
+    def substitute_variables(self, var_values: Mapping[str, float | complex | Fraction | Poly],
                    in_place: bool = False) -> 'BaseGraph[VT, ET]':
         """Substitute values for symbolic variables in all phases and Z-box labels.
 
@@ -1205,7 +1205,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
                     all_vars.update(label.free_vars())
         all_vars.update(result.scalar.free_vars())
 
-        var_map: dict[Var, Union[float, complex, Fraction, Poly]] = {
+        var_map: dict[Var, float | complex | Fraction | Poly] = {
             var: var_values[var.name] for var in all_vars if var.name in var_values
         }
         if not var_map:
@@ -1213,8 +1213,8 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
 
         # Precompute all substitutions before mutating, so the graph is not
         # left partially substituted if an error occurs.
-        new_phases: dict[VT, Union[int, float, complex, Fraction, Poly]] = {}
-        new_labels: dict[VT, Union[int, float, complex, Fraction, Poly]] = {}
+        new_phases: dict[VT, float | complex | Fraction | Poly] = {}
+        new_labels: dict[VT, float | complex | Fraction | Poly] = {}
         for v in result.vertices():
             phase = result.phase(v)
             if isinstance(phase, Poly):
