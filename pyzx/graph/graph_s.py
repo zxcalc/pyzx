@@ -15,7 +15,7 @@
 # limitations under the License.
 
 from fractions import Fraction
-from typing import Generator, Iterable, Sequence, Tuple, Dict, Set, Any
+from typing import Generator, Iterable, Any
 
 from pyzx.symbolic import Poly
 
@@ -23,7 +23,7 @@ from .base import BaseGraph
 
 from ..utils import VertexType, EdgeType, FractionLike, FloatInt, vertex_is_zx_like, vertex_is_z_like, set_z_box_label, get_z_box_label, assert_phase_real
 
-class GraphS(BaseGraph[int,Tuple[int,int]]):
+class GraphS(BaseGraph[int, tuple[int,int]]):
     """Purely Pythonic implementation of :class:`~graph.base.BaseGraph`."""
     backend = 'simple'
 
@@ -31,21 +31,21 @@ class GraphS(BaseGraph[int,Tuple[int,int]]):
     #can be found in base.BaseGraph
     def __init__(self) -> None:
         BaseGraph.__init__(self)
-        self.graph: Dict[int,Dict[int,EdgeType]]   = dict()
+        self.graph: dict[int,dict[int,EdgeType]]   = dict()
         self._vindex: int                               = 0
         self.nedges: int                                = 0
-        self.ty: Dict[int,VertexType]              = dict()
-        self._phase: Dict[int, FractionLike]            = dict()
-        self._qindex: Dict[int, FloatInt]               = dict()
+        self.ty: dict[int,VertexType]              = dict()
+        self._phase: dict[int, FractionLike]            = dict()
+        self._qindex: dict[int, FloatInt]               = dict()
         self._maxq: FloatInt                            = -1
-        self._rindex: Dict[int, FloatInt]               = dict()
+        self._rindex: dict[int, FloatInt]               = dict()
         self._maxr: FloatInt                            = -1
-        self._grounds: Set[int] = set()
+        self._grounds: set[int] = set()
 
-        self._vdata: Dict[int,Any]                      = dict()
-        self._edata: Dict[Tuple[int,int],Any] = dict()
-        self._inputs: Tuple[int, ...]                   = tuple()
-        self._outputs: Tuple[int, ...]                  = tuple()
+        self._vdata: dict[int,Any]                      = dict()
+        self._edata: dict[tuple[int,int],Any] = dict()
+        self._inputs: tuple[int, ...]                   = tuple()
+        self._outputs: tuple[int, ...]                  = tuple()
 
     def clone(self) -> 'GraphS':
         cpy = GraphS()
@@ -84,22 +84,22 @@ class GraphS(BaseGraph[int,Tuple[int,int]]):
         else: self._maxq = -1
         return int(self._maxq + 1)
 
-    def inputs(self) -> Tuple[int, ...]:
+    def inputs(self) -> tuple[int, ...]:
         return self._inputs
 
     def num_inputs(self) -> int:
         return len(self._inputs)
 
-    def set_inputs(self, inputs: Tuple[int, ...]) -> None:
+    def set_inputs(self, inputs: tuple[int, ...]) -> None:
         self._inputs = inputs
 
-    def outputs(self) -> Tuple[int, ...]:
+    def outputs(self) -> tuple[int, ...]:
         return self._outputs
 
     def num_outputs(self) -> int:
         return len(self._outputs)
 
-    def set_outputs(self, outputs: Tuple[int, ...]) -> None:
+    def set_outputs(self, outputs: tuple[int, ...]) -> None:
         self._outputs = outputs
 
     def add_vertices(self, amount: int) -> list[int]:
@@ -213,7 +213,7 @@ class GraphS(BaseGraph[int,Tuple[int,int]]):
     def remove_vertex(self, vertex: int) -> None:
         self.remove_vertices([vertex])
     
-    def remove_edges(self, edges: Sequence[tuple[int, int]]) -> None:
+    def remove_edges(self, edges: Iterable[tuple[int, int]]) -> None:
         for s,t in edges:
             if s == t:
                 continue

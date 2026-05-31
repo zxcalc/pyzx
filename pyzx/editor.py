@@ -1,4 +1,4 @@
-# PyZX - Python library for quantum circuit rewriting 
+# PyZX - Python library for quantum circuit rewriting
 #        and optimization using the ZX-calculus
 # Copyright (C) 2018 - Aleks Kissinger and John van de Wetering
 
@@ -24,7 +24,7 @@ from typing import Optional, List, Tuple, Set, Dict, Any, Union
 
 import pyperclip # type: ignore # Needed for clipboard actions
 
-from .utils import VertexType
+from .utils import EdgeType, VertexType
 from .utils import settings, get_mode, phase_to_s, FloatInt
 from .drawing import matrix_to_latex
 from .graph import Scalar
@@ -55,25 +55,25 @@ else:
 
 __all__ = ['edit', 'help']
 
-HELP_STRING = """To create an editor, call `e = zx.editor.edit(g)` on a graph g. 
-This will display the editor, and give you access to 
-the underlying Python instance e. Your changes are automatically pushed onto 
+HELP_STRING = """To create an editor, call `e = zx.editor.edit(g)` on a graph g.
+This will display the editor, and give you access to
+the underlying Python instance e. Your changes are automatically pushed onto
 the underlying graph instance g (which can also be accessed as e.graph).
 Adding the optional argument `zx.editor.edit(g,show_matrix=True)` will
 also display the matrix the diagram represents beneath the editor.
 
-Click on edges or vertices to select them. 
+Click on edges or vertices to select them.
 Drag a box or hold shift to select multiple vertices or edges.
 Press delete or backspace to delete the current selection.
 Double-click a vertex to choose its phase.
-Ctrl-click (Command-click for mac users) on empty space to add a new vertex. 
+Ctrl-click (Command-click for mac users) on empty space to add a new vertex.
 The type of the vertex is determined by the box "Vertex type".
-Click this box (or press the hotkey 'x') to change the adding type. 
-Ctrl-drag between two vertices to add an edge between them. 
+Click this box (or press the hotkey 'x') to change the adding type.
+Ctrl-drag between two vertices to add an edge between them.
 The type of edge is determined by the box "Edge type".
 Click this box (or press the hotkey 'e') to change the adding type.
 
-When you have a selection, the buttons below the graph light up to denote that 
+When you have a selection, the buttons below the graph light up to denote that
 a rewrite rule can be applied to some of the vertices or edges in this selection.
 Press Ctrl+C to copy the selection as tikz code onto the clipboard.
 Press Ctrl+V to paste a ZX-diagram on the clipboard (specified as tikz) into the editor.
@@ -119,7 +119,7 @@ def load_js() -> None:
 	display(HTML(text))
 
 def s_to_phase(s: str, t:VertexType=VertexType.Z) -> Fraction:
-	if not s: 
+	if not s:
 		if t!= VertexType.H_BOX: return Fraction(0)
 		else: return Fraction(1)
 	s = s.replace('\u03c0', '')
@@ -171,9 +171,9 @@ class ZXEditorWidget(widgets.DOMWidget):
 	action 		   = Unicode('').tag(sync=True)
 	
 	def __init__(
-			self, 
-			graph: GraphS, 
-			show_matrix:bool=False, 
+			self,
+			graph: GraphS,
+			show_matrix:bool=False,
 			show_scalar:bool=False,
 			*args, **kwargs
 			) -> None:
@@ -244,7 +244,7 @@ class ZXEditorWidget(widgets.DOMWidget):
 			with self.output: print(traceback.format_exc())
 
 	def _apply_operation(self, change):
-		"""called when one of the action buttons is clicked. 
+		"""called when one of the action buttons is clicked.
 		Performs the action on the selection."""
 		try:
 			op = change['new']
@@ -266,7 +266,7 @@ class ZXEditorWidget(widgets.DOMWidget):
 			selection = json.loads(self.graph_selected)
 			selection["nodes"] = [v for v in selection["nodes"] if v["name"] not in rem_verts]
 			selection["links"] = [e for e in selection["links"] if (
-										(e["source"], e["target"]) not in rem_edges 
+										(e["source"], e["target"]) not in rem_edges
 										and e["source"] not in rem_verts
 										and e["target"] not in rem_verts)]
 			self.graph_selected = json.dumps(selection)
@@ -370,33 +370,33 @@ class ZXEditorWidget(widgets.DOMWidget):
 	def graph_from_json(self, js: Dict[str,Any]) -> None:
 		try:
 			scale = self.graph.scale # type: ignore
-			marked: Union[Set[int],Set[Tuple[int,int]]] = self.graph.vertex_set()
+			marked = self.graph.vertex_set()
 			for n in js["nodes"]:
 				v = n["name"]
 				r = float(n["x"])/scale -1
 				q = float(n["y"])/scale -2
-				t = int(n["t"])
-				phase = s_to_phase(n["phase"], t) # type: ignore
+				vt = VertexType(int(n["t"]))
+				phase = s_to_phase(n["phase"], vt) # type: ignore
 				if v not in marked:
 					self.graph.add_vertex_indexed(v)
-				else: 
+				else:
 					marked.remove(v)
 				self.graph.set_position(v, q, r)
 				self.graph.set_phase(v, phase)
-				self.graph.set_type(v, t)
+				self.graph.set_type(v, vt)
 			self.graph.remove_vertices(marked)
-			marked = self.graph.edge_set()
+			marked_edges = self.graph.edge_set()
 			for e in js["links"]:
 				s = int(e["source"])
 				t = int(e["target"])
-				et = int(e["t"])
-				if self.graph.connected(s,t):
-					f = self.graph.edge(s,t)
-					marked.remove(f)
+				et = EdgeType(int(e["t"]))
+				if self.graph.connected(s, t):
+					f = self.graph.edge(s, t)
+					marked_edges.remove(f)
 					self.graph.set_edge_type(f, et)
 				else:
-					self.graph.add_edge((s,t),et) # type: ignore
-			self.graph.remove_edges(marked)
+					self.graph.add_edge((s, t), et) # type: ignore
+			self.graph.remove_edges(marked_edges)
 			if 'scalar' in js:
 				self.graph.scalar = Scalar.from_json(js['scalar'])
 			self._update_matrix()
@@ -424,13 +424,13 @@ class ZXEditorWidget(widgets.DOMWidget):
 _d3_editor_id = 0
 
 def edit(
-		g: GraphS, 
-		scale:Optional[FloatInt]=None, 
+		g: GraphS,
+		scale:Optional[FloatInt]=None,
 		show_matrix:bool=False,
 		show_scalar:bool=False,
 		show_errors:bool=True) -> ZXEditorWidget:
 	"""Start an instance of an ZX-diagram editor on a given graph ``g``.
-	Only usable in a Jupyter Notebook. 
+	Only usable in a Jupyter Notebook.
 	When this function is called it displays a Jupyter Widget that allows
 	you to modify a pyzx Graph instance in the Notebook itself.
 	This function returns an instance of the editor widget, so it should be called like::
@@ -483,8 +483,8 @@ def edit(
 
 	w = ZXEditorWidget(
 					g, show_matrix,show_scalar,
-					graph_json = js, graph_id = str(seq), 
-					graph_width=w, graph_height=h, 
+					graph_json = js, graph_id = str(seq),
+					graph_width=w, graph_height=h,
 					graph_node_size=node_size,
 					graph_buttons = operations_to_js()
 					)
