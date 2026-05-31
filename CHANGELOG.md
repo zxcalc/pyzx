@@ -24,6 +24,7 @@ Hence, occasionally changes will be backwards incompatible (although they will a
 ### Fixed
 - Multigraph handling of parallel mixed simple/Hadamard edges in tensor contraction, several rewrite rules, and `PauliWeb` (by @dlyongemallo).
 - Reset gate representation changed from ground-based to symbolic boolean paradigm, avoiding paradigm-mixing issues that destroyed measurement phases during simplification of circuits with mid-circuit resets. As a side effect, `graph_to_circuit` now recovers conditional X-type rotations (`NOT`, `XPhase`, `SX`), since X-type vertices on the qubit wire are unambiguous now that measurement outcomes are represented as leaves. `Circuit.to_graph` gains an opt-in `elide_initial_resets` flag (default `False`) that skips the discard chain for a `Reset` on an unmodified input wire, useful for circuits with OpenQASM-style implicit |0⟩ inputs. Each `_rN` reset variable is allocated to the lowest name not already in the graph's variable registry to avoid aliasing user-supplied phases, and `graph_to_circuit` excludes vertices on classical-bit wires (e.g. the `Z`/`X` pair from `DiscardBit`) so hybrid graphs round-trip without extra phantom qubits (by @dlyongemallo).
+- `full_reduce` crashed with `AttributeError` on non-Clifford float phases (by @dlyongemallo).
 
 ## [0.10.2] - 2026-05-01
 
