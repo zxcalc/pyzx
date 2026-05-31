@@ -206,7 +206,7 @@ class GraphS(BaseGraph[int, tuple[int,int]]):
             except: pass
             self._grounds.discard(v)
             self._vdata.pop(v,None)
-        self._vindex = max(self.vertices(),default=0) + 1
+        self._vindex = max(self.vertices(), default=0) + 1
 
     def remove_vertex(self, vertex: int) -> None:
         self.remove_vertices([vertex])
@@ -243,8 +243,8 @@ class GraphS(BaseGraph[int, tuple[int,int]]):
         else:
             return len(list(self.edges()))
 
-    def vertices(self) -> set[int]:
-        return set(self.graph.keys())
+    def vertices(self) -> Iterable[int]:
+        return self.graph.keys()
 
     def vertices_in_range(self, start: FloatInt, end: FloatInt) -> Generator[int, None, None]:
         """Returns all vertices with index between start and end
@@ -288,11 +288,12 @@ class GraphS(BaseGraph[int, tuple[int,int]]):
                         if v1 > v0:
                             yield (v0,v1)
 
-    def edge(self, s: int, t: int, et: EdgeType=EdgeType.SIMPLE) -> tuple[int, int]:
+    def edge(self, s: int, t: int, et: EdgeType = EdgeType.SIMPLE) -> tuple[int, int]:
         return (s,t) if s < t else (t,s)
     
     def edge_set(self) -> set[tuple[int, int]]:
         return set(self.edges())
+    
     def edge_st(self, edge: tuple[int, int]) -> tuple[int, int]:
         return edge
 
@@ -398,7 +399,7 @@ class GraphS(BaseGraph[int, tuple[int,int]]):
         if vertex in self._vdata:
             self._vdata[vertex][key] = val
         else:
-            self._vdata[vertex] = {key:val}
+            self._vdata[vertex] = {key: val}
 
     def clear_edata(self, edge: tuple[int, int]) -> None:
         self._edata.pop(edge, None)
