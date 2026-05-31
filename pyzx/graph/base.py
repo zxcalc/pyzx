@@ -1,4 +1,4 @@
-# PyZX - Python library for quantum circuit rewriting 
+# PyZX - Python library for quantum circuit rewriting
 #        and optimization using the ZX-calculus
 # Copyright (C) 2018 - Aleks Kissinger and John van de Wetering
 
@@ -18,9 +18,9 @@ from __future__ import annotations
 import math
 import copy
 from fractions import Fraction
-from typing import TYPE_CHECKING, Union, Optional, Generic, TypeVar, Any, Sequence
-from typing import List, Dict, Set, Tuple, Mapping, Iterable, Callable, ClassVar, Literal
-from typing_extensions import Literal, GenericMeta # type: ignore # https://github.com/python/mypy/issues/5753
+from typing import TYPE_CHECKING, Generic, Optional, TypeVar, Any, Sequence
+from typing import Mapping, Iterable, Callable, ClassVar, Literal
+from typing_extensions import Self
 
 import numpy as np
 
@@ -36,13 +36,15 @@ if TYPE_CHECKING:
     from .. import simplify
 
 
-class DocstringMeta(GenericMeta):
+MT = TypeVar("MT", bound="DocstringMeta") # Used for properly typing the metaclass
+
+class DocstringMeta(type):
     """Metaclass that allows docstring 'inheritance'."""
 
-    def __new__(mcls, classname, bases, cls_dict, **kwargs):
-        cls = GenericMeta.__new__(mcls, classname, bases, cls_dict, **kwargs)
-        mro = cls.__mro__[1:]
-        for name, member in cls_dict.items():
+    def __new__(cls: type[MT], classname: str, bases: tuple[type, ...], namespace: dict[str, Any], /, **kwds: Any) -> MT:
+        new_class = super().__new__(cls, classname, bases, namespace, **kwds)
+        mro = new_class.__mro__[1:]
+        for name, member in namespace.items():
             if not getattr(member, '__doc__'):
                 for base in mro:
                     try:
@@ -50,14 +52,14 @@ class DocstringMeta(GenericMeta):
                         break
                     except AttributeError:
                         pass
-        return cls
+        return new_class
 
-def pack_indices(lst: List[FloatInt]) -> Mapping[FloatInt,int]:
-    d: Dict[FloatInt,int] = dict()
+def pack_indices(lst: list[FloatInt]) -> Mapping[FloatInt,int]:
+    d: dict[FloatInt,int] = dict()
     if len(lst) == 0: return d
     list.sort(lst)
     i: int = 0
-    x: Optional[FloatInt] = None
+    x: FloatInt | None = None
     for j in range(len(lst)):
         y = lst[j]
         if y != x:
@@ -70,10 +72,10 @@ VT = TypeVar('VT', bound=int) # The type that is used for representing vertices 
 ET = TypeVar('ET') # The type used for representing edges (e.g. a pair of integers)
 
 
-def upair(v1: VT, v2: VT) -> Tuple[VT, VT]:
+def upair(v1: VT, v2: VT) -> tuple[VT, VT]:
     """Returns the unordered pair associated to the pair of vertices.
     This method takes a pair of vertices and returns them in a canonical order. Use this
-    whenever a pair of vertices is used to reference the location of an undirected edge, 
+    whenever a pair of vertices is used to reference the location of an undirected edge,
     e.g. as a key in an edge table."""
     return (v1, v2) if v1 <= v2 else (v2, v1)
 
@@ -88,19 +90,19 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
 
     def __init__(self) -> None:
         self.scalar: Scalar = Scalar()
-        # self.inputs: List[VT] = []
-        # self.outputs: List[VT] = []
+        # self.inputs: list[VT] = []
+        # self.outputs: list[VT] = []
         #Data necessary for phase tracking for phase teleportation
         self.track_phases: bool = False
-        self.phase_index : Dict[VT,int] = dict() # {vertex:index tracking its phase for phase teleportation}
+        self.phase_index : dict[VT,int] = dict() # {vertex:index tracking its phase for phase teleportation}
         self.phase_master: Optional['simplify.Simplifier'] = None
-        self.phase_mult: Dict[int,Literal[1,-1]] = dict()
+        self.phase_mult: dict[int,Literal[1,-1]] = dict()
         self.max_phase_index: int = -1
 
         # merge_vdata(v0,v1) is an optional, custom function for merging
         # vdata of v1 into v0 during spider fusion etc.
-        self.merge_vdata: Optional[Callable[[VT,VT], None]] = None
-        self.variable_types: Dict[str,bool] = dict() # DEPRICATED - mapping of variable names to their type (bool or continuous)
+        self.merge_vdata: Callable[[VT, VT], None] | None = None
+        self.variable_types: dict[str,bool] = dict() # DEPRICATED - mapping of variable names to their type (bool or continuous)
         self.var_registry: VarRegistry = VarRegistry() # registry for variable types
 
     # MANDATORY OVERRIDES {{{
@@ -115,35 +117,35 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         """
         raise NotImplementedError()
 
-    def inputs(self) -> Tuple[VT, ...]:
+    def inputs(self) -> tuple[VT, ...]:
         """Gets the inputs of the graph."""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
-    def set_inputs(self, inputs: Tuple[VT, ...]):
+    def set_inputs(self, inputs: tuple[VT, ...]) -> None:
         """Sets the inputs of the graph."""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
-    def outputs(self) -> Tuple[VT, ...]:
+    def outputs(self) -> tuple[VT, ...]:
         """Gets the outputs of the graph."""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
-    def set_outputs(self, outputs: Tuple[VT, ...]):
+    def set_outputs(self, outputs: tuple[VT, ...]) -> None:
         """Sets the outputs of the graph."""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
-    def add_vertices(self, amount: int) -> List[VT]:
+    def add_vertices(self, amount: int) -> Sequence[VT]:
         """Add the given amount of vertices, and return the indices of the
         new vertices added to the graph."""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
-    def add_vertex_indexed(self,v:VT) -> None:
+    def add_vertex_indexed(self, v: VT) -> None:
         """Adds a vertex that is guaranteed to have the chosen index (i.e. 'name').
         If the index isn't available, raises a ValueError.
         This method is used in the editor and ZXLive to support undo,
         which requires vertices to preserve their index."""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
-    def add_edge(self, edge_pair: Tuple[VT,VT], edgetype:EdgeType=EdgeType.SIMPLE) -> ET:
+    def add_edge(self, edge_pair: tuple[VT,VT], edgetype: EdgeType = EdgeType.SIMPLE) -> ET:
         """Adds a single edge of the given type and return its id"""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
@@ -151,7 +153,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         """Removes the list of vertices from the graph."""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
-    def remove_edges(self, edges: List[ET]) -> None:
+    def remove_edges(self, edges: list[ET]) -> None:
         """Removes the list of edges from the graph."""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
@@ -159,7 +161,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         """Returns the amount of vertices in the graph."""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
-    def num_edges(self, s: Optional[VT]=None, t: Optional[VT]=None, et: Optional[EdgeType]=None) -> int:
+    def num_edges(self, s: VT | None = None, t: VT | None = None, et: EdgeType | None = None) -> int:
         """Returns the amount of edges in the graph"""
         return len(list(self.edges(s, t)))
 
@@ -167,16 +169,16 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         """Iterator over all the vertices."""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
-    def edges(self, s: Optional[VT]=None, t: Optional[VT]=None) -> Iterable[ET]:
+    def edges(self, s: VT | None = None, t: VT | None = None) -> Iterable[ET]:
         """Iterator that returns all the edges in the graph, or all the edges connecting the pair of vertices.
         Output type depends on implementation in backend."""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
-    def edge_st(self, edge: ET) -> Tuple[VT, VT]:
+    def edge_st(self, edge: ET) -> tuple[VT, VT]:
         """Returns a tuple of source/target of the given edge."""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
-    def incident_edges(self, vertex: VT) -> Sequence[ET]:
+    def incident_edges(self, vertex: VT) -> Iterable[ET]:
         """Returns all neighboring edges of the given vertex."""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
@@ -230,7 +232,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         """Removes all vdata associated to a vertex"""
         raise NotImplementedError("Not implemented on backend" + type(self).backend)
 
-    def vdata_keys(self, vertex: VT) -> Sequence[str]:
+    def vdata_keys(self, vertex: VT) -> Iterable[str]:
         """Returns an iterable of the vertex data key names.
         Used e.g. in making a copy of the graph in a backend-independent way."""
         raise NotImplementedError("Not implemented on backend" + type(self).backend)
@@ -248,7 +250,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         """Removes all edata associated to an edge"""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
-    def edata_keys(self, edge: ET) -> Sequence[str]:
+    def edata_keys(self, edge: ET) -> Iterable[str]:
         """Returns an iterable of the edge data key names."""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
@@ -271,7 +273,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         """Returns a boolean indicating if the vertex is connected to a ground."""
         return False
 
-    def grounds(self) -> Set[VT]:
+    def grounds(self) -> set[VT]:
         """Returns the set of vertices connected to a ground."""
         return set(v for v in self.vertices() if self.is_ground(v))
 
@@ -317,14 +319,14 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         else:
             return max(self.row(v) for v in self.vertices())
 
-    def edge(self, s:VT, t:VT, et: EdgeType=EdgeType.SIMPLE) -> ET:
+    def edge(self, s: VT, t: VT, et: EdgeType=EdgeType.SIMPLE) -> ET:
         """Returns the name of the first edge with the given source/target and type. Behaviour is undefined if the vertices are not connected."""
         for e in self.incident_edges(s):
             if t in self.edge_st(e) and et == self.edge_type(e):
                 return e
         raise ValueError(f"No edge of type {et} between {s} and {t}")
 
-    def connected(self,v1: VT,v2: VT) -> bool:
+    def connected(self,v1: VT, v2: VT) -> bool:
         """Returns whether vertices v1 and v2 share an edge."""
         for e in self.incident_edges(v1):
             if v2 in self.edge_st(e):
@@ -332,12 +334,12 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         return False
 
     def add_vertex(self,
-                   ty:VertexType=VertexType.BOUNDARY,
-                   qubit:FloatInt=-1,
-                   row:FloatInt=-1,
-                   phase:Optional[FractionLike]=None,
-                   ground:bool=False,
-                   index: Optional[VT] = None
+                   ty: VertexType = VertexType.BOUNDARY,
+                   qubit: FloatInt = -1,
+                   row: FloatInt = -1,
+                   phase: FractionLike | None = None,
+                   ground: bool = False,
+                   index: VT | None = None
                    ) -> VT:
         """Add a single vertex to the graph and return its index.
         The optional parameters allow you to respectively set
@@ -365,7 +367,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
             self.phase_mult[self.max_phase_index] = 1
         return v
 
-    def add_edges(self, edge_pairs: Iterable[Tuple[VT,VT]], edgetype:EdgeType=EdgeType.SIMPLE) -> None:
+    def add_edges(self, edge_pairs: Iterable[tuple[VT,VT]], edgetype: EdgeType = EdgeType.SIMPLE) -> None:
         """Adds a list of edges to the graph."""
         for ep in edge_pairs:
             self.add_edge(ep, edgetype)
@@ -390,14 +392,14 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         """Gets the number of outputs of the graph."""
         return len(self.outputs())
 
-    def set_position(self, vertex: VT, q: FloatInt, r: FloatInt):
+    def set_position(self, vertex: VT, q: FloatInt, r: FloatInt) -> None:
         """Set both the qubit index and row index of the vertex."""
         self.set_qubit(vertex, q)
         self.set_row(vertex, r)
 
-    def neighbors(self, vertex: VT) -> Sequence[VT]:
+    def neighbors(self, vertex: VT) -> Iterable[VT]:
         """Returns all neighboring vertices of the given vertex."""
-        vs: Set[VT] = set()
+        vs: set[VT] = set()
         for e in self.incident_edges(vertex):
             s,t = self.edge_st(e)
             vs.add(s if t == vertex else t)
@@ -405,7 +407,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
 
     def vertex_degree(self, vertex: VT) -> int:
         """Returns the degree of the given vertex."""
-        return len(self.incident_edges(vertex))
+        return len(list(self.incident_edges(vertex)))
 
     def edge_s(self, edge: ET) -> VT:
         """Returns the source of the given edge."""
@@ -416,12 +418,12 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         return self.edge_st(edge)[1]
 
 
-    def vertex_set(self) -> Set[VT]:
+    def vertex_set(self) -> set[VT]:
         """Returns the vertices of the graph as a Python set.
         Should be overloaded if the backend supplies a cheaper version than this."""
         return set(self.vertices())
 
-    def edge_set(self) -> Set[ET]:
+    def edge_set(self) -> set[ET]:
         """Returns the edges of the graph as a Python set.
         Should be overloaded if the backend supplies a cheaper version than this. Note this ignores parallel edges."""
         return set(self.edges())
@@ -447,7 +449,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
             Returns a string with some information regarding the degree distribution of the graph.
         """
         s = str(self) + "\n"
-        degrees: Dict[int,int] = {}
+        degrees: dict[int,int] = {}
         for v in self.vertices():
             d = self.vertex_degree(v)
             if d in degrees: degrees[d] += 1
@@ -457,7 +459,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
             s += "{:d}: {:d}\n".format(d,n)
         return s
 
-    def copy(self, adjoint:bool=False, backend:Optional[str]=None) -> BaseGraph[VT,ET]:
+    def copy(self, adjoint: bool = False, backend: str | None = None) -> BaseGraph[VT,ET]:
         """Create a copy of the graph. If ``adjoint`` is set,
         the adjoint of the graph will be returned (inputs and outputs flipped, phases reversed).
         When ``backend`` is set, a copy of the graph with the given backend is produced.
@@ -479,15 +481,13 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         if (backend is None):
             backend = type(self).backend
         g = Graph(backend = backend)
-        if isinstance(self, Multigraph) and isinstance(g, Multigraph):
-            g.set_auto_simplify(self._auto_simplify) # type: ignore
-            # mypy issue https://github.com/python/mypy/issues/16413
+        g.set_auto_simplify(self.get_auto_simplify())
         g.track_phases = self.track_phases
         g.scalar = self.scalar.copy(conjugate=adjoint)
-        g.merge_vdata = self.merge_vdata # type: ignore
+        g.merge_vdata = self.merge_vdata
         for name in self.var_registry.vars():
             g.var_registry.set_type(name, self.var_registry.get_type(name))
-        mult:int = 1
+        mult: int = 1
         if adjoint:
             mult = -1
 
@@ -540,7 +540,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         return self.copy(adjoint=True)
 
 
-    def map_qubits(self, qubit_map:Mapping[int,Tuple[float,float]]) -> None:
+    def map_qubits(self, qubit_map: Mapping[int, tuple[float,float]]) -> None:
         for v in self.vertices():
             q = self.qubit(v)
             r = self.row(v)
@@ -561,13 +561,13 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         if len(outputs) != len(inputs):
             raise TypeError("Outputs of first graph must match inputs of second.")
 
-        plugs: List[Tuple[VT,VT,EdgeType]] = []
+        plugs: list[tuple[VT,VT,EdgeType]] = []
         for k in range(len(outputs)):
             o = outputs[k]
             i = inputs[k]
-            if len(self.neighbors(o)) != 1:
+            if len(list(self.neighbors(o))) != 1:
                 raise ValueError("Bad output vertex: " + str(o))
-            if len(other.neighbors(i)) != 1:
+            if len(list(other.neighbors(i))) != 1:
                 raise ValueError("Bad input vertex: " + str(i))
             no = next(iter(self.neighbors(o)))
             ni = next(iter(other.neighbors(i)))
@@ -585,7 +585,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         for v in outputs:
             self.remove_vertex(v)
 
-        vtab : Dict[VT,VT] = dict()
+        vtab : dict[VT,VT] = dict()
         for v in other.vertices():
             if not v in inputs:
                 w = self.add_vertex(other.type(v),
@@ -665,7 +665,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
     def __matmul__(self, other: BaseGraph[VT,ET]) -> BaseGraph[VT,ET]:
         return self.tensor(other)
 
-    def merge(self, other: BaseGraph[VT,ET]) -> Tuple[List[VT],List[ET]]:
+    def merge(self, other: BaseGraph[VT,ET]) -> tuple[list[VT],list[ET]]:
         """Merges this graph with the other graph in-place.
         Returns (list-of-vertices, list-of-edges) corresponding to
         the id's of the vertices and edges of the other graph."""
@@ -692,14 +692,11 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         self.rebind_variables_to_registry()
         return (list(vert_map.values()),edges)
 
-    def subgraph_from_vertices(self,verts: List[VT]) -> BaseGraph[VT,ET]:
+    def subgraph_from_vertices(self,verts: list[VT]) -> BaseGraph[VT,ET]:
         """Returns the subgraph consisting of the specified vertices."""
         from .graph import Graph # imported here to prevent circularity
-        from .multigraph import Multigraph
         g = Graph(backend=type(self).backend)
-        if isinstance(self, Multigraph) and isinstance(g, Multigraph):
-            g.set_auto_simplify(self._auto_simplify) # type: ignore
-            # mypy issue https://github.com/python/mypy/issues/16413
+        g.set_auto_simplify(self.get_auto_simplify())
         ty = self.types()
         rs = self.rows()
         qs = self.qubits()
@@ -724,7 +721,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
             new_e = g.add_edge((vert_map[s], vert_map[t]), self.edge_type(e))
             g.set_edata_dict(new_e, self.edata_dict(e))
 
-        used_var_names: Set[str] = set()
+        used_var_names: set[str] = set()
         for v in verts:
             p = phase[v]
             if isinstance(p, Poly):
@@ -776,7 +773,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         new_outputs = []
         for i,s in enumerate(effect):
             v = outputs[i]
-            if s == '/': 
+            if s == '/':
                 new_outputs.append(v)
                 continue
             if s in ('0', '1'):
@@ -793,20 +790,20 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
                 raise TypeError("Unknown output effect " + s)
         self.set_outputs(tuple(new_outputs))
 
-    def to_tensor(self, preserve_scalar:bool=True, strategy:str='naive') -> np.ndarray:
+    def to_tensor(self, preserve_scalar: bool = True, strategy: str = 'naive') -> np.ndarray:
         """Returns a representation of the graph as a tensor using :func:`~pyzx.tensor.tensorfy`"""
         return tensorfy(self, preserve_scalar, strategy)
 
-    def to_matrix(self,preserve_scalar:bool=True, strategy:str='naive') -> np.ndarray:
+    def to_matrix(self, preserve_scalar: bool = True, strategy: str = 'naive') -> np.ndarray:
         """Returns a representation of the graph as a matrix using :func:`~pyzx.tensor.tensorfy`"""
         return tensor_to_matrix(tensorfy(self, preserve_scalar, strategy), self.num_inputs(), self.num_outputs())
 
-    def to_dict(self, include_scalar:bool=True) -> Dict[str, Any]:
+    def to_dict(self, include_scalar: bool = True) -> dict[str, Any]:
         """Returns a dictionary representation of the graph, which can then be converted into json."""
         from .jsonparser import graph_to_dict
         return graph_to_dict(self, include_scalar)
 
-    def to_json(self, include_scalar:bool=True) -> str:
+    def to_json(self, include_scalar: bool = True) -> str:
         """Returns a json representation of the graph.
         Convert back into a graph using :meth:`from_json`."""
         from .jsonparser import graph_to_json
@@ -817,20 +814,20 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         from .jsonparser import to_graphml
         return to_graphml(self)
 
-    def to_tikz(self,draw_scalar:bool=False) -> str:
+    def to_tikz(self,draw_scalar: bool=False) -> str:
         """Returns a Tikz representation of the graph."""
         from ..tikz import to_tikz
         return to_tikz(self,draw_scalar)
 
     @classmethod
-    def from_json(cls, js:Union[str,Dict[str,Any]]) -> BaseGraph[VT,ET]:
+    def from_json(cls, js: str | dict[str,Any]) -> BaseGraph[VT,ET]:
         """Converts the given .qgraph json string into a Graph.
         Works with the output of :meth:`to_json`."""
         from .jsonparser import json_to_graph
         return json_to_graph(js)
 
     @classmethod
-    def from_tikz(cls, tikz: str, warn_overlap:bool= True, fuse_overlap:bool = True, ignore_nonzx:bool = False) -> BaseGraph[VT,ET]:
+    def from_tikz(cls, tikz: str, warn_overlap: bool = True, fuse_overlap: bool = True, ignore_nonzx: bool = False) -> BaseGraph[VT,ET]:
         """Converts a tikz diagram into a pyzx Graph.
     The tikz diagram is assumed to be one generated by Tikzit,
     and hence should have a nodelayer and a edgelayer..
@@ -848,7 +845,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         from ..tikz import tikz_to_graph
         return tikz_to_graph(tikz,warn_overlap, fuse_overlap, ignore_nonzx, cls.backend)
 
-    def save(self, filename: str, fmt: Optional[str] = None) -> None:
+    def save(self, filename: str, fmt: str | None = None) -> None:
         """Saves the graph to a file.
 
         Args:
@@ -881,7 +878,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
             f.write(content)
 
     @classmethod
-    def load(cls, filename: str, fmt: Optional[str] = None, **kwargs: Any) -> BaseGraph[VT, ET]:
+    def load(cls, filename: str, fmt: str | None = None, **kwargs: Any) -> BaseGraph[VT, ET]:
         """Loads a graph from a file.
 
         Args:
@@ -946,7 +943,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         """Returns the number of inputs of the graph"""
         return self.num_inputs()
 
-    def auto_detect_io(self):
+    def auto_detect_io(self) -> None:
         """Adds every vertex that is of boundary-type to the list of inputs or outputs.
         Whether it is an input or output is determined by looking whether its neighbor
         is further to the right or further to the left of the input.
@@ -1019,7 +1016,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
 
         self.pack_circuit_rows()
 
-    def translate(self, x:FloatInt, y:FloatInt) -> BaseGraph[VT,ET]:
+    def translate(self, x: FloatInt, y: FloatInt) -> BaseGraph[VT,ET]:
         g = self.copy()
         for v in g.vertices():
             g.set_row(v, g.row(v)+x)
@@ -1028,7 +1025,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
 
 
 
-    def add_edge_table(self, etab:Mapping[Tuple[VT,VT],List[int]]) -> None:
+    def add_edge_table(self, etab: Mapping[tuple[VT,VT], list[int]]) -> None:
         """Takes a dictionary mapping (source,target) --> (#edges, #h-edges) specifying that
         #edges regular edges must be added between source and target and $h-edges Hadamard edges.
         The method selectively adds or removes edges to produce that ZX diagram which would
@@ -1044,7 +1041,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         Used for phase teleportation."""
         self.phase_master = m
 
-    def update_phase_index(self, old:VT, new:VT) -> None:
+    def update_phase_index(self, old: VT, new: VT) -> None:
         """When a phase is moved from a vertex to another vertex,
         we need to tell the phase_teleportation algorithm that this has happened.
         This function does that. Used in some of the rules in `simplify`."""
@@ -1074,7 +1071,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
 
     def remove_isolated_vertices(self) -> None:
         """Deletes all vertices and vertex pairs that are not connected to any other vertex."""
-        rem: List[VT] = []
+        rem: list[VT] = []
         for v in self.vertices():
             d = self.vertex_degree(v)
             if d == 0:
@@ -1111,19 +1108,19 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
                         self.scalar.add_node(self.phase(v)+self.phase(w))
         self.remove_vertices(rem)
 
-    def vdata_dict(self, vertex: VT) -> Dict[str, Any]:
+    def vdata_dict(self, vertex: VT) -> dict[str, Any]:
         return { key: self.vdata(vertex, key) for key in self.vdata_keys(vertex) }
 
-    def set_vdata_dict(self, vertex: VT, d: Dict[str, Any]) -> None:
+    def set_vdata_dict(self, vertex: VT, d: dict[str, Any]) -> None:
         self.clear_vdata(vertex)
         for k, v in d.items():
             self.set_vdata(vertex, k, v)
 
-    def edata_dict(self, edge: ET) -> Dict[str, Any]:
+    def edata_dict(self, edge: ET) -> dict[str, Any]:
         """Return a dict of all edge data for the given edge."""
         return { key: self.edata(edge, key) for key in self.edata_keys(edge) }
 
-    def set_edata_dict(self, edge: ET, d: Dict[str, Any]) -> None:
+    def set_edata_dict(self, edge: ET, d: dict[str, Any]) -> None:
         """Set all edge data for the given edge from a dict, clearing existing data first."""
         self.clear_edata(edge)
         for k, v in d.items():
@@ -1169,7 +1166,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
             if isinstance(attr, Poly):
                 attr.rebind_variables_to_registry(self.var_registry)
 
-    def substitute_variables(self, var_values: Mapping[str, Union[float, complex, Fraction, Poly]],
+    def substitute_variables(self, var_values: Mapping[str, float | complex | Fraction | Poly],
                    in_place: bool = False) -> 'BaseGraph[VT, ET]':
         """Substitute values for symbolic variables in all phases and Z-box labels.
 
@@ -1197,7 +1194,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
             result = copy.deepcopy(self)
 
         # Collect all Var objects from the graph and map to user-provided values.
-        all_vars: Set[Var] = set()
+        all_vars: set[Var] = set()
         for v in result.vertices():
             phase = result.phase(v)
             if isinstance(phase, Poly):
@@ -1208,7 +1205,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
                     all_vars.update(label.free_vars())
         all_vars.update(result.scalar.free_vars())
 
-        var_map: Dict[Var, Union[float, complex, Fraction, Poly]] = {
+        var_map: dict[Var, float | complex | Fraction | Poly] = {
             var: var_values[var.name] for var in all_vars if var.name in var_values
         }
         if not var_map:
@@ -1216,8 +1213,8 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
 
         # Precompute all substitutions before mutating, so the graph is not
         # left partially substituted if an error occurs.
-        new_phases: Dict[VT, Union[int, float, complex, Fraction, Poly]] = {}
-        new_labels: Dict[VT, Union[int, float, complex, Fraction, Poly]] = {}
+        new_phases: dict[VT, float | complex | Fraction | Poly] = {}
+        new_labels: dict[VT, float | complex | Fraction | Poly] = {}
         for v in result.vertices():
             phase = result.phase(v)
             if isinstance(phase, Poly):
@@ -1233,7 +1230,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         # with complex coefficients.
         for v, new_phase in new_phases.items():
             try:
-                assert_phase_real(new_phase)  # type: ignore[arg-type]
+                assert_phase_real(new_phase)
             except TypeError:
                 raise TypeError(
                     f"Substitution produced complex phase {new_phase} for "
@@ -1241,7 +1238,10 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
 
         # Apply all substitutions.
         for v, new_phase in new_phases.items():
-            result.set_phase(v, new_phase)  # type: ignore[arg-type]
+            assert not isinstance(new_phase, complex) # assert_phase_real would have raised an error earlier
+            if isinstance(new_phase, float):
+                new_phase = Fraction(new_phase)
+            result.set_phase(v, new_phase)
         for v, new_label in new_labels.items():
             set_z_box_label(result, v, new_label)
         result.scalar = new_scalar
@@ -1253,7 +1253,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
 
         return result
 
-    def __deepcopy__(self, memo):
+    def __deepcopy__(self, memo: dict[int, Self]) -> Self:
         """Custom deepcopy implementation to ensure variable registry is properly handled
         while using Python's default deepcopy behavior."""
         cls = self.__class__
@@ -1287,7 +1287,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         targets: Iterable[VT],
         edge_type: EdgeType = EdgeType.HADAMARD,
         vertex_type: VertexType = VertexType.Z
-    ) -> Tuple[VT, VT]:
+    ) -> tuple[VT, VT]:
         """Add a phase gadget acting on the given target vertices.
         Returns a tuple (hub, phase_vertex) of the created vertices."""
         target_list = list(targets)
@@ -1305,6 +1305,3 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         self.add_edge((hub, phase_vertex), EdgeType.HADAMARD)
 
         return (hub, phase_vertex)
-
-
-

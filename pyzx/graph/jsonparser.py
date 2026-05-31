@@ -21,23 +21,21 @@ import re
 import ast
 import warnings
 from fractions import Fraction
-from typing import List, Dict, Tuple, Any, Optional, Callable, Union, TYPE_CHECKING
+from typing import Any, Union, TYPE_CHECKING
 from typing_extensions import deprecated
 
 from pyzx.graph.multigraph import Multigraph
 
-from ..utils import FractionLike, EdgeType, VertexType, phase_to_s
+from ..utils import EdgeType, VertexType, phase_to_s
 from .graph import Graph
 from .scalar import Scalar
 from .base import BaseGraph, VT, ET
-from ..simplify import id_simp
 from ..symbolic import parse, Poly, new_var, VarRegistry
 if TYPE_CHECKING:
     from .diff import GraphDiff
-    from .multigraph import Multigraph
 
 
-def string_to_phase(string: str, g: Optional[Union[BaseGraph,'GraphDiff']] = None) -> Union[Fraction, Poly]:
+def string_to_phase(string: str, g: Union[BaseGraph, 'GraphDiff', None] = None) -> Fraction | Poly:
     if not string:
         return Fraction(0)
     try:
@@ -68,7 +66,7 @@ def string_to_phase(string: str, g: Optional[Union[BaseGraph,'GraphDiff']] = Non
             raise ValueError(e)
 
 @deprecated("json_to_graph_old is deprecated, use json_to_graph or dict_to_graph instead")
-def json_to_graph_old(js: Union[str,Dict[str,Any]], backend:Optional[str]=None) -> BaseGraph:
+def json_to_graph_old(js: str | dict[str, Any], backend: str | None = None) -> BaseGraph:
     """Deprecated: Use :func:`json_to_graph` or :func:`dict_to_graph` instead.
 
     Converts the json representation of a .qgraph Quantomatic graph into
@@ -80,8 +78,8 @@ def json_to_graph_old(js: Union[str,Dict[str,Any]], backend:Optional[str]=None) 
     g = Graph(backend)
     g.variable_types = j.get('variable_types',{})
 
-    names: Dict[str, Any] = {} # TODO: Any = VT
-    hadamards: Dict[str, List[Any]] = {}
+    names: dict[str, Any] = {} # TODO: Any = VT
+    hadamards: dict[str, list[Any]] = {}
     for name,attr in j.get('node_vertices',{}).items():
         if ('data' in attr and 'type' in attr['data'] and attr['data']['type'] == "hadamard"
             and 'is_edge' in attr['data'] and attr['data']['is_edge'] == 'true'):
@@ -142,7 +140,7 @@ def json_to_graph_old(js: Union[str,Dict[str,Any]], backend:Optional[str]=None) 
     g.set_inputs(tuple(sorted(inputs.keys(),key=lambda v:inputs[v])))
     g.set_outputs(tuple(sorted(outputs.keys(),key=lambda v:outputs[v])))
 
-    edges: Dict[Any, List[int]] = {} # TODO: Any = ET
+    edges: dict[Any, list[int]] = {} # TODO: Any = ET
     for edge in j.get('undir_edges',{}).values():
         n1, n2 = edge['src'], edge['tgt']
         if n1 in hadamards and n2 in hadamards: #Both
@@ -180,7 +178,7 @@ def json_to_graph_old(js: Union[str,Dict[str,Any]], backend:Optional[str]=None) 
 
     return g
 
-def graph_to_dict(g: BaseGraph[VT,ET], include_scalar: bool=True) -> Dict[str, Any]:
+def graph_to_dict(g: BaseGraph[VT,ET], include_scalar: bool=True) -> dict[str, Any]:
     """Converts a PyZX graph into Python dict for JSON output.
     If include_scalar is set to True (the default), then this includes the value
     of g.scalar with the json, which will also be loaded by the ``from_json`` method."""
@@ -190,14 +188,14 @@ def graph_to_dict(g: BaseGraph[VT,ET], include_scalar: bool=True) -> Dict[str, A
         "variable_types": g.var_registry.types, # Potential source of error: this dictionary is mutable
     }
     if hasattr(g,'name'):
-        d['name'] = g.name
+        d['name'] = getattr(g, 'name')
     if include_scalar:
         d["scalar"] = g.scalar.to_dict()
     d['inputs'] = g.inputs()
     d['outputs'] = g.outputs()
     # Convert tuple keys to strings for JSON compatibility, replacing EdgeType with its integer value
     # This only applies to edata in Multigraph. For other classes, it returns str(k)
-    def edata_key_to_str(k):
+    def edata_key_to_str(k: Any) -> str:
         if isinstance(k, tuple) and len(k) == 3 and hasattr(k[2], 'value'):
             return str((k[0], k[1], k[2].value))
         return str(k)
@@ -230,7 +228,7 @@ def graph_to_dict(g: BaseGraph[VT,ET], include_scalar: bool=True) -> Dict[str, A
             d_v['is_ground'] = True
         verts.append(d_v)
 
-    edges: List[Tuple[VT,VT,EdgeType]] = []
+    edges: list[tuple[VT, VT, EdgeType]] = []
     if g.backend == 'multigraph':
         for e in g.edges():
             edges.append(e)  # type: ignore  # We know what we are doing, for multigraphs this has the right type.
@@ -246,16 +244,16 @@ def graph_to_dict(g: BaseGraph[VT,ET], include_scalar: bool=True) -> Dict[str, A
 
 
 @deprecated("graph_to_dict_old is deprecated, use graph_to_dict instead")
-def graph_to_dict_old(g: BaseGraph[VT,ET], include_scalar: bool=True) -> Dict[str, Any]:
+def graph_to_dict_old(g: BaseGraph[VT,ET], include_scalar: bool=True) -> dict[str, Any]:
     """Deprecated: Use :func:`graph_to_dict` instead.
 
     Converts a PyZX graph into Python dict for JSON output that is compatible with the Quantomatic format.
     If include_scalar is set to True (the default), then this includes the value
     of g.scalar with the json, which will also be loaded by the ``from_json`` method."""
-    node_vs: Dict[str, Dict[str, Any]] = {}
-    wire_vs: Dict[str, Dict[str, Any]] = {}
-    edges: Dict[str, Dict[str, str]] = {}
-    names: Dict[VT, str] = {}
+    node_vs: dict[str, dict[str, Any]] = {}
+    wire_vs: dict[str, dict[str, Any]] = {}
+    edges: dict[str, dict[str, str]] = {}
+    names: dict[VT, str] = {}
     freenamesv = ["v"+str(i) for i in range(g.num_vertices()+g.num_edges())]
     freenamesb = ["b"+str(i) for i in range(g.num_vertices())]
     inputs = g.inputs()
@@ -344,7 +342,7 @@ def graph_to_dict_old(g: BaseGraph[VT,ET], include_scalar: bool=True) -> Dict[st
         else:
             raise TypeError("Edge of type 0")
 
-    d: Dict[str,Any] = {
+    d: dict[str,Any] = {
         "wire_vertices": wire_vs,
         "node_vertices": node_vs,
         "undir_edges": edges,
@@ -361,10 +359,10 @@ def graph_to_json(g: BaseGraph[VT,ET], include_scalar: bool=True) -> str:
     of g.scalar with the json, which will also be loaded by the ``from_json`` method."""
     return json.dumps(graph_to_dict(g, include_scalar))
 
-def dict_to_graph(d: Dict[str,Any], backend: Optional[str]=None) -> BaseGraph:
+def dict_to_graph(d: dict[str, Any], backend: str | None = None) -> BaseGraph:
     """Converts a Python dict representation a graph produced by `graph_to_dict` into
     a pyzx Graph.
-    If backend is given, it will be used as the backend for the graph, 
+    If backend is given, it will be used as the backend for the graph,
     otherwise the backend will be read from the dict description."""
     if not 'version' in d:
         # Version is not specified in dictionary, will try to parse it as an older format.
@@ -422,7 +420,7 @@ def dict_to_graph(d: Dict[str,Any], backend: Optional[str]=None) -> BaseGraph:
 
     return g
 
-def json_to_graph(js: Union[str,Dict[str,Any]], backend:Optional[str]=None) -> BaseGraph:
+def json_to_graph(js: str | dict[str, Any], backend: str | None = None) -> BaseGraph:
     """Converts the json representation of a pyzx graph (as a string or dict) into
     a `Graph`. If JSON is given as a string, parse it first."""
     if isinstance(js, str):
@@ -476,5 +474,3 @@ def to_graphml(g: BaseGraph[VT,ET]) -> str:
 """
 
     return gml
-
-

@@ -21,7 +21,7 @@ def decompose(g:BaseGraph[VT,ET], v:VT) -> SumGraph:
     g0.remove_vertex(v)
     g1.remove_vertex(v)
 
-    n = len(g.neighbors(v))
+    n = len(list(g.neighbors(v)))
     g0.scalar.add_power(-n)
     g1.scalar.add_power(-n)
     g1.scalar.add_phase(g.phase(v)) # account for e^(i*pi*alpha) on right branch

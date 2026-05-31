@@ -17,11 +17,11 @@
 import itertools
 from collections import Counter
 from fractions import Fraction
-from typing import Tuple, Dict, Set, Union, Any
+from typing import Iterable, Any, cast
 
 from .base import BaseGraph
 
-from ..utils import VertexType, EdgeType, FractionLike, FloatInt, vertex_is_zx_like, vertex_is_z_like, set_z_box_label, get_z_box_label, assert_phase_real
+from ..utils import VertexType, EdgeType, FractionLike, FloatInt, vertex_is_zx_like, set_z_box_label, get_z_box_label, assert_phase_real
 
 class Edge:
     """A structure for storing the number of simple and number of Hadamard edges
@@ -35,7 +35,7 @@ class Edge:
         self.h = h
         self.w_io = w_io
 
-    def add(self, s: int=0, h: int=0, w_io: int=0):
+    def add(self, s: int = 0, h: int = 0, w_io: int = 0) -> None:
         self.s += s
         self.h += h
         self.w_io += w_io
@@ -46,7 +46,7 @@ class Edge:
         if self.w_io == 1 and self.s + self.h > 0:
             raise ValueError('Cannot have W-IO edge and other edges')
 
-    def remove(self, s: int=0, h: int=0, w_io: int=0):
+    def remove(self, s: int = 0, h: int = 0, w_io: int = 0) -> None:
         self.add(s=-s, h=-h, w_io=-w_io)
 
     def is_empty(self) -> bool:
@@ -57,7 +57,8 @@ class Edge:
         elif ty == EdgeType.HADAMARD: return self.h
         else: return self.w_io
 
-class Multigraph(BaseGraph[int,Tuple[int,int,EdgeType]]):
+
+class Multigraph(BaseGraph[int, tuple[int,int,EdgeType]]):
     """Purely Pythonic multigraph implementation of :class:`~graph.base.BaseGraph`."""
     backend = 'multigraph'
 
@@ -65,23 +66,24 @@ class Multigraph(BaseGraph[int,Tuple[int,int,EdgeType]]):
     #can be found in base.BaseGraph
     def __init__(self) -> None:
         BaseGraph.__init__(self)
-        self.graph: Dict[int,Dict[int,Edge]]   = dict()
+        self.graph: dict[int,dict[int,Edge]]   = dict()
         self._auto_simplify: bool                       = True
         self._vindex: int                               = 0
         self.nedges: int                                = 0
-        self.ty: Dict[int,VertexType]                   = dict()
-        self._phase: Dict[int, FractionLike]            = dict()
-        self._qindex: Dict[int, FloatInt]               = dict()
+        self.ty: dict[int,VertexType]                   = dict()
+        self._phase: dict[int, FractionLike]            = dict()
+        self._qindex: dict[int, FloatInt]               = dict()
         self._maxq: FloatInt                            = -1
-        self._rindex: Dict[int, FloatInt]               = dict()
+        self._rindex: dict[int, FloatInt]               = dict()
         self._maxr: FloatInt                            = -1
-        self._grounds: Set[int]                         = set()
+        self._grounds: set[int]                         = set()
 
-        self._vdata: Dict[int,Any]                      = dict()
-        self._edata: Dict[Tuple[int,int,EdgeType], Dict[str, Any]] = dict()
-        self._inputs: Tuple[int, ...]                   = tuple()
-        self._outputs: Tuple[int, ...]                  = tuple()
-
+        self._vdata: dict[int,Any]                      = dict()
+        self._edata: dict[tuple[int, int, EdgeType], dict[str, Any]] = dict()
+        self._inputs: tuple[int, ...]                   = tuple()
+        self._outputs: tuple[int, ...]                  = tuple()
+    
+    
     def clone(self) -> 'Multigraph':
         cpy = Multigraph()
         for v, d in self.graph.items():
@@ -107,52 +109,56 @@ class Multigraph(BaseGraph[int,Tuple[int,int,EdgeType]]):
         cpy.max_phase_index = self.max_phase_index
         return cpy
 
-    def set_auto_simplify(self, s: bool):
+    def set_auto_simplify(self, s: bool) -> None:
         """Automatically remove parallel edges as edges are added"""
         self._auto_simplify = s
 
-    def get_auto_simplify(self):
+    def get_auto_simplify(self) -> bool:
         return self._auto_simplify
 
-    def multigraph(self):
+    def multigraph(self) -> bool:
         return False
 
-    def vindex(self): return self._vindex
-    def depth(self):
+    def vindex(self) -> int:
+        return self._vindex
+    
+    def depth(self) -> float:
         if self._rindex: self._maxr = max(self._rindex.values())
         else: self._maxr = -1
         return self._maxr
-    def qubit_count(self):
+    
+    def qubit_count(self) -> int:
         if self._qindex: self._maxq = max(self._qindex.values())
         else: self._maxq = -1
-        return self._maxq + 1
+        return int(self._maxq + 1)
 
-    def inputs(self):
+    def inputs(self) -> tuple[int, ...]:
         return self._inputs
 
-    def num_inputs(self):
+    def num_inputs(self) -> int:
         return len(self._inputs)
 
-    def set_inputs(self, inputs):
+    def set_inputs(self, inputs: tuple[int, ...]) -> None:
         self._inputs = inputs
 
-    def outputs(self):
+    def outputs(self) -> tuple[int, ...]:
         return self._outputs
 
-    def num_outputs(self):
+    def num_outputs(self) -> int:
         return len(self._outputs)
 
-    def set_outputs(self, outputs):
+    def set_outputs(self, outputs: tuple[int, ...]) -> None:
         self._outputs = outputs
 
-    def add_vertices(self, amount):
+    def add_vertices(self, amount: int) -> range:
         for i in range(self._vindex, self._vindex + amount):
             self.graph[i] = dict()
             self.ty[i] = VertexType.BOUNDARY
             self._phase[i] = 0
         self._vindex += amount
         return range(self._vindex - amount, self._vindex)
-    def add_vertex_indexed(self, v):
+    
+    def add_vertex_indexed(self, v: int) -> None:
         """Adds a vertex that is guaranteed to have the chosen index (i.e. 'name').
         If the index isn't available, raises a ValueError.
         This method is used in the editor to support undo, which requires vertices
@@ -163,10 +169,10 @@ class Multigraph(BaseGraph[int,Tuple[int,int,EdgeType]]):
         self.ty[v] = VertexType.BOUNDARY
         self._phase[v] = 0
 
-    def add_edges(self, edge_pairs, edgetype=EdgeType.SIMPLE):
+    def add_edges(self, edge_pairs: Iterable[tuple[int, int]], edgetype: EdgeType = EdgeType.SIMPLE) -> None:
         for ep in edge_pairs: self.add_edge(ep, edgetype)
 
-    def add_edge(self, edge_pair, edgetype=EdgeType.SIMPLE):
+    def add_edge(self, edge_pair: tuple[int, int], edgetype: EdgeType = EdgeType.SIMPLE) -> tuple[int, int, EdgeType]:
         self.nedges += 1
         s,t = edge_pair
         if not t in self.graph[s]:
@@ -219,7 +225,7 @@ class Multigraph(BaseGraph[int,Tuple[int,int,EdgeType]]):
 
         return (s,t, edgetype) if s <= t else (t,s,edgetype)
 
-    def remove_vertices(self, vertices):
+    def remove_vertices(self, vertices: Iterable[int]) -> None:
         for v in vertices:
             vs = list(self.graph[v])
             # remove all edges
@@ -249,14 +255,14 @@ class Multigraph(BaseGraph[int,Tuple[int,int,EdgeType]]):
             self._vdata.pop(v,None)
         self._vindex = max(self.vertices(),default=0) + 1
 
-    def remove_vertex(self, vertex):
+    def remove_vertex(self, vertex: int) -> None:
         self.remove_vertices([vertex])
 
-    def remove_edges(self, edges):
+    def remove_edges(self, edges: Iterable[tuple[int, int, EdgeType]]) -> None:
         for e in edges:
             self.remove_edge(e)
 
-    def remove_edge(self, edge):
+    def remove_edge(self, edge: tuple[int, int, EdgeType]) -> None:
         s,t,ty = edge
         e = self.graph[s][t]
         if ty == EdgeType.SIMPLE: e.remove(s=1)
@@ -270,14 +276,14 @@ class Multigraph(BaseGraph[int,Tuple[int,int,EdgeType]]):
 
         self.nedges -= 1
 
-    def num_vertices(self):
+    def num_vertices(self) -> int:
         return len(self.graph)
 
-    def num_edges(self, s=None, t=None, et=None):
-        if s != None or t != None:
-            if et == None:
+    def num_edges(self, s: int | None = None, t: int | None = None, et: EdgeType | None = None) -> int:
+        if s is not None and t is not None:
+            if et is None:
                 return len(list(self.edges(s, t)))
-            if not t in self.graph[s]:
+            if t not in self.graph[s]:
                 return 0
             if et == EdgeType.SIMPLE:
                 return self.graph[s][t].s
@@ -287,13 +293,15 @@ class Multigraph(BaseGraph[int,Tuple[int,int,EdgeType]]):
                 return self.graph[s][t].w_io
             else:
                 raise ValueError("Unkown EdgeType: %s" % repr(et))
+        elif s is not None:
+            return self.vertex_degree(s)
         else:
             return self.nedges
 
-    def vertices(self):
+    def vertices(self) -> Iterable[int]:
         return self.graph.keys()
 
-    def vertices_in_range(self, start, end):
+    def vertices_in_range(self, start: int, end: int) -> Iterable[int]:
         """Returns all vertices with index between start and end
         that only have neighbours whose indices are between start and end"""
         for v in self.graph.keys():
@@ -301,15 +309,15 @@ class Multigraph(BaseGraph[int,Tuple[int,int,EdgeType]]):
             if all(start<v2<end for v2 in self.graph[v]):
                 yield v
 
-    def edges(self, s=None, t=None):
-        if s == None:
+    def edges(self, s: int | None = None, t: int | None = None) -> Iterable[tuple[int, int, EdgeType]]:
+        if s is None:
             for v0,adj in self.graph.items():
                 for v1, e in adj.items():
                     if v1 >= v0:
                         for _ in range(e.s): yield (v0, v1, EdgeType.SIMPLE)
                         for _ in range(e.h): yield (v0, v1, EdgeType.HADAMARD)
                         for _ in range(e.w_io): yield (v0, v1, EdgeType.W_IO)
-        elif t != None:
+        elif t is not None:
             s, t = (s, t) if s < t else (t, s)
             if t not in self.graph[s]:
                 return
@@ -340,39 +348,39 @@ class Multigraph(BaseGraph[int,Tuple[int,int,EdgeType]]):
     #                    if v1 > v0:
     #                        yield (v0,v1)
 
-    def edge(self, s, t, et: EdgeType=EdgeType.SIMPLE):
+    def edge(self, s: int, t: int, et: EdgeType = EdgeType.SIMPLE) -> tuple[int, int, EdgeType]:
         s, t = (s, t) if s < t else (t, s)
         e = self.graph[s][t]
         if e.get_edge_count(et):
             return (s, t, et)
-        return next(self.edges(s, t))
+        return next(iter(self.edges(s, t)))
 
 
-    def edge_set(self):
-        return Counter(self.edges())
+    def edge_set(self) -> set[tuple[int, int, EdgeType]]:
+        return Counter(self.edges()) #TODO: this function is not a valid override
 
-    def edge_st(self, edge):
+    def edge_st(self, edge: tuple[int, int, EdgeType]) -> tuple[int, int]:
         return (edge[0], edge[1])
 
-    def neighbors(self, vertex):
+    def neighbors(self, vertex: int) -> Iterable[int]:
         return self.graph[vertex].keys()
 
-    def vertex_degree(self, vertex):
+    def vertex_degree(self, vertex: int) -> int:
         d = 0
         for e in self.graph[vertex].values():
             for ty in EdgeType:
                 d += e.get_edge_count(ty)
         return d
 
-    def incident_edges(self, vertex):
+    def incident_edges(self, vertex: int) -> Iterable[tuple[int, int, EdgeType]]:
         return list(itertools.chain.from_iterable(
             self.edges(vertex, v1) for v1 in self.graph[vertex]
         ))
 
-    def connected(self,v1,v2):
+    def connected(self, v1: int, v2: int) -> bool:
         return v2 in self.graph[v1]
 
-    def edge_type(self, e):
+    def edge_type(self, e: tuple[int, int, EdgeType]) -> EdgeType:
         if len(e) == 2:
             edges = list(self.edges(e[0],e[1]))
             if len(edges) == 0:
@@ -386,30 +394,34 @@ class Multigraph(BaseGraph[int,Tuple[int,int,EdgeType]]):
             e = edges[0]
         return e[2]
 
-    def set_edge_type(self, edge, t):
-        v1,v2,ty = edge
+    def set_edge_type(self, e: tuple[int, int, EdgeType], t: EdgeType) -> None:
+        v1,v2,ty = e
         if ty != t:
-            e = self.graph[v1][v2]
+            edge = self.graph[v1][v2]
             # decrement the old type and increment the new type
-            if ty == EdgeType.SIMPLE: e.add(s=-1)
-            elif ty == EdgeType.HADAMARD: e.add(h=-1)
-            else: e.add(w_io=-1)
-            if t == EdgeType.SIMPLE: e.add(s=1)
-            elif t == EdgeType.HADAMARD: e.add(h=1)
-            else: e.add(w_io=1)
+            if ty == EdgeType.SIMPLE: edge.add(s=-1)
+            elif ty == EdgeType.HADAMARD: edge.add(h=-1)
+            else: edge.add(w_io=-1)
+            if t == EdgeType.SIMPLE: edge.add(s=1)
+            elif t == EdgeType.HADAMARD: edge.add(h=1)
+            else: edge.add(w_io=1)
 
-    def type(self, vertex):
+    def type(self, vertex: int) -> VertexType:
         return self.ty[vertex]
-    def types(self):
+    
+    def types(self) -> dict[int, VertexType]:
         return self.ty
-    def set_type(self, vertex, t):
+    
+    def set_type(self, vertex: int, t: VertexType) -> None:
         self.ty[vertex] = t
 
-    def phase(self, vertex):
-        return self._phase.get(vertex,Fraction(1))
-    def phases(self):
+    def phase(self, vertex: int) -> FractionLike:
+        return self._phase.get(vertex, Fraction(1))
+    
+    def phases(self) -> dict[int, FractionLike]:
         return self._phase
-    def set_phase(self, vertex, phase):
+    
+    def set_phase(self, vertex: int, phase: FractionLike) -> None:
         assert_phase_real(phase)
         try:
             if isinstance(phase, Fraction):
@@ -418,7 +430,8 @@ class Multigraph(BaseGraph[int,Tuple[int,int,EdgeType]]):
                 self._phase[vertex] = phase
         except Exception:
             self._phase[vertex] = phase
-    def add_to_phase(self, vertex, phase):
+    
+    def add_to_phase(self, vertex: int, phase: FractionLike) -> None:
         assert_phase_real(phase)
         old_phase = self._phase.get(vertex, Fraction(1))
         try:
@@ -428,74 +441,84 @@ class Multigraph(BaseGraph[int,Tuple[int,int,EdgeType]]):
                 self._phase[vertex] = old_phase + phase
         except Exception:
             self._phase[vertex] = old_phase + phase
-    def qubit(self, vertex):
+    
+    def qubit(self, vertex: int) -> FloatInt:
         return self._qindex.get(vertex,-1)
-    def qubits(self):
+    
+    def qubits(self) -> dict[int, FloatInt]:
         return self._qindex
-    def set_qubit(self, vertex, q):
+    
+    def set_qubit(self, vertex: int, q: FloatInt) -> None:
         if q > self._maxq: self._maxq = q
         self._qindex[vertex] = q
 
-    def row(self, vertex):
+    def row(self, vertex: int) -> FloatInt:
         return self._rindex.get(vertex, -1)
-    def rows(self):
+    
+    def rows(self) -> dict[int, FloatInt]:
         return self._rindex
-    def set_row(self, vertex, r):
+    
+    def set_row(self, vertex: int, r: FloatInt) -> None:
         if r > self._maxr: self._maxr = r
         self._rindex[vertex] = r
 
-    def is_ground(self, vertex):
+    def is_ground(self, vertex: int) -> bool:
         return vertex in self._grounds
-    def grounds(self):
+    
+    def grounds(self) -> set[int]:
         return self._grounds
-    def set_ground(self, vertex, flag=True):
+    
+    def set_ground(self, vertex: int, flag: bool = True) -> None:
         if flag:
             self._grounds.add(vertex)
         else:
             self._grounds.discard(vertex)
 
-    def clear_vdata(self, vertex):
+    def clear_vdata(self, vertex: int) -> None:
         if vertex in self._vdata:
             del self._vdata[vertex]
-    def vdata_keys(self, vertex):
+    
+    def vdata_keys(self, vertex: int) -> Iterable[str]:
         return self._vdata.get(vertex, {}).keys()
-    def vdata(self, vertex, key, default=None):
+    
+    def vdata(self, vertex: int, key: str, default: Any = None) -> Any:
         if vertex in self._vdata:
-            return self._vdata[vertex].get(key,default)
+            return self._vdata[vertex].get(key, default)
         else:
             return default
-    def set_vdata(self, vertex, key, val):
+    
+    def set_vdata(self, vertex: int, key: str, val: Any) -> None:
         if vertex in self._vdata:
             self._vdata[vertex][key] = val
         else:
-            self._vdata[vertex] = {key:val}
+            self._vdata[vertex] = {key: val}
 
-    def clear_edata(self, edge):
+    def clear_edata(self, edge: tuple[int, int, EdgeType]) -> Any:
         self._edata.pop(edge, None)
 
-    def edata_keys(self, edge):
+    def edata_keys(self, edge: tuple[int, int, EdgeType]) -> Iterable[str]:
         return self._edata.get(edge, {}).keys()
 
-    def edata(self, edge, key, default=None):
+    def edata(self, edge: tuple[int, int, EdgeType], key: str, default: Any = None) -> Any:
         return self._edata.get(edge, {}).get(key, default)
 
-    def set_edata(self, edge, key, val):
+    def set_edata(self, edge: tuple[int, int, EdgeType], key: str, val: Any) -> None:
         if edge in self._edata:
             self._edata[edge][key] = val
         else:
             self._edata[edge] = {key: val}
 
-    def edata_dict(self, edge):
+    def edata_dict(self, edge: tuple[int, int, EdgeType]) -> dict[str, Any]:
         return dict(self._edata.get(edge, {}))
 
-    def set_edata_dict(self, edge, d):
+    def set_edata_dict(self, edge: tuple[int, int, EdgeType], d: dict[str, Any]) -> None:
         self.clear_edata(edge)
         if d:
             self._edata[edge] = dict(d)
 
     @classmethod
-    def from_json(cls, js:Union[str,Dict[str,Any]]) -> 'Multigraph':
+    def from_json(cls, js: str | dict[str, Any]) -> 'Multigraph':
         """Converts the given .qgraph json string into a Multigraph.
         Works with the output of :meth:`to_json`."""
         from .jsonparser import json_to_graph
-        return json_to_graph(js,backend='multigraph') # type:ignore
+        return cast(Multigraph, json_to_graph(js, backend='multigraph'))

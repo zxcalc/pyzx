@@ -15,13 +15,13 @@
 # limitations under the License.
 
 from fractions import Fraction
-from typing import Optional, Tuple, Dict, Set, Any
+from typing import Generator, Iterable, Any
 
 from .base import BaseGraph
 
 from ..utils import VertexType, EdgeType, FractionLike, FloatInt, vertex_is_zx_like, vertex_is_z_like, set_z_box_label, get_z_box_label, assert_phase_real
 
-class GraphS(BaseGraph[int,Tuple[int,int]]):
+class GraphS(BaseGraph[int, tuple[int,int]]):
     """Purely Pythonic implementation of :class:`~graph.base.BaseGraph`."""
     backend = 'simple'
 
@@ -29,21 +29,21 @@ class GraphS(BaseGraph[int,Tuple[int,int]]):
     #can be found in base.BaseGraph
     def __init__(self) -> None:
         BaseGraph.__init__(self)
-        self.graph: Dict[int,Dict[int,EdgeType]]   = dict()
+        self.graph: dict[int,dict[int,EdgeType]]   = dict()
         self._vindex: int                               = 0
         self.nedges: int                                = 0
-        self.ty: Dict[int,VertexType]              = dict()
-        self._phase: Dict[int, FractionLike]            = dict()
-        self._qindex: Dict[int, FloatInt]               = dict()
+        self.ty: dict[int,VertexType]              = dict()
+        self._phase: dict[int, FractionLike]            = dict()
+        self._qindex: dict[int, FloatInt]               = dict()
         self._maxq: FloatInt                            = -1
-        self._rindex: Dict[int, FloatInt]               = dict()
+        self._rindex: dict[int, FloatInt]               = dict()
         self._maxr: FloatInt                            = -1
-        self._grounds: Set[int] = set()
+        self._grounds: set[int] = set()
 
-        self._vdata: Dict[int,Any]                      = dict()
-        self._edata: Dict[Tuple[int,int],Any] = dict()
-        self._inputs: Tuple[int, ...]                   = tuple()
-        self._outputs: Tuple[int, ...]                  = tuple()
+        self._vdata: dict[int,Any]                      = dict()
+        self._edata: dict[tuple[int,int],Any] = dict()
+        self._inputs: tuple[int, ...]                   = tuple()
+        self._outputs: tuple[int, ...]                  = tuple()
 
     def clone(self) -> 'GraphS':
         cpy = GraphS()
@@ -69,42 +69,46 @@ class GraphS(BaseGraph[int,Tuple[int,int]]):
         cpy.max_phase_index = self.max_phase_index
         return cpy
 
-    def vindex(self): return self._vindex
-    def depth(self):
+    def vindex(self) -> int:
+        return self._vindex
+    
+    def depth(self) -> int:
         if self._rindex: self._maxr = max(self._rindex.values())
         else: self._maxr = -1
-        return self._maxr
-    def qubit_count(self):
+        return int(self._maxr)
+    
+    def qubit_count(self) -> int:
         if self._qindex: self._maxq = max(self._qindex.values())
         else: self._maxq = -1
-        return self._maxq + 1
+        return int(self._maxq + 1)
 
-    def inputs(self):
+    def inputs(self) -> tuple[int, ...]:
         return self._inputs
 
-    def num_inputs(self):
+    def num_inputs(self) -> int:
         return len(self._inputs)
 
-    def set_inputs(self, inputs):
+    def set_inputs(self, inputs: tuple[int, ...]) -> None:
         self._inputs = inputs
 
-    def outputs(self):
+    def outputs(self) -> tuple[int, ...]:
         return self._outputs
 
-    def num_outputs(self):
+    def num_outputs(self) -> int:
         return len(self._outputs)
 
-    def set_outputs(self, outputs):
+    def set_outputs(self, outputs: tuple[int, ...]) -> None:
         self._outputs = outputs
 
-    def add_vertices(self, amount):
+    def add_vertices(self, amount: int) -> list[int]:
         for i in range(self._vindex, self._vindex + amount):
             self.graph[i] = dict()
             self.ty[i] = VertexType.BOUNDARY
             self._phase[i] = 0
         self._vindex += amount
-        return range(self._vindex - amount, self._vindex)
-    def add_vertex_indexed(self, v):
+        return list(range(self._vindex - amount, self._vindex))
+    
+    def add_vertex_indexed(self, v: int) -> None:
         """Adds a vertex that is guaranteed to have the chosen index (i.e. 'name').
         If the index isn't available, raises a ValueError.
         This method is used in the editor to support undo, which requires vertices
@@ -115,13 +119,13 @@ class GraphS(BaseGraph[int,Tuple[int,int]]):
         self.ty[v] = VertexType.BOUNDARY
         self._phase[v] = 0
 
-    def add_edges(self, edge_pairs, edgetype=EdgeType.SIMPLE):
+    def add_edges(self, edge_pairs: Iterable[tuple[int, int]], edgetype: EdgeType = EdgeType.SIMPLE) -> None:
         for s,t in edge_pairs:
             self.nedges += 1
             self.graph[s][t] = edgetype
             self.graph[t][s] = edgetype
     
-    def add_edge(self, edge_pair, edgetype=EdgeType.SIMPLE):
+    def add_edge(self, edge_pair: tuple[int, int], edgetype: EdgeType = EdgeType.SIMPLE) -> tuple[int, int]:
         s,t = edge_pair
         t1 = self.ty[s]
         t2 = self.ty[t]
@@ -176,7 +180,7 @@ class GraphS(BaseGraph[int,Tuple[int,int]]):
 
         return edge_pair
 
-    def remove_vertices(self, vertices):
+    def remove_vertices(self, vertices: Iterable[int]) -> None:
         for v in vertices:
             vs = list(self.graph[v])
             # remove all edges
@@ -202,12 +206,12 @@ class GraphS(BaseGraph[int,Tuple[int,int]]):
             except: pass
             self._grounds.discard(v)
             self._vdata.pop(v,None)
-        self._vindex = max(self.vertices(),default=0) + 1
+        self._vindex = max(self.vertices(), default=0) + 1
 
-    def remove_vertex(self, vertex):
+    def remove_vertex(self, vertex: int) -> None:
         self.remove_vertices([vertex])
-
-    def remove_edges(self, edges):
+    
+    def remove_edges(self, edges: Iterable[tuple[int, int]]) -> None:
         for s,t in edges:
             if s == t:
                 continue
@@ -216,13 +220,13 @@ class GraphS(BaseGraph[int,Tuple[int,int]]):
             del self.graph[t][s]
             self._edata.pop((s, t), None)
 
-    def remove_edge(self, edge):
+    def remove_edge(self, edge: tuple[int, int]) -> None:
         self.remove_edges([edge])
 
-    def num_vertices(self):
+    def num_vertices(self) -> int:
         return len(self.graph)
 
-    def num_edges(self, s=None, t=None, et=None):
+    def num_edges(self, s: int | None = None, t: int | None = None, et: EdgeType | None = None) -> int:
         if s is not None and t is not None:
             if self.connected(s, t):
                 if et is not None:
@@ -239,10 +243,10 @@ class GraphS(BaseGraph[int,Tuple[int,int]]):
         else:
             return len(list(self.edges()))
 
-    def vertices(self):
+    def vertices(self) -> Iterable[int]:
         return self.graph.keys()
 
-    def vertices_in_range(self, start, end):
+    def vertices_in_range(self, start: FloatInt, end: FloatInt) -> Generator[int, None, None]:
         """Returns all vertices with index between start and end
         that only have neighbours whose indices are between start and end"""
         for v in self.graph.keys():
@@ -250,7 +254,7 @@ class GraphS(BaseGraph[int,Tuple[int,int]]):
             if all(start<v2<end for v2 in self.graph[v]):
                 yield v
 
-    def edges(self, s=None, t=None):
+    def edges(self, s: int | None = None, t: int | None = None) -> Generator[tuple[int, int], None, None]:
         if s is not None and t is not None:
             if self.connected(s, t):
                 yield (s,t) if s < t else (t,s)
@@ -262,7 +266,7 @@ class GraphS(BaseGraph[int,Tuple[int,int]]):
                 for v1 in adj:
                     if v1 > v0: yield (v0,v1)
 
-    def edges_in_range(self, start, end, safe=False):
+    def edges_in_range(self, start: FloatInt, end: FloatInt, safe: bool = False) -> Generator[tuple[int, int], None, None]:
         """like self.edges, but only returns edges that belong to vertices
         that are only directly connected to other vertices with
         index between start and end.
@@ -284,113 +288,132 @@ class GraphS(BaseGraph[int,Tuple[int,int]]):
                         if v1 > v0:
                             yield (v0,v1)
 
-    def edge(self, s, t):
+    def edge(self, s: int, t: int, et: EdgeType = EdgeType.SIMPLE) -> tuple[int, int]:
         return (s,t) if s < t else (t,s)
-    def edge_set(self):
+    
+    def edge_set(self) -> set[tuple[int, int]]:
         return set(self.edges())
-    def edge_st(self, edge):
+    
+    def edge_st(self, edge: tuple[int, int]) -> tuple[int, int]:
         return edge
 
-    def neighbors(self, vertex):
-        return self.graph[vertex].keys()
+    def neighbors(self, vertex: int) -> list[int]:
+        return list(self.graph[vertex].keys())
 
-    def vertex_degree(self, vertex):
+    def vertex_degree(self, vertex: int) -> int:
         return len(self.graph[vertex])
 
-    def incident_edges(self, vertex):
+    def incident_edges(self, vertex: int) -> list[tuple[int, int]]:
         return [(vertex, v1) if v1 > vertex else (v1, vertex) for v1 in self.graph[vertex]]
 
-    def connected(self,v1,v2):
+    def connected(self, v1: int, v2: int) -> bool:
         return v2 in self.graph[v1]
 
-    def edge_type(self, e):
+    def edge_type(self, e: tuple[int, int]) -> EdgeType:
         v1,v2 = e
         try:
             return self.graph[v1][v2]
         except KeyError:
-            return 0
+            return EdgeType(0)
 
-    def set_edge_type(self, e, t):
+    def set_edge_type(self, e: tuple[int, int], t: EdgeType) -> None:
         v1,v2 = e
         self.graph[v1][v2] = t
         self.graph[v2][v1] = t
 
-    def type(self, vertex):
+    def type(self, vertex: int) -> VertexType:
         return self.ty[vertex]
-    def types(self):
+    
+    def types(self) -> dict[int, VertexType]:
         return self.ty
-    def set_type(self, vertex, t):
+    
+    def set_type(self, vertex: int, t: VertexType) -> None:
         self.ty[vertex] = t
 
-    def phase(self, vertex):
-        return self._phase.get(vertex,Fraction(1))
-    def phases(self):
+    def phase(self, vertex: int) -> FractionLike:
+        return self._phase.get(vertex, Fraction(1))
+    
+    def phases(self) -> dict[int, FractionLike]:
         return self._phase
-    def set_phase(self, vertex, phase):
+    
+    def set_phase(self, vertex: int, phase: FractionLike) -> None:
         assert_phase_real(phase)
         try:
             self._phase[vertex] = phase % 2
         except Exception:
             self._phase[vertex] = phase
-    def add_to_phase(self, vertex, phase):
+    
+    def add_to_phase(self, vertex: int, phase: FractionLike) -> None:
         assert_phase_real(phase)
         old_phase = self._phase.get(vertex, Fraction(1))
         try:
             self._phase[vertex] = (old_phase + phase) % 2
         except Exception:
             self._phase[vertex] = old_phase + phase
-    def qubit(self, vertex):
+    
+    def qubit(self, vertex: int) -> FloatInt:
         return self._qindex.get(vertex,-1)
-    def qubits(self):
+    
+    def qubits(self) -> dict[int, FloatInt]:
         return self._qindex
-    def set_qubit(self, vertex, q):
+    
+    def set_qubit(self, vertex: int, q: FloatInt) -> None:
         if q > self._maxq: self._maxq = q
         self._qindex[vertex] = q
 
-    def row(self, vertex):
+    def row(self, vertex: int) -> FloatInt:
         return self._rindex.get(vertex, -1)
-    def rows(self):
+    
+    def rows(self) -> dict[int, FloatInt]:
         return self._rindex
-    def set_row(self, vertex, r):
+    
+    def set_row(self, vertex: int, r: FloatInt) -> None:
         if r > self._maxr: self._maxr = r
         self._rindex[vertex] = r
 
-    def is_ground(self, vertex):
+    def is_ground(self, vertex: int) -> bool:
         return vertex in self._grounds
-    def grounds(self):
+    
+    def grounds(self) -> set[int]:
         return self._grounds
-    def set_ground(self, vertex, flag=True):
+    
+    def set_ground(self, vertex: int, flag: bool = True) -> None:
         if flag:
             self._grounds.add(vertex)
         else:
             self._grounds.discard(vertex)
 
-    def clear_vdata(self, vertex):
+    def clear_vdata(self, vertex: int) -> None:
         if vertex in self._vdata:
             del self._vdata[vertex]
-    def vdata_keys(self, vertex):
-        return self._vdata.get(vertex, {}).keys()
-    def vdata(self, vertex, key, default=None):
+    
+    def vdata_keys(self, vertex: int) -> list[str]:
+        return list(self._vdata.get(vertex, {}).keys())
+    
+    def vdata(self, vertex: int, key: str, default: Any = None) -> Any:
         if vertex in self._vdata:
             return self._vdata[vertex].get(key,default)
         else:
             return default
-    def set_vdata(self, vertex, key, val):
+    def set_vdata(self, vertex: int, key: str, val: Any) -> None:
         if vertex in self._vdata:
             self._vdata[vertex][key] = val
         else:
-            self._vdata[vertex] = {key:val}
+            self._vdata[vertex] = {key: val}
 
-    def clear_edata(self, edge):
+    def clear_edata(self, edge: tuple[int, int]) -> None:
         self._edata.pop(edge, None)
-    def edata_keys(self, edge):
-        return self._edata.get(edge, {}).keys()
-    def edata(self, edge, key, default=None):
+    
+    def edata_keys(self, edge: tuple[int, int]) -> list[str]:
+        return list(self._edata.get(edge, {}).keys())
+    
+    def edata(self, edge: tuple[int, int], key: str, default: Any = None) -> Any:
         if edge in self._edata:
             return self._edata[edge].get(key, default)
         else:
             return default
-    def set_edata(self, edge, key, val):
+    
+    def set_edata(self, edge: tuple[int, int], key: str, val: Any) -> None:
         if edge in self._edata:
             self._edata[edge][key] = val
         else:
