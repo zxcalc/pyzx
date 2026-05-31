@@ -234,7 +234,7 @@ def compute_pauli_webs(g: BaseGraph[VT,ET], backwards:bool=True, debug:Optional[
             color_edge[v] = (s,t)
         
     for b in g1.inputs() + g1.outputs():
-        e = g1.incident_edges(b)[0]
+        e = next(iter(g1.incident_edges(b)))
         v = next(iter(g1.neighbors(b)))
         vt = g1.type(v)
         et = g1.edge_type(e)

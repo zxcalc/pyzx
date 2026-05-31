@@ -160,7 +160,7 @@ def match_pivot_boundary(
             if types[n] != VertexType.Z:
                 good_vert = False
                 break
-            if len(g.neighbors(n)) == 1: # v is a phase gadget
+            if len(list(g.neighbors(n))) == 1: # v is a phase gadget
                 good_vert = False
                 break
             if n in consumed_vertices:

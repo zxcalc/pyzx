@@ -64,7 +64,7 @@ class SumGraph(object):
     def inner_product_with_random_state(self) -> complex:
         """All the graphs should be Clifford states with same amount of outputs.
         We compose them with a random equatorial Clifford effect,
-        and we calculate the resulting inner product. 
+        and we calculate the resulting inner product.
         Used in the norm estimation algorithm of
         https://arxiv.org/pdf/1808.00128.pdf"""
         terms = self.graphs
@@ -88,7 +88,7 @@ class SumGraph(object):
             g.set_outputs(())
             g.add_edges([(vs[i1],vs[i2]) for (i1,i2) in connections],EdgeType.HADAMARD)
             g.scalar.add_power(len(connections))
-            # Now that we have composed g with a right sort of effect, 
+            # Now that we have composed g with a right sort of effect,
             # we need to calculate the value of the resulting inner product.
             # Since the diagram is a scalar, full_reduce() will completely annihilate it.
             simplify.full_reduce(g)
@@ -129,14 +129,14 @@ class SumGraph(object):
             terms.append(g)
         return SumGraph(terms)
 
-    def sample(self, 
-        qubits: List[int], 
-        post_selected:Optional[Dict[int,str]]=None, 
-        amount:int=10, 
-        epsilon:float=0.05, 
+    def sample(self,
+        qubits: List[int],
+        post_selected:Optional[Dict[int,str]]=None,
+        amount:int=10,
+        epsilon:float=0.05,
         quiet:bool=True) -> List[List[Tuple[int,int]]]:
         """Implements the weak simulation algorithm of https://arxiv.org/pdf/1808.00128.pdf.
-        ``qubits`` should be a list of qubit numbers from which measurement outcomes in the 
+        ``qubits`` should be a list of qubit numbers from which measurement outcomes in the
         computational basis are to be sampled. ``post_selected`` should be in the format of
         :method:`post_select`. ``amount`` dictates the amount of samples to be taken.
         ``epsilon`` is the error used in the norm estimation.
@@ -153,7 +153,7 @@ class SumGraph(object):
                 qubit_map[q] -= sum(1 for v in post_selected if v<q)
         norm = gsum.estimate_norm(epsilon)
         if not quiet: print("Estimated original norm:", norm)
-        if norm < 0.01 and not quiet: 
+        if norm < 0.01 and not quiet:
             print("Norm very close to zero. Possibly post-selected to zero probability event?")
         probs : Dict[str,float] = {}
         outputs = []
@@ -193,7 +193,7 @@ class SumGraph(object):
         return outputs
     
 def calculate_path_sum(g: BaseGraph[VT,ET]) -> complex:
-    """Input should be a fully reduced scalar graph-like Clifford+T ZX-diagram. 
+    """Input should be a fully reduced scalar graph-like Clifford+T ZX-diagram.
     Calculates the scalar it represents."""
     if g.num_vertices() < 2: return g.to_tensor().flatten()[0]
     phases = g.phases()
@@ -355,7 +355,7 @@ def check_catn(g: BaseGraph[VT, ET], vertex: VT, n: int) -> bool:
         raise ValueError(f'The cat {n} decomposition function can only be '
                          + 'applied to a phaseless or pi-phase spider, but '
                          + f'specified vertex has phase {phase}')
-    neighbors = g.neighbors(vertex)
+    neighbors = list(g.neighbors(vertex))
     if len(neighbors) != n:
         raise ValueError(f'The cat {n} decomposition acts on a degree {n} '
                          + 'spider, but specified vertex has degree '
