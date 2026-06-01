@@ -8,6 +8,8 @@ Hence, occasionally changes will be backwards incompatible (although they will a
 
 ## [Unreleased]
 
+## [0.10.3] - 2026-06-01
+
 ### Added
 - The circuit generation functions in pyzx.generate now accept an additional optional argument, sigma, allowing a CNOT spread based on a Gaussian distribution rather than a uniform distribution for control over how localised the CNOTs should be. (by @mjsutcliffe99).
 
