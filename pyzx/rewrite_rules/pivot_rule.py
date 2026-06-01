@@ -166,7 +166,7 @@ def match_pivot_boundary(
             if n in consumed_vertices:
                 good_vert = False
                 break
-            if g.is_ground(n) in consumed_vertices:
+            if g.is_ground(n):
                 good_vert = False
                 break
             boundaries: List[VT] = []
