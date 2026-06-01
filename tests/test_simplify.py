@@ -177,6 +177,184 @@ class TestSimplify(unittest.TestCase):
         self.assertEqual(match_pivot_boundary(g), [])
         self.assertEqual(len(list(g.vertices())), vertex_count_before)
 
+    def _make_boundary_pivot_graph(self):
+        """Build a boundary-pivot configuration: interior Pauli ``v``
+        adjacent to non-Pauli ``w`` with exactly one boundary neighbour."""
+        from pyzx import EdgeType
+        g = Graph()
+        b_in = g.add_vertex(VertexType.BOUNDARY, qubit=0, row=0)
+        w = g.add_vertex(VertexType.Z, qubit=0, row=1, phase=Fraction(1, 4))
+        v = g.add_vertex(VertexType.Z, qubit=0, row=2, phase=Fraction(1))
+        x = g.add_vertex(VertexType.Z, qubit=0, row=3, phase=Fraction(1, 2))
+        b_out = g.add_vertex(VertexType.BOUNDARY, qubit=0, row=4)
+        g.add_edge((b_in, w), EdgeType.SIMPLE)
+        g.add_edge((w, v), EdgeType.HADAMARD)
+        g.add_edge((v, x), EdgeType.HADAMARD)
+        g.add_edge((x, b_out), EdgeType.SIMPLE)
+        g.set_inputs([b_in])
+        g.set_outputs([b_out])
+        return g, v, w
+
+    def _make_gadget_pivot_graph(self):
+        """Build a gadget-pivot configuration matching the example diagram
+        in issue #413: interior Pauli ``v`` adjacent to interior non-Pauli
+        ``w``, each with two boundary-adjacent neighbours plus two shared
+        boundary-adjacent neighbours."""
+        from pyzx import EdgeType
+        g = Graph()
+        v = g.add_vertex(VertexType.Z, qubit=2, row=2, phase=Fraction(1))
+        w = g.add_vertex(VertexType.Z, qubit=3, row=2, phase=Fraction(1, 4))
+
+        # Two boundary-adjacent neighbours of v only (the "a_i" in the issue).
+        a1 = g.add_vertex(VertexType.Z, qubit=0, row=1)
+        ba1 = g.add_vertex(VertexType.BOUNDARY, qubit=0, row=0)
+        a2 = g.add_vertex(VertexType.Z, qubit=1, row=1)
+        ba2 = g.add_vertex(VertexType.BOUNDARY, qubit=1, row=0)
+        g.add_edge((v, a1), EdgeType.HADAMARD)
+        g.add_edge((a1, ba1), EdgeType.SIMPLE)
+        g.add_edge((v, a2), EdgeType.HADAMARD)
+        g.add_edge((a2, ba2), EdgeType.SIMPLE)
+
+        # Two boundary-adjacent neighbours of w only (the "c_i" in the issue).
+        c1 = g.add_vertex(VertexType.Z, qubit=4, row=3)
+        bc1 = g.add_vertex(VertexType.BOUNDARY, qubit=4, row=4)
+        c2 = g.add_vertex(VertexType.Z, qubit=5, row=3)
+        bc2 = g.add_vertex(VertexType.BOUNDARY, qubit=5, row=4)
+        g.add_edge((w, c1), EdgeType.HADAMARD)
+        g.add_edge((c1, bc1), EdgeType.SIMPLE)
+        g.add_edge((w, c2), EdgeType.HADAMARD)
+        g.add_edge((c2, bc2), EdgeType.SIMPLE)
+
+        # Two shared boundary-adjacent neighbours (the "b_i" in the issue).
+        b1 = g.add_vertex(VertexType.Z, qubit=2, row=3)
+        bb1 = g.add_vertex(VertexType.BOUNDARY, qubit=2, row=4)
+        b2 = g.add_vertex(VertexType.Z, qubit=3, row=3)
+        bb2 = g.add_vertex(VertexType.BOUNDARY, qubit=3, row=4)
+        g.add_edge((v, b1), EdgeType.HADAMARD)
+        g.add_edge((w, b1), EdgeType.HADAMARD)
+        g.add_edge((b1, bb1), EdgeType.SIMPLE)
+        g.add_edge((v, b2), EdgeType.HADAMARD)
+        g.add_edge((w, b2), EdgeType.HADAMARD)
+        g.add_edge((b2, bb2), EdgeType.SIMPLE)
+
+        g.add_edge((v, w), EdgeType.HADAMARD)
+        g.set_inputs([ba1, ba2])
+        g.set_outputs([bb1, bb2, bc1, bc2])
+        return g, v, w
+
+    def test_pivot_boundary_simp_apply(self):
+        """Regression test for issue #413: ``pivot_boundary_simp.apply``
+        matches an interior Pauli vertex paired with a non-Pauli vertex
+        with exactly one boundary neighbour and preserves the tensor.
+        Also exercises the row-index fallback when ``w`` has no explicit
+        row."""
+        g, v, w = self._make_boundary_pivot_graph()
+        self.assertTrue(pivot_boundary_simp.is_match(g, v, w))
+        self.assertFalse(pivot_boundary_simp.is_match(g, w, v))
+
+        t = g.to_tensor()
+        self.assertTrue(pivot_boundary_simp.apply(g, v, w))
+        self.assertTrue(compare_tensors(t, g.to_tensor(), preserve_scalar=True))
+
+        # Graph constructed without an explicit row index for ``w``.
+        g, v, w = self._make_boundary_pivot_graph()
+        del g._rindex[w]
+        self.assertTrue(pivot_boundary_simp.apply(g, v, w))
+
+    def test_pivot_gadget_simp_apply(self):
+        """Regression test for issue #413: ``pivot_gadget_simp.apply``
+        matches an interior Pauli vertex paired with an interior non-Pauli
+        vertex and preserves the tensor. Also exercises the row-index
+        fallback when ``v`` and ``w`` have no explicit rows."""
+        g, v, w = self._make_gadget_pivot_graph()
+        self.assertTrue(pivot_gadget_simp.is_match(g, v, w))
+        self.assertFalse(pivot_gadget_simp.is_match(g, w, v))
+        # The boundary pivot rule should not match this configuration.
+        self.assertFalse(pivot_boundary_simp.is_match(g, v, w))
+
+        t = g.to_tensor()
+        self.assertTrue(pivot_gadget_simp.apply(g, v, w))
+        self.assertTrue(compare_tensors(t, g.to_tensor(), preserve_scalar=True))
+
+        # Graph constructed without explicit row indices for ``v`` and ``w``.
+        g, v, w = self._make_gadget_pivot_graph()
+        del g._rindex[v]
+        del g._rindex[w]
+        self.assertTrue(pivot_gadget_simp.apply(g, v, w))
+
+    def test_pivot_gadget_simp_apply_alignment(self):
+        """Test that ``pivot_gadget_simp.apply`` mirrors the placement and
+        qubit handling done by ``match_pivot_gadget``: the new gadget vertex
+        sits at qubit -2 on the row of the Pauli vertex, and the Pauli vertex
+        is moved to qubit -1."""
+        g, v, w = self._make_gadget_pivot_graph()
+        pauli_row = g.row(v)
+        vertices_before = set(g.vertices())
+        self.assertTrue(pivot_gadget_simp.apply(g, v, w))
+
+        self.assertEqual(g.qubit(v), -1)
+        new_vertices = set(g.vertices()) - vertices_before
+        gadget_vs = [u for u in new_vertices
+                     if g.qubit(u) == -2 and g.row(u) == pauli_row]
+        self.assertEqual(len(gadget_vs), 1)
+
+    def test_pivot_boundary_simp_negative_matches(self):
+        """Test that ``pivot_boundary_simp.is_match`` rejects invalid configurations."""
+        from pyzx import EdgeType
+        g = Graph()
+        b_in = g.add_vertex(VertexType.BOUNDARY, qubit=0, row=0)
+        w = g.add_vertex(VertexType.Z, qubit=0, row=1, phase=Fraction(1, 4))
+        v = g.add_vertex(VertexType.Z, qubit=0, row=2, phase=Fraction(1))
+        b_out = g.add_vertex(VertexType.BOUNDARY, qubit=0, row=3)
+        g.add_edge((b_in, w), EdgeType.SIMPLE)
+        g.add_edge((w, v), EdgeType.HADAMARD)
+        g.add_edge((v, b_out), EdgeType.SIMPLE)
+        g.set_inputs([b_in])
+        g.set_outputs([b_out])
+
+        # v has a boundary neighbour, so the rule should not match.
+        self.assertFalse(pivot_boundary_simp.is_match(g, v, w))
+
+        # Both Pauli; this is a regular pivot match, not a boundary pivot.
+        g2 = Graph()
+        b2 = g2.add_vertex(VertexType.BOUNDARY, qubit=0, row=0)
+        w2 = g2.add_vertex(VertexType.Z, qubit=0, row=1, phase=Fraction(1))
+        v2 = g2.add_vertex(VertexType.Z, qubit=0, row=2, phase=Fraction(1))
+        g2.add_edge((b2, w2), EdgeType.SIMPLE)
+        g2.add_edge((w2, v2), EdgeType.HADAMARD)
+        g2.set_inputs([b2])
+        self.assertFalse(pivot_boundary_simp.is_match(g2, v2, w2))
+
+    def test_pivot_gadget_simp_negative_matches(self):
+        """Test that ``pivot_gadget_simp.is_match`` rejects invalid configurations."""
+        from pyzx import EdgeType
+        # w is a phase gadget (degree 1), should not match.
+        g = Graph()
+        v = g.add_vertex(VertexType.Z, qubit=0, row=0, phase=Fraction(1))
+        w = g.add_vertex(VertexType.Z, qubit=0, row=1, phase=Fraction(1, 4))
+        n = g.add_vertex(VertexType.Z, qubit=1, row=0)
+        bn = g.add_vertex(VertexType.BOUNDARY, qubit=1, row=1)
+        g.add_edge((v, w), EdgeType.HADAMARD)
+        g.add_edge((v, n), EdgeType.HADAMARD)
+        g.add_edge((n, bn), EdgeType.SIMPLE)
+        g.set_outputs([bn])
+        self.assertFalse(pivot_gadget_simp.is_match(g, v, w))
+
+        # v has a boundary neighbour, so v is not interior.
+        g2 = Graph()
+        b = g2.add_vertex(VertexType.BOUNDARY, qubit=0, row=0)
+        v2 = g2.add_vertex(VertexType.Z, qubit=0, row=1, phase=Fraction(1))
+        w2 = g2.add_vertex(VertexType.Z, qubit=0, row=2, phase=Fraction(1, 4))
+        n2 = g2.add_vertex(VertexType.Z, qubit=1, row=2)
+        bn2 = g2.add_vertex(VertexType.BOUNDARY, qubit=1, row=3)
+        g2.add_edge((b, v2), EdgeType.SIMPLE)
+        g2.add_edge((v2, w2), EdgeType.HADAMARD)
+        g2.add_edge((w2, n2), EdgeType.HADAMARD)
+        g2.add_edge((n2, bn2), EdgeType.SIMPLE)
+        g2.set_inputs([b])
+        g2.set_outputs([bn2])
+        self.assertFalse(pivot_gadget_simp.is_match(g2, v2, w2))
+
     def test_lcomp_simp(self):
         self.func_test(lcomp_simp,prepare=[spider_simp,to_gh,spider_simp])
 

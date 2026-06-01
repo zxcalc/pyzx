@@ -71,11 +71,15 @@ class Stats(object):
 pivot_simp: RewriteSimpDoubleVertex = RewriteSimpDoubleVertex(check_pivot, unsafe_pivot)
 """Performs a pivot rewrite. Can be run automatically on the entire graph."""
 
-pivot_gadget_simp: RewriteSimpGraph = RewriteSimpGraph(pivot_gadget_for_apply, pivot_gadget_for_simp)
-"""Performs pivot rewrite on an interior Pauli vertex and an interior non-Clifford vertex. Should only be run on the entire graph."""
+pivot_gadget_simp: RewriteSimpDoubleVertex = RewriteSimpDoubleVertex(
+    check_pivot_gadget, unsafe_pivot_gadget,
+    is_ordered=True, simp_override=pivot_gadget_for_simp)
+"""Performs pivot rewrite on an interior Pauli vertex and an interior non-Pauli vertex."""
 
-pivot_boundary_simp: RewriteSimpGraph = RewriteSimpGraph(pivot_boundary_for_apply, pivot_boundary_for_simp)
-"""Performs pivot rewrite on an interior Pauli vertex and a boundary non-Pauli Clifford vertex. Should only be run on the entire graph."""
+pivot_boundary_simp: RewriteSimpDoubleVertex = RewriteSimpDoubleVertex(
+    check_pivot_boundary, unsafe_pivot_boundary,
+    is_ordered=True, simp_override=pivot_boundary_for_simp)
+"""Performs pivot rewrite on an interior Pauli vertex and a non-Pauli Z-spider with exactly one boundary neighbour."""
 
 lcomp_simp: RewriteSimpSingleVertex = RewriteSimpSingleVertex(check_lcomp, unsafe_lcomp)
 """Performs a local complementation rewrite on a given vertex. Can be run automatically on the entire graph."""
