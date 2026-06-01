@@ -939,7 +939,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         for v in self.vertices():
             self.set_row(v, new_rows[self.row(v)])
 
-    def qubit_count(self) -> int:
+    def qubit_count(self) -> FloatInt:
         """Returns the number of inputs of the graph"""
         return self.num_inputs()
 

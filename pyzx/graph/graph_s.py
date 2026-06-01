@@ -77,10 +77,10 @@ class GraphS(BaseGraph[int, tuple[int,int]]):
         else: self._maxr = -1
         return int(self._maxr)
     
-    def qubit_count(self) -> int:
+    def qubit_count(self) -> FloatInt:
         if self._qindex: self._maxq = max(self._qindex.values())
         else: self._maxq = -1
-        return int(self._maxq + 1)
+        return self._maxq + 1
 
     def inputs(self) -> tuple[int, ...]:
         return self._inputs
