@@ -286,7 +286,7 @@ def pivot(g: BaseGraph[VT,ET], v: VT, v1: VT) -> bool:
 
 def unsafe_pivot(g: BaseGraph[VT,ET], v0: VT, v1: VT) -> bool:
     """Perform a pivoting rewrite"""
-
+    
     rem_verts: List[VT] = []
     rem_edges: List[ET] = []
     etab: Dict[Tuple[VT,VT],List[int]] = dict()
@@ -320,7 +320,7 @@ def unsafe_pivot(g: BaseGraph[VT,ET], v0: VT, v1: VT) -> bool:
         if not g.is_ground(v):
             g.add_to_phase(v, 1)
 
-    if g.phase(m[0][0]) and g.phase(m[0][1]): g.scalar.add_phase(Fraction(1))
+    g.scalar.add_phase(g.phase(m[0][0]) * g.phase(m[0][1]))
     if not m[1][0] and not m[1][1]:
         g.scalar.add_power(-(k0+k1+2*k2-1))
     elif not m[1][0]:
@@ -400,7 +400,7 @@ def pivot_NOT_REWORKED(g: BaseGraph[VT,ET], matches: List[MatchPivotType[VT]]) -
             if not g.is_ground(v):
                 g.add_to_phase(v, 1)
 
-        if g.phase(m[0][0]) and g.phase(m[0][1]): g.scalar.add_phase(Fraction(1))
+        g.scalar.add_phase(g.phase(m[0][0]) * g.phase(m[0][1]))
         if not m[1][0] and not m[1][1]:
             g.scalar.add_power(-(k0+k1+2*k2-1))
         elif not m[1][0]:

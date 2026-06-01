@@ -21,12 +21,13 @@ This rule acts on an entire graph and the matcher modifies the graph, so this ru
 using the using simplify.gadget_simp(g) or simplify.gadget_simp.apply(g).
 """
 
-from typing import Tuple, List, Dict, FrozenSet
+from typing import Tuple, List, Dict, FrozenSet, Union, cast
 from typing import Optional
 
 from pyzx.utils import  FractionLike, phase_is_pauli
 from pyzx.graph.base import BaseGraph, VT, ET
-from pyzx.symbolic import Poly
+from pyzx.symbolic import Poly, new_const
+from fractions import Fraction
 
 
 __all__ = ['merge_phase_gadgets_for_simp',
@@ -85,12 +86,34 @@ def match_phase_gadgets(g: BaseGraph[VT,ET], vertices:Optional[List[VT]]=None) -
         if len(gad) == 1:
             n = gad[0]
             v = gadgets[n]
-            if phases[n] != 0: # If the phase of the axel vertex is pi, we change the phase of the gadget
+            axel_phase = phases[n]
+            is_symbolic = isinstance(axel_phase, Poly) and len(axel_phase.free_vars()) > 0
+            if axel_phase != 0 or is_symbolic:
                 g.scalar.add_phase(phases[v])
                 g.phase_negate(v)
-                m.append((v,n,-phases[v],[],[]))
+                if is_symbolic:
+                    if isinstance(phases[v], Poly):
+                        gadget_phase: FractionLike = phases[v]
+                    else:
+                        gadget_phase = new_const(cast(Union[int, Fraction], phases[v]))
+                  
+                    new_phase = gadget_phase + (-2 * gadget_phase) * phases[n]
+                    m.append((v, n, new_phase, [], []))
+                else:
+                    m.append((v, n, -phases[v], [], []))
         else:
-            totphase = sum((1 if phases[n]==0 else -1)*phases[gadgets[n]] for n in gad)%2
+            totphase: FractionLike = Fraction(0)
+            for n in gad:
+                gadget_phase = phases[gadgets[n]]
+                if isinstance(phases[n], Poly):
+                    gp: FractionLike = gadget_phase if isinstance(gadget_phase, Poly) else new_const(gadget_phase)
+                    totphase += gp + (-gp - gp) * phases[n]
+                else:
+                    if phases[n] == 0:
+                        totphase += gadget_phase
+                    else:
+                        totphase += -gadget_phase
+            totphase = totphase % 2
             for n in gad:
                 if phases[n] != 0:
                     g.scalar.add_phase(phases[gadgets[n]])

@@ -100,7 +100,7 @@ def unsafe_pauli_push(g: BaseGraph[VT,ET], v:VT, w:VT) -> bool:
     new_verts = []
     if vertex_is_zx(g.type(v)):
         g.scalar.add_phase(g.phase(v))
-        g.set_phase(v,((1 - 2 * pauli_phase) * g.phase(v)) % 2) # 1-2a is -1 if a=1 (i.e. pi) and 1 if a=0 (i.e. 0). We need to do it this way to handle boolean symbolic phases.
+        g.set_phase(v, (g.phase(v) - 2 * (pauli_phase * g.phase(v))) % 2) # phase*(1-2a): unchanged when a=0, negated when a=1. Multiply phase first to avoid 2*a cancelling mod 2.
         t = toggle_vertex(g.type(v))
         p: FractionLike = pauli_phase
     else:

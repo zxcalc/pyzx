@@ -1305,11 +1305,14 @@ class Reset(Gate):
     Corresponds to the OpenQASM ``reset`` instruction, which discards
     the current qubit state and unconditionally prepares ``|0⟩``.
 
-    In the ZX-diagram this is represented as a Z spider connected to
-    ground (tracing out / discarding the qubit) followed by a
-    disconnected X spider with phase 0 (state preparation ``|0⟩``).
-    This mirrors the ``DiscardBit`` pattern and models reset as a CPTP
-    map.
+    In the ZX-diagram this is represented as a Z(0) spider on the
+    qubit wire with an X(``_rN``) leaf hanging off it, followed by a
+    disconnected X(0) leaf for the fresh ``|0⟩`` preparation. The
+    boolean variable ``_rN`` appears nowhere else, so marginalising
+    over it gives the partial-trace semantics of the discard. The
+    two leaves are tagged in vertex data with ``outcome_type``
+    set to ``'reset_discard'`` and ``'reset_state'`` respectively,
+    so the gate can be recognised on round-trip.
     """
     name = 'Reset'
 
@@ -1388,19 +1391,12 @@ class ConditionalGate(Gate):
     Limitations:
 
     * Only single-qubit Z and X rotations (ZPhase, Z, S, T, XPhase, NOT,
-      and their subclasses) are supported as inner gates.  Other gates,
+      and their subclasses) are supported as inner gates. Other gates,
       including HAD (which is single-qubit but not a Z/X rotation),
       CNOT, and CZ, raise ``NotImplementedError`` in ``to_graph()``.
       Conditional HAD is a known gap for QEC Pauli-frame-correction use
       cases and requires a decomposition into Z/X rotations or a
       dedicated graph representation.
-
-    * Conditional X rotations (XPhase, NOT) convert to the graph correctly
-      but cannot be recovered by ``graph_to_circuit()`` because X-type
-      vertices with boolean phases are indistinguishable from measurement
-      outcome vertices.  They are emitted as raw ``XPhase`` gates with a
-      symbolic ``Poly`` phase instead.  The QASM round-trip (Circuit →
-      QASM string → Circuit) is unaffected.
     """
     name = 'ConditionalGate'
 
@@ -1562,7 +1558,14 @@ class Measurement(Gate):
         return g
 
     def to_graph_symbolic_boolean(self, g, q_mapper):
-        """Represent the measurement as a node with symbolic boolean phases."""
+        """Represent the measurement as a Z spider with a symbolic-phase leaf.
+
+        Places a Z(0) spider on the qubit wire and attaches the classical
+        outcome as a degree-1 X leaf carrying the symbolic boolean phase,
+        tagged with ``outcome_type='measurement'`` in vertex data. The
+        leaf is off-wire, so the qubit wire continues through the Z(0)
+        spider unaffected by the outcome.
+        """
         r = q_mapper.next_row(self.target)
         if self.result_symbol is not None:
             symbol_name = self.result_symbol
@@ -1571,13 +1574,21 @@ class Measurement(Gate):
         else:
             symbol_name = "m{}".format(self.target)
         phase = new_var(name=symbol_name, is_bool=True, registry=g.var_registry)
-        _ = self.graph_add_node(g,
+        # Z(0) on the qubit wire: the measurement itself.
+        meas_v = self.graph_add_node(g,
             q_mapper,
-            VertexType.X,
+            VertexType.Z,
             self.target,
-            r,
-            phase=phase)
-        q_mapper.set_next_row(self.target, r+1)
+            r)
+        # X(phase) as a leaf: the classical outcome, branching off.
+        outcome_v = g.add_vertex(VertexType.X,
+            q_mapper.to_qubit(self.target), r + 0.5, phase)
+        g.add_edge((meas_v, outcome_v), EdgeType.SIMPLE)
+        g.set_vdata(outcome_v, 'outcome_type', 'measurement')
+        # Store the classical destination explicitly so it survives
+        # ``g.substitute_variables(...)`` unwrapping the Poly phase.
+        g.set_vdata(outcome_v, 'result_symbol', symbol_name)
+        q_mapper.set_next_row(self.target, r + 1)
 
     def to_graph(self, g, q_mapper, _c_mapper):
         self.to_graph_symbolic_boolean(g, q_mapper)
