@@ -70,7 +70,7 @@ The following gate types are fully supported:
 
 Limitations for ConditionalGate:
 
-- Only single-qubit Z and X rotations ( ZPhase, Z, S, T, XPhase, NOT, and their subclasses) are supported.
+- Only single-qubit Z and X rotations (``Z(α)``, ``X(α)``, including ``S = Z(π/2)``, ``T = Z(π/4)``, ``Z = Z(π)``, ``NOT = X(π)``) are supported.
 - HAD, CNOT, and CZ are not supported as the inner gate.
 
 The elide_initial_resets option
@@ -97,7 +97,7 @@ Example
     c.add_gate("CNOT", 0, 1)
     c.add_gate("Measurement", 0, result_bit=0)
     # Conditional Z on qubit 1 when c[0] == 1
-    c.add_gate("ConditionalGate", "c", 1, zx.gates.ZPhase(1, phase=Fraction(1,4)), register_size=1)
+    c.add_gate("ConditionalGate", "c", 1, zx.gates.ZPhase(1, phase=Fraction(1,4)), register_size=1)  # Z(pi/4)
     c.add_gate("Measurement", 1, result_bit=1)
 
     # Convert to graph (measurement results become symbolic phases)
