@@ -158,6 +158,25 @@ class TestSimplify(unittest.TestCase):
     def test_pivot_simp(self):
         self.func_test(pivot_simp,prepare=[spider_simp,to_gh,spider_simp])
 
+    def test_match_pivot_boundary_skips_grounded_neighbor(self):
+        """Regression test that ``match_pivot_boundary`` skips a Pauli
+        candidate whose neighbour is grounded."""
+        from pyzx import EdgeType
+        from pyzx.rewrite_rules.pivot_rule import match_pivot_boundary
+        g = Graph()
+        b = g.add_vertex(VertexType.BOUNDARY, qubit=0, row=0)
+        w = g.add_vertex(VertexType.Z, qubit=0, row=1, phase=Fraction(1, 2))
+        v = g.add_vertex(VertexType.Z, qubit=0, row=2, phase=Fraction(1))
+        g.add_edge((b, w), EdgeType.SIMPLE)
+        g.add_edge((w, v), EdgeType.HADAMARD)
+        g.set_inputs([b])
+        g.set_ground(w, True)
+
+        # The only candidate `v` has the grounded `w` as a neighbour.
+        vertex_count_before = len(list(g.vertices()))
+        self.assertEqual(match_pivot_boundary(g), [])
+        self.assertEqual(len(list(g.vertices())), vertex_count_before)
+
     def test_lcomp_simp(self):
         self.func_test(lcomp_simp,prepare=[spider_simp,to_gh,spider_simp])
 
