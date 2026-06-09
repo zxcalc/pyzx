@@ -16,6 +16,7 @@
 
 import cmath
 import math
+import numbers
 import os
 from argparse import ArgumentTypeError
 from enum import IntEnum
@@ -42,6 +43,38 @@ def assert_phase_real(phase: FractionLike | complex) -> None:
             if isinstance(c, complex) and c.imag != 0:
                 raise TypeError(
                     f"Phase must have real coefficients, got {c}")
+
+
+def normalize_phase(phase: Any) -> FractionLike:
+    """Coerce a phase to a supported type (``int``, ``Fraction``, or ``Poly``).
+
+    When ``settings.strict_phase_types`` is ``True`` (the default), a float-valued
+    phase raises ``TypeError`` rather than being silently rounded. Set
+    ``settings.strict_phase_types`` to ``False`` to opt in to automatic
+    conversion to ``Fraction`` using
+    ``settings.float_to_fraction_max_denominator``, accepting the resulting
+    precision loss. Other types are returned unchanged.
+
+    Both built-in ``float`` and non-integer numpy reals such as ``numpy.float32``
+    are treated as float-valued; numpy's ``float64`` already inherits from
+    ``float`` and is caught by the built-in branch.
+    """
+    is_float_like = isinstance(phase, float) or (
+        isinstance(phase, numbers.Real)
+        and not isinstance(phase, (int, Fraction, numbers.Integral))
+    )
+    if is_float_like:
+        if settings.strict_phase_types:
+            raise TypeError(
+                f"Float phase {phase!r} is not accepted by default. Float "
+                "phases would be silently rounded to a nearby fraction; "
+                "if that is acceptable, opt in by setting "
+                "`pyzx.settings.strict_phase_types = False` (the resulting "
+                "fraction uses `pyzx.settings.float_to_fraction_max_denominator`)."
+            )
+        return Fraction(float(phase)).limit_denominator(
+            settings.float_to_fraction_max_denominator)
+    return phase
 
 
 class VertexType(IntEnum):
@@ -131,16 +164,18 @@ def phase_fraction_to_s(a: FractionLike, t:VertexType=VertexType.Z, limit_denomi
     return simstr + ns + '\u03c0' + ds
 
 def phase_is_clifford(phase: FractionLike):
+    if isinstance(phase, Poly):
+        return phase.is_clifford
     if isinstance(phase, (Fraction, int)):
         return phase in [Fraction(i, 2) for i in range(4)]
-    else:
-        return phase.is_clifford
+    raise TypeError(f"phase must be FractionLike, got {type(phase).__name__}")
 
 def phase_is_pauli(phase: FractionLike):
+    if isinstance(phase, Poly):
+        return phase.is_pauli
     if isinstance(phase, (Fraction, int)):
         return phase in (0, 1)
-    else:
-        return phase.is_pauli
+    raise TypeError(f"phase must be FractionLike, got {type(phase).__name__}")
 
 tikz_classes = {
     'boundary': 'none',
@@ -205,6 +240,10 @@ class Settings(object): # namespace class
     # Maximum denominator when converting floats to fractions (e.g., for phase values).
     # Higher values preserve more precision but may produce larger fractions.
     float_to_fraction_max_denominator: int = 2**20
+    # When True, reject float phases at `set_phase`/`add_to_phase` rather than
+    # silently rounding them to a nearby fraction. Set to False to opt in to
+    # automatic conversion using `float_to_fraction_max_denominator`.
+    strict_phase_types: bool = True
     drawing_auto_hbox: bool = False
     javascript_location: str = "" # Path to javascript files of pyzx
     d3_load_string: str = ""
