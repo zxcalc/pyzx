@@ -8,11 +8,15 @@ Hence, occasionally changes will be backwards incompatible (although they will a
 
 ## [Unreleased]
 
+### Added
+- Added the "magic cat" decomposition strategy from https://arxiv.org/pdf/2202.09202 (which previously only existed in Quizx). (by @mjsutcliffe99).
+
 ## [0.10.3] - 2026-06-01
 
 ### Added
 - The circuit generation functions in pyzx.generate now accept an additional optional argument, sigma, allowing a CNOT spread based on a Gaussian distribution rather than a uniform distribution for control over how localised the CNOTs should be. (by @mjsutcliffe99).
 - `pyzx.simplify.drop_orphan_reset_discards`: opt-in cleanup pass that removes the disconnected `boundary -- Z(0) -- X(_rN)` components left behind by `Circuit.to_graph(elide_initial_resets=False)` on circuits with leading resets, matching the elided graph with |0⟩ applied to those inputs (by @dlyongemallo).
+
 
 ### Deprecated
 - Deprecated pyzx.simulate.py as it is starting to get bloated with all the new decompositions and strategies that have been added in recent years. All the functions in this file should still work (with deprecation warnings) but are rerouted to their new homes under the pyzx.simulation folder. (by @mjsutcliffe99).
