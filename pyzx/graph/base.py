@@ -838,7 +838,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
     Args:
         s: a string containing a well-defined Tikz diagram.
         warn_overlap: If True raises a Warning if two vertices have the exact same position.
-        fuse_overlap: If True fuses two vertices that have the exact same position. Only has effect if fuse_overlap is False.
+        fuse_overlap: If True fuses two vertices that have the exact same position. Only has effect if warn_overlap is False.
         ignore_nonzx: If True suppresses most errors about unknown vertex/edge types and labels.
 
     Warning:
