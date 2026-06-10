@@ -18,7 +18,7 @@ from __future__ import annotations
 import math
 import copy
 from fractions import Fraction
-from typing import TYPE_CHECKING, Generic, Optional, TypeVar, Any, Sequence
+from typing import TYPE_CHECKING, Collection, Counter, Generic, Optional, TypeVar, Any, Sequence
 from typing import Mapping, Iterable, Callable, ClassVar, Literal
 from typing_extensions import Self
 
@@ -423,7 +423,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         Should be overloaded if the backend supplies a cheaper version than this."""
         return set(self.vertices())
 
-    def edge_set(self) -> set[ET]:
+    def edge_set(self) -> set[ET] | Counter[ET]:
         """Returns the edges of the graph as a Python set.
         Should be overloaded if the backend supplies a cheaper version than this. Note this ignores parallel edges."""
         return set(self.edges())
