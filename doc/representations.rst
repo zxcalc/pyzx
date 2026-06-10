@@ -25,6 +25,87 @@ PyZX also offers a convenience function to construct a circuit out of a string c
 
 To convert a Circuit into a PyZX Graph (i.e. a ZX-diagram), call the method :meth:`~pyzx.circuit.Circuit.to_graph`.
 
+Measurements, resets, and mixed processes
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+PyZX can also import and graph circuits that are not purely unitary, such as
+circuits with measurements, resets, ancilla preparations, post-selections, and
+classical control. These operations are represented in the ZX-graph with
+symbolic Boolean phases, so the classical outcomes remain visible in the graph
+instead of being silently discarded.
+
+The main operations are:
+
+- :class:`~pyzx.circuit.gates.Measurement`: a measurement adds a ``Z(0)``
+  spider on the measured qubit wire and a degree-1 ``X`` leaf whose phase is a
+  Boolean symbol such as ``c[0]``. The symbol records the classical bit that
+  receives the result.
+- :class:`~pyzx.circuit.gates.Reset`: a reset discards the current qubit state
+  and prepares ``|0>``. With the default graph conversion, this is represented
+  by a discard leaf carrying a fresh Boolean symbol such as ``_r0`` and a
+  separate ``X(0)`` preparation leaf.
+- :class:`~pyzx.circuit.gates.InitAncilla` and
+  :class:`~pyzx.circuit.gates.PostSelect`: these add explicit state preparation
+  and post-selection vertices for ``|+>``, ``|->``, ``|0>``, or ``|1>``.
+- :class:`~pyzx.circuit.gates.ConditionalGate`: OpenQASM-style classical
+  control is represented by multiplying supported single-qubit ``Z`` or ``X``
+  rotation phases by a Boolean condition polynomial.
+
+For example, a small OpenQASM circuit with a measurement and a reset can be
+loaded and converted to a graph:
+
+.. code-block:: python
+
+   import pyzx as zx
+
+   circuit = zx.Circuit.from_qasm("""
+   OPENQASM 2.0;
+   include "qelib1.inc";
+   qreg q[1];
+   creg c[1];
+   h q[0];
+   measure q[0] -> c[0];
+   reset q[0];
+   """)
+
+   graph = circuit.to_graph()
+
+The graph contains symbolic phases for the measurement result and for the reset
+discard. You can inspect those symbols directly:
+
+.. code-block:: python
+
+   symbolic_phases = [
+       str(graph.phase(v))
+       for v in graph.vertices()
+       if graph.phase(v) != 0
+   ]
+
+The option ``elide_initial_resets`` controls leading resets on otherwise
+unmodified input wires:
+
+.. code-block:: python
+
+   keep_reset = circuit.to_graph(elide_initial_resets=False)
+   elide_reset = circuit.to_graph(elide_initial_resets=True)
+
+The default, ``False``, preserves the reset's discard-and-prepare structure.
+Use ``True`` when the input is already known to be ``|0>`` (for example, when
+following OpenQASM's implicit all-zero input convention) and the leading reset
+would only repeat that preparation. Mid-circuit resets are still kept, because
+they discard a live state.
+
+If you already built a graph with non-elided leading resets and want to remove
+only the orphaned discard chains, use
+:func:`~pyzx.simplify.drop_orphan_reset_discards`. This cleanup keeps
+mid-circuit resets and any reset variable that is still referenced elsewhere in
+the graph.
+
+Some limitations are intentional. Symbolic phases cannot be converted to a
+numeric tensor or matrix until the classical variables are substituted, and
+classically-controlled graph conversion currently supports single-qubit ``Z``
+and ``X`` rotations rather than arbitrary controlled subcircuits.
+
 
 Importing and exporting ZX-diagrams
 -----------------------------------
