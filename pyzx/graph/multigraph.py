@@ -357,7 +357,7 @@ class Multigraph(BaseGraph[int, tuple[int,int,EdgeType]]):
 
 
     def edge_set(self) -> Counter[tuple[int, int, EdgeType]]:
-        return Counter(self.edges()) #TODO: this function is not a valid override
+        return Counter(self.edges())
 
     def edge_st(self, edge: tuple[int, int, EdgeType]) -> tuple[int, int]:
         return (edge[0], edge[1])
