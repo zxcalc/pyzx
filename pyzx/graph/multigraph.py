@@ -17,7 +17,7 @@
 import itertools
 from collections import Counter
 from fractions import Fraction
-from typing import Tuple, Dict, Set, Union, Any
+from typing import Tuple, Dict, Set, Union, Any, Optional
 
 from .base import BaseGraph
 
@@ -340,12 +340,30 @@ class Multigraph(BaseGraph[int,Tuple[int,int,EdgeType]]):
     #                    if v1 > v0:
     #                        yield (v0,v1)
 
-    def edge(self, s, t, et: EdgeType=EdgeType.SIMPLE):
+    def edge(self, s, t, et: Optional[EdgeType] = None):
         s, t = (s, t) if s < t else (t, s)
-        e = self.graph[s][t]
-        if e.get_edge_count(et):
-            return (s, t, et)
-        return next(self.edges(s, t))
+        adj = self.graph.get(s)
+        if adj is None or t not in adj:
+            raise ValueError(f"No edge between {s} and {t}")
+        e = adj[t]
+        if et is not None:
+            if e.get_edge_count(et):
+                return (s, t, et)
+            raise ValueError(f"No edge of type {et} between {s} and {t}")
+        found: Optional[EdgeType] = None
+        for ty in (EdgeType.SIMPLE, EdgeType.HADAMARD, EdgeType.W_IO):
+            if e.get_edge_count(ty):
+                if found is not None:
+                    raise ValueError(
+                        f"edge({s}, {t}) is ambiguous on a multigraph: parallel "
+                        f"edges of multiple types exist (simple={e.s}, "
+                        f"hadamard={e.h}, w_io={e.w_io}). Pass et explicitly, "
+                        f"or use g.edges(s, t) / g.incident_edges(v) to iterate."
+                    )
+                found = ty
+        if found is None:
+            raise ValueError(f"No edge between {s} and {t}")
+        return (s, t, found)
 
 
     def edge_set(self):
