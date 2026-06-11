@@ -25,6 +25,58 @@ PyZX also offers a convenience function to construct a circuit out of a string c
 
 To convert a Circuit into a PyZX Graph (i.e. a ZX-diagram), call the method :meth:`~pyzx.circuit.Circuit.to_graph`.
 
+Measurements, resets, and other mixed processes
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+PyZX circuits can also represent a useful subset of non-unitary
+OpenQASM instructions. Measurements are parsed as
+:class:`~pyzx.circuit.gates.Measurement` gates, and resets are parsed as
+:class:`~pyzx.circuit.gates.Reset` gates. When converted to a graph, these
+instructions are represented with additional classical or outcome wires rather
+than as ordinary unitary gates.
+
+For example::
+
+	circuit = zx.Circuit.from_qasm("""
+	OPENQASM 2.0;
+	include "qelib1.inc";
+	qreg q[1];
+	creg c[1];
+	h q[0];
+	measure q[0] -> c[0];
+	reset q[0];
+	x q[0];
+	""")
+	graph = circuit.to_graph()
+
+Measurements without post-selection keep the measurement outcome symbolic.
+Internally, PyZX uses boolean symbolic phases for these classical outcomes, so
+later graph manipulations can still keep track of branches of a mixed
+quantum-classical process. This is why graphs containing measurements or
+conditional operations may contain symbolic labels instead of only numeric
+phases.
+
+A reset is modelled as two operations: discard the current qubit state, then
+prepare a fresh ``|0>`` state. The discard outcome is represented by a fresh
+boolean variable named like ``_r0``. If that variable is not fixed to a concrete
+value, tensor extraction treats the graph as symbolic; substitute or
+post-select the variable before using tensor routines that require numeric
+phases.
+
+Leading resets need one extra convention. OpenQASM ``qreg`` declarations imply
+fresh ``|0>`` inputs, so an initial ``reset q[i];`` is redundant in that model.
+Programmatically constructed :class:`~pyzx.circuit.Circuit` objects, however,
+may have unknown input states. For that reason, :meth:`~pyzx.circuit.Circuit.to_graph`
+defaults to keeping the explicit discard-and-prepare fragment. If the inputs
+are known to be fresh ``|0>`` states, pass ``elide_initial_resets=True`` to
+skip those redundant leading reset fragments::
+
+	graph = circuit.to_graph(elide_initial_resets=True)
+
+This flag only applies to resets on otherwise unmodified input wires.
+Mid-circuit resets are still kept, because they discard state produced earlier
+in the computation.
+
 
 Importing and exporting ZX-diagrams
 -----------------------------------
