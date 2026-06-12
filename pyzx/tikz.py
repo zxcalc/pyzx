@@ -426,7 +426,7 @@ def tikz_to_graph(
     Args:
         s: a string containing a well-defined Tikz diagram.
         warn_overlap: If True raises a Warning if two vertices have the exact same position.
-        fuse_overlap: If True fuses two vertices that have the exact same position. Only has effect if fuse_overlap is False.
+        fuse_overlap: If True fuses two vertices that have the exact same position. Only has effect if warn_overlap is False.
         ignore_nonzx: If True suppresses most errors about unknown vertex/edge types and labels.
         backend: Backend of the graph returned.
         ignore_invalid_phases: If True, use default phase (0 for Z/X spiders, 1 for H-boxes
