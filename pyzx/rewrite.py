@@ -177,19 +177,29 @@ class RewriteSimpDoubleVertex(RewriteDoubleVertex[VT, ET]):
     rmv_isolated : bool
         whether to remove isolated vertices after running the applier.
     is_ordered : bool
-        whether to order vertices after running the check.
+        whether the matcher distinguishes the order of its two vertex arguments.
+        If False (the default), `(v1, v2)` and `(v2, v1)` are deduplicated by sorting
+        before being added to the match set. If True, both orderings are kept as
+        distinct matches; use this when the rule is asymmetric in its arguments.
+    simp_override : Optional[Callable[[BaseGraph[VT, ET]], bool]]
+        optional whole-graph routine to run instead of the default per-pair simp loop.
+        Use this when the rule needs to batch-match before any apply (e.g., rules
+        that introduce new vertices which would otherwise interact with later matches).
     """
     simp_match: Optional[Callable[[BaseGraph[VT, ET], VT, VT], bool]]
+    simp_override: Optional[Callable[[BaseGraph[VT, ET]], bool]]
     is_ordered: bool
 
     def __init__(self, is_match: Callable[[BaseGraph[VT, ET], VT, VT], bool],
                  applier: Callable[[BaseGraph[VT, ET], VT, VT], bool],
                  simp_match: Optional[Callable[[BaseGraph[VT, ET], VT, VT], bool]] = None,
                  is_ordered: bool = False,
-                 rmv_isolated: bool = False) -> None:
+                 rmv_isolated: bool = False,
+                 simp_override: Optional[Callable[[BaseGraph[VT, ET]], bool]] = None) -> None:
         super().__init__(is_match, applier, rmv_isolated)
         self.simp_match = simp_match
         self.is_ordered = is_ordered
+        self.simp_override = simp_override
 
     def find_all_matches(self, graph: BaseGraph[VT, ET]) -> Set[Tuple[VT, VT]]:
         all_matches: Set[Tuple[VT, VT]] = set()
@@ -207,12 +217,18 @@ class RewriteSimpDoubleVertex(RewriteDoubleVertex[VT, ET]):
         return all_matches
 
     def simp(self, graph: BaseGraph[VT, ET]) -> bool:
+        applied: bool = False
+        if self.simp_override is not None:
+            applied = self.simp_override(graph)
+            if applied and self.rmv_isolated:
+                graph.remove_isolated_vertices()
+            return applied
+
         if self.simp_match is not None:
             match = self.simp_match
         else:
             match = self.is_match
 
-        applied: bool = False
         while True:
             j = 0
             all_matches = self.find_all_matches(graph)

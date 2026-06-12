@@ -17,16 +17,25 @@
 """
 This module contains the implementation of the pivot rule, and three different matching functions.
 
-The default pivot should be called using simplify.pivot_simp
+The default pivot should be called using simplify.pivot_simp.
 
-Pivot boundary and pivot gadget act on an entire graph and the matchers modify the graph, so these rule should only be run
-using the using simplify.pivot_gadget_simp(g) or simplify.pivot_boundary_simp(g).
+The boundary and gadget pivot variants expose two-vertex is_match/apply interfaces
+(check_pivot_boundary/unsafe_pivot_boundary and check_pivot_gadget/unsafe_pivot_gadget),
+which can be applied manually to a single (v, w) pair, e.g., from ZXLive. Whole-graph
+simplification falls back to the batch matchers pivot_boundary_for_simp and
+pivot_gadget_for_simp because the per-pair appliers gadgetize w in place; running them
+one at a time would let gadget vertices created by an earlier pivot participate in
+later matches.
 """
 
 __all__ = [
         'check_pivot',
+        'check_pivot_boundary',
+        'check_pivot_gadget',
         'pivot',
         'unsafe_pivot',
+        'unsafe_pivot_boundary',
+        'unsafe_pivot_gadget',
         'pivot_boundary_for_simp',
         'pivot_boundary_for_apply',
         'pivot_gadget_for_simp',
@@ -100,6 +109,84 @@ def check_pivot(
 
     return len(b0) + len(b1) <= 1
 
+
+def check_pivot_boundary(
+        g: BaseGraph[VT,ET],
+        v: VT,
+        w: VT
+        ) -> bool:
+    """Checks if a boundary pivot can be applied between an interior Pauli
+    vertex ``v`` and a non-Pauli Z-spider ``w`` with exactly one boundary neighbour.
+
+    :param g: An instance of a ZX-graph.
+    :param v: An interior Pauli vertex.
+    :param w: A non-Pauli Z-spider with exactly one boundary neighbour, adjacent to ``v``.
+    """
+    types = g.types()
+    phases = g.phases()
+    if not (v in g.vertices() and w in g.vertices()): return False
+    if not g.connected(v, w): return False
+
+    if g.edge_type(g.edge(v, w)) != EdgeType.HADAMARD: return False
+
+    if not (types[v] == VertexType.Z and types[w] == VertexType.Z): return False
+
+    if not phase_is_pauli(phases[v]): return False
+    if phase_is_pauli(phases[w]): return False
+    if g.is_ground(v) or g.is_ground(w): return False
+
+    # v's neighbours (including w) must not be grounded, matching match_pivot_boundary.
+    if any(g.is_ground(n) for n in g.neighbors(v)): return False
+
+    # v must be interior (no boundary neighbours).
+    v_boundaries = boundary_list_for_vertex(g, v)
+    if v_boundaries is None or len(v_boundaries) != 0: return False
+
+    # w must have exactly one boundary neighbour.
+    w_boundaries = boundary_list_for_vertex(g, w)
+    if w_boundaries is None or len(w_boundaries) != 1: return False
+
+    return True
+
+
+def check_pivot_gadget(
+        g: BaseGraph[VT,ET],
+        v: VT,
+        w: VT
+        ) -> bool:
+    """Checks if a gadget pivot can be applied between an interior Pauli
+    vertex ``v`` and an interior non-Pauli vertex ``w``.
+
+    :param g: An instance of a ZX-graph.
+    :param v: An interior Pauli vertex.
+    :param w: An interior non-Pauli vertex adjacent to ``v``.
+    """
+    types = g.types()
+    phases = g.phases()
+    if not (v in g.vertices() and w in g.vertices()): return False
+    if not g.connected(v, w): return False
+
+    if g.edge_type(g.edge(v, w)) != EdgeType.HADAMARD: return False
+
+    if not (types[v] == VertexType.Z and types[w] == VertexType.Z): return False
+
+    if not phase_is_pauli(phases[v]): return False
+    if phase_is_pauli(phases[w]): return False
+    if g.is_ground(v) or g.is_ground(w): return False
+
+    # w must not be a phase gadget (leaf vertex).
+    if len(g.neighbors(w)) == 1: return False
+
+    # Both must be interior (no boundary neighbours).
+    v_boundaries = boundary_list_for_vertex(g, v)
+    if v_boundaries is None or len(v_boundaries) != 0: return False
+
+    w_boundaries = boundary_list_for_vertex(g, w)
+    if w_boundaries is None or len(w_boundaries) != 0: return False
+
+    return True
+
+
 ## Pivot Boundary
 
 def pivot_boundary_for_simp(g: BaseGraph[VT,ET]) -> bool:
@@ -129,6 +216,54 @@ def pivot_gadget_for_apply(g: BaseGraph[VT,ET], vertices: List[VT]) -> bool:
     matches = match_pivot_gadget(g, checked_vertices)
     if len(matches) <= 0: return False
     return pivot_NOT_REWORKED(g, matches)
+
+def unsafe_pivot_boundary(
+        g: BaseGraph[VT,ET],
+        v: VT,
+        w: VT
+        ) -> bool:
+    """Perform a boundary pivot by gadgetizing ``w`` and then pivoting on ``(v, w)``."""
+    inputs = g.inputs()
+
+    w_boundaries = boundary_list_for_vertex(g, w)
+    assert w_boundaries is not None and len(w_boundaries) == 1
+    bound = w_boundaries[0]
+
+    if bound in inputs: mod = 0.5
+    else: mod = -0.5
+
+    # g.row() returns -1 for vertices without an explicit row index, rather than raising.
+    w_row = g.row(w) + mod
+    v1 = g.add_vertex(VertexType.Z, -2, w_row, g.phase(w))
+    v2 = g.add_vertex(VertexType.Z, -1, w_row, 0)
+    g.update_phase_index(w, v1)
+    g.set_phase(w, 0)
+    g.add_edges([(w, v2), (v1, v2)], EdgeType.HADAMARD)
+
+    return unsafe_pivot(g, v, w)
+
+
+def unsafe_pivot_gadget(
+        g: BaseGraph[VT,ET],
+        v: VT,
+        w: VT
+        ) -> bool:
+    """Perform a gadget pivot by gadgetizing ``w`` and then pivoting on ``(v, w)``.
+
+    The gadget edge is created as SIMPLE because the pivot's boundary handling
+    toggles the edge type, resulting in the correct HADAMARD gadget edge."""
+    # Mirror the placement and qubit handling done by match_pivot_gadget so that
+    # apply produces the same vertex metadata as the batch simp.
+    v_new = g.add_vertex(VertexType.Z, -2, g.row(v), g.phase(w))
+    g.set_phase(w, 0)
+    g.set_qubit(v, -1)
+    g.update_phase_index(w, v_new)
+    g.add_edge((v_new, w), EdgeType.SIMPLE)
+
+    # Apply pivot treating v_new as a pseudo-boundary of w.
+    match: MatchPivotType[VT] = ((v, w), ([], [v_new]))
+    return pivot_NOT_REWORKED(g, [match])
+
 
 def match_pivot_boundary(
         g: BaseGraph[VT,ET],
