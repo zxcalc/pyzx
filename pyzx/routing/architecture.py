@@ -1,4 +1,4 @@
-# PyZX - Python library for quantum circuit rewriting 
+# PyZX - Python library for quantum circuit rewriting
 #        and optimization using the ZX-calculus
 # Copyright (C) 2018 - Aleks Kissinger and John van de Wetering
 
@@ -50,13 +50,13 @@ GOOGLE_SYCAMORE = "google_sycamore"
 IBM_ROCHESTER = "ibm_rochester"
 DENSITY = "dynamic_density"
 
-architectures = [SQUARE, CIRCLE, FULLY_CONNECTED, LINE, DENSITY, IBM_QX4, IBM_QX2, IBM_QX3, 
-                IBM_QX5, IBM_Q20_TOKYO, RIGETTI_8Q_AGAVE, RIGETTI_16Q_ASPEN, RIGETTI_19Q_ACORN, 
-                REC_ARCH, SYCAMORE_LIKE, IBMQ_POUGHKEEPSIE, IBMQ_BOEBLINGEN, IBMQ_SINGAPORE, 
+architectures = [SQUARE, CIRCLE, FULLY_CONNECTED, LINE, DENSITY, IBM_QX4, IBM_QX2, IBM_QX3,
+                IBM_QX5, IBM_Q20_TOKYO, RIGETTI_8Q_AGAVE, RIGETTI_16Q_ASPEN, RIGETTI_19Q_ACORN,
+                REC_ARCH, SYCAMORE_LIKE, IBMQ_POUGHKEEPSIE, IBMQ_BOEBLINGEN, IBMQ_SINGAPORE,
                 GOOGLE_SYCAMORE, IBM_ROCHESTER] # List of available architectures
 dynamic_size_architectures = [FULLY_CONNECTED, LINE, CIRCLE, SQUARE, DENSITY]
-hamiltonian_path_architectures = [FULLY_CONNECTED, LINE, CIRCLE, SQUARE, IBM_QX4, IBM_QX2, IBM_QX3, 
-                IBM_QX5, IBM_Q20_TOKYO, RIGETTI_8Q_AGAVE, RIGETTI_16Q_ASPEN, 
+hamiltonian_path_architectures = [FULLY_CONNECTED, LINE, CIRCLE, SQUARE, IBM_QX4, IBM_QX2, IBM_QX3,
+                IBM_QX5, IBM_Q20_TOKYO, RIGETTI_8Q_AGAVE, RIGETTI_16Q_ASPEN,
                 IBMQ_POUGHKEEPSIE]
 
 class Architecture():
@@ -68,7 +68,7 @@ class Architecture():
         """
         Class that represents the architecture of the qubits to be taken into account when routing.
 
-        :param coupling_graph: a PyZX Graph representing the architecture, optional 
+        :param coupling_graph: a PyZX Graph representing the architecture, optional
         :param coupling_matrix: a 2D numpy array representing the adjacency of the qubits, from which the Graph is created, optional
         :param backend: The PyZX Graph backend to be used when creating it from the adjacency matrix, optional
         :param reduce_order: A list of integers representing the order in which the qubits should be scanned for some operations (e.g. steiner tree reduction), optional
@@ -184,7 +184,7 @@ class Architecture():
         Converts a list of vertices, representing a subgraph, to a sorted tuple.
         
         :param subgraph: A list of vertex location within the subgraph
-        :return: A sorted tuple of the given subgraph vertices 
+        :return: A sorted tuple of the given subgraph vertices
         """
         return tuple(sorted(subgraph))
 
@@ -244,7 +244,7 @@ class Architecture():
         :param vertices: An optional list of vertex locations within the graph, default None
         :return: A corresponding list showcasing which vertices are articulation points
         """
-        # algorithm from https://courses.cs.washington.edu/courses/cse421/04su/slides/artic.pdf and https://www.geeksforgeeks.org/articulation-points-or-cut-vertices-in-a-graph/ 
+        # algorithm from https://courses.cs.washington.edu/courses/cse421/04su/slides/artic.pdf and https://www.geeksforgeeks.org/articulation-points-or-cut-vertices-in-a-graph/
         if vertices is None:
             vertices = self.vertices
         number_of_nodes = len(vertices)
@@ -382,23 +382,23 @@ class Architecture():
         """
         if qubits_to_use is None:
             nodes = self.vertices
-        else: 
+        else:
             nodes = [self.qubit2vertex(n) for n in qubits_to_use]
         start = self.qubit2vertex(start_qubit)
         end = self.qubit2vertex(end_qubit)
 
-        queue = [(start, [start])] 
+        queue = [(start, [start])]
         visited = [start]
   
-        while queue != []: 
+        while queue != []:
             
-            node, path = queue.pop() 
+            node, path = queue.pop()
             if node == end:
                 return path
             edges = [edge for edge in self.graph.edges() if node in edge]
             neighbors = [n for edge in edges for n in edge if n != node and n in nodes]
-            for new_node in neighbors: 
-                if new_node not in visited: 
+            for new_node in neighbors:
+                if new_node not in visited:
                     queue.append((new_node, path + [new_node]))
                     visited.append(new_node)
         return None
@@ -410,7 +410,7 @@ class Architecture():
 
         :param start_qubit: The index of the root qubit to be used
         :param qubits_to_use: The indices of the other qubits that should be present in the steiner tree
-        :param upper: Whether to consider only the nodes 
+        :param upper: Whether to consider only the nodes
             the steiner tree is used for creating an upper triangular matrix or a full reduction.
         :yields: First yields all edges from the tree top-to-bottom, finished with None, then yields all edges from the tree bottom-up, finished with None.
         """
@@ -468,7 +468,7 @@ class Architecture():
             
         # Compute all the edges of the steiner tree in BFS order, starting from the root
         visited = {root}
-        queue = [root] 
+        queue = [root]
         generated_edges: List[Tuple[int,int]] = []
         
         while queue != []:
@@ -563,7 +563,7 @@ class Architecture():
         Returns a list of tuples (i, arity) where i is the index of each node and arity is the number of neighbors,
         sorted by decreasing arity.
         """
-        arities = [(i, len(self.graph.neighbors(v))) for i,v in enumerate(self.vertices)]
+        arities = [(i, len(list(self.graph.neighbors(v)))) for i,v in enumerate(self.vertices)]
         arities.sort(key=lambda p: p[1], reverse=True)
         return arities
 
@@ -588,7 +588,7 @@ def connect_vertices_in_line(vertices: List[int]) -> List[Tuple[int, int]]:
 
 def connect_vertices_as_grid(width: int, height: int, vertices: List[int]) -> List[Tuple[int,int]]:
     """
-    Connects vertices into a grid, with layout specified by width and height, vertices length much be equal to width * height. 
+    Connects vertices into a grid, with layout specified by width and height, vertices length much be equal to width * height.
     
     :param width: Width of the grid, number of columns
     :param height: Height of the grid, number of rows

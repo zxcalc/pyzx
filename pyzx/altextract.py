@@ -94,8 +94,9 @@ def alt_extract_circuit(
     qs = g.qubits() # We are assuming that these are objects that update...
     rs = g.rows()   # ...to reflect changes to the graph, so that when...
     # ty = g.types()  # ... g.set_row/g.set_qubit is called, these things update directly to reflect that
+    qubit_count: int = math.ceil(g.qubit_count()) # We take the ceiling because legacy code allows qubit_count to be a float
     phases = g.phases()
-    c = Circuit(g.qubit_count())
+    c = Circuit(qubit_count)
 
     gadgets = {}
     inputs = g.inputs()
@@ -131,7 +132,7 @@ def alt_extract_circuit(
                 g.set_phase(v,0)
 
         # And now on to CZ gates
-        cz_mat = Mat2([[0 for i in range(g.qubit_count())] for j in range(g.qubit_count())])
+        cz_mat = Mat2([[0 for i in range(qubit_count)] for j in range(qubit_count)])
         for v in frontier:
             for w in list(g.neighbors(v)):
                 if w in frontier:
@@ -154,8 +155,8 @@ def alt_extract_circuit(
                 c.add_gate("CNOT",i,j)
                 overlap_data = max_overlap(cz_mat)
 
-        for i in range(g.qubit_count()):
-            for j in range(i+1,g.qubit_count()):
+        for i in range(qubit_count):
+            for j in range(i+1,qubit_count):
                 if cz_mat.data[i][j]==1:
                     c.add_gate("CZ",i,j)
         
@@ -206,11 +207,11 @@ def alt_extract_circuit(
         ops = compute_row_ops(m)
         m1 = ops * m
 
-        cnots = Circuit(g.qubit_count())
-        blocksize = math.ceil(math.log(g.qubit_count(),2)) * 2
+        cnots = Circuit(qubit_count)
+        blocksize = math.ceil(math.log(qubit_count,2)) * 2
         winner = -1
         for bs in range(1,blocksize):
-            cnots1 = Circuit(g.qubit_count())
+            cnots1 = Circuit(qubit_count)
             ops.copy().gauss(full_reduce=True,
                 y=cnots1, blocksize=bs)
             if winner == -1 or len(cnots1.gates) < winner:

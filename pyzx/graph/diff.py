@@ -60,8 +60,8 @@ class GraphDiff(Generic[VT, ET]):
         new_verts = g2.vertex_set()
         self.removed_verts = list(old_verts - new_verts)
         self.new_verts = list(new_verts - old_verts)
-        old_edges = g1.edge_set()
-        new_edges = g2.edge_set()
+        old_edges = Counter(g1.edge_set())
+        new_edges = Counter(g2.edge_set())
         self.new_edges = []
         self.removed_edges = []
 

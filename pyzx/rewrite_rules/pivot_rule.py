@@ -160,7 +160,7 @@ def match_pivot_boundary(
             if types[n] != VertexType.Z:
                 good_vert = False
                 break
-            if len(g.neighbors(n)) == 1: # v is a phase gadget
+            if len(list(g.neighbors(n))) == 1: # v is a phase gadget
                 good_vert = False
                 break
             if n in consumed_vertices:
@@ -211,10 +211,10 @@ def match_pivot_gadget(
     """Like :func:`check_pivot`, but except for pairings of
     Pauli vertices, it looks for a pair of an interior Pauli vertex and an
     interior non-Clifford vertex in order to gadgetize the non-Clifford vertex."""
-    if vertices is not None: candidates_set = {g.edge(vertices[0], vertices[1])}
+    if vertices is not None: candidates_set = Counter([g.edge(vertices[0], vertices[1])])
 
-    else: candidates_set = g.edge_set()
-    candidates = list(Counter(candidates_set).elements())
+    else: candidates_set = Counter(g.edge_set())
+    candidates = list(candidates_set.elements())
     types = g.types()
     phases = g.phases()
     rs = g.rows()

@@ -28,7 +28,7 @@ from .symbolic import Poly
 FloatInt = Union[float,int]
 FractionLike = Union[Fraction,int,Poly]
 
-def assert_phase_real(phase: FractionLike) -> None:
+def assert_phase_real(phase: FractionLike | complex) -> None:
     """Raise a TypeError if ``phase`` contains complex coefficients.
 
     Phases represent multiples of pi and must be real-valued.  Complex

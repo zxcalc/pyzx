@@ -178,8 +178,8 @@ def to_tikz(g: BaseGraph[VT,ET], draw_scalar:bool=False) -> str:
 def to_tikz_sequence(graphs:List[BaseGraph], draw_scalar:bool=False, maxwidth:FloatInt=10) -> str:
     """Given a list of ZX-graphs, outputs a single tikz diagram with the graphs presented in a grid.
     ``maxwidth`` is the maximum width of the diagram, before a graph is put on a new row in the tikz diagram."""
-    xoffset = -maxwidth
-    yoffset = -10
+    xoffset: FloatInt = -maxwidth
+    yoffset: FloatInt = -10
     idoffset = 0
     total_verts, total_edges = [],[]
     for g in graphs:
