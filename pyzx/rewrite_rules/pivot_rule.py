@@ -175,7 +175,7 @@ def check_pivot_gadget(
     if g.is_ground(v) or g.is_ground(w): return False
 
     # w must not be a phase gadget (leaf vertex).
-    if len(g.neighbors(w)) == 1: return False
+    if len(list(g.neighbors(w))) == 1: return False
 
     # Both must be interior (no boundary neighbours).
     v_boundaries = boundary_list_for_vertex(g, v)
