@@ -243,6 +243,81 @@ class TestQASM(unittest.TestCase):
         self.assertEqual(c1.qubits, c2.qubits)
         self.assertListEqual(c1.gates, c2.gates)
 
+    def test_custom_gates_with_parameters(self):
+        """A parametrised custom gate is instantiated by binding its argument.
+
+        Regression test for issue #469.
+        """
+        from pyzx.circuit.qasmparser import QASMParser
+        s1 = """
+        OPENQASM 2.0;
+        include "qelib1.inc";
+        gate phase_kick(theta) q {
+            rz(theta) q;
+            x q;
+            rz(-theta) q;
+            x q;
+        }
+        qreg q[3];
+        phase_kick(pi/4) q[2];
+        """
+        s2 = """
+        OPENQASM 2.0;
+        include "qelib1.inc";
+        qreg q[3];
+        rz(pi/4) q[2];
+        x q[2];
+        rz(-pi/4) q[2];
+        x q[2];
+        """
+        p = QASMParser()
+        c1 = p.parse(s1)
+        c2 = p.parse(s2)
+        self.assertEqual(c1.qubits, c2.qubits)
+        self.assertListEqual(c1.gates, c2.gates)
+
+    def test_custom_gates_with_multiple_parameters(self):
+        """A custom gate with several parameters and a linear body expression."""
+        from pyzx.circuit.qasmparser import QASMParser
+        s1 = """
+        OPENQASM 2.0;
+        include "qelib1.inc";
+        gate mygate(a, b) p, q {
+            rz(a) p;
+            rx(2*b) q;
+            cx p, q;
+        }
+        qreg r[2];
+        mygate(pi/4, pi/8) r[0], r[1];
+        """
+        s2 = """
+        OPENQASM 2.0;
+        include "qelib1.inc";
+        qreg r[2];
+        rz(pi/4) r[0];
+        rx(pi/4) r[1];
+        cx r[0], r[1];
+        """
+        p = QASMParser()
+        c1 = p.parse(s1)
+        c2 = p.parse(s2)
+        self.assertListEqual(c1.gates, c2.gates)
+
+    def test_custom_gate_parameter_count_mismatch(self):
+        """Calling a parametrised custom gate with the wrong arity errors."""
+        from pyzx.circuit.qasmparser import QASMParser
+        s = """
+        OPENQASM 2.0;
+        include "qelib1.inc";
+        gate phase_kick(theta) q {
+            rz(theta) q;
+        }
+        qreg q[1];
+        phase_kick(pi/4, pi/2) q[0];
+        """
+        with self.assertRaises(TypeError):
+            QASMParser().parse(s)
+
     @unittest.skipUnless(QuantumCircuit, "qiskit needs to be installed for this test")
     def test_qasm_qiskit_semantics(self):
         """Verify/document qasm gate semantics when imported into pyzx.
