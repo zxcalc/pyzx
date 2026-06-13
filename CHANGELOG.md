@@ -13,6 +13,7 @@ Hence, occasionally changes will be backwards incompatible (although they will a
 
 ### Added
 - `Circuit.from_qasm` supports parametrised custom gate definitions, e.g., `gate phase_kick(theta) q { rz(theta) q; ... }` (by @dlyongemallo).
+- The symbolic expression parser (`pyzx.symbolic.parse`) now accepts division, e.g., `theta/2` or `(x + y)/2`. Divisors must be rational (or complex) constants; division by an integer produces an exact `Fraction` coefficient. As a side effect, `^` binds tighter than `*` and `/`. (by @dlyongemallo)
 
 ## [0.10.4] - 2026-07-01
 
