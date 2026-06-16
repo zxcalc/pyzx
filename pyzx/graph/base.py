@@ -357,8 +357,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
             else: phase = 0
         self.set_qubit(v, qubit)
         self.set_row(v, row)
-        if phase:
-            self.set_phase(v, phase)
+        self.set_phase(v, phase)
         if ground:
             self.set_ground(v, True)
         if self.track_phases:
