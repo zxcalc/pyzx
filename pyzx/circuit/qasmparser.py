@@ -1,4 +1,4 @@
-# PyZX - Python library for quantum circuit rewriting 
+# PyZX - Python library for quantum circuit rewriting
 #        and optimization using the ZX-calculus
 # Copyright (C) 2018 - Aleks Kissinger and John van de Wetering
 
@@ -18,10 +18,9 @@
 import math
 import re
 from fractions import Fraction
-from typing import List, Dict, Tuple, Optional
 
 from . import Circuit
-from .gates import Gate, qasm_gate_table, Measurement, Reset, ConditionalGate
+from .gates import CCZ, CHAD, CNOT, CRX, CRY, CRZ, CSWAP, CSX, CU, CU3, CY, CZ, HAD, NOT, RXX, RZZ, S, SWAP, SX, T, U2, U3, Y, Z, CPhase, Gate, Tofolli, XPhase, XPhase, YPhase, YPhase, ZPhase, qasm_gate_table, Measurement, Reset, ConditionalGate
 from ..utils import settings
 
 
@@ -29,14 +28,14 @@ class QASMParser(object):
     """Class for parsing QASM source files into circuit descriptions."""
 
     def __init__(self) -> None:
-        self.qasm_version:int = settings.default_qasm_version
-        self.gates: List[Gate] = []
-        self.custom_gates: Dict[str,Circuit] = {}
-        self.registers: Dict[str,Tuple[int,int]] = {}
-        self.cregisters: Dict[str,int] = {}
+        self.qasm_version: int = settings.default_qasm_version
+        self.gates: list[Gate] = []
+        self.custom_gates: dict[str, Circuit] = {}
+        self.registers: dict[str, tuple[int, int]] = {}
+        self.cregisters: dict[str, int] = {}
         self.qubit_count: int = 0
         self.bit_count: int = 0
-        self.circuit: Optional[Circuit] = None
+        self.circuit: Circuit | None = None
 
     def parse(self, s: str, strict:bool=True) -> Circuit:
         self.gates = []
@@ -142,7 +141,7 @@ class QASMParser(object):
         else:
             raise TypeError("Custom gate specification doesn't have any "
                             "arguments: {}".format(data))
-        registers : Dict[str,Tuple[int,int]] = {}
+        registers: dict[str, tuple[int, int]] = {}
         qubit_count = 0
         for a in args.split(","):
             a = a.strip()
@@ -159,7 +158,7 @@ class QASMParser(object):
                 circ.add_gate(g)
         self.custom_gates[name] = circ
 
-    def extract_command_parts(self, c: str) -> Tuple[str,List[Fraction],List[str]]:
+    def extract_command_parts(self, c: str) -> tuple[str, list[Fraction], list[str]]:
         if self.qasm_version == 3:
             # Convert some OpenQASM 3 commands into OpenQASM 2 format.
             c = re.sub(r"^bit\[(\d+)] (\w+)$", r"creg \2[\1]", c)
@@ -179,8 +178,8 @@ class QASMParser(object):
             name = name[:left_bracket]
         return name, phases, args
 
-    def parse_command(self, c: str, registers: Dict[str,Tuple[int,int]]) -> List[Gate]:
-        gates: List[Gate] = []
+    def parse_command(self, c: str, registers: dict[str, tuple[int, int]]) -> list[Gate]:
+        gates: list[Gate] = []
         # Handle `if (creg == val) gate args;` before extract_command_parts,
         # because the parentheses in `if(...)` confuse the phase parser.
         if_match = re.match(r'if\s*\(\s*(\w+)\s*==\s*(\d+)\s*\)\s*(.*)', c)
@@ -278,7 +277,7 @@ class QASMParser(object):
                 regname, valp = a.split("[",1)
                 # Remove the trailing ']' before converting to int
                 val = int(valp[:-1])
-                if regname not in registers: 
+                if regname not in registers:
                     raise TypeError("Invalid register {}".format(regname))
                 qubit_values.append([registers[regname][0]+val])
             else:
@@ -296,49 +295,50 @@ class QASMParser(object):
                     qubit_values[i] = [qubit_values[i][0]]*dim
         for j in range(dim):
             argset = [q[j] for q in qubit_values]
+            gtype = qasm_gate_table.get(name)
             if name in self.custom_gates:
                 circ = self.custom_gates[name]
                 if len(argset) != circ.qubits:
                     raise TypeError("Argument amount does not match gate spec: {}".format(c))
                 for g in circ.gates:
                     gates.append(g.reposition(argset))
-            elif name in ('x', 'y', 'z', 's', 't', 'h', 'sx'):
+            elif gtype in (NOT, Y, Z, HAD):
                 if len(phases) != 0: raise TypeError("Invalid specification {}".format(c))
-                g = qasm_gate_table[name](argset[0])  # type: ignore # mypy can't handle Gate subclasses with different number of parameters
+                g = gtype(argset[0])
                 gates.append(g)
-            elif name in ('sdg', 'tdg', 'sxdg'):
+            elif gtype in (S, T, SX):
                 if len(phases) != 0: raise TypeError("Invalid specification {}".format(c))
-                g = qasm_gate_table[name](argset[0],adjoint=True)  # type: ignore
+                g = gtype(argset[0], adjoint=(name in ('sdg', 'tdg', 'sxdg')))
                 gates.append(g)
-            elif name in ('rx', 'ry', 'rz', 'p', 'u1'):
+            elif gtype in (XPhase, YPhase, ZPhase):
                 if len(phases) != 1: raise TypeError("Invalid specification {}".format(c))
-                g = qasm_gate_table[name](argset[0],phase=phases[0])  # type: ignore
+                g = gtype(argset[0], phase=phases[0])
                 gates.append(g)
-            elif name == 'u2':
+            elif gtype is U2:
                 if len(phases) != 2: raise TypeError("Invalid specification {}".format(c))
-                gates.append(qasm_gate_table[name](argset[0], phases[0], phases[1]))  # type: ignore
-            elif name in ('u3', 'u', 'U'):
+                gates.append(gtype(argset[0], phases[0], phases[1]))
+            elif gtype is U3:
                 if len(phases) != 3: raise TypeError("Invalid specification {}".format(c))
-                gates.append(qasm_gate_table[name](argset[0], phases[0], phases[1], phases[2]))  # type: ignore
-            elif name in ('cx', 'CX', 'cy', 'cz', 'ch', 'csx', 'swap'):
+                gates.append(gtype(argset[0], phases[0], phases[1], phases[2]))
+            elif gtype in (CNOT, CY, CZ, CHAD, CSX, SWAP):
                 if len(phases) != 0: raise TypeError("Invalid specification {}".format(c))
-                g = qasm_gate_table[name](control=argset[0],target=argset[1])  # type: ignore
+                g = gtype(control=argset[0],target=argset[1])
                 gates.append(g)
-            elif name in ('crx', 'cry', 'crz', 'cp', 'cphase', 'cu1', 'rxx', 'rzz'):
+            elif gtype in (CRX, CRY, CRZ, CPhase, RXX, RZZ):
                 if len(phases) != 1: raise TypeError("Invalid specification {}".format(c))
-                g = qasm_gate_table[name](argset[0],argset[1],phase=phases[0])  # type: ignore
+                g = gtype(argset[0], argset[1], phase=phases[0])
                 gates.append(g)
-            elif name in ('ccx', 'ccz', 'cswap'):
+            elif gtype in (Tofolli, CCZ, CSWAP):
                 if len(phases) != 0: raise TypeError("Invalid specification {}".format(c))
-                g = qasm_gate_table[name](ctrl1=argset[0],ctrl2=argset[1],target=argset[2])  # type: ignore
+                g = gtype(ctrl1=argset[0], ctrl2=argset[1], target=argset[2])
                 gates.append(g)
-            elif name == 'cu3':
+            elif gtype is CU3:
                 if len(phases) != 3: raise TypeError("Invalid specification {}".format(c))
-                g = qasm_gate_table[name](control=argset[0],target=argset[1],theta=phases[0],phi=phases[1],rho=phases[2])  # type: ignore
+                g = gtype(control=argset[0], target=argset[1], theta=phases[0], phi=phases[1], rho=phases[2])
                 gates.append(g)
-            elif name == 'cu':
+            elif gtype is CU:
                 if len(phases) != 4: raise TypeError("Invalid specification {}".format(c))
-                g = qasm_gate_table[name](control=argset[0],target=argset[1],theta=phases[0],phi=phases[1],rho=phases[2],gamma=phases[3])  # type: ignore
+                g = gtype(control=argset[0], target=argset[1], theta=phases[0], phi=phases[1], rho=phases[2], gamma=phases[3])
                 gates.append(g)
             else:
                 raise TypeError("Invalid specification: {}".format(c))
@@ -374,4 +374,3 @@ def qasm(s: str) -> Circuit:
     """Parses a string representing a program in QASM, and outputs a `Circuit`."""
     p = QASMParser()
     return p.parse(s, strict=False)
-
