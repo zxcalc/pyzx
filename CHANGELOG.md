@@ -12,6 +12,9 @@ Hence, occasionally changes will be backwards incompatible (although they will a
 - Added the "magic cat" decomposition strategy from https://arxiv.org/pdf/2202.09202 (which previously only existed in Quizx). (by @mjsutcliffe99).
 - `settings.strict_phase_types` (default `True`) rejects float phases at `set_phase`/`add_to_phase` rather than letting them flow into the graph and crash downstream rewrite rules. Set to `False` to opt in to automatic conversion to `Fraction` using `settings.float_to_fraction_max_denominator`, accepting the resulting precision loss. Fixes crash in `full_reduce` with non-Clifford spiders (by @dlyongemallo).
 
+### Fixed
+- A numeric phase (e.g. `π/4`) now survives a `to_tikz`/`tikz_to_graph` round trip as a `Fraction` instead of becoming a constant `Poly`. The TikZ phase normaliser emitted numeric fractions in a form that `string_to_phase` could only read through its symbolic fallback, producing a parameter-free `Poly` that compared and printed correctly but raised `Can't convert diagram with parameters to tensor` when passed to `to_tensor`/`to_matrix` (by @gauthamkanagaraj).
+
 ## [0.10.3] - 2026-06-01
 
 ### Added
