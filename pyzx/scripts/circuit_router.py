@@ -898,7 +898,7 @@ def batch_map_cnot_circuits(
     dest_folder=None,
     metrics_file=None,
     n_compile=1,
-) -> Dict[Architecture, Dict[ElimMode, Any]]:
+) -> Dict[str, Dict[ElimMode, Any]]:
     modes = make_into_list(modes)
     architectures = make_into_list(architectures)
     populations = make_into_list(populations)
@@ -922,7 +922,7 @@ def batch_map_cnot_circuits(
         os.makedirs(dest_folder, exist_ok=True)
 
     arch_iter = []
-    circuits: Dict[Architecture, Dict[ElimMode, Any]] = {}
+    circuits: Dict[str, Dict[ElimMode, Any]] = {}
     metrics = []
     for architecture in architectures:
         if architecture in dynamic_size_architectures:
