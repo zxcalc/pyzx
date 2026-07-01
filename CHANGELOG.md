@@ -8,6 +8,8 @@ Hence, occasionally changes will be backwards incompatible (although they will a
 
 ## [Unreleased]
 
+## [0.10.4] - 2026-07-01
+
 ### Added
 - Added the "magic cat" decomposition strategy from https://arxiv.org/pdf/2202.09202 (which previously only existed in Quizx). (by @mjsutcliffe99).
 - `settings.strict_phase_types` (default `True`) rejects float phases at `set_phase`/`add_to_phase` rather than letting them flow into the graph and crash downstream rewrite rules. Set to `False` to opt in to automatic conversion to `Fraction` using `settings.float_to_fraction_max_denominator`, accepting the resulting precision loss. Fixes crash in `full_reduce` with non-Clifford spiders (by @dlyongemallo).
