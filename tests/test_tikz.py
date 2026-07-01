@@ -209,17 +209,23 @@ class TestTikzErrorHandling(unittest.TestCase):
         self.assertEqual(str(g.phase(v)), "1/2⋅alpha")
 
     def test_latex_fraction_numeric_phase_label(self):
-        """Numeric LaTeX fractions take the string_to_phase path after normalisation."""
-        tikz = r'''\begin{tikzpicture}
+        """Numeric LaTeX fractions parse back to a Fraction, not a constant Poly (issue #471)."""
+        for label, expected in [(r"\frac{\pi}{4}", Fraction(1, 4)),
+                                (r"\frac{3\pi}{4}", Fraction(3, 4)),
+                                (r"\frac{\pi}{2}", Fraction(1, 2)),
+                                (r"\frac{2\pi}{3}", Fraction(2, 3))]:
+            with self.subTest(label=label):
+                tikz = r'''\begin{tikzpicture}
 \begin{pgfonlayer}{nodelayer}
-\node [style=green dot] (0) at (0, 0) {$\frac{\pi}{4}$};
+\node [style=green dot] (0) at (0, 0) {$%s$};
 \end{pgfonlayer}
 \begin{pgfonlayer}{edgelayer}
 \end{pgfonlayer}
-\end{tikzpicture}'''
-        g = tikz_to_graph(tikz, warn_overlap=False)
-        v = list(g.vertices())[0]
-        self.assertEqual(g.phase(v), Fraction(1, 4))
+\end{tikzpicture}''' % label
+                g = tikz_to_graph(tikz, warn_overlap=False)
+                v = list(g.vertices())[0]
+                self.assertEqual(g.phase(v), expected)
+                self.assertIsInstance(g.phase(v), Fraction)
 
     def test_latex_fraction_pi_suffix_phase_label(self):
         """The normaliser also handles fraction forms with a trailing pi."""
@@ -233,6 +239,48 @@ class TestTikzErrorHandling(unittest.TestCase):
         g = tikz_to_graph(tikz, warn_overlap=False)
         v = list(g.vertices())[0]
         self.assertEqual(g.phase(v), Fraction(3, 2))
+
+    def test_tikz_round_trip_preserves_numeric_phase_type(self):
+        """A numeric phase survives a to_tikz/tikz_to_graph round trip as a Fraction, not a Poly (issue #471)."""
+        g = Graph()
+        v = g.add_vertex(VertexType.Z, 0, 0)
+        g.set_phase(v, Fraction(1, 4))
+        g2 = tikz_to_graph(to_tikz(g), warn_overlap=False)
+        w = next(u for u in g2.vertices() if g2.type(u) == VertexType.Z)
+        self.assertEqual(g2.phase(w), Fraction(1, 4))
+        self.assertIsInstance(g2.phase(w), Fraction)
+
+    def test_malformed_numeric_fraction_not_silently_accepted(self):
+        """A malformed numerator (empty or trailing operator) is rejected, not read as 1/den (issue #471)."""
+        for label in [r"\frac{}{4}", r"\frac{\pi*}{4}"]:
+            with self.subTest(label=label):
+                tikz = r'''\begin{tikzpicture}
+\begin{pgfonlayer}{nodelayer}
+\node [style=z spider] (0) at (0, 0) {$%s$};
+\end{pgfonlayer}
+\begin{pgfonlayer}{edgelayer}
+\end{pgfonlayer}
+\end{tikzpicture}''' % label
+                with self.assertRaises(ValueError):
+                    tikz_to_graph(tikz, warn_overlap=False)
+                g = tikz_to_graph(tikz, warn_overlap=False, ignore_invalid_phases=True)
+                v = list(g.vertices())[0]
+                self.assertEqual(g.phase(v), 0)
+
+    def test_zero_denominator_fraction_does_not_crash(self):
+        """A zero denominator is rejected cleanly (ValueError or fallback), not an uncaught error (issue #471)."""
+        tikz = r'''\begin{tikzpicture}
+\begin{pgfonlayer}{nodelayer}
+\node [style=z spider] (0) at (0, 0) {$\frac{\pi}{0}$};
+\end{pgfonlayer}
+\begin{pgfonlayer}{edgelayer}
+\end{pgfonlayer}
+\end{tikzpicture}'''
+        with self.assertRaises(ValueError):
+            tikz_to_graph(tikz, warn_overlap=False)
+        g = tikz_to_graph(tikz, warn_overlap=False, ignore_invalid_phases=True)
+        v = list(g.vertices())[0]
+        self.assertEqual(g.phase(v), 0)
 
     def test_latex_symbolic_hbox_phase_label(self):
         """H-box labels use the normalised phase parser when not complex."""

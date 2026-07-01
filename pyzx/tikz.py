@@ -267,6 +267,14 @@ def _extract_braced_group(s: str, start: int) -> Tuple[Optional[str], int]:
     return None, start
 
 
+def _is_numeric_phase_expr(expr: str) -> bool:
+    """True if a normalised factor is a plain numeric multiple of pi (e.g. 'pi', '3*pi', '3').
+
+    Only these round-trip to a Fraction via string_to_phase's fast path; others stay symbolic (#471).
+    """
+    return re.fullmatch(r"-?(\d+\*?)?(pi|π)|-?\d+", expr) is not None
+
+
 def _normalise_tikzit_phase_expr(expr: str) -> Optional[str]:
     """Convert simple Tikzit LaTeX syntax into the expression syntax accepted by string_to_phase."""
     expr = expr.strip()
@@ -288,13 +296,19 @@ def _normalise_tikzit_phase_expr(expr: str) -> Optional[str]:
             return None
         if not re.fullmatch(r"-?\d+", normalised_denominator):
             return None
-        normalised_fraction = f"({normalised_numerator})*1/{normalised_denominator}"
-        suffix = rest[final_index:].strip()
-        if not suffix:
-            return normalised_fraction
-        normalised_suffix = _normalise_tikzit_phase_expr(suffix)
-        if normalised_suffix is None:
+        if int(normalised_denominator) == 0:
             return None
+        suffix = rest[final_index:].strip()
+        normalised_suffix = _normalise_tikzit_phase_expr(suffix) if suffix else None
+        if suffix and normalised_suffix is None:
+            return None
+        # A plain numeric fraction takes the fast path and returns a Fraction; anything else
+        # keeps the symbolic "(num)*1/den" form and parses to a Poly (see _is_numeric_phase_expr).
+        if _is_numeric_phase_expr(normalised_numerator) and normalised_suffix is None:
+            return f"{normalised_numerator}/{normalised_denominator}"
+        normalised_fraction = f"({normalised_numerator})*1/{normalised_denominator}"
+        if normalised_suffix is None:
+            return normalised_fraction
         return f"({normalised_fraction})*{normalised_suffix}"
 
     tokens: List[str] = []
