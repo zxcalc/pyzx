@@ -28,7 +28,7 @@ from pyzx.graph.multigraph import Multigraph
 
 from ..utils import EdgeType, VertexType, phase_to_s
 from .graph import Graph
-from .scalar import Scalar
+from .scalar import Scalar, simplify_poly
 from .base import BaseGraph, VT, ET
 from ..symbolic import parse, Poly, new_var, VarRegistry
 if TYPE_CHECKING:
@@ -61,9 +61,16 @@ def string_to_phase(string: str, g: Union[BaseGraph, 'GraphDiff', None] = None) 
                 return new_var(name, is_bool=False)
             return new_var(name, is_bool=g.var_registry.get_type(name, False), registry=g.var_registry)
         try:
-            return parse(string, _new_var)
+            poly = parse(string, _new_var)
         except Exception as e:
             raise ValueError(e)
+        # A numeric expression that misses the fast path above, like "(1)*1/4", parses
+        # to a Poly without variables. Unwrap it so that numeric phases always get a
+        # numeric type. See issue #471.
+        value = simplify_poly(poly)
+        if isinstance(value, (int, Fraction)):
+            return Fraction(value)
+        return poly
 
 @deprecated("json_to_graph_old is deprecated, use json_to_graph or dict_to_graph instead")
 def json_to_graph_old(js: str | dict[str, Any], backend: str | None = None) -> BaseGraph:

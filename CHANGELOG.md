@@ -13,7 +13,7 @@ Hence, occasionally changes will be backwards incompatible (although they will a
 - `settings.strict_phase_types` (default `True`) rejects float phases at `set_phase`/`add_to_phase` rather than letting them flow into the graph and crash downstream rewrite rules. Set to `False` to opt in to automatic conversion to `Fraction` using `settings.float_to_fraction_max_denominator`, accepting the resulting precision loss. Fixes crash in `full_reduce` with non-Clifford spiders (by @dlyongemallo).
 
 ### Fixed
-- A numeric phase (e.g. `π/4`) now survives a `to_tikz`/`tikz_to_graph` round trip as a `Fraction` instead of becoming a constant `Poly`. The TikZ phase normaliser emitted numeric fractions in a form that `string_to_phase` could only read through its symbolic fallback, producing a parameter-free `Poly` that compared and printed correctly but raised `Can't convert diagram with parameters to tensor` when passed to `to_tensor`/`to_matrix` (by @gauthamkanagaraj).
+- `string_to_phase` no longer returns a constant `Poly` for a numeric expression that misses its fast parsing path (e.g. the `(1)*1/4` form the TikZ importer produces for `\frac{\pi}{4}`): a parse result without free variables is now collapsed to a `Fraction`. Such a `Poly` compared and printed like its numeric value but broke code that branches on the phase type, e.g. `to_tensor`/`to_matrix` raised `Can't convert diagram with parameters to tensor` after a `to_tikz`/`tikz_to_graph` round trip (by @gauthamkanagaraj).
 
 ## [0.10.3] - 2026-06-01
 

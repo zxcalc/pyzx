@@ -239,6 +239,7 @@ class TestTikzErrorHandling(unittest.TestCase):
         g = tikz_to_graph(tikz, warn_overlap=False)
         v = list(g.vertices())[0]
         self.assertEqual(g.phase(v), Fraction(3, 2))
+        self.assertIsInstance(g.phase(v), Fraction)
 
     def test_tikz_round_trip_preserves_numeric_phase_type(self):
         """A numeric phase survives a to_tikz/tikz_to_graph round trip as a Fraction, not a Poly (issue #471)."""
