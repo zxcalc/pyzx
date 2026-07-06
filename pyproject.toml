@@ -38,13 +38,13 @@ Documentation = "https://pyzx.readthedocs.io/"
 [project.optional-dependencies]
 dev = [
     "matplotlib>=2.2",
-    "mypy~=1.5.1",
+    "mypy~=2.1.0",
     "types-tqdm~=4.66",
 ]
 test = [
     "qiskit~=1.0.0",
     "qiskit_qasm3_import~=0.4.2",
-    "mypy~=1.5.1",
+    "mypy~=2.1.0",
 ]
 docs = [
     "matplotlib>=2.2",
