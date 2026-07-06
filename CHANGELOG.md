@@ -8,14 +8,14 @@ Hence, occasionally changes will be backwards incompatible (although they will a
 
 ## [Unreleased]
 
+### Fixed
+- `string_to_phase` no longer returns a constant `Poly` for a numeric expression that misses its fast parsing path (e.g. the `(1)*1/4` form the TikZ importer produces for `\frac{\pi}{4}`): a parse result without free variables is now collapsed to a `Fraction`. Such a `Poly` compared and printed like its numeric value but broke code that branches on the phase type, e.g. `to_tensor`/`to_matrix` raised `Can't convert diagram with parameters to tensor` after a `to_tikz`/`tikz_to_graph` round trip (by @gauthamkanagaraj).
+
 ## [0.10.4] - 2026-07-01
 
 ### Added
 - Added the "magic cat" decomposition strategy from https://arxiv.org/pdf/2202.09202 (which previously only existed in Quizx). (by @mjsutcliffe99).
 - `settings.strict_phase_types` (default `True`) rejects float phases at `set_phase`/`add_to_phase` rather than letting them flow into the graph and crash downstream rewrite rules. Set to `False` to opt in to automatic conversion to `Fraction` using `settings.float_to_fraction_max_denominator`, accepting the resulting precision loss. Fixes crash in `full_reduce` with non-Clifford spiders (by @dlyongemallo).
-
-### Fixed
-- `string_to_phase` no longer returns a constant `Poly` for a numeric expression that misses its fast parsing path (e.g. the `(1)*1/4` form the TikZ importer produces for `\frac{\pi}{4}`): a parse result without free variables is now collapsed to a `Fraction`. Such a `Poly` compared and printed like its numeric value but broke code that branches on the phase type, e.g. `to_tensor`/`to_matrix` raised `Can't convert diagram with parameters to tensor` after a `to_tikz`/`tikz_to_graph` round trip (by @gauthamkanagaraj).
 
 ## [0.10.3] - 2026-06-01
 
