@@ -24,8 +24,9 @@ if __name__ == '__main__':
     sys.path.append('.')
 
 from pyzx.graph import Graph
+from pyzx.graph.diff import GraphDiff
 from pyzx.graph.scalar import Scalar
-from pyzx.graph.jsonparser import graph_to_dict, dict_to_graph
+from pyzx.graph.jsonparser import graph_to_dict, dict_to_graph, string_to_phase
 from pyzx.utils import EdgeType, VertexType, set_h_box_label, get_h_box_label, hbox_has_complex_label
 from pyzx.symbolic import Poly, new_var
 
@@ -440,6 +441,63 @@ class TestGraphIO(unittest.TestCase):
         self.assertTrue(hbox_has_complex_label(g2, v3_new))
         self.assertEqual(get_h_box_label(g2, v2_new), 1j)
         self.assertEqual(get_h_box_label(g2, v3_new), 2.5+1.3j)
+
+class TestStringToPhase(unittest.TestCase):
+
+    def test_numeric_expression_parses_to_fraction(self):
+        """Numeric strings that miss the fast path return a Fraction, not a constant Poly (issue #471)."""
+        for s, expected in [("(1)*1/4", Fraction(1, 4)),
+                            ("(3*pi)*1/4", Fraction(3, 4)),
+                            ("(-3)*1/2", Fraction(-3, 2)),
+                            ("1/2+1/4", Fraction(3, 4))]:
+            with self.subTest(s=s):
+                phase = string_to_phase(s)
+                self.assertEqual(phase, expected)
+                self.assertIsInstance(phase, Fraction)
+
+    def test_symbolic_expression_parses_to_poly(self):
+        g = Graph()
+        phase = string_to_phase("alpha + 1/2", g)
+        self.assertIsInstance(phase, Poly)
+        self.assertEqual(len(phase.free_vars()), 1)
+
+    def test_cancelling_symbolic_expression_parses_to_fraction(self):
+        g = Graph()
+        phase = string_to_phase("alpha - alpha", g)
+        self.assertEqual(phase, 0)
+        self.assertIsInstance(phase, Fraction)
+
+    def test_parsed_numeric_phase_works_as_dict_key(self):
+        """Phases are used as dict keys (e.g. in Scalar.from_json), so equal phases must hash equally."""
+        d = {string_to_phase("(1)*1/4"): 1}
+        self.assertIn(Fraction(1, 4), d)
+
+    def test_numeric_phase_as_scalar_dict_key(self):
+        """Phases are used as dict keys in Scalar.sum_of_phases, so a numeric phase
+        parsed from JSON must hash equally to the Fraction it denotes (issue #471)."""
+        scalar = Scalar.from_json(json.dumps(
+            {"power2": 0, "phase": "(1)*1/4", "sum_of_phases": {"(1)*3/4": 2}}))
+        self.assertIsInstance(scalar.phase, Fraction)
+        self.assertEqual(scalar.phase, Fraction(1, 4))
+        self.assertEqual(scalar.sum_of_phases.get(Fraction(3, 4)), 2)
+
+    def test_graph_diff_phases_round_trip(self):
+        """GraphDiff.from_json also parses phases with string_to_phase; numeric
+        phases must come back as Fraction and symbolic ones as Poly."""
+        g1 = Graph()
+        v1 = g1.add_vertex(VertexType.Z, 0, 0)
+        v2 = g1.add_vertex(VertexType.X, 0, 1)
+        g2 = g1.clone()
+        g2.set_phase(v1, Fraction(3, 4))
+        g2.set_phase(v2, new_var('alpha', is_bool=False, registry=g2.var_registry) + Fraction(1, 2))
+        diff = GraphDiff.from_json(GraphDiff(g1, g2).to_json())
+        self.assertIsInstance(diff.changed_phases[v1], Fraction)
+        self.assertEqual(diff.changed_phases[v1], Fraction(3, 4))
+        self.assertIsInstance(diff.changed_phases[v2], Poly)
+        applied = diff.apply_diff(g1.clone())
+        self.assertEqual(applied.phase(v1), Fraction(3, 4))
+        self.assertEqual(applied.phase(v2), g2.phase(v2))
+
 
 if __name__ == '__main__':
     unittest.main()
