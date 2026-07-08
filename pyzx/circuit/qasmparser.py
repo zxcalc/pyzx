@@ -18,10 +18,11 @@
 import math
 import re
 from fractions import Fraction
-from typing import List, Dict, Tuple, Optional
+from typing import List, Dict, Tuple, Optional, Union
 
 from . import Circuit
 from .gates import Gate, qasm_gate_table, Measurement, Reset, ConditionalGate
+from ..symbolic import Var, new_var, parse as parse_symbolic_expr
 from ..utils import settings
 
 
@@ -32,6 +33,8 @@ class QASMParser(object):
         self.qasm_version:int = settings.default_qasm_version
         self.gates: List[Gate] = []
         self.custom_gates: Dict[str,Circuit] = {}
+        self.parametrized_gates: Dict[str,Tuple[List[str],List[str],List[str]]] = {}
+        self._param_subst: Optional[Dict[str,Fraction]] = None
         self.registers: Dict[str,Tuple[int,int]] = {}
         self.cregisters: Dict[str,int] = {}
         self.qubit_count: int = 0
@@ -41,6 +44,8 @@ class QASMParser(object):
     def parse(self, s: str, strict:bool=True) -> Circuit:
         self.gates = []
         self.custom_gates = {}
+        self.parametrized_gates = {}
+        self._param_subst = None
         self.registers = {}
         self.cregisters = {}
         self.qubit_count = 0
@@ -127,12 +132,11 @@ class QASMParser(object):
     def parse_custom_gate(self, data: str) -> None:
         data = data[5:]
         spec, body = data.split("{",1)
+        params: List[str] = []
         if "(" in spec:
             i = spec.find("(")
             j = spec.find(")")
-            if spec[i+1:j].strip():
-                raise TypeError("Arguments for custom gates are currently"
-                                " not supported: {}".format(data))
+            params = [p.strip() for p in spec[i+1:j].split(",") if p.strip()]
             spec = spec[:i] + spec[j+1:]
         spec = spec.strip()
         if " " in spec:
@@ -142,22 +146,44 @@ class QASMParser(object):
         else:
             raise TypeError("Custom gate specification doesn't have any "
                             "arguments: {}".format(data))
-        registers : Dict[str,Tuple[int,int]] = {}
-        qubit_count = 0
+        qubit_args: List[str] = []
         for a in args.split(","):
             a = a.strip()
-            if a in registers:
+            if a in qubit_args or a in params:
                 raise TypeError("Duplicate variable name: {}".format(data))
-            registers[a] = (qubit_count,1)
-            qubit_count += 1
+            qubit_args.append(a)
 
         body = body[:-1].strip()
         commands = [s.strip() for s in body.split(";") if s.strip()]
-        circ = Circuit(qubit_count)
+        if params:
+            self.parametrized_gates[name] = (params, qubit_args, commands)
+            return
+        registers = {a: (k, 1) for k, a in enumerate(qubit_args)}
+        circ = Circuit(len(qubit_args))
         for c in commands:
             for g in self.parse_command(c, registers):
                 circ.add_gate(g)
         self.custom_gates[name] = circ
+
+    def _instantiate_parametrized_gate(
+            self, name: str, phases: List[Fraction], c: str) -> Circuit:
+        """Instantiate a custom gate with parameters by binding its arguments.
+        """
+        params, qubit_args, commands = self.parametrized_gates[name]
+        if len(phases) != len(params):
+            raise TypeError(
+                "Parameter amount does not match gate spec: {}".format(c))
+        registers = {a: (k, 1) for k, a in enumerate(qubit_args)}
+        circ = Circuit(len(qubit_args))
+        saved = self._param_subst
+        self._param_subst = dict(zip(params, phases))
+        try:
+            for cmd in commands:
+                for g in self.parse_command(cmd, registers):
+                    circ.add_gate(g)
+        finally:
+            self._param_subst = saved
+        return circ
 
     def extract_command_parts(self, c: str) -> Tuple[str,List[Fraction],List[str]]:
         if self.qasm_version == 3:
@@ -294,13 +320,17 @@ class QASMParser(object):
             for i in range(len(qubit_values)):
                 if len(qubit_values[i]) != dim:
                     qubit_values[i] = [qubit_values[i][0]]*dim
+        custom_circ: Optional[Circuit] = None
+        if name in self.parametrized_gates:
+            custom_circ = self._instantiate_parametrized_gate(name, phases, c)
+        elif name in self.custom_gates:
+            custom_circ = self.custom_gates[name]
         for j in range(dim):
             argset = [q[j] for q in qubit_values]
-            if name in self.custom_gates:
-                circ = self.custom_gates[name]
-                if len(argset) != circ.qubits:
+            if custom_circ is not None:
+                if len(argset) != custom_circ.qubits:
                     raise TypeError("Argument amount does not match gate spec: {}".format(c))
-                for g in circ.gates:
+                for g in custom_circ.gates:
                     gates.append(g.reposition(argset))
             elif name in ('x', 'y', 'z', 's', 't', 'h', 'sx'):
                 if len(phases) != 0: raise TypeError("Invalid specification {}".format(c))
@@ -345,6 +375,10 @@ class QASMParser(object):
         return gates
 
     def parse_phase_arg(self, val):
+        if self._param_subst is not None:
+            bound = self._bind_phase_parameters(val)
+            if bound is not None:
+                return bound
         try:
             phase = float(val)/math.pi
         except ValueError:
@@ -368,6 +402,37 @@ class QASMParser(object):
             except: raise TypeError("Invalid specification {}".format(val))
         phase = Fraction(phase).limit_denominator(settings.float_to_fraction_max_denominator)
         return phase
+
+    def _bind_phase_parameters(self, val: str) -> Optional[Fraction]:
+        """Resolve a gate-body phase expression that uses bound parameters.
+
+        Only expressions the symbolic grammar accepts are supported. Otherwise,
+        ``TypeError`` is raised.
+        """
+        assert self._param_subst is not None
+        names = self._param_subst
+        if not names or not re.search(
+                r'\b(' + '|'.join(re.escape(n) for n in names) + r')\b', val):
+            return None
+        try:
+            poly = parse_symbolic_expr(val, lambda n: new_var(n, False))
+            result = poly.substitute({Var(n): v for n, v in names.items()})
+        except Exception as exc:
+            raise TypeError(
+                "Unsupported parametrized gate-body phase {!r}: {}".format(
+                    val, exc)) from exc
+        if result.free_vars():
+            raise TypeError(
+                "Parametrized gate-body phase {!r} does not reduce to a "
+                "constant after binding {}".format(val, dict(names)))
+        const: Union[int, float, complex, Fraction] = \
+            result.terms[0][0] if result.terms else 0
+        if isinstance(const, complex):
+            raise TypeError(
+                "Parametrized gate-body phase {!r} bound to a non-real "
+                "value".format(val))
+        return Fraction(const).limit_denominator(
+            settings.float_to_fraction_max_denominator)
 
 
 def qasm(s: str) -> Circuit:
