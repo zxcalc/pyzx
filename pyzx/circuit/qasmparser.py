@@ -74,10 +74,12 @@ class QASMParser(object):
             raise TypeError("File is not importing standard library")
 
         data = "\n".join(r)
-        # Strip the custom command definitions from the normal commands
+        # Strip the custom command definitions from the normal commands.
+        gate_decl = re.compile(r"\bgate ")
         while True:
-            i = data.find("gate ")
-            if i == -1: break
+            m = gate_decl.search(data)
+            if m is None: break
+            i = m.start()
             j = data.find("}", i)
             self.parse_custom_gate(data[i:j+1])
             data = data[:i] + data[j+1:]

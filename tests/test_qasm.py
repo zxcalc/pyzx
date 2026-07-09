@@ -243,6 +243,36 @@ class TestQASM(unittest.TestCase):
         self.assertEqual(c1.qubits, c2.qubits)
         self.assertListEqual(c1.gates, c2.gates)
 
+    def test_custom_gate_name_ending_in_gate(self):
+        """A custom gate whose name ends in ``gate`` must not confuse the
+        parser.
+        """
+        from pyzx.circuit.qasmparser import QASMParser
+        s1 = """
+        OPENQASM 2.0;
+        include "qelib1.inc";
+        gate flip_gate a, b, c {
+            h a;
+            cx a, b;
+            cx b, c;
+        }
+        qreg q[3];
+        flip_gate q[0], q[1], q[2];
+        """
+        s2 = """
+        OPENQASM 2.0;
+        include "qelib1.inc";
+        qreg q[3];
+        h q[0];
+        cx q[0], q[1];
+        cx q[1], q[2];
+        """
+        p = QASMParser()
+        c1 = p.parse(s1)
+        c2 = p.parse(s2)
+        self.assertEqual(c1.qubits, c2.qubits)
+        self.assertListEqual(c1.gates, c2.gates)
+
     def test_custom_gates_with_parameters(self):
         """A parametrised custom gate is instantiated by binding its argument.
 

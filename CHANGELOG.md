@@ -10,6 +10,7 @@ Hence, occasionally changes will be backwards incompatible (although they will a
 
 ### Fixed
 - `string_to_phase` no longer returns a constant `Poly` for a numeric expression that misses its fast parsing path (e.g. the `(1)*1/4` form the TikZ importer produces for `\frac{\pi}{4}`): a parse result without free variables is now collapsed to a `Fraction`. Such a `Poly` compared and printed like its numeric value but broke code that branches on the phase type, e.g. `to_tensor`/`to_matrix` raised `Can't convert diagram with parameters to tensor` after a `to_tikz`/`tikz_to_graph` round trip (by @gauthamkanagaraj).
+* Correctly handling custom gate identifiers ending in `gate` (by @dlyongemallo).
 
 ### Added
 - `Circuit.from_qasm` supports parametrised custom gate definitions, e.g., `gate phase_kick(theta) q { rz(theta) q; ... }` (by @dlyongemallo).
