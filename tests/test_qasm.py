@@ -303,6 +303,29 @@ class TestQASM(unittest.TestCase):
         c2 = p.parse(s2)
         self.assertListEqual(c1.gates, c2.gates)
 
+    def test_custom_gate_with_divided_parameter(self):
+        """A parametrised custom gate whose body divides a parameter."""
+        from pyzx.circuit.qasmparser import QASMParser
+        s1 = """
+        OPENQASM 2.0;
+        include "qelib1.inc";
+        gate halfrot(theta) q {
+            rz(theta/2) q;
+        }
+        qreg q[1];
+        halfrot(pi/2) q[0];
+        """
+        s2 = """
+        OPENQASM 2.0;
+        include "qelib1.inc";
+        qreg q[1];
+        rz(pi/4) q[0];
+        """
+        p = QASMParser()
+        c1 = p.parse(s1)
+        c2 = p.parse(s2)
+        self.assertListEqual(c1.gates, c2.gates)
+
     def test_custom_gate_parameter_count_mismatch(self):
         """Calling a parametrised custom gate with the wrong arity errors."""
         from pyzx.circuit.qasmparser import QASMParser
