@@ -24,7 +24,7 @@ if __name__ == '__main__':
 
 from pyzx.graph.multigraph import Multigraph
 from pyzx.utils import EdgeType, VertexType
-from pyzx.rewrite_rules.add_identity_rule import check_edge, add_Z_identity
+from pyzx.rewrite_rules.add_identity_rule import check_edge, add_Z_identity, unsafe_add_Z_identity
 
 
 class TestAddIdentityRule(unittest.TestCase):
@@ -62,6 +62,19 @@ class TestAddIdentityRule(unittest.TestCase):
         verts_before = g.num_vertices()
         self.assertFalse(add_Z_identity(g, v1, v2))
         self.assertEqual(g.num_vertices(), verts_before)
+
+    def test_unsafe_add_Z_identity_raises_on_ambiguous(self):
+        """``unsafe_add_Z_identity`` must refuse mixed parallels rather than
+        silently picking an edge; callers that bypass ``check_edge`` should
+        see a clear ``ValueError`` instead of a wrong rewrite."""
+        g = Multigraph()
+        g.set_auto_simplify(False)
+        v1 = g.add_vertex(VertexType.Z, 0, 0)
+        v2 = g.add_vertex(VertexType.Z, 0, 1)
+        g.add_edge((v1, v2), EdgeType.SIMPLE)
+        g.add_edge((v1, v2), EdgeType.HADAMARD)
+        with self.assertRaises(ValueError):
+            unsafe_add_Z_identity(g, v1, v2)
 
     def test_check_edge_rejects_w_io(self):
         """check_edge rejects vertex pairs joined by W_IO edges, since the rule

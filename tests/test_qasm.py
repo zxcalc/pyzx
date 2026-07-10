@@ -243,6 +243,213 @@ class TestQASM(unittest.TestCase):
         self.assertEqual(c1.qubits, c2.qubits)
         self.assertListEqual(c1.gates, c2.gates)
 
+    def test_custom_gate_name_ending_in_gate(self):
+        """A custom gate whose name ends in ``gate`` must not confuse the
+        parser.
+        """
+        from pyzx.circuit.qasmparser import QASMParser
+        s1 = """
+        OPENQASM 2.0;
+        include "qelib1.inc";
+        gate flip_gate a, b, c {
+            h a;
+            cx a, b;
+            cx b, c;
+        }
+        qreg q[3];
+        flip_gate q[0], q[1], q[2];
+        """
+        s2 = """
+        OPENQASM 2.0;
+        include "qelib1.inc";
+        qreg q[3];
+        h q[0];
+        cx q[0], q[1];
+        cx q[1], q[2];
+        """
+        p = QASMParser()
+        c1 = p.parse(s1)
+        c2 = p.parse(s2)
+        self.assertEqual(c1.qubits, c2.qubits)
+        self.assertListEqual(c1.gates, c2.gates)
+
+    def test_custom_gates_with_parameters(self):
+        """A parametrised custom gate is instantiated by binding its argument.
+
+        Regression test for issue #469.
+        """
+        from pyzx.circuit.qasmparser import QASMParser
+        s1 = """
+        OPENQASM 2.0;
+        include "qelib1.inc";
+        gate phase_kick(theta) q {
+            rz(theta) q;
+            x q;
+            rz(-theta) q;
+            x q;
+        }
+        qreg q[3];
+        phase_kick(pi/4) q[2];
+        """
+        s2 = """
+        OPENQASM 2.0;
+        include "qelib1.inc";
+        qreg q[3];
+        rz(pi/4) q[2];
+        x q[2];
+        rz(-pi/4) q[2];
+        x q[2];
+        """
+        p = QASMParser()
+        c1 = p.parse(s1)
+        c2 = p.parse(s2)
+        self.assertEqual(c1.qubits, c2.qubits)
+        self.assertListEqual(c1.gates, c2.gates)
+
+    def test_custom_gates_with_multiple_parameters(self):
+        """A custom gate with several parameters and a linear body expression."""
+        from pyzx.circuit.qasmparser import QASMParser
+        s1 = """
+        OPENQASM 2.0;
+        include "qelib1.inc";
+        gate mygate(a, b) p, q {
+            rz(a) p;
+            rx(2*b) q;
+            cx p, q;
+        }
+        qreg r[2];
+        mygate(pi/4, pi/8) r[0], r[1];
+        """
+        s2 = """
+        OPENQASM 2.0;
+        include "qelib1.inc";
+        qreg r[2];
+        rz(pi/4) r[0];
+        rx(pi/4) r[1];
+        cx r[0], r[1];
+        """
+        p = QASMParser()
+        c1 = p.parse(s1)
+        c2 = p.parse(s2)
+        self.assertListEqual(c1.gates, c2.gates)
+
+    def test_custom_gate_with_divided_parameter(self):
+        """A parametrised custom gate whose body divides a parameter."""
+        from pyzx.circuit.qasmparser import QASMParser
+        s1 = """
+        OPENQASM 2.0;
+        include "qelib1.inc";
+        gate halfrot(theta) q {
+            rz(theta/2) q;
+        }
+        qreg q[1];
+        halfrot(pi/2) q[0];
+        """
+        s2 = """
+        OPENQASM 2.0;
+        include "qelib1.inc";
+        qreg q[1];
+        rz(pi/4) q[0];
+        """
+        p = QASMParser()
+        c1 = p.parse(s1)
+        c2 = p.parse(s2)
+        self.assertListEqual(c1.gates, c2.gates)
+
+    def test_parenthesised_phase_arguments(self):
+        """Phase arguments may contain parenthesised subexpressions.
+
+        The phase-argument tokeniser respects balanced parentheses so that
+        subexpressions like `(pi/2 + pi/4)` or `pi/(2*3)` do not truncate at
+        the first ``)``, and comma splitting inside a multi-argument gate call
+        happens only at the outermost nesting level.
+        """
+        from pyzx.circuit.qasmparser import QASMParser
+        s1 = """
+        OPENQASM 2.0;
+        include "qelib1.inc";
+        qreg q[1];
+        rz((pi/2)) q[0];
+        rz((pi/2 + pi/4)) q[0];
+        rz((pi/4)/2) q[0];
+        rz(-(pi/4)) q[0];
+        rz((1.5)) q[0];
+        """
+        s2 = """
+        OPENQASM 2.0;
+        include "qelib1.inc";
+        qreg q[1];
+        rz(pi/2) q[0];
+        rz(3*pi/4) q[0];
+        rz(pi/8) q[0];
+        rz(-pi/4) q[0];
+        rz(1.5) q[0];
+        """
+        p = QASMParser()
+        c1 = p.parse(s1)
+        c2 = p.parse(s2)
+        self.assertListEqual(c1.gates, c2.gates)
+
+    def test_parenthesised_phase_in_multi_argument_gate(self):
+        """A parenthesised phase in the middle of a comma-separated list is
+        not split by the inner comma-free tokeniser split."""
+        from pyzx.circuit.qasmparser import QASMParser
+        s1 = """
+        OPENQASM 2.0;
+        include "qelib1.inc";
+        qreg q[1];
+        u3(pi, (pi/2 + pi/4), pi/4) q[0];
+        """
+        s2 = """
+        OPENQASM 2.0;
+        include "qelib1.inc";
+        qreg q[1];
+        u3(pi, 3*pi/4, pi/4) q[0];
+        """
+        p = QASMParser()
+        c1 = p.parse(s1)
+        c2 = p.parse(s2)
+        self.assertListEqual(c1.gates, c2.gates)
+
+    def test_custom_gate_with_parenthesised_body_expression(self):
+        """A parametrised custom gate body may use parenthesised
+        subexpressions in its phase arguments."""
+        from pyzx.circuit.qasmparser import QASMParser
+        s1 = """
+        OPENQASM 2.0;
+        include "qelib1.inc";
+        gate g(theta) q {
+            rz((theta+pi/2)/2) q;
+        }
+        qreg q[1];
+        g(pi/4) q[0];
+        """
+        s2 = """
+        OPENQASM 2.0;
+        include "qelib1.inc";
+        qreg q[1];
+        rz(3*pi/8) q[0];
+        """
+        p = QASMParser()
+        c1 = p.parse(s1)
+        c2 = p.parse(s2)
+        self.assertListEqual(c1.gates, c2.gates)
+
+    def test_custom_gate_parameter_count_mismatch(self):
+        """Calling a parametrised custom gate with the wrong arity errors."""
+        from pyzx.circuit.qasmparser import QASMParser
+        s = """
+        OPENQASM 2.0;
+        include "qelib1.inc";
+        gate phase_kick(theta) q {
+            rz(theta) q;
+        }
+        qreg q[1];
+        phase_kick(pi/4, pi/2) q[0];
+        """
+        with self.assertRaises(TypeError):
+            QASMParser().parse(s)
+
     @unittest.skipUnless(QuantumCircuit, "qiskit needs to be installed for this test")
     def test_qasm_qiskit_semantics(self):
         """Verify/document qasm gate semantics when imported into pyzx.

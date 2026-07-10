@@ -1,4 +1,4 @@
-# PyZX - Python library for quantum circuit rewriting 
+# PyZX - Python library for quantum circuit rewriting
 #        and optimization using the ZX-calculus
 # Copyright (C) 2018 - Aleks Kissinger and John van de Wetering
 
@@ -30,7 +30,7 @@ from .circuit.gates import Gate, ParityPhase, CNOT, HAD, ZPhase, XPhase, CZ, XCX
 
 from .graph.base import BaseGraph, VT, ET
 
-from typing import List, Optional, Tuple, Dict, Set, Union, Iterator
+from typing import Generic, List, Optional, Tuple, Dict, Set, Union, Iterator
 
 
 def bi_adj(g: BaseGraph[VT,ET], vs:List[VT], ws:List[VT]) -> Mat2:
@@ -39,10 +39,10 @@ def bi_adj(g: BaseGraph[VT,ET], vs:List[VT], ws:List[VT]) -> Mat2:
     return Mat2([[1 if g.connected(v,w) else 0 for v in vs] for w in ws])
 
 def connectivity_from_biadj(
-        g: BaseGraph[VT,ET], 
-        m: Mat2, 
-        left:List[VT], 
-        right: List[VT], 
+        g: BaseGraph[VT,ET],
+        m: Mat2,
+        left:List[VT],
+        right: List[VT],
         edgetype:EdgeType=EdgeType.HADAMARD):
     """Replace the connectivity in ``g`` between the vertices in ``left`` and ``right``
     by the biadjacency matrix ``m``. The edges will be of type ``edgetype``."""
@@ -64,7 +64,7 @@ def streaming_extract(
     return extract_circuit(g, optimize_czs=optimize_czs, optimize_cnots=optimize_cnots, quiet=quiet)
 
 def permutation_as_swaps(perm:Dict[int,int]) -> List[Tuple[int,int]]:
-    """Returns a series of swaps that realises the given permutation. 
+    """Returns a series of swaps that realises the given permutation.
 
     Args:
         perm: A dictionary where both keys and values take values in 0,1,...,n."""
@@ -86,7 +86,7 @@ def permutation_as_swaps(perm:Dict[int,int]) -> List[Tuple[int,int]]:
 
 def column_optimal_swap(m: Mat2) -> Dict[int,int]:
     """Given a matrix m, tries to find a permutation of the columns such that
-    there are as many ones on the diagonal as possible. 
+    there are as many ones on the diagonal as possible.
     This reduces the number of row operations needed to do Gaussian elimination.
     """
     r, c = m.rows(), m.cols()
@@ -95,7 +95,7 @@ def column_optimal_swap(m: Mat2) -> Dict[int,int]:
 
     for i in range(r):
             for j in range(c):
-                if m.data[i][j]: 
+                if m.data[i][j]:
                     connections[i].add(j)
                     connectionsr[j].add(i)
 
@@ -202,7 +202,7 @@ def find_minimal_sums(m: Mat2, reversed_search=False) -> Optional[Tuple[int, ...
 
 def greedy_reduction(m: Mat2) -> Optional[List[Tuple[int, int]]]:
     """Returns a list of tuples (r1,r2) that specify which row should be added to which other row
-    in order to reduce one row of m to only contain a single 1. 
+    in order to reduce one row of m to only contain a single 1.
     Used in :func:`extract_circuit` and :func:`lookahead_extract_base`"""
     indicest = find_minimal_sums(m)
     if indicest is None: return indicest
@@ -354,7 +354,7 @@ def max_overlap(cz_matrix: Mat2) -> Tuple[Tuple[int,int],List[int]]:
     """Given an adjacency matrix of qubit connectivity of a CZ circuit, returns:
     a) the rows which have the maximum inner product
     b) the list of common qubits between these rows.
-    Used in :func:`extract_circuit` to more optimally place CZ gates. 
+    Used in :func:`extract_circuit` to more optimally place CZ gates.
     """
     N = len(cz_matrix.data[0])
 
@@ -832,7 +832,7 @@ def graph_to_swaps(g: BaseGraph[VT, ET], no_swaps: bool = False) -> Circuit:
 
     for q,v in enumerate(outputs): # check for a last layer of Hadamards, and see if swap gates need to be applied.
         inp = list(g.neighbors(v))[0]
-        if inp not in inputs: 
+        if inp not in inputs:
             raise TypeError("Algorithm failed: Graph is not fully reduced")
             return c
         if g.edge_type(g.edge(v,inp)) == EdgeType.HADAMARD:
@@ -910,7 +910,7 @@ def extract_clifford_normal_form(g: BaseGraph[VT,ET]) -> Circuit:
     return c
 
 
-class LookaheadNode:
+class LookaheadNode(Generic[VT, ET]):
     """
     A class for the lookahead extraction.
 

@@ -165,14 +165,14 @@ def phase_fraction_to_s(a: FractionLike, t:VertexType=VertexType.Z, limit_denomi
     # unicode 0x03c0 = pi
     return simstr + ns + '\u03c0' + ds
 
-def phase_is_clifford(phase: FractionLike):
+def phase_is_clifford(phase: FractionLike) -> bool:
     if isinstance(phase, Poly):
         return phase.is_clifford
     if isinstance(phase, (Fraction, int)):
         return phase in [Fraction(i, 2) for i in range(4)]
     raise TypeError(f"phase must be FractionLike, got {type(phase).__name__}")
 
-def phase_is_pauli(phase: FractionLike):
+def phase_is_pauli(phase: FractionLike) -> bool:
     if isinstance(phase, Poly):
         return phase.is_pauli
     if isinstance(phase, (Fraction, int)):

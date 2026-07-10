@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pyzx"
-version = "0.10.3"
+version = "0.10.4"
 description = "Library for quantum circuit rewriting and optimisation using the ZX-calculus"
 readme = "readme.md"
 license = "Apache-2.0"
@@ -38,13 +38,13 @@ Documentation = "https://pyzx.readthedocs.io/"
 [project.optional-dependencies]
 dev = [
     "matplotlib>=2.2",
-    "mypy~=1.5.1",
+    "mypy~=2.1.0",
     "types-tqdm~=4.66",
 ]
 test = [
     "qiskit~=1.0.0",
     "qiskit_qasm3_import~=0.4.2",
-    "mypy~=1.5.1",
+    "mypy~=2.1.0",
 ]
 docs = [
     "matplotlib>=2.2",
@@ -95,7 +95,7 @@ module = [
 ignore_missing_imports = true
 
 [tool.bumpversion]
-current_version = "0.10.3"
+current_version = "0.10.4"
 commit = true
 tag = true
 tag_name = "v{new_version}"

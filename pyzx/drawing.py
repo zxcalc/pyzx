@@ -1,4 +1,4 @@
-# PyZX - Python library for quantum circuit rewriting 
+# PyZX - Python library for quantum circuit rewriting
 #        and optimization using the ZX-calculus
 # Copyright (C) 2018 - Aleks Kissinger and John van de Wetering
 
@@ -51,7 +51,7 @@ if TYPE_CHECKING:
     from ipywidgets import Label
 
 def draw(g: Union[BaseGraph[VT,ET], Circuit], labels: bool=False, **kwargs) -> Any:
-    """Draws the given Circuit or Graph. 
+    """Draws the given Circuit or Graph.
     Depending on the value of ``pyzx.settings.drawing_backend``
     either uses matplotlib or d3 to draw."""
 
@@ -154,10 +154,10 @@ def arrange_scalar_diagram(g: BaseGraph[VT,ET]) -> None:
         g.set_qubit(w,0)
 
 def draw_matplotlib(
-        g:      Union[BaseGraph[VT,ET], Circuit], 
-        labels: bool                             =False, 
-        figsize:Tuple[FloatInt,FloatInt]         =(8,2), 
-        h_edge_draw: Literal['blue', 'box']      ='blue', 
+        g:      Union[BaseGraph[VT,ET], Circuit],
+        labels: bool                             =False,
+        figsize:Tuple[FloatInt,FloatInt]         =(8,2),
+        h_edge_draw: Literal['blue', 'box']      ='blue',
         show_scalar: bool                        =False,
         rows: Optional[Tuple[FloatInt,FloatInt]] =None
         ) -> Any: # TODO: Returns a matplotlib figure
@@ -392,8 +392,8 @@ def graph_json(g: BaseGraph[VT, ET],
 
 def draw_d3(
     g: Union[BaseGraph[VT,ET], Circuit],
-    labels:bool=False, 
-    scale:Optional[FloatInt]=None, 
+    labels:bool=False,
+    scale:Optional[FloatInt]=None,
     auto_hbox:Optional[bool]=None,
     show_scalar:bool=False,
     vdata: Optional[List[str]]=None,
@@ -402,7 +402,7 @@ def draw_d3(
     ) -> Any:
     """If auto_layout is checked, will automatically space vertices of graph
     with no regard to qubit/row."""
-    if get_mode() not in ("notebook", "browser"): 
+    if get_mode() not in ("notebook", "browser"):
         raise Exception("This method only works when loaded in a webpage or Jupyter notebook")
 
     if auto_hbox is None:
@@ -463,7 +463,7 @@ showGraph('#graph-output-{id}',
 </script>""".format(colors=json.dumps(settings.colors),
                     library_code=library_code,
                     id = graph_id,
-                    graph = graphj, 
+                    graph = graphj,
                     width=w, height=h, scale=scale, node_size=node_size,
                     hbox = 'true' if auto_hbox else 'false',
                     labels='true' if labels else 'false',
@@ -484,7 +484,7 @@ showGraph('#graph-output-{id}',
 
 def draw_3d(
     g: Union[BaseGraph[VT,ET], Circuit],
-    labels: bool=False, 
+    labels: bool=False,
     pauli_web: Optional[PauliWeb[VT,ET]]=None
     ) -> Any:
 
@@ -719,7 +719,7 @@ def matrix_to_latex(m: np.ndarray) -> str:
     denom = None
     for v in m.flat:
         if abs(v) > epsilon:
-            if best_val is None: 
+            if denom is None:
                 best_val = v
                 denom = Fraction(cmath.phase(v)/math.pi).limit_denominator(512).denominator
             else:
