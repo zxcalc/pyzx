@@ -15,7 +15,7 @@
 # limitations under the License.
 
 from fractions import Fraction
-from typing import Generator, Iterable, Any
+from typing import Generator, Iterable, Any, Optional
 
 from .base import BaseGraph
 
@@ -288,7 +288,11 @@ class GraphS(BaseGraph[int, tuple[int,int]]):
                         if v1 > v0:
                             yield (v0,v1)
 
-    def edge(self, s: int, t: int, et: EdgeType = EdgeType.SIMPLE) -> tuple[int, int]:
+    def edge(self, s: int, t: int, et: Optional[EdgeType] = None) -> tuple[int, int]:
+        """Return the canonical pair ``(min(s, t), max(s, t))`` whether or not the
+        edge exists; this supports the ``g.add_edge(g.edge(v, w), ...)`` pattern.
+        ``et`` is accepted for consistency with :meth:`BaseGraph.edge` but ignored,
+        as ``GraphS`` has no parallel edges of multiple types."""
         return (s,t) if s < t else (t,s)
     
     def edge_set(self) -> set[tuple[int, int]]:

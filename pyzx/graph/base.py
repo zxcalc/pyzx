@@ -319,11 +319,41 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         else:
             return max(self.row(v) for v in self.vertices())
 
-    def edge(self, s: VT, t: VT, et: EdgeType=EdgeType.SIMPLE) -> ET:
-        """Returns the name of the first edge with the given source/target and type. Behaviour is undefined if the vertices are not connected."""
+    def edge(self, s: VT, t: VT, et: Optional[EdgeType] = None) -> ET:
+        """Returns the name of an edge between `s` and `t`.
+
+        This default implementation, used by backends with parallel edges that
+        do not provide a specialized edge lookup (e.g., the ``graph_tool``
+        backend), raises `ValueError` if there is no such edge, or if `et` is
+        `None` and parallel edges of differing types make the choice ambiguous;
+        in that case pass `et`, or iterate with :meth:`edges` /
+        :meth:`incident_edges`. If `et` is given, the first edge of that type
+        is returned.
+
+        Note: the `multigraph` backend overrides this with its own
+        implementation, and backends without parallel edges (`GraphS`,
+        `GraphIG`) override it with simpler semantics that do not raise when the
+        edge is absent; see those overrides."""
+        matched: Optional[ET] = None
+        matched_type: Optional[EdgeType] = None
         for e in self.incident_edges(s):
-            if t in self.edge_st(e) and et == self.edge_type(e):
-                return e
+            if t in self.edge_st(e):
+                ety = self.edge_type(e)
+                if et is None:
+                    if matched_type is not None and matched_type != ety:
+                        raise ValueError(
+                            f"edge({s}, {t}) is ambiguous: parallel edges of "
+                            f"multiple types exist. Pass et explicitly, or "
+                            f"use g.edges(s, t) / g.incident_edges(v) to iterate."
+                        )
+                    matched = e
+                    matched_type = ety
+                elif et == ety:
+                    return e
+        if et is None:
+            if matched is None:
+                raise ValueError(f"No edge between {s} and {t}")
+            return matched
         raise ValueError(f"No edge of type {et} between {s} and {t}")
 
     def connected(self,v1: VT, v2: VT) -> bool:
