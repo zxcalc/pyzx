@@ -20,7 +20,11 @@ import re
 from fractions import Fraction
 
 from . import Circuit
-from .gates import CCZ, CHAD, CNOT, CRX, CRY, CRZ, CSWAP, CSX, CU, CU3, CY, CZ, HAD, NOT, RXX, RZZ, S, SWAP, SX, T, U2, U3, Y, Z, CPhase, Gate, Tofolli, XPhase, XPhase, YPhase, YPhase, ZPhase, qasm_gate_table, Measurement, Reset, ConditionalGate
+from .gates import (
+    CCZ, CHAD, CNOT, ConditionalGate, CPhase, CRX, CRY, CRZ, CSWAP, CSX, CU, CU3, CY, CZ,
+    Gate, HAD, Measurement, NOT, Reset, RXX, RZZ, S, SWAP, SX,
+    T, Tofolli, U2, U3, XPhase, Y, YPhase, Z, ZPhase, qasm_gate_table
+)
 from ..symbolic import Var, new_var, parse as parse_symbolic_expr, parse_phase_list
 from ..utils import settings
 

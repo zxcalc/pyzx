@@ -19,7 +19,7 @@ import warnings
 from . import Circuit
 from .gates import (Gate, InitAncilla, Measurement, PostSelect, Reset, TargetMapper,
                      ConditionalGate, ZPhase, XPhase, NOT, Z, S, T, SX)
-from ..utils import EdgeType, VertexType, FloatInt, FractionLike, settings
+from ..utils import EdgeType, VertexType, FloatInt, settings
 from ..graph import Graph
 from ..graph.base import BaseGraph, VT, ET
 from ..symbolic import Poly, new_var
