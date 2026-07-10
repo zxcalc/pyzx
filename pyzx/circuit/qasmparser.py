@@ -22,7 +22,7 @@ from typing import List, Dict, Tuple, Optional, Union
 
 from . import Circuit
 from .gates import Gate, qasm_gate_table, Measurement, Reset, ConditionalGate
-from ..symbolic import Var, new_var, parse as parse_symbolic_expr
+from ..symbolic import Var, new_var, parse as parse_symbolic_expr, parse_phase_list
 from ..utils import settings
 
 
@@ -191,18 +191,21 @@ class QASMParser(object):
             c = re.sub(r"^bit\[(\d+)] (\w+)$", r"creg \2[\1]", c)
             c = re.sub(r"^qubit\[(\d+)] (\w+)$", r"qreg \2[\1]", c)
             c = re.sub(r"^(\w+)\[(\d+)] = measure (\w+)\[(\d+)]$", r"measure \3[\4] -> \1[\2]", c)
-        right_bracket = c.find(")")
-        name, rest = c.split(" ", 1) if right_bracket == -1\
-            else [c[:right_bracket+1], c[right_bracket+1:]]
+        left_bracket = c.find('(')
+        phases: List[Fraction] = []
+        if left_bracket == -1:
+            name, rest = (c.split(" ", 1) + [""])[:2]
+        else:
+            # Delegate paren matching and top-level comma splitting to the symbolic grammar.
+            try:
+                vals, offset = parse_phase_list(c[left_bracket:])
+            except Exception as exc:
+                raise TypeError(
+                    "Invalid phase list in {}: {}".format(c, exc)) from exc
+            phases = [self.parse_phase_arg(v) for v in vals if v]
+            name = c[:left_bracket]
+            rest = c[left_bracket + offset:].lstrip()
         args = [s.strip() for s in rest.split(",") if s.strip()]
-        left_bracket = name.find('(')
-        phases = []
-        if left_bracket != -1:
-            if right_bracket == -1:
-                raise TypeError("Mismatched bracket: {}.".format(name))
-            vals = name[left_bracket+1:right_bracket].split(',')
-            phases = [self.parse_phase_arg(val) for val in vals]
-            name = name[:left_bracket]
         return name, phases, args
 
     def parse_command(self, c: str, registers: Dict[str,Tuple[int,int]]) -> List[Gate]:
@@ -375,33 +378,27 @@ class QASMParser(object):
         return gates
 
     def parse_phase_arg(self, val):
+        val = val.strip()
         if self._param_subst is not None:
             bound = self._bind_phase_parameters(val)
             if bound is not None:
                 return bound
         try:
-            phase = float(val)/math.pi
-        except ValueError:
-            if val.find('pi') == -1: raise TypeError("Invalid specification {}".format(val))
-            try:
-                val = val.replace('pi', '')
-                val = val.replace('*','')
-                if val.find('/') != -1:
-                    n, d = val.split('/',1)
-                    n = n.strip()
-                    if not n: n = 1
-                    elif n == '-': n = -1
-                    else: n = int(n)
-                    d = int(d.strip())
-                    phase = Fraction(n,d)
-                else:
-                    val = val.strip()
-                    if not val: phase = 1
-                    elif val == '-': phase = -1
-                    else: phase = float(val)
-            except: raise TypeError("Invalid specification {}".format(val))
-        phase = Fraction(phase).limit_denominator(settings.float_to_fraction_max_denominator)
-        return phase
+            poly = parse_symbolic_expr(val, lambda n: new_var(n, False))
+        except Exception as exc:
+            raise TypeError("Invalid specification {}: {}".format(val, exc))
+        if poly.free_vars():
+            raise TypeError(
+                "Phase expression {!r} contains unbound variables".format(val))
+        const: Union[int, float, complex, Fraction] = \
+            poly.terms[0][0] if poly.terms else 0
+        if isinstance(const, complex):
+            raise TypeError("Phase expression {!r} is not real".format(val))
+        if 'pi' not in val:
+            # Value without ``pi`` is in radians; normalise by pi.
+            const = float(const) / math.pi
+        return Fraction(const).limit_denominator(
+            settings.float_to_fraction_max_denominator)
 
     def _bind_phase_parameters(self, val: str) -> Optional[Fraction]:
         """Resolve a gate-body phase expression that uses bound parameters.

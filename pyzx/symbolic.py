@@ -22,8 +22,8 @@ Lark is used to define a parser that can translate a string into a Poly.
 """
 
 from typing import Any, Callable, Mapping, Union, Optional, Dict, List, Tuple, Set
-from lark import Lark, Transformer
-from lark.exceptions import VisitError
+from lark import Lark, Transformer, Tree
+from lark.exceptions import UnexpectedToken, VisitError
 from fractions import Fraction
 
 
@@ -417,14 +417,18 @@ def new_const(coeff: Union[int, Fraction]) -> Poly:
 
 poly_grammar = Lark("""
     start      : expr
+    phase_list : "(" expr ("," expr)* ")"
     ?expr      : expr "+" term   -> add
                | expr "-" term   -> sub
                | term
     term       : neg_term | pos_term
     neg_term   : "-" pos_term
     pos_term   : factor (mul_factor | div_factor)*
-    mul_factor : ("*" | "⋅")? factor
-    div_factor : "/" factor
+    mul_factor : ("*" | "⋅") signed_factor
+               | factor
+    div_factor : "/" signed_factor
+    ?signed_factor : "-" factor -> neg_factor
+                   | factor
     ?factor    : base ("^" exponent)?
     base       : intf | decimal | pi | var | "(" expr ")"
     exponent   : intf
@@ -440,7 +444,9 @@ poly_grammar = Lark("""
     %ignore WS
     """,
     parser='lalr',
-    maybe_placeholders=True)
+    start=['start', 'phase_list'],
+    maybe_placeholders=True,
+    propagate_positions=True)
 
 class PolyTransformer(Transformer):
     """Lark transformer that builds :class:`Poly` instances from parse trees.
@@ -486,6 +492,9 @@ class PolyTransformer(Transformer):
         exponent = items[1]
         return base ** exponent
 
+    def neg_factor(self, items: List[Any]) -> Poly:
+        return -items[0]
+
     def base(self, items: List[Any]) -> Poly:
         return items[0]
 
@@ -512,7 +521,7 @@ def parse(expr: str, new_var: Callable[[str], Poly]) -> Poly:
     It converts the string expression into a polynomial.
     Example: parse("x^2 + 3*y + 1/2", new_var) returns Poly([(1, Term([(x,2)])), (3, Term([(y,1)])), (1/2, Term([]))])
     """
-    tree = poly_grammar.parse(expr)
+    tree = poly_grammar.parse(expr, start='start')
     for subtree in tree.iter_subtrees_topdown():
         if subtree.data != "div_factor":
             continue
@@ -529,3 +538,22 @@ def parse(expr: str, new_var: Callable[[str], Poly]) -> Poly:
         return PolyTransformer(new_var).transform(tree)
     except VisitError as e:
         raise e.orig_exc from None
+
+
+def parse_phase_list(text: str) -> Tuple[List[str], int]:
+    """Parse a parenthesised, comma-separated list of expressions.
+
+    ``text`` must start with ``(``; trailing content past the matching ``)``
+    is allowed. Returns the source of each argument and the offset just past
+    the closing ``)``.
+    """
+    try:
+        tree = poly_grammar.parse(text, start='phase_list')
+    except UnexpectedToken as exc:
+        # ``pos_in_stream`` marks the first token past the phase list; re-parse the prefix.
+        if exc.pos_in_stream is None:
+            raise
+        tree = poly_grammar.parse(text[:exc.pos_in_stream], start='phase_list')
+    args = [text[c.meta.start_pos:c.meta.end_pos].strip()
+            for c in tree.children if isinstance(c, Tree)]
+    return args, tree.meta.end_pos
