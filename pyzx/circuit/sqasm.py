@@ -1,4 +1,4 @@
-# PyZX - Python library for quantum circuit rewriting 
+# PyZX - Python library for quantum circuit rewriting
 #        and optimization using the ZX-calculus
 # Copyright (C) 2018 - Aleks Kissinger and John van de Wetering
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,7 +30,7 @@ __all__ = ['sqasm']
 # isolated vertices. n.b. remove_ids already does this, but this might change
 # in the future...
 
-spider_nocheck: RewriteSimpDoubleVertex = RewriteSimpDoubleVertex(check_fuse, unsafe_fuse,None, False, False)
+spider_nocheck: RewriteSimpDoubleVertex = RewriteSimpDoubleVertex(check_fuse, unsafe_fuse, None, False, False)
 
 # def spider_nocheck(g: BaseGraph, ms: List) -> RewriteOutputType:
 #     etab,rem_v,rem_e,check = spider(g, ms)
@@ -39,7 +39,7 @@ spider_nocheck: RewriteSimpDoubleVertex = RewriteSimpDoubleVertex(check_fuse, un
 remove_ids_nocheck: RewriteSimpSingleVertex = RewriteSimpSingleVertex(check_remove_id, unsafe_remove_id, None, False)
 
 
-def sqasm(s: str, simplify=True) -> BaseGraph:
+def sqasm(s: str, simplify: bool = True) -> BaseGraph:
     p = QASMParser()
     c = p.parse(s, strict=False)
     g = c.to_graph(zh=True)

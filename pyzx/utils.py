@@ -76,6 +76,8 @@ def normalize_phase(phase: Any) -> FractionLike:
             settings.float_to_fraction_max_denominator)
     return phase
 
+def half_phase(phase: FractionLike) -> FractionLike:
+    return Fraction(phase / 2) if isinstance(phase, int) else phase / 2
 
 class VertexType(IntEnum):
     """Type of a vertex in the graph."""

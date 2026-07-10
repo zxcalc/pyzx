@@ -1,4 +1,4 @@
-# PyZX - Python library for quantum circuit rewriting 
+# PyZX - Python library for quantum circuit rewriting
 #        and optimization using the ZX-calculus
 # Copyright (C) 2018 - Aleks Kissinger and John van de Wetering
 
@@ -15,19 +15,18 @@
 # limitations under the License.
 
 import warnings
-from typing import Dict, List, Optional, Union
 
 from . import Circuit
-from .gates import (Gate, InitAncilla, Measurement, Reset, TargetMapper,
+from .gates import (Gate, InitAncilla, Measurement, PostSelect, Reset, TargetMapper,
                      ConditionalGate, ZPhase, XPhase, NOT, Z, S, T, SX)
-from ..utils import EdgeType, VertexType, FloatInt, FractionLike, settings
+from ..utils import EdgeType, VertexType, FloatInt, settings
 from ..graph import Graph
 from ..graph.base import BaseGraph, VT, ET
 from ..symbolic import Poly, new_var
 
 def _poly_phase_to_conditional_gate(
     phase: Poly, vertex_type: VertexType, qubit: int
-) -> Optional[ConditionalGate]:
+) -> ConditionalGate | None:
     """Try to convert a symbolic Poly phase into a ConditionalGate.
 
     The polynomial must consist entirely of boolean variables from the
@@ -49,8 +48,8 @@ def _poly_phase_to_conditional_gate(
     import re
     # Collect all boolean variables across all terms.
     bit_pattern = re.compile(r'^(\w+)\[(\d+)\]$')
-    reg_name: Optional[str] = None
-    bit_vars: Dict[int, Var] = {}
+    reg_name: str | None = None
+    bit_vars: dict[int, Var] = {}
     for _coeff, term in phase.terms:
         for var, _exp in term.vars:
             if not var.is_bool:
@@ -75,10 +74,10 @@ def _poly_phase_to_conditional_gate(
             "Conditional gate extraction is O(2^n) in register size; "
             "register '{}' has {} bits ({} evaluations).".format(
                 reg_name, reg_size, 1 << reg_size))
-    cond_value: Optional[int] = None
-    inner_phase_value: Optional[Fraction] = None
+    cond_value: int | None = None
+    inner_phase_value: Fraction | None = None
     for val in range(1 << reg_size):
-        var_map: Dict[Var, Fraction] = {}
+        var_map: dict[Var, Fraction] = {}
         for idx, var in bit_vars.items():
             var_map[var] = Fraction((val >> idx) & 1)
         result = phase.substitute(var_map)
@@ -136,9 +135,9 @@ def graph_to_circuit(g:BaseGraph[VT,ET], split_phases:bool=True) -> Circuit:
     rs = g.rows()
     ty = g.types()
     phases = g.phases()
-    rows: Dict[FloatInt,List[VT]] = {}
+    rows: dict[FloatInt, list[VT]] = {}
     # Map (vertex_type, phase) → InitAncilla state string.
-    _reverse_state_map: Dict[tuple, str] = {
+    _reverse_state_map: dict[tuple, str] = {
         (VertexType.Z, 0): '+',
         (VertexType.Z, 1): '-',
         (VertexType.X, 0): '0',
@@ -272,12 +271,12 @@ def graph_to_circuit(g:BaseGraph[VT,ET], split_phases:bool=True) -> Circuit:
 
 def circuit_to_graph(
     c: Circuit,
-    compress_rows:bool=True,
-    backend:Optional[str]=None,
-    initialize_qubits:Optional[List[bool]]=None,
-    postselect_qubits:Optional[List[int]]=None,
-    elide_initial_resets:bool=False,
-) -> BaseGraph[VT, ET]:
+    compress_rows:bool = True,
+    backend: str | None =None,
+    initialize_qubits: list[bool] | None = None,
+    postselect_qubits: list[int] | None = None,
+    elide_initial_resets: bool = False,
+) -> BaseGraph:
     """Turns the circuit into a ZX-Graph.
     If ``compress_rows`` is set, it tries to put single qubit gates on different qubits,
     on the same row.
@@ -302,8 +301,8 @@ def circuit_to_graph(
     measurement-and-discard fragment plus a separate ``X(0)`` |0⟩ prep
     per qubit."""
     g = Graph(backend)
-    q_mapper: TargetMapper[VT] = TargetMapper()
-    c_mapper: TargetMapper[VT] = TargetMapper()
+    q_mapper: TargetMapper = TargetMapper()
+    c_mapper: TargetMapper = TargetMapper()
     inputs = []
     outputs = []
     measure_targets = set()
@@ -344,25 +343,24 @@ def circuit_to_graph(
 
 
     for gate in c.gates:
-        if gate.name == "Measurement":
-            assert isinstance(gate, Measurement)
+        if isinstance(gate, Measurement):
             measure_targets.add(gate.target)
-        if gate.name == 'InitAncilla':
-            l = gate.label # type: ignore
+        if isinstance(gate, InitAncilla):
+            l = gate.label
             if l in q_mapper.labels():
                 raise ValueError("Ancilla label {} already in use".format(str(l)))
-            vtype, phase = gate.get_vertex_info() # type: ignore
+            vtype, phase = gate.get_vertex_info()
             q_mapper.add_label(l, q_mapper.next_row_or_default(l, q_mapper.max_row() - 1))
             v = g.add_vertex(vtype, q_mapper.to_qubit(l), q_mapper.next_row(l), phase)
             q_mapper.set_prev_vertex(l, v)
             q_mapper.advance_next_row(l)
-        elif gate.name == 'Reset':
+        elif isinstance(gate, Reset):
             # Model reset as an implicit measurement with a discarded
             # outcome, followed by fresh |0⟩ preparation. The Z(0)
             # spider + X(_rN) leaf mirrors the measurement pattern.
             # The unused boolean variable gives trace-out semantics:
             # summing over its two values is equivalent to discarding.
-            l = gate.label # type: ignore
+            l = gate.label
             q = q_mapper.to_qubit(l)
             # The qubit is being reused, so clear any pending measurement
             # marker. If the qubit is measured again later without a
@@ -397,8 +395,8 @@ def circuit_to_graph(
             g.set_vdata(state_v, 'outcome_type', 'reset_state')
             q_mapper.set_prev_vertex(l, state_v)
             q_mapper.set_next_row(l, r + 2)
-        elif gate.name == 'PostSelect':
-            l = gate.label # type: ignore
+        elif isinstance(gate, PostSelect):
+            l = gate.label
             if l not in q_mapper.labels():
                 raise ValueError("PostSelect label {} is not in use".format(str(l)))
             q = q_mapper.to_qubit(l)
@@ -406,7 +404,7 @@ def circuit_to_graph(
             u = q_mapper.prev_vertex(l)
             q_mapper.set_next_row(l, r + 1)
             q_mapper.remove_label(l)
-            vtype, phase = gate.get_vertex_info() # type: ignore
+            vtype, phase = gate.get_vertex_info()
             v = g.add_vertex(vtype, q, r, phase)
             g.add_edge((u,v),EdgeType.SIMPLE)
         else:
