@@ -20,6 +20,8 @@ except ImportError:
 	print("python-igraph not available")
 	ig = None
 
+from typing import Optional
+
 from .base import BaseGraph, VertexType, EdgeType
 from ..utils import assert_phase_real, normalize_phase
 
@@ -27,6 +29,7 @@ class GraphIG(BaseGraph):
 	"""Implementation of :class:`~graph.base.BaseGraph` using ``python-igraph`` 
 	as its backend"""
 	backend = 'igraph'
+	graph: "ig.Graph"
 	def __init__(self):
 		raise Warning("Python-igraph is currently not fully supported.")
 		BaseGraph.__init__(self)
@@ -80,7 +83,10 @@ class GraphIG(BaseGraph):
 	def edges(self):
 		return range(len(self.graph.es))
 
-	def edge(self, s, t):
+	def edge(self, s, t, et: Optional[EdgeType] = None):
+		"""Return igraph's edge index for the pair ``(s, t)``. ``et`` is accepted
+		for consistency with :meth:`BaseGraph.edge` but ignored, as this backend
+		has no parallel edges of multiple types."""
 		return self.graph.es[s,t][0].index
 	
 	def edge_st(self, edge):

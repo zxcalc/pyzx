@@ -22,6 +22,7 @@ if __name__ == '__main__':
     sys.path.append('..')
     sys.path.append('.')
 
+from pyzx.graph import Graph
 from pyzx.graph.multigraph import Multigraph
 from pyzx.pauliweb import PauliWeb
 from pyzx.utils import EdgeType, VertexType
@@ -29,9 +30,10 @@ from pyzx.utils import EdgeType, VertexType
 
 class TestPauliWeb(unittest.TestCase):
 
-    def test_add_edge_multigraph_mixed_parallels_uses_simple(self):
-        """On a multigraph with mixed parallel edges, PauliWeb.add_edge falls
-        back to the SIMPLE edge for its per-pair labelling."""
+    def test_add_edge_multigraph_mixed_parallels_raises(self):
+        """``PauliWeb.add_edge`` labels edges by ordered vertex pair, which
+        cannot distinguish mixed parallel edge types, so it must refuse to
+        guess and raise ``ValueError`` instead of silently picking one."""
         g = Multigraph()
         g.set_auto_simplify(False)
         v1 = g.add_vertex(VertexType.Z, 0, 0)
@@ -39,10 +41,35 @@ class TestPauliWeb(unittest.TestCase):
         g.add_edge((v1, v2), EdgeType.SIMPLE)
         g.add_edge((v1, v2), EdgeType.HADAMARD)
         pw = PauliWeb(g)
+        with self.assertRaises(ValueError):
+            pw.add_edge((v1, v2), 'X')
+
+    def test_add_edge_missing_edge_raises(self):
+        """``PauliWeb.add_edge`` must reject a disconnected vertex pair. On the
+        simple backend ``edge``/``edge_type`` return a canonical pair and type
+        even when no edge exists, so without an explicit check the web would
+        silently label a non-existent edge."""
+        g = Graph()
+        v1 = g.add_vertex(VertexType.Z, 0, 0)
+        v2 = g.add_vertex(VertexType.Z, 0, 1)
+        pw = PauliWeb(g)
+        with self.assertRaises(ValueError):
+            pw.add_edge((v1, v2), 'X')
+
+    def test_graph_with_errors_missing_edge_raises(self):
+        """``graph_with_errors`` must raise a clear ``ValueError`` (not an
+        opaque ``KeyError`` from ``remove_edge``) when the web references an
+        edge that the underlying graph no longer contains."""
+        g = Graph()
+        v1 = g.add_vertex(VertexType.Z, 0, 0)
+        v2 = g.add_vertex(VertexType.Z, 0, 1)
+        g.add_edge((v1, v2), EdgeType.SIMPLE)
+        pw = PauliWeb(g)
         pw.add_edge((v1, v2), 'X')
-        # Treated as a SIMPLE edge: both half-edges carry the same Pauli.
-        self.assertEqual(pw[(v1, v2)], 'X')
-        self.assertEqual(pw[(v2, v1)], 'X')
+        # Drop the edge the web references, so rebuilding the graph must fail.
+        g.remove_edge(g.edge(v1, v2))
+        with self.assertRaises(ValueError):
+            pw.graph_with_errors()
 
 
 if __name__ == '__main__':

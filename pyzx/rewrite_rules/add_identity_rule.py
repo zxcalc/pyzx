@@ -68,9 +68,9 @@ def add_Z_identity( g: BaseGraph[VT,ET], v:VT, w:VT) -> bool:
 def unsafe_add_Z_identity(g: BaseGraph[VT,ET], v:VT, w:VT) -> bool:
     """Adds a Z spider to the edge given by the input vertices.
 
-    Assumes there is a unique edge type between `v` and `w`; on a multigraph
-    with mixed parallel edges, callers must pre-disambiguate (e.g. by gating
-    on :func:`check_edge`)."""
+    Requires a unique edge type between `v` and `w`; raises ``ValueError`` on
+    multigraphs with mixed parallel edges (the rule has no canonical edge to
+    act on in that case). Callers can pre-disambiguate via :func:`check_edge`."""
     etab = {}
 
     e = g.edge(v, w)
