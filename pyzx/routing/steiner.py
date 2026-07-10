@@ -14,8 +14,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import List, Tuple, Optional
-
 from pyzx.routing.parity_maps import CNOT_tracker
 
 from .architecture import Architecture
@@ -28,8 +26,8 @@ def steiner_gauss(
     matrix: Mat2,
     architecture: Architecture,
     full_reduce: bool = False,
-    x: Optional[CNOT_tracker] = None,
-    y: Optional[CNOT_tracker] = None,
+    x: CNOT_tracker | None = None,
+    y: CNOT_tracker | None = None,
 ):
     """
     Performs Gaussian elimination that is constrained by the given architecture
@@ -57,7 +55,7 @@ def steiner_gauss(
         if y != None:
             y.col_add(c1, c0)
 
-    def steiner_reduce(col: int, root: int, nodes: List[int], upper: bool):
+    def steiner_reduce(col: int, root: int, nodes: list[int], upper: bool):
         """
         Uses Steiner tree to reduce matrix columns
 
@@ -167,9 +165,9 @@ def rec_steiner_gauss(
     matrix: Mat2,
     architecture: Architecture,
     full_reduce: bool = False,
-    x: Optional[CNOT_tracker] = None,
-    y: Optional[CNOT_tracker] = None,
-    permutation: Optional[List[int]] = None,
+    x: CNOT_tracker | None = None,
+    y: CNOT_tracker | None = None,
+    permutation: list[int] | None = None,
     **kwargs,
 ):
     """
@@ -308,10 +306,10 @@ def rec_steiner_gauss(
 
 def steiner_reduce_column(
     architecture: Architecture,
-    col: List[int],
+    col: list[int],
     root: int,
-    nodes: List[int],
-    usable_nodes: List[int],
+    nodes: list[int],
+    usable_nodes: list[int],
     rec_nodes,
     upper: bool,
 ):

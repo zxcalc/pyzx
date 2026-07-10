@@ -17,7 +17,7 @@
 
 from multiprocessing import cpu_count
 from multiprocessing.pool import Pool
-from typing import Any, List, Optional, Tuple
+from typing import Any
 import numpy as np
 
 
@@ -40,7 +40,7 @@ class GeneticAlgorithm:
         :param crossover_prob: Probability of crossover between individuals
         :param mutation_prob: Probability of mutation for an offspring
         :param fitness_func: Function to evaluate fitness of permutations
-        :param maximize: True, Maximise the fitness, False, Minimise the Fitness, default False 
+        :param maximize: True, Maximise the fitness, False, Minimise the Fitness, default False
         """
         self.population_size = population_size
         self.negative_population_size = int(np.sqrt(population_size))
@@ -50,7 +50,7 @@ class GeneticAlgorithm:
         self._sort = lambda l: l.sort(key=lambda x: x[1], reverse=maximize)
         self.maximize = maximize
         self.n_qubits = 0
-        self.population: List[Tuple[List[int], Any]] = []
+        self.population: list[tuple[list[int], Any]] = []
 
     def _select(self):
         """
@@ -211,7 +211,7 @@ class ParticleSwarmOptimization:
         p_best_crossover: float,
         mutation: float,
         maximize: bool = False,
-        n_threads: Optional[int] = None,
+        n_threads: int | None = None,
     ):
         """
         Setup the optimizer
@@ -231,8 +231,8 @@ class ParticleSwarmOptimization:
         self.mutation = mutation
         self.best_particle = None
         self.maximize = maximize
-        self.swarm: List[Particle] = []
-        self.pool: Optional[Pool] = None
+        self.swarm: list[Particle] = []
+        self.pool: Pool | None = None
         n_threads = (
             min(n_threads, cpu_count()) if n_threads is not None else cpu_count()
         )
@@ -369,7 +369,7 @@ class Particle:
         :param s_best_crossover: Proportion of genes inherited from the swarms best particle
         :param p_best_crossover: Proportion of genes inherited from the particles own best known position
         :param mutation: Mutation rate as a proportion of the permatation length
-        :param maximize: True, Maximise the fitness, False, Minimise the fitness, default False 
+        :param maximize: True, Maximise the fitness, False, Minimise the fitness, default False
         :param id: Id for the particle, default None
         """
         self.step_func = step_func

@@ -1,4 +1,4 @@
-# PyZX - Python library for quantum circuit rewriting 
+# PyZX - Python library for quantum circuit rewriting
 #        and optimization using the ZX-calculus
 # Copyright (C) 2018 - Aleks Kissinger and John van de Wetering
 
@@ -16,17 +16,17 @@
 
 import numpy as np
 from fractions import Fraction
-from typing import Callable, Dict, List, Set, Tuple, Union, Optional, Any
+from typing import Any, Callable, Union
 from enum import Enum
 
-from ..circuit import Circuit, ZPhase, HAD, XPhase, CNOT
+from ..circuit import Circuit, ZPhase, XPhase, CNOT
 from ..graph.graph import Graph
 from ..linalg import Mat2, MatLike
 from ..routing.parity_maps import CNOT_tracker, Parity
 from ..routing.cnot_mapper import sequential_gauss, ElimMode, gauss
 from ..routing.steiner import steiner_reduce_column
 from ..routing.architecture import create_architecture, FULLY_CONNECTED, Architecture
-from ..utils import make_into_list, maxelements
+from ..utils import maxelements
 
 
 class RoutingMethod(Enum):
@@ -82,7 +82,7 @@ class RootHeuristic(Enum):
 
     def to_function(
         self,
-    ) -> Callable[[Architecture, Mat2, List[int], List[int], int, int, Any], List[int]]:
+    ) -> Callable[[Architecture, Mat2, list[int], list[int], int, int, Any], list[int]]:
         """
         Looks at the RootHeuristic type and returns the relevant root heuristic
         """
@@ -121,7 +121,7 @@ class SplitHeuristic(Enum):
 
     def to_function(
         self,
-    ) -> Callable[[Architecture, Mat2, List[int], List[int], Any], List[int]]:
+    ) -> Callable[[Architecture, Mat2, list[int], list[int], Any], list[int]]:
         """
         Looks at the SplitHeuristic type and returns the relevant split heuristic
         """
@@ -223,7 +223,7 @@ def exhaustive_root_heuristic(
     architecture, matrix, cols_to_use, qubits, column, phase_qubit, **kwargs
 ):
     """
-    Exhastively applies the Steiner reduction with all the given qubits as roots for a specific column in the matrix and returns the shortest 
+    Exhastively applies the Steiner reduction with all the given qubits as roots for a specific column in the matrix and returns the shortest
     reduction sequence.
 
     :param architecture: The quantum architecture to be used
@@ -259,7 +259,7 @@ def arity_root_heuristic(
     architecture, matrix, cols_to_use, qubits, column, phase_qubit, **kwargs
 ):
     """
-    Filters qubits by highest arity and randomly selects one as a root for a specific column in the matrix and returns the 
+    Filters qubits by highest arity and randomly selects one as a root for a specific column in the matrix and returns the
     reduction sequence.
 
     :param architecture: The quantum architecture to be used
@@ -360,8 +360,8 @@ def calculate_reward(architecture, matrix, cols_to_use, root):
 def random_split_heuristic(
     architecture: Architecture,
     matrix: Mat2,
-    cols_to_use: List[int],
-    qubits: List[int],
+    cols_to_use: list[int],
+    qubits: list[int],
     **kwargs,
 ):
     """
@@ -424,8 +424,8 @@ class PhasePoly:
 
     def __init__(
         self,
-        zphase_dict: Dict[Parity, Fraction],
-        out_parities: List[Parity],
+        zphase_dict: dict[Parity, Fraction],
+        out_parities: list[Parity],
     ):
         """
         Creates and returns a phase polynomial object.
@@ -445,7 +445,7 @@ class PhasePoly:
         final_qubit_placement=None,
     ):
         """
-        Takes a circuit and tracks how qubit parities evolve as gates are applied, 
+        Takes a circuit and tracks how qubit parities evolve as gates are applied,
         accumulates Z-phase rotations then builds a compact PhasePoly representing the circuit's phase structure
 
         :param circuit: The circuit to be used
@@ -631,7 +631,7 @@ class PhasePoly:
             current = choice
         return new_partitions
 
-    def _place_parities(self, parities: Union[Mat2, MatLike]) -> List[int]:
+    def _place_parities(self, parities: Union[Mat2, MatLike]) -> list[int]:
         """
         Assigns parities to qubits
 
@@ -709,12 +709,12 @@ class PhasePoly:
         return self._dfs(new_nodes, graph, inv_vs_dict, partitions)
 
     @staticmethod
-    def _independent(partition: List[Parity]) -> bool:
+    def _independent(partition: list[Parity]) -> bool:
         """
         Checks if a partition is independent
 
         :param partition: The list of parities to check
-        :return: True if partition is independent 
+        :return: True if partition is independent
         """
         return inverse_hack(partition2mat2(partition)) is not None
 
@@ -808,7 +808,7 @@ class PhasePoly:
         return circuit, perms[0], perms[-1]
 
     def gray_synth(
-        self, mode: ElimMode, architecture: Optional[Architecture], **kwargs
+        self, mode: ElimMode, architecture: Architecture | None, **kwargs
     ):
         """
         Using gray synthesis method, builds a quantum circuit by reducing a parity matrix
@@ -1071,9 +1071,9 @@ class PhasePoly:
         neighbour_path=False,
         tie_break=False,
         **kwargs,
-    ) -> Tuple[Circuit, Any, Any]:
+    ) -> tuple[Circuit, Any, Any]:
         """
-        Builds CNOT circuit  to implement a set of parity transformations using recursive 
+        Builds CNOT circuit  to implement a set of parity transformations using recursive
         Gaussian elimination
 
         :param mode: Elimination mode, controls Gaussian elimination strategy
@@ -1107,14 +1107,14 @@ class PhasePoly:
             list(range(len(parities_to_reach))),
             parities_to_reach,
         )
-        self.prev_rows: List[int] = []
+        self.prev_rows: list[int] = []
 
         def place_cnot(control, target):
             """
             Add CNOT gate from control qubit to target qubit and updates the parity matrix
 
             :param control: The control qubit
-            :param target: The target qubit 
+            :param target: The target qubit
             """
             # Place the CNOT on the circuit
             circuit.add_gate(CNOT(control, target))
@@ -1260,8 +1260,8 @@ class PhasePoly:
         self,
         parity_matrix: Mat2,
         circuit: Circuit,
-        columns: List[int],
-        parities_to_reach: List[Parity],
+        columns: list[int],
+        parities_to_reach: list[Parity],
     ):
         """
         Check if any of the columns are finished (are phase gadgets over a single qubit)
@@ -1342,7 +1342,7 @@ class PhasePoly:
             circuit.add_gate(cnot)
 
 
-def inverse_hack(matrix: Mat2) -> Optional[Tuple[Mat2, Mat2]]:
+def inverse_hack(matrix: Mat2) -> tuple[Mat2, Mat2] | None:
     """
     Compute the inverse of a binary matrix (over GF(2)), if matrix is not square it is extened
 
@@ -1374,7 +1374,7 @@ def inverse_hack(matrix: Mat2) -> Optional[Tuple[Mat2, Mat2]]:
         return matrix, inv
 
 
-def partition2mat2(partition: List[Parity]) -> Mat2:
+def partition2mat2(partition: list[Parity]) -> Mat2:
     """
     Convert a list of Parity objects into a Mat2 binary matrix.
 
@@ -1384,7 +1384,7 @@ def partition2mat2(partition: List[Parity]) -> Mat2:
     return Mat2([parity.to_mat2_row() for parity in partition])
 
 
-def mat22partition(m: Mat2) -> List[Parity]:
+def mat22partition(m: Mat2) -> list[Parity]:
     """
     Convert a Mat2 binary matrix into a list of Parity objects.
 

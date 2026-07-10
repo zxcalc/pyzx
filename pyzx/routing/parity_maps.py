@@ -15,9 +15,9 @@
 # limitations under the License.
 
 
-from typing import Any, Dict, Iterable, List, Optional, Union
+from typing import Any, Iterable
 from pyzx.circuit import Circuit, Gate, gate_types, CNOT
-from pyzx.linalg import Z2, Mat2, MatLike
+from pyzx.linalg import Z2, Mat2
 
 import numpy as np
 
@@ -59,7 +59,7 @@ class CNOT_tracker(Circuit):
     def cnot_depth(self) -> int:
         """Returns the CNOT/CZ depth of the tracked circuit."""
         depth = 1
-        previous_gates: List[int] = []
+        previous_gates: list[int] = []
         for g in self.gates:
             if hasattr(g, "name") and g.name in ["CNOT", "CZ"]:
                 if g.control in previous_gates or g.target in previous_gates:  # type: ignore # Overlapping gate
@@ -75,7 +75,7 @@ class CNOT_tracker(Circuit):
         self.add_gate("CNOT", q0, q1)
         self.matrix.row_add(q0, q1)
 
-    def add_gate(self, gate: Union[Gate,str], *args, **kwargs):
+    def add_gate(self, gate: Gate | str, *args, **kwargs):
         """ Adds a gate to the circuit, if it is a CNOT gate it will track a row addition operation on the matrix. """
         if isinstance(gate, CNOT):
             self.row_add(gate.control, gate.target)
@@ -88,18 +88,18 @@ class CNOT_tracker(Circuit):
         self.matrix.col_add(q0, q1)
 
     @staticmethod
-    def get_metric_names() -> List[str]:
+    def get_metric_names() -> list[str]:
         """Metric names for the CNOT tracker."""
         return ["n_cnots", "depth"]
 
-    def gather_metrics(self) -> Dict[str, int]:
+    def gather_metrics(self) -> dict[str, int]:
         """Gather metrics for the CNOT tracker."""
         metrics = {}
         metrics["n_cnots"] = self.count_cnots()
         metrics["depth"] = self.cnot_depth()
         return metrics
 
-    def prepend_gate(self, gate: Union[Gate, str], *args, **kwargs):
+    def prepend_gate(self, gate: Gate | str, *args, **kwargs):
         """Adds a gate to the circuit. ``gate`` can either be
         an instance of a :class:`Gate`, or it can be the name of a gate,
         in which case additional arguments should be given.
@@ -165,9 +165,9 @@ class Parity:
     """
     A set of qubits XORed together.
     """
-    parity: List[bool]
+    parity: list[bool]
 
-    def __init__(self, par: Union[str, int, Iterable[Any]], n_qubits: Optional[int] = None):
+    def __init__(self, par: str | int | Iterable[Any], n_qubits: int | None = None):
         """
         Creates and returns a set of qubits XORed together.
 
@@ -191,7 +191,7 @@ class Parity:
         """Returns the total number of qubits."""
         return len(self.parity)
     
-    def to_mat2_row(self) -> List[Z2]:
+    def to_mat2_row(self) -> list[Z2]:
         """Returns an array of 1s and 0s based off the internal parity array."""
         return [1 if b else 0 for b in self.parity]
 

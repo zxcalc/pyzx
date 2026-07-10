@@ -1,7 +1,6 @@
 import numpy as np
 
 from enum import Enum
-from typing import List, Optional, Tuple
 
 from pyzx.circuit import Circuit
 
@@ -77,8 +76,8 @@ class FitnessFunction(object):
         self,
         metric: CostMetric,
         matrix: Mat2,
-        mode: Optional[ElimMode],
-        architecture: Optional[Architecture],
+        mode: ElimMode | None,
+        architecture: Architecture | None,
         row: bool = True,
         col: bool = True,
         full_reduce: bool = True,
@@ -136,10 +135,10 @@ class FitnessFunction(object):
 
 
 def gauss(
-    mode: Optional[ElimMode],
+    mode: ElimMode | None,
     matrix: Mat2,
-    architecture: Optional[Architecture] = None,
-    permutation: Optional[List[int]] = None,
+    architecture: Architecture | None = None,
+    permutation: list[int] | None = None,
     try_transpose: bool = False,
     **kwargs,
 ) -> int:
@@ -234,8 +233,8 @@ def gauss(
 
 def permuted_gauss(
     matrix: Mat2,
-    mode: Optional[ElimMode] = None,
-    architecture: Optional[Architecture] = None,
+    mode: ElimMode | None = None,
+    architecture: Architecture | None = None,
     population_size: int = 30,
     crossover_prob: float = 0.8,
     mutate_prob: float = 0.2,
@@ -243,11 +242,11 @@ def permuted_gauss(
     row: bool = True,
     col: bool = True,
     full_reduce: bool = True,
-    fitness_func: Optional[FitnessFunction] = None,
+    fitness_func: FitnessFunction | None = None,
     x=None,
     y=None,
     **kwargs,
-) -> Tuple[List[int], Circuit, int]:
+) -> tuple[list[int], Circuit, int]:
     """
     Applies gaussian elimination to the given matrix, finding an optimal
     permutation of the matrix to reduce the number of CNOT gates.
@@ -311,10 +310,10 @@ def permuted_gauss(
 
 
 def sequential_gauss(
-    matrices: List[Mat2],
-    mode: Optional[ElimMode] = None,
-    architecture: Optional[Architecture] = None,
-    fitness_func: Optional[FitnessFunction] = None,
+    matrices: list[Mat2],
+    mode: ElimMode | None = None,
+    architecture: Architecture | None = None,
+    fitness_func: FitnessFunction | None = None,
     input_perm: bool = True,
     output_perm: bool = True,
     swarm_size: int = 15,
@@ -324,7 +323,7 @@ def sequential_gauss(
     pso_mutation: float = 0.2,
     full_reduce: bool = True,
     **kwargs,
-) -> Tuple[List[CNOT_tracker], List[List[int]], int]:
+) -> tuple[list[CNOT_tracker], list[list[int]], int]:
     """
     Applies architecture-aware Gaussian elimination to multiple matrices,
     sharing the optimization passes when using ParticleSwarmOptimization modes.
@@ -348,8 +347,8 @@ def sequential_gauss(
     """
     n_qubits = len(matrices[0].data)
     kwargs["full_reduce"] = full_reduce
-    circuits: List[CNOT_tracker]
-    permutations: List[List[int]] = []
+    circuits: list[CNOT_tracker]
+    permutations: list[list[int]] = []
     # print(mode)
     # print(*matrices, sep="\n\n")
     if mode in basic_elim_modes or mode is None:

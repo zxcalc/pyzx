@@ -18,8 +18,7 @@
 import math
 import itertools
 import sys
-from typing import Any, Dict, Iterator, List, Set, Tuple, Optional, Union
-from typing_extensions import Literal
+from typing import Any, Iterator, Literal
 
 from pyzx.graph.base import BaseGraph
 if __name__ == '__main__':
@@ -64,7 +63,7 @@ class Architecture():
     Class that represents the architecture of the qubits to be taken into account when routing.
     """
 
-    def __init__(self, name: str, coupling_graph: Optional[BaseGraph]=None, coupling_matrix=None, backend: Optional[str]=None, qubit_map: Optional[List[int]] = None, reduce_order: Optional[List[int]]=None, **kwargs):
+    def __init__(self, name: str, coupling_graph: BaseGraph | None = None, coupling_matrix=None, backend: str | None = None, qubit_map: list[int] | None = None, reduce_order: list[int] | None = None, **kwargs):
         """
         Class that represents the architecture of the qubits to be taken into account when routing.
 
@@ -106,11 +105,11 @@ class Architecture():
 
         # Pre-calculated distances between all pairs of qubits in the architecture
         # See :func:`pre_calc_distances` for more details
-        self.distances: Optional[Dict[Literal["upper", "full"], List[Dict[Tuple[int,int], Tuple[int,List[Tuple[int,int]]]]]]] = None
+        self.distances: dict[Literal["upper", "full"], list[dict[tuple[int, int], tuple[int, list[tuple[int, int]]]]]] | None = None
 
         self.n_qubits = len(self.vertices)
         self.reduce_order = self._get_reduce_order() if reduce_order is None else reduce_order
-        self._non_cutting_vertices: Dict[Tuple[int, ...], List[int]] = {}
+        self._non_cutting_vertices: dict[tuple[int, ...], list[int]] = {}
 
     def qubit2vertex(self, qubit: int) -> int:
         """Get the internal graph vertex index for a logical architecture qubit."""
@@ -120,7 +119,7 @@ class Architecture():
         """Get the logical architecture qubit for an internal graph vertex index."""
         return int(self.graph.qubit(vertex))
 
-    def pre_calc_distances(self) -> Dict[Literal["upper", "full"], List[Dict[Tuple[int,int], Tuple[int,List[Tuple[int,int]]]]]]:
+    def pre_calc_distances(self) -> dict[Literal["upper", "full"], list[dict[tuple[int, int], tuple[int, list[tuple[int, int]]]]]]:
         """
         Pre-calculates the distances between all pairs of qubits in the architecture.
 
@@ -132,7 +131,7 @@ class Architecture():
         return {"upper": [self.floyd_warshall(self.vertices[until:], upper=True) for until, v in enumerate(self.vertices)],
                 "full": [self.floyd_warshall(self.vertices[:until+1], upper=False) for until, v in enumerate(self.vertices)]}
 
-    def _get_reduce_order(self) -> List[int]:
+    def _get_reduce_order(self) -> list[int]:
         """
         Determines reduction order by iteratively removing the largest labelled leaf node.
 
@@ -151,7 +150,7 @@ class Architecture():
 
         return reduce_order
 
-    def _place_qubits(self, start_vertex=None) -> List[int]:
+    def _place_qubits(self, start_vertex=None) -> list[int]:
         """
         Label the graph using depth-first traversal (DFT) with post-order labeling, starting at the start_vertex or the highest index node if none given.
         
@@ -179,7 +178,7 @@ class Architecture():
         dft(start_vertex)
         return qubit_map
         
-    def _non_cutting_vertices_hash(self, subgraph: List[int]) -> Tuple[int, ...]:
+    def _non_cutting_vertices_hash(self, subgraph: list[int]) -> tuple[int, ...]:
         """
         Converts a list of vertices, representing a subgraph, to a sorted tuple.
         
@@ -199,7 +198,7 @@ class Architecture():
         raise NotImplementedError("pre calculation non cutting vertices")
 
         qubits = [i for i in range(self.n_qubits)]
-        def collect_non_cutting(qubits: List[int]) -> List[Tuple[List[int], List[int]]]:
+        def collect_non_cutting(qubits: list[int]) -> list[tuple[list[int], list[int]]]:
             if qubits == []:
                 return []
             vertices = [self.vertices[q] for q in qubits]
@@ -215,7 +214,7 @@ class Architecture():
             hash = self._non_cutting_vertices_hash(subgraph)
             self._non_cutting_vertices[hash] = non_cutting
     
-    def non_cutting_vertices(self, subgraph_vertices: List[int], pre_calc: bool=False) -> List[int]:
+    def non_cutting_vertices(self, subgraph_vertices: list[int], pre_calc: bool = False) -> list[int]:
         """
         Find the non-cutting vertices for this subgraph.
 
@@ -237,7 +236,7 @@ class Architecture():
         return self._non_cutting_vertices[hash]
 
 
-    def _is_cutting(self, vertices: Optional[List[int]]=None) -> List[bool]:
+    def _is_cutting(self, vertices: list[int] | None = None) -> list[bool]:
         """
         Find the articulation points in a subgraph, these are the cutting vertices which if removed would cut the graph.
 
@@ -249,7 +248,7 @@ class Architecture():
             vertices = self.vertices
         number_of_nodes = len(vertices)
         discovery_times = [-1]*number_of_nodes
-        lows: List[int] = [len(vertices)*2]*number_of_nodes
+        lows: list[int] = [len(vertices)*2]*number_of_nodes
         index_lookup = {self.vertices[v]:i for i, v in enumerate(vertices)}
         self.dfs_counter = 0
         edges = [e for e in self.graph.edges() if e[0] in vertices and e[1] in vertices]
@@ -283,7 +282,7 @@ class Architecture():
         del self.dfs_counter
         return cutting
                     
-    def get_neighboring_qubits(self, qubit: int) -> Set[int]:
+    def get_neighboring_qubits(self, qubit: int) -> set[int]:
         """
         Given a qubit, finds all neighboring qubits in the graph.
 
@@ -293,7 +292,7 @@ class Architecture():
         vertex = self.qubit2vertex(qubit)
         return set(self.vertex2qubit(q) for q in self.get_neighboring_vertices(vertex))
 
-    def get_neighboring_vertices(self, vertex: int) -> Set[int]:
+    def get_neighboring_vertices(self, vertex: int) -> set[int]:
         """
         From a given vertex location, finds all neighboring vertices in the graph.
 
@@ -333,7 +332,7 @@ class Architecture():
             filename = self.name + ".png"
         plt.savefig(filename)
 
-    def floyd_warshall(self, subgraph_vertices: List[int], upper: bool=True, rec_vertices: List[int]=[]) -> Dict[Tuple[int,int], Tuple[int,List[Tuple[int,int]]]]:
+    def floyd_warshall(self, subgraph_vertices: list[int], upper: bool = True, rec_vertices: list[int] = []) -> dict[tuple[int, int], tuple[int, list[tuple[int, int]]]]:
         """
         Implementation of the Floyd-Warshall algorithm to calculate the all-pair distances in a given graph.
 
@@ -371,7 +370,7 @@ class Architecture():
                                                 distances[(v2, v1)][1] + distances[(v1, v0)][1])
         return distances
 
-    def shortest_path(self, start_qubit: int, end_qubit: int, qubits_to_use: Optional[List[int]]=None) -> Optional[List[int]]:
+    def shortest_path(self, start_qubit: int, end_qubit: int, qubits_to_use: list[int] | None = None) -> list[int] | None:
         """
         Find the shortest path between two qubits in the graph using breadth-first search (BFS)
         
@@ -403,7 +402,7 @@ class Architecture():
                     visited.append(new_node)
         return None
 
-    def steiner_tree(self, start_qubit: int, qubits_to_use: List[int], upper: bool=True) -> Iterator[Optional[Tuple[int,int]]]:
+    def steiner_tree(self, start_qubit: int, qubits_to_use: list[int], upper: bool = True) -> Iterator[tuple[int, int] | None]:
         """
         Approximates the steiner tree given the architecture, a root qubit and the other qubits that should be present.
         This is done using the pre-calculated all-pairs shortest distance and Prim's algorithm for creating a minimum spanning tree.
@@ -431,14 +430,14 @@ class Architecture():
         assert len(qubits_to_use) == len(set(qubits_to_use))
         
         # The vertices and edges of the generated tree
-        tree_vertices: Set[int] = {root}
-        edges: Set[Tuple[int,int]] = set()
+        tree_vertices: set[int] = {root}
+        edges: set[tuple[int, int]] = set()
         # Map with all distances between nodes with index <= root (if not upper) or index >= root (if upper), and the corresponding shortest paths
-        distances: Dict[Tuple[int,int], Tuple[int,List[Tuple[int,int]]]] = self.distances["upper"][root] if upper else self.distances["full"][root]
+        distances: dict[tuple[int, int], tuple[int, list[tuple[int, int]]]] = self.distances["upper"][root] if upper else self.distances["full"][root]
         # Nodes that are not yet in the tree
         remaining_nodes = set(n for n in target_nodes if n != root)
         # Non-target nodes added to the tree
-        steiner_pnts: Set[int] = set()
+        steiner_pnts: set[int] = set()
 
         while remaining_nodes:
             # Each candidate is a tuple of (tree node, candidate, distance, path)
@@ -469,7 +468,7 @@ class Architecture():
         # Compute all the edges of the steiner tree in BFS order, starting from the root
         visited = {root}
         queue = [root]
-        generated_edges: List[Tuple[int,int]] = []
+        generated_edges: list[tuple[int, int]] = []
         
         while queue != []:
             node = queue.pop(0)
@@ -558,7 +557,7 @@ class Architecture():
         arch = Architecture(self.name + "_transpose", coupling_graph=self.graph, qubit_map=qubit_map)
         return arch
         
-    def arities(self) -> List[Tuple[int, int]]:
+    def arities(self) -> list[tuple[int, int]]:
         """
         Returns a list of tuples (i, arity) where i is the index of each node and arity is the number of neighbors,
         sorted by decreasing arity.
@@ -577,7 +576,7 @@ def dynamic_size_architecture_name(base_name: str, n_qubits: int) -> str:
     """
     return str(n_qubits) + "q-" + base_name
 
-def connect_vertices_in_line(vertices: List[int]) -> List[Tuple[int, int]]:
+def connect_vertices_in_line(vertices: list[int]) -> list[tuple[int, int]]:
     """
     Connects a list of vertices in a straight line.
     
@@ -586,7 +585,7 @@ def connect_vertices_in_line(vertices: List[int]) -> List[Tuple[int, int]]:
     """
     return [(vertices[i], vertices[i+1]) for i in range(len(vertices)-1)]
 
-def connect_vertices_as_grid(width: int, height: int, vertices: List[int]) -> List[Tuple[int,int]]:
+def connect_vertices_as_grid(width: int, height: int, vertices: list[int]) -> list[tuple[int, int]]:
     """
     Connects vertices into a grid, with layout specified by width and height, vertices length much be equal to width * height.
     
@@ -1091,7 +1090,7 @@ def create_google_sycamore(backend=None, **kwargs):
     arch = Architecture(GOOGLE_SYCAMORE, coupling_graph=graph, backend=backend, **kwargs)
     return arch
 
-def create_architecture(name: Union[str, Architecture], **kwargs) -> Architecture:
+def create_architecture(name: str | Architecture, **kwargs) -> Architecture:
     """
     Creates an architecture from a name.
 
@@ -1105,7 +1104,7 @@ def create_architecture(name: Union[str, Architecture], **kwargs) -> Architectur
     # IBM architectures are currently ignoring CNOT direction.
     if isinstance(name, Architecture):
         return name
-    arch_dict: Dict[str, Any] = {}
+    arch_dict: dict[str, Any] = {}
     arch_dict[SQUARE] = create_square_architecture
     arch_dict[LINE] = create_line_architecture
     arch_dict[FULLY_CONNECTED] = create_fully_connected_architecture
