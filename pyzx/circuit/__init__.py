@@ -19,18 +19,25 @@ from typing import Union, Iterator
 
 import numpy as np
 
-from .gates import (Gate, gate_types, HAD, XPhase, ZPhase, SWAP, CNOT,
-                    CZ, XCX, Tofolli, CCZ, Measurement, ConditionalGate)
+from .gates import (Gate, gate_types, NOT, Y, Z, HAD, XPhase, YPhase, ZPhase, U2, U3, S, T, SX, SWAP, RXX, RZZ, CNOT,
+                    CY, CZ, CHAD, CSX, XCX, CRX, CRY, CRZ, CPhase, CU3, CU, CSWAP, Tofolli, CCZ, ParityPhase, FSim,
+                    Measurement, PhaseGadget, ConditionalGate)
 
 from ..graph.base import BaseGraph
 from ..utils import EdgeType
 
-CircuitLike = Union['Circuit', Gate]
+__all__ = [
+    'Gate', 'gate_types', 'NOT', 'Y', 'Z', 'HAD', 'XPhase', 'YPhase', 'ZPhase', 'U2', 'U3', 'S', 'T', 'SX', 'SWAP', 'RXX', 'RZZ', 'CNOT',
+    'CY', 'CZ', 'CHAD', 'CSX', 'XCX', 'CRX', 'CRY', 'CRZ', 'CPhase', 'CU3', 'CU', 'CSWAP', 'Tofolli', 'CCZ', 'ParityPhase', 'FSim',
+    'Measurement', 'PhaseGadget', 'ConditionalGate',
+    
+    'Circuit', 'CircuitLike', 'id'
+]
 
 # Note that many of the method of Circuit contain inline imports. These are
 # there to prevent circular imports.
 
-__all__ = ['Circuit', 'id']
+CircuitLike = Union['Circuit', Gate]
 
 class Circuit(object):
     """Class for representing quantum circuits.
