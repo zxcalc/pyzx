@@ -29,6 +29,17 @@ from .symbolic import Poly
 FloatInt = Union[float,int]
 FractionLike = Union[Fraction,int,Poly]
 
+def push_pauli_axel(axel: FractionLike, leaf: FractionLike) -> FractionLike:
+    """Return the new ``leaf`` phase acquired when a Pauli ``axel`` is pushed
+    through a spider of the opposite type. Used by
+    :func:`pyzx.rewrite_rules.push_pauli_rule.unsafe_pauli_push`.
+
+    The caller must ensure ``axel`` evaluates to a Pauli phase. The result is
+    undefined for non-Pauli axels.
+    """
+    return (leaf - 2 * (axel * leaf)) % 2
+
+
 def assert_phase_real(phase: FractionLike | complex) -> None:
     """Raise a TypeError if ``phase`` contains complex coefficients.
 
