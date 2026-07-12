@@ -213,6 +213,47 @@ class QASMParser(object):
         args = [s.strip() for s in rest.split(",") if s.strip()]
         return name, phases, args
 
+    _QASM2_NAME_RE = re.compile(r"[a-z][A-Za-z0-9_]*")
+
+    def _parse_register_declaration(self, spec: str) -> tuple[str, int]:
+        """Split a ``<name>[<size>]`` register declaration into ``(name, size)``.
+
+        Raises ``TypeError`` with a message describing the specific
+        problem (missing brackets, bad identifier, non-integer size).
+        """
+        if "[" not in spec:
+            raise TypeError(
+                "Invalid register declaration {!r}: expected "
+                "'<name>[<size>]'".format(spec))
+        regname, sizep = spec.split("[", 1)
+        if not sizep.endswith("]"):
+            raise TypeError(
+                "Invalid register declaration {!r}: missing closing "
+                "']'".format(spec))
+        if self.qasm_version == 2:
+            name_ok = bool(self._QASM2_NAME_RE.fullmatch(regname))
+            grammar_desc = "OpenQASM 2 rules, i.e., [a-z][A-Za-z0-9_]*"
+        else:
+            # Note: Python's ``str.isidentifier`` uses UAX #31, which is a
+            # superset of the OpenQASM 3 identifier grammar, but close enough.
+            name_ok = regname.isidentifier()
+            grammar_desc = "OpenQASM 3 rules"
+        if "[" in sizep[:-1] or not name_ok:
+            raise TypeError(
+                "Invalid register declaration {!r}: register names must "
+                "match {}".format(spec, grammar_desc))
+        try:
+            size = int(sizep[:-1])
+        except ValueError as exc:
+            raise TypeError(
+                "Invalid register declaration {!r}: size {!r} is not an "
+                "integer".format(spec, sizep[:-1])) from exc
+        if size <= 0:
+            raise TypeError(
+                "Invalid register declaration {!r}: size must be a positive "
+                "integer, got {}".format(spec, size))
+        return regname, size
+
     def parse_command(self, c: str, registers: dict[str, tuple[int, int]]) -> list[Gate]:
         gates: list[Gate] = []
         # Handle `if (creg == val) gate args;` before extract_command_parts,
@@ -232,8 +273,7 @@ class QASMParser(object):
         name, phases, args = self.extract_command_parts(c)
         if name in ("barrier", "id"): return gates
         if name == "creg":
-            regname, sizep = args[0].split("[", 1)
-            size = int(sizep[:-1])
+            regname, size = self._parse_register_declaration(args[0])
             self.cregisters[regname] = size
             return gates
         if name == "measure":
@@ -298,8 +338,7 @@ class QASMParser(object):
         if name in ("opaque",):
             raise TypeError("Unsupported operation {}".format(c))
         if name == "qreg":
-            regname, sizep = args[0].split("[",1)
-            size = int(sizep[:-1])
+            regname, size = self._parse_register_declaration(args[0])
             registers[regname] = (self.qubit_count, size)
             self.qubit_count += size
             return gates

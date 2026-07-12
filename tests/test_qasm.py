@@ -273,6 +273,64 @@ class TestQASM(unittest.TestCase):
         self.assertEqual(c1.qubits, c2.qubits)
         self.assertListEqual(c1.gates, c2.gates)
 
+    def test_qasm2_register_declaration(self):
+        """A malformed ``qreg``/``creg`` declaration in an OpenQASM 2 file
+        surfaces a ``TypeError`` specifying the specific problem.
+        """
+        from pyzx.circuit.qasmparser import QASMParser
+        header = 'OPENQASM 2.0;\ninclude "qelib1.inc";\n'
+        cases = [
+            ('reset[0].0[1]',
+             r"register names must match OpenQASM 2 rules, i.e., \[a-z\]\[A-Za-z0-9_\]\*"),
+            ('reset.0[1]',
+             r"register names must match OpenQASM 2 rules, i.e., \[a-z\]\[A-Za-z0-9_\]\*"),
+            ('q-x[1]',
+             r"register names must match OpenQASM 2 rules, i.e., \[a-z\]\[A-Za-z0-9_\]\*"),
+            ('__q32_anc[3]',
+             r"register names must match OpenQASM 2 rules, i.e., \[a-z\]\[A-Za-z0-9_\]\*"),
+            ('Q[3]',
+             r"register names must match OpenQASM 2 rules, i.e., \[a-z\]\[A-Za-z0-9_\]\*"),
+            ('q6',
+             r"expected '<name>\[<size>\]'"),
+            ('q[6',
+             r"missing closing '\]'"),
+            ('q[abc]',
+             r"size 'abc' is not an integer"),
+            ('q[-1]',
+             r"size must be a positive integer, got -1"),
+            ('q[0]',
+             r"size must be a positive integer, got 0"),
+        ]
+        p = QASMParser()
+        for spec, expected in cases:
+            for kind in ('qreg', 'creg'):
+                with self.subTest(spec=spec, kind=kind):
+                    with self.assertRaisesRegex(TypeError, expected):
+                        p.parse(header + '{} {};\n'.format(kind, spec))
+        c = p.parse(header + 'qreg q_reg0[3];\n')
+        self.assertEqual(c.qubits, 3)
+
+    def test_qasm3_register_declaration(self):
+        """OpenQASM 3 relaxes the identifier grammar to allow leading
+        underscore, leading uppercase, and Unicode letter categories
+        (Lu/Ll/Lt/Lm/Lo/Nl).
+        """
+        from pyzx.circuit.qasmparser import QASMParser
+        header = 'OPENQASM 3.0;\ninclude "stdgates.inc";\n'
+        p = QASMParser()
+        # Accepted under QASM 3 but not QASM 2.
+        for name in ('__q32_anc', 'Q', 'γ', 'ñ', 'Ω', 'Ⅷ', '一'):
+            with self.subTest(name=name):
+                c = p.parse(header + 'qreg {}[3];\n'.format(name))
+                self.assertEqual(c.qubits, 3)
+        # Still rejected under QASM 3.
+        rejected = ['q.x', 'q-x', '1q', '🙂']
+        for name in rejected:
+            with self.subTest(name=name):
+                with self.assertRaisesRegex(
+                        TypeError, r"OpenQASM 3 rules"):
+                    p.parse(header + 'qreg {}[3];\n'.format(name))
+
     def test_custom_gates_with_parameters(self):
         """A parametrised custom gate is instantiated by binding its argument.
 
