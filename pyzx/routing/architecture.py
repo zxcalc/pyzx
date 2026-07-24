@@ -301,7 +301,7 @@ class Architecture():
         """
         return set(self.graph.neighbors(vertex))
 
-    def to_quil_device(self): # TODO: this legacy function doesn't work -- remove?
+    def to_quil_device(self): # type: ignore # TODO: this legacy function doesn't work -- remove?
         """
         Convert the graph to a PyQuil NxDevive object.
 

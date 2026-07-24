@@ -14,6 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from typing import Any, Iterator
+
 from pyzx.routing.parity_maps import CNOT_tracker
 
 from .architecture import Architecture
@@ -28,7 +30,7 @@ def steiner_gauss(
     full_reduce: bool = False,
     x: CNOT_tracker | None = None,
     y: CNOT_tracker | None = None,
-):
+) -> int:
     """
     Performs Gaussian elimination that is constrained by the given architecture
 
@@ -40,7 +42,7 @@ def steiner_gauss(
     :return: Rank of the given matrix
     """
 
-    def row_add(c0, c1):
+    def row_add(c0: int, c1: int) -> None:
         """
         Adds row c0 to c1 in the main matrix. If debug flag is set it prints what happening.
 
@@ -55,7 +57,7 @@ def steiner_gauss(
         if y != None:
             y.col_add(c1, c0)
 
-    def steiner_reduce(col: int, root: int, nodes: list[int], upper: bool):
+    def steiner_reduce(col: int, root: int, nodes: list[int], upper: bool) -> None:
         """
         Uses Steiner tree to reduce matrix columns
 
@@ -168,8 +170,8 @@ def rec_steiner_gauss(
     x: CNOT_tracker | None = None,
     y: CNOT_tracker | None = None,
     permutation: list[int] | None = None,
-    **kwargs,
-):
+    **kwargs: Any,
+) -> None:
     """
     Performs Gaussian elimination that is constrained bij the given architecture according to https://arxiv.org/pdf/1904.00633.pdf
     Only works on full rank, square matrices.
@@ -186,7 +188,7 @@ def rec_steiner_gauss(
     else:
         matrix.permute_cols(permutation)
 
-    def row_add(c0, c1):
+    def row_add(c0: int, c1: int) -> None:
         """
         Adds row c0 to c1 in the main matrix. If debug flag is set it prints what happening.
 
@@ -201,7 +203,7 @@ def rec_steiner_gauss(
         if y != None:
             y.col_add(c1, c0)
 
-    def steiner_reduce(col, root, nodes, usable_nodes, rec_nodes, upper):
+    def steiner_reduce(col: int, root: int, nodes: list[int], usable_nodes: list[int], rec_nodes: list[int], upper: bool) -> list[int]:
         """
         Uses Steiner tree to reduce matrix columns
 
@@ -226,7 +228,7 @@ def rec_steiner_gauss(
             upper,
         )
         cnot = next(generator, None)
-        tree_nodes = []
+        tree_nodes: list[int] = []
         while cnot is not None:
             if (
                 cnot[0] not in usable_nodes + rec_nodes
@@ -238,7 +240,7 @@ def rec_steiner_gauss(
             cnot = next(generator, None)
         return tree_nodes
 
-    def rec_step(qubit_removal_order):
+    def rec_step(qubit_removal_order: list[int]) -> None:
         """
         Recursive step function to reduce matrix
 
@@ -310,9 +312,9 @@ def steiner_reduce_column(
     root: int,
     nodes: list[int],
     usable_nodes: list[int],
-    rec_nodes,
+    rec_nodes: list[int],
     upper: bool,
-):
+) -> Iterator[tuple[int, int]]:
     """
     Performs Steiner tree reduction to a matrix column under the constraints of some quantum architecture
 
@@ -333,7 +335,7 @@ def steiner_reduce_column(
     if debug:
         print("Step 1: remove zeros")
     if upper:
-        zeros = []
+        zeros: list[tuple[int, int]] = []
         while next_check is not None:
             s0, s1 = next_check
             if col[s0] == 0:  # s1 is a new steiner point or root = 0

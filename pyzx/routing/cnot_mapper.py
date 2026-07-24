@@ -1,6 +1,10 @@
+from typing import Any, Callable
+
 import numpy as np
 
 from enum import Enum
+
+from numpy.typing import NDArray
 
 from pyzx.circuit import Circuit
 
@@ -40,7 +44,7 @@ class ElimMode(Enum):
     PSO_STEINER_MODE = "pso_steiner"
     """Steiner Gauss elimination using Particle Swarm Optimization to find the best row permutation."""
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.value}"
 
 
@@ -63,11 +67,11 @@ class CostMetric(Enum):
     COUNT = "count"
     """Count the depth of the circuit"""
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.value}"
 
 
-class FitnessFunction(object):
+class FitnessFunction:
     """
     A fitness function that calculates the cost of the gates needed for a given permutation.
     """
@@ -81,7 +85,7 @@ class FitnessFunction(object):
         row: bool = True,
         col: bool = True,
         full_reduce: bool = True,
-        **kwargs,
+        **kwargs: Any,
     ):
         """
         Creates and returns a fitness function using the given metric.
@@ -104,15 +108,8 @@ class FitnessFunction(object):
         self.n_qubits = architecture.n_qubits if architecture else matrix.cols()
         self.kwargs = kwargs
 
-    def _make_function(self):
-        if self.metric == CostMetric.COMBINED:
-            f = lambda c: c.cnot_depth() * 10000 + c.count_cnots()
-        elif self.metric == CostMetric.COUNT:
-            f = lambda c: c.count_cnots()
-        elif self.metric == CostMetric.DEPTH:
-            f = lambda c: c.cnot_depth()
-
-        def fitness_func(permutation):
+    def _make_function(self) -> Callable[[list[int]], int]:
+        def fitness_func(permutation: list[int]) -> int:
             row_perm = permutation if self.row else np.arange(len(self.matrix.data))
             col_perm = permutation if self.col else np.arange(len(self.matrix.data[0]))
             circuit = CNOT_tracker(self.n_qubits)
@@ -125,11 +122,17 @@ class FitnessFunction(object):
                 full_reduce=self.full_reduce,
                 **self.kwargs,
             )
-            return f(circuit)
-
+            match self.metric:
+                case CostMetric.COMBINED:
+                    return circuit.cnot_depth() * 10000 + circuit.count_cnots()
+                case CostMetric.COUNT:
+                    return circuit.count_cnots()
+                case CostMetric.DEPTH:
+                    return circuit.cnot_depth()
+        
         return fitness_func
 
-    def __call__(self, permutation):
+    def __call__(self, permutation: list[int]) -> int:
         f = self._make_function()
         return f(permutation)
 
@@ -140,7 +143,7 @@ def gauss(
     architecture: Architecture | None = None,
     permutation: list[int] | None = None,
     try_transpose: bool = False,
-    **kwargs,
+    **kwargs: Any,
 ) -> int:
     """
     Performs architecture-aware Gaussian Elimination on a matrix.
@@ -243,9 +246,9 @@ def permuted_gauss(
     col: bool = True,
     full_reduce: bool = True,
     fitness_func: FitnessFunction | None = None,
-    x=None,
-    y=None,
-    **kwargs,
+    x: CNOT_tracker | None = None,
+    y: CNOT_tracker | None = None,
+    **kwargs: Any,
 ) -> tuple[list[int], Circuit, int]:
     """
     Applies gaussian elimination to the given matrix, finding an optimal
@@ -305,8 +308,7 @@ def permuted_gauss(
     rank = gauss(
         mode, mat, architecture, x=x, y=circuit, full_reduce=full_reduce, **kwargs
     )
-    best_permutation = list(best_permutation)
-    return best_permutation, circuit, rank
+    return list(best_permutation), circuit, rank
 
 
 def sequential_gauss(
@@ -322,7 +324,7 @@ def sequential_gauss(
     p_crossover: float = 0.3,
     pso_mutation: float = 0.2,
     full_reduce: bool = True,
-    **kwargs,
+    **kwargs: Any,
 ) -> tuple[list[CNOT_tracker], list[list[int]], int]:
     """
     Applies architecture-aware Gaussian elimination to multiple matrices,
@@ -440,7 +442,7 @@ class StepFunction:
     A step function for the PSO algorithm.
     """
 
-    def __init__(self, matrices, mode, architecture, fitness_func, **kwargs):
+    def __init__(self, matrices: list[Mat2], mode: ElimMode, architecture: Architecture | None, fitness_func: FitnessFunction | None, **kwargs: Any):
         """
         Creates and returns a step function.
 
@@ -459,7 +461,7 @@ class StepFunction:
             Mat2(np.asarray(m.data).T.tolist()) for m in reversed(matrices)
         ]  # Reverse and transpose the parity matrices to create the reversed equivalent sequence
 
-    def __call__(self, initial_perm):
+    def __call__(self, initial_perm: list[int]) -> tuple[list[int], tuple[list[CNOT_tracker], list[list[int]]], int]:
         """
         Evaluates a candidate qubit permutation by running a forward and reverse sequence of architecture-aware Gaussian eliminations.
 
