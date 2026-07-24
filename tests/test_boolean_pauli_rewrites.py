@@ -20,7 +20,7 @@ from fractions import Fraction
 
 from pyzx.graph import Graph
 from pyzx.utils import EdgeType, VertexType
-from pyzx.symbolic import new_var
+from pyzx.symbolic import Poly, new_var
 from pyzx.simplify import gadget_simp, teleport_reduce
 from pyzx.rewrite_rules.push_pauli_rule import unsafe_pauli_push
 from pyzx.rewrite_rules.pivot_rule import unsafe_pivot
@@ -37,6 +37,36 @@ def tensors_match(g1, g2, **subs):
 
 
 class TestBooleanPauliRewrites(unittest.TestCase):
+
+    def test_unsafe_pauli_push(self):
+        """`unsafe_pauli_push` skips a boolean Pauli by default and
+        preserves the tensor when opted in via ``apply_to_boolean_axels=True``."""
+        def build():
+            g = Graph()
+            c = new_var('c', is_bool=True, registry=g.var_registry)
+            b0 = g.add_vertex(VertexType.BOUNDARY, 0, 0)
+            b1 = g.add_vertex(VertexType.BOUNDARY, 0, 4)
+            v = g.add_vertex(VertexType.Z, 0, 1, phase=Fraction(1, 4))
+            w = g.add_vertex(VertexType.X, 0, 3, phase=c)
+            g.add_edge((b0, v)); g.add_edge((v, w)); g.add_edge((w, b1))
+            g.set_inputs((b0,)); g.set_outputs((b1,))
+            return g, v, w
+
+        # Default path: return False and leave the graph untouched.
+        g_default, v, w = build()
+        self.assertFalse(unsafe_pauli_push(g_default, v, w))
+        self.assertEqual(g_default.phase(v), Fraction(1, 4))
+
+        # Opt-in path: rewrite runs and the resulting tensor matches the
+        # original for each substitution of the boolean axel.
+        g_optin, v, w = build()
+        orig = g_optin.copy()
+        self.assertTrue(unsafe_pauli_push(g_optin, v, w, apply_to_boolean_axels=True))
+        # v's phase should now depend on c (a Poly), not be the original Fraction.
+        self.assertIsInstance(g_optin.phase(v), Poly)
+        for c_val in (0, 1):
+            self.assertTrue(tensors_match(g_optin, orig, c=c_val),
+                            f"unsafe_pauli_push drifted at c={c_val}")
 
     def test_unsafe_pivot(self):
         """`unsafe_pivot` must preserve the tensor for boolean pivot phases."""

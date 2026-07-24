@@ -22,6 +22,11 @@ The standard version of the applier will automatically call the basic checker, w
 of the applier will assume that the given input is correct and will apply the rule without running the check first.
 
 This rewrite rule can be called using simplify.push_pauli_rewrite.apply(g, v, w).
+
+To opt in to pushing a symbolic boolean Poly axel through a non-Pauli spider (which converts the
+boolean parameter into a non-boolean phase), call :func:`pauli_push` or :func:`unsafe_pauli_push`
+directly with ``apply_to_boolean_axels=True``. (Note: The ``simplify.push_pauli_rewrite`` wrapper
+does not forward this keyword.)
 """
 
 __all__ = ['check_pauli',
@@ -32,8 +37,9 @@ from fractions import Fraction
 
 from typing import List, Dict, Tuple
 
-from pyzx.utils import EdgeType, VertexType, FractionLike, phase_is_pauli, vertex_is_zx, toggle_vertex, is_standard_hbox
+from pyzx.utils import EdgeType, VertexType, FractionLike, phase_is_pauli, push_pauli_axel, vertex_is_zx, toggle_vertex, is_standard_hbox
 from pyzx.graph.base import BaseGraph, VT, ET, upair
+from pyzx.symbolic import Poly
 
 def check_pauli(g: BaseGraph[VT,ET], v: VT, w: VT) -> bool:
     """Checks if a w is a Pauli and v is a spider we can push it through
@@ -66,17 +72,20 @@ def check_pauli(g: BaseGraph[VT,ET], v: VT, w: VT) -> bool:
     return False
 
 
-def pauli_push(g: BaseGraph[VT,ET], v:VT,w:VT) -> bool:
+def pauli_push(g: BaseGraph[VT,ET], v:VT,w:VT, apply_to_boolean_axels: bool = False) -> bool:
     """Pushes a Pauli (i.e. a pi phase) through another spider."""
-    if check_pauli(g, v, w): return unsafe_pauli_push(g, v, w)
+    if check_pauli(g, v, w): return unsafe_pauli_push(g, v, w, apply_to_boolean_axels=apply_to_boolean_axels)
     return False
 
 
-def unsafe_pauli_push(g: BaseGraph[VT,ET], v:VT, w:VT) -> bool:
+def unsafe_pauli_push(g: BaseGraph[VT,ET], v:VT, w:VT, apply_to_boolean_axels: bool = False) -> bool:
     """Pushes a Pauli (i.e. a pi phase) through another spider.
     :param g: Graph to push to
     :param v: Vertex to push through
-    :param w: Pauli getting pushed"""
+    :param w: Pauli getting pushed
+    :param apply_to_boolean_axels: If False (default), skip when ``w`` carries a symbolic
+        boolean Poly phase. If True, when ``v`` is a non-Pauli spider this push converts
+        the boolean parameter into a non-boolean phase."""
 
     rem_verts: List[VT] = []
     rem_edges: List[ET] = []
@@ -85,6 +94,8 @@ def unsafe_pauli_push(g: BaseGraph[VT,ET], v:VT, w:VT) -> bool:
     # w is a Pauli and v is the spider we are going to push it through
 
     pauli_phase = g.phase(w)
+    if not apply_to_boolean_axels and isinstance(pauli_phase, Poly) and len(pauli_phase.free_vars()) > 0:
+        return False
 
     if g.vertex_degree(w) == 2:
         rem_verts.append(w)
@@ -99,8 +110,9 @@ def unsafe_pauli_push(g: BaseGraph[VT,ET], v:VT, w:VT) -> bool:
 
     new_verts = []
     if vertex_is_zx(g.type(v)):
-        g.scalar.add_phase(g.phase(v))
-        g.set_phase(v, (g.phase(v) - 2 * (pauli_phase * g.phase(v))) % 2) # phase*(1-2a): unchanged when a=0, negated when a=1. Multiply phase first to avoid 2*a cancelling mod 2.
+        leaf_phase = g.phase(v)
+        g.scalar.add_phase(pauli_phase * leaf_phase)
+        g.set_phase(v, push_pauli_axel(pauli_phase, leaf_phase))
         t = toggle_vertex(g.type(v))
         p: FractionLike = pauli_phase
     else:
