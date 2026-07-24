@@ -19,6 +19,7 @@ Hence, occasionally changes will be backwards incompatible (although they will a
 - The symbolic expression parser (`pyzx.symbolic.parse`) now accepts division, e.g., `theta/2` or `(x + y)/2`. Divisors must be rational (or complex) constants; division by an integer produces an exact `Fraction` coefficient. As a side effect, `^` binds tighter than `*` and `/`. (by @dlyongemallo)
 - Regression test for `unsafe_pivot` with boolean pivot phases (by @dlyongemallo).
 - Added support for zooming in D3 drawings (by @doczenwiry).
+- `apply_to_boolean_axels` opt-in flag to `(unsafe_)pauli_push`, so boolean parameters are not transformed into non-boolean phase by default (by @dlyongemallo).
 
 ### Changed
 - `Multigraph.edge(s, t)` now raises `ValueError` on ambiguous mixed-type parallel edges or when no matching edge exists, instead of silently returning one; pass `et` to disambiguate. The `et` default is now `None` on `BaseGraph.edge` (`GraphS.edge` and `GraphIG.edge` ignore it). Internal callers were updated to match; as a side effect, `PauliWeb.add_edge` and `PauliWeb.graph_with_errors` now propagate this error rather than silently preferring the `SIMPLE` edge (by @dlyongemallo).
