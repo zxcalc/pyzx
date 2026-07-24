@@ -67,11 +67,11 @@ By default, ``Multigraph`` still tries to simplify reducible parallel edges as t
 
 	assert g.num_edges() == 2
 
-Use ``g.get_auto_simplify()`` to inspect this setting. Simple graph backends always auto-simplify and ``set_auto_simplify`` is a no-op for them. When a multigraph is written to the version 2 JSON format, the backend name and ``auto_simplify`` value are stored and restored when the graph is loaded again.
+Use ``g.get_auto_simplify()`` to inspect this setting. Simple graph backends always auto-simplify and ``set_auto_simplify`` is a no-op for them. When a multigraph is saved in the JSON graph format, the backend name and ``auto_simplify`` value are stored and restored when the graph is loaded again.
 
 The main API difference is that multigraph edges include the edge type in the edge object. For example, iterating over ``g.edges()`` yields triples ``(source, target, edge_type)`` and repeated triples can appear when there are parallel edges of the same type. ``g.edge_set()`` therefore returns a ``Counter`` for multigraphs, not a plain set.
 
-Some rewrites are specifically about parallel edges. In particular, :mod:`pyzx.rewrite_rules.hopf_rule` removes parallel edges in pairs according to the Hopf law, and the bialgebra rule supports matches that involve parallel edges. Other rewrite rules may not support multigraphs yet, or may support them only with caveats. For example, the H-box fusion rule currently says that it does not work with multigraphs. When working with multigraphs, prefer checking the documentation or docstring for the specific rewrite rule and, for experimental workflows, verify that the diagram semantics are preserved.
+Some rewrites are specifically about parallel edges. In particular, :mod:`pyzx.rewrite_rules.hopf_rule` removes parallel edges in pairs according to the Hopf law, and the bialgebra rule supports matches that involve parallel edges. Other rewrite rules will simply not match when parallel edges are found.
 
 Creating and modifying ZX-diagrams
 ----------------------------------
