@@ -96,19 +96,20 @@ jobs:
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git config --global user.name "github-actions[bot]"
 
-      - name: Bump version
+      - name: Update changelog headers
         if: steps.check_commits.outputs.has_commits == 'true' && inputs.dry_run != true
         run: |
-          bump-my-version bump patch --allow-dirty
-          
-      - name: Update changelog headers and push
-        if: steps.check_commits.outputs.has_commits == 'true' && inputs.dry_run != true
-        run: |
-          VERSION=$(bump-my-version show current_version)
+          CURRENT_VERSION=$(bump-my-version show current_version)
+          VERSION=$(echo "$CURRENT_VERSION" | awk -F. '{print $1"."$2"."$3+1}')
           DATE=$(date +%Y-%m-%d)
           sed -i "s/^## \[Unreleased\]/## [Unreleased]\n\n## [$VERSION] - $DATE/" CHANGELOG.md
           git add CHANGELOG.md
-          git commit -m "Add Unreleased section to changelog [skip ci]"
+          git commit -m "Add $VERSION section to changelog [skip ci]"
+
+      - name: Bump version and push
+        if: steps.check_commits.outputs.has_commits == 'true' && inputs.dry_run != true
+        run: |
+          bump-my-version bump patch
           git push --follow-tags
 
       - name: Build
@@ -125,10 +126,6 @@ jobs:
           gh release create "v$VERSION" \
             --title "v$VERSION" \
             --notes "$NOTES"
-
-      - name: Push changelog commit
-        if: steps.check_commits.outputs.has_commits == 'true' && inputs.dry_run != true
-        run: git push
 
       - name: Publish to PyPI
         if: steps.check_commits.outputs.has_commits == 'true' && inputs.dry_run != true
