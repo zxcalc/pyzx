@@ -65,11 +65,46 @@ function showGraph(tag, graph, width, height, scale, node_size, auto_hbox, show_
 
     var groundOffset = 2.5 * node_size;
 
+    // Populate the quadtree of nodes for collision detection.
+    const node_space = d3.quadtree()
+        .x(node => node.x)
+        .y(node => node.y)
+        .addAll(graph.nodes);
+
+    const diameter = 2 * node_size;
+    const diameter_squared = diameter**2; // Comparison against twice the radius squared to avoid sqrt(..)
+    console.log(`Space size : ${node_space.size()} [ns:${node_size}, d:${diameter}, r^2:${diameter_squared}]`)
     graph.nodes.forEach(function(d) {
         ntab[d.name] = d;
         d.selected = false;
         d.previouslySelected = false;
         d.nhd = [];
+
+        // Initialisation for collision detection
+        console.log(`Node : ${d.name}@(${d.x},${d.y})`)
+        d.colliding = false;
+
+        const xmin = d.x - diameter
+        const xmax = d.x + diameter
+        const ymin = d.y - diameter
+        const ymax = d.y + diameter
+        node_space.visit((quadnode, xL, yT, xR, yB)=> {
+            // A leaf may contain either a single node or multiple coincident nodes
+            while (quadnode && !quadnode.length) {
+                // The node contained collides with d if it is closer than 2 * node_size
+                let node = quadnode.data
+                let dx = node.x - d.x
+                let dy = node.y - d.y
+                let distance_squared = dx * dx + dy * dy
+                if (distance_squared <= diameter_squared && node.name !== d.name) {
+                    console.log(`> Collision : ${node.name}@(${node.x},${node.y})`)
+                    d.colliding = true;
+                }
+                quadnode = quadnode.next;
+            }
+            // Don't explore the children quadnodes if we are completely outside the neighbourhood of d.
+            return xR < xmin || xmax <= xL || yB < ymin || yT >= ymax;
+        });
     });
 
     var spiders_and_boundaries = graph.nodes.filter(function(d) {
@@ -184,7 +219,8 @@ function showGraph(tag, graph, width, height, scale, node_size, auto_hbox, show_
             else return node_size;
         })
         .attr("fill", function(d) { return nodeColor(d.t); })
-        .attr("stroke", "black")
+        // If a collision was detected with d, use red for its stroke.
+        .attr("stroke", function(d) { return d.colliding === true ? "red" : "black"; })
         .attr("class", "selectable");
 
     var hbox = node.filter(function(d) { return d.t == 3; });
