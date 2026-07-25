@@ -302,8 +302,7 @@ class ParticleSwarmOptimization:
         :return: The optimum solution for swarm
         """
         self._create_swarm(n_qubits)
-        best = self.swarm[0] # we use this variable instead of self.best_particle so mypy can tell it's not None
-        self.best_particle = best
+        self.best_particle = self.swarm[0]
         for i in range(n_steps):
             self._update_swarm()
             if not quiet:
@@ -311,13 +310,13 @@ class ParticleSwarmOptimization:
                     "PSO - Iteration",
                     i,
                     "best fitness:",
-                    best.best,
-                    best.best_point,
+                    self.best_particle.best,
+                    self.best_particle.best_point,
                 )
         if close_pool and self.pool:
             self.pool.close()
             self.pool.join()
-        return best.best_solution or ([], [])
+        return self.best_particle.best_solution or ([], [])
 
     @staticmethod
     def particle_update_func(args: tuple['Particle', 'Particle']) -> 'Particle':
