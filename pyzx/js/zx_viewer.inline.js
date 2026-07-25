@@ -99,8 +99,8 @@ function detect_collisions(graph, node_size, node_space, collision_markers, wind
                 }
                 quadnode = quadnode.next;
             }
-            // Don't explore the children quad-nodes if we are completely outside the neighbourhood of d.
-            return collision_detected || xR < xmin || xmax <= xL || yB < ymin || yT >= ymax;
+            // Don't explore this branch if we are completely outside the neighbourhood of d or a collision was detected
+            return collision_detected || xR < xmin || xmax < xL || yB < ymin || ymax < yT;
         });
     });
 
