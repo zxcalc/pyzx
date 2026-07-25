@@ -60,82 +60,75 @@ var symbolGround = {
     }
 }
 
-function detect_collisions(graph, node_size, node_space, collision_markers) {
+function detect_collisions(graph, node_size, node_space, collision_markers, window_width) {
     // Purge the old collision markers.
-    collision_markers.selectAll().remove()
-
-    // Used for clustering colliding nodes together.
-    const clustering = new Map();
+    collision_markers.selectAll("*").remove()
 
     const diameter = 2 * node_size;
     // Comparison against the square of the diameter to avoid computing an expensive sqrt(..)
     const diameter_squared = diameter**2;
     // console.log(`Space size : ${node_space.size()} [ns:${node_size}, d:${diameter}, r^2:${diameter_squared}]`)
 
-    graph.nodes.forEach(function (d) {
+    let colliding_nodes = 0
+    graph.nodes.forEach(function (node) {
         // Initialisation for collision detection
         // console.log(`Node : ${d.name}@(${d.x},${d.y})`)
 
         // These four constants represent the boundaries of the box that must be explored for collisions.
-        const xmin = d.x - diameter; const xmax = d.x + diameter;
-        const ymin = d.y - diameter; const ymax = d.y + diameter;
-        node_space.visit((quadnode, xL, yT, xR, yB)=> {
+        const xmin = node.x - diameter; const xmax = node.x + diameter;
+        const ymin = node.y - diameter; const ymax = node.y + diameter;
+        let collision_detected = false
+        node_space.visit((quadnode, xL, yT, xR, yB) => {
             // A leaf may contain either a single node or multiple coincident nodes
-            while (quadnode && !quadnode.length) {
-                // The node contained collides with d if it is closer than 2 * node_size
-                let node = quadnode.data;
-                let dx = node.x - d.x;
-                let dy = node.y - d.y;
+            while (quadnode && !quadnode.length && !collision_detected) {
+                // The node collides with the one contained in the quadnode if they are closer than 2 * node_size
+                let other = quadnode.data;
+                let dx = other.x - node.x;
+                let dy = other.y - node.y;
                 let distance_squared = dx * dx + dy * dy;
-                if (distance_squared <= diameter_squared && node !== d) {
-                    // console.log(`> Collision : ${node.name}@(${node.x},${node.y})`)
-                    if (!clustering.has(d) && !clustering.has(node)) {
-                        const pair = [d, node];
-                        clustering.set(d, pair);
-                        clustering.set(node, pair);
-                    } else if (clustering.has(d) && !clustering.get(d).includes(node)) {
-                        clustering.get(d).push(node);
-                        clustering.set(node, clustering.get(d));
-                    } else if (clustering.has(node) && !clustering.get(node).includes(d)) {
-                        clustering.get(node).push(d);
-                        clustering.set(d, clustering.get(node));
-                    } else {
-                        const cluster1 = clustering.get(d);
-                        const cluster2 = clustering.get(node);
-                        if (cluster1 !== cluster2) {
-                            cluster2.forEach(n => {
-                                cluster1.push(n);
-                                clustering.set(n, cluster1);
-                            })
-                        }
-                    }
+                if (distance_squared <= diameter_squared && other !== node) {
+                    console.log(`> Collision detected for ${node.name}@(${node.x},${node.y}) : ${other.name}`);
+                    collision_markers.append("circle")
+                        .attr("cx", node.x)
+                        .attr("cy", node.y)
+                        .attr("r", 2.25 * node_size)
+                        .attr("fill", "rgba(255, 255, 0, 0.75)")
+                        .attr("stroke", "black")
+                        .attr("stroke-width", "2px")
+                        .attr("stroke-dasharray", "3");
+                    colliding_nodes += 1;
+                    // Don't search further once a collision has been detected for the node
+                    collision_detected = true
                 }
                 quadnode = quadnode.next;
             }
             // Don't explore the children quad-nodes if we are completely outside the neighbourhood of d.
-            return xR < xmin || xmax <= xL || yB < ymin || yT >= ymax;
+            return collision_detected || xR < xmin || xmax <= xL || yB < ymin || yT >= ymax;
         });
     });
 
-    const clusters = new Set(clustering.values())
-    console.log("Collision clusters found :")
-    clusters.forEach(cluster => {
-        let barycenter_x = 0;
-        let barycenter_y = 0;
-        cluster.forEach(n => {
-            barycenter_x += n.x;
-            barycenter_y += n.y;
-        })
-        let barycenter = [barycenter_x / cluster.length , barycenter_y / cluster.length]
-        console.log(`> Cluster@(${barycenter}) involving {${cluster.map(n => n.name)}}`)
-        collision_markers.append("circle")
-            .attr("cx", barycenter[0])
-            .attr("cy", barycenter[1])
-            .attr("r", 3 * node_size)
-            .attr("fill", "rgba(255, 0, 0, 0.5)")
-            .attr("stroke", "red")
-            .attr("stroke-dasharray", "4")
-    })
+    if (colliding_nodes > 0) {
+        console.log(`Colliding nodes detected : ${colliding_nodes}`)
+        collision_markers.append("rect")
+            .attr("x", (window_width - 200) / 2)
+            .attr("y", 5)
+            .attr("width", 200)
+            .attr("height", 20)
+            .attr("fill", "rgba(255, 255, 0, 1.0)")
+            .attr("stroke", "black")
+            .attr("stroke-width", "2px")
+            .attr("stroke-dasharray", "3");
+        collision_markers.append("text")
+            .attr("x", window_width / 2)
+            .attr("y", 20)
+            .attr("text-anchor", "middle")
+            .text(`Colliding nodes detected : ${colliding_nodes}`)
+            .style("fill", "black")
+            .style("font-family", "sans-serif")
+            .style("font-size", "14px");
+    } else {
+        console.log("No collisions detected.")
+    }
 }
 
 function showGraph(tag, graph, width, height, scale, node_size, auto_hbox, show_labels, scalar_str) {
@@ -215,7 +208,7 @@ function showGraph(tag, graph, width, height, scale, node_size, auto_hbox, show_
 
     var collision_markers = canvas.append("g")
         .attr("class", "collision")
-    detect_collisions(graph, node_size, node_space, collision_markers)
+    detect_collisions(graph, node_size, node_space, collision_markers, width)
 
     var web = canvas.append("g")
         .attr("class", "web")
@@ -422,15 +415,8 @@ function showGraph(tag, graph, width, height, scale, node_size, auto_hbox, show_
 
     // EVENTS FOR DRAGGING AND SELECTION
 
-    node.on("mousedown", function(d) {
-        if (shiftKey) {
-            d3.select(this).selectAll(".selectable").attr("style", nodeStyle(d.selected = !d.selected));
-            d3.event.stopImmediatePropagation();
-        } else if (!d.selected) {
-            node.selectAll(".selectable").attr("style", function(p) { return nodeStyle(p.selected = d === p); });
-        }
-    })
-        .call(d3.drag().on("drag", function(d) {
+    var dragger = d3.drag()
+        .on("drag", function(d) {
             var dx = d3.event.dx;
             var dy = d3.event.dy;
             // node.filter(function(d) { return d.selected; })
@@ -438,8 +424,11 @@ function showGraph(tag, graph, width, height, scale, node_size, auto_hbox, show_
             //     .attr("cy", function(d) { return d.y += dy; });
             node.filter(function(d) { return d.selected; })
                 .attr("transform", function(d) {
+                    // We need to update the quadtree of nodes since the position of d is about to change.
+                    node_space.remove(d)
                     d.x += dx;
                     d.y += dy;
+                    node_space.add(d)
                     return "translate(" + d.x + "," + d.y +")";
                 });
 
@@ -450,7 +439,21 @@ function showGraph(tag, graph, width, height, scale, node_size, auto_hbox, show_
                 .attr("d", link_curve);
             web.filter(function(d) { return d.source.selected || d.target.selected; })
                 .attr("d", web_curve);
-        }));
+        })
+        .on("end", () =>
+            // Once the user releases the node, we can perform a new round of collision detection.
+            detect_collisions(graph, node_size, node_space, collision_markers, width)
+        );
+
+    node.on("mousedown", function(d) {
+        if (shiftKey) {
+            d3.select(this).selectAll(".selectable").attr("style", nodeStyle(d.selected = !d.selected));
+            d3.event.stopImmediatePropagation();
+        } else if (!d.selected) {
+            node.selectAll(".selectable").attr("style", function(p) { return nodeStyle(p.selected = d === p); });
+        }
+    })
+        .call(dragger);
 
     brush.call(d3.brush().keyModifiers(false)
         .extent([[0, 0], [width, height]])
