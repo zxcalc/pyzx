@@ -15,15 +15,17 @@
 # limitations under the License.
 
 
+from collections.abc import Callable
 from multiprocessing import cpu_count
 from multiprocessing.pool import Pool
-from typing import Any, Callable
+from typing import TYPE_CHECKING, Any
 import numpy as np
 from numpy.typing import ArrayLike, ArrayLike, NDArray
 
-from pyzx.routing.parity_maps import CNOT_tracker
+from .parity_maps import CNOT_tracker
 
-from .cnot_mapper import StepFunction
+if TYPE_CHECKING:
+    from .cnot_mapper import StepFunction
 
 
 class GeneticAlgorithm:
@@ -211,7 +213,7 @@ class ParticleSwarmOptimization:
     def __init__(
         self,
         swarm_size: int,
-        step_func: StepFunction,
+        step_func: "StepFunction",
         s_best_crossover: float,
         p_best_crossover: float,
         mutation: float,
@@ -222,7 +224,7 @@ class ParticleSwarmOptimization:
         Setup the optimizer
 
         :param swarm_size: Swarm size for the swarm optimization.
-        :param step_function: The step function to progress the swarm.
+        :param step_func: The step function to progress the swarm.
         :param s_best_crossover: The crossover percentage with the best particle in the swarm. Must be between 0.0 and 1.0.
         :param p_best_crossover: The crossover percentage with the personal best of a particle. Must be between 0.0 and 1.0.
         :param mutation: The mutation percentage of a particle. Must be between 0.0 and 1.0.
@@ -361,7 +363,7 @@ class Particle:
     def __init__(
         self,
         size: int,
-        step_func: StepFunction,
+        step_func: "StepFunction",
         s_best_crossover: float,
         p_best_crossover: float,
         mutation: float,

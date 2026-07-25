@@ -4,7 +4,6 @@ import numpy as np
 
 from enum import Enum
 
-from pyzx.circuit import Circuit
 from pyzx.linalg import Mat2
 from .architecture import Architecture, create_fully_connected_architecture
 from .machine_learning import GeneticAlgorithm, ParticleSwarmOptimization
