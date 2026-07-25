@@ -60,6 +60,84 @@ var symbolGround = {
     }
 }
 
+function detect_collisions(graph, node_size, node_space, collision_markers) {
+    // Purge the old collision markers.
+    collision_markers.selectAll().remove()
+
+    // Used for clustering colliding nodes together.
+    const clustering = new Map();
+
+    const diameter = 2 * node_size;
+    // Comparison against the square of the diameter to avoid computing an expensive sqrt(..)
+    const diameter_squared = diameter**2;
+    // console.log(`Space size : ${node_space.size()} [ns:${node_size}, d:${diameter}, r^2:${diameter_squared}]`)
+
+    graph.nodes.forEach(function (d) {
+        // Initialisation for collision detection
+        // console.log(`Node : ${d.name}@(${d.x},${d.y})`)
+
+        // These four constants represent the boundaries of the box that must be explored for collisions.
+        const xmin = d.x - diameter; const xmax = d.x + diameter;
+        const ymin = d.y - diameter; const ymax = d.y + diameter;
+        node_space.visit((quadnode, xL, yT, xR, yB)=> {
+            // A leaf may contain either a single node or multiple coincident nodes
+            while (quadnode && !quadnode.length) {
+                // The node contained collides with d if it is closer than 2 * node_size
+                let node = quadnode.data;
+                let dx = node.x - d.x;
+                let dy = node.y - d.y;
+                let distance_squared = dx * dx + dy * dy;
+                if (distance_squared <= diameter_squared && node !== d) {
+                    // console.log(`> Collision : ${node.name}@(${node.x},${node.y})`)
+                    if (!clustering.has(d) && !clustering.has(node)) {
+                        const pair = [d, node];
+                        clustering.set(d, pair);
+                        clustering.set(node, pair);
+                    } else if (clustering.has(d) && !clustering.get(d).includes(node)) {
+                        clustering.get(d).push(node);
+                        clustering.set(node, clustering.get(d));
+                    } else if (clustering.has(node) && !clustering.get(node).includes(d)) {
+                        clustering.get(node).push(d);
+                        clustering.set(d, clustering.get(node));
+                    } else {
+                        const cluster1 = clustering.get(d);
+                        const cluster2 = clustering.get(node);
+                        if (cluster1 !== cluster2) {
+                            cluster2.forEach(n => {
+                                cluster1.push(n);
+                                clustering.set(n, cluster1);
+                            })
+                        }
+                    }
+                }
+                quadnode = quadnode.next;
+            }
+            // Don't explore the children quad-nodes if we are completely outside the neighbourhood of d.
+            return xR < xmin || xmax <= xL || yB < ymin || yT >= ymax;
+        });
+    });
+
+    const clusters = new Set(clustering.values())
+    console.log("Collision clusters found :")
+    clusters.forEach(cluster => {
+        let barycenter_x = 0;
+        let barycenter_y = 0;
+        cluster.forEach(n => {
+            barycenter_x += n.x;
+            barycenter_y += n.y;
+        })
+        let barycenter = [barycenter_x / cluster.length , barycenter_y / cluster.length]
+        console.log(`> Cluster@(${barycenter}) involving {${cluster.map(n => n.name)}}`)
+        collision_markers.append("circle")
+            .attr("cx", barycenter[0])
+            .attr("cy", barycenter[1])
+            .attr("r", 3 * node_size)
+            .attr("fill", "rgba(255, 0, 0, 0.5)")
+            .attr("stroke", "red")
+            .attr("stroke-dasharray", "4")
+    })
+}
+
 function showGraph(tag, graph, width, height, scale, node_size, auto_hbox, show_labels, scalar_str) {
     var ntab = {};
 
@@ -71,40 +149,11 @@ function showGraph(tag, graph, width, height, scale, node_size, auto_hbox, show_
         .y(node => node.y)
         .addAll(graph.nodes);
 
-    const diameter = 2 * node_size;
-    const diameter_squared = diameter**2; // Comparison against twice the radius squared to avoid sqrt(..)
-    console.log(`Space size : ${node_space.size()} [ns:${node_size}, d:${diameter}, r^2:${diameter_squared}]`)
     graph.nodes.forEach(function(d) {
         ntab[d.name] = d;
         d.selected = false;
         d.previouslySelected = false;
         d.nhd = [];
-
-        // Initialisation for collision detection
-        console.log(`Node : ${d.name}@(${d.x},${d.y})`)
-        d.colliding = false;
-
-        const xmin = d.x - diameter
-        const xmax = d.x + diameter
-        const ymin = d.y - diameter
-        const ymax = d.y + diameter
-        node_space.visit((quadnode, xL, yT, xR, yB)=> {
-            // A leaf may contain either a single node or multiple coincident nodes
-            while (quadnode && !quadnode.length) {
-                // The node contained collides with d if it is closer than 2 * node_size
-                let node = quadnode.data
-                let dx = node.x - d.x
-                let dy = node.y - d.y
-                let distance_squared = dx * dx + dy * dy
-                if (distance_squared <= diameter_squared && node.name !== d.name) {
-                    console.log(`> Collision : ${node.name}@(${node.x},${node.y})`)
-                    d.colliding = true;
-                }
-                quadnode = quadnode.next;
-            }
-            // Don't explore the children quadnodes if we are completely outside the neighbourhood of d.
-            return xR < xmin || xmax <= xL || yB < ymin || yT >= ymax;
-        });
     });
 
     var spiders_and_boundaries = graph.nodes.filter(function(d) {
@@ -163,6 +212,10 @@ function showGraph(tag, graph, width, height, scale, node_size, auto_hbox, show_
             d3.event.stopImmediatePropagation();
         }
     });
+
+    var collision_markers = canvas.append("g")
+        .attr("class", "collision")
+    detect_collisions(graph, node_size, node_space, collision_markers)
 
     var web = canvas.append("g")
         .attr("class", "web")
