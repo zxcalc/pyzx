@@ -71,17 +71,14 @@ function detect_collisions(graph, node_size, node_space, collision_markers, wind
 
     let colliding_nodes = 0
     graph.nodes.forEach(function (node) {
-        // Initialisation for collision detection
-        // console.log(`Node : ${d.name}@(${d.x},${d.y})`)
-
-        // These four constants represent the boundaries of the box that must be explored for collisions.
+        // These four constants represent the boundaries of the box that must be explored for colliding nodes.
         const xmin = node.x - diameter; const xmax = node.x + diameter;
         const ymin = node.y - diameter; const ymax = node.y + diameter;
         let collision_detected = false
         node_space.visit((quadnode, xL, yT, xR, yB) => {
             // A leaf may contain either a single node or multiple coincident nodes
             while (quadnode && !quadnode.length && !collision_detected) {
-                // The node collides with the one contained in the quadnode if they are closer than 2 * node_size
+                // The node collides with the one contained in the quadnode if they are closer than the diameter
                 let other = quadnode.data;
                 let dx = other.x - node.x;
                 let dy = other.y - node.y;
