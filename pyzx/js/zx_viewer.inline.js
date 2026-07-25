@@ -73,6 +73,9 @@ function detect_overlaps(graph, node_size, node_space, overlap_markers) {
 
     let nodes_overlapping = 0
     graph.nodes.forEach(function (node) {
+        let node_radius = node_size;
+        if (node.t === 0) { node_radius *= 0.5; }
+        else if (node.t === 4) { node_radius *= 0.25; }
         // These four constants represent the boundaries of the box that must be explored for overlapping nodes.
         const xmin = node.x - diameter; const xmax = node.x + diameter;
         const ymin = node.y - diameter; const ymax = node.y + diameter;
@@ -85,7 +88,11 @@ function detect_overlaps(graph, node_size, node_space, overlap_markers) {
                 let dx = other.x - node.x;
                 let dy = other.y - node.y;
                 let distance_squared = dx * dx + dy * dy;
-                if (distance_squared <= diameter_squared && other !== node) {
+                let other_radius = node_size;
+                if (other.t === 0) { other_radius *= 0.5; }
+                else if (other.t === 4) { other_radius *= 0.25; }
+                let minimal_distance_squared = (node_radius + other_radius)**2;
+                if (distance_squared <= minimal_distance_squared && other !== node) {
                     console.log(`> Overlap detected for ${node.name}@(${node.x},${node.y}) by ${other.name}`);
                     overlap_markers.append("circle")
                         .attr("cx", node.x)
