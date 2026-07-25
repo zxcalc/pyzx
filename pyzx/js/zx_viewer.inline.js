@@ -110,8 +110,8 @@ function detect_collisions(graph, node_size, node_space, collision_markers, wind
     if (colliding_nodes > 0) {
         console.log(`Colliding nodes detected : ${colliding_nodes}`)
         collision_markers.append("rect")
-            .attr("x", (window_width - 200) / 2)
-            .attr("y", 5)
+            .attr("x", 20)
+            .attr("y", 2)
             .attr("width", 200)
             .attr("height", 20)
             .attr("fill", "rgba(255, 255, 0, 1.0)")
@@ -119,8 +119,8 @@ function detect_collisions(graph, node_size, node_space, collision_markers, wind
             .attr("stroke-width", "2px")
             .attr("stroke-dasharray", "3");
         collision_markers.append("text")
-            .attr("x", window_width / 2)
-            .attr("y", 20)
+            .attr("x", 120)
+            .attr("y", 16)
             .attr("text-anchor", "middle")
             .text(`Colliding nodes detected : ${colliding_nodes}`)
             .style("fill", "black")
@@ -206,6 +206,7 @@ function showGraph(tag, graph, width, height, scale, node_size, auto_hbox, show_
         }
     });
 
+    // This container is used to store the markers that highlight node collisions.
     var collision_markers = canvas.append("g")
         .attr("class", "collision")
     detect_collisions(graph, node_size, node_space, collision_markers, width)
