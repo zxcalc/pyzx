@@ -21,14 +21,14 @@ from typing import Any, Protocol, Union
 from enum import Enum
 
 
-from ..circuit import Circuit, ZPhase, XPhase, CNOT
-from ..graph.graph_s import GraphS
-from ..linalg import Mat2, MatLike
-from ..routing.parity_maps import CNOT_tracker, Parity
-from ..routing.cnot_mapper import sequential_gauss, ElimMode, gauss
-from ..routing.steiner import steiner_reduce_column
-from ..routing.architecture import create_architecture, FULLY_CONNECTED, Architecture
-from ..utils import EdgeType, FractionLike, maxelements
+from pyzx.circuit import Circuit, ZPhase, XPhase, CNOT
+from pyzx.graph.graph_s import GraphS
+from pyzx.linalg import Mat2, MatLike
+from pyzx.routing.parity_maps import CNOT_tracker, Parity
+from pyzx.routing.cnot_mapper import sequential_gauss, ElimMode, gauss
+from pyzx.routing.steiner import steiner_reduce_column
+from pyzx.routing.architecture import create_architecture, FULLY_CONNECTED, Architecture
+from pyzx.utils import EdgeType, FractionLike, maxelements
 
 
 class RoutingMethod(Enum):

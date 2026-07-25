@@ -24,7 +24,7 @@ from numpy.typing import ArrayLike, ArrayLike, NDArray
 from pyzx.routing.parity_maps import CNOT_tracker
 
 from .cnot_mapper import StepFunction
-    
+
 
 class GeneticAlgorithm:
     """

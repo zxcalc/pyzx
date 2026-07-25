@@ -15,7 +15,8 @@
 # limitations under the License.
 
 
-from typing import Any, Iterable, Iterator
+from collections.abc import Iterable, Iterator
+from typing import Any
 from pyzx.circuit import Circuit, Gate, gate_types, CNOT
 from pyzx.linalg import Z2, Mat2
 

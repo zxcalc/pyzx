@@ -4,18 +4,11 @@ import numpy as np
 
 from enum import Enum
 
-from numpy.typing import NDArray
-
 from pyzx.circuit import Circuit
-
-from ..linalg import Mat2
-from .architecture import (
-    Architecture,
-    create_fully_connected_architecture,
-)
-from .parity_maps import CNOT_tracker
+from pyzx.linalg import Mat2
+from .architecture import Architecture, create_fully_connected_architecture
 from .machine_learning import GeneticAlgorithm, ParticleSwarmOptimization
-
+from .parity_maps import CNOT_tracker
 from .steiner import rec_steiner_gauss as steiner_gauss
 
 

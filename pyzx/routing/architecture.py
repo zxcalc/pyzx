@@ -15,16 +15,16 @@
 # limitations under the License.
 
 
+from collections.abc import Iterator, Sequence
 import math
 import itertools
 import sys
-from typing import Any, Iterator, Literal, NoReturn, Sequence
+from typing import Any, Literal, NoReturn
 
 from pyzx.graph.base import BaseGraph
 if __name__ == '__main__':
     sys.path.append('..')
 from ..graph.graph import Graph
-#from pyzx.graph.base import BaseGraph # TODO fix the right graph import - one of many - right backend etc
 
 import numpy as np
 
