@@ -17,7 +17,7 @@
 
 from collections.abc import Iterable, Iterator
 from typing import Any
-from pyzx.circuit import Circuit, Gate, gate_types, CNOT
+from pyzx.circuit import Circuit, Gate, gate_types, CNOT, CZ
 from pyzx.linalg import Z2, Mat2
 
 import numpy as np
@@ -54,7 +54,7 @@ class CNOT_tracker(Circuit):
     def count_cnots(self) -> int:
         """Returns the number of CNOT gates in the tracker."""
         return len(
-            [g for g in self.gates if hasattr(g, "name") and g.name in ["CNOT", "CZ"]]
+            [g for g in self.gates if isinstance(g, (CNOT, CZ))]
         )
 
     def cnot_depth(self) -> int:
@@ -62,13 +62,13 @@ class CNOT_tracker(Circuit):
         depth = 1
         previous_gates: list[int] = []
         for g in self.gates:
-            if hasattr(g, "name") and g.name in ["CNOT", "CZ"]:
-                if g.control in previous_gates or g.target in previous_gates:  # type: ignore # Overlapping gate
+            if isinstance(g, (CNOT, CZ)):
+                if g.control in previous_gates or g.target in previous_gates: # Overlapping gate
                     # Start a new CNOT layer
                     previous_gates = []
                     depth += 1
                 else:
-                    previous_gates += [g.control, g.target]  # type: ignore
+                    previous_gates += [g.control, g.target]
         return depth
 
     def row_add(self, q0: int, q1: int) -> None:

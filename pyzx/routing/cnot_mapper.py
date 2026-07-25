@@ -242,7 +242,7 @@ def permuted_gauss(
     x: CNOT_tracker | None = None,
     y: CNOT_tracker | None = None,
     **kwargs: Any,
-) -> tuple[list[int], Circuit, int]:
+) -> tuple[list[int], CNOT_tracker, int]:
     """
     Applies gaussian elimination to the given matrix, finding an optimal
     permutation of the matrix to reduce the number of CNOT gates.
@@ -381,7 +381,7 @@ def sequential_gauss(
             )
             # if not col and not row:
             #    perm = current_perm
-            circuits.append(circuit)  # type: ignore # Store the extracted circuit
+            circuits.append(circuit)  # Store the extracted circuit
             # Update the new permutation
             current_perm = list(perm)
             if col:

@@ -21,14 +21,14 @@ from typing import Any, Protocol, Union
 from enum import Enum
 
 
-from pyzx.circuit import Circuit, ZPhase, XPhase, CNOT
+from pyzx.circuit import Circuit, ZPhase, XPhase, CNOT, CZ
 from pyzx.graph.graph_s import GraphS
 from pyzx.linalg import Mat2, MatLike
-from pyzx.routing.parity_maps import CNOT_tracker, Parity
-from pyzx.routing.cnot_mapper import sequential_gauss, ElimMode, gauss
-from pyzx.routing.steiner import steiner_reduce_column
-from pyzx.routing.architecture import create_architecture, FULLY_CONNECTED, Architecture
 from pyzx.utils import EdgeType, FractionLike, maxelements
+from .architecture import create_architecture, FULLY_CONNECTED, Architecture
+from .cnot_mapper import sequential_gauss, ElimMode, gauss
+from .parity_maps import CNOT_tracker, Parity
+from .steiner import steiner_reduce_column
 
 
 class RoutingMethod(Enum):
@@ -817,10 +817,8 @@ class PhasePoly:
             for gate in c.gates:
                 # CNOTs have been mapped already, do not need to be adjusted!
                 circuit.add_gate(gate)
-                try:
-                    current_parities.row_add(gate.control, gate.target)  # type: ignore
-                except AttributeError:
-                    pass
+                if isinstance(gate, (CNOT, CZ)):
+                    current_parities.row_add(gate.control, gate.target)
             # Place the rotations at each parity
             for target, p in enumerate(current_parities.data):
                 parity = Parity(p)
