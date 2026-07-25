@@ -58,7 +58,7 @@ hamiltonian_path_architectures = [FULLY_CONNECTED, LINE, CIRCLE, SQUARE, IBM_QX4
                 IBM_QX5, IBM_Q20_TOKYO, RIGETTI_8Q_AGAVE, RIGETTI_16Q_ASPEN,
                 IBMQ_POUGHKEEPSIE]
 
-class Architecture():
+class Architecture:
     """
     Class that represents the architecture of the qubits to be taken into account when routing.
     """

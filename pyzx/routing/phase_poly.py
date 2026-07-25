@@ -525,7 +525,7 @@ class PhasePoly:
 
     def partition(self, skip_output_parities: bool = True, optimize_parity_order: bool = False) -> list[list[Parity]]:
         """
-        Uses matroid partitioning algorithm to split the parities into independent partiotions
+        Uses matroid partitioning algorithm to split the parities into independent partitions
 
         :param skip_output_parities: If True, ignore the out_par parities, default True
         :param optimize_parity_order: If True, reorder parities for more optimal placement, default False

@@ -83,7 +83,7 @@ class FitnessFunction:
         """
         Creates and returns a fitness function using the given metric.
 
-        :param metric_func: The metric to use for the fitness function
+        :param metric: The metric to use for the fitness function
         :param mode: The type of Gaussian elimination to be used
         :param matrix: A Mat2 parity map to route.
         :param architecture: The architecture to take into account when routing
