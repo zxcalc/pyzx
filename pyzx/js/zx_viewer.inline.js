@@ -60,32 +60,34 @@ var symbolGround = {
     }
 }
 
-function detect_collisions(graph, node_size, node_space, collision_markers, window_width) {
-    // Purge the old collision markers.
-    collision_markers.selectAll("*").remove()
+// Function to detect overlapping nodes. The approach uses a quadtree of nodes that can be efficiently queried
+// to consider only the nodes in a region of interest around some node. See https://d3js.org/d3-quadtree.
+function detect_overlaps(graph, node_size, node_space, overlap_markers) {
+    // Purge the old overlap markers.
+    overlap_markers.selectAll("*").remove()
 
     const diameter = 2 * node_size;
     // Comparison against the square of the diameter to avoid computing an expensive sqrt(..)
     const diameter_squared = diameter**2;
     // console.log(`Space size : ${node_space.size()} [ns:${node_size}, d:${diameter}, r^2:${diameter_squared}]`)
 
-    let colliding_nodes = 0
+    let nodes_overlapping = 0
     graph.nodes.forEach(function (node) {
-        // These four constants represent the boundaries of the box that must be explored for colliding nodes.
+        // These four constants represent the boundaries of the box that must be explored for overlapping nodes.
         const xmin = node.x - diameter; const xmax = node.x + diameter;
         const ymin = node.y - diameter; const ymax = node.y + diameter;
-        let collision_detected = false
+        let overlap_detected = false
         node_space.visit((quadnode, xL, yT, xR, yB) => {
             // A leaf may contain either a single node or multiple coincident nodes
-            while (quadnode && !quadnode.length && !collision_detected) {
-                // The node collides with the one contained in the quadnode if they are closer than the diameter
+            while (quadnode && !quadnode.length && !overlap_detected) {
+                // The node overlaps with the one contained in the quadnode if they are closer than the diameter
                 let other = quadnode.data;
                 let dx = other.x - node.x;
                 let dy = other.y - node.y;
                 let distance_squared = dx * dx + dy * dy;
                 if (distance_squared <= diameter_squared && other !== node) {
-                    console.log(`> Collision detected for ${node.name}@(${node.x},${node.y}) : ${other.name}`);
-                    collision_markers.append("circle")
+                    console.log(`> Overlap detected for ${node.name}@(${node.x},${node.y}) by ${other.name}`);
+                    overlap_markers.append("circle")
                         .attr("cx", node.x)
                         .attr("cy", node.y)
                         .attr("r", 2.25 * node_size)
@@ -93,20 +95,20 @@ function detect_collisions(graph, node_size, node_space, collision_markers, wind
                         .attr("stroke", "black")
                         .attr("stroke-width", "2px")
                         .attr("stroke-dasharray", "3");
-                    colliding_nodes += 1;
-                    // Don't search further once a collision has been detected for the node
-                    collision_detected = true
+                    nodes_overlapping += 1;
+                    // Don't search further once an overlap has been detected for the node
+                    overlap_detected = true
                 }
                 quadnode = quadnode.next;
             }
-            // Don't explore this branch if we are completely outside the neighbourhood of d or a collision was detected
-            return collision_detected || xR < xmin || xmax < xL || yB < ymin || ymax < yT;
+            // Don't explore this branch if we are completely outside the neighbourhood of d or an overlap was detected
+            return overlap_detected || xR < xmin || xmax < xL || yB < ymin || ymax < yT;
         });
     });
 
-    if (colliding_nodes > 0) {
-        console.log(`Colliding nodes detected : ${colliding_nodes}`)
-        collision_markers.append("rect")
+    if (nodes_overlapping > 0) {
+        console.log(`Overlapping nodes detected : ${nodes_overlapping}`)
+        overlap_markers.append("rect")
             .attr("x", 20)
             .attr("y", 2)
             .attr("width", 200)
@@ -115,11 +117,11 @@ function detect_collisions(graph, node_size, node_space, collision_markers, wind
             .attr("stroke", "black")
             .attr("stroke-width", "2px")
             .attr("stroke-dasharray", "3");
-        collision_markers.append("text")
+        overlap_markers.append("text")
             .attr("x", 120)
             .attr("y", 16)
             .attr("text-anchor", "middle")
-            .text(`Colliding nodes detected : ${colliding_nodes}`)
+            .text(`Overlapping nodes detected : ${nodes_overlapping}`)
             .style("fill", "black")
             .style("font-family", "sans-serif")
             .style("font-size", "14px");
@@ -133,7 +135,7 @@ function showGraph(tag, graph, width, height, scale, node_size, auto_hbox, show_
 
     var groundOffset = 2.5 * node_size;
 
-    // Populate the quadtree of nodes for collision detection.
+    // Populate the quadtree of nodes for overlap detection.
     const node_space = d3.quadtree()
         .x(node => node.x)
         .y(node => node.y)
@@ -203,10 +205,10 @@ function showGraph(tag, graph, width, height, scale, node_size, auto_hbox, show_
         }
     });
 
-    // This container is used to store the markers that highlight node collisions.
-    var collision_markers = canvas.append("g")
-        .attr("class", "collision")
-    detect_collisions(graph, node_size, node_space, collision_markers, width)
+    // This container is used to store the markers that highlight overlapping nodes.
+    var overlap_markers = canvas.append("g")
+        .attr("class", "overlap")
+    detect_overlaps(graph, node_size, node_space, overlap_markers)
 
     var web = canvas.append("g")
         .attr("class", "web")
@@ -439,8 +441,8 @@ function showGraph(tag, graph, width, height, scale, node_size, auto_hbox, show_
                 .attr("d", web_curve);
         })
         .on("end", () =>
-            // Once the user releases the node, we can perform a new round of collision detection.
-            detect_collisions(graph, node_size, node_space, collision_markers, width)
+            // Once the user releases the node, we can perform a new round of overlapping nodes detection.
+            detect_overlaps(graph, node_size, node_space, overlap_markers)
         );
 
     node.on("mousedown", function(d) {
