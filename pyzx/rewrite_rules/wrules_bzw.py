@@ -23,6 +23,7 @@ cfr. Section 2.2.2 in https://arxiv.org/pdf/2302.12135
 
 __all__ = [
     'check_bialgebra_zw_forward',
+    'check_bialgebra_zw_reverse',
 ]
 
 import logging
@@ -35,6 +36,8 @@ from pyzx.graph.base import BaseGraph, VT, ET
 
 console = logging.getLogger(__name__)
 
+# TODO: is it necessary to check that a W_OUTPUT is connected to exactly one W_INPUT ?
+# TODO: is it necessary to check that a W_INPUT is connected to exactly two neighbors ?
 def check_bialgebra_zw_forward(g: BaseGraph[VT,ET], ws: Tuple[VT,VT], zs: Tuple[VT,VT]) -> bool:
     """Checks if the BZW rule can be applied in a forward way to two pairs of W and Z vertices."""
 
@@ -64,7 +67,23 @@ def check_bialgebra_zw_forward(g: BaseGraph[VT,ET], ws: Tuple[VT,VT], zs: Tuple[
         # console.info("The W and Z-vertices cannot be connected among themselves")
         return False
 
-    # TODO: Must each W_OUTPUT be connected to exactly one W_INPUT ?
-
     # console.info(f"BZW-rule applicable to vertices {ws} and {zs}.")
+    return True
+
+def check_bialgebra_zw_reverse(g: BaseGraph[VT,ET], w: VT, z: VT) -> bool:
+    # Both vertices must be from the graph
+    if w not in g.vertices() or z not in g.vertices():
+        return False
+
+    # The vertices involved must be; one W_OUTPUT and one Z with a phase of 0
+    if g.type(w) != VertexType.W_OUTPUT or g.type(z) != VertexType.Z or g.phase(z) != 0:
+        return False
+
+    # The Z vertex must be connected to the W vertex through a W_INPUT with SIMPLE edges
+    if not any(
+        g.num_edges(z, wi) == 1 and g.edge_type(g.edge(z, wi)) == EdgeType.SIMPLE
+        for wi in g.neighbors(w) if g.edge_type(g.edge(w, wi)) == EdgeType.SIMPLE and g.type(wi) == VertexType.W_INPUT
+    ):
+        return False
+
     return True

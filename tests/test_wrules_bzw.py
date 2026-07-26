@@ -28,11 +28,11 @@ if __name__ == '__main__':
 from pyzx.graph import Graph
 from pyzx.utils import VertexType
 from pyzx.rewrite_rules.wrules_bzw import (
-    check_bialgebra_zw_forward
+    check_bialgebra_zw_forward, check_bialgebra_zw_reverse
 )
 
 
-class TestCheckBialgebraZW(unittest.TestCase):
+class TestCheckForwardBialgebraZW(unittest.TestCase):
     """Tests for check_bialgebra_zw_forward."""
 
     @staticmethod
@@ -61,13 +61,13 @@ class TestCheckBialgebraZW(unittest.TestCase):
 
         return g, (wo0,wo1), (z0,z1)
 
-    def test_zw_pair_phase_free(self):
+    def test_zw_pairs_phase_free(self):
         """Z-W pair with zero phases should match."""
         g, ws, zs = self.__prepare_bialgebra_zw_graph()
 
         self.assertTrue(check_bialgebra_zw_forward(g, ws, zs))
 
-    def test_zw_pair_phase_nonzero(self):
+    def test_zw_pairs_phase_nonzero(self):
         """Z-W pair with nonzero phases should not match."""
         g, ws, zs = self.__prepare_bialgebra_zw_graph()
 
@@ -75,7 +75,7 @@ class TestCheckBialgebraZW(unittest.TestCase):
 
         self.assertFalse(check_bialgebra_zw_forward(g, ws, zs))
 
-    def test_zw_pair_missing_edge(self):
+    def test_zw_pairs_missing_edge(self):
         """Z-W pair with nonzero phases should not match."""
         g, ws, zs = self.__prepare_bialgebra_zw_graph()
 
@@ -83,13 +83,58 @@ class TestCheckBialgebraZW(unittest.TestCase):
 
         self.assertFalse(check_bialgebra_zw_forward(g, ws, zs))
 
-    def test_zw_pair_hadamard_edge(self):
+    def test_zw_pairs_hadamard_edge(self):
         """Z-W pair with some Hadamard edge should not match."""
         g, ws, zs = self.__prepare_bialgebra_zw_graph()
 
         g.set_edge_type(g.edge(ws[0], zs[1]), EdgeType.HADAMARD)
 
         self.assertFalse(check_bialgebra_zw_forward(g, ws, zs))
+
+class TestCheckReverseBialgebraZW(unittest.TestCase):
+    """Tests for check_bialgebra_zw_reverse."""
+
+    @staticmethod
+    def __prepare_bialgebra_zw_graph():
+        g = Graph()
+
+        i0 = g.add_vertex(qubit=0, row=0)
+        i1 = g.add_vertex(qubit=1, row=0)
+        z = g.add_vertex(ty=VertexType.Z, qubit=0.5, row=1)
+        wi = g.add_vertex(ty=VertexType.W_INPUT, qubit=0.5, row=2)
+        wo = g.add_vertex(ty=VertexType.W_OUTPUT, qubit=0.5, row=3)
+        o0 = g.add_vertex(qubit=0, row=4)
+        o1 = g.add_vertex(qubit=1, row=4)
+
+        g.add_edge((i0, z))
+        g.add_edge((i1, z))
+        g.add_edge((z, wi))
+        g.add_edge((wi, wo))
+        g.add_edge((wo, o0))
+        g.add_edge((wo, o1))
+
+        return g, z, wi, wo
+
+    def test_zw_pair_phase_free(self):
+        """Z-W pair with zero phase should match."""
+        g, z, wi, wo = self.__prepare_bialgebra_zw_graph()
+        self.assertTrue(check_bialgebra_zw_reverse(g, wo, z))
+
+    def test_zw_pair_phase_nonzero(self):
+        """Z-W pair with nonzero phases should not match."""
+        g, z, wi, wo = self.__prepare_bialgebra_zw_graph()
+
+        g.set_phase(z, 1)
+
+        self.assertFalse(check_bialgebra_zw_reverse(g, wo, z))
+
+    def test_zw_pair_missing_edge(self):
+        """Z-W pair with nonzero phases should not match."""
+        g, z, wi, wo = self.__prepare_bialgebra_zw_graph()
+
+        g.remove_edge(g.edge(wi, z))
+
+        self.assertFalse(check_bialgebra_zw_reverse(g, wo, z))
 
 if __name__ == '__main__':
     unittest.main()
