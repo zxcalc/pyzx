@@ -24,6 +24,7 @@ cfr. Section 2.2.2 in https://arxiv.org/pdf/2302.12135
 __all__ = [
     'check_bialgebra_zw_forward',
     'check_bialgebra_zw_reverse',
+    'apply_bialgebra_zw_forward',
 ]
 
 import logging
@@ -85,5 +86,57 @@ def check_bialgebra_zw_reverse(g: BaseGraph[VT,ET], w: VT, z: VT) -> bool:
         for wi in g.neighbors(w) if g.edge_type(g.edge(w, wi)) == EdgeType.SIMPLE and g.type(wi) == VertexType.W_INPUT
     ):
         return False
+
+    return True
+
+def apply_bialgebra_zw_forward(g: BaseGraph[VT,ET], ws: Tuple[VT,VT], zs: Tuple[VT,VT]) -> bool:
+    if not check_bialgebra_zw_forward(g, ws, zs):
+        return False
+
+    # TODO: is a phase of 0 or pi allowed on the Z-spiders as in the Bialgebra rule ?
+    # TODO: figure out the qubit and row for those new vertices
+    new_z = g.add_vertex(ty=VertexType.Z)
+    new_wi = g.add_vertex(ty=VertexType.W_INPUT)
+    new_wo = g.add_vertex(ty=VertexType.W_OUTPUT)
+    g.add_edge( (new_z,new_wi) )
+    g.add_edge( (new_wi,new_wo) )
+
+    row_z = 0
+    qubit_z = 0
+    row_wi = 0
+    qubit_wi = 0
+
+    # Connect the two input vertices (i.e. connected through W_INPUTs into W-vertices) to the new Z-spider
+    for w in ws:
+        wi = next(filter(lambda nb: g.type(nb) == VertexType.W_INPUT, g.neighbors(w)))
+        i = next(filter(lambda nb: g.type(nb) != VertexType.W_OUTPUT, g.neighbors(wi)))
+        g.add_edge( (i,new_z) )
+        row_z += g.row(wi)
+        qubit_z += g.qubit(wi)
+        row_wi += g.row(w)
+        qubit_wi += g.qubit(w)
+        g.remove_vertex(wi)
+        g.remove_vertex(w)
+
+    # Position the new Z-spider halfway between the old W_INPUT vertices
+    g.set_row(new_z, row_z / 2)
+    g.set_qubit(new_z, qubit_z / 2)
+    # Position the new W_INPUT halfway between the old W_OUTPUT vertices
+    g.set_row(new_wi, row_wi / 2)
+    g.set_qubit(new_wi, qubit_wi / 2)
+
+    row_wo = 0
+    qubit_wo = 0
+    # Connect the two output vertices (i.e. connected to Z-vertices except the W_OUTPUTs) to the new W_OUTPUT
+    for z in zs:
+        o = next(filter(lambda nb: g.type(nb) != VertexType.W_OUTPUT, g.neighbors(z)))
+        g.add_edge( (new_wo,o) )
+        row_wo += g.row(z)
+        qubit_wo += g.qubit(z)
+        g.remove_vertex(z)
+
+    # Position the new W_OUTPUT halfway between the old Z-spiders
+    g.set_row(new_wo, row_wo / 2)
+    g.set_qubit(new_wo, qubit_wo / 2)
 
     return True
