@@ -19,7 +19,7 @@ import itertools
 import unittest
 import sys
 
-from pyzx import EdgeType
+from pyzx import EdgeType, compare_tensors
 
 if __name__ == '__main__':
     sys.path.append('..')
@@ -28,110 +28,177 @@ if __name__ == '__main__':
 from pyzx.graph import Graph
 from pyzx.utils import VertexType
 from pyzx.rewrite_rules.wrules_bzw import (
-    check_bialgebra_zw_forward, check_bialgebra_zw_reverse
+    check_bialgebra_zw_reverse, check_bialgebra_zw_forward, apply_bialgebra_zw_reverse, apply_bialgebra_zw_forward
 )
 
+def prepare_bialgebra_zw_reverse_graph(qubits, phase):
+    """Prepare a zx-graph on which the reverse BZW rule can be applied.
+    This is the reduction of a complete (m,n)-bipartite subgraph down to a single edge."""
+    g = Graph()
+    wos = []
+    zs = []
+    for q in range(qubits):
+        i = g.add_vertex(qubit=q, row=0)
+        wi = g.add_vertex(ty=VertexType.W_INPUT, qubit=q, row=1)
+        wo = g.add_vertex(ty=VertexType.W_OUTPUT, qubit=q, row=2)
+        z = g.add_vertex(ty=VertexType.Z, qubit=q, row=3)
+        g.set_phase(z, phase)
+        o = g.add_vertex(qubit=q, row=4)
 
-class TestCheckForwardBialgebraZW(unittest.TestCase):
-    """Tests for check_bialgebra_zw_forward."""
+        wos.append(wo)
+        zs.append(z)
 
-    @staticmethod
-    def __prepare_bialgebra_zw_graph():
-        g = Graph()
+        g.add_edge((i, wi))
+        g.add_edge((wi, wo), EdgeType.W_IO)
+        g.add_edge((z, o))
 
-        i0 = g.add_vertex(qubit=0, row=0)
-        i1 = g.add_vertex(qubit=1, row=0)
-        wi0 = g.add_vertex(ty=VertexType.W_INPUT, qubit=0, row=1)
-        wi1 = g.add_vertex(ty=VertexType.W_INPUT, qubit=1, row=1)
-        wo0 = g.add_vertex(ty=VertexType.W_OUTPUT, qubit=0, row=2)
-        wo1 = g.add_vertex(ty=VertexType.W_OUTPUT, qubit=1, row=2)
-        z0 = g.add_vertex(ty=VertexType.Z, qubit=0, row=3)
-        z1 = g.add_vertex(ty=VertexType.Z, qubit=1, row=3)
-        o0 = g.add_vertex(qubit=0, row=4)
-        o1 = g.add_vertex(qubit=1, row=4)
+    for wo, z in itertools.product(wos, zs):
+        g.add_edge((wo, z))
 
-        g.add_edge((i0, wi0))
-        g.add_edge((i1, wi1))
-        g.add_edge((wi0, wo0), EdgeType.W_IO)
-        g.add_edge((wi1, wo1), EdgeType.W_IO)
-        for w, z in itertools.product([wo0, wo1], [z0, z1]):
-            g.add_edge((w, z))
-        g.add_edge((z0, o0))
-        g.add_edge((z1, o1))
+    g.auto_detect_io()
+    return g, wos, zs
 
-        return g, (wo0,wo1), (z0,z1)
+def prepare_bialgebra_zw_forward_graph(qubits, phase):
+    """Prepare a zx-graph on which the forward BZW rule can be applied.
+    This is the expansion of a single edge up to a complete (m,n)-bipartite subgraph."""
 
-    def test_zw_pairs_phase_free(self):
-        """Z-W pair with zero phases should match."""
-        g, ws, zs = self.__prepare_bialgebra_zw_graph()
-        self.assertTrue(check_bialgebra_zw_forward(g, ws, zs))
+    g = Graph()
+    average_qubit = (qubits - 1) / 2
+    z = g.add_vertex(ty=VertexType.Z, qubit=average_qubit, row=1)
+    g.set_phase(z, phase)
+    wi = g.add_vertex(ty=VertexType.W_INPUT, qubit=average_qubit, row=2)
+    wo = g.add_vertex(ty=VertexType.W_OUTPUT, qubit=average_qubit, row=3)
 
-    def test_zw_pairs_identical_phases(self):
-        """Z-W pair with nonzero phases should not match."""
-        g, ws, zs = self.__prepare_bialgebra_zw_graph()
-        g.set_phase(zs[0], 1)
-        g.set_phase(zs[1], 1)
-        self.assertTrue(check_bialgebra_zw_forward(g, ws, zs))
+    g.add_edge((z, wi))
+    g.add_edge((wi, wo), EdgeType.W_IO)
 
-    def test_zw_pairs_different_phases(self):
-        """Z-W pair with nonzero phases should not match."""
-        g, ws, zs = self.__prepare_bialgebra_zw_graph()
-        g.set_phase(zs[0], 0)
-        g.set_phase(zs[1], 1)
-        self.assertFalse(check_bialgebra_zw_forward(g, ws, zs))
+    for q in range(qubits):
+        i = g.add_vertex(qubit=q, row=0)
+        g.add_edge((i, z))
+        o = g.add_vertex(qubit=q, row=4)
+        g.add_edge((wo, o))
 
-    def test_zw_pairs_missing_edge(self):
-        """Z-W pair not connected by a complete (2,2)-bipartite pattern should not match."""
-        g, ws, zs = self.__prepare_bialgebra_zw_graph()
-        g.remove_edge(g.edge(ws[0], zs[1]))
-        self.assertFalse(check_bialgebra_zw_forward(g, ws, zs))
-
-    def test_zw_pairs_hadamard_edge(self):
-        """Z-W pair not connected by a complete (2,2)-bipartite pattern of SIMPLE edges should not match."""
-        g, ws, zs = self.__prepare_bialgebra_zw_graph()
-        g.set_edge_type(g.edge(ws[0], zs[1]), EdgeType.HADAMARD)
-        self.assertFalse(check_bialgebra_zw_forward(g, ws, zs))
+    g.auto_detect_io()
+    return g, z, wi, wo
 
 class TestCheckReverseBialgebraZW(unittest.TestCase):
-    """Tests for check_bialgebra_zw_reverse."""
+    """Tests for check_bialgebra_zw_reverse and apply_bialgebra_zw_reverse."""
 
-    @staticmethod
-    def __prepare_bialgebra_zw_graph():
-        g = Graph()
+    def test_base_case(self):
+        """Z-W pattern of base case should match."""
+        g, wos, zs = prepare_bialgebra_zw_reverse_graph(qubits = 2, phase = 0)
+        self.assertTrue(check_bialgebra_zw_reverse(g, wos, zs))
 
-        i0 = g.add_vertex(qubit=0, row=0)
-        i1 = g.add_vertex(qubit=1, row=0)
-        z = g.add_vertex(ty=VertexType.Z, qubit=0.5, row=1)
-        wi = g.add_vertex(ty=VertexType.W_INPUT, qubit=0.5, row=2)
-        wo = g.add_vertex(ty=VertexType.W_OUTPUT, qubit=0.5, row=3)
-        o0 = g.add_vertex(qubit=0, row=4)
-        o1 = g.add_vertex(qubit=1, row=4)
+    def test_base_case_4_qubits(self):
+        """Z-W pattern with 4 qubits should match."""
+        g, wos, zs = prepare_bialgebra_zw_reverse_graph(qubits = 4, phase = 0)
+        self.assertTrue(check_bialgebra_zw_reverse(g, wos, zs))
 
-        g.add_edge((i0, z))
-        g.add_edge((i1, z))
-        g.add_edge((z, wi))
-        g.add_edge((wi, wo), EdgeType.W_IO)
-        g.add_edge((wo, o0))
-        g.add_edge((wo, o1))
+    def test_identical_phases(self):
+        """Z-W pattern where Z-spiders have identical phases should match."""
+        g, wos, zs = prepare_bialgebra_zw_reverse_graph(qubits = 3, phase = 1)
+        self.assertTrue(check_bialgebra_zw_reverse(g, wos, zs))
 
-        return g, z, wi, wo
+    def test_different_phases(self):
+        """Z-W pattern where Z-spiders have different phases should not match."""
+        g, wos, zs = prepare_bialgebra_zw_reverse_graph(qubits = 3, phase = 0)
+        g.set_phase(zs[0], 1)
+        self.assertFalse(check_bialgebra_zw_reverse(g, wos, zs))
 
-    def test_zw_pair_phase_free(self):
+    def test_incomplete_bipartite_pattern(self):
+        """Z-W not connected by a complete bipartite pattern should not match."""
+        g, wos, zs = prepare_bialgebra_zw_reverse_graph(qubits = 2, phase = 0)
+        g.remove_edge(g.edge(wos[0], zs[1]))
+        self.assertFalse(check_bialgebra_zw_reverse(g, wos, zs))
+
+    def test_complete_bipartite_subpattern(self):
+        """Z-W with a complete (3,3)-bipartite pattern but a subpattern requested should not match."""
+        g, wos, zs = prepare_bialgebra_zw_reverse_graph(qubits = 3, phase = 0)
+        self.assertFalse(check_bialgebra_zw_reverse(g, wos[:2], zs[:2]))
+
+    def test_hadamard_edge(self):
+        """Z-W pattern with a Hadamard edge in the complete bipartite pattern should not match."""
+        g, wos, zs = prepare_bialgebra_zw_reverse_graph(qubits = 2, phase = 0)
+        g.set_edge_type(g.edge(wos[0], zs[1]), EdgeType.HADAMARD)
+        self.assertFalse(check_bialgebra_zw_reverse(g, wos, zs))
+
+    def test_extra_neighbour(self):
+        """Z-W pattern with two extra neighbours should not match."""
+        g, wos, zs = prepare_bialgebra_zw_reverse_graph(qubits = 3, phase = 0)
+        extra = g.add_vertex(qubit=4, row=0)
+        g.add_edge( (zs[0], extra) )
+        self.assertFalse(check_bialgebra_zw_reverse(g, wos, zs))
+
+    def test_equivalence_phase_free(self):
+        """Z-W pattern with same number of qubits should match."""
+        g_start, wos, zs = prepare_bialgebra_zw_reverse_graph(qubits = 3, phase = 0)
+        g_final = g_start.copy()
+        apply_bialgebra_zw_reverse(g_final, wos, zs)
+
+        self.assertTrue(compare_tensors(g_start, g_final, preserve_scalar=True))
+
+    def test_equivalence_nonzero_phase(self):
+        """Z-W pattern with same phase should match."""
+        g_start, wos, zs = prepare_bialgebra_zw_reverse_graph(qubits = 3, phase = 1)
+        g_final = g_start.copy()
+        apply_bialgebra_zw_reverse(g_final, wos, zs)
+
+        self.assertTrue(compare_tensors(g_start, g_final, preserve_scalar=True))
+
+    def test_inequivalence_different_qubits(self):
+        """Z-W pattern with different number of qubits should not match."""
+        g_start, wos, zs = prepare_bialgebra_zw_reverse_graph(qubits = 3, phase = 0)
+        g_final, z, wi, wo = prepare_bialgebra_zw_forward_graph(qubits = 2, phase = 0)
+
+        self.assertFalse(compare_tensors(g_start, g_final, preserve_scalar=True))
+
+    def test_inequivalence_different_phase(self):
+        """Z-W pattern with different phases should not match."""
+        g_start, wos, zs = prepare_bialgebra_zw_reverse_graph(qubits = 3, phase = 0)
+        g_final, z, wi, wo = prepare_bialgebra_zw_forward_graph(qubits = 3, phase = 1)
+
+        self.assertFalse(compare_tensors(g_start, g_final, preserve_scalar=True))
+
+class TestCheckForwardBialgebraZW(unittest.TestCase):
+    """Tests for check_bialgebra_zw_forward and apply_bialgebra_zw_forward."""
+
+    def test_base_case(self):
         """Z-W pair with zero phase should match."""
-        g, z, wi, wo = self.__prepare_bialgebra_zw_graph()
-        self.assertTrue(check_bialgebra_zw_reverse(g, wo, z))
+        g, z, wi, wo = prepare_bialgebra_zw_forward_graph(qubits = 2, phase = 0)
+        self.assertTrue(check_bialgebra_zw_forward(g, wo, z))
 
-    def test_zw_pair_phase_nonzero(self):
+    def test_base_case_4_qubits(self):
         """Z-W pair with nonzero phases should not match."""
-        g, z, wi, wo = self.__prepare_bialgebra_zw_graph()
-        g.set_phase(z, 1)
-        self.assertTrue(check_bialgebra_zw_reverse(g, wo, z))
+        g, z, wi, wo = prepare_bialgebra_zw_forward_graph(qubits = 4, phase = 0)
+        self.assertTrue(check_bialgebra_zw_forward(g, wo, z))
 
-    def test_zw_pair_missing_edge(self):
+    def test_base_case_nonzero_phase(self):
+        """Z-W pair with nonzero phases should not match."""
+        g, z, wi, wo = prepare_bialgebra_zw_forward_graph(qubits = 3, phase = 1)
+        self.assertTrue(check_bialgebra_zw_forward(g, wo, z))
+
+    def test_missing_edge(self):
         """Z-W pair not connected through a W_INPUT should not match."""
-        g, z, wi, wo = self.__prepare_bialgebra_zw_graph()
+        g, z, wi, wo = prepare_bialgebra_zw_forward_graph(qubits = 3, phase = 0)
         g.remove_edge(g.edge(wi, z))
-        self.assertFalse(check_bialgebra_zw_reverse(g, wo, z))
+        self.assertFalse(check_bialgebra_zw_forward(g, wo, z))
+
+    def test_equivalence_phase_free(self):
+        """Z-W pattern with same number of qubits should match."""
+        g_start, z, wi, wo = prepare_bialgebra_zw_forward_graph(qubits = 3, phase = 0)
+        g_final = g_start.copy()
+        apply_bialgebra_zw_forward(g_final, z, wo)
+
+        self.assertTrue(compare_tensors(g_start, g_final, preserve_scalar=True))
+
+    def test_equivalence_nonzero_phase(self):
+        """Z-W pattern with identical non-zero phases should match."""
+        g_start, z, wi, wo = prepare_bialgebra_zw_forward_graph(qubits = 3, phase = 1)
+        g_final = g_start.copy()
+        apply_bialgebra_zw_forward(g_final, z, wo)
+
+        self.assertTrue(compare_tensors(g_start, g_final, preserve_scalar=True))
+
 
 if __name__ == '__main__':
     unittest.main()
