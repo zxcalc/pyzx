@@ -25,6 +25,7 @@ __all__ = [
     'check_bialgebra_zw_reverse',
     'check_bialgebra_zw_forward',
     'apply_bialgebra_zw_reverse',
+    'apply_bialgebra_zw_forward',
 ]
 
 import logging
@@ -153,5 +154,43 @@ def check_bialgebra_zw_forward(g: BaseGraph[VT,ET], w: VT, z: VT) -> bool:
 
     return True
 
-def apply_bialgebra_zw_forward(g: BaseGraph[VT,ET], w: VT, z: VT) -> bool:
+def apply_bialgebra_zw_forward(g: BaseGraph[VT,ET], wo: VT, z: VT) -> bool:
+    if not check_bialgebra_zw_forward(g, wo, z):
+        return False
+
+    # The current W_INPUT connecting W_OUTPUT to Z
+    wi = next(nb for nb in g.neighbors(wo) if g.type(nb) == VertexType.W_INPUT)
+
+    wos = []
+    # Attach each nb_z as the input to a dedicated W_OUTPUT
+    for nb_z in g.neighbors(z):
+        if nb_z == wi:
+            continue
+
+        nwi = g.add_vertex(ty=VertexType.W_INPUT, qubit=g.qubit(nb_z), row=g.row(nb_z) + 0.5)
+        nwo = g.add_vertex(ty=VertexType.W_OUTPUT, qubit=g.qubit(nb_z), row=g.row(nb_z) + 1.0)
+        wos.append(nwo)
+        g.add_edge( (nb_z, nwi) )
+        g.add_edge( (nwi,nwo) , EdgeType.W_IO )
+
+    zs = []
+    # Attach each nb_w to a dedicated Z-spider
+    for nb_w in g.neighbors(wo):
+        if nb_w == wi:
+            continue
+
+        nz = g.add_vertex(ty=VertexType.Z, qubit=g.qubit(nb_w), row=g.row(nb_w) - 1.0)
+        zs.append(nz)
+        g.set_phase(nz, g.phase(z))
+        g.add_edge( (nz, nb_w) )
+
+    # Remove the old vertices
+    g.remove_vertex(z)
+    g.remove_vertex(wi)
+    g.remove_vertex(wo)
+
+    # Weave the complete bipartite pattern between the Z and W_OUTPUT
+    for wo, z in itertools.product(wos, zs):
+        g.add_edge( (wo, z) )
+
     return True
