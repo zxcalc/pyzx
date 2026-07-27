@@ -29,7 +29,19 @@ from pyzx.utils import FractionLike, phase_is_clifford, phase_is_pauli
 
 __all__ = ['Scalar']
 
-def cexp(val: complex | Fraction) -> complex:
+def cexp(val: Fraction | complex) -> complex:
+    """Compute the complex exponential of a value."""
+    return cmath.exp(1j*math.pi*val)
+
+def cexp_unsafe(val: Fraction | complex | Poly) -> complex:
+    """Compute the complex exponential of a value or scalar polynomial. Raises an error for polynomials with free variables."""
+    if isinstance(val, Poly):
+        val = simplify_poly(val)
+
+    # unwrapping failed because the polynomial was non-constant
+    if isinstance(val, Poly):
+        raise ValueError("Cannot convert symbolic value to number")
+
     return cmath.exp(1j*math.pi*val)
 
 def simplify_poly(p: Poly) -> complex | Fraction | Poly:
@@ -212,12 +224,12 @@ class Scalar:
     def to_number(self) -> complex:
         if self.is_zero: return 0
         
-        val = cexp(self.phase)
+        val = cexp_unsafe(self.phase)
         for node in self.phasenodes: # Node should be a Fraction
-            val *= 1+cexp(node)
+            val *= 1+cexp_unsafe(node)
         sum_of_phases_val = 0j
         for phase, coeff in self.sum_of_phases.items():
-            sum_of_phases_val += coeff * cexp(phase)
+            sum_of_phases_val += coeff * cexp_unsafe(phase)
         if sum_of_phases_val != 0:
             val *= sum_of_phases_val
         val *= math.sqrt(2)**self.power2
@@ -229,7 +241,7 @@ class Scalar:
         elif self.is_unknown: return "Unknown"
         f = self.floatfactor
         for node in self.phasenodes:
-            f *= 1+cexp(node)
+            f *= 1+cexp_unsafe(node)
         if self.phase == 1:
             f *= -1
 
@@ -270,7 +282,7 @@ class Scalar:
         elif self.is_unknown: return "Unknown"
         f = self.floatfactor
         for node in self.phasenodes:
-            f *= 1+cexp(node)
+            f *= 1+cexp_unsafe(node)
         s = ""
         phase = self.phase
         if not isinstance(phase, Poly):
