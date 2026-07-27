@@ -76,7 +76,7 @@ class TestCheckForwardBialgebraZW(unittest.TestCase):
         self.assertFalse(check_bialgebra_zw_forward(g, ws, zs))
 
     def test_zw_pairs_missing_edge(self):
-        """Z-W pair with nonzero phases should not match."""
+        """Z-W pair not connected by a complete (2,2)-bipartite pattern should not match."""
         g, ws, zs = self.__prepare_bialgebra_zw_graph()
 
         g.remove_edge(g.edge(ws[0], zs[1]))
@@ -84,7 +84,7 @@ class TestCheckForwardBialgebraZW(unittest.TestCase):
         self.assertFalse(check_bialgebra_zw_forward(g, ws, zs))
 
     def test_zw_pairs_hadamard_edge(self):
-        """Z-W pair with some Hadamard edge should not match."""
+        """Z-W pair not connected by a complete (2,2)-bipartite pattern of SIMPLE edges should not match."""
         g, ws, zs = self.__prepare_bialgebra_zw_graph()
 
         g.set_edge_type(g.edge(ws[0], zs[1]), EdgeType.HADAMARD)
@@ -129,7 +129,7 @@ class TestCheckReverseBialgebraZW(unittest.TestCase):
         self.assertFalse(check_bialgebra_zw_reverse(g, wo, z))
 
     def test_zw_pair_missing_edge(self):
-        """Z-W pair with nonzero phases should not match."""
+        """Z-W pair not connected through a W_INPUT should not match."""
         g, z, wi, wo = self.__prepare_bialgebra_zw_graph()
 
         g.remove_edge(g.edge(wi, z))
