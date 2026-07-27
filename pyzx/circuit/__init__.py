@@ -15,7 +15,7 @@
 # limitations under the License.
 
 import os
-from typing import Union, Iterator
+from typing import Any, Union, Iterator
 
 import numpy as np
 
@@ -81,7 +81,7 @@ class Circuit(object):
         return c
 
 
-    def initialize_qubits(self, initialize_qubits: list[bool]):
+    def initialize_qubits(self, initialize_qubits: list[bool]) -> None:
         """
         Args:
             initialize_qubits: A list of booleans of length equal to the number of qubits in the circuit.
@@ -91,7 +91,7 @@ class Circuit(object):
             raise ValueError("Length of initialize_qubits must be equal to the number of qubits in the circuit.")
         self._initialize_qubits = initialize_qubits
 
-    def postselect_qubits(self, postselect_qubits: list[int]):
+    def postselect_qubits(self, postselect_qubits: list[int]) -> None:
         """
         Args:
             postselect_qubits: A list of integers indicating for each measured qubits, whether it should be
@@ -135,7 +135,7 @@ class Circuit(object):
         else:
             return False
 
-    def add_gate(self, gate: Union[Gate,str], *args, **kwargs) -> None:
+    def add_gate(self, gate: Union[Gate,str], *args: Any, **kwargs: Any) -> None:
         """Adds a gate to the circuit. ``gate`` can either be
         an instance of a :class:`Gate`, or it can be the name of a gate,
         in which case additional arguments should be given.
@@ -150,11 +150,11 @@ class Circuit(object):
             gate = gate_class(*args, **kwargs)
         self.gates.append(gate)
 
-    def prepend_gate(self, gate, *args, **kwargs):
+    def prepend_gate(self, gate: Gate | str, *args: Any, **kwargs: Any) -> None:
         """The same as add_gate, but adds the gate to the start of the circuit, not the end.
         """
         if isinstance(gate, str):
-            gate_class = gates.gate_types[gate]
+            gate_class = gate_types[gate]
             gate = gate_class(*args, **kwargs)
         self.gates.insert(0, gate)
 
@@ -274,10 +274,10 @@ class Circuit(object):
 
     ### MATRIX EMULATION (FOR E.G. Mat2.gauss)
 
-    def row_add(self, q0: int, q1: int):
+    def row_add(self, q0: int, q1: int) -> None:
         self.add_gate("CNOT", q0, q1)
 
-    def col_add(self, q0: int, q1: int):
+    def col_add(self, q0: int, q1: int) -> None:
         self.prepend_gate("CNOT", q1, q0)
 
 
@@ -326,11 +326,11 @@ class Circuit(object):
             elide_initial_resets=elide_initial_resets,
         )
 
-    def to_tensor(self, preserve_scalar:bool=True, strategy:str='naive') -> np.ndarray:
+    def to_tensor(self, preserve_scalar: bool = True, strategy: str= 'naive') -> np.ndarray:
         """Returns a numpy tensor describing the circuit."""
         return self.to_graph().to_tensor(preserve_scalar, strategy)
 
-    def to_matrix(self, preserve_scalar=True, strategy:str='naive') -> np.ndarray:
+    def to_matrix(self, preserve_scalar: bool = True, strategy: str = 'naive') -> np.ndarray:
         """Returns a numpy matrix describing the circuit."""
         return self.to_graph().to_matrix(preserve_scalar, strategy)
 

@@ -422,7 +422,7 @@ class QASMParser(object):
                 raise TypeError("Invalid specification: {}".format(c))
         return gates
 
-    def parse_phase_arg(self, val):
+    def parse_phase_arg(self, val: str) -> Fraction:
         val = val.strip()
         if self._param_subst is not None:
             bound = self._bind_phase_parameters(val)
