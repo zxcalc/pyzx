@@ -22,13 +22,13 @@ cfr. Section 2.2.2 in https://arxiv.org/pdf/2302.12135
 
 
 __all__ = [
-    'check_bialgebra_zw_forward',
     'check_bialgebra_zw_reverse',
-    'apply_bialgebra_zw_forward',
+    'check_bialgebra_zw_forward',
+    'apply_bialgebra_zw_reverse',
 ]
 
 import logging
-from typing import Tuple
+from typing import Collection
 
 import itertools
 
@@ -37,61 +37,57 @@ from pyzx.graph.base import BaseGraph, VT, ET
 
 console = logging.getLogger(__name__)
 
-def check_bialgebra_zw_forward(g: BaseGraph[VT,ET], ws: Tuple[VT,VT], zs: Tuple[VT,VT]) -> bool:
-    """Checks if the BZW rule can be applied in a forward way to two pairs of W and Z vertices."""
+def check_bialgebra_zw_reverse(g: BaseGraph[VT,ET], wos: Collection[VT], zs: Collection[VT]) -> bool:
+    """Checks if the BZW rule can be applied in a forward way to a complete (m,n)-bipartite pattern of W and Z vertices."""
 
     # All vertices must be from the graph
-    if any(w not in g.vertices() for w in ws) or any(z not in g.vertices() for z in zs):
-        # console.info("All proposed vertices must belong to the ZX-graph.")
+    if any(w not in g.vertices() for w in wos) or any(z not in g.vertices() for z in zs):
+        console.info("All proposed vertices must belong to the ZX-graph.")
         return False
 
-    # The vertices involved must be; two W_OUTPUT and two Z-spiders with identical phases
-    if any(g.type(w) != VertexType.W_OUTPUT for w in ws):
-        # console.info(f"All proposed W-vertices must be of type VertexType.W_OUTPUT [{ws}].")
+    # The proposed vertices must be all W_OUTPUT and all Z-spiders with identical phases
+    if any(g.type(w) != VertexType.W_OUTPUT for w in wos):
+        console.info(f"All proposed W-vertices must be of type VertexType.W_OUTPUT [{wos}].")
         return False
-    if g.type(zs[0]) != VertexType.Z or g.type(zs[1]) != VertexType.Z or g.phase(zs[0]) != g.phase(zs[1]):
-        # console.info(f"All proposed Z-vertices must be of type VertexType.Z with identical phases [{zs}].")
+    phase = g.phase(next(iter(zs)))
+    if any(g.type(z) != VertexType.Z or g.phase(z) != phase for z in zs):
+        console.info(f"All proposed Z-vertices must be of type VertexType.Z with identical phases [{zs}].")
         return False
 
     # The Z vertices must be connected to each W_OUTPUT with a single SIMPLE edge
     if any(
-        g.num_edges(w,z) != 1 or g.edge_type(g.edge(w,z)) != EdgeType.SIMPLE
-        for w, z in itertools.product(ws, zs)
+        g.num_edges(wo,z) != 1 or g.edge_type(g.edge(wo,z)) != EdgeType.SIMPLE
+        for wo, z in itertools.product(wos, zs)
     ):
-        # console.info("The W and Z-vertices must form a complete bipartite graph.")
+        console.info("The W and Z-vertices must form a complete bipartite graph [connections].")
         return False
 
-    # Neither the Z vertices nor the W_OUTPUT vertices can have edges among themselves
-    if g.num_edges(*zs) != 0 or g.num_edges(*ws) != 0:
-        # console.info("The W and Z-vertices cannot be connected among themselves")
+    # The Z vertices must have one neighbour outside the complete (m,n)-bipartite pattern
+    count_wos = len(wos)
+    if any(
+        g.vertex_degree(z) != count_wos + 1 or sum(1 for nb in g.neighbors(z) if nb not in wos and nb not in zs) != 1
+        for z in zs
+    ):
+        console.info("The Z-vertices must belong to a complete bipartite graph [external].")
         return False
 
-    # console.info(f"BZW-rule applicable to vertices {ws} and {zs}.")
+    # The W_OUTPUT vertices must have one neighbour outside the complete (m,n)-bipartite pattern
+    count_zs = len(zs)
+    if any(
+        g.vertex_degree(w) != count_zs + 1 or sum(1 for nb in g.neighbors(w) if nb not in wos and nb not in zs) != 1
+        for w in wos
+    ):
+        console.info("The W_OUTPUT-vertices must belong to a complete bipartite graph [external].")
+        return False
+
+    console.info(f"BZW-rule is applicable to vertices {wos} and {zs}.")
     return True
 
-def check_bialgebra_zw_reverse(g: BaseGraph[VT,ET], w: VT, z: VT) -> bool:
-    # Both vertices must be from the graph
-    if w not in g.vertices() or z not in g.vertices():
+def apply_bialgebra_zw_reverse(g: BaseGraph[VT,ET], ws: Collection[VT], zs: Collection[VT]) -> bool:
+    if not check_bialgebra_zw_reverse(g, ws, zs):
         return False
 
-    # The vertices involved must be; one W_OUTPUT and one Z
-    if g.type(w) != VertexType.W_OUTPUT or g.type(z) != VertexType.Z:
-        return False
-
-    # The Z vertex must be connected to the W vertex through a W_INPUT with SIMPLE edges
-    if not any(
-        g.num_edges(z, wi) == 1 and g.edge_type(g.edge(z, wi)) == EdgeType.SIMPLE
-        for wi in g.neighbors(w) if g.edge_type(g.edge(w, wi)) == EdgeType.W_IO and g.type(wi) == VertexType.W_INPUT
-    ):
-        return False
-
-    return True
-
-def apply_bialgebra_zw_forward(g: BaseGraph[VT,ET], ws: Tuple[VT,VT], zs: Tuple[VT,VT]) -> bool:
-    if not check_bialgebra_zw_forward(g, ws, zs):
-        return False
-
-    new_z = g.add_vertex(ty=VertexType.Z, phase=g.phase(zs[0]))
+    new_z = g.add_vertex(ty=VertexType.Z, phase=g.phase(next(iter(zs))))
     new_wi = g.add_vertex(ty=VertexType.W_INPUT)
     new_wo = g.add_vertex(ty=VertexType.W_OUTPUT)
     g.add_edge( (new_z,new_wi) )
@@ -117,11 +113,11 @@ def apply_bialgebra_zw_forward(g: BaseGraph[VT,ET], ws: Tuple[VT,VT], zs: Tuple[
         g.remove_vertex(w)
 
     # Position the new Z-spider halfway between the old W_INPUT vertices
-    g.set_row(new_z, row_z / 2)
-    g.set_qubit(new_z, qubit_z / 2)
+    g.set_row(new_z, row_z / len(zs))
+    g.set_qubit(new_z, qubit_z / len(zs))
     # Position the new W_INPUT halfway between the old W_OUTPUT vertices
-    g.set_row(new_wi, row_wi / 2)
-    g.set_qubit(new_wi, qubit_wi / 2)
+    g.set_row(new_wi, row_wi / len(ws))
+    g.set_qubit(new_wi, qubit_wi / len(ws))
 
     row_wo = 0
     qubit_wo = 0
@@ -134,7 +130,28 @@ def apply_bialgebra_zw_forward(g: BaseGraph[VT,ET], ws: Tuple[VT,VT], zs: Tuple[
         g.remove_vertex(z)
 
     # Position the new W_OUTPUT halfway between the old Z-spiders
-    g.set_row(new_wo, row_wo / 2)
-    g.set_qubit(new_wo, qubit_wo / 2)
+    g.set_row(new_wo, row_wo / len(ws))
+    g.set_qubit(new_wo, qubit_wo / len(ws))
 
+    return True
+
+def check_bialgebra_zw_forward(g: BaseGraph[VT,ET], w: VT, z: VT) -> bool:
+    # Both vertices must be from the graph
+    if w not in g.vertices() or z not in g.vertices():
+        return False
+
+    # The vertices involved must be; one W_OUTPUT and one Z
+    if g.type(w) != VertexType.W_OUTPUT or g.type(z) != VertexType.Z:
+        return False
+
+    # The Z vertex must be connected to the W vertex through a W_INPUT with SIMPLE edges
+    if not any(
+        g.num_edges(z, wi) == 1 and g.edge_type(g.edge(z, wi)) == EdgeType.SIMPLE
+        for wi in g.neighbors(w) if g.edge_type(g.edge(w, wi)) == EdgeType.W_IO and g.type(wi) == VertexType.W_INPUT
+    ):
+        return False
+
+    return True
+
+def apply_bialgebra_zw_forward(g: BaseGraph[VT,ET], w: VT, z: VT) -> bool:
     return True
