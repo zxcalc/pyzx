@@ -247,8 +247,8 @@ class GraphS(BaseGraph[int, tuple[int, int]]):
         else:
             return len(list(self.edges()))
 
-    def vertices(self) -> Iterator[int]:
-        return iter(self.graph.keys())
+    def vertices(self) -> list[int]:
+        return list(self.graph.keys())
 
     def vertices_in_range(self, start: FloatInt, end: FloatInt) -> Iterator[int]:
         """Returns all vertices with index between start and end

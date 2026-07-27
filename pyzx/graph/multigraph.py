@@ -302,8 +302,8 @@ class Multigraph(BaseGraph[int, tuple[int, int, EdgeType]]):
         else:
             return self.nedges
 
-    def vertices(self) -> Iterator[int]:
-        return iter(self.graph.keys())
+    def vertices(self) -> list[int]:
+        return list(self.graph.keys())
 
     def vertices_in_range(self, start: int, end: int) -> Iterator[int]:
         """Returns all vertices with index between start and end

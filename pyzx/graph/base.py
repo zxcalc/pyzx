@@ -169,7 +169,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         """Returns the amount of edges in the graph"""
         return len(list(self.edges(s, t)))
 
-    def vertices(self) -> Iterable[VT]:
+    def vertices(self) -> list[VT]:
         """Iterator over all the vertices."""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
