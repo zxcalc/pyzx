@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from collections.abc import Generator, Iterable
+from collections.abc import Iterable, Iterator
 from fractions import Fraction
 from typing import Any
 
@@ -25,7 +25,7 @@ from pyzx.utils import (EdgeType, FloatInt, FractionLike, VertexType,
 from .base import BaseGraph
 
 
-class GraphS(BaseGraph[int, tuple[int,int]]):
+class GraphS(BaseGraph[int, tuple[int, int]]):
     """Purely Pythonic implementation of :class:`~graph.base.BaseGraph`."""
     backend = 'simple'
 
@@ -247,10 +247,10 @@ class GraphS(BaseGraph[int, tuple[int,int]]):
         else:
             return len(list(self.edges()))
 
-    def vertices(self) -> Iterable[int]:
-        return self.graph.keys()
+    def vertices(self) -> Iterator[int]:
+        return iter(self.graph.keys())
 
-    def vertices_in_range(self, start: FloatInt, end: FloatInt) -> Generator[int, None, None]:
+    def vertices_in_range(self, start: FloatInt, end: FloatInt) -> Iterator[int]:
         """Returns all vertices with index between start and end
         that only have neighbours whose indices are between start and end"""
         for v in self.graph.keys():
@@ -258,7 +258,7 @@ class GraphS(BaseGraph[int, tuple[int,int]]):
             if all(start<v2<end for v2 in self.graph[v]):
                 yield v
 
-    def edges(self, s: int | None = None, t: int | None = None) -> Generator[tuple[int, int], None, None]:
+    def edges(self, s: int | None = None, t: int | None = None) -> Iterator[tuple[int, int]]:
         if s is not None and t is not None:
             if self.connected(s, t):
                 yield (s,t) if s < t else (t,s)
@@ -270,7 +270,7 @@ class GraphS(BaseGraph[int, tuple[int,int]]):
                 for v1 in adj:
                     if v1 > v0: yield (v0,v1)
 
-    def edges_in_range(self, start: FloatInt, end: FloatInt, safe: bool = False) -> Generator[tuple[int, int], None, None]:
+    def edges_in_range(self, start: FloatInt, end: FloatInt, safe: bool = False) -> Iterator[tuple[int, int]]:
         """like self.edges, but only returns edges that belong to vertices
         that are only directly connected to other vertices with
         index between start and end.

@@ -16,7 +16,7 @@
 
 import itertools
 from collections import Counter
-from collections.abc import Iterable
+from collections.abc import Iterable, Iterator
 from fractions import Fraction
 from typing import Any, cast
 
@@ -302,10 +302,10 @@ class Multigraph(BaseGraph[int, tuple[int, int, EdgeType]]):
         else:
             return self.nedges
 
-    def vertices(self) -> Iterable[int]:
-        return self.graph.keys()
+    def vertices(self) -> Iterator[int]:
+        return iter(self.graph.keys())
 
-    def vertices_in_range(self, start: int, end: int) -> Iterable[int]:
+    def vertices_in_range(self, start: int, end: int) -> Iterator[int]:
         """Returns all vertices with index between start and end
         that only have neighbours whose indices are between start and end"""
         for v in self.graph.keys():
@@ -313,7 +313,7 @@ class Multigraph(BaseGraph[int, tuple[int, int, EdgeType]]):
             if all(start<v2<end for v2 in self.graph[v]):
                 yield v
 
-    def edges(self, s: int | None = None, t: int | None = None) -> Iterable[tuple[int, int, EdgeType]]:
+    def edges(self, s: int | None = None, t: int | None = None) -> Iterator[tuple[int, int, EdgeType]]:
         if s is None:
             for v0,adj in self.graph.items():
                 for v1, e in adj.items():
@@ -384,8 +384,8 @@ class Multigraph(BaseGraph[int, tuple[int, int, EdgeType]]):
     def edge_st(self, edge: tuple[int, int, EdgeType]) -> tuple[int, int]:
         return (edge[0], edge[1])
 
-    def neighbors(self, vertex: int) -> Iterable[int]:
-        return self.graph[vertex].keys()
+    def neighbors(self, vertex: int) -> list[int]:
+        return list(self.graph[vertex].keys())
 
     def vertex_degree(self, vertex: int) -> int:
         d = 0

@@ -211,6 +211,7 @@ class Scalar:
 
     def to_number(self) -> complex:
         if self.is_zero: return 0
+        
         val = cexp(self.phase)
         for node in self.phasenodes: # Node should be a Fraction
             val *= 1+cexp(node)

@@ -430,7 +430,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         self.set_qubit(vertex, q)
         self.set_row(vertex, r)
 
-    def neighbors(self, vertex: VT) -> Iterable[VT]:
+    def neighbors(self, vertex: VT) -> list[VT]:
         """Returns all neighboring vertices of the given vertex."""
         vs: set[VT] = set()
         for e in self.incident_edges(vertex):
