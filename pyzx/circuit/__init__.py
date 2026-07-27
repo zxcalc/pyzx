@@ -15,16 +15,19 @@
 # limitations under the License.
 
 import os
-from typing import Any, Union, Iterator
+from collections.abc import Iterator
 
+from typing import Any, Union
 import numpy as np
 
-from .gates import (Gate, gate_types, NOT, Y, Z, HAD, XPhase, YPhase, ZPhase, U2, U3, S, T, SX, SWAP, RXX, RZZ, CNOT,
-                    CY, CZ, CHAD, CSX, XCX, CRX, CRY, CRZ, CPhase, CU3, CU, CSWAP, Tofolli, CCZ, ParityPhase, FSim,
-                    Measurement, PhaseGadget, ConditionalGate)
+from pyzx.graph.base import BaseGraph
+from pyzx.utils import EdgeType
 
-from ..graph.base import BaseGraph
-from ..utils import EdgeType
+from .gates import (CCZ, CHAD, CNOT, CRX, CRY, CRZ, CSWAP, CSX, CU, CU3, CY,
+                    CZ, HAD, NOT, RXX, RZZ, SWAP, SX, U2, U3, XCX,
+                    ConditionalGate, CPhase, FSim, Gate, Measurement,
+                    ParityPhase, PhaseGadget, S, T, Tofolli, XPhase, Y, YPhase,
+                    Z, ZPhase, gate_types)
 
 __all__ = [
     'Gate', 'gate_types', 'NOT', 'Y', 'Z', 'HAD', 'XPhase', 'YPhase', 'ZPhase', 'U2', 'U3', 'S', 'T', 'SX', 'SWAP', 'RXX', 'RZZ', 'CNOT',
@@ -39,7 +42,7 @@ __all__ = [
 
 CircuitLike = Union['Circuit', Gate]
 
-class Circuit(object):
+class Circuit:
     """Class for representing quantum circuits.
 
     This class is mostly just a wrapper for a list of gates with methods for converting
@@ -64,7 +67,7 @@ class Circuit(object):
 
 
     def __str__(self) -> str:
-        return "Circuit({!s} qubits, {!s} bits, {!s} gates)".format(self.qubits,self.bits,len(self.gates))
+        return "Circuit({!s} qubits, {!s} bits, {!s} gates)".format(self.qubits, self.bits, len(self.gates))
 
     def __repr__(self) -> str:
         return str(self)
@@ -135,7 +138,7 @@ class Circuit(object):
         else:
             return False
 
-    def add_gate(self, gate: Union[Gate,str], *args: Any, **kwargs: Any) -> None:
+    def add_gate(self, gate: Gate | str, *args: Any, **kwargs: Any) -> None:
         """Adds a gate to the circuit. ``gate`` can either be
         an instance of a :class:`Gate`, or it can be the name of a gate,
         in which case additional arguments should be given.
@@ -212,11 +215,11 @@ class Circuit(object):
     def tensor(self, other: CircuitLike) -> 'Circuit':
         """Takes the tensor product of two Circuits. Places the second one below the first.
         Can also be done as an operator: `circuit1 @ circuit2`."""
-        if isinstance(other,Gate):
+        if isinstance(other, Gate):
             c2 = Circuit(other._max_target()+1)
             c2.add_gate(other)
             other = c2
-        if not isinstance(other,Circuit):
+        if not isinstance(other, Circuit):
             raise Exception("Cannot tensor type", type(other), "to Circuit")
         c = Circuit(self.qubits + other.qubits)
         c.gates = [g.copy() for g in self.gates]
@@ -285,7 +288,7 @@ class Circuit(object):
 
 
     @staticmethod
-    def from_graph(g:BaseGraph, split_phases:bool=True) -> 'Circuit':
+    def from_graph(g: BaseGraph, split_phases: bool = True) -> 'Circuit':
         """Produces a :class:`Circuit` containing the gates of the given ZX-graph.
         If the ZX-graph is not circuit-like then the behaviour of this function
         is undefined.
@@ -326,7 +329,7 @@ class Circuit(object):
             elide_initial_resets=elide_initial_resets,
         )
 
-    def to_tensor(self, preserve_scalar: bool = True, strategy: str= 'naive') -> np.ndarray:
+    def to_tensor(self, preserve_scalar: bool = True, strategy: str = 'naive') -> np.ndarray:
         """Returns a numpy tensor describing the circuit."""
         return self.to_graph().to_tensor(preserve_scalar, strategy)
 

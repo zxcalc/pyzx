@@ -1,4 +1,4 @@
-# PyZX - Python library for quantum circuit rewriting 
+# PyZX - Python library for quantum circuit rewriting
 #        and optimization using the ZX-calculus
 # Copyright (C) 2018 - Aleks Kissinger and John van de Wetering
 
@@ -16,22 +16,23 @@
 
 """This file contains the Scalar class used to represent a global scalar in a Graph."""
 
-import math
 import cmath
 import copy
-from fractions import Fraction
-from typing import Any, Dict, List, Mapping, Set, Union
 import json
+import math
+from collections.abc import Mapping
+from fractions import Fraction
+from typing import Any
 
-from ..utils import FractionLike, phase_is_pauli, phase_is_clifford
-from ..symbolic import Poly, Var
+from pyzx.symbolic import Poly, Var
+from pyzx.utils import FractionLike, phase_is_clifford, phase_is_pauli
 
 __all__ = ['Scalar']
 
-def cexp(val) -> complex:
+def cexp(val: complex | Fraction) -> complex:
     return cmath.exp(1j*math.pi*val)
 
-def simplify_poly(p: Poly) -> Union[int, complex, Fraction, Poly]:
+def simplify_poly(p: Poly) -> complex | Fraction | Poly:
     """Unwrap a constant Poly to its scalar value, or return the Poly as-is.
 
     Float and purely-real complex values are normalized to Fraction so
@@ -70,13 +71,13 @@ unicode_fractions = {
     Fraction(3,4): '¾',
 }
 
-class Scalar(object):
+class Scalar:
     """Represents a global scalar for a Graph instance."""
     def __init__(self) -> None:
         self.power2: int = 0 # Stores power of square root of two
         self.phase: FractionLike = Fraction(0) # Stores complex phase of the number
-        self.phasenodes: List[FractionLike] = [] # Stores list of legless spiders, by their phases.
-        self.sum_of_phases: Dict[FractionLike, int] = {} # Represents the term (c1*exp(i*phase1) + ... + cn*exp(i*phaseN)). The dictionary maps phase -> coefficient.
+        self.phasenodes: list[FractionLike] = [] # Stores list of legless spiders, by their phases.
+        self.sum_of_phases: dict[FractionLike, int] = {} # Represents the term (c1*exp(i*phase1) + ... + cn*exp(i*phaseN)). The dictionary maps phase -> coefficient.
         self.floatfactor: complex = 1.0
         self.is_unknown: bool = False # Whether this represents an unknown scalar value
         self.is_zero: bool = False
@@ -152,9 +153,9 @@ class Scalar(object):
         """Returns a new Scalar equal to the complex conjugate"""
         return self.copy(conjugate=True)
 
-    def free_vars(self) -> Set[Var]:
+    def free_vars(self) -> set[Var]:
         """Return all symbolic variables appearing in this scalar."""
-        result: Set[Var] = set()
+        result: set[Var] = set()
         if isinstance(self.phase, Poly):
             result.update(self.phase.free_vars())
         for node in self.phasenodes:
@@ -165,7 +166,7 @@ class Scalar(object):
                 result.update(phase.free_vars())
         return result
 
-    def substitute_variables(self, var_map: Mapping[Var, Union[float, complex, Fraction, Poly]]) -> 'Scalar':
+    def substitute_variables(self, var_map: Mapping[Var, float | complex | Fraction | Poly]) -> 'Scalar':
         """Substitute values for symbolic variables in the scalar.
 
         Args:
@@ -310,7 +311,7 @@ class Scalar(object):
             s = "1"
         return s
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         d = {"power2": self.power2, "phase": str(self.phase)}
         if abs(self.floatfactor - 1) > 0.00001:
             d["floatfactor"] =  str(self.floatfactor)
@@ -328,7 +329,7 @@ class Scalar(object):
         return json.dumps(self.to_dict())
 
     @classmethod
-    def from_json(cls, s: Union[str,Dict[str,Any]]) -> 'Scalar':
+    def from_json(cls, s: str | dict[str, Any]) -> 'Scalar':
         from .jsonparser import string_to_phase
 
         if isinstance(s, str):
@@ -353,7 +354,7 @@ class Scalar(object):
     def set_unknown(self) -> None:
         self.is_unknown = True
 
-    def add_power(self, n) -> None:
+    def add_power(self, n: int) -> None:
         """Adds a factor of sqrt(2)^n to the scalar."""
         self.power2 += n
 
@@ -375,10 +376,10 @@ class Scalar(object):
             self.is_zero = True
         self.floatfactor *= f
 
-    def multiply_sum_of_phases(self, phases: Dict[FractionLike,int]) -> None:
+    def multiply_sum_of_phases(self, phases: dict[FractionLike, int]) -> None:
         """Adds a sum of phases to the scalar. The input is a dictionary mapping
         phase -> coefficient in the sum."""
-        new_sum_of_phases: Dict[FractionLike, int] = {}
+        new_sum_of_phases: dict[FractionLike, int] = {}
         # Use the distributive law: (a*e^ip1)(b*e^ip2) = (a*b)*e^i(p1+p2)
         if not self.sum_of_phases:
             self.sum_of_phases = {0:1}

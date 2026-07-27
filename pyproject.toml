@@ -76,8 +76,8 @@ warn_unused_configs = true
 
 [[tool.mypy.overrides]]
 module = [
-    "pyzx.graph",
-    "pyzx.circuit"
+    "pyzx.graph.*",
+    "pyzx.circuit.*"
 ]
 disallow_untyped_defs = true
 

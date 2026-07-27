@@ -16,21 +16,23 @@
 
 __all__ = ['string_to_phase','to_graphml']
 
+import ast
 import json
 import re
-import ast
 import warnings
 from fractions import Fraction
-from typing import Any, Union, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Union
+
 from typing_extensions import deprecated
 
 from pyzx.graph.multigraph import Multigraph
+from pyzx.symbolic import Poly, VarRegistry, new_var, parse
+from pyzx.utils import EdgeType, VertexType, phase_to_s
 
-from ..utils import EdgeType, VertexType, phase_to_s
+from .base import ET, VT, BaseGraph
 from .graph import Graph
 from .scalar import Scalar, simplify_poly
-from .base import BaseGraph, VT, ET
-from ..symbolic import parse, Poly, new_var, VarRegistry
+
 if TYPE_CHECKING:
     from .diff import GraphDiff
 
@@ -185,7 +187,7 @@ def json_to_graph_old(js: str | dict[str, Any], backend: str | None = None) -> B
 
     return g
 
-def graph_to_dict(g: BaseGraph[VT,ET], include_scalar: bool=True) -> dict[str, Any]:
+def graph_to_dict(g: BaseGraph[VT, ET], include_scalar: bool = True) -> dict[str, Any]:
     """Converts a PyZX graph into Python dict for JSON output.
     If include_scalar is set to True (the default), then this includes the value
     of g.scalar with the json, which will also be loaded by the ``from_json`` method."""
@@ -251,7 +253,7 @@ def graph_to_dict(g: BaseGraph[VT,ET], include_scalar: bool=True) -> dict[str, A
 
 
 @deprecated("graph_to_dict_old is deprecated, use graph_to_dict instead")
-def graph_to_dict_old(g: BaseGraph[VT,ET], include_scalar: bool=True) -> dict[str, Any]:
+def graph_to_dict_old(g: BaseGraph[VT, ET], include_scalar: bool = True) -> dict[str, Any]:
     """Deprecated: Use :func:`graph_to_dict` instead.
 
     Converts a PyZX graph into Python dict for JSON output that is compatible with the Quantomatic format.
@@ -349,7 +351,7 @@ def graph_to_dict_old(g: BaseGraph[VT,ET], include_scalar: bool=True) -> dict[st
         else:
             raise TypeError("Edge of type 0")
 
-    d: dict[str,Any] = {
+    d: dict[str, Any] = {
         "wire_vertices": wire_vs,
         "node_vertices": node_vs,
         "undir_edges": edges,
@@ -360,7 +362,7 @@ def graph_to_dict_old(g: BaseGraph[VT,ET], include_scalar: bool=True) -> dict[st
 
     return d
 
-def graph_to_json(g: BaseGraph[VT,ET], include_scalar: bool=True) -> str:
+def graph_to_json(g: BaseGraph[VT, ET], include_scalar: bool = True) -> str:
     """Converts a PyZX graph into JSON output compatible with Quantomatic.
     If include_scalar is set to True (the default), then this includes the value
     of g.scalar with the json, which will also be loaded by the ``from_json`` method."""
@@ -436,7 +438,7 @@ def json_to_graph(js: str | dict[str, Any], backend: str | None = None) -> BaseG
         d = js
     return dict_to_graph(d, backend)
 
-def to_graphml(g: BaseGraph[VT,ET]) -> str:
+def to_graphml(g: BaseGraph[VT, ET]) -> str:
     gml = """<?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <graphml xmlns="http://graphml.graphdrawing.org/xmlns">
     <key attr.name="type" attr.type="int" for="node" id="type">

@@ -14,12 +14,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from collections.abc import Generator, Iterable
 from fractions import Fraction
-from typing import Generator, Iterable, Any, Optional
+from typing import Any
+
+from pyzx.utils import (EdgeType, FloatInt, FractionLike, VertexType,
+                        assert_phase_real, get_z_box_label, normalize_phase,
+                        set_z_box_label, vertex_is_z_like, vertex_is_zx_like)
 
 from .base import BaseGraph
 
-from ..utils import VertexType, EdgeType, FractionLike, FloatInt, vertex_is_zx_like, vertex_is_z_like, set_z_box_label, get_z_box_label, assert_phase_real, normalize_phase
 
 class GraphS(BaseGraph[int, tuple[int,int]]):
     """Purely Pythonic implementation of :class:`~graph.base.BaseGraph`."""
@@ -29,21 +33,21 @@ class GraphS(BaseGraph[int, tuple[int,int]]):
     #can be found in base.BaseGraph
     def __init__(self) -> None:
         BaseGraph.__init__(self)
-        self.graph: dict[int,dict[int,EdgeType]]   = dict()
-        self._vindex: int                               = 0
-        self.nedges: int                                = 0
-        self.ty: dict[int,VertexType]              = dict()
-        self._phase: dict[int, FractionLike]            = dict()
-        self._qindex: dict[int, FloatInt]               = dict()
-        self._maxq: FloatInt                            = -1
-        self._rindex: dict[int, FloatInt]               = dict()
-        self._maxr: FloatInt                            = -1
+        self.graph: dict[int, dict[int, EdgeType]] = {}
+        self._vindex: int = 0
+        self.nedges: int = 0
+        self.ty: dict[int, VertexType] = {}
+        self._phase: dict[int, FractionLike] = {}
+        self._qindex: dict[int, FloatInt] = {}
+        self._maxq: FloatInt = -1
+        self._rindex: dict[int, FloatInt] = {}
+        self._maxr: FloatInt = -1
         self._grounds: set[int] = set()
 
-        self._vdata: dict[int,Any]                      = dict()
+        self._vdata: dict[int,Any] = {}
         self._edata: dict[tuple[int,int],Any] = dict()
-        self._inputs: tuple[int, ...]                   = tuple()
-        self._outputs: tuple[int, ...]                  = tuple()
+        self._inputs: tuple[int, ...] = tuple()
+        self._outputs: tuple[int, ...] = tuple()
 
     def clone(self) -> 'GraphS':
         cpy = GraphS()
@@ -288,7 +292,7 @@ class GraphS(BaseGraph[int, tuple[int,int]]):
                         if v1 > v0:
                             yield (v0,v1)
 
-    def edge(self, s: int, t: int, et: Optional[EdgeType] = None) -> tuple[int, int]:
+    def edge(self, s: int, t: int, et: EdgeType | None = None) -> tuple[int, int]:
         """Return the canonical pair ``(min(s, t), max(s, t))`` whether or not the
         edge exists; this supports the ``g.add_edge(g.edge(v, w), ...)`` pattern.
         ``et`` is accepted for consistency with :meth:`BaseGraph.edge` but ignored,

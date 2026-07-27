@@ -13,13 +13,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .qasmparser import QASMParser
-from ..rewrite_rules import *
-from ..rewrite import *
-
-from pyzx.utils import VertexType
 from pyzx.graph.base import BaseGraph
+from pyzx.rewrite import *
+from pyzx.rewrite_rules import *
+from pyzx.utils import VertexType
 
+from .qasmparser import QASMParser
 
 __all__ = ['sqasm']
 

@@ -16,12 +16,16 @@
 
 import itertools
 from collections import Counter
+from collections.abc import Iterable
 from fractions import Fraction
-from typing import Iterable, Any, Optional, cast
+from typing import Any, cast
+
+from pyzx.utils import (EdgeType, FloatInt, FractionLike, VertexType,
+                        assert_phase_real, get_z_box_label, normalize_phase,
+                        set_z_box_label, vertex_is_zx_like)
 
 from .base import BaseGraph
 
-from ..utils import VertexType, EdgeType, FractionLike, FloatInt, vertex_is_zx_like, set_z_box_label, get_z_box_label, assert_phase_real, normalize_phase
 
 class Edge:
     """A structure for storing the number of simple and number of Hadamard edges
@@ -30,7 +34,7 @@ class Edge:
     h: int
     w_io: int
 
-    def __init__(self, s: int=0, h: int=0, w_io: int=0):
+    def __init__(self, s: int = 0, h: int = 0, w_io: int = 0):
         self.s = s
         self.h = h
         self.w_io = w_io
@@ -58,7 +62,7 @@ class Edge:
         else: return self.w_io
 
 
-class Multigraph(BaseGraph[int, tuple[int,int,EdgeType]]):
+class Multigraph(BaseGraph[int, tuple[int, int, EdgeType]]):
     """Purely Pythonic multigraph implementation of :class:`~graph.base.BaseGraph`."""
     backend = 'multigraph'
 
@@ -66,22 +70,22 @@ class Multigraph(BaseGraph[int, tuple[int,int,EdgeType]]):
     #can be found in base.BaseGraph
     def __init__(self) -> None:
         BaseGraph.__init__(self)
-        self.graph: dict[int,dict[int,Edge]]   = dict()
-        self._auto_simplify: bool                       = True
-        self._vindex: int                               = 0
-        self.nedges: int                                = 0
-        self.ty: dict[int,VertexType]                   = dict()
-        self._phase: dict[int, FractionLike]            = dict()
-        self._qindex: dict[int, FloatInt]               = dict()
-        self._maxq: FloatInt                            = -1
-        self._rindex: dict[int, FloatInt]               = dict()
-        self._maxr: FloatInt                            = -1
-        self._grounds: set[int]                         = set()
+        self.graph: dict[int, dict[int, Edge]] = {}
+        self._auto_simplify: bool = True
+        self._vindex: int = 0
+        self.nedges: int = 0
+        self.ty: dict[int, VertexType] = {}
+        self._phase: dict[int, FractionLike] = {}
+        self._qindex: dict[int, FloatInt] = {}
+        self._maxq: FloatInt = -1
+        self._rindex: dict[int, FloatInt] = {}
+        self._maxr: FloatInt = -1
+        self._grounds: set[int] = set()
 
-        self._vdata: dict[int,Any]                      = dict()
-        self._edata: dict[tuple[int, int, EdgeType], dict[str, Any]] = dict()
-        self._inputs: tuple[int, ...]                   = tuple()
-        self._outputs: tuple[int, ...]                  = tuple()
+        self._vdata: dict[int, Any] = {}
+        self._edata: dict[tuple[int, int, EdgeType], dict[str, Any]] = {}
+        self._inputs: tuple[int, ...] = tuple()
+        self._outputs: tuple[int, ... ] = tuple()
     
     
     def clone(self) -> 'Multigraph':
@@ -152,7 +156,7 @@ class Multigraph(BaseGraph[int, tuple[int,int,EdgeType]]):
 
     def add_vertices(self, amount: int) -> range:
         for i in range(self._vindex, self._vindex + amount):
-            self.graph[i] = dict()
+            self.graph[i] = {}
             self.ty[i] = VertexType.BOUNDARY
             self._phase[i] = 0
         self._vindex += amount
@@ -165,7 +169,7 @@ class Multigraph(BaseGraph[int, tuple[int,int,EdgeType]]):
         to preserve their index."""
         if v in self.graph: raise ValueError("Vertex with this index already exists")
         if v >= self._vindex: self._vindex = v+1
-        self.graph[v] = dict()
+        self.graph[v] = {}
         self.ty[v] = VertexType.BOUNDARY
         self._phase[v] = 0
 
@@ -348,7 +352,7 @@ class Multigraph(BaseGraph[int, tuple[int,int,EdgeType]]):
     #                    if v1 > v0:
     #                        yield (v0,v1)
 
-    def edge(self, s: int, t: int, et: Optional[EdgeType] = None) -> tuple[int, int, EdgeType]:
+    def edge(self, s: int, t: int, et: EdgeType | None = None) -> tuple[int, int, EdgeType]:
         s, t = (s, t) if s < t else (t, s)
         adj = self.graph.get(s)
         if adj is None or t not in adj:
@@ -358,7 +362,7 @@ class Multigraph(BaseGraph[int, tuple[int,int,EdgeType]]):
             if e.get_edge_count(et):
                 return (s, t, et)
             raise ValueError(f"No edge of type {et} between {s} and {t}")
-        found: Optional[EdgeType] = None
+        found: EdgeType | None = None
         for ty in (EdgeType.SIMPLE, EdgeType.HADAMARD, EdgeType.W_IO):
             if e.get_edge_count(ty):
                 if found is not None:
