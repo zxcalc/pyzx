@@ -51,7 +51,21 @@ def __bzw_reverse_identify_vertices(g: BaseGraph[VT,ET], vertices: Iterable[VT])
     return wos, zs
 
 def match_bialgebra_zw_reverse(g: BaseGraph[VT,ET], vertices: Optional[Collection[VT]] = None) -> Optional[Tuple[List[VT],List[VT]]]:
-    """Checks if the reverse BZW rule can be applied; reducing a complete (m,n)-bipartite WZ-pattern to a single ZW-edge."""
+    """Checks if the reverse BZW rule can be applied; reducing a complete (m,n)-bipartite WZ-pattern to a single ZW-edge.
+
+    Args:
+        g: The ZX-diagram graph in which to match for the pattern.
+        vertices: a selection of vertices to test for the applicability of the reverse BZW rule.
+
+    Returns:
+        wos, zs : a partition of a subset of vertices into W_OUTPUT and Z vertices which
+        - form a complete bipartite WZ-pattern
+        - each W_OUTPUT vertex has exactly one external neighbour (i.e. outside the bipartite WZ-pattern)
+        - each Z vertex has exactly one external neighbour (i.e. outside the bipartite WZ-pattern)
+        None if no such pattern was found
+
+    """
+
     pattern = __bzw_reverse_identify_vertices(g, vertices or g.vertices())
     if pattern is None:
         return None
@@ -101,7 +115,16 @@ def match_bialgebra_zw_reverse(g: BaseGraph[VT,ET], vertices: Optional[Collectio
     return wos, zs
 
 def apply_bialgebra_zw_reverse(g: BaseGraph[VT,ET], vertices: Collection[VT]) -> bool:
-    """Attempt to apply the reverse BZW rule; reducing a complete (m,n)-bipartite WZ-pattern to a single ZW-edge."""
+    """Attempts to apply the reverse BZW rule; reducing a complete (m,n)-bipartite WZ-pattern to a single ZW-edge.
+
+    Args:
+        g: The ZX-diagram graph on which to apply the rule.
+        vertices: a selection of vertices to consider for applying the reverse BZW rule.
+
+    Returns:
+        True or False, depending on whether a matching pattern was found and thus the rule was successfully applied or not.
+
+    """
     match = match_bialgebra_zw_reverse(g, vertices)
     if match is None:
         return False
@@ -110,7 +133,7 @@ def apply_bialgebra_zw_reverse(g: BaseGraph[VT,ET], vertices: Collection[VT]) ->
     return unsafe_apply_bialgebra_zw_reverse(g, wos, zs)
 
 def apply_bialgebra_zw_reverse_auto(g: BaseGraph[VT,ET]) -> bool:
-    """Attempt to apply the reverse BZW rule; reducing a complete (m,n)-bipartite WZ-pattern to a single ZW-edge."""
+    """Attempt to apply the reverse BZW rule on the entire graph; reducing a complete (m,n)-bipartite WZ-pattern to a single ZW-edge."""
     match = match_bialgebra_zw_reverse(g)
     if match is None:
         return False
@@ -119,7 +142,16 @@ def apply_bialgebra_zw_reverse_auto(g: BaseGraph[VT,ET]) -> bool:
     return unsafe_apply_bialgebra_zw_reverse(g, wos, zs)
 
 def unsafe_apply_bialgebra_zw_reverse(g: BaseGraph[VT,ET], wos: Collection[VT], zs: Collection[VT]) -> bool:
-    """Apply the reverse BZW rule assuming it is applicable to wos and zs."""
+    """Apply the reverse BZW rule assuming it is applicable to wos and zs.
+
+    Args:
+        g: The ZX-diagram graph on which to apply the rule.
+        wos: a collection of W_OUTPUT vertices.
+        zs: a collection of Z vertices.
+
+    Returns: always True
+
+    """
     new_z = g.add_vertex(ty=VertexType.Z, phase=g.phase(next(iter(zs))))
     new_wi = g.add_vertex(ty=VertexType.W_INPUT)
     new_wo = g.add_vertex(ty=VertexType.W_OUTPUT)
@@ -177,7 +209,17 @@ def __bzw_forward_identify_vertices(g: BaseGraph[VT,ET], v1: VT, v2: VT) -> Opti
         return None
 
 def check_bialgebra_zw_forward(g: BaseGraph[VT,ET], v1: VT, v2: VT) -> bool:
-    """Checks if the forward BZW rule can be applied; expanding a single ZW-edge to a complete (m,n)-bipartite WZ-pattern."""
+    """Checks if the forward BZW rule can be applied; expanding a single ZW-edge to a complete (m,n)-bipartite WZ-pattern.
+
+    Args:
+        g: The ZX-diagram graph in which to match for the pattern.
+        v1: a vertex from the graph
+        v2: a vertex from the graph
+
+    Returns:
+        True or False, depending on whether the vertices v1, v2 are a pair of W_INPUT and Z vertices connected through a SIMPLE edge
+
+    """
     # Both vertices must be from the graph
     if v1 not in g.vertices() or v2 not in g.vertices():
         return False
@@ -195,27 +237,50 @@ def check_bialgebra_zw_forward(g: BaseGraph[VT,ET], v1: VT, v2: VT) -> bool:
     return True
 
 def apply_bialgebra_zw_forward(g: BaseGraph[VT,ET], v1: VT, v2: VT) -> bool:
-    """Attempt to apply the forward BZW rule; expanding a single ZW-edge to a complete (m,n)-bipartite WZ-pattern."""
+    """Attempt to apply the forward BZW rule; expanding a single ZW-edge to a complete (m,n)-bipartite WZ-pattern.
+
+    Args:
+        g: The ZX-diagram graph on which to apply the rule.
+        v1: a vertex from the graph
+        v2: a vertex from the graph
+
+    Returns:
+        True or False, depending on whether the rule is applicable to vertices v1, v2
+
+    """
     if not check_bialgebra_zw_forward(g, v1, v2):
         return False
 
     return unsafe_bialgebra_zw_forward(g, v1, v2)
 
 def unsafe_bialgebra_zw_forward(g: BaseGraph[VT,ET], v1: VT, v2: VT) -> bool:
+    """Attempt to apply the forward BZW rule without checking for its applicability.
+
+    Args:
+        g: The ZX-diagram graph on which to apply the rule.
+        v1: a vertex from the graph
+        v2: a vertex from the graph
+
+    Returns:
+        True if the rule was successfully applied
+        False if v1, v2 are not a pair of W_INPUT and Z vertices
+
+    """
+
     # The vertices involved must be; one W_INPUT and one Z
     endpoints = __bzw_forward_identify_vertices(g, v1, v2)
     if not endpoints:
         return False
     wi, z = endpoints
 
-    # The current W_OUTPUT connected to Z through W_INPUT
+    # The W_OUTPUT connected to Z through W_INPUT
     wo = next(
         nb for nb in g.neighbors(wi)
         if g.type(nb) == VertexType.W_OUTPUT and g.edge_type(g.edge(nb, wi)) == EdgeType.W_IO
     )
 
     wos = []
-    # Attach each nb_z as the input to a dedicated W_OUTPUT
+    # Attach each external neighbour of Z (except W_INPUT) as the input to a dedicated W_OUTPUT
     for nb_z in g.neighbors(z):
         if nb_z == wi:
             continue
@@ -227,7 +292,7 @@ def unsafe_bialgebra_zw_forward(g: BaseGraph[VT,ET], v1: VT, v2: VT) -> bool:
         wos.append(nwo)
 
     zs = []
-    # Attach each nb_w to a dedicated Z-spider
+    # Attach each output of W_OUTPUT to a dedicated Z-spider
     for nb_w in g.neighbors(wo):
         if nb_w == wi:
             continue
@@ -242,7 +307,7 @@ def unsafe_bialgebra_zw_forward(g: BaseGraph[VT,ET], v1: VT, v2: VT) -> bool:
     g.remove_vertex(wi)
     g.remove_vertex(wo)
 
-    # Weave the bipartite pattern between the W_OUTPUT and Z vertices
+    # Weave the complete bipartite pattern between the W_OUTPUT and Z vertices
     for wo, z in itertools.product(wos, zs):
         g.add_edge( (wo, z) )
 
