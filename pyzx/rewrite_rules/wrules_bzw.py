@@ -22,14 +22,15 @@ cfr. Section 2.2.2 in https://arxiv.org/pdf/2302.12135
 
 
 __all__ = [
-    'check_bialgebra_zw_reverse',
     'check_bialgebra_zw_forward',
-    'apply_bialgebra_zw_reverse',
     'apply_bialgebra_zw_forward',
+    'unsafe_bialgebra_zw_forward',
+    'check_bialgebra_zw_reverse',
+    'apply_bialgebra_zw_reverse',
 ]
 
 import logging
-from typing import Collection
+from typing import Collection, Optional, Tuple
 
 import itertools
 
@@ -84,11 +85,15 @@ def check_bialgebra_zw_reverse(g: BaseGraph[VT,ET], wos: Collection[VT], zs: Col
     # console.info(f"BZW-rule is applicable to vertices {wos} and {zs}.")
     return True
 
-def apply_bialgebra_zw_reverse(g: BaseGraph[VT,ET], ws: Collection[VT], zs: Collection[VT]) -> bool:
+def apply_bialgebra_zw_reverse(g: BaseGraph[VT,ET], wos: Collection[VT], zs: Collection[VT]) -> bool:
     """Attempt to apply the reverse BZW rule; reducing a complete (m,n)-bipartite WZ-pattern to a single ZW-edge."""
-    if not check_bialgebra_zw_reverse(g, ws, zs):
+    if not check_bialgebra_zw_reverse(g, wos, zs):
         return False
 
+    return unsafe_apply_bialgebra_zw_reverse(g, wos, zs)
+
+def unsafe_apply_bialgebra_zw_reverse(g: BaseGraph[VT,ET], ws: Collection[VT], zs: Collection[VT]) -> bool:
+    """Apply the reverse BZW rule without checking its applicability."""
     new_z = g.add_vertex(ty=VertexType.Z, phase=g.phase(next(iter(zs))))
     new_wi = g.add_vertex(ty=VertexType.W_INPUT)
     new_wo = g.add_vertex(ty=VertexType.W_OUTPUT)
@@ -137,33 +142,51 @@ def apply_bialgebra_zw_reverse(g: BaseGraph[VT,ET], ws: Collection[VT], zs: Coll
 
     return True
 
-def check_bialgebra_zw_forward(g: BaseGraph[VT,ET], wo: VT, z: VT) -> bool:
+def __bzw_forward_identify_endpoints(g: BaseGraph[VT,ET], v1: VT, v2: VT) -> Optional[Tuple[VT,VT]]:
+    if g.type(v1) == VertexType.W_INPUT and g.type(v2) == VertexType.Z:
+        return v1, v2
+    elif g.type(v1) == VertexType.Z and g.type(v2) == VertexType.W_INPUT:
+        return v2, v1
+    else:
+        return None
+
+def check_bialgebra_zw_forward(g: BaseGraph[VT,ET], v1: VT, v2: VT) -> bool:
     """Checks if the forward BZW rule can be applied; expanding a single ZW-edge to a complete (m,n)-bipartite WZ-pattern."""
-
     # Both vertices must be from the graph
-    if wo not in g.vertices() or z not in g.vertices():
+    if v1 not in g.vertices() or v2 not in g.vertices():
         return False
 
-    # The vertices involved must be; one W_OUTPUT and one Z
-    if g.type(wo) != VertexType.W_OUTPUT or g.type(z) != VertexType.Z:
+    # The vertices involved must be; one W_INPUT and one Z
+    endpoints = __bzw_forward_identify_endpoints(g, v1, v2)
+    if not endpoints:
         return False
+    wi, z = endpoints
 
-    # The Z vertex must be connected to the W_OUTPUT vertex through a W_INPUT
-    if not any(
-        g.num_edges(z, wi) == 1 and g.edge_type(g.edge(z, wi)) == EdgeType.SIMPLE
-        for wi in g.neighbors(wo) if g.edge_type(g.edge(wo, wi)) == EdgeType.W_IO and g.type(wi) == VertexType.W_INPUT
-    ):
+    # The Z vertex must be connected to the W_INPUT through a SIMPLE edge
+    if g.num_edges(z, wi) != 1 or g.edge_type(g.edge(z, wi)) != EdgeType.SIMPLE:
         return False
 
     return True
 
-def apply_bialgebra_zw_forward(g: BaseGraph[VT,ET], wo: VT, z: VT) -> bool:
+def apply_bialgebra_zw_forward(g: BaseGraph[VT,ET], v1: VT, v2: VT) -> bool:
     """Attempt to apply the forward BZW rule; expanding a single ZW-edge to a complete (m,n)-bipartite WZ-pattern."""
-    if not check_bialgebra_zw_forward(g, wo, z):
+    if not check_bialgebra_zw_forward(g, v1, v2):
         return False
 
-    # The current W_INPUT connecting W_OUTPUT to Z
-    wi = next(nb for nb in g.neighbors(wo) if g.type(nb) == VertexType.W_INPUT)
+    return unsafe_bialgebra_zw_forward(g, v1, v2)
+
+def unsafe_bialgebra_zw_forward(g: BaseGraph[VT,ET], v1: VT, v2: VT) -> bool:
+    # The vertices involved must be; one W_INPUT and one Z
+    endpoints = __bzw_forward_identify_endpoints(g, v1, v2)
+    if not endpoints:
+        return False
+    wi, z = endpoints
+
+    # The current W_OUTPUT connected to Z through W_INPUT
+    wo = next(
+        nb for nb in g.neighbors(wi)
+        if g.type(nb) == VertexType.W_OUTPUT and g.edge_type(g.edge(nb, wi)) == EdgeType.W_IO
+    )
 
     wos = []
     # Attach each nb_z as the input to a dedicated W_OUTPUT
@@ -173,9 +196,9 @@ def apply_bialgebra_zw_forward(g: BaseGraph[VT,ET], wo: VT, z: VT) -> bool:
 
         nwi = g.add_vertex(ty=VertexType.W_INPUT, qubit=g.qubit(nb_z), row=g.row(nb_z) + 0.5)
         nwo = g.add_vertex(ty=VertexType.W_OUTPUT, qubit=g.qubit(nb_z), row=g.row(nb_z) + 1.0)
-        wos.append(nwo)
         g.add_edge( (nb_z, nwi) )
         g.add_edge( (nwi,nwo) , EdgeType.W_IO )
+        wos.append(nwo)
 
     zs = []
     # Attach each nb_w to a dedicated Z-spider
@@ -184,9 +207,9 @@ def apply_bialgebra_zw_forward(g: BaseGraph[VT,ET], wo: VT, z: VT) -> bool:
             continue
 
         nz = g.add_vertex(ty=VertexType.Z, qubit=g.qubit(nb_w), row=g.row(nb_w) - 1.0)
-        zs.append(nz)
         g.set_phase(nz, g.phase(z))
         g.add_edge( (nz, nb_w) )
+        zs.append(nz)
 
     # Remove the old vertices
     g.remove_vertex(z)

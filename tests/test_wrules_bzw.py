@@ -191,38 +191,38 @@ class TestCheckForwardBialgebraZW(unittest.TestCase):
         """WZ-edge with zero phase should match."""
         g, z, wi, wo = prepare_bialgebra_zw_forward_graph(qubits = 2, phase = 0)
 
-        self.assertTrue(check_bialgebra_zw_forward(g, wo, z))
+        self.assertTrue(check_bialgebra_zw_forward(g, wi, z))
 
     def test_base_case_4_qubits(self):
         """WZ-edge with zero phase should match."""
         g, z, wi, wo = prepare_bialgebra_zw_forward_graph(qubits = 4, phase = 0)
 
-        self.assertTrue(check_bialgebra_zw_forward(g, wo, z))
+        self.assertTrue(check_bialgebra_zw_forward(g, wi, z))
 
     def test_base_case_nonzero_phase(self):
         """WZ-edge with nonzero phase should match."""
         g, z, wi, wo = prepare_bialgebra_zw_forward_graph(qubits = 3, phase = 1)
 
-        self.assertTrue(check_bialgebra_zw_forward(g, wo, z))
+        self.assertTrue(check_bialgebra_zw_forward(g, wi, z))
 
     def test_non_pauli_phase(self):
         """WZ-edge with non-pauli phase should match."""
         g, z, wi, wo = prepare_bialgebra_zw_forward_graph(qubits = 3, phase = Fraction(1, 4))
 
-        self.assertTrue(check_bialgebra_zw_forward(g, wo, z))
+        self.assertTrue(check_bialgebra_zw_forward(g, wi, z))
 
     def test_missing_edge(self):
         """WZ-edge not connected through a W_INPUT should not match."""
         g, z, wi, wo = prepare_bialgebra_zw_forward_graph(qubits = 3, phase = 0)
         g.remove_edge(g.edge(wi, z))
 
-        self.assertFalse(check_bialgebra_zw_forward(g, wo, z))
+        self.assertFalse(check_bialgebra_zw_forward(g, wi, z))
 
     def test_equivalence_phase_free(self):
         """WZ-edge with a zero phase should reduce to an equivalent graph."""
         g_start, z, wi, wo = prepare_bialgebra_zw_forward_graph(qubits = 3, phase = 0)
         g_final = g_start.copy()
-        apply_bialgebra_zw_forward(g_final, z, wo)
+        apply_bialgebra_zw_forward(g_final, z, wi)
 
         self.assertTrue(compare_tensors(g_start, g_final, preserve_scalar=True))
 
@@ -238,7 +238,7 @@ class TestCheckForwardBialgebraZW(unittest.TestCase):
         """Applying the forward rule followed by the reverse rule should preserve equivalence"""
         g_start, z, wi, wo = prepare_bialgebra_zw_forward_graph(qubits = 4, phase = 0)
         g_final = g_start.copy()
-        apply_bialgebra_zw_forward(g_final, z, wo)
+        apply_bialgebra_zw_forward(g_final, z, wi)
         wos = list(v for v in g_final.vertices() if g_final.type(v) == VertexType.W_OUTPUT)
         zs = list(v for v in g_final.vertices() if g_final.type(v) == VertexType.Z)
         apply_bialgebra_zw_reverse(g_final, wos, zs)
