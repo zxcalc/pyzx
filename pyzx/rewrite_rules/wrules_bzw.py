@@ -39,20 +39,20 @@ from pyzx.graph.base import BaseGraph, VT, ET
 console = logging.getLogger(__name__)
 
 def check_bialgebra_zw_reverse(g: BaseGraph[VT,ET], wos: Collection[VT], zs: Collection[VT]) -> bool:
-    """Checks if the BZW rule can be applied in a forward way to a complete (m,n)-bipartite pattern of W and Z vertices."""
+    """Checks if the reverse BZW rule can be applied; reducing a complete (m,n)-bipartite WZ-pattern to a single ZW-edge."""
 
     # All vertices must be from the graph
     if any(w not in g.vertices() for w in wos) or any(z not in g.vertices() for z in zs):
-        console.info("All proposed vertices must belong to the ZX-graph.")
+        # console.info("All proposed vertices must belong to the ZX-graph.")
         return False
 
     # The proposed vertices must be all W_OUTPUT and all Z-spiders with identical phases
     if any(g.type(w) != VertexType.W_OUTPUT for w in wos):
-        console.info(f"All proposed W-vertices must be of type VertexType.W_OUTPUT [{wos}].")
+        # console.info(f"All proposed W-vertices must be of type VertexType.W_OUTPUT [{wos}].")
         return False
     phase = g.phase(next(iter(zs)))
     if any(g.type(z) != VertexType.Z or g.phase(z) != phase for z in zs):
-        console.info(f"All proposed Z-vertices must be of type VertexType.Z with identical phases [{zs}].")
+        # console.info(f"All proposed Z-vertices must be of type VertexType.Z with identical phases [{zs}].")
         return False
 
     # The Z vertices must be connected to each W_OUTPUT with a single SIMPLE edge
@@ -60,7 +60,7 @@ def check_bialgebra_zw_reverse(g: BaseGraph[VT,ET], wos: Collection[VT], zs: Col
         g.num_edges(wo,z) != 1 or g.edge_type(g.edge(wo,z)) != EdgeType.SIMPLE
         for wo, z in itertools.product(wos, zs)
     ):
-        console.info("The W and Z-vertices must form a complete bipartite graph [connections].")
+        # console.info("The W and Z-vertices must form a complete bipartite graph [connections].")
         return False
 
     # The Z vertices must have one neighbour outside the complete (m,n)-bipartite pattern
@@ -69,7 +69,7 @@ def check_bialgebra_zw_reverse(g: BaseGraph[VT,ET], wos: Collection[VT], zs: Col
         g.vertex_degree(z) != count_wos + 1 or sum(1 for nb in g.neighbors(z) if nb not in wos and nb not in zs) != 1
         for z in zs
     ):
-        console.info("The Z-vertices must belong to a complete bipartite graph [external].")
+        # console.info("The Z-vertices must belong to a complete bipartite graph [external].")
         return False
 
     # The W_OUTPUT vertices must have one neighbour outside the complete (m,n)-bipartite pattern
@@ -78,13 +78,14 @@ def check_bialgebra_zw_reverse(g: BaseGraph[VT,ET], wos: Collection[VT], zs: Col
         g.vertex_degree(w) != count_zs + 1 or sum(1 for nb in g.neighbors(w) if nb not in wos and nb not in zs) != 1
         for w in wos
     ):
-        console.info("The W_OUTPUT-vertices must belong to a complete bipartite graph [external].")
+        # console.info("The W_OUTPUT-vertices must belong to a complete bipartite graph [external].")
         return False
 
-    console.info(f"BZW-rule is applicable to vertices {wos} and {zs}.")
+    # console.info(f"BZW-rule is applicable to vertices {wos} and {zs}.")
     return True
 
 def apply_bialgebra_zw_reverse(g: BaseGraph[VT,ET], ws: Collection[VT], zs: Collection[VT]) -> bool:
+    """Attempt to apply the reverse BZW rule; reducing a complete (m,n)-bipartite WZ-pattern to a single ZW-edge."""
     if not check_bialgebra_zw_reverse(g, ws, zs):
         return False
 
@@ -136,25 +137,28 @@ def apply_bialgebra_zw_reverse(g: BaseGraph[VT,ET], ws: Collection[VT], zs: Coll
 
     return True
 
-def check_bialgebra_zw_forward(g: BaseGraph[VT,ET], w: VT, z: VT) -> bool:
+def check_bialgebra_zw_forward(g: BaseGraph[VT,ET], wo: VT, z: VT) -> bool:
+    """Checks if the forward BZW rule can be applied; expanding a single ZW-edge to a complete (m,n)-bipartite WZ-pattern."""
+
     # Both vertices must be from the graph
-    if w not in g.vertices() or z not in g.vertices():
+    if wo not in g.vertices() or z not in g.vertices():
         return False
 
     # The vertices involved must be; one W_OUTPUT and one Z
-    if g.type(w) != VertexType.W_OUTPUT or g.type(z) != VertexType.Z:
+    if g.type(wo) != VertexType.W_OUTPUT or g.type(z) != VertexType.Z:
         return False
 
-    # The Z vertex must be connected to the W vertex through a W_INPUT with SIMPLE edges
+    # The Z vertex must be connected to the W_OUTPUT vertex through a W_INPUT
     if not any(
         g.num_edges(z, wi) == 1 and g.edge_type(g.edge(z, wi)) == EdgeType.SIMPLE
-        for wi in g.neighbors(w) if g.edge_type(g.edge(w, wi)) == EdgeType.W_IO and g.type(wi) == VertexType.W_INPUT
+        for wi in g.neighbors(wo) if g.edge_type(g.edge(wo, wi)) == EdgeType.W_IO and g.type(wi) == VertexType.W_INPUT
     ):
         return False
 
     return True
 
 def apply_bialgebra_zw_forward(g: BaseGraph[VT,ET], wo: VT, z: VT) -> bool:
+    """Attempt to apply the forward BZW rule; expanding a single ZW-edge to a complete (m,n)-bipartite WZ-pattern."""
     if not check_bialgebra_zw_forward(g, wo, z):
         return False
 
@@ -189,7 +193,7 @@ def apply_bialgebra_zw_forward(g: BaseGraph[VT,ET], wo: VT, z: VT) -> bool:
     g.remove_vertex(wi)
     g.remove_vertex(wo)
 
-    # Weave the complete bipartite pattern between the Z and W_OUTPUT
+    # Weave the bipartite pattern between the W_OUTPUT and Z vertices
     for wo, z in itertools.product(wos, zs):
         g.add_edge( (wo, z) )
 
