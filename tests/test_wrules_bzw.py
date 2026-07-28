@@ -147,16 +147,16 @@ class TestCheckReverseBialgebraZW(unittest.TestCase):
         """ZW-pattern with zero phase should reduce to an equivalent graph."""
         g_start, wos, zs = prepare_bialgebra_zw_reverse_graph(qubits = 3, phase = 0)
         g_final = g_start.copy()
-        apply_bialgebra_zw_reverse(g_final, wos + zs)
 
+        self.assertTrue(apply_bialgebra_zw_reverse(g_final, wos + zs))
         self.assertTrue(compare_tensors(g_start, g_final, preserve_scalar=True))
 
     def test_equivalence_nonzero_phase(self):
         """ZW-pattern with non-zero phase should reduce to an equivalent graph."""
         g_start, wos, zs = prepare_bialgebra_zw_reverse_graph(qubits = 3, phase = 1)
         g_final = g_start.copy()
-        apply_bialgebra_zw_reverse(g_final, wos + zs)
 
+        self.assertTrue(apply_bialgebra_zw_reverse(g_final, wos + zs))
         self.assertTrue(compare_tensors(g_start, g_final, preserve_scalar=True))
 
     def test_inequivalence_different_qubits(self):
@@ -179,10 +179,10 @@ class TestCheckReverseBialgebraZW(unittest.TestCase):
         g_final = g_start.copy()
         apply_bialgebra_zw_reverse(g_final, wos + zs)
         single_z = next(v for v in g_final.vertices() if g_final.type(v) == VertexType.Z)
-        single_w = next(v for v in g_final.vertices() if g_final.type(v) == VertexType.W_OUTPUT)
-        apply_bialgebra_zw_forward(g_final, single_w, single_z)
+        single_wi = next(v for v in g_final.vertices() if g_final.type(v) == VertexType.W_INPUT)
 
-        self.assertTrue(compare_tensors(g_start, g_final))
+        self.assertTrue(apply_bialgebra_zw_forward(g_final, single_wi, single_z))
+        self.assertTrue(compare_tensors(g_start, g_final, preserve_scalar=True))
 
 class TestCheckForwardBialgebraZW(unittest.TestCase):
     """Tests for check_bialgebra_zw_forward and apply_bialgebra_zw_forward."""
@@ -222,28 +222,31 @@ class TestCheckForwardBialgebraZW(unittest.TestCase):
         """WZ-edge with a zero phase should expand to an equivalent graph."""
         g_start, z, wi, wo = prepare_bialgebra_zw_forward_graph(qubits = 3, phase = 0)
         g_final = g_start.copy()
-        apply_bialgebra_zw_forward(g_final, z, wi)
 
+        self.assertTrue(apply_bialgebra_zw_forward(g_final, z, wi))
         self.assertTrue(compare_tensors(g_start, g_final, preserve_scalar=True))
 
     def test_equivalence_nonzero_phase(self):
         """WZ-edge with a non-zero phase should expand to an equivalent graph."""
         g_start, z, wi, wo = prepare_bialgebra_zw_forward_graph(qubits = 3, phase = 1)
         g_final = g_start.copy()
-        apply_bialgebra_zw_forward(g_final, z, wi)
 
+        self.assertTrue(apply_bialgebra_zw_forward(g_final, z, wi))
         self.assertTrue(compare_tensors(g_start, g_final, preserve_scalar=True))
 
     def test_equivalence_inversion_forward_reverse(self):
         """Applying the forward rule followed by the reverse rule should preserve equivalence"""
         g_start, z, wi, wo = prepare_bialgebra_zw_forward_graph(qubits = 4, phase = 0)
         g_final = g_start.copy()
-        apply_bialgebra_zw_forward(g_final, z, wi)
+
+        self.assertTrue(apply_bialgebra_zw_forward(g_final, z, wi))
+
         wos = list(v for v in g_final.vertices() if g_final.type(v) == VertexType.W_OUTPUT)
         zs = list(v for v in g_final.vertices() if g_final.type(v) == VertexType.Z)
-        apply_bialgebra_zw_reverse(g_final, wos + zs)
 
-        self.assertTrue(compare_tensors(g_start, g_final))
+        self.assertTrue(apply_bialgebra_zw_reverse(g_final, wos + zs))
+
+        self.assertTrue(compare_tensors(g_start, g_final, preserve_scalar=True))
 
 if __name__ == '__main__':
     unittest.main()
