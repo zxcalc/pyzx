@@ -29,7 +29,7 @@ if __name__ == '__main__':
 from pyzx.graph import Graph
 from pyzx.utils import VertexType
 from pyzx.rewrite_rules.wrules_bzw import (
-    check_bialgebra_zw_reverse, check_bialgebra_zw_forward, apply_bialgebra_zw_reverse, apply_bialgebra_zw_forward
+    match_bialgebra_zw_reverse, check_bialgebra_zw_forward, apply_bialgebra_zw_reverse, apply_bialgebra_zw_forward
 )
 
 def prepare_bialgebra_zw_reverse_graph(qubits, phase):
@@ -88,52 +88,52 @@ class TestCheckReverseBialgebraZW(unittest.TestCase):
         """ZW-pattern of base case should match."""
         g, wos, zs = prepare_bialgebra_zw_reverse_graph(qubits = 2, phase = 0)
 
-        self.assertTrue(check_bialgebra_zw_reverse(g, wos, zs))
+        self.assertIsNotNone(match_bialgebra_zw_reverse(g, wos + zs))
 
     def test_base_case_4_qubits(self):
         """ZW-pattern with 4 qubits should match."""
         g, wos, zs = prepare_bialgebra_zw_reverse_graph(qubits = 4, phase = 0)
 
-        self.assertTrue(check_bialgebra_zw_reverse(g, wos, zs))
+        self.assertIsNotNone(match_bialgebra_zw_reverse(g, wos + zs))
 
     def test_identical_phases(self):
         """ZW-pattern where Z-spiders have identical phases should match."""
         g, wos, zs = prepare_bialgebra_zw_reverse_graph(qubits = 3, phase = 1)
 
-        self.assertTrue(check_bialgebra_zw_reverse(g, wos, zs))
+        self.assertIsNotNone(match_bialgebra_zw_reverse(g, wos + zs))
 
     def test_non_pauli_phase(self):
         """ZW-pattern where Z-spiders have non-pauli phases should match."""
         g, wos, zs = prepare_bialgebra_zw_reverse_graph(qubits = 3, phase = Fraction(1, 4))
 
-        self.assertTrue(check_bialgebra_zw_reverse(g, wos, zs))
+        self.assertIsNotNone(match_bialgebra_zw_reverse(g, wos + zs))
 
     def test_different_phases(self):
         """ZW-pattern where Z-spiders have different phases should not match."""
         g, wos, zs = prepare_bialgebra_zw_reverse_graph(qubits = 3, phase = 0)
         g.set_phase(zs[0], 1)
 
-        self.assertFalse(check_bialgebra_zw_reverse(g, wos, zs))
+        self.assertIsNone(match_bialgebra_zw_reverse(g, wos + zs))
 
     def test_incomplete_bipartite_pattern(self):
         """ZW-pattern that is incomplete bipartite should not match."""
         g, wos, zs = prepare_bialgebra_zw_reverse_graph(qubits = 2, phase = 0)
         g.remove_edge(g.edge(wos[0], zs[1]))
 
-        self.assertFalse(check_bialgebra_zw_reverse(g, wos, zs))
+        self.assertIsNone(match_bialgebra_zw_reverse(g, wos + zs))
 
     def test_complete_bipartite_subpattern(self):
         """ZW-pattern with a complete (3,3)-bipartite pattern but a subpattern requested should not match."""
         g, wos, zs = prepare_bialgebra_zw_reverse_graph(qubits = 3, phase = 0)
 
-        self.assertFalse(check_bialgebra_zw_reverse(g, wos[:2], zs[:2]))
+        self.assertIsNone(match_bialgebra_zw_reverse(g, wos[:2] + zs[:2]))
 
     def test_hadamard_edge(self):
         """ZW-pattern with a Hadamard edge in the complete bipartite pattern should not match."""
         g, wos, zs = prepare_bialgebra_zw_reverse_graph(qubits = 2, phase = 0)
         g.set_edge_type(g.edge(wos[0], zs[1]), EdgeType.HADAMARD)
 
-        self.assertFalse(check_bialgebra_zw_reverse(g, wos, zs))
+        self.assertIsNone(match_bialgebra_zw_reverse(g, wos + zs))
 
     def test_extra_neighbour(self):
         """ZW-pattern with two extra neighbours beyond the complete bipartite pattern should not match."""
@@ -141,13 +141,13 @@ class TestCheckReverseBialgebraZW(unittest.TestCase):
         extra = g.add_vertex(qubit=4, row=0)
         g.add_edge( (zs[0], extra) )
 
-        self.assertFalse(check_bialgebra_zw_reverse(g, wos, zs))
+        self.assertIsNone(match_bialgebra_zw_reverse(g, wos + zs))
 
     def test_equivalence_phase_free(self):
         """ZW-pattern with zero phase should reduce to an equivalent graph."""
         g_start, wos, zs = prepare_bialgebra_zw_reverse_graph(qubits = 3, phase = 0)
         g_final = g_start.copy()
-        apply_bialgebra_zw_reverse(g_final, wos, zs)
+        apply_bialgebra_zw_reverse(g_final, wos + zs)
 
         self.assertTrue(compare_tensors(g_start, g_final, preserve_scalar=True))
 
@@ -155,7 +155,7 @@ class TestCheckReverseBialgebraZW(unittest.TestCase):
         """ZW-pattern with non-zero phase should reduce to an equivalent graph."""
         g_start, wos, zs = prepare_bialgebra_zw_reverse_graph(qubits = 3, phase = 1)
         g_final = g_start.copy()
-        apply_bialgebra_zw_reverse(g_final, wos, zs)
+        apply_bialgebra_zw_reverse(g_final, wos + zs)
 
         self.assertTrue(compare_tensors(g_start, g_final, preserve_scalar=True))
 
@@ -177,7 +177,7 @@ class TestCheckReverseBialgebraZW(unittest.TestCase):
         """Applying the reverse rule followed by the forward rule should preserve equivalence"""
         g_start, wos, zs = prepare_bialgebra_zw_reverse_graph(qubits = 4, phase = 0)
         g_final = g_start.copy()
-        apply_bialgebra_zw_reverse(g_final, wos, zs)
+        apply_bialgebra_zw_reverse(g_final, wos + zs)
         single_z = next(v for v in g_final.vertices() if g_final.type(v) == VertexType.Z)
         single_w = next(v for v in g_final.vertices() if g_final.type(v) == VertexType.W_OUTPUT)
         apply_bialgebra_zw_forward(g_final, single_w, single_z)
@@ -219,7 +219,7 @@ class TestCheckForwardBialgebraZW(unittest.TestCase):
         self.assertFalse(check_bialgebra_zw_forward(g, wi, z))
 
     def test_equivalence_phase_free(self):
-        """WZ-edge with a zero phase should reduce to an equivalent graph."""
+        """WZ-edge with a zero phase should expand to an equivalent graph."""
         g_start, z, wi, wo = prepare_bialgebra_zw_forward_graph(qubits = 3, phase = 0)
         g_final = g_start.copy()
         apply_bialgebra_zw_forward(g_final, z, wi)
@@ -227,10 +227,10 @@ class TestCheckForwardBialgebraZW(unittest.TestCase):
         self.assertTrue(compare_tensors(g_start, g_final, preserve_scalar=True))
 
     def test_equivalence_nonzero_phase(self):
-        """Z-W pattern with identical non-zero phases should reduce to an equivalent graph."""
+        """WZ-edge with a non-zero phase should expand to an equivalent graph."""
         g_start, z, wi, wo = prepare_bialgebra_zw_forward_graph(qubits = 3, phase = 1)
         g_final = g_start.copy()
-        apply_bialgebra_zw_forward(g_final, z, wo)
+        apply_bialgebra_zw_forward(g_final, z, wi)
 
         self.assertTrue(compare_tensors(g_start, g_final, preserve_scalar=True))
 
@@ -241,7 +241,7 @@ class TestCheckForwardBialgebraZW(unittest.TestCase):
         apply_bialgebra_zw_forward(g_final, z, wi)
         wos = list(v for v in g_final.vertices() if g_final.type(v) == VertexType.W_OUTPUT)
         zs = list(v for v in g_final.vertices() if g_final.type(v) == VertexType.Z)
-        apply_bialgebra_zw_reverse(g_final, wos, zs)
+        apply_bialgebra_zw_reverse(g_final, wos + zs)
 
         self.assertTrue(compare_tensors(g_start, g_final))
 

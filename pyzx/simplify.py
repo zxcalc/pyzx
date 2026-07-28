@@ -143,6 +143,10 @@ pi_commute_rewrite: RewriteSingleVertex = RewriteSingleVertex(check_pi_commute, 
 zw_bialgebra_simp: RewriteSimpDoubleVertex = RewriteSimpDoubleVertex(check_bialgebra_zw_forward, unsafe_bialgebra_zw_forward, check_bialgebra_zw_forward)
 """Applies the ZW Bialgebra rule to a given WZ-edge (n.b. W_OUTPUT - W_INPUT - Z). Can be run automatically on the entire graph."""
 
+zw_bialgebra_op_simp: RewriteSimpGraph = RewriteSimpGraph(apply_bialgebra_zw_reverse, apply_bialgebra_zw_reverse_auto)
+"""Applies the ZW Bialgebra rule to a given ZW-complete bipartite pattern. Can be run automatically on the entire graph."""
+zw_bialgebra_op_simp.is_match = lambda g, vs: match_bialgebra_zw_reverse(g, vz) is not None # type: ignore
+
 def phase_free_simp(g: BaseGraph[VT,ET]) -> bool:
     '''Performs the following set of simplifications on the graph:
     spider -> bialg'''
