@@ -25,12 +25,13 @@ __all__ = [
     'check_bialgebra_zw_forward',
     'apply_bialgebra_zw_forward',
     'unsafe_bialgebra_zw_forward',
-    'check_bialgebra_zw_reverse',
+    'match_bialgebra_zw_reverse',
     'apply_bialgebra_zw_reverse',
+    'apply_bialgebra_zw_reverse_auto',
 ]
 
 import logging
-from typing import Collection, Optional, Tuple
+from typing import Collection, Optional, Tuple, List, Iterable
 
 import itertools
 
@@ -39,22 +40,36 @@ from pyzx.graph.base import BaseGraph, VT, ET
 
 console = logging.getLogger(__name__)
 
-def check_bialgebra_zw_reverse(g: BaseGraph[VT,ET], wos: Collection[VT], zs: Collection[VT]) -> bool:
+def __bzw_reverse_identify_vertices(g: BaseGraph[VT,ET], vertices: Iterable[VT]) -> Optional[Tuple[List[VT],List[VT]]]:
+    wos: List[VT] = []
+    zs: List[VT] = []
+
+    for v in vertices:
+        if g.type(v) == VertexType.W_OUTPUT: wos.append(v)
+        elif g.type(v) == VertexType.Z: zs.append(v)
+
+    return wos, zs
+
+def match_bialgebra_zw_reverse(g: BaseGraph[VT,ET], vertices: Optional[Collection[VT]] = None) -> Optional[Tuple[List[VT],List[VT]]]:
     """Checks if the reverse BZW rule can be applied; reducing a complete (m,n)-bipartite WZ-pattern to a single ZW-edge."""
+    pattern = __bzw_reverse_identify_vertices(g, vertices or g.vertices())
+    if pattern is None:
+        return None
+    wos, zs = pattern
 
     # All vertices must be from the graph
     if any(w not in g.vertices() for w in wos) or any(z not in g.vertices() for z in zs):
         # console.info("All proposed vertices must belong to the ZX-graph.")
-        return False
+        return None
 
     # The proposed vertices must be all W_OUTPUT and all Z-spiders with identical phases
     if any(g.type(w) != VertexType.W_OUTPUT for w in wos):
         # console.info(f"All proposed W-vertices must be of type VertexType.W_OUTPUT [{wos}].")
-        return False
+        return None
     phase = g.phase(next(iter(zs)))
     if any(g.type(z) != VertexType.Z or g.phase(z) != phase for z in zs):
         # console.info(f"All proposed Z-vertices must be of type VertexType.Z with identical phases [{zs}].")
-        return False
+        return None
 
     # The Z vertices must be connected to each W_OUTPUT with a single SIMPLE edge
     if any(
@@ -62,7 +77,7 @@ def check_bialgebra_zw_reverse(g: BaseGraph[VT,ET], wos: Collection[VT], zs: Col
         for wo, z in itertools.product(wos, zs)
     ):
         # console.info("The W and Z-vertices must form a complete bipartite graph [connections].")
-        return False
+        return None
 
     # The Z vertices must have one neighbour outside the complete (m,n)-bipartite pattern
     count_wos = len(wos)
@@ -71,7 +86,7 @@ def check_bialgebra_zw_reverse(g: BaseGraph[VT,ET], wos: Collection[VT], zs: Col
         for z in zs
     ):
         # console.info("The Z-vertices must belong to a complete bipartite graph [external].")
-        return False
+        return None
 
     # The W_OUTPUT vertices must have one neighbour outside the complete (m,n)-bipartite pattern
     count_zs = len(zs)
@@ -80,20 +95,31 @@ def check_bialgebra_zw_reverse(g: BaseGraph[VT,ET], wos: Collection[VT], zs: Col
         for w in wos
     ):
         # console.info("The W_OUTPUT-vertices must belong to a complete bipartite graph [external].")
-        return False
+        return None
 
     # console.info(f"BZW-rule is applicable to vertices {wos} and {zs}.")
-    return True
+    return wos, zs
 
-def apply_bialgebra_zw_reverse(g: BaseGraph[VT,ET], wos: Collection[VT], zs: Collection[VT]) -> bool:
+def apply_bialgebra_zw_reverse(g: BaseGraph[VT,ET], vertices: Collection[VT]) -> bool:
     """Attempt to apply the reverse BZW rule; reducing a complete (m,n)-bipartite WZ-pattern to a single ZW-edge."""
-    if not check_bialgebra_zw_reverse(g, wos, zs):
+    match = match_bialgebra_zw_reverse(g, vertices)
+    if match is None:
         return False
+    wos, zs = match
 
     return unsafe_apply_bialgebra_zw_reverse(g, wos, zs)
 
-def unsafe_apply_bialgebra_zw_reverse(g: BaseGraph[VT,ET], ws: Collection[VT], zs: Collection[VT]) -> bool:
-    """Apply the reverse BZW rule without checking its applicability."""
+def apply_bialgebra_zw_reverse_auto(g: BaseGraph[VT,ET]) -> bool:
+    """Attempt to apply the reverse BZW rule; reducing a complete (m,n)-bipartite WZ-pattern to a single ZW-edge."""
+    match = match_bialgebra_zw_reverse(g)
+    if match is None:
+        return False
+    wos, zs = match
+
+    return unsafe_apply_bialgebra_zw_reverse(g, wos, zs)
+
+def unsafe_apply_bialgebra_zw_reverse(g: BaseGraph[VT,ET], wos: Collection[VT], zs: Collection[VT]) -> bool:
+    """Apply the reverse BZW rule assuming it is applicable to wos and zs."""
     new_z = g.add_vertex(ty=VertexType.Z, phase=g.phase(next(iter(zs))))
     new_wi = g.add_vertex(ty=VertexType.W_INPUT)
     new_wo = g.add_vertex(ty=VertexType.W_OUTPUT)
@@ -106,7 +132,7 @@ def unsafe_apply_bialgebra_zw_reverse(g: BaseGraph[VT,ET], ws: Collection[VT], z
     qubit_wi = 0
 
     # Connect the two input vertices (i.e. connected through W_INPUTs into W-vertices) to the new Z-spider
-    for w in ws:
+    for w in wos:
         wi = next(filter(
             lambda nb: g.type(nb) == VertexType.W_INPUT and g.edge_type(g.edge(w,nb)) == EdgeType.W_IO, g.neighbors(w)
         ))
@@ -123,8 +149,8 @@ def unsafe_apply_bialgebra_zw_reverse(g: BaseGraph[VT,ET], ws: Collection[VT], z
     g.set_row(new_z, row_z / len(zs))
     g.set_qubit(new_z, qubit_z / len(zs))
     # Position the new W_INPUT halfway between the old W_OUTPUT vertices
-    g.set_row(new_wi, row_wi / len(ws))
-    g.set_qubit(new_wi, qubit_wi / len(ws))
+    g.set_row(new_wi, row_wi / len(wos))
+    g.set_qubit(new_wi, qubit_wi / len(wos))
 
     row_wo = 0
     qubit_wo = 0
@@ -137,12 +163,12 @@ def unsafe_apply_bialgebra_zw_reverse(g: BaseGraph[VT,ET], ws: Collection[VT], z
         g.remove_vertex(z)
 
     # Position the new W_OUTPUT halfway between the old Z-spiders
-    g.set_row(new_wo, row_wo / len(ws))
-    g.set_qubit(new_wo, qubit_wo / len(ws))
+    g.set_row(new_wo, row_wo / len(wos))
+    g.set_qubit(new_wo, qubit_wo / len(wos))
 
     return True
 
-def __bzw_forward_identify_endpoints(g: BaseGraph[VT,ET], v1: VT, v2: VT) -> Optional[Tuple[VT,VT]]:
+def __bzw_forward_identify_vertices(g: BaseGraph[VT,ET], v1: VT, v2: VT) -> Optional[Tuple[VT,VT]]:
     if g.type(v1) == VertexType.W_INPUT and g.type(v2) == VertexType.Z:
         return v1, v2
     elif g.type(v1) == VertexType.Z and g.type(v2) == VertexType.W_INPUT:
@@ -157,7 +183,7 @@ def check_bialgebra_zw_forward(g: BaseGraph[VT,ET], v1: VT, v2: VT) -> bool:
         return False
 
     # The vertices involved must be; one W_INPUT and one Z
-    endpoints = __bzw_forward_identify_endpoints(g, v1, v2)
+    endpoints = __bzw_forward_identify_vertices(g, v1, v2)
     if not endpoints:
         return False
     wi, z = endpoints
@@ -177,7 +203,7 @@ def apply_bialgebra_zw_forward(g: BaseGraph[VT,ET], v1: VT, v2: VT) -> bool:
 
 def unsafe_bialgebra_zw_forward(g: BaseGraph[VT,ET], v1: VT, v2: VT) -> bool:
     # The vertices involved must be; one W_INPUT and one Z
-    endpoints = __bzw_forward_identify_endpoints(g, v1, v2)
+    endpoints = __bzw_forward_identify_vertices(g, v1, v2)
     if not endpoints:
         return False
     wi, z = endpoints
