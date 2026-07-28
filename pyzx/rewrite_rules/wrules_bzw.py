@@ -158,10 +158,10 @@ def unsafe_apply_bialgebra_zw_reverse(g: BaseGraph[VT,ET], wos: Collection[VT], 
     g.add_edge( (new_z,new_wi) )
     g.add_edge( (new_wi,new_wo), EdgeType.W_IO )
 
-    row_z = 0
-    qubit_z = 0
-    row_wi = 0
-    qubit_wi = 0
+    row_z = 0.0
+    qubit_z = 0.0
+    row_wi = 0.0
+    qubit_wi = 0.0
 
     # Connect the two input vertices (i.e. connected through W_INPUTs into W-vertices) to the new Z-spider
     for w in wos:
@@ -184,8 +184,8 @@ def unsafe_apply_bialgebra_zw_reverse(g: BaseGraph[VT,ET], wos: Collection[VT], 
     g.set_row(new_wi, row_wi / len(wos))
     g.set_qubit(new_wi, qubit_wi / len(wos))
 
-    row_wo = 0
-    qubit_wo = 0
+    row_wo = 0.0
+    qubit_wo = 0.0
     # Connect the two output vertices (i.e. connected to Z-vertices except the W_OUTPUTs) to the new W_OUTPUT
     for z in zs:
         o = next(filter(lambda nb: g.type(nb) != VertexType.W_OUTPUT, g.neighbors(z)))
