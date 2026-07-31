@@ -1,10 +1,10 @@
-from typing import Any, Callable
+from enum import Enum
+from typing import Any
 
 import numpy as np
 
-from enum import Enum
-
 from pyzx.linalg import Mat2
+
 from .architecture import Architecture, create_fully_connected_architecture
 from .machine_learning import GeneticAlgorithm, ParticleSwarmOptimization
 from .parity_maps import CNOT_tracker
@@ -100,33 +100,28 @@ class FitnessFunction:
         self.n_qubits = architecture.n_qubits if architecture else matrix.cols()
         self.kwargs = kwargs
 
-    def _make_function(self) -> Callable[[list[int]], int]:
-        def fitness_func(permutation: list[int]) -> int:
-            row_perm = permutation if self.row else np.arange(len(self.matrix.data))
-            col_perm = permutation if self.col else np.arange(len(self.matrix.data[0]))
-            circuit = CNOT_tracker(self.n_qubits)
-            mat = Mat2([[self.matrix.data[r][c] for c in col_perm] for r in row_perm])
-            gauss(
-                self.mode,
-                mat,
-                architecture=self.architecture,
-                y=circuit,
-                full_reduce=self.full_reduce,
-                **self.kwargs,
-            )
-            match self.metric:
-                case CostMetric.COMBINED:
-                    return circuit.cnot_depth() * 10000 + circuit.count_cnots()
-                case CostMetric.COUNT:
-                    return circuit.count_cnots()
-                case CostMetric.DEPTH:
-                    return circuit.cnot_depth()
-        
-        return fitness_func
-
     def __call__(self, permutation: list[int]) -> int:
-        f = self._make_function()
-        return f(permutation)
+        row_perm = permutation if self.row else np.arange(len(self.matrix.data))
+        col_perm = permutation if self.col else np.arange(len(self.matrix.data[0]))
+        circuit = CNOT_tracker(self.n_qubits)
+        mat = Mat2([[self.matrix.data[r][c] for c in col_perm] for r in row_perm])
+        gauss(
+            self.mode,
+            mat,
+            architecture=self.architecture,
+            y=circuit,
+            full_reduce=self.full_reduce,
+            **self.kwargs,
+        )
+        match self.metric:
+            case CostMetric.COMBINED:
+                return circuit.cnot_depth() * 10000 + circuit.count_cnots()
+            case CostMetric.COUNT:
+                return circuit.count_cnots()
+            case CostMetric.DEPTH:
+                return circuit.cnot_depth()
+            case _:
+                raise ValueError(f"Invalid cost metric '{self.metric}'")
 
 
 def gauss(

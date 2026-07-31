@@ -15,18 +15,18 @@
 # limitations under the License.
 
 from collections.abc import Mapping
+from enum import Enum
+from typing import Any, Protocol
 
 import numpy as np
-from typing import Any, Protocol, Union
-from enum import Enum
 
-
-from pyzx.circuit import Circuit, ZPhase, XPhase, CNOT, CZ
+from pyzx.circuit import CNOT, CZ, Circuit, XPhase, ZPhase
 from pyzx.graph.graph_s import GraphS
 from pyzx.linalg import Mat2, MatLike
 from pyzx.utils import EdgeType, FractionLike, maxelements
-from .architecture import create_architecture, FULLY_CONNECTED, Architecture
-from .cnot_mapper import sequential_gauss, ElimMode, gauss
+
+from .architecture import FULLY_CONNECTED, Architecture, create_architecture
+from .cnot_mapper import ElimMode, gauss, sequential_gauss
 from .parity_maps import CNOT_tracker, Parity
 from .steiner import steiner_reduce_column
 
@@ -161,7 +161,7 @@ class SplitHeuristic(Enum):
 
 
 def route_phase_poly(
-    circuit: Union[Circuit, "PhasePoly"],
+    circuit: 'Circuit | PhasePoly',
     architecture: Architecture,
     method: RoutingMethod = RoutingMethod.GRAY_MEIJER,
     mode: ElimMode = ElimMode.STEINER_MODE,
@@ -300,12 +300,13 @@ def arity_root_heuristic(
     best_qubits = []
     best_arity = None
     for q, a in [(qubit, arity) for qubit, arity in architecture.arities() if qubit in qubits]:
-        best_qubits.append(q)
         if best_arity is None:
             best_arity = a
         elif a != best_arity:
             break
-    root = np.random.choice(best_qubits)
+        best_qubits.append(q)
+    
+    root = int(np.random.choice(best_qubits))
     return list(
         steiner_reduce_column(
             architecture,
@@ -400,7 +401,7 @@ def random_split_heuristic(
 
     :return: A random split from the given qubits
     """
-    return [np.random.choice(qubits)]
+    return [int(np.random.choice(qubits))]
 
 
 def arity_split_heuristic(architecture: Architecture, matrix: Mat2, cols_to_use: list[int], qubits: list[int], **kwargs: Any) -> list[int]:
@@ -419,11 +420,11 @@ def arity_split_heuristic(architecture: Architecture, matrix: Mat2, cols_to_use:
     best_qubits: list[int] = []
     best_arity = None
     for q, a in [(qubit, arity) for qubit, arity in architecture.arities() if qubit in qubits]:
-        best_qubits.append(q)
         if best_arity is None:
             best_arity = a
         elif a != best_arity:
             break
+        best_qubits.append(q)
     return best_qubits
 
 
@@ -574,7 +575,7 @@ class PhasePoly:
                                     add_edge(graph, vs_dict, p2, p)
             # Find a path from the parity to a partition
             found_partition, path = self._dfs([(parity, [parity])], graph, vs_dict, partitions)
-            if found_partition != []:
+            if found_partition:
                 # Apply those changes if such a path exists
                 # Remember which partition to add the final element to
                 p_idx = partitions.index(found_partition)
@@ -675,7 +676,7 @@ class PhasePoly:
         skipped_idxs = []
         deliberating = []
         for i in range(self.n_qubits):
-            if permutation[i] is None:
+            if permutation[i] is None: # TODO: this may be a mistake -- always evaluates to false
                 # Find the best parity in skipped_parities to place there
                 pivoted_parities = [(j, p) for j, p in skipped_parities if p[i] == 1]
                 if pivoted_parities:
@@ -1338,7 +1339,7 @@ class PhasePoly:
             if index != len(self.prev_rows):
                 self.prev_rows = self.prev_rows[index:] + qubits
             else:
-                self.prev_rows = qubits
+                self.prev_rows = list(qubits)
         # print(self.prev_rows)
 
     def _obtain_final_parities(

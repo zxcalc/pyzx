@@ -18,6 +18,7 @@ from collections.abc import Iterator
 from typing import Any
 
 from pyzx.linalg import Mat2
+
 from .architecture import Architecture
 from .parity_maps import CNOT_tracker
 
@@ -52,9 +53,9 @@ def steiner_gauss(
         matrix.row_add(c0, c1)
         if debug:
             print("Reducing", c0, c1)
-        if x != None:
+        if x is not None:
             x.row_add(c0, c1)
-        if y != None:
+        if y is not None:
             y.col_add(c1, c0)
 
     def steiner_reduce(col: int, root: int, nodes: list[int], upper: bool) -> None:

@@ -54,7 +54,7 @@ class CNOT_tracker(Circuit):
     def count_cnots(self) -> int:
         """Returns the number of CNOT gates in the tracker."""
         return len(
-            [g for g in self.gates if isinstance(g, (CNOT, CZ))]
+            [g for g in self.gates if type(g) in (CNOT, CZ)] # don't use isinstance here -- CZ is subclassed
         )
 
     def cnot_depth(self) -> int:

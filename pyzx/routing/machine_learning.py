@@ -15,17 +15,17 @@
 # limitations under the License.
 
 
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from multiprocessing import cpu_count
 from multiprocessing.pool import Pool
 from typing import TYPE_CHECKING, Any
-import numpy as np
-from numpy.typing import ArrayLike, ArrayLike, NDArray
 
-from .parity_maps import CNOT_tracker
+import numpy as np
+from numpy.typing import NDArray
 
 if TYPE_CHECKING:
     from .cnot_mapper import StepFunction
+    from .parity_maps import CNOT_tracker
 
 
 class GeneticAlgorithm:
@@ -78,7 +78,7 @@ class GeneticAlgorithm:
             self.population_size, size=2, replace=False, p=selection_chance
         )
 
-    def _create_population(self, n: ArrayLike) -> None:
+    def _create_population(self, n: int | Sequence[int]) -> None:
         """
         Initialises the population with random permutations with size n and evaluates their fitness.
         Also creates a list of the weakest individuals - negative population.
@@ -95,7 +95,7 @@ class GeneticAlgorithm:
 
     def find_optimum(
         self, n_qubits: int, n_generations: int, initial_order: list[int] | None = None, n_child: int | None = None, continued: bool = False
-    ) -> np.ndarray:
+    ) -> list[int]:
         """
         Runs the genetic algorithm to find the best permutation over a number of generations.
 
@@ -170,7 +170,7 @@ class GeneticAlgorithm:
                 children.append(child)
         self._add_children(children)
 
-    def _crossover(self, parent1: NDArray, parent2: NDArray) -> list[int]:
+    def _crossover(self, parent1: Sequence[int], parent2: Sequence[int]) -> list[int]:
         """
         Performs ordered crossover between two parents.
 
@@ -291,7 +291,7 @@ class ParticleSwarmOptimization:
         # Start with 1 particle with initial permutation
         self.swarm[0].current = np.arange(n).tolist()
 
-    def find_optimum(self, n_qubits: int, n_steps: int, quiet: bool = True, close_pool: bool = True) -> tuple[list[CNOT_tracker], list[list[int]]]:
+    def find_optimum(self, n_qubits: int, n_steps: int, quiet: bool = True, close_pool: bool = True) -> tuple[list["CNOT_tracker"], list[list[int]]]:
         """
         Creates a swarm of n-qubits and determines the optimum fitness solution for a given number of steps
 
@@ -316,7 +316,11 @@ class ParticleSwarmOptimization:
         if close_pool and self.pool:
             self.pool.close()
             self.pool.join()
-        return self.best_particle.best_solution or ([], [])
+        
+        if not self.best_particle.best_solution:
+            raise ValueError("No valid solution found.")
+        
+        return self.best_particle.best_solution
 
     @staticmethod
     def particle_update_func(args: tuple['Particle', 'Particle']) -> 'Particle':
@@ -385,7 +389,7 @@ class Particle:
         self.current: list[int] = np.random.permutation(size).tolist()
         self.best_point = self.current
         self.best: int | None = None
-        self.best_solution: tuple[list[CNOT_tracker], list[list[int]]] | None = None
+        self.best_solution: tuple[list["CNOT_tracker"], list[list[int]]] | None = None
         self.s_crossover = int(s_best_crossover * size)
         self.p_crossover = int(p_best_crossover * size)
         self.mutation = int(mutation * size)
@@ -411,7 +415,7 @@ class Particle:
 
     def step(self, swarm_best: 'Particle') -> bool:
         """
-        Preform one optimisation step for the particle.
+        Perform one optimisation step for the particle.
 
         :param swarm_best: The best particle in the swarm
         :return: True, a better solution was found, False, no better solution was found
@@ -451,7 +455,7 @@ class Particle:
 
     def _crossover(self, particle: list[int], best_particle: list[int], n: int) -> list[int]:
         """
-        Preform a crossover between this particle and the best current particle.
+        Perform a crossover between this particle and the best current particle.
 
         :param particle: The current particle permutation
         :param best_particle: The highest scoring particle permutation
@@ -460,7 +464,8 @@ class Particle:
         """
         cross_idxs = np.random.choice(self.size, size=n, replace=False)
         new_particle = [-1] * len(particle)
-        new_particle[cross_idxs] = best_particle[cross_idxs]
+        for i in cross_idxs:
+            new_particle[i] = best_particle[i]
         idx = 0
         for i, gen in enumerate(new_particle):
             if gen == -1:  # skip over the parent1 part in child

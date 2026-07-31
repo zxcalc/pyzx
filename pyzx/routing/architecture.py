@@ -15,18 +15,19 @@
 # limitations under the License.
 
 
-from collections.abc import Iterator, Sequence
-import math
 import itertools
+import math
 import sys
-from typing import Any, Literal, NoReturn
+from collections.abc import Iterator, Sequence
+from typing import Any, Literal
 
 from pyzx.graph.base import BaseGraph
+
 if __name__ == '__main__':
     sys.path.append('..')
-from ..graph.graph import Graph
-
 import numpy as np
+
+from ..graph.graph import Graph
 
 SQUARE = "square"
 LINE = "line"
@@ -187,7 +188,7 @@ class Architecture:
         """
         return tuple(sorted(subgraph))
 
-    def pre_calc_non_cutting_vertices(self) -> NoReturn:
+    def pre_calc_non_cutting_vertices(self) -> None:
         """
         Adds to a dictionary all non-cutting vertices for every possible subset of qubits.
         
@@ -321,8 +322,8 @@ class Architecture:
 
         :param filename: The filename of the image to be saved, default None
         """
-        import networkx as nx
         import matplotlib.pyplot as plt
+        import networkx as nx
         plt.switch_backend('agg')
         g = nx.Graph()
         g.add_nodes_from(self.vertices)
@@ -900,7 +901,7 @@ def create_rigetti_8q_agave_architecture(backend: str | None = None, **kwargs: A
         [0, 0, 0, 0, 0, 1, 0, 1],
         [1, 0, 0, 0, 0, 0, 1, 0]
     ])
-    return Architecture(RIGETTI_8Q_AGAVE, coupling_matrix=m, **kwargs)
+    return Architecture(RIGETTI_8Q_AGAVE, backend=backend, coupling_matrix=m, **kwargs)
 
 def create_recursive_architecture(**kwargs : Any) -> Architecture:
     """
