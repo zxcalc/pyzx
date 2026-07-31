@@ -123,8 +123,8 @@ class GeneticAlgorithm:
         for _ in range(n_generations):
             self._update_population(n_child)
         if partial_solution and initial_order is not None:
-            return np.array(self.population[0][0] + initial_order[n_qubits:])
-        return np.array(self.population[0][0])
+            return np.array(self.population[0][0] + initial_order[n_qubits:]).tolist()
+        return np.array(self.population[0][0]).tolist()
 
     def _add_children(self, children: list[list[int]]) -> None:
         """

@@ -276,11 +276,11 @@ def permuted_gauss(
             fitness_func,
         )
         permsize = len(matrix.data) if row else len(matrix.data[0])
-        best_permutation = optimizer.find_optimum(
+        best_permutation = np.array(optimizer.find_optimum(
             permsize, n_iterations, continued=True
-        )
+        ))
     else:
-        best_permutation = np.arange(len(matrix.data))
+        best_permutation = np.arange(len(matrix.data)).tolist()
 
     n_qubits = len(matrix.data)
     row_perm = best_permutation if row else np.arange(len(matrix.data))
