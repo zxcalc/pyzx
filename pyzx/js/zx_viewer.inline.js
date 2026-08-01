@@ -88,6 +88,7 @@ function detect_overlaps(graph, node_size, overlap_markers, overlap_summary) {
 
     // Purge the old overlap markers.
     overlap_markers.selectAll("*").remove()
+    overlap_summary.selectAll("*").remove()
 
     // console.log(`Space size : ${node_space.size()} [ns:${node_size}, d:${diameter}, r^2:${diameter_squared}]`)
     const diameter = 2 * node_size;
@@ -373,7 +374,7 @@ function showGraph(tag, graph, width, height, scale, node_size, auto_hbox, show_
                     }
                 }
 
-                offset = 0.25 * scale;
+                let offset = 0.25 * scale;
 
                 if (sz != 0) {
                     x = (x/sz) + offset;
