@@ -31,9 +31,9 @@ copyright = '2018, PyZX'
 author = 'Aleks Kissinger and John van de Wetering'
 
 # The short X.Y version
-version = '0.10.4'
+version = '0.10.5'
 # The full version, including alpha/beta/rc tags
-release = '0.10.4'
+release = '0.10.5'
 
 
 # -- General configuration ---------------------------------------------------
