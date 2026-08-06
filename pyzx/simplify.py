@@ -33,7 +33,7 @@ __all__ = ['bialg_simp','bialg_op_simp','spider_simp', 'id_simp', 'phase_free_si
         'lcomp_simp', 'clifford_simp', 'tcount', 'to_gh', 'to_rg',
         'full_reduce', 'teleport_reduce', 'reduce_scalar', 'supplementarity_simp',
         'to_clifford_normal_form_graph', 'to_graph_like', 'is_graph_like', 'copy_simp',
-        'drop_orphan_reset_discards']
+        'drop_orphan_reset_discards', 'zw_bialgebra_simp']
 
 
 from typing import cast, List, Tuple, Dict, Set, Callable, TypeVar, Optional, Union
@@ -139,6 +139,13 @@ euler_expansion_rewrite: RewriteSimpDoubleVertex = RewriteSimpDoubleVertex(check
 
 pi_commute_rewrite: RewriteSingleVertex = RewriteSingleVertex(check_pi_commute, unsafe_pi_commute)
 """Pushes a pi phase out of the given vertex. CANNOT be run automatically on the entire graph."""
+
+zw_bialgebra_simp: RewriteSimpDoubleVertex = RewriteSimpDoubleVertex(check_bialgebra_zw_forward, unsafe_bialgebra_zw_forward, check_bialgebra_zw_forward)
+"""Applies the ZW Bialgebra rule to a given WZ-edge (n.b. W_OUTPUT - W_INPUT - Z). Can be run automatically on the entire graph."""
+
+zw_bialgebra_op_simp: RewriteSimpGraph = RewriteSimpGraph(apply_bialgebra_zw_reverse, apply_bialgebra_zw_reverse_auto)
+"""Applies the ZW Bialgebra rule to a given ZW-complete bipartite pattern. Can be run automatically on the entire graph."""
+zw_bialgebra_op_simp.is_match = lambda g, vs: match_bialgebra_zw_reverse(g, vz) is not None # type: ignore
 
 def phase_free_simp(g: BaseGraph[VT,ET]) -> bool:
     '''Performs the following set of simplifications on the graph:
