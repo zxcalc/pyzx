@@ -12,7 +12,7 @@ What is the ZX-calculus? What are ZX-diagrams?
 
 ZX-diagrams are a graphical representation of quantum processes. For those who know what that means: they are a type of tensor network.
 The benefit of using ZX-diagrams over quantum circuits is that, first, ZX-diagrams can represent arbitrary linear maps and not just unitaries, and second, it comes equipped with a set of useful rewrite rules. These rewrite rules are collectively known as the *ZX-calculus*.
-If you want to learn more, check out the `Wikipedia page <https://en.wikipedia.org/wiki/ZX-calculus>`_, this `review article <https://arxiv.org/abs/2012.13966>`_, or `this book <https://www.amazon.com/Picturing-Quantum-Processes-Diagrammatic-Reasoning/dp/110710422X>`_.
+If you want to learn more, check out the `Wikipedia page <https://en.wikipedia.org/wiki/ZX-calculus>`_, this `review article <https://arxiv.org/abs/2012.13966>`_, or `this book <https://github.com/zxcalc/book>`_.
 
 
 But why use the ZX-calculus?
@@ -30,9 +30,10 @@ A bunch of things! Below I list just the things related to quantum computing whe
 
 - Using the rewrite strategy :func:`~pyzx.simplify.full_reduce` that is implemented in PyZX, a Clifford circuit can be brought into a `normal form <https://arxiv.org/abs/1902.03178>`_ that has some nice properties.
 - Using this same rewrite strategy, all the Clifford measurements in a measurement-based quantum computation can be `removed <https://arxiv.org/abs/2003.01664>`_.
-- Using this same rewrite strategy, we can optimise the `T-count <https://arxiv.org/abs/1903.10477>`_ of a circuit.
+- Using this same rewrite strategy, we can optimise the `T-count <https://arxiv.org/abs/1903.10477>`_ of a circuit. See also `this review <https://arxiv.org/abs/2509.20663>`_ for an overview of optimization methods using ZX-calculus.
 - Using ZX-diagrams, `several <https://arxiv.org/abs/1812.01238>`_ surface code `constructions <https://arxiv.org/abs/1905.08916>`_ have `succesfully <https://arxiv.org/abs/1912.11503>`_ been `optimised <https://arxiv.org/abs/2206.12780>`_.
-- Using ZX-diagrams, the simulation technique of `stabilizer decompositions <https://quantum-journal.org/papers/q-2019-09-02-181/>`_ can be `interleaved with diagrammatic simplifications <https://arxiv.org/abs/2109.01076>`_ to speed these up by a `considerable amount <https://arxiv.org/abs/2202.09202>`_. These techniques are implemented in a Rust port of PyZX: `quizx <https://github.com/zxcalc/quizx>`_.
+- Using ZX-diagrams, the simulation technique of `stabilizer decompositions <https://quantum-journal.org/papers/q-2019-09-02-181/>`_ can be `interleaved with diagrammatic simplifications <https://arxiv.org/abs/2109.01076>`_ to speed these up by a `considerable amount <https://arxiv.org/abs/2202.09202>`_. These techniques are implemented in a Rust port of PyZX: `quizx <https://github.com/zxcalc/quizx>`_. See also the library `TSim <https://github.com/QuEraComputing/tsim>`_.
+- A restricted set of rewrite rules that preserve 'fault-equivalence' allow one to construct quantum circuits that are fault-tolerant `by construction <https://arxiv.org/abs/2506.17181>`_. Using these rewrite rules, you can construct `highly optimized <https://arxiv.org/abs/2511.13700>`_ fault-tolerant circuits, for instance for `state preparation <https://arxiv.org/abs/2603.05391>`_.
 
 
 
@@ -61,9 +62,16 @@ Implemented additional features:
 - `East et al. <https://arxiv.org/abs/2012.01219>`_ built on the ZH-calculus rewrite strategy in PyZX to automatically simplify AKLT states. See also `Richard East's PhD thesis <https://tel.archives-ouvertes.fr/tel-03719945>`_.
 - Ryan Krueger in `his Master thesis <https://arxiv.org/abs/2209.06874>`_ looked at using simulated annealing and genetic algorithms to improve simplification and reduce CNOT count of the resulting circuits. Related strategies were proposed in `Korbinian Staudacher's Master thesis <https://www.mnm-team.org/pub/Diplomarbeiten/stau21/PDF-Version/stau21.pdf>`_.
 - `Borgna et al. <https://arxiv.org/abs/2109.06071>`_ implemented mixed quantum-classical optimization in PyZX. This allows you to represent and simplify circuits that include measurement and classical control.
+- `Kuyanov et al. <https://arxiv.org/abs/2603.06764>`_ implemented an improved tensor network contraction scheme in PyZX based on minimizing rank-width.
 
+Libraries and tools built on top of PyZX:
 
-Used PyZX:
+- `ZXLive <https://github.com/zxcalc/zxlive>`_: a graphical proof assistant for ZX-diagrams.
+- `Topologiq <https://github.com/tqec/topologiq>`_: library for visualising and optimising lattice surgery computations.
+- `TSim <https://github.com/QuEraComputing/tsim>`_: library inspired by STIM for classically simulating Clifford+T circuits using the ZX-powered stabilizer decomposition framework.
+- `ParamZX <https://github.com/mjsutcliffe99/paramzx>`_: an extension of PyZX that supports parametrised optimization and classical simulation. This functionality is currently being ported to PyZX.
+
+Papers using PyZX directly for their results:
 
 - `Lehmann et al. <https://arxiv.org/abs/2205.05781>`_ implemented some ZX-calculus rewrite rules in `Coq <https://coq.inria.fr/>`_ in order to formally verify correctness of rewrite rules.
 - `Hanks et al. <https://journals.aps.org/prx/abstract/10.1103/PhysRevX.10.041030>`_ used the ZX-calculus to optimise braided circuits on surface codes. PyZX helped them optimise the circuits to a size where they could do further optimisation by hand.
@@ -79,8 +87,8 @@ Benchmarked against PyZX:
 What is PyZX not good at?
 -------------------------------
 
-PyZX was originally built to optimize T-count. It is not so good at optimizing two-qubit gate count (like the number of CNOTs). This behaviour however changes quite drastically per type of circuit. You might find for instance that it blows up the number of CNOTs if you start with a circuit full of Toffoli's, while if you give it a Trotterized chemistry circuit, it will be able to perform a lot better.
+PyZX was originally built to optimize T-count. It is not so good at optimizing two-qubit gate count (like the number of CNOTs). This behaviour however changes quite drastically per type of circuit (and `which method <https://arxiv.org/abs/2312.02793>`_ you use). You might find for instance that it blows up the number of CNOTs if you start with a circuit full of Toffoli's, while if you give it a Trotterized chemistry circuit, it will be able to perform a lot better.
 
 PyZX also doesn't implement any of the tricks to optimally compile one and two-qubit circuits, such as using the Euler Decomposition to combine adjacent single-qubit rotations, or the KAK decomposition to reduce every two-qubit circuit to have at most three CNOTs.
 
-PyZX is quite fast, but it is still written in Python, and as such has its limits. If you have a circuit with tens of thousands of gates it should run quickly enough, but if you go to millions of gates, it will start to lag. If speed is your concern, check out `quizx <https://github.com/zxcalc/quizx>`_.
+PyZX is quite fast, but it is still written in Python, and as such has its limits. If you have a circuit with tens of thousands of gates it should run quickly enough, but if you go to millions of gates, it will start to lag. If speed is your concern, check out `quizx <https://github.com/zxcalc/quizx>`_. Other tricks to speed up PyZX are to put crucial parts of the code in a JAX kernel, like is done in `TSim <https://github.com/QuEraComputing/tsim>`_ or `this paper <https://arxiv.org/abs/2509.08658>`_.

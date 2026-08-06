@@ -410,9 +410,9 @@ class TestSimplify(unittest.TestCase):
         """Test that checks whether a scalar is correctly removed from a graph using full_reduce.
         """
 
-        from pyzx import Graph, full_reduce 
+        from pyzx import Graph, full_reduce
         g = Graph()
-        g.add_vertex(ty=VertexType.Z, phase=0.5)
+        g.add_vertex(ty=VertexType.Z, phase=Fraction(1, 2))
         g.add_vertex(ty=VertexType.Z, phase=1)
         g.add_edge((0, 1))
 
@@ -422,9 +422,46 @@ class TestSimplify(unittest.TestCase):
         g1.add_vertex(ty=VertexType.Z, phase=1)
 
         full_reduce(g1)
-        
+
         self.assertTrue(g.num_vertices() == 0)
         self.assertTrue(g1.num_vertices() == 0)
+
+    def test_float_phase_rejected_under_strict(self):
+        """Regression test for issue #457.
+
+        Under the default ``settings.strict_phase_types = True``, a float
+        phase must be rejected at the graph entry point with a clear
+        ``TypeError`` rather than crashing deep inside a rewrite rule.
+        """
+        from pyzx import settings
+        self.assertTrue(settings.strict_phase_types)
+        for value in (0.0, 0.5, 0.124312):
+            with self.subTest(value=value):
+                g = Graph()
+                with self.assertRaises(TypeError) as cm:
+                    g.add_vertex(VertexType.Z, phase=value)
+                self.assertIn("strict_phase_types", str(cm.exception))
+
+    def test_float_phase_opt_in_conversion(self):
+        """Opting out of strict phase types coerces floats to ``Fraction``.
+
+        ``full_reduce`` then runs to completion without crashing, and the
+        surviving non-Clifford spider carries the converted phase.
+        """
+        from pyzx import settings
+        c = Circuit(1)
+        c.add_gate("ZPhase", 0, phase=0.124312)
+        settings.strict_phase_types = False
+        try:
+            g = c.to_graph()
+            full_reduce(g)
+        finally:
+            settings.strict_phase_types = True
+        zs = [v for v in g.vertices() if g.type(v) == VertexType.Z]
+        self.assertEqual(len(zs), 1)
+        phase = g.phase(zs[0])
+        self.assertIsInstance(phase, Fraction)
+        self.assertAlmostEqual(float(phase), 0.124312)
 
 
     def test_to_clifford_normal_form_graph(self):

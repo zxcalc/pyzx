@@ -26,6 +26,24 @@ PyZX also offers a convenience function to construct a circuit out of a string c
 To convert a Circuit into a PyZX Graph (i.e. a ZX-diagram), call the method :meth:`~pyzx.circuit.Circuit.to_graph`.
 
 
+Measurements, resets, and ancilla preparations
+-----------------------------------------------
+
+PyZX supports circuits with measurements, resets, and ancilla preparations.
+These are represented in the ZX-graph using parametrised phases via :mod:`~pyzx.symbolic`.
+
+A measurement (``measure q -> c``) records the qubit outcome in a classical bit;
+the qubit wire ends there. A reset (``reset q``) discards the qubit state and
+re-prepares |0⟩; the wire continues. Ancilla preparations introduce a fresh qubit
+in a known state mid-circuit; see :class:`~pyzx.circuit.gates.InitAncilla`.
+
+When calling :meth:`~pyzx.circuit.Circuit.to_graph`, the flag ``elide_initial_resets``
+controls whether leading resets are dropped. Since OpenQASM initialises qubits to |0⟩,
+a reset at the start of a wire is redundant; setting this flag to ``True`` removes it.
+The default is ``False`` to handle programmatically-built circuits where inputs may
+not be |0⟩.
+
+
 Importing and exporting ZX-diagrams
 -----------------------------------
 

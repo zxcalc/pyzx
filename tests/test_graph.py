@@ -95,6 +95,103 @@ class TestGraphBasicMethods(unittest.TestCase):
         self.assertEqual(g.phases()[0], 1)
         self.assertEqual(g.phases()[1], 1)
 
+    def test_multigraph_edge_strict_on_parallel_mixed(self):
+        """Multigraph.edge(s, t) without an explicit type must raise when
+        parallel edges of multiple types exist between s and t. Specifying
+        the type explicitly returns that edge."""
+        from pyzx.graph.multigraph import Multigraph
+        g = Multigraph()
+        g.set_auto_simplify(False)
+        v1 = g.add_vertex(VertexType.Z, 0, 0)
+        v2 = g.add_vertex(VertexType.Z, 0, 1)
+        g.add_edge((v1, v2), EdgeType.SIMPLE)
+        g.add_edge((v1, v2), EdgeType.HADAMARD)
+
+        with self.assertRaises(ValueError):
+            g.edge(v1, v2)
+
+        e_s = g.edge(v1, v2, EdgeType.SIMPLE)
+        self.assertEqual(g.edge_type(e_s), EdgeType.SIMPLE)
+        e_h = g.edge(v1, v2, EdgeType.HADAMARD)
+        self.assertEqual(g.edge_type(e_h), EdgeType.HADAMARD)
+
+    def test_multigraph_edge_unique_returns_single_edge(self):
+        """Multigraph.edge(s, t) without an explicit type returns the unique
+        edge when only one type is present between s and t."""
+        from pyzx.graph.multigraph import Multigraph
+        g = Multigraph()
+        v1 = g.add_vertex(VertexType.Z, 0, 0)
+        v2 = g.add_vertex(VertexType.Z, 0, 1)
+        g.add_edge((v1, v2), EdgeType.HADAMARD)
+        e = g.edge(v1, v2)
+        self.assertEqual(g.edge_type(e), EdgeType.HADAMARD)
+
+    def test_multigraph_edge_missing_raises(self):
+        """Multigraph.edge raises ValueError (not KeyError) when called on
+        endpoints with no edge between them, including when one endpoint is
+        not a vertex of the graph at all."""
+        from pyzx.graph.multigraph import Multigraph
+        g = Multigraph()
+        v1 = g.add_vertex(VertexType.Z, 0, 0)
+        v2 = g.add_vertex(VertexType.Z, 0, 1)
+        g.add_edge((v1, v2), EdgeType.SIMPLE)
+        with self.assertRaises(ValueError):
+            g.edge(v1, v2, EdgeType.HADAMARD)
+        with self.assertRaises(ValueError):
+            g.edge(v1, 999)
+        with self.assertRaises(ValueError):
+            g.edge(999, v1)
+
+    def test_unsafe_hopf_with_mixed_parallels(self):
+        """``unsafe_hopf`` cancels the type appropriate for the spider colours
+        even when the ``Multigraph`` carries parallel edges of both types: a
+        Z-Z pair with two HADAMARDs (Hopf-cancelling) plus a stray SIMPLE
+        loses both HADAMARDs and keeps the SIMPLE."""
+        from pyzx.graph.multigraph import Multigraph
+        from pyzx.rewrite_rules.hopf_rule import unsafe_hopf
+        g = Multigraph()
+        g.set_auto_simplify(False)
+        v1 = g.add_vertex(VertexType.Z, 0, 0)
+        v2 = g.add_vertex(VertexType.Z, 0, 1)
+        g.add_edge((v1, v2), EdgeType.HADAMARD)
+        g.add_edge((v1, v2), EdgeType.HADAMARD)
+        g.add_edge((v1, v2), EdgeType.SIMPLE)
+        self.assertTrue(unsafe_hopf(g, v1, v2))
+        self.assertEqual(g.num_edges(v1, v2, EdgeType.HADAMARD), 0)
+        self.assertEqual(g.num_edges(v1, v2, EdgeType.SIMPLE), 1)
+
+    def test_check_pivot_rejects_mixed_parallels(self):
+        """``check_pivot`` rejects a vertex pair that has a SIMPLE parallel
+        alongside a HADAMARD edge, since pivot is only defined on a clean
+        Hadamard edge."""
+        from pyzx.graph.multigraph import Multigraph
+        from pyzx.rewrite_rules.pivot_rule import check_pivot
+        g = Multigraph()
+        g.set_auto_simplify(False)
+        v1 = g.add_vertex(VertexType.Z, 0, 0)
+        v2 = g.add_vertex(VertexType.Z, 0, 1)
+        g.add_edge((v1, v2), EdgeType.HADAMARD)
+        g.add_edge((v1, v2), EdgeType.SIMPLE)
+        self.assertFalse(check_pivot(g, v1, v2))
+
+    def test_graph_s_edge_signature_and_canonical_pair(self):
+        """``GraphS.edge`` accepts the optional ``et`` argument added on
+        :meth:`BaseGraph.edge` (so backend-agnostic callers that pass an edge
+        type do not raise ``TypeError``), but ``GraphS`` does not consult
+        ``et``: the canonical ``(min(s, t), max(s, t))`` pair is returned
+        regardless of whether an edge already exists, supporting the
+        documented ``g.add_edge(g.edge(v, w), edgetype=...)`` pattern."""
+        g = Graph()
+        v1 = g.add_vertex(VertexType.Z, 0, 0)
+        v2 = g.add_vertex(VertexType.Z, 0, 1)
+        # The canonical pair is returned before any edge exists.
+        self.assertEqual(g.edge(v1, v2), (v1, v2))
+        self.assertEqual(g.edge(v2, v1), (v1, v2))
+        # The optional ``et`` argument is accepted but does not change the result.
+        self.assertEqual(g.edge(v1, v2, EdgeType.HADAMARD), (v1, v2))
+        g.add_edge(g.edge(v1, v2), edgetype=EdgeType.HADAMARD)
+        self.assertEqual(g.edge_type(g.edge(v1, v2)), EdgeType.HADAMARD)
+
     def test_set_attributes(self):
         g = Graph()
         v = g.add_vertex()

@@ -1,34 +1,34 @@
 # PyZX - Python library for quantum circuit rewriting
-#        and optimisation using the ZX-calculus
-# Copyright (C) 2023 - Aleks Kissinger, John van de Wetering,
-#                      and Arianne Meijer-van de Griend
+#        and optimization using the ZX-calculus
+# Copyright (C) 2018 - Aleks Kissinger and John van de Wetering
 
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
 
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
+#    http://www.apache.org/licenses/LICENSE-2.0
 
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+from collections.abc import Mapping
+from enum import Enum
+from typing import Any, Protocol
 
 import numpy as np
-from fractions import Fraction
-from typing import Callable, Dict, List, Set, Tuple, Union, Optional, Any
-from enum import Enum
 
-from ..circuit import Circuit, ZPhase, HAD, XPhase, CNOT
-from ..graph.graph import Graph
-from ..linalg import Mat2, MatLike
-from ..routing.parity_maps import CNOT_tracker, Parity
-from ..routing.cnot_mapper import sequential_gauss, ElimMode, gauss
-from ..routing.steiner import steiner_reduce_column
-from ..routing.architecture import create_architecture, FULLY_CONNECTED, Architecture
-from ..utils import make_into_list, maxelements
+from pyzx.circuit import CNOT, CZ, Circuit, XPhase, ZPhase
+from pyzx.graph.graph_s import GraphS
+from pyzx.linalg import Mat2, MatLike
+from pyzx.utils import EdgeType, FractionLike, maxelements
+
+from .architecture import FULLY_CONNECTED, Architecture, create_architecture
+from .cnot_mapper import ElimMode, gauss, sequential_gauss
+from .parity_maps import CNOT_tracker, Parity
+from .steiner import steiner_reduce_column
 
 
 class RoutingMethod(Enum):
@@ -55,7 +55,7 @@ class RoutingMethod(Enum):
     Combination of :attr:`.RoutingMethod.GRAY` and :attr:`.RoutingMethod.MEIJER`, keeps the best result of both.
     """
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.value}"
 
 
@@ -76,27 +76,39 @@ class RootHeuristic(Enum):
     RECURSIVE = "recursive"
     """Use an already-chosen root in a recursive call."""
 
-    def __str__(self):
+    def __str__(self) -> str:
         """
         Converts RootHeuristic into a string
         """
         return f"{self.value}"
+    
+    
+    class RootHeuristicProtocol(Protocol):
+        def __call__(
+            self,
+            architecture: Architecture,
+            matrix: Mat2,
+            cols_to_use: list[int],
+            qubits: list[int],
+            column: int,
+            phase_qubit: int,
+            **kwargs: Any
+        ) -> list[tuple[int, int]]:
+            ...
 
-    def to_function(
-        self,
-    ) -> Callable[[Architecture, Mat2, List[int], List[int], int, int, Any], List[int]]:
+    def to_function(self) -> RootHeuristicProtocol:
         """
         Looks at the RootHeuristic type and returns the relevant root heuristic
         """
-        # ignore types due to https://github.com/python/mypy/issues/5876
+        
         if self == RootHeuristic.RANDOM:
-            return random_root_heuristic  # type: ignore
+            return random_root_heuristic
         elif self == RootHeuristic.EXHAUSTIVE:
-            return exhaustive_root_heuristic  # type: ignore
+            return exhaustive_root_heuristic
         elif self == RootHeuristic.ARITY:
-            return arity_root_heuristic  # type: ignore
+            return arity_root_heuristic
         elif self == RootHeuristic.RECURSIVE:
-            return rec_root_heuristic  # type: ignore
+            return rec_root_heuristic
         else:
             raise KeyError(f"The root heuristic '{self}' is not implemented")
 
@@ -115,36 +127,47 @@ class SplitHeuristic(Enum):
     COUNT = "count"
     """Split the circuit on all the candidate nodes."""
 
-    def __str__(self):
+    def __str__(self) -> str:
         """
         Converts SplitHeuristic into a string
         """
         return f"{self.value}"
+    
+    class SplitHeuristicProtocol(Protocol):
+        def __call__(
+            self,
+            architecture: Architecture,
+            matrix: Mat2,
+            cols_to_use: list[int],
+            qubits: list[int],
+            **kwargs: Any
+        ) -> list[int]:
+            ...
 
     def to_function(
         self,
-    ) -> Callable[[Architecture, Mat2, List[int], List[int], Any], List[int]]:
+    ) -> SplitHeuristicProtocol:
         """
         Looks at the SplitHeuristic type and returns the relevant split heuristic
         """
         if self == SplitHeuristic.RANDOM:
-            return random_split_heuristic  # type: ignore
+            return random_split_heuristic
         elif self == SplitHeuristic.ARITY:
-            return arity_split_heuristic  # type: ignore
+            return arity_split_heuristic
         elif self == SplitHeuristic.COUNT:
-            return count_split_heuristic  # type: ignore
+            return count_split_heuristic
         else:
             raise KeyError(f"The split heuristic '{self}' is not implemented")
 
 
 def route_phase_poly(
-    circuit: Union[Circuit, "PhasePoly"],
+    circuit: 'Circuit | PhasePoly',
     architecture: Architecture,
     method: RoutingMethod = RoutingMethod.GRAY_MEIJER,
     mode: ElimMode = ElimMode.STEINER_MODE,
     root_heuristic: RootHeuristic = RootHeuristic.RECURSIVE,
     split_heuristic: SplitHeuristic = SplitHeuristic.COUNT,
-    **kwargs,
+    **kwargs: Any,
 ) -> Circuit:
     """
     Compile a circuit to an architecture with restricted connectivity.
@@ -193,8 +216,8 @@ def route_phase_poly(
 
 
 def random_root_heuristic(
-    architecture, matrix, cols_to_use, qubits, column, phase_qubit, **kwargs
-):
+    architecture: Architecture, matrix: Mat2, cols_to_use: list[int], qubits: list[int], column: int, phase_qubit: int, **kwargs: Any
+) -> list[tuple[int, int]]:
     """
     Randomly chooses a root from the given qubits and creates a steiner reduction for a specific column in the matrix
 
@@ -222,10 +245,10 @@ def random_root_heuristic(
 
 
 def exhaustive_root_heuristic(
-    architecture, matrix, cols_to_use, qubits, column, phase_qubit, **kwargs
-):
+    architecture: Architecture, matrix: Mat2, cols_to_use: list[int], qubits: list[int], column: int, phase_qubit: int | None, **kwargs: Any
+) -> list[tuple[int, int]]:
     """
-    Exhastively applies the Steiner reduction with all the given qubits as roots for a specific column in the matrix and returns the shortest 
+    Exhastively applies the Steiner reduction with all the given qubits as roots for a specific column in the matrix and returns the shortest
     reduction sequence.
 
     :param architecture: The quantum architecture to be used
@@ -254,14 +277,14 @@ def exhaustive_root_heuristic(
         )
         if cnots is None or len(possible_cnots) < len(cnots):
             cnots = possible_cnots
-    return cnots
+    return cnots or []
 
 
 def arity_root_heuristic(
-    architecture, matrix, cols_to_use, qubits, column, phase_qubit, **kwargs
-):
+    architecture: Architecture, matrix: Mat2, cols_to_use: list[int], qubits: list[int], column: int, phase_qubit: int | None, **kwargs: Any
+) -> list[tuple[int, int]]:
     """
-    Filters qubits by highest arity and randomly selects one as a root for a specific column in the matrix and returns the 
+    Filters qubits by highest arity and randomly selects one as a root for a specific column in the matrix and returns the
     reduction sequence.
 
     :param architecture: The quantum architecture to be used
@@ -273,16 +296,17 @@ def arity_root_heuristic(
     :param **kwargs: Additional arguments passed
     :return: The sequence of row operations applied
     """
-    iterator = (
-        (qubit, arity) for qubit, arity in architecture.arities() if qubit in qubits
-    )
-    q, a = next(iterator)
+
     best_qubits = []
-    best_arity = a
-    while a == best_arity:
+    best_arity = None
+    for q, a in [(qubit, arity) for qubit, arity in architecture.arities() if qubit in qubits]:
+        if best_arity is None:
+            best_arity = a
+        elif a != best_arity:
+            break
         best_qubits.append(q)
-        q, a = next(iterator, (None, best_arity - 1))
-    root = np.random.choice(best_qubits)
+    
+    root = int(np.random.choice(best_qubits))
     return list(
         steiner_reduce_column(
             architecture,
@@ -297,8 +321,8 @@ def arity_root_heuristic(
 
 
 def rec_root_heuristic(
-    architecture, matrix, cols_to_use, qubits, column, phase_qubit, **kwargs
-):
+    architecture: Architecture, matrix: Mat2, cols_to_use: list[int], qubits: list[int], column: int, phase_qubit: int, **kwargs: Any
+) -> list[tuple[int, int]]:
     """
     Uses the phase_qubit as a root for a specific column in the matrix and returns the reduction sequence.
 
@@ -325,7 +349,7 @@ def rec_root_heuristic(
     )
 
 
-def calculate_reward(architecture, matrix, cols_to_use, root):
+def calculate_reward(architecture: Architecture, matrix: Mat2, cols_to_use: list[int], root: int) -> float:
     """
     Runs Steiner reduction over multiple columns and sums up the total number of CNOT operations, outputting a reward score
 
@@ -362,10 +386,10 @@ def calculate_reward(architecture, matrix, cols_to_use, root):
 def random_split_heuristic(
     architecture: Architecture,
     matrix: Mat2,
-    cols_to_use: List[int],
-    qubits: List[int],
-    **kwargs,
-):
+    cols_to_use: list[int],
+    qubits: list[int],
+    **kwargs: Any,
+) -> list[int]:
     """
     Returns a random split of qubits
 
@@ -377,10 +401,10 @@ def random_split_heuristic(
 
     :return: A random split from the given qubits
     """
-    return [np.random.choice(qubits)]
+    return [int(np.random.choice(qubits))]
 
 
-def arity_split_heuristic(architecture, matrix, cols_to_use, qubits, **kwargs):
+def arity_split_heuristic(architecture: Architecture, matrix: Mat2, cols_to_use: list[int], qubits: list[int], **kwargs: Any) -> list[int]:
     """
     Returns a split of qubits with the highest arity score
 
@@ -392,19 +416,19 @@ def arity_split_heuristic(architecture, matrix, cols_to_use, qubits, **kwargs):
 
     :return: A split from the given qubits with the highest arity score
     """
-    iterator = (
-        (qubit, arity) for qubit, arity in architecture.arities() if qubit in qubits
-    )
-    q, a = next(iterator)
-    best_qubits = []
-    best_arity = a
-    while a == best_arity:
+
+    best_qubits: list[int] = []
+    best_arity = None
+    for q, a in [(qubit, arity) for qubit, arity in architecture.arities() if qubit in qubits]:
+        if best_arity is None:
+            best_arity = a
+        elif a != best_arity:
+            break
         best_qubits.append(q)
-        q, a = next(iterator, (None, best_arity - 1))
     return best_qubits
 
 
-def count_split_heuristic(architecture, matrix, cols_to_use, qubits, **kwargs):
+def count_split_heuristic(architecture: Architecture, matrix: Mat2, cols_to_use: list[int], qubits: list[int], **kwargs: Any) -> list[int]:
     """
     Returns a split of qubits with the highest arity score
 
@@ -426,8 +450,8 @@ class PhasePoly:
 
     def __init__(
         self,
-        zphase_dict: Dict[Parity, Fraction],
-        out_parities: List[Parity],
+        zphase_dict: Mapping[Parity, FractionLike],
+        out_parities: list[Parity],
     ):
         """
         Creates and returns a phase polynomial object.
@@ -435,19 +459,19 @@ class PhasePoly:
         :param zphase_dict: A dictionary of parity objects and phase factors
         :param out_parities: A list of final parity objects
         """
-        self.zphases = zphase_dict
+        self.zphases = dict(zphase_dict)
         self.out_par = out_parities
         self.n_qubits = out_parities[0].n_qubits()
         self.all_parities = list(zphase_dict.keys())
 
     @staticmethod
     def fromCircuit(
-        circuit,
-        initial_qubit_placement=None,
-        final_qubit_placement=None,
-    ):
+        circuit: Circuit,
+        initial_qubit_placement: list[int] | None = None,
+        final_qubit_placement: list[int] | None = None,
+    ) -> 'PhasePoly':
         """
-        Takes a circuit and tracks how qubit parities evolve as gates are applied, 
+        Takes a circuit and tracks how qubit parities evolve as gates are applied,
         accumulates Z-phase rotations then builds a compact PhasePoly representing the circuit's phase structure
 
         :param circuit: The circuit to be used
@@ -455,7 +479,7 @@ class PhasePoly:
         :param final_qubit_placement: Optional list specifying final qubit mapping, default None
         :return: A PhasePoly object representing the circuit's accumulated Z-phase structure
         """
-        zphases = {}
+        zphases: dict[Parity, FractionLike] = {}
         current_parities = mat22partition(Mat2.id(circuit.qubits))
         if initial_qubit_placement is not None:
             current_parities = [
@@ -463,15 +487,16 @@ class PhasePoly:
                 for row in current_parities
             ]
         for gate in circuit.gates:
-            parity = current_parities[gate.target]
-            if gate.name in ["CNOT", "CX"]:
+            if isinstance(gate, CNOT):
                 # Update current_parities
                 control = current_parities[gate.control]
+                parity = current_parities[gate.target]
                 current_parities[gate.target] = Parity(
                     (int(i) + int(j)) % 2 for i, j in zip(control, parity)
                 )
             elif isinstance(gate, ZPhase):
                 # Add the T rotation to the phases
+                parity = current_parities[gate.target]
                 if parity in zphases:
                     zphases[parity] += gate.phase
                 else:
@@ -481,7 +506,7 @@ class PhasePoly:
             else:
                 raise Exception("Gate not supported!", gate.name)
 
-        def clamp(phase):
+        def clamp(phase: FractionLike) -> FractionLike:
             """
             Normalize phase into range [-1, 1]
 
@@ -499,29 +524,29 @@ class PhasePoly:
 
         return PhasePoly(zphases, current_parities)
 
-    def partition(self, skip_output_parities=True, optimize_parity_order=False):
+    def partition(self, skip_output_parities: bool = True, optimize_parity_order: bool = False) -> list[list[Parity]]:
         """
-        Uses matroid partitioning algorithm to split the parities into independent partiotions
+        Uses matroid partitioning algorithm to split the parities into independent partitions
 
         :param skip_output_parities: If True, ignore the out_par parities, default True
         :param optimize_parity_order: If True, reorder parities for more optimal placement, default False
         :return: List of ordered parity partitions
         """
         # Matroid partitioning based on wikipedia: https://en.wikipedia.org/wiki/Matroid_partitioning
-        def add_edge(graph, vs_dict, node1, node2):
+        def add_edge(graph: GraphS, vs_dict: dict[int, Parity | list[Parity]], node1: Parity | list[Parity], node2: Parity | list[Parity]) -> None:
             v1 = [k for k, v in vs_dict.items() if v == node1][0]
             v2 = [k for k, v in vs_dict.items() if v == node2][0]
             graph.nedges += 1
-            graph.graph[v1][v2] = 1
+            graph.graph[v1][v2] = EdgeType.SIMPLE
 
-        partitions = []
+        partitions: list[list[Parity]] = []
         parities_to_partition = (
             self.all_parities
             if not skip_output_parities
             else [p for p in self.all_parities if p not in self.out_par]
         )
         for parity in parities_to_partition:
-            graph = Graph()
+            graph = GraphS()
             # Add current parity to the graph
             # Add each partition to the graph
             # Add each parity in the partition to the graph
@@ -549,24 +574,22 @@ class PhasePoly:
                                 if self._independent(new_partition):
                                     add_edge(graph, vs_dict, p2, p)
             # Find a path from the parity to a partition
-            path = self._dfs([(parity, [parity])], graph, vs_dict, partitions)
-            if path != []:
+            found_partition, path = self._dfs([(parity, [parity])], graph, vs_dict, partitions)
+            if found_partition:
                 # Apply those changes if such a path exists
                 # Remember which partition to add the final element to
-                p_idx = partitions.index(
-                    path[-1]
-                )  # Last element in the path is always a partition
+                p_idx = partitions.index(found_partition)
                 for p1, p2 in zip(path[:-1], path[1:]):
                     # Replace p2 with p1 in p1's partition
                     for partition in partitions:
                         if p1 in partition:
-                            partition.pop(p1)
+                            partition.remove(p1)
                             partition.append(p2)
-                partitions[p_idx].append(path[-2])
+                partitions[p_idx].append(path[-1])
             else:
                 # Make a new partition if no such path exists.
                 partitions.append([parity])
-        ordered_partitions = []
+        ordered_partitions: list[list[Parity]] = []
         for partition in partitions:
             # Add identity parities to the partition if the set is not full yet.
             matrix = partition2mat2(partition)
@@ -577,13 +600,13 @@ class PhasePoly:
                 # Find a more optimal ordering of the parities
                 parity_placement = self._place_parities(matrix)
             else:
-                parity_placement = np.arange(self.n_qubits)
+                parity_placement = np.arange(self.n_qubits).tolist()
             partition = mat22partition(matrix)
             new_partition = [partition[i] for i in parity_placement]
             ordered_partitions.append(new_partition)
         return ordered_partitions
 
-    def _order_partitions(self, partitions):
+    def _order_partitions(self, partitions: list[list[Parity]]) -> list[list[Parity]]:
         """
         Reorders partitions based on a cost metric
 
@@ -595,7 +618,7 @@ class PhasePoly:
             i: partition2mat2(partition) for i, partition in enumerate(partitions)
         }
 
-        def cost_func(p1, p2):
+        def cost_func(p1: Mat2, p2: Mat2) -> int:
             """
             Calculates the cost to go from one partition to another
 
@@ -603,9 +626,9 @@ class PhasePoly:
             :param p2: Second partition
             :return: Cost to go from p1 to p2
             """
-            inv = inverse_hack(p1)
-            if inv is not None:
-                _, inv = inv
+            mats = inverse_hack(p1)
+            if mats is not None:
+                _, inv = mats
             else:
                 inv = Mat2.id(p2.rows())
             c = CNOT_tracker(len(partitions[0]))
@@ -620,7 +643,7 @@ class PhasePoly:
         }
         # start at the back
         new_partitions = [partitions[-1]]
-        visited = []
+        visited: list[int] = []
         current = n - 1
         while len(visited) < n - 1:
             # Pick the partition that was not yet visited whose
@@ -633,7 +656,7 @@ class PhasePoly:
             current = choice
         return new_partitions
 
-    def _place_parities(self, parities: Union[Mat2, MatLike]) -> List[int]:
+    def _place_parities(self, parities: Mat2 | MatLike) -> list[int]:
         """
         Assigns parities to qubits
 
@@ -653,7 +676,7 @@ class PhasePoly:
         skipped_idxs = []
         deliberating = []
         for i in range(self.n_qubits):
-            if permutation[i] is None:
+            if permutation[i] is None: # TODO: this may be a mistake -- always evaluates to false
                 # Find the best parity in skipped_parities to place there
                 pivoted_parities = [(j, p) for j, p in skipped_parities if p[i] == 1]
                 if pivoted_parities:
@@ -682,20 +705,20 @@ class PhasePoly:
             permutation[i] = skipped_parities.pop()[0]
         return permutation
 
-    def _dfs(self, nodes, graph, inv_vs_dict, partitions):
+    def _dfs(self, nodes: list[tuple[Parity | list[Parity], list[Parity]]], graph: GraphS, inv_vs_dict: dict[int, Parity | list[Parity]], partitions: list[list[Parity]]) -> tuple[list[Parity], list[Parity]]:
         """
-        A depth first search to find the path
+        A depth first search to find the path to a partition
 
         :param nodes: A list of (current_node, current_path) tuples
         :param graph: The graph showcasing the adjacency connections
         :param inv_vs_dict: A reverse lookup
         :param partitions: List of node objects considered as target nodes
-        :return: The path
+        :return: A tuple containing the found partition and the path to it
         """
         # recursive dfs to find the shortest path
         if nodes == []:
-            return []
-        new_nodes = []
+            return [], []
+        new_nodes: list[tuple[Parity | list[Parity], list[Parity]]] = []
         for (node, path) in nodes:
             # For each node2 connected to node
             v = [k for k, v in inv_vs_dict.items() if v == node][0]
@@ -703,20 +726,22 @@ class PhasePoly:
                 # If it's a partition, we found a path
                 next_node = inv_vs_dict[node2]
                 if next_node not in path:  # Avoid loops!
-                    new_path = path + [next_node]
                     if next_node in partitions:
-                        return new_path
+                        assert isinstance(next_node, list) # safe because partitions is a list of lists
+                        return next_node, path
                     else:
+                        assert isinstance(next_node, Parity)
+                        new_path = path + [next_node]
                         new_nodes.append((next_node, new_path))
         return self._dfs(new_nodes, graph, inv_vs_dict, partitions)
 
     @staticmethod
-    def _independent(partition: List[Parity]) -> bool:
+    def _independent(partition: list[Parity]) -> bool:
         """
         Checks if a partition is independent
 
         :param partition: The list of parities to check
-        :return: True if partition is independent 
+        :return: True if partition is independent
         """
         return inverse_hack(partition2mat2(partition)) is not None
 
@@ -729,8 +754,8 @@ class PhasePoly:
         iterative_placement: bool = False,
         parity_permutation: bool = True,
         iterative_initial_placement: bool = False,
-        **kwargs,
-    ):
+        **kwargs: Any,
+    ) -> tuple[Circuit, list[int], list[int]]:
         """
         Using Matroid synthesis method, partitions parities, builds transformation matrices, runs sequential Gaussian elimination,
         builds a final circuit, tracks and updates the current parity states.
@@ -793,10 +818,8 @@ class PhasePoly:
             for gate in c.gates:
                 # CNOTs have been mapped already, do not need to be adjusted!
                 circuit.add_gate(gate)
-                try:
-                    current_parities.row_add(gate.control, gate.target)  # type: ignore
-                except AttributeError:
-                    pass
+                if isinstance(gate, (CNOT, CZ)):
+                    current_parities.row_add(gate.control, gate.target)
             # Place the rotations at each parity
             for target, p in enumerate(current_parities.data):
                 parity = Parity(p)
@@ -810,8 +833,8 @@ class PhasePoly:
         return circuit, perms[0], perms[-1]
 
     def gray_synth(
-        self, mode: ElimMode, architecture: Optional[Architecture], **kwargs
-    ):
+        self, mode: ElimMode, architecture: Architecture | None, **kwargs: Any
+    ) -> tuple[CNOT_tracker, list[int], list[int]]:
         """
         Using gray synthesis method, builds a quantum circuit by reducing a parity matrix
 
@@ -903,14 +926,14 @@ class PhasePoly:
 
     def rec_gray_synth(
         self,
-        mode,
-        architecture,
+        mode: ElimMode,
+        architecture: Architecture | None,
         root_heuristic: RootHeuristic = RootHeuristic.RECURSIVE,
         split_heuristic: SplitHeuristic = SplitHeuristic.COUNT,
-        full=True,
-        phase_qubit=None,
-        **kwargs,
-    ):
+        full: bool = True,
+        phase_qubit: int | None = None,
+        **kwargs: Any,
+    ) -> tuple[CNOT_tracker, list[int], list[int]]:
         """
         Builds quantum circuit by applying a recursive Gray synthesis strategy
 
@@ -948,8 +971,8 @@ class PhasePoly:
         circuit = CNOT_tracker(architecture.n_qubits)
         # Make a stack - aka use the python stack >^.^<
         def recurse(
-            cols_to_use, qubits_to_use, phase_qubit
-        ):  # Arguments from the original paper, steiner version might only use the first
+            cols_to_use: list[int], qubits_to_use: list[int], phase_qubit: int | None
+        ) -> None:  # Arguments from the original paper, steiner version might only use the first
             # Check for finished columns
             cols_to_use = self._check_columns(
                 matrix, circuit, cols_to_use, parities_to_reach
@@ -1066,16 +1089,16 @@ class PhasePoly:
 
     def Ariannes_synth(
         self,
-        mode,
-        architecture,
-        full=True,
-        zeroes_rec=False,
-        neighbour_path=False,
-        tie_break=False,
-        **kwargs,
-    ) -> Tuple[Circuit, Any, Any]:
+        mode: ElimMode,
+        architecture: Architecture | None,
+        full: bool = True,
+        zeroes_rec: bool = False,
+        neighbour_path: bool = False,
+        tie_break: bool = False,
+        **kwargs: Any,
+    ) -> tuple[Circuit, Any, Any]:
         """
-        Builds CNOT circuit  to implement a set of parity transformations using recursive 
+        Builds CNOT circuit  to implement a set of parity transformations using recursive
         Gaussian elimination
 
         :param mode: Elimination mode, controls Gaussian elimination strategy
@@ -1109,21 +1132,21 @@ class PhasePoly:
             list(range(len(parities_to_reach))),
             parities_to_reach,
         )
-        self.prev_rows: List[int] = []
+        self.prev_rows: list[int] = []
 
-        def place_cnot(control, target):
+        def place_cnot(control: int, target: int) -> None:
             """
             Add CNOT gate from control qubit to target qubit and updates the parity matrix
 
             :param control: The control qubit
-            :param target: The target qubit 
+            :param target: The target qubit
             """
             # Place the CNOT on the circuit
             circuit.add_gate(CNOT(control, target))
             # Adjust the matrix accordingly - reversed elementary row operations
             parity_matrix.row_add(target, control)
 
-        def base_recurse(cols_to_use, qubits_to_use):
+        def base_recurse(cols_to_use: list[int], qubits_to_use: list[int]) -> None:
             """
             Recursively synthesize parity columns by choosing a pivot qubit and splitting columns.
 
@@ -1177,7 +1200,7 @@ class PhasePoly:
                     cols1, [q for q in qubits_to_use if q != chosen_row], chosen_row
                 )
 
-        def one_recurse(cols_to_use, qubits_to_use, qubit):
+        def one_recurse(cols_to_use: list[int], qubits_to_use: list[int], qubit: int) -> None:
             """
             Recursively synthesize parity columns where the pivot qubit row has 1s.
 
@@ -1262,9 +1285,9 @@ class PhasePoly:
         self,
         parity_matrix: Mat2,
         circuit: Circuit,
-        columns: List[int],
-        parities_to_reach: List[Parity],
-    ):
+        columns: list[int],
+        parities_to_reach: list[Parity],
+    ) -> list[int]:
         """
         Check if any of the columns are finished (are phase gadgets over a single qubit)
         and add the corresponding phase gates to the circuit.
@@ -1280,7 +1303,7 @@ class PhasePoly:
                 columns.remove(col)
         return columns
 
-    def _tie_break(self, qubits, indices):
+    def _tie_break(self, qubits: list[int], indices: list[int]) -> int:
         """
         Tie-breaking strategy to select a qubit index among multiple candidates.
 
@@ -1293,7 +1316,7 @@ class PhasePoly:
                 return qubits[i] if not qubits[i] else qubits[i]
         return qubits[indices[0]] if not qubits[indices[0]] else qubits[indices[0]]
 
-    def _update_prev_rows(self, qubits):
+    def _update_prev_rows(self, qubits: list[int]) -> None:
         """
         Update the internal record of previously used qubits.
 
@@ -1316,7 +1339,7 @@ class PhasePoly:
             if index != len(self.prev_rows):
                 self.prev_rows = self.prev_rows[index:] + qubits
             else:
-                self.prev_rows = [qubits]
+                self.prev_rows = list(qubits)
         # print(self.prev_rows)
 
     def _obtain_final_parities(
@@ -1324,8 +1347,8 @@ class PhasePoly:
         circuit: CNOT_tracker,
         architecture: Architecture,
         mode: ElimMode,
-        **kwargs,
-    ):
+        **kwargs: Any,
+    ) -> None:
         """
         Calculate the final parity that needs to be added from the circuit and self.out_par
         """
@@ -1344,7 +1367,7 @@ class PhasePoly:
             circuit.add_gate(cnot)
 
 
-def inverse_hack(matrix: Mat2) -> Optional[Tuple[Mat2, Mat2]]:
+def inverse_hack(matrix: Mat2) -> tuple[Mat2, Mat2] | None:
     """
     Compute the inverse of a binary matrix (over GF(2)), if matrix is not square it is extened
 
@@ -1376,7 +1399,7 @@ def inverse_hack(matrix: Mat2) -> Optional[Tuple[Mat2, Mat2]]:
         return matrix, inv
 
 
-def partition2mat2(partition: List[Parity]) -> Mat2:
+def partition2mat2(partition: list[Parity]) -> Mat2:
     """
     Convert a list of Parity objects into a Mat2 binary matrix.
 
@@ -1386,7 +1409,7 @@ def partition2mat2(partition: List[Parity]) -> Mat2:
     return Mat2([parity.to_mat2_row() for parity in partition])
 
 
-def mat22partition(m: Mat2) -> List[Parity]:
+def mat22partition(m: Mat2) -> list[Parity]:
     """
     Convert a Mat2 binary matrix into a list of Parity objects.
 

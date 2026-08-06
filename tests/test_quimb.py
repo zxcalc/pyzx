@@ -18,6 +18,7 @@
 import unittest
 import sys
 import warnings
+from fractions import Fraction
 from types import ModuleType
 from typing import Optional
 
@@ -105,8 +106,8 @@ class TestMapping(unittest.TestCase):
         # connected by a simple edge.
         g = Graph()
         x = g.add_vertex(VertexType.BOUNDARY)
-        v = g.add_vertex(VertexType.Z, phase = 1. / 6.)
-        w = g.add_vertex(VertexType.Z, phase = 1. / 3.)
+        v = g.add_vertex(VertexType.Z, phase = Fraction(1, 6))
+        w = g.add_vertex(VertexType.Z, phase = Fraction(1, 3))
         y = g.add_vertex(VertexType.BOUNDARY)
 
         g.add_edge(g.edge(x, v), edgetype = EdgeType.SIMPLE)
@@ -123,8 +124,8 @@ class TestMapping(unittest.TestCase):
 
     def test_scalar(self):
         g = Graph()
-        x = g.add_vertex(VertexType.Z, row = 0, phase = 1 / 2)
-        y = g.add_vertex(VertexType.Z, row = 1, phase = 1 / 4)
+        x = g.add_vertex(VertexType.Z, row = 0, phase = Fraction(1, 2))
+        y = g.add_vertex(VertexType.Z, row = 1, phase = Fraction(1, 4))
         g.add_edge(g.edge(x, y), edgetype = EdgeType.SIMPLE)
 
         full_reduce(g)
@@ -135,8 +136,6 @@ class TestMapping(unittest.TestCase):
     def test_sum_of_phases_scalar(self):
         # Regression test for issue #373: two non-Clifford Z-spiders connected
         # by Hadamard edge populate sum_of_phases when removed.
-        from fractions import Fraction
-
         g = Graph()
         v1 = g.add_vertex(VertexType.Z, phase=Fraction(1, 8))
         v2 = g.add_vertex(VertexType.Z, phase=Fraction(3, 8))

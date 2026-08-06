@@ -22,9 +22,8 @@ Lark is used to define a parser that can translate a string into a Poly.
 """
 
 from typing import Any, Callable, Mapping, Union, Optional, Dict, List, Tuple, Set
-from lark import Lark, Transformer
-from functools import reduce
-from operator import add, mul
+from lark import Lark, Transformer, Tree
+from lark.exceptions import UnexpectedToken, VisitError
 from fractions import Fraction
 
 
@@ -248,16 +247,20 @@ class Poly:
             other = Poly([(other, Term([]))])
         if len(other.terms) == 0:
             raise ZeroDivisionError("division by zero")
-        quotient = Poly([])
-        while len(self.terms) > 0 and self.degree >= other.degree:
-            leading_term_dividend = sorted(self.terms)[0][1]
-            leading_term_divisor = sorted(other.terms)[0][1]
-            coeff = sorted(self.terms)[0][0] / sorted(other.terms)[0][0]
-            new_term_quotient_vars = [(var, exp - dict(leading_term_divisor.vars).get(var, 0)) for var, exp in leading_term_dividend.vars]
-            new_term_quotient = (coeff, Term(new_term_quotient_vars))
-            quotient.terms.append(new_term_quotient)
-            self -= other * Poly([new_term_quotient])
-        return quotient
+        if len(other.terms) > 1 or other.terms[0][1].vars:
+            raise ValueError(
+                "division by a non-constant polynomial is not supported; "
+                "the divisor must be a rational (or complex) constant")
+        den = other.terms[0][0]
+        if den == 0:
+            raise ZeroDivisionError("division by zero")
+        new_terms = []
+        for num, term in self.terms:
+            # Divide exactly for integer operands so that, e.g., `theta/2`
+            # yields a Fraction coefficient rather than a float.
+            coeff = Fraction(num, den) if isinstance(num, int) and isinstance(den, int) else num / den
+            new_terms.append((coeff, term))
+        return Poly(new_terms)
 
     def __pow__(self, other: int) -> 'Poly':
         if other < 0:
@@ -414,21 +417,25 @@ def new_const(coeff: Union[int, Fraction]) -> Poly:
 
 poly_grammar = Lark("""
     start      : expr
+    phase_list : "(" expr ("," expr)* ")"
     ?expr      : expr "+" term   -> add
                | expr "-" term   -> sub
                | term
     term       : neg_term | pos_term
     neg_term   : "-" pos_term
-    pos_term   : factor (("*" | "⋅")? factor)*
+    pos_term   : factor (mul_factor | div_factor)*
+    mul_factor : ("*" | "⋅") signed_factor
+               | factor
+    div_factor : "/" signed_factor
+    ?signed_factor : "-" factor -> neg_factor
+                   | factor
     ?factor    : base ("^" exponent)?
-    base       : intf | frac | decimal | pi | pifrac | var | "(" expr ")"
+    base       : intf | decimal | pi | var | "(" expr ")"
     exponent   : intf
     var        : CNAME ("[" INT "]")?
     intf       : INT
     decimal    : DECIMAL
     pi         : "\\pi" | "pi" | "π"
-    frac       : INT "/" INT
-    pifrac     : [INT] pi "/" INT
 
     %import common.INT
     %import common.DECIMAL
@@ -437,7 +444,9 @@ poly_grammar = Lark("""
     %ignore WS
     """,
     parser='lalr',
-    maybe_placeholders=True)
+    start=['start', 'phase_list'],
+    maybe_placeholders=True,
+    propagate_positions=True)
 
 class PolyTransformer(Transformer):
     """Lark transformer that builds :class:`Poly` instances from parse trees.
@@ -464,7 +473,16 @@ class PolyTransformer(Transformer):
         return -items[0]  # Negate the pos_term
 
     def pos_term(self, items: List[Any]) -> Poly:
-        return reduce(mul, items)
+        result = items[0]
+        for op, operand in items[1:]:
+            result = result / operand if op == "/" else result * operand
+        return result
+
+    def mul_factor(self, items: List[Any]) -> Tuple[str, Poly]:
+        return ("*", items[0])
+
+    def div_factor(self, items: List[Any]) -> Tuple[str, Poly]:
+        return ("/", items[0])
 
     def factor(self, items: List[Any]) -> Poly:
         if len(items) == 1:
@@ -473,6 +491,9 @@ class PolyTransformer(Transformer):
         base = items[0]
         exponent = items[1]
         return base ** exponent
+
+    def neg_factor(self, items: List[Any]) -> Poly:
+        return -items[0]
 
     def base(self, items: List[Any]) -> Poly:
         return items[0]
@@ -495,17 +516,44 @@ class PolyTransformer(Transformer):
     def decimal(self, items: List[Any]) -> Poly:
         return new_const(Fraction(float(items[0])).limit_denominator())
 
-    def frac(self, items: List[Any]) -> Poly:
-        return new_const(Fraction(int(items[0]), int(items[1])))
-
-    def pifrac(self, items: List[Any]) -> Poly:
-        numerator = int(items[0]) if items[0] else 1
-        return new_const(Fraction(numerator, int(items[2])))
-
 def parse(expr: str, new_var: Callable[[str], Poly]) -> Poly:
     """Parse ``expr`` into a :class:`Poly` using ``new_var`` for variable lookup.
     It converts the string expression into a polynomial.
     Example: parse("x^2 + 3*y + 1/2", new_var) returns Poly([(1, Term([(x,2)])), (3, Term([(y,1)])), (1/2, Term([]))])
     """
-    tree = poly_grammar.parse(expr)
-    return PolyTransformer(new_var).transform(tree)
+    tree = poly_grammar.parse(expr, start='start')
+    for subtree in tree.iter_subtrees_topdown():
+        if subtree.data != "div_factor":
+            continue
+        for descendant in subtree.iter_subtrees_topdown():
+            if descendant.data == "var":
+                raise ValueError(
+                    "divisor must be a rational constant, not a symbolic "
+                    "expression")
+            if descendant.data == "pi":
+                raise ValueError(
+                    "`pi` is a phase marker, not a scalar, and cannot appear "
+                    "in a divisor; divisors must be rational constants")
+    try:
+        return PolyTransformer(new_var).transform(tree)
+    except VisitError as e:
+        raise e.orig_exc from None
+
+
+def parse_phase_list(text: str) -> Tuple[List[str], int]:
+    """Parse a parenthesised, comma-separated list of expressions.
+
+    ``text`` must start with ``(``; trailing content past the matching ``)``
+    is allowed. Returns the source of each argument and the offset just past
+    the closing ``)``.
+    """
+    try:
+        tree = poly_grammar.parse(text, start='phase_list')
+    except UnexpectedToken as exc:
+        # ``pos_in_stream`` marks the first token past the phase list; re-parse the prefix.
+        if exc.pos_in_stream is None:
+            raise
+        tree = poly_grammar.parse(text[:exc.pos_in_stream], start='phase_list')
+    args = [text[c.meta.start_pos:c.meta.end_pos].strip()
+            for c in tree.children if isinstance(c, Tree)]
+    return args, tree.meta.end_pos

@@ -1,4 +1,4 @@
-# PyZX - Python library for quantum circuit rewriting 
+# PyZX - Python library for quantum circuit rewriting
 #        and optimization using the ZX-calculus
 # Copyright (C) 2018 - Aleks Kissinger and John van de Wetering
 
@@ -14,14 +14,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import List
-
 import math
 from fractions import Fraction
 
 from . import Circuit
 
-def parse_quipper_block(lines: List[str]) -> Circuit:
+def parse_quipper_block(lines: list[str]) -> Circuit:
     start = lines[0]
     end = lines[-1]
     gates = lines[1:-1]
@@ -55,7 +53,7 @@ def parse_quipper_block(lines: List[str]) -> Circuit:
             elif gate[i+4:i+8] == '-i%X':
                 gtype = "XPhase"
             else:
-                raise TypeError("Unsupported expression: " + gate) 
+                raise TypeError("Unsupported expression: " + gate)
             val = gate[gate.find(',')+1: gate.find(']')]
             try:
                 f = float(val)
@@ -63,7 +61,7 @@ def parse_quipper_block(lines: List[str]) -> Circuit:
                 raise TypeError("Unsupported expression: " + gate)
             phase = Fraction(f/math.pi)
             target = gate[gate.rfind('(')+1:gate.rfind(')')]
-            try: 
+            try:
                 t = int(target)
             except ValueError:
                 raise TypeError("Unsupported expression: "+ gate)
@@ -121,7 +119,7 @@ def quipper_center_block(fname: str) -> Circuit:
     text = f.read()
     f.close()
     i = text.find('Subroutine: "C"')
-    if i == -1: 
+    if i == -1:
         i = text.find('Subroutine: "S"')
         if i == -1: raise Exception("Not a valid format")
         text = text[i:].strip()

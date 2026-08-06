@@ -15,11 +15,11 @@
 # limitations under the License.
 
 from fractions import Fraction
-from typing import Generator, Iterable, Any
+from typing import Generator, Iterable, Any, Optional
 
 from .base import BaseGraph
 
-from ..utils import VertexType, EdgeType, FractionLike, FloatInt, vertex_is_zx_like, vertex_is_z_like, set_z_box_label, get_z_box_label, assert_phase_real
+from ..utils import VertexType, EdgeType, FractionLike, FloatInt, vertex_is_zx_like, vertex_is_z_like, set_z_box_label, get_z_box_label, assert_phase_real, normalize_phase
 
 class GraphS(BaseGraph[int, tuple[int,int]]):
     """Purely Pythonic implementation of :class:`~graph.base.BaseGraph`."""
@@ -288,7 +288,11 @@ class GraphS(BaseGraph[int, tuple[int,int]]):
                         if v1 > v0:
                             yield (v0,v1)
 
-    def edge(self, s: int, t: int, et: EdgeType = EdgeType.SIMPLE) -> tuple[int, int]:
+    def edge(self, s: int, t: int, et: Optional[EdgeType] = None) -> tuple[int, int]:
+        """Return the canonical pair ``(min(s, t), max(s, t))`` whether or not the
+        edge exists; this supports the ``g.add_edge(g.edge(v, w), ...)`` pattern.
+        ``et`` is accepted for consistency with :meth:`BaseGraph.edge` but ignored,
+        as ``GraphS`` has no parallel edges of multiple types."""
         return (s,t) if s < t else (t,s)
     
     def edge_set(self) -> set[tuple[int, int]]:
@@ -338,6 +342,7 @@ class GraphS(BaseGraph[int, tuple[int,int]]):
     
     def set_phase(self, vertex: int, phase: FractionLike) -> None:
         assert_phase_real(phase)
+        phase = normalize_phase(phase)
         try:
             self._phase[vertex] = phase % 2
         except Exception:
@@ -345,6 +350,7 @@ class GraphS(BaseGraph[int, tuple[int,int]]):
     
     def add_to_phase(self, vertex: int, phase: FractionLike) -> None:
         assert_phase_real(phase)
+        phase = normalize_phase(phase)
         old_phase = self._phase.get(vertex, Fraction(1))
         try:
             self._phase[vertex] = (old_phase + phase) % 2

@@ -18,6 +18,7 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Topic :: Software Development :: Libraries :: Python Modules",
     "Development Status :: 4 - Beta",
 ]
@@ -38,13 +39,13 @@ Documentation = "https://pyzx.readthedocs.io/"
 [project.optional-dependencies]
 dev = [
     "matplotlib>=2.2",
-    "mypy~=1.5.1",
+    "mypy~=2.1.0",
     "types-tqdm~=4.66",
 ]
 test = [
     "qiskit~=1.0.0",
     "qiskit_qasm3_import~=0.4.2",
-    "mypy~=1.5.1",
+    "mypy~=2.1.0",
 ]
 docs = [
     "matplotlib>=2.2",
@@ -76,6 +77,10 @@ warn_unused_configs = true
 [[tool.mypy.overrides]]
 module = "pyzx.optimize"
 ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "pyzx.routing.*"
+disallow_untyped_defs = true
 
 [[tool.mypy.overrides]]
 module = [

@@ -15,9 +15,10 @@
 # limitations under the License.
 
 
-from typing import Any, Dict, Iterable, List, Optional, Union
-from pyzx.circuit import Circuit, Gate, gate_types, CNOT
-from pyzx.linalg import Z2, Mat2, MatLike
+from collections.abc import Iterable, Iterator
+from typing import Any
+from pyzx.circuit import Circuit, Gate, gate_types, CNOT, CZ
+from pyzx.linalg import Z2, Mat2
 
 import numpy as np
 
@@ -36,7 +37,7 @@ class CNOT_tracker(Circuit):
     col_perm: np.ndarray
     """The column permutation of the qubit parity matrix."""
 
-    def __init__(self, n_qubits: int, **kwargs):
+    def __init__(self, n_qubits: int, **kwargs: Any) -> None:
         """
         Creates and returns a circuit-like object.
 
@@ -53,53 +54,53 @@ class CNOT_tracker(Circuit):
     def count_cnots(self) -> int:
         """Returns the number of CNOT gates in the tracker."""
         return len(
-            [g for g in self.gates if hasattr(g, "name") and g.name in ["CNOT", "CZ"]]
+            [g for g in self.gates if type(g) in (CNOT, CZ)] # don't use isinstance here -- CZ is subclassed
         )
 
     def cnot_depth(self) -> int:
         """Returns the CNOT/CZ depth of the tracked circuit."""
         depth = 1
-        previous_gates: List[int] = []
+        previous_gates: list[int] = []
         for g in self.gates:
-            if hasattr(g, "name") and g.name in ["CNOT", "CZ"]:
-                if g.control in previous_gates or g.target in previous_gates:  # type: ignore # Overlapping gate
+            if isinstance(g, (CNOT, CZ)):
+                if g.control in previous_gates or g.target in previous_gates: # Overlapping gate
                     # Start a new CNOT layer
                     previous_gates = []
                     depth += 1
                 else:
-                    previous_gates += [g.control, g.target]  # type: ignore
+                    previous_gates += [g.control, g.target]
         return depth
 
-    def row_add(self, q0: int, q1: int):
+    def row_add(self, q0: int, q1: int) -> None:
         """Track a row addition operation on the matrix."""
         self.add_gate("CNOT", q0, q1)
         self.matrix.row_add(q0, q1)
 
-    def add_gate(self, gate: Union[Gate,str], *args, **kwargs):
+    def add_gate(self, gate: Gate | str, *args: Any, **kwargs: Any) -> None:
         """ Adds a gate to the circuit, if it is a CNOT gate it will track a row addition operation on the matrix. """
         if isinstance(gate, CNOT):
             self.row_add(gate.control, gate.target)
         else:
             super().add_gate(gate, *args, **kwargs)
 
-    def col_add(self, q0: int, q1: int):
+    def col_add(self, q0: int, q1: int) -> None:
         """Track a column addition operation on the matrix."""
         self.prepend_gate("CNOT", q1, q0)
         self.matrix.col_add(q0, q1)
 
     @staticmethod
-    def get_metric_names() -> List[str]:
+    def get_metric_names() -> list[str]:
         """Metric names for the CNOT tracker."""
         return ["n_cnots", "depth"]
 
-    def gather_metrics(self) -> Dict[str, int]:
+    def gather_metrics(self) -> dict[str, int]:
         """Gather metrics for the CNOT tracker."""
         metrics = {}
         metrics["n_cnots"] = self.count_cnots()
         metrics["depth"] = self.cnot_depth()
         return metrics
 
-    def prepend_gate(self, gate: Union[Gate, str], *args, **kwargs):
+    def prepend_gate(self, gate: Gate | str, *args: Any, **kwargs: Any) -> None:
         """Adds a gate to the circuit. ``gate`` can either be
         an instance of a :class:`Gate`, or it can be the name of a gate,
         in which case additional arguments should be given.
@@ -139,11 +140,11 @@ class CNOT_tracker(Circuit):
         new_circuit.update_matrix()
         return new_circuit
 
-    def update_matrix(self):
+    def update_matrix(self) -> None:
         """Rebuilds the parity matrix from the gates in the circuit."""
         self.matrix = Mat2.id(self.n_qubits)
         for gate in self.gates:
-            if hasattr(gate, "name") and gate.name == "CNOT":
+            if isinstance(gate, CNOT):
                 self.matrix.row_add(gate.control, gate.target)
             else:
                 print(
@@ -165,9 +166,9 @@ class Parity:
     """
     A set of qubits XORed together.
     """
-    parity: List[bool]
+    parity: list[bool]
 
-    def __init__(self, par: Union[str, int, Iterable[Any]], n_qubits: Optional[int] = None):
+    def __init__(self, par: str | int | Iterable[Any], n_qubits: int | None = None):
         """
         Creates and returns a set of qubits XORed together.
 
@@ -191,35 +192,35 @@ class Parity:
         """Returns the total number of qubits."""
         return len(self.parity)
     
-    def to_mat2_row(self) -> List[Z2]:
+    def to_mat2_row(self) -> list[Z2]:
         """Returns an array of 1s and 0s based off the internal parity array."""
         return [1 if b else 0 for b in self.parity]
 
-    def __str__(self):
+    def __str__(self) -> str:
         """Returns a string of 1s and 0s based off the internal parity array."""
         return "".join(["1" if p else "0" for p in self.parity])
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         """Returns a string representation of the parity."""
         return "Parity(" + str(self) + ")"
 
-    def __len__(self):
+    def __len__(self) -> int:
         """Returns the length of the parity."""
         return len(self.parity)
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[bool]:
         """Makes the parity iterable."""
         return iter(self.parity)
 
-    def __getitem__(self, i):
+    def __getitem__(self, i: int) -> bool:
         """Returns the item at index i in the parity."""
         return self.parity[i]
 
-    def __set_item__(self, i, v):
+    def __setitem__(self, i: int, v: bool) -> None:
         """Sets the item at index i to the value given by v in the parity."""
         self.parity[i] = v
 
-    def __eq__(self, other):
+    def __eq__(self, other: Any) -> bool:
         """Returns true if other is equal to the parity."""
         if isinstance(other, Parity):
             return self.parity == other.parity
@@ -227,6 +228,6 @@ class Parity:
             return str(self) == other
         return False
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         """Returns a hash of the parity."""
         return hash(str(self))

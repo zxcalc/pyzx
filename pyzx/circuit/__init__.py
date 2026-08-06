@@ -15,7 +15,7 @@
 # limitations under the License.
 
 import os
-from typing import List, Union, Optional, Iterator, Dict
+from typing import Union, Iterator
 
 import numpy as np
 
@@ -26,12 +26,18 @@ from .gates import (Gate, gate_types, NOT, Y, Z, HAD, XPhase, YPhase, ZPhase, U2
 from ..graph.base import BaseGraph
 from ..utils import EdgeType
 
-CircuitLike = Union['Circuit', Gate]
+__all__ = [
+    'Gate', 'gate_types', 'NOT', 'Y', 'Z', 'HAD', 'XPhase', 'YPhase', 'ZPhase', 'U2', 'U3', 'S', 'T', 'SX', 'SWAP', 'RXX', 'RZZ', 'CNOT',
+    'CY', 'CZ', 'CHAD', 'CSX', 'XCX', 'CRX', 'CRY', 'CRZ', 'CPhase', 'CU3', 'CU', 'CSWAP', 'Tofolli', 'CCZ', 'ParityPhase', 'FSim',
+    'Measurement', 'PhaseGadget', 'ConditionalGate',
+    
+    'Circuit', 'CircuitLike', 'id'
+]
 
 # Note that many of the method of Circuit contain inline imports. These are
 # there to prevent circular imports.
 
-__all__ = ['Circuit', 'id']
+CircuitLike = Union['Circuit', Gate]
 
 class Circuit(object):
     """Class for representing quantum circuits.
@@ -42,17 +48,17 @@ class Circuit(object):
     The methods in this class that convert a specification of a circuit into an instance of this class,
     generally do not check whether the specification is well-defined. If a bad input is given,
     the behaviour is undefined."""
-    def __init__(self, qubit_amount: int, name: str = '', bit_amount: Optional[int] = None) -> None:
+    def __init__(self, qubit_amount: int, name: str = '', bit_amount: int | None = None) -> None:
         self.qubits: int        = qubit_amount
         self.bits: int = 0 if bit_amount is None else bit_amount
-        self.gates:  List[Gate] = []
+        self.gates:  list[Gate] = []
         self.name:   str        = name
 
         # If the i-th entry is True, the i-th qubit is initialized to |0>, otherwise the qubit will not be initialized.
-        self._initialize_qubits: Optional[List[bool]] = None
+        self._initialize_qubits: list[bool] | None = None
 
         # If the i-th entry is 1 (0), the i-th measured qubit is postselected to |1> (|0>).
-        self._postselect_qubits: Optional[List[int]] = None
+        self._postselect_qubits: list[int] | None = None
 
     ### BASIC FUNCTIONALITY
 
@@ -75,7 +81,7 @@ class Circuit(object):
         return c
 
 
-    def initialize_qubits(self, initialize_qubits: List[bool]):
+    def initialize_qubits(self, initialize_qubits: list[bool]):
         """
         Args:
             initialize_qubits: A list of booleans of length equal to the number of qubits in the circuit.
@@ -85,7 +91,7 @@ class Circuit(object):
             raise ValueError("Length of initialize_qubits must be equal to the number of qubits in the circuit.")
         self._initialize_qubits = initialize_qubits
 
-    def postselect_qubits(self, postselect_qubits: List[int]):
+    def postselect_qubits(self, postselect_qubits: list[int]):
         """
         Args:
             postselect_qubits: A list of integers indicating for each measured qubits, whether it should be
@@ -163,7 +169,7 @@ class Circuit(object):
         for g in gates.split(" "):
             self.add_gate(g, qubit)
 
-    def add_circuit(self, circ: 'Circuit', mask: Optional[List[int]]=None, bit_mask: Optional[List[int]]=None) -> None:
+    def add_circuit(self, circ: 'Circuit', mask: list[int] | None = None, bit_mask: list[int] | None = None) -> None:
         """Adds the gate of another circuit to this one. If ``mask`` is not given,
         then they must have the same amount of qubits and they are mapped one-to-one.
         If mask is given then it must be a list specifying to which qubits the qubits
@@ -290,10 +296,10 @@ class Circuit(object):
 
     def to_graph(
         self,
-        zh:bool=False,
-        compress_rows:bool=True,
-        backend:Optional[str]=None,
-        elide_initial_resets:bool=False,
+        zh: bool = False,
+        compress_rows: bool = True,
+        backend: str | None = None,
+        elide_initial_resets: bool = False,
     ) -> BaseGraph:
         """Turns the circuit into a ZX-Graph.
         If ``compress_rows`` is set, it tries to put single qubit gates on different qubits,
@@ -454,7 +460,7 @@ class Circuit(object):
             s = """OPENQASM 2.0;\ninclude "qelib1.inc";\n"""
             s += "qreg q[{!s}];\n".format(self.qubits)
         # Collect classical register declarations from measurement and conditional gates.
-        cregs: Dict[str, int] = {}
+        cregs: dict[str, int] = {}
         for g in self.gates:
             if isinstance(g, Measurement):
                 if g.result_symbol is not None and '[' in g.result_symbol:
@@ -549,7 +555,7 @@ class Circuit(object):
                 measurement += 1
             else:
                 other += 1
-        d : Dict[str, Union[str,int]] = dict()
+        d: dict[str, str | int] = {}
         d["name"] = self.name
         d["qubits"] = self.qubits
         d["gates"] = total

@@ -106,7 +106,30 @@ function showGraph(tag, graph, width, height, scale, node_size, auto_hbox, show_
         .attr("width", width)
         .attr("height", height);
 
-    var web = svg.append("g")
+    // SETUP FOR ZOOMING
+    // Based on https://observablehq.com/@d3/zoom-to-bounding-box
+    // The canvas is needed to consistently scale all drawn elements across viewers (Jupyter & web browsers).
+    var canvas = svg.append("g")
+
+    var zoomer = d3.zoom()
+        .scaleExtent([1, 8])
+        .on("zoom", function () {
+            canvas.attr("transform", d3.event.transform);
+        })
+    svg.call(zoomer) // Attach the zooming behavior to the SVG
+    svg.on("mousedown", function () {
+        // Handle the resetting of the zoom level when clicking the wheel button
+        if (d3.event.button === 1) {
+            svg.transition().duration(750).call(
+                zoomer.transform,
+                d3.zoomIdentity,
+                d3.zoomTransform(svg.node()).invert([width / 2, height / 2])
+            );
+            d3.event.stopImmediatePropagation();
+        }
+    });
+
+    var web = canvas.append("g")
         .attr("class", "web")
         .selectAll("line")
         .data(graph.pauli_web)
@@ -115,7 +138,7 @@ function showGraph(tag, graph, width, height, scale, node_size, auto_hbox, show_
         .attr("fill", "transparent")
         .attr("style", "stroke-width: 7px");
 
-    var link = svg.append("g")
+    var link = canvas.append("g")
         .attr("class", "link")
         .selectAll("line")
         .data(graph.links)
@@ -124,10 +147,10 @@ function showGraph(tag, graph, width, height, scale, node_size, auto_hbox, show_
         .attr("fill", "transparent")
         .attr("style", "stroke-width: 1.5px");
 
-    var brush = svg.append("g")
+    var brush = canvas.append("g")
         .attr("class", "brush");
 
-    var node = svg.append("g")
+    var node = canvas.append("g")
         .attr("class", "node")
         .selectAll("g")
         .data(graph.nodes)

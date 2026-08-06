@@ -71,8 +71,10 @@ def unsafe_remove_self_loop(g: BaseGraph[VT, ET], v: VT) -> bool:
     ns = g.num_edges(v, v, EdgeType.SIMPLE)
     nh = g.num_edges(v, v, EdgeType.HADAMARD)
 
-    rem_edges.extend([g.edge(v, v, EdgeType.SIMPLE)] * ns)
-    rem_edges.extend([g.edge(v, v, EdgeType.HADAMARD)] * nh)
+    if ns > 0:
+        rem_edges.extend([g.edge(v, v, EdgeType.SIMPLE)] * ns)
+    if nh > 0:
+        rem_edges.extend([g.edge(v, v, EdgeType.HADAMARD)] * nh)
     g.scalar.add_power(-nh)
 
     if nh % 2 == 1:  # A Hadamard self-loop gives a phase of pi

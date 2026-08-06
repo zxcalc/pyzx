@@ -62,7 +62,7 @@ class TestExtract(unittest.TestCase):
     def test_extract_not_graph_like(self):
         c = Circuit(1)
         c.add_gate("HAD", 0)
-        c.add_gate("ZPhase", 0, phase=1/4)
+        c.add_gate("ZPhase", 0, phase=Fraction(1, 4))
 
         g = c.to_graph()
 
