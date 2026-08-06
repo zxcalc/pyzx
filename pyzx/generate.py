@@ -1,4 +1,4 @@
-# PyZX - Python library for quantum circuit rewriting 
+# PyZX - Python library for quantum circuit rewriting
 #        and optimization using the ZX-calculus
 # Copyright (C) 2018 - Aleks Kissinger and John van de Wetering
 
@@ -37,6 +37,7 @@ import numpy as np
 from pyzx.circuit.gates import CNOT, ZPhase
 from pyzx.linalg import Mat2, MatLike
 
+from pyzx.routing.cnot_mapper import ElimMode
 from pyzx.routing.parity_maps import CNOT_tracker, Parity
 from pyzx.routing.phase_poly import PhasePoly, mat22partition
 
@@ -76,7 +77,7 @@ def spider(
     outputs: int,
     phase:Optional[Union[FractionLike, complex]]=None,
     ) -> BaseGraph:
-    """Returns a Graph containing a single spider of the specified type 
+    """Returns a Graph containing a single spider of the specified type
     and with the specified number of inputs and outputs."""
     if typ == "Z": typ = VertexType.Z
     elif typ == "X": typ = VertexType.X
@@ -264,13 +265,13 @@ def random_phase(add_t: bool, rand:Union[random.Random,types.ModuleType]=random)
     return Fraction(rand.randint(1,4),2)
 
 def cliffordTmeas(
-        qubits: int, 
-        depth: int, 
-        p_t:Optional[float]=None, 
-        p_s:Optional[float]=None, 
-        p_hsh:Optional[float]=None, 
-        p_cnot:Optional[float]=None, 
-        p_meas:Optional[float]=None, 
+        qubits: int,
+        depth: int,
+        p_t:Optional[float]=None,
+        p_s:Optional[float]=None,
+        p_hsh:Optional[float]=None,
+        p_cnot:Optional[float]=None,
+        p_meas:Optional[float]=None,
         backend:Optional[str]=None,
         seed:Optional[int]=None,
         sigma:Optional[float]=None
@@ -430,8 +431,8 @@ def cliffordT(
     return cliffordTmeas(qubits, depth, p_t, p_s, p_hsh, p_cnot, 0, backend, seed, sigma)
 
 def cliffords(
-        qubits: int, 
-        depth: int, 
+        qubits: int,
+        depth: int,
         no_hadamard:bool=False,
         t_gates:bool=False,
         backend:Optional[str]=None,
@@ -488,10 +489,10 @@ def cliffords(
         c = rand.randint(0, qubits-1)
         t = gaussian_random_qubit_target(rand,c,qubits,sigma)
         if accept(p_two_qubit,rand):
-            if no_hadamard or accept(p_cnot,rand): 
+            if no_hadamard or accept(p_cnot,rand):
                 es1.append((v, v+1))
                 ty += [VertexType.Z, VertexType.X]
-            else: 
+            else:
                 es2.append((v,v+1))
                 typ: VertexType = rand.choice([VertexType.Z, VertexType.X])
                 ty += [typ, typ]
@@ -575,7 +576,7 @@ def circuit_identity_commuting_controls(alpha:Fraction,beta:Fraction) -> Circuit
     """Returns the circuit UVU*V* where U=NCZ(2beta) and V=CX(2alpha).
     Since these operations commute this circuit is equal to the identity.
     See page 13 of https://arxiv.org/pdf/1705.11151.pdf for more details."""
-    cb = Circuit(2) 
+    cb = Circuit(2)
     cb.add_gate("NOT",0)
     cb.add_gate("ZPhase",0,beta)
     cb.add_gate("ZPhase",1,beta)
@@ -717,7 +718,7 @@ def phase_poly_from_gadgets(n_qubits: int, n_gadgets: int) -> Circuit:
     zphase_dict = {p: Fraction(1, 4) for p in parities}
     out_parities = mat22partition(Mat2.id(n_qubits))
     phase_poly = PhasePoly(zphase_dict, out_parities)
-    return phase_poly.rec_gray_synth("gauss", architecture=None)[0]
+    return phase_poly.rec_gray_synth(ElimMode.GAUSS_MODE, architecture=None)[0]
 
 
 def build_random_parity_map(qubits: int, n_cnots: int, circuit=None) -> MatLike:
