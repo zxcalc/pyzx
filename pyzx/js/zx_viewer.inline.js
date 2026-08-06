@@ -42,6 +42,13 @@ function nodeStyle(selected) {
     return selected ? "stroke-width: 2px; stroke: #00f" : "stroke-width: 1.5px";
 }
 
+function nodeRadius(t, node_size) {
+    let r = node_size;
+    if (t === 0) { r *= 0.50; }
+    else if (t === 4) { r *= 0.25; }
+    return r;
+}
+
 var symbolGround = {
     draw: function(context, size){
         let s = size/2;
@@ -57,6 +64,97 @@ var symbolGround = {
 
         context.moveTo(-s/3,2*s/3);
         context.lineTo(s/3,2*s/3);
+    }
+}
+
+function get_visual_center(node, node_size) {
+    let vx = node.x;
+    let vy = node.y;
+    if (node.t === 5) {
+        vx += node_size / 2;
+    }
+    return [vx, vy];
+}
+
+// Function to detect overlapping nodes. The approach uses a quadtree of nodes that can be efficiently queried
+// to consider only the nodes in a region of interest around some node. See https://d3js.org/d3-quadtree.
+// n.b. all nodes are treated as circles, an approximation which may introduce some false positives.
+function detect_overlaps(graph, node_size, overlap_markers, overlap_summary) {
+    // Populate the quadtree of nodes for overlap detection.
+    const node_space = d3.quadtree()
+        .x(node => node.x)
+        .y(node => node.y)
+        .addAll(graph.nodes);
+
+    // Purge the old overlap markers.
+    overlap_markers.selectAll("*").remove()
+    overlap_summary.selectAll("*").remove()
+
+    // console.log(`Space size : ${node_space.size()} [ns:${node_size}, d:${diameter}, r^2:${diameter_squared}]`)
+    const diameter = 2 * node_size;
+
+    let nodes_overlapping = 0
+    graph.nodes.forEach(function (node) {
+        let current_radius = nodeRadius(node.t, node_size);
+        let [ node_vx , node_vy ] = get_visual_center(node, node_size);
+        // These four constants represent the boundaries of the box that must be explored for overlapping nodes.
+        const xmin = node.x - diameter; const xmax = node.x + diameter;
+        const ymin = node.y - diameter; const ymax = node.y + diameter;
+        let overlap_detected = false;
+        node_space.visit((quadnode, xL, yT, xR, yB) => {
+            // A leaf may contain either a single node or multiple coincident nodes
+            while (quadnode && !quadnode.length && !overlap_detected) {
+                // The node overlaps with the one contained in the quadnode if they are closer than the diameter
+                let other = quadnode.data;
+                let [ other_vx, other_vy ] = get_visual_center(other, node_size);
+                let dx = other_vx - node_vx;
+                let dy = other_vy - node_vy;
+                let distance_squared = dx * dx + dy * dy;
+                let other_radius = nodeRadius(other.t, node_size);
+                let minimal_distance_squared = (current_radius + other_radius)**2;
+                // Comparison against the square of the distance to avoid computing an expensive sqrt(..)
+                if (distance_squared <= minimal_distance_squared && other !== node) {
+                    // console.log(`> Overlap detected for ${node.name}@(${node.x},${node.y}) by ${other.name}`);
+                    overlap_markers.append("circle")
+                        .attr("cx", node_vx)
+                        .attr("cy", node_vy)
+                        .attr("r", 2.25 * node_size)
+                        .attr("fill", "rgba(255, 255, 0, 0.75)")
+                        .attr("stroke", "black")
+                        .attr("stroke-width", "2px")
+                        .attr("stroke-dasharray", "3");
+                    nodes_overlapping += 1;
+                    // Don't search further once an overlap has been detected for the node
+                    overlap_detected = true;
+                }
+                quadnode = quadnode.next;
+            }
+            // Don't explore this branch if we are completely outside the neighbourhood of d or an overlap was detected
+            return overlap_detected || xR < xmin || xmax < xL || yB < ymin || ymax < yT;
+        });
+    });
+
+    if (nodes_overlapping > 0) {
+        // console.log(`Overlapping nodes detected : ${nodes_overlapping}`)
+        let text = overlap_summary.append("text")
+            .attr("x", 190)
+            .attr("y", 16)
+            .attr("text-anchor", "middle")
+            .text(`${nodes_overlapping} overlapping nodes detected`)
+            .style("fill", "black")
+            .style("font-family", "sans-serif")
+            .style("font-size", "14px");
+        let box = text.node().getBBox();
+        let padding_h = 2, padding_v = 1;
+        overlap_summary.insert("rect", "text") // Place rectangle under text
+            .attr("x", box.x - padding_h)
+            .attr("y", box.y - padding_v)
+            .attr("width", box.width + (2 * padding_h))
+            .attr("height", box.height + (2 * padding_v))
+            .attr("fill", "rgba(255, 255, 0, 1.0)")
+            .attr("stroke", "black")
+            .attr("stroke-width", "2px")
+            .attr("stroke-dasharray", "3");
     }
 }
 
@@ -109,14 +207,14 @@ function showGraph(tag, graph, width, height, scale, node_size, auto_hbox, show_
     // SETUP FOR ZOOMING
     // Based on https://observablehq.com/@d3/zoom-to-bounding-box
     // The canvas is needed to consistently scale all drawn elements across viewers (Jupyter & web browsers).
-    var canvas = svg.append("g")
+    var canvas = svg.append("g");
 
     var zoomer = d3.zoom()
         .scaleExtent([1, 8])
         .on("zoom", function () {
             canvas.attr("transform", d3.event.transform);
-        })
-    svg.call(zoomer) // Attach the zooming behavior to the SVG
+        });
+    svg.call(zoomer); // Attach the zooming behavior to the SVG
     svg.on("mousedown", function () {
         // Handle the resetting of the zoom level when clicking the wheel button
         if (d3.event.button === 1) {
@@ -128,6 +226,12 @@ function showGraph(tag, graph, width, height, scale, node_size, auto_hbox, show_
             d3.event.stopImmediatePropagation();
         }
     });
+
+    // This container is used to store the markers that highlight overlapping nodes.
+    var overlap_summary = svg.append("g")
+        .attr("class", "overlap_summary");
+    var overlap_markers = canvas.append("g")
+        .attr("class", "overlap");
 
     var web = canvas.append("g")
         .attr("class", "web")
@@ -178,11 +282,7 @@ function showGraph(tag, graph, width, height, scale, node_size, auto_hbox, show_
 
     node.filter(function(d) { return d.t != 3 && d.t != 5 && d.t != 6; })
         .append("circle")
-        .attr("r", function(d) {
-            if (d.t == 0) return 0.5 * node_size;
-            else if (d.t == 4) return 0.25 * node_size;
-            else return node_size;
-        })
+        .attr("r", d => nodeRadius(d.t, node_size))
         .attr("fill", function(d) { return nodeColor(d.t); })
         .attr("stroke", "black")
         .attr("class", "selectable");
@@ -274,7 +374,7 @@ function showGraph(tag, graph, width, height, scale, node_size, auto_hbox, show_
                     }
                 }
 
-                offset = 0.25 * scale;
+                let offset = 0.25 * scale;
 
                 if (sz != 0) {
                     x = (x/sz) + offset;
@@ -294,6 +394,9 @@ function showGraph(tag, graph, width, height, scale, node_size, auto_hbox, show_
     }
 
     update_hboxes();
+
+    // Perform the initial round of overlap detection
+    detect_overlaps(graph, node_size, overlap_markers, overlap_summary);
 
     var link_curve = function(d) {
         var x1 = d.source.x, x2 = d.target.x, y1 = d.source.y, y2 = d.target.y;
@@ -333,15 +436,8 @@ function showGraph(tag, graph, width, height, scale, node_size, auto_hbox, show_
 
     // EVENTS FOR DRAGGING AND SELECTION
 
-    node.on("mousedown", function(d) {
-        if (shiftKey) {
-            d3.select(this).selectAll(".selectable").attr("style", nodeStyle(d.selected = !d.selected));
-            d3.event.stopImmediatePropagation();
-        } else if (!d.selected) {
-            node.selectAll(".selectable").attr("style", function(p) { return nodeStyle(p.selected = d === p); });
-        }
-    })
-        .call(d3.drag().on("drag", function(d) {
+    var dragger = d3.drag()
+        .on("drag", function(d) {
             var dx = d3.event.dx;
             var dy = d3.event.dy;
             // node.filter(function(d) { return d.selected; })
@@ -361,7 +457,21 @@ function showGraph(tag, graph, width, height, scale, node_size, auto_hbox, show_
                 .attr("d", link_curve);
             web.filter(function(d) { return d.source.selected || d.target.selected; })
                 .attr("d", web_curve);
-        }));
+        })
+        .on("end", () =>
+            // Once the user releases the node, we can perform a new round of overlapping nodes detection.
+            detect_overlaps(graph, node_size, overlap_markers, overlap_summary)
+        );
+
+    node.on("mousedown", function(d) {
+        if (shiftKey) {
+            d3.select(this).selectAll(".selectable").attr("style", nodeStyle(d.selected = !d.selected));
+            d3.event.stopImmediatePropagation();
+        } else if (!d.selected) {
+            node.selectAll(".selectable").attr("style", function(p) { return nodeStyle(p.selected = d === p); });
+        }
+    })
+        .call(dragger);
 
     brush.call(d3.brush().keyModifiers(false)
         .extent([[0, 0], [width, height]])
