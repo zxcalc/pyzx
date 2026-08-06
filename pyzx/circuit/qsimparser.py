@@ -14,9 +14,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from fractions import Fraction
+
 from . import Circuit
 from .gates import *
-from fractions import Fraction
+
 
 def parse_qsim(data: str) -> Circuit:
     """Produces a :class:`Circuit` based on a .qsim description of a circuit."""

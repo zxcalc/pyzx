@@ -19,6 +19,7 @@ from fractions import Fraction
 
 from . import Circuit
 
+
 def parse_quipper_block(lines: list[str]) -> Circuit:
     start = lines[0]
     end = lines[-1]
