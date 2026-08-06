@@ -790,11 +790,11 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
                 raise TypeError("Unknown output effect " + s)
         self.set_outputs(tuple(new_outputs))
 
-    def to_tensor(self, preserve_scalar: bool = True, strategy: str = 'naive') -> np.ndarray:
+    def to_tensor(self, preserve_scalar: bool = True, strategy: str = 'rw-auto') -> np.ndarray:
         """Returns a representation of the graph as a tensor using :func:`~pyzx.tensor.tensorfy`"""
         return tensorfy(self, preserve_scalar, strategy)
 
-    def to_matrix(self, preserve_scalar: bool = True, strategy: str = 'naive') -> np.ndarray:
+    def to_matrix(self, preserve_scalar: bool = True, strategy: str = 'rw-auto') -> np.ndarray:
         """Returns a representation of the graph as a matrix using :func:`~pyzx.tensor.tensorfy`"""
         return tensor_to_matrix(tensorfy(self, preserve_scalar, strategy), self.num_inputs(), self.num_outputs())
 

@@ -237,7 +237,7 @@ class TestTensor(unittest.TestCase):
         g.add_edge((h, o))
         set_h_box_label(g, h, 1j)
 
-        t = tensorfy(g)
+        t = tensorfy(g, strategy='naive')
         expected = np.array([[1, 1], [1, 1j]])
         self.assertTrue(np.allclose(t, expected))
 
@@ -253,7 +253,7 @@ class TestTensor(unittest.TestCase):
         g.add_edge((h, o))
         set_h_box_label(g, h, -1)
 
-        t = tensorfy(g)
+        t = tensorfy(g, strategy='naive')
         expected = np.array([[1, 1], [1, -1]])
         self.assertTrue(np.allclose(t, expected))
 
@@ -279,7 +279,7 @@ class TestTensor(unittest.TestCase):
         g2.add_edge((h2, o2))
         set_h_box_label(g2, h2, -1)
 
-        self.assertTrue(compare_tensors(g1, g2, preserve_scalar=True))
+        self.assertTrue(compare_tensors(g1, g2, preserve_scalar=True, strategy='naive'))
 
 
 if __name__ == '__main__':

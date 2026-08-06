@@ -103,7 +103,7 @@ def pop_and_shift(verts, indices):
 
 def tensorfy(g: 'BaseGraph[VT,ET]',
              preserve_scalar: bool = True,
-             strategy: str = 'naive',
+             strategy: str = 'rw-auto',
              verbose: bool = False) -> NDArray[np.complex128]:
     """
     Returns a multidimensional numpy array representing the linear map the ZX diagram implements.
@@ -263,7 +263,7 @@ def tensor_to_matrix(t: np.ndarray, inputs: int, outputs: int) -> np.ndarray:
     return np.array(rows)
 
 def compare_tensors(t1: TensorConvertible,t2: TensorConvertible,
-                    preserve_scalar: bool=False, strategy: str='naive') -> bool:
+                    preserve_scalar: bool=False, strategy: str='rw-auto') -> bool:
     """Returns true if ``t1`` and ``t2`` represent equal tensors by calling :func:`~pyzx.tensor.tensorfy`.
     When `preserve_scalar` is False (the default), equality is checked up to nonzero rescaling.
 
