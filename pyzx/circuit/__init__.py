@@ -16,13 +16,12 @@
 
 import os
 from collections.abc import Iterator
-
 from typing import Any, Union
+
 import numpy as np
 
-from pyzx.graph.base import BaseGraph
-from pyzx.utils import EdgeType
-
+from ..graph.base import BaseGraph
+from ..utils import EdgeType
 from .gates import (CCZ, CHAD, CNOT, CRX, CRY, CRZ, CSWAP, CSX, CU, CU3, CY,
                     CZ, HAD, NOT, RXX, RZZ, SWAP, SX, U2, U3, XCX,
                     ConditionalGate, CPhase, FSim, Gate, Measurement,

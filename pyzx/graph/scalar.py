@@ -24,16 +24,13 @@ from collections.abc import Mapping
 from fractions import Fraction
 from typing import Any
 
-from pyzx.symbolic import Poly, Var
-from pyzx.utils import FractionLike, phase_is_clifford, phase_is_pauli
+from ..symbolic import Poly, Var
+from ..utils import FractionLike, phase_is_clifford, phase_is_pauli
 
 __all__ = ['Scalar']
 
-def cexp(val: Fraction | complex) -> complex:
-    """Compute the complex exponential of a value."""
-    return cmath.exp(1j*math.pi*val)
 
-def cexp_unsafe(val: Fraction | complex | Poly) -> complex:
+def cexp(val: Fraction | complex | Poly) -> complex:
     """Compute the complex exponential of a value or scalar polynomial. Raises an error for polynomials with free variables."""
     if isinstance(val, Poly):
         val = simplify_poly(val)
@@ -44,7 +41,7 @@ def cexp_unsafe(val: Fraction | complex | Poly) -> complex:
 
     return cmath.exp(1j*math.pi*val)
 
-def simplify_poly(p: Poly) -> complex | Fraction | Poly:
+def simplify_poly(p: Poly) -> int | complex | Fraction | Poly:
     """Unwrap a constant Poly to its scalar value, or return the Poly as-is.
 
     Float and purely-real complex values are normalized to Fraction so
@@ -223,13 +220,13 @@ class Scalar:
 
     def to_number(self) -> complex:
         if self.is_zero: return 0
-        
-        val = cexp_unsafe(self.phase)
+
+        val = cexp(self.phase)
         for node in self.phasenodes: # Node should be a Fraction
-            val *= 1+cexp_unsafe(node)
+            val *= 1+cexp(node)
         sum_of_phases_val = 0j
         for phase, coeff in self.sum_of_phases.items():
-            sum_of_phases_val += coeff * cexp_unsafe(phase)
+            sum_of_phases_val += coeff * cexp(phase)
         if sum_of_phases_val != 0:
             val *= sum_of_phases_val
         val *= math.sqrt(2)**self.power2
@@ -241,7 +238,7 @@ class Scalar:
         elif self.is_unknown: return "Unknown"
         f = self.floatfactor
         for node in self.phasenodes:
-            f *= 1+cexp_unsafe(node)
+            f *= 1+cexp(node)
         if self.phase == 1:
             f *= -1
 
@@ -282,7 +279,7 @@ class Scalar:
         elif self.is_unknown: return "Unknown"
         f = self.floatfactor
         for node in self.phasenodes:
-            f *= 1+cexp_unsafe(node)
+            f *= 1+cexp(node)
         s = ""
         phase = self.phase
         if not isinstance(phase, Poly):

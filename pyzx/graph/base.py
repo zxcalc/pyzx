@@ -19,20 +19,20 @@ from __future__ import annotations
 import copy
 import math
 from collections import Counter
-from collections.abc import Callable, Iterable, Mapping, Sequence
+from collections.abc import Callable, Collection, Iterable, Mapping, Sequence
 from fractions import Fraction
 from typing import (TYPE_CHECKING, Any, ClassVar, Generic, Literal, Optional,
                     TypeVar)
 
 import numpy as np
+from typing_extensions import Self
 
-from pyzx.symbolic import Poly, Var, VarRegistry
-from pyzx.tensor import tensor_to_matrix, tensorfy
-from pyzx.utils import (EdgeType, FloatInt, FractionLike, VertexType,
-                        assert_phase_real, get_h_box_label, get_z_box_label,
-                        hbox_has_complex_label, set_h_box_label,
-                        set_z_box_label, toggle_edge, vertex_is_zx)
-
+from ..symbolic import Poly, Var, VarRegistry
+from ..tensor import tensor_to_matrix, tensorfy
+from ..utils import (EdgeType, FloatInt, FractionLike, VertexType,
+                     assert_phase_real, get_h_box_label, get_z_box_label,
+                     hbox_has_complex_label, set_h_box_label, set_z_box_label,
+                     toggle_edge, vertex_is_zx)
 from .scalar import Scalar, simplify_poly
 
 if TYPE_CHECKING:
@@ -40,7 +40,6 @@ if TYPE_CHECKING:
 
 
 MT = TypeVar("MT", bound="DocstringMeta") # Used for properly typing the metaclass
-Tvar = TypeVar("Tvar", bound="BaseGraph")
 
 class DocstringMeta(type):
     """Metaclass that allows docstring 'inheritance'."""
@@ -169,8 +168,8 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         """Returns the amount of edges in the graph"""
         return len(list(self.edges(s, t)))
 
-    def vertices(self) -> list[VT]:
-        """Iterator over all the vertices."""
+    def vertices(self) -> Collection[VT]:
+        """Collection of all the vertices."""
         raise NotImplementedError("Not implemented on backend " + type(self).backend)
 
     def edges(self, s: VT | None = None, t: VT | None = None) -> Iterable[ET]:
@@ -430,7 +429,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         self.set_qubit(vertex, q)
         self.set_row(vertex, r)
 
-    def neighbors(self, vertex: VT) -> list[VT]:
+    def neighbors(self, vertex: VT) -> Collection[VT]:
         """Returns all neighboring vertices of the given vertex."""
         vs: set[VT] = set()
         for e in self.incident_edges(vertex):
@@ -1286,7 +1285,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
 
         return result
 
-    def __deepcopy__(self: Tvar, memo: dict[int, Tvar]) -> Tvar:
+    def __deepcopy__(self, memo: dict[int, Self]) -> Self:
         """Custom deepcopy implementation to ensure variable registry is properly handled
         while using Python's default deepcopy behavior."""
         cls = self.__class__

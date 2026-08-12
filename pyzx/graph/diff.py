@@ -20,9 +20,8 @@ from collections import Counter
 from collections.abc import Callable
 from typing import Any, Generic
 
-from pyzx.symbolic import VarRegistry
-from pyzx.utils import EdgeType, FloatInt, FractionLike, VertexType, phase_to_s
-
+from ..symbolic import VarRegistry
+from ..utils import EdgeType, FloatInt, FractionLike, VertexType, phase_to_s
 from .base import ET, VT, BaseGraph
 from .graph_s import GraphS
 from .jsonparser import string_to_phase

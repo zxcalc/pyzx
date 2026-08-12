@@ -16,14 +16,13 @@
 
 import itertools
 from collections import Counter
-from collections.abc import Iterable, Iterator
+from collections.abc import Collection, Iterable, Iterator
 from fractions import Fraction
 from typing import Any, cast
 
-from pyzx.utils import (EdgeType, FloatInt, FractionLike, VertexType,
-                        assert_phase_real, get_z_box_label, normalize_phase,
-                        set_z_box_label, vertex_is_zx_like)
-
+from ..utils import (EdgeType, FloatInt, FractionLike, VertexType,
+                     assert_phase_real, get_z_box_label, normalize_phase,
+                     set_z_box_label, vertex_is_zx_like)
 from .base import BaseGraph
 
 
@@ -302,8 +301,8 @@ class Multigraph(BaseGraph[int, tuple[int, int, EdgeType]]):
         else:
             return self.nedges
 
-    def vertices(self) -> list[int]:
-        return list(self.graph.keys())
+    def vertices(self) -> Collection[int]:
+        return self.graph.keys()
 
     def vertices_in_range(self, start: int, end: int) -> Iterator[int]:
         """Returns all vertices with index between start and end
@@ -384,8 +383,8 @@ class Multigraph(BaseGraph[int, tuple[int, int, EdgeType]]):
     def edge_st(self, edge: tuple[int, int, EdgeType]) -> tuple[int, int]:
         return (edge[0], edge[1])
 
-    def neighbors(self, vertex: int) -> list[int]:
-        return list(self.graph[vertex].keys())
+    def neighbors(self, vertex: int) -> Collection[int]:
+        return self.graph[vertex].keys()
 
     def vertex_degree(self, vertex: int) -> int:
         d = 0

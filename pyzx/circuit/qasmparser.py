@@ -19,11 +19,10 @@ import math
 import re
 from fractions import Fraction
 
-from pyzx.symbolic import Var, new_var
-from pyzx.symbolic import parse as parse_symbolic_expr
-from pyzx.symbolic import parse_phase_list
-from pyzx.utils import settings
-
+from ..symbolic import Var, new_var
+from ..symbolic import parse as parse_symbolic_expr
+from ..symbolic import parse_phase_list
+from ..utils import settings
 from . import Circuit
 from .gates import (CCZ, CHAD, CNOT, CRX, CRY, CRZ, CSWAP, CSX, CU, CU3, CY,
                     CZ, HAD, NOT, RXX, RZZ, SWAP, SX, U2, U3, ConditionalGate,

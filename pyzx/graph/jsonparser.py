@@ -21,14 +21,13 @@ import json
 import re
 import warnings
 from fractions import Fraction
-from typing import TYPE_CHECKING, Any, Union
+from typing import TYPE_CHECKING, Any
 
 from typing_extensions import deprecated
 
-from pyzx.graph.multigraph import Multigraph
-from pyzx.symbolic import Poly, VarRegistry, new_var, parse
-from pyzx.utils import EdgeType, VertexType, phase_to_s
-
+from ..graph.multigraph import Multigraph
+from ..symbolic import Poly, VarRegistry, new_var, parse
+from ..utils import EdgeType, VertexType, phase_to_s
 from .base import ET, VT, BaseGraph
 from .graph import Graph
 from .scalar import Scalar, simplify_poly
@@ -37,7 +36,7 @@ if TYPE_CHECKING:
     from .diff import GraphDiff
 
 
-def string_to_phase(string: str, g: Union[BaseGraph, 'GraphDiff', None] = None) -> Fraction | Poly:
+def string_to_phase(string: str, g: 'BaseGraph | GraphDiff | None' = None) -> Fraction | Poly:
     if not string:
         return Fraction(0)
     try:

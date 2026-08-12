@@ -13,11 +13,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from pyzx.graph.base import BaseGraph
-from pyzx.rewrite import *
-from pyzx.rewrite_rules import *
-from pyzx.utils import VertexType
-
+from ..graph.base import BaseGraph
+from ..rewrite import RewriteSimpDoubleVertex, RewriteSimpSingleVertex
+from ..rewrite_rules import (check_fuse, check_remove_id, unsafe_fuse,
+                             unsafe_remove_id)
+from ..utils import VertexType
 from .qasmparser import QASMParser
 
 __all__ = ['sqasm']

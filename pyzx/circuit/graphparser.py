@@ -16,11 +16,10 @@
 
 import warnings
 
-from pyzx.graph import Graph
-from pyzx.graph.base import ET, VT, BaseGraph
-from pyzx.symbolic import Poly, new_var
-from pyzx.utils import EdgeType, FloatInt, VertexType, settings
-
+from ..graph import Graph
+from ..graph.base import ET, VT, BaseGraph
+from ..symbolic import Poly, new_var
+from ..utils import EdgeType, FloatInt, VertexType, settings
 from . import Circuit
 from .gates import (NOT, SX, ConditionalGate, Gate, InitAncilla, Measurement,
                     PostSelect, Reset, S, T, TargetMapper, XPhase, Z, ZPhase)

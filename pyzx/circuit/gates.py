@@ -24,9 +24,9 @@ import math
 from fractions import Fraction
 from typing import TYPE_CHECKING, ClassVar, Generic, TypeVar
 
-from pyzx.graph.base import ET, VT, BaseGraph
-from pyzx.symbolic import Poly, new_const, new_var
-from pyzx.utils import EdgeType, FractionLike, VertexType, half_phase, settings
+from ..graph.base import ET, VT, BaseGraph
+from ..symbolic import Poly, new_const, new_var
+from ..utils import EdgeType, FractionLike, VertexType, half_phase, settings
 
 if TYPE_CHECKING:
     from . import Circuit

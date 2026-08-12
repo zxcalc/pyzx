@@ -14,14 +14,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from collections.abc import Iterable, Iterator
+from collections.abc import Collection, Iterable, Iterator
 from fractions import Fraction
 from typing import Any
 
-from pyzx.utils import (EdgeType, FloatInt, FractionLike, VertexType,
-                        assert_phase_real, get_z_box_label, normalize_phase,
-                        set_z_box_label, vertex_is_z_like, vertex_is_zx_like)
-
+from ..utils import (EdgeType, FloatInt, FractionLike, VertexType,
+                     assert_phase_real, get_z_box_label, normalize_phase,
+                     set_z_box_label, vertex_is_z_like, vertex_is_zx_like)
 from .base import BaseGraph
 
 
@@ -44,8 +43,8 @@ class GraphS(BaseGraph[int, tuple[int, int]]):
         self._maxr: FloatInt = -1
         self._grounds: set[int] = set()
 
-        self._vdata: dict[int,Any] = {}
-        self._edata: dict[tuple[int,int],Any] = dict()
+        self._vdata: dict[int, Any] = {}
+        self._edata: dict[tuple[int,int], Any] = {}
         self._inputs: tuple[int, ...] = tuple()
         self._outputs: tuple[int, ...] = tuple()
 
@@ -247,8 +246,8 @@ class GraphS(BaseGraph[int, tuple[int, int]]):
         else:
             return len(list(self.edges()))
 
-    def vertices(self) -> list[int]:
-        return list(self.graph.keys())
+    def vertices(self) -> Collection[int]:
+        return self.graph.keys()
 
     def vertices_in_range(self, start: FloatInt, end: FloatInt) -> Iterator[int]:
         """Returns all vertices with index between start and end
