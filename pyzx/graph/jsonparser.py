@@ -25,11 +25,11 @@ from typing import TYPE_CHECKING, Any
 
 from typing_extensions import deprecated
 
-from ..graph.multigraph import Multigraph
 from ..symbolic import Poly, VarRegistry, new_var, parse
 from ..utils import EdgeType, VertexType, phase_to_s
 from .base import ET, VT, BaseGraph
 from .graph import Graph
+from .multigraph import Multigraph
 from .scalar import Scalar, simplify_poly
 
 if TYPE_CHECKING:

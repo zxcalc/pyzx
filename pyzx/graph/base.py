@@ -1285,7 +1285,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
 
         return result
 
-    def __deepcopy__(self, memo: dict[int, Self]) -> Self:
+    def __deepcopy__(self, memo: dict[int, Any]) -> Self:
         """Custom deepcopy implementation to ensure variable registry is properly handled
         while using Python's default deepcopy behavior."""
         cls = self.__class__
