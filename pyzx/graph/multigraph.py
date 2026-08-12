@@ -84,9 +84,9 @@ class Multigraph(BaseGraph[int, tuple[int, int, EdgeType]]):
         self._vdata: dict[int, Any] = {}
         self._edata: dict[tuple[int, int, EdgeType], dict[str, Any]] = {}
         self._inputs: tuple[int, ...] = tuple()
-        self._outputs: tuple[int, ... ] = tuple()
-    
-    
+        self._outputs: tuple[int, ...] = tuple()
+
+
     def clone(self) -> 'Multigraph':
         cpy = Multigraph()
         for v, d in self.graph.items():
