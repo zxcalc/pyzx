@@ -1,4 +1,4 @@
-# PyZX - Python library for quantum circuit rewriting 
+# PyZX - Python library for quantum circuit rewriting
 #        and optimization using the ZX-calculus
 # Copyright (C) 2018 - Aleks Kissinger and John van de Wetering
 
@@ -16,15 +16,17 @@
 
 __all__ = [
     "Graph",
+    "GraphDiff",
     "EdgeType",
+    "Scalar",
     "VertexType",
     "toggle_edge",
     "vertex_is_zx",
     "toggle_vertex",
 ]
 
+from ..utils import toggle_edge, toggle_vertex, vertex_is_zx
+from .base import EdgeType, VertexType
+from .diff import GraphDiff
 from .graph import Graph
 from .scalar import Scalar
-from .base import EdgeType, VertexType
-from ..utils import toggle_vertex, toggle_edge, vertex_is_zx
-from .diff import GraphDiff

@@ -16,6 +16,7 @@
 
 from . import Circuit
 
+
 def circuit_to_emoji(c: Circuit, compress_rows: bool = True) -> str:
     """Turns the circuit into a ZX-Graph.
     If ``compress_rows`` is set, it tries to put single qubit gates on different qubits,
