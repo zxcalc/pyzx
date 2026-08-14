@@ -26,6 +26,7 @@ from pyzx.utils import EdgeType, VertexType
 from pyzx.tikz import tikz_to_graph, to_tikz
 from pyzx.graph.graph import Graph
 from pyzx.graph.jsonparser import string_to_phase
+from pyzx.tensor import compare_tensors
 
 
 class TestTikzErrorHandling(unittest.TestCase):
@@ -558,6 +559,77 @@ class TestTikzIdentityNodeRemoval(unittest.TestCase):
         vertices = list(g.vertices())
         e = g.edge(vertices[0], vertices[1])
         self.assertEqual(g.edge_type(e), EdgeType.W_IO)
+
+
+class TestTikzBoundaryHadamardEdges(unittest.TestCase):
+    """Hadamard edges touching a boundary survive a to_tikz round trip (issue #496)."""
+
+    @staticmethod
+    def _wire(edge_types):
+        """A single qubit wire of Z spiders whose edges have the given types."""
+        g = Graph()
+        vs = [g.add_vertex(VertexType.BOUNDARY, 0, 0)]
+        for i in range(len(edge_types) - 1):
+            vs.append(g.add_vertex(VertexType.Z, 0, i + 1))
+        vs.append(g.add_vertex(VertexType.BOUNDARY, 0, len(edge_types)))
+        for (v, w), et in zip(zip(vs, vs[1:]), edge_types):
+            g.add_edge((v, w), et)
+        g.set_inputs((vs[0],))
+        g.set_outputs((vs[-1],))
+        return g
+
+    @staticmethod
+    def _hadamard_edges(g):
+        return sum(1 for e in g.edges() if g.edge_type(e) == EdgeType.HADAMARD)
+
+    def _round_trip(self, g):
+        g2 = tikz_to_graph(to_tikz(g), warn_overlap=False)
+        g2.auto_detect_io()
+        return g2
+
+    def test_boundary_hadamard_edge_uses_the_hadamard_edge_style(self):
+        """A boundary Hadamard is a styled edge, not a node that no \\draw references."""
+        g = self._wire([EdgeType.HADAMARD, EdgeType.SIMPLE])
+        tikz = to_tikz(g)
+        self.assertIn(r"\draw [style=hadamard edge]", tikz)
+        self.assertNotIn(r"\node [style=hadamard]", tikz)
+
+    def test_hadamard_edge_at_input_boundary_round_trips(self):
+        """An H-edge on the input boundary comes back as an H-edge."""
+        g = self._wire([EdgeType.HADAMARD, EdgeType.SIMPLE])
+        g2 = self._round_trip(g)
+        self.assertEqual(self._hadamard_edges(g2), self._hadamard_edges(g))
+        self.assertEqual([v for v in g2.vertices() if g2.type(v) == VertexType.H_BOX], [])
+        self.assertTrue(compare_tensors(g, g2))
+
+    def test_hadamard_edge_at_output_boundary_round_trips(self):
+        """The boundary test is symmetric, so the output side must behave the same."""
+        g = self._wire([EdgeType.SIMPLE, EdgeType.HADAMARD])
+        g2 = self._round_trip(g)
+        self.assertEqual(self._hadamard_edges(g2), self._hadamard_edges(g))
+        self.assertEqual([v for v in g2.vertices() if g2.type(v) == VertexType.H_BOX], [])
+        self.assertTrue(compare_tensors(g, g2))
+
+    def test_hadamard_edges_at_both_boundaries_round_trip(self):
+        """Both boundaries at once, with an interior H-edge that was never affected."""
+        g = self._wire([EdgeType.HADAMARD, EdgeType.HADAMARD, EdgeType.HADAMARD])
+        g2 = self._round_trip(g)
+        self.assertEqual(self._hadamard_edges(g2), 3)
+        self.assertEqual([v for v in g2.vertices() if g2.type(v) == VertexType.H_BOX], [])
+        self.assertTrue(compare_tensors(g, g2))
+
+    def test_boundary_hadamard_preserves_the_scalar(self):
+        """An H-edge must not come back as an H-box, which differs from it by a factor sqrt(2)."""
+        g = self._wire([EdgeType.HADAMARD, EdgeType.SIMPLE])
+        g2 = self._round_trip(g)
+        self.assertTrue(compare_tensors(g, g2, preserve_scalar=True))
+
+    def test_interior_hadamard_edge_still_round_trips(self):
+        """The non-boundary path is unchanged."""
+        g = self._wire([EdgeType.SIMPLE, EdgeType.HADAMARD, EdgeType.SIMPLE])
+        g2 = self._round_trip(g)
+        self.assertEqual(self._hadamard_edges(g2), 1)
+        self.assertTrue(compare_tensors(g, g2))
 
 
 if __name__ == '__main__':
