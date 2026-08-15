@@ -22,11 +22,11 @@ quantum gates for use in the Circuit class.
 import copy
 import math
 from fractions import Fraction
-from typing import TYPE_CHECKING, ClassVar, TypeVar, Generic
+from typing import TYPE_CHECKING, ClassVar, Generic, TypeVar
 
-from ..utils import EdgeType, VertexType, FractionLike, half_phase, settings
-from ..graph.base import BaseGraph, VT, ET
-from ..symbolic import new_const, new_var, Poly
+from ..graph.base import ET, VT, BaseGraph
+from ..symbolic import Poly, new_const, new_var
+from ..utils import EdgeType, FractionLike, VertexType, half_phase, settings
 
 if TYPE_CHECKING:
     from . import Circuit
@@ -45,7 +45,7 @@ class TargetMapper(Generic[VT]):
     _labels: set[int]
     _max_row: int
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._qubits = {}
         self._rows = {}
         self._prev_vs = {}
@@ -332,8 +332,8 @@ class Gate:
                 mapper: TargetMapper[VT],
                 t: VertexType,
                 l: int, r: int,
-                phase: FractionLike=0,
-                etype: EdgeType=EdgeType.SIMPLE,
+                phase: FractionLike = 0,
+                etype: EdgeType = EdgeType.SIMPLE,
                 ground: bool = False) -> VT:
         v = g.add_vertex(t, mapper.to_qubit(l), r, phase, ground)
         g.add_edge((mapper.prev_vertex(l), v), etype)
@@ -357,7 +357,7 @@ class ZPhase(Gate):
         self.graph_add_node(g,q_mapper, VertexType.Z, self.target, q_mapper.next_row(self.target), self.phase)
         q_mapper.advance_next_row(self.target)
 
-    def to_quipper(self):
+    def to_quipper(self) -> str:
         if not self.print_phase:
             return super().to_quipper()
         return 'QRot["exp(-i%Z)",{!s}]({!s})'.format(math.pi*self.phase/2,self.target)
@@ -375,7 +375,7 @@ class ZPhase(Gate):
         else: raise Exception("Unsupported phase " + str(phase))
         strings[self.target].append(s)
 
-    def tcount(self):
+    def tcount(self) -> int:
         return 1 if self.phase.denominator > 2 else 0
 
     def split_phases(self) -> list['ZPhase']:
@@ -414,7 +414,7 @@ class S(ZPhase):
     qc_name = 'S'
     quipper_name = 'S'
     print_phase = False
-    def __init__(self, target: int, adjoint:bool=False) -> None:
+    def __init__(self, target: int, adjoint: bool = False) -> None:
         super().__init__(target, Fraction(1,2)*(-1 if adjoint else 1))
         self.adjoint = adjoint
 
@@ -425,7 +425,7 @@ class T(ZPhase):
     qc_name = 'T'
     quipper_name = 'T'
     print_phase = False
-    def __init__(self, target: int, adjoint:bool=False) -> None:
+    def __init__(self, target: int, adjoint: bool = False) -> None:
         super().__init__(target, Fraction(1,4)*(-1 if adjoint else 1))
         self.adjoint = adjoint
 
@@ -434,7 +434,7 @@ class XPhase(Gate):
     qasm_name = 'rx'
     quipper_name = 'XPhase'
     print_phase = True
-    def __init__(self, target: int, phase: FractionLike=0) -> None:
+    def __init__(self, target: int, phase: FractionLike = 0) -> None:
         self.target = target
         self.phase = phase
 
@@ -455,7 +455,7 @@ class XPhase(Gate):
         else: raise Exception("Unsupported phase " + str(phase))
         strings[self.target].append(s)
 
-    def to_quipper(self):
+    def to_quipper(self) -> str:
         if not self.print_phase:
             return super().to_quipper()
         return 'QRot["exp(-i%X)",{!s}]({!s})'.format(math.pi*self.phase/2,self.target)
@@ -485,7 +485,7 @@ class XPhase(Gate):
         # General case: return normalized XPhase (keeps it as a basic gate).
         return [XPhase(self.target, phase)]
 
-    def tcount(self):
+    def tcount(self) -> int:
         return 1 if self.phase.denominator > 2 else 0
 
     def split_phases(self) -> list[Gate]:
@@ -513,7 +513,7 @@ class SX(XPhase):
     qasm_name = 'sx'
     qasm_name_adjoint = 'sxdg'
     print_phase = False
-    def __init__(self, target: int, adjoint:bool=False) -> None:
+    def __init__(self, target: int, adjoint: bool = False) -> None:
         super().__init__(target, Fraction(1,2)*(-1 if adjoint else 1))
         self.adjoint = adjoint
 
@@ -578,7 +578,7 @@ class YPhase(Gate):
         for gate in self.to_basic_gates():
             gate.to_graph(g, q_mapper, c_mapper)
 
-    def tcount(self):
+    def tcount(self) -> int:
         return 1 if self.phase.denominator > 2 else 0
 
 class Y(YPhase):
@@ -751,7 +751,7 @@ class CRX(Gate):
                [CNOT(self.control, self.target)] + \
                U3(self.target, phase, Fraction(-1,2), 0).to_basic_gates()
 
-    def to_graph(self, g, q_mapper, c_mapper):
+    def to_graph(self, g: BaseGraph[VT, ET], q_mapper: TargetMapper[VT], c_mapper: TargetMapper[VT]) -> None:
         for gate in self.to_basic_gates():
             gate.to_graph(g, q_mapper, c_mapper)
 
@@ -771,7 +771,7 @@ class CRY(Gate):
                YPhase(self.target, -half_phase).to_basic_gates() + \
                [CNOT(self.control, self.target)]
 
-    def to_graph(self, g, q_mapper, c_mapper):
+    def to_graph(self, g: BaseGraph[VT, ET], q_mapper: TargetMapper[VT], c_mapper: TargetMapper[VT]) -> None:
         for gate in self.to_basic_gates():
             gate.to_graph(g, q_mapper, c_mapper)
 
@@ -791,7 +791,7 @@ class CRZ(Gate):
                 ZPhase(self.target, -phase),
                 CNOT(self.control, self.target)]
 
-    def to_graph(self, g, q_mapper, c_mapper):
+    def to_graph(self, g: BaseGraph[VT, ET], q_mapper: TargetMapper[VT], c_mapper: TargetMapper[VT]) -> None:
         for gate in self.to_basic_gates():
             gate.to_graph(g, q_mapper, c_mapper)
 
@@ -813,7 +813,7 @@ class RXX(Gate):
                 HAD(self.target)] + \
                U2(self.control,Fraction(-1,1),(Fraction(1,1)-self.phase)%2).to_basic_gates()
 
-    def to_graph(self, g, q_mapper, c_mapper):
+    def to_graph(self, g: BaseGraph[VT, ET], q_mapper: TargetMapper[VT], c_mapper: TargetMapper[VT]) -> None:
         for gate in self.to_basic_gates():
             gate.to_graph(g, q_mapper, c_mapper)
 
@@ -846,7 +846,7 @@ class CHAD(Gate):
                 T(self.target),HAD(self.target),S(self.target),NOT(self.target),S(self.control)]
 
 
-    def to_graph(self, g, q_mapper, c_mapper):
+    def to_graph(self, g: BaseGraph[VT, ET], q_mapper: TargetMapper[VT], c_mapper: TargetMapper[VT]) -> None:
         for gate in self.to_basic_gates():
             gate.to_graph(g, q_mapper, c_mapper)
 
@@ -877,9 +877,9 @@ class ParityPhase(Gate):
     def copy(self) -> 'ParityPhase':
         return type(self)(self.phase, *self.targets, as_gadget=self.as_gadget)
 
-    def reposition(self, mask, bit_mask = None):
+    def reposition(self, mask: list[int], bit_mask: list[int] | None = None) -> 'ParityPhase':
         g = self.copy()
-        g.targets = [mask[t] for t in g.targets]
+        g.targets = tuple(mask[t] for t in g.targets)
         return g
 
     def to_basic_gates(self) -> list[Gate]:
@@ -890,7 +890,7 @@ class ParityPhase(Gate):
         p = ZPhase(self.targets[-1], self.phase)
         return cnots + [p] + list(reversed(cnots))
     
-    def to_graph(self, g, q_mapper, c_mapper):
+    def to_graph(self, g: BaseGraph[VT, ET], q_mapper: TargetMapper[VT], c_mapper: TargetMapper[VT]) -> None:
         if self.as_gadget:
             # Create phase gadget structure directly in the graph.
             anchors = []
@@ -904,7 +904,7 @@ class ParityPhase(Gate):
             for gate in self.to_basic_gates():
                 gate.to_graph(g, q_mapper, c_mapper)
 
-    def tcount(self):
+    def tcount(self) -> int:
         return 1 if self.phase.denominator > 2 else 0
 
 
@@ -913,7 +913,7 @@ class PhaseGadget(ParityPhase):
 
     This is equivalent to ParityPhase(phase, *targets, as_gadget=True).
     """
-    def __init__(self, phase: FractionLike, *targets: int):
+    def __init__(self, phase: FractionLike, *targets: int) -> None:
         super().__init__(phase, *targets, as_gadget=True)
 
 
@@ -932,7 +932,7 @@ class FSim(Gate):
     name = 'FSim'
     qsim_name = 'fs'
     print_phase = True
-    def __init__(self, control:int, target:int, theta:FractionLike, phi:FractionLike):
+    def __init__(self, control: int, target: int, theta: FractionLike, phi: FractionLike) -> None:
         # TODO: this version assumes theta is always (pi/2)
         assert theta == Fraction(1, 2)
         self.control = control
@@ -952,7 +952,7 @@ class FSim(Gate):
     def __str__(self) -> str:
         return "FSim({!s}, {!s}, {!s}, {!s})".format(self.control, self.target, self.theta, self.phi)
 
-    def reposition(self, mask, bit_mask=None):
+    def reposition(self, mask: list[int], bit_mask: list[int] | None = None) -> 'FSim':
         g = self.copy()
         g.control = mask[self.control]
         g.target = mask[self.target]
@@ -1041,7 +1041,7 @@ class FSim(Gate):
         #for gate in self.to_basic_gates():
         #    gate.to_graph(g, q_mapper, c_mapper)
 
-    def tcount(self):
+    def tcount(self) -> int:
         # TODO
         return 0 #1 if self.phase.denominator > 2 else 0
 
@@ -1063,20 +1063,20 @@ class CCZ(Gate):
             return True
         return False
 
-    def _max_target(self):
-        return max([self.target,self.ctrl1,self.ctrl2])
+    def _max_target(self) -> int:
+        return max([self.target, self.ctrl1, self.ctrl2])
 
-    def tcount(self):
+    def tcount(self) -> int:
         return 7
 
-    def reposition(self, mask, bit_mask = None):
+    def reposition(self, mask: list[int], bit_mask: list[int] | None = None) -> 'CCZ':
         g = self.copy()
         g.target = mask[g.target]
         g.ctrl1 = mask[g.ctrl1]
         g.ctrl2 = mask[g.ctrl2]
         return g
 
-    def to_basic_gates(self):
+    def to_basic_gates(self) -> list[Gate]:
         c1,c2,t = self.ctrl1, self.ctrl2, self.target
         return [CNOT(c2,t), T(t,adjoint=True),
                 CNOT(c1,t), T(t),CNOT(c2,t),T(t,adjoint=True),
@@ -1101,7 +1101,7 @@ class CCZ(Gate):
         q_mapper.set_next_row(self.ctrl1, r+1)
         q_mapper.set_next_row(self.ctrl2, r+1)
 
-    def to_quipper(self):
+    def to_quipper(self) -> str:
         s = 'QGate["{}"]({!s})'.format(self.quipper_name,self.target)
         s += ' with controls=[+{!s},+{!s}]'.format(self.ctrl1,self.ctrl2)
         s += ' with nocontrol'
@@ -1121,7 +1121,7 @@ class Tofolli(CCZ):
             return True
         return False
 
-    def to_basic_gates(self):
+    def to_basic_gates(self) -> list[Gate]:
         c1,c2,t = self.ctrl1, self.ctrl2, self.target
         return [HAD(t), CNOT(c2,t), T(t,adjoint=True),
                 CNOT(c1,t), T(t),CNOT(c2,t),T(t,adjoint=True),
@@ -1146,13 +1146,13 @@ class CSWAP(CCZ):
             return True
         return False
 
-    def to_basic_gates(self):
+    def to_basic_gates(self) -> list[Gate]:
         c, t1, t2 = self.ctrl1, self.ctrl2, self.target
         return [CNOT(control=t2,target=t1)] + \
                Tofolli(c,t1,t2).to_basic_gates() + \
                [CNOT(control=t2,target=t1)]
 
-    def to_graph(self, g, q_mapper, c_mapper):
+    def to_graph(self, g: BaseGraph[VT, ET], q_mapper: TargetMapper[VT], c_mapper: TargetMapper[VT]) -> None:
         for gate in self.to_basic_gates():
             gate.to_graph(g, q_mapper, c_mapper)
 
@@ -1166,12 +1166,12 @@ class U2(Gate):  # See https://arxiv.org/pdf/1707.03429.pdf
         self.phi = phi
         self.phases = [theta, phi]
 
-    def to_basic_gates(self):
+    def to_basic_gates(self) -> list[Gate]:
         return [ZPhase(self.target,phase=(self.phi-Fraction(1,2))%2),
                 XPhase(self.target,phase=Fraction(1,2)),
                 ZPhase(self.target,phase=(self.theta+Fraction(1,2))%2)]
 
-    def to_graph(self, g, q_mapper, c_mapper):
+    def to_graph(self, g: BaseGraph[VT, ET], q_mapper: TargetMapper[VT], c_mapper: TargetMapper[VT]) -> None:
         for gate in self.to_basic_gates():
             gate.to_graph(g, q_mapper, c_mapper)
 
@@ -1186,14 +1186,14 @@ class U3(Gate):  # See equation (5) of https://arxiv.org/pdf/1707.03429.pdf
         self.rho = rho
         self.phases = [theta, phi, rho]
 
-    def to_basic_gates(self):
+    def to_basic_gates(self) -> list[Gate]:
         return [ZPhase(self.target,phase=self.rho),
                 XPhase(self.target,phase=Fraction(1,2)),
                 ZPhase(self.target,phase=(self.theta+1)%2),
                 XPhase(self.target,phase=Fraction(1,2)),
                 ZPhase(self.target,phase=(self.phi+3)%2)]
 
-    def to_graph(self, g, q_mapper, c_mapper):
+    def to_graph(self, g: BaseGraph[VT, ET], q_mapper: TargetMapper[VT], c_mapper: TargetMapper[VT]) -> None:
         for gate in self.to_basic_gates():
             gate.to_graph(g, q_mapper, c_mapper)
 
@@ -1238,11 +1238,11 @@ class CU(Gate):
         self.gamma = gamma
         self.phases = [theta, phi, rho, gamma]
 
-    def to_basic_gates(self):
+    def to_basic_gates(self) -> list[Gate]:
         return [ZPhase(self.control,phase=self.gamma)] + \
                CU3(self.control,self.target,self.theta,self.phi,self.rho).to_basic_gates()
 
-    def to_graph(self, g, q_mapper, c_mapper):
+    def to_graph(self, g: BaseGraph[VT, ET], q_mapper: TargetMapper[VT], c_mapper: TargetMapper[VT]) -> None:
         for gate in self.to_basic_gates():
             gate.to_graph(g, q_mapper, c_mapper)
 
@@ -1285,11 +1285,11 @@ class InitAncilla(Gate):
             return False
         return self.label == other.label and self.state == other.state
 
-    def get_vertex_info(self):
+    def get_vertex_info(self) -> tuple[VertexType, Fraction]:
         """Returns (VertexType, phase) for this ancilla state."""
         return self.STATE_MAP[self.state]
 
-    def reposition(self, mask, bit_mask=None):
+    def reposition(self, mask: list[int], bit_mask: list[int] | None = None) -> 'InitAncilla':
         g = self.copy()
         g.label = mask[self.label]
         g.target = g.label
@@ -1313,7 +1313,7 @@ class Reset(Gate):
     """
     name = 'Reset'
 
-    def __init__(self, target: int):
+    def __init__(self, target: int) -> None:
         self.target = target
         self.label = target
 
@@ -1328,7 +1328,7 @@ class Reset(Gate):
     def to_qasm(self) -> str:
         return "reset q[{:d}];".format(self.target)
 
-    def reposition(self, mask, bit_mask=None):
+    def reposition(self, mask: list[int], bit_mask: list[int] | None = None) -> 'Reset':
         g = self.copy()
         g.target = mask[self.target]
         g.label = g.target
@@ -1346,7 +1346,7 @@ class PostSelect(Gate):
     name = 'PostSelect'
     STATE_MAP = _state_map
 
-    def __init__(self, label: int, state: str = '+'):
+    def __init__(self, label: int, state: str = '+') -> None:
         self.label = label
         self.target = label
         if state not in self.STATE_MAP:
@@ -1366,11 +1366,11 @@ class PostSelect(Gate):
             return False
         return self.label == other.label and self.state == other.state
 
-    def get_vertex_info(self):
+    def get_vertex_info(self) -> tuple[VertexType, Fraction]:
         """Returns (VertexType, phase) for this post-selection state."""
         return self.STATE_MAP[self.state]
 
-    def reposition(self, mask, bit_mask=None):
+    def reposition(self, mask: list[int], bit_mask: list[int] | None = None) -> 'PostSelect':
         g = self.copy()
         g.label = mask[self.label]
         g.target = g.label
@@ -1398,7 +1398,7 @@ class ConditionalGate(Gate):
     name = 'ConditionalGate'
 
     def __init__(self, condition_register: str, condition_value: int,
-                 inner_gate: 'Gate', register_size: int):
+                 inner_gate: 'Gate', register_size: int) -> None:
         if condition_value < 0 or condition_value >= (1 << register_size):
             raise ValueError(
                 "Condition value {} is out of range for a {}-bit register "
@@ -1437,7 +1437,7 @@ class ConditionalGate(Gate):
             self.condition_register, self.condition_value,
             self.inner_gate.copy(), self.register_size)
 
-    def reposition(self, mask, bit_mask = None):
+    def reposition(self, mask: list[int], bit_mask: list[int] | None = None) -> 'ConditionalGate':
         g = self.copy()
         g.inner_gate = g.inner_gate.reposition(mask, bit_mask)
         g.target = getattr(g.inner_gate, "target")
@@ -1560,7 +1560,7 @@ class Measurement(Gate):
             g.result_bit = bit_mask[self.result_bit]
         return g
 
-    def to_graph_symbolic_boolean(self, g, q_mapper):
+    def to_graph_symbolic_boolean(self, g: BaseGraph[VT, ET], q_mapper: TargetMapper[VT]) -> None:
         """Represent the measurement as a Z spider with a symbolic-phase leaf.
 
         Places a Z(0) spider on the qubit wire and attaches the classical

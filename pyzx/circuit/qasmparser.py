@@ -19,17 +19,18 @@ import math
 import re
 from fractions import Fraction
 
-from . import Circuit
-from .gates import (
-    CCZ, CHAD, CNOT, ConditionalGate, CPhase, CRX, CRY, CRZ, CSWAP, CSX, CU, CU3, CY, CZ,
-    Gate, HAD, Measurement, NOT, Reset, RXX, RZZ, S, SWAP, SX,
-    T, Tofolli, U2, U3, XPhase, Y, YPhase, Z, ZPhase, qasm_gate_table
-)
-from ..symbolic import Var, new_var, parse as parse_symbolic_expr, parse_phase_list
+from ..symbolic import Var, new_var
+from ..symbolic import parse as parse_symbolic_expr
+from ..symbolic import parse_phase_list
 from ..utils import settings
+from . import Circuit
+from .gates import (CCZ, CHAD, CNOT, CRX, CRY, CRZ, CSWAP, CSX, CU, CU3, CY,
+                    CZ, HAD, NOT, RXX, RZZ, SWAP, SX, U2, U3, ConditionalGate,
+                    CPhase, Gate, Measurement, Reset, S, T, Tofolli, XPhase, Y,
+                    YPhase, Z, ZPhase, qasm_gate_table)
 
 
-class QASMParser(object):
+class QASMParser:
     """Class for parsing QASM source files into circuit descriptions."""
 
     def __init__(self) -> None:
@@ -44,7 +45,7 @@ class QASMParser(object):
         self.bit_count: int = 0
         self.circuit: Circuit | None = None
 
-    def parse(self, s: str, strict:bool=True) -> Circuit:
+    def parse(self, s: str, strict: bool = True) -> Circuit:
         self.gates = []
         self.custom_gates = {}
         self.parametrized_gates = {}
@@ -422,7 +423,7 @@ class QASMParser(object):
                 raise TypeError("Invalid specification: {}".format(c))
         return gates
 
-    def parse_phase_arg(self, val):
+    def parse_phase_arg(self, val: str) -> Fraction:
         val = val.strip()
         if self._param_subst is not None:
             bound = self._bind_phase_parameters(val)

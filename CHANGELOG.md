@@ -8,6 +8,9 @@ Hence, occasionally changes will be backwards incompatible (although they will a
 
 ## [Unreleased]
 
+### Fixed
+- `to_tikz` no longer drops Hadamards on edges that touch a boundary. Such an edge was exported as a plain wire plus a `hadamard` node that no `\draw` referenced, so the Hadamard was lost on reimport and the diagram gained a disconnected H-box. These edges now use the same `hadamard edge` style as every other Hadamard edge (by @gauthamkanagaraj).
+
 ## [0.10.5] - 2026-08-01
 
 ### Fixed
@@ -22,6 +25,7 @@ Hence, occasionally changes will be backwards incompatible (although they will a
 - Regression test for `unsafe_pivot` with boolean pivot phases (by @dlyongemallo).
 - Added support for zooming in D3 drawings (by @doczenwiry).
 - `apply_to_boolean_axels` opt-in flag to `(unsafe_)pauli_push`, so boolean parameters are not transformed into non-boolean phase by default (by @dlyongemallo).
+- Added support for the detection/highlighting of overlapping nodes in D3 drawings (by @doczenwiry).
 
 ### Changed
 - `Multigraph.edge(s, t)` now raises `ValueError` on ambiguous mixed-type parallel edges or when no matching edge exists, instead of silently returning one; pass `et` to disambiguate. The `et` default is now `None` on `BaseGraph.edge` (`GraphS.edge` and `GraphIG.edge` ignore it). Internal callers were updated to match; as a side effect, `PauliWeb.add_edge` and `PauliWeb.graph_with_errors` now propagate this error rather than silently preferring the `SIMPLE` edge (by @dlyongemallo).

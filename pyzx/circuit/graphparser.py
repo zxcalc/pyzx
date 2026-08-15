@@ -16,13 +16,14 @@
 
 import warnings
 
-from . import Circuit
-from .gates import (Gate, InitAncilla, Measurement, PostSelect, Reset, TargetMapper,
-                     ConditionalGate, ZPhase, XPhase, NOT, Z, S, T, SX)
-from ..utils import EdgeType, VertexType, FloatInt, settings
 from ..graph import Graph
-from ..graph.base import BaseGraph, VT, ET
+from ..graph.base import ET, VT, BaseGraph
 from ..symbolic import Poly, new_var
+from ..utils import EdgeType, FloatInt, VertexType, settings
+from . import Circuit
+from .gates import (NOT, SX, ConditionalGate, Gate, InitAncilla, Measurement,
+                    PostSelect, Reset, S, T, TargetMapper, XPhase, Z, ZPhase)
+
 
 def _poly_phase_to_conditional_gate(
     phase: Poly, vertex_type: VertexType, qubit: int
@@ -43,9 +44,11 @@ def _poly_phase_to_conditional_gate(
     Both Z- and X-type vertices are supported as the conditional
     inner gate.
     """
-    from fractions import Fraction
-    from ..symbolic import Var
     import re
+    from fractions import Fraction
+
+    from ..symbolic import Var
+
     # Collect all boolean variables across all terms.
     bit_pattern = re.compile(r'^(\w+)\[(\d+)\]$')
     reg_name: str | None = None
@@ -129,7 +132,7 @@ def _poly_phase_to_conditional_gate(
     return ConditionalGate(reg_name, cond_value, inner_gate, reg_size)
 
 
-def graph_to_circuit(g:BaseGraph[VT,ET], split_phases:bool=True) -> Circuit:
+def graph_to_circuit(g: BaseGraph[VT, ET], split_phases: bool = True) -> Circuit:
     inputs = g.inputs()
     qs = g.qubits()
     rs = g.rows()
@@ -271,8 +274,8 @@ def graph_to_circuit(g:BaseGraph[VT,ET], split_phases:bool=True) -> Circuit:
 
 def circuit_to_graph(
     c: Circuit,
-    compress_rows:bool = True,
-    backend: str | None =None,
+    compress_rows: bool = True,
+    backend: str | None = None,
     initialize_qubits: list[bool] | None = None,
     postselect_qubits: list[int] | None = None,
     elide_initial_resets: bool = False,

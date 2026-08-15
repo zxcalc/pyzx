@@ -1,4 +1,4 @@
-# PyZX - Python library for quantum circuit rewriting 
+# PyZX - Python library for quantum circuit rewriting
 #        and optimisation using the ZX-calculus
 # Copyright (C) 2018 - Aleks Kissinger and John van de Wetering
 
@@ -14,6 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# mypy: disable-error-code="no-untyped-def"
+
 try:
 	import igraph as ig
 except ImportError:
@@ -26,7 +28,7 @@ from .base import BaseGraph, VertexType, EdgeType
 from ..utils import assert_phase_real, normalize_phase
 
 class GraphIG(BaseGraph):
-	"""Implementation of :class:`~graph.base.BaseGraph` using ``python-igraph`` 
+	"""Implementation of :class:`~graph.base.BaseGraph` using ``python-igraph``
 	as its backend"""
 	backend = 'igraph'
 	graph: "ig.Graph"
@@ -49,7 +51,7 @@ class GraphIG(BaseGraph):
 	def vindex(self):
 		return self.num_vertices()
 
-	def depth(self): 
+	def depth(self):
 		self._maxr = max(self._rindex.values())
 		return self._maxr
 	def qubit_count(self): return self._maxq + 1

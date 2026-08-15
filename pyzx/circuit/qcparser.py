@@ -17,6 +17,7 @@
 from . import Circuit
 from .gates import *
 
+
 def parse_qc(data: str) -> Circuit:
     """Produces a :class:`Circuit` based on a .qc description of a circuit.
     If a Tofolli gate with more than 2 controls is encountered, ancilla qubits are added.
