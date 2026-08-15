@@ -315,7 +315,7 @@ class TestBialgebraApplyXH(unittest.TestCase):
                 g_orig = g.copy()
                 unsafe_bialgebra(g, x, h)
                 self.assertTrue(
-                    compare_tensors(g, g_orig, preserve_scalar=True, strategy='naive'),
+                    compare_tensors(g, g_orig, preserve_scalar=True),
                     "Bialgebra changed the scalar")
 
     @unittest.skipUnless(np, "numpy needs to be installed for this to run")
@@ -325,7 +325,7 @@ class TestBialgebraApplyXH(unittest.TestCase):
         g, x, h = self._make_xh_bialgebra_graph(3, 3)
         g_orig = g.copy()
         unsafe_bialgebra(g, h, x)
-        self.assertTrue(compare_tensors(g, g_orig, preserve_scalar=True, strategy='naive'))
+        self.assertTrue(compare_tensors(g, g_orig, preserve_scalar=True))
 
 
 class TestBialgebraParallelEdgePositions(unittest.TestCase):

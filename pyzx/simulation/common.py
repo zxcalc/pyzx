@@ -27,14 +27,14 @@ class SumGraph(object):
         else:
             self.graphs = []
             
-    def to_tensor(self, strategy: str = 'rw-auto') -> np.ndarray:
+    def to_tensor(self, strategy: str = 'auto') -> np.ndarray:
         if not self.graphs: return np.zeros((1,1))
         t = self.graphs[0].to_tensor(True, strategy=strategy)
         for i in range(len(self.graphs)-1):
             t = t + self.graphs[i+1].to_tensor(True, strategy=strategy)
         return t
 
-    def to_matrix(self, strategy: str = 'rw-auto') -> np.ndarray:
+    def to_matrix(self, strategy: str = 'auto') -> np.ndarray:
         if not self.graphs: return np.zeros((1,1))
         t = self.graphs[0].to_matrix(True, strategy=strategy)
         for i in range(len(self.graphs)-1):

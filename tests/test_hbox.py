@@ -247,7 +247,7 @@ class TestHboxCancelRule(unittest.TestCase):
         g_copy = g.copy()
         hbox_cancel(g_copy, v1)
 
-        self.assertTrue(compare_tensors(g, g_copy, preserve_scalar=True, strategy='naive'))
+        self.assertTrue(compare_tensors(g, g_copy, preserve_scalar=True))
 
     @unittest.skipUnless(np, "numpy needs to be installed for this to run")
     def test_hbox_cancel_hadamard_edge_preserves_semantics(self):
@@ -265,7 +265,7 @@ class TestHboxCancelRule(unittest.TestCase):
         g_copy = g.copy()
         hbox_cancel(g_copy, v1)
 
-        self.assertTrue(compare_tensors(g, g_copy, preserve_scalar=True, strategy='naive'))
+        self.assertTrue(compare_tensors(g, g_copy, preserve_scalar=True))
 
     def test_hbox_cancel_simp(self):
         """Regression test for issue #200."""
@@ -522,11 +522,11 @@ class TestParHboxAvgRule(unittest.TestCase):
         a, b = 0.3+0.7j, 0.5+0.4j
         g, _, _, _ = self._make_avg_graph(a, b)
         expected = self._make_expected_graph((a + b) / 2)
-        t_before = g.to_tensor(preserve_scalar=True, strategy='naive')
+        t_before = g.to_tensor(preserve_scalar=True)
         simp_par_hbox_avg(g)
-        t_after = g.to_tensor(preserve_scalar=True, strategy='naive')
+        t_after = g.to_tensor(preserve_scalar=True)
         self.assertTrue(compare_tensors(t_before, t_after, preserve_scalar=True))
-        self.assertTrue(compare_tensors(g, expected, preserve_scalar=True, strategy='naive'))
+        self.assertTrue(compare_tensors(g, expected, preserve_scalar=True))
 
     @unittest.skipUnless(np, "numpy not installed")
     def test_tensor_hadamard_not(self):
@@ -535,11 +535,11 @@ class TestParHboxAvgRule(unittest.TestCase):
         a, b = -1+2j, 3-1j
         g, _, _, _ = self._make_avg_graph(a, b, use_hadamard_not=True)
         expected = self._make_expected_graph((a + b) / 2)
-        t_before = g.to_tensor(preserve_scalar=True, strategy='naive')
+        t_before = g.to_tensor(preserve_scalar=True)
         simp_par_hbox_avg(g)
-        t_after = g.to_tensor(preserve_scalar=True, strategy='naive')
+        t_after = g.to_tensor(preserve_scalar=True)
         self.assertTrue(compare_tensors(t_before, t_after, preserve_scalar=True))
-        self.assertTrue(compare_tensors(g, expected, preserve_scalar=True, strategy='naive'))
+        self.assertTrue(compare_tensors(g, expected, preserve_scalar=True))
 
     @unittest.skipUnless(np, "numpy not installed")
     def test_tensor_multiple_shared_neighbors(self):
@@ -566,9 +566,9 @@ class TestParHboxAvgRule(unittest.TestCase):
         g.add_edge((hb, not_gate), EdgeType.SIMPLE)
         g.set_inputs((b0, b1))
         g.set_outputs(())
-        t_before = g.to_tensor(preserve_scalar=True, strategy='naive')
+        t_before = g.to_tensor(preserve_scalar=True)
         simp_par_hbox_avg(g)
-        t_after = g.to_tensor(preserve_scalar=True, strategy='naive')
+        t_after = g.to_tensor(preserve_scalar=True)
         self.assertTrue(compare_tensors(t_before, t_after, preserve_scalar=True))
 
     @unittest.skipUnless(np, "numpy not installed")
@@ -577,9 +577,9 @@ class TestParHboxAvgRule(unittest.TestCase):
         from pyzx.rewrite_rules.par_hbox_rule import simp_par_hbox_avg
         a, b = -1+0j, -1+0j
         g, _, _, _ = self._make_avg_graph(a, b)
-        t_before = g.to_tensor(preserve_scalar=True, strategy='naive')
+        t_before = g.to_tensor(preserve_scalar=True)
         simp_par_hbox_avg(g)
-        t_after = g.to_tensor(preserve_scalar=True, strategy='naive')
+        t_after = g.to_tensor(preserve_scalar=True)
         self.assertTrue(compare_tensors(t_before, t_after, preserve_scalar=True))
 
     def test_no_match_z_hadamard_neighbors(self):
@@ -657,11 +657,11 @@ class TestParHboxIntroRuleEdgeTypes(unittest.TestCase):
         g.add_edge((not_gate, hb), EdgeType.SIMPLE)
         g.set_inputs((b1, b2))
         g.set_outputs(())
-        t_before = g.to_tensor(preserve_scalar=True, strategy='naive')
+        t_before = g.to_tensor(preserve_scalar=True)
         matches = match_par_hbox_intro(g)
         self.assertEqual(len(matches), 1)
         unsafe_par_hbox_intro(g, matches)
-        t_after = g.to_tensor(preserve_scalar=True, strategy='naive')
+        t_after = g.to_tensor(preserve_scalar=True)
         self.assertTrue(compare_tensors(t_before, t_after, preserve_scalar=True))
 
     def test_match_x_hadamard_single_neighbor(self):
@@ -685,11 +685,11 @@ class TestParHboxIntroRuleEdgeTypes(unittest.TestCase):
         g.add_edge((hb, x_single_b), EdgeType.HADAMARD)
         g.set_inputs((b,))
         g.set_outputs(())
-        t_before = g.to_tensor(preserve_scalar=True, strategy='naive')
+        t_before = g.to_tensor(preserve_scalar=True)
         matches = match_par_hbox_intro(g)
         self.assertEqual(len(matches), 1)
         unsafe_par_hbox_intro(g, matches)
-        t_after = g.to_tensor(preserve_scalar=True, strategy='naive')
+        t_after = g.to_tensor(preserve_scalar=True)
         self.assertTrue(compare_tensors(t_before, t_after, preserve_scalar=True))
 
 
@@ -712,11 +712,11 @@ class TestParHboxMultiplyRuleEdgeTypes(unittest.TestCase):
         g.add_edge((x, hb), EdgeType.HADAMARD)
         g.set_inputs((inp,))
         g.set_outputs(())
-        t_before = g.to_tensor(preserve_scalar=True, strategy='naive')
+        t_before = g.to_tensor(preserve_scalar=True)
         matches = match_par_hbox(g)
         self.assertEqual(len(matches), 1)
         unsafe_par_hbox(g, matches)
-        t_after = g.to_tensor(preserve_scalar=True, strategy='naive')
+        t_after = g.to_tensor(preserve_scalar=True)
         self.assertTrue(compare_tensors(t_before, t_after, preserve_scalar=True))
 
     def test_no_match_z_hadamard_neighbors(self):
