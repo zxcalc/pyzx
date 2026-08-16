@@ -103,16 +103,17 @@ def pop_and_shift(verts, indices):
 
 def tensorfy(g: 'BaseGraph[VT,ET]',
              preserve_scalar: bool = True,
-             strategy: str = 'naive',
+             strategy: str = 'auto',
              verbose: bool = False) -> NDArray[np.complex128]:
     """
     Returns a multidimensional numpy array representing the linear map the ZX diagram implements.
     Available simulation strategies are:
 
-    - 'naive': good for sparse graphs
-    - 'rw-greedy-b2t': rank-width with greedy bottom-to-top heuristic
-    - 'rw-greedy-linear': rank-width with greedy-linear heuristic
+    - 'auto': for regular ZX-diagrams use 'rw-auto', otherwise revert to 'naive'
+    - 'naive': statevector-like simulation
     - 'rw-auto': choose the best of 'rw-greedy-b2t' and 'rw-greedy-linear'
+    - 'rw-greedy-b2t': rank-width-based contraction routine with greedy bottom-to-top decomposition heuristic
+    - 'rw-greedy-linear': rank-width-based contraction routine with greedy linear-decomposition heuristic
 
     Args:
         g: ZX diagram
@@ -125,6 +126,14 @@ def tensorfy(g: 'BaseGraph[VT,ET]',
     """
     if g.is_hybrid():
         raise ValueError("Hybrid graphs are not supported.")
+    if strategy == 'auto':
+        from .graph.multigraph import Multigraph
+        if any(g.type(v) == VertexType.H_BOX for v in g.vertices()):
+            strategy = 'naive'
+        elif isinstance(g, Multigraph): # TODO: fix full_reduce for Multigraph
+            strategy = 'naive'
+        else:
+            strategy = 'rw-auto'
     if strategy == 'naive':
         return tensorfy_naive(g, preserve_scalar=preserve_scalar)
     elif strategy.startswith('rw-'):
@@ -263,7 +272,7 @@ def tensor_to_matrix(t: np.ndarray, inputs: int, outputs: int) -> np.ndarray:
     return np.array(rows)
 
 def compare_tensors(t1: TensorConvertible,t2: TensorConvertible,
-                    preserve_scalar: bool=False, strategy: str='naive') -> bool:
+                    preserve_scalar: bool=False, strategy: str='auto') -> bool:
     """Returns true if ``t1`` and ``t2`` represent equal tensors by calling :func:`~pyzx.tensor.tensorfy`.
     When `preserve_scalar` is False (the default), equality is checked up to nonzero rescaling.
 

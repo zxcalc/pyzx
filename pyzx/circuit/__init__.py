@@ -328,11 +328,11 @@ class Circuit:
             elide_initial_resets=elide_initial_resets,
         )
 
-    def to_tensor(self, preserve_scalar: bool = True, strategy: str = 'naive') -> np.ndarray:
+    def to_tensor(self, preserve_scalar: bool = True, strategy: str = 'auto') -> np.ndarray:
         """Returns a numpy tensor describing the circuit."""
         return self.to_graph().to_tensor(preserve_scalar, strategy)
 
-    def to_matrix(self, preserve_scalar: bool = True, strategy: str = 'naive') -> np.ndarray:
+    def to_matrix(self, preserve_scalar: bool = True, strategy: str = 'auto') -> np.ndarray:
         """Returns a numpy matrix describing the circuit."""
         return self.to_graph().to_matrix(preserve_scalar, strategy)
 

@@ -520,7 +520,7 @@ def tensorfy_rw_subtree(g: BaseGraph,
             et = g.edge_type(list(g.incident_edges(subtree))[0])
             nb = list(g.neighbors(subtree))[0]
             nbt = g.type(nb)
-            is_had = (et == EdgeType.SIMPLE) ^ (nbt == VertexType.BOUNDARY and nb < subtree)
+            is_had = (et == EdgeType.SIMPLE) and (nbt != VertexType.BOUNDARY or nb >= subtree)
             if is_had:
                 Psi_u = np.array([[1, 1], [1, -1]], dtype=np.complex128) / sqrt(2)
             else:
