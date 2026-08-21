@@ -47,6 +47,12 @@ if TYPE_CHECKING:
     from .circuit import Circuit
 TensorConvertible = Union[np.ndarray, 'Circuit', 'BaseGraph']
 
+_RANK_WIDTH_VERTEX_TYPES = frozenset({
+    VertexType.BOUNDARY,
+    VertexType.Z,
+    VertexType.X,
+})
+
 def Z_box_to_tensor(arity: int, parameter: complex) -> np.ndarray:
     m = np.zeros([2]*arity, dtype = complex)
     if arity == 0:
@@ -128,7 +134,7 @@ def tensorfy(g: 'BaseGraph[VT,ET]',
         raise ValueError("Hybrid graphs are not supported.")
     if strategy == 'auto':
         from .graph.multigraph import Multigraph
-        if any(g.type(v) == VertexType.H_BOX for v in g.vertices()):
+        if any(g.type(v) not in _RANK_WIDTH_VERTEX_TYPES for v in g.vertices()):
             strategy = 'naive'
         elif isinstance(g, Multigraph): # TODO: fix full_reduce for Multigraph
             strategy = 'naive'

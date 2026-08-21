@@ -28,7 +28,7 @@ import math
 
 from pyzx.graph import Graph
 from pyzx.graph.multigraph import Multigraph
-from pyzx.generate import cliffords
+from pyzx.generate import cliffords, spider
 from pyzx.circuit import Circuit
 from pyzx.utils import VertexType, set_h_box_label
 
@@ -44,6 +44,19 @@ SEED = 1337
 
 @unittest.skipUnless(np, "numpy needs to be installed for this to run")
 class TestTensor(unittest.TestCase):
+
+    def test_tensorfy_auto_falls_back_for_non_zx_spiders(self):
+        """The auto strategy should use naive contraction for non-ZX spiders."""
+        for vertex_type in (
+            VertexType.H_BOX,
+            VertexType.W_OUTPUT,
+            VertexType.Z_BOX,
+        ):
+            with self.subTest(vertex_type=vertex_type):
+                graph = spider(vertex_type, 1, 2)
+                expected = tensorfy(graph, strategy='naive')
+                actual = tensorfy(graph)
+                self.assertTrue(np.allclose(actual, expected))
 
     def test_scalar_difference(self):
         array = np.array([[0,1],[1,0]])
