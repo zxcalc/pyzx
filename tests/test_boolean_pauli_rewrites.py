@@ -22,6 +22,7 @@ from pyzx.graph import Graph
 from pyzx.utils import EdgeType, VertexType
 from pyzx.symbolic import Poly, new_var
 from pyzx.simplify import gadget_simp, teleport_reduce
+from pyzx.rewrite_rules.merge_phase_gadget_rule import merge_phase_gadgets_for_simp
 from pyzx.rewrite_rules.push_pauli_rule import unsafe_pauli_push
 from pyzx.rewrite_rules.pivot_rule import unsafe_pivot
 from pyzx.tensor import compare_tensors
@@ -37,6 +38,66 @@ def tensors_match(g1, g2, **subs):
 
 
 class TestBooleanPauliRewrites(unittest.TestCase):
+
+    def test_gadget_simp(self):
+        """`gadget_simp` skips a boolean-axel gadget by default; the
+        opt-in ``apply_to_boolean_axels=True`` path runs the rewrite and
+        preserves the tensor under each substitution of the boolean."""
+        def build():
+            g = Graph()
+            c = new_var('c', is_bool=True, registry=g.var_registry)
+            b0 = g.add_vertex(VertexType.BOUNDARY, 0, 0)
+            b1 = g.add_vertex(VertexType.BOUNDARY, 0, 4)
+            t = g.add_vertex(VertexType.Z, 0, 2)
+            n = g.add_vertex(VertexType.Z, 1, 2, phase=c)
+            v = g.add_vertex(VertexType.Z, 2, 2, phase=Fraction(1, 4))
+            g.add_edge((b0, t)); g.add_edge((t, b1))
+            g.add_edge((t, n), EdgeType.HADAMARD); g.add_edge((n, v), EdgeType.HADAMARD)
+            g.set_inputs((b0,)); g.set_outputs((b1,))
+            return g
+
+        # Default path: gadget_simp leaves the boolean-axel gadget alone.
+        g_default = build()
+        self.assertFalse(gadget_simp(g_default))
+
+        # Opt-in path: apply via the underlying function (gadget_simp cannot
+        # forward the flag) and check tensor equivalence under each boolean value.
+        g_optin = build()
+        orig = g_optin.copy()
+        self.assertTrue(merge_phase_gadgets_for_simp(g_optin, apply_to_boolean_axels=True))
+        for c_val in (0, 1):
+            self.assertTrue(tensors_match(g_optin, orig, c=c_val),
+                            f"gadget_simp drifted at c={c_val}")
+
+    def test_teleport_reduce(self):
+        """`teleport_reduce` must commute with substitution for a boolean axel.
+
+        Two phase gadgets sharing parity {target}: boolean axel `c` and
+        constant pi axel, both with T leaves.
+        """
+        def build(c_val=None):
+            g = Graph()
+            c = (new_var('c', is_bool=True, registry=g.var_registry)
+                 if c_val is None else Fraction(c_val))
+            b0 = g.add_vertex(VertexType.BOUNDARY, 0, 0)
+            b1 = g.add_vertex(VertexType.BOUNDARY, 0, 4)
+            t = g.add_vertex(VertexType.Z, 0, 2)
+            n1 = g.add_vertex(VertexType.Z, 1, 2, phase=c)
+            v1 = g.add_vertex(VertexType.Z, 2, 2, phase=Fraction(1, 4))
+            n2 = g.add_vertex(VertexType.Z, -1, 2, phase=Fraction(1))
+            v2 = g.add_vertex(VertexType.Z, -2, 2, phase=Fraction(1, 4))
+            g.add_edge((b0, t)); g.add_edge((t, b1))
+            g.add_edge((t, n1), EdgeType.HADAMARD); g.add_edge((n1, v1), EdgeType.HADAMARD)
+            g.add_edge((t, n2), EdgeType.HADAMARD); g.add_edge((n2, v2), EdgeType.HADAMARD)
+            g.set_inputs((b0,)); g.set_outputs((b1,))
+            return g
+
+        g_tel = teleport_reduce(build())
+        for c_val in (0, 1):
+            ref = teleport_reduce(build(c_val))
+            got = g_tel.substitute_variables({'c': Fraction(c_val)})
+            self.assertTrue(compare_tensors(ref, got),
+                            f"teleport_reduce drifted at c={c_val}")
 
     def test_unsafe_pauli_push(self):
         """`unsafe_pauli_push` skips a boolean Pauli by default and

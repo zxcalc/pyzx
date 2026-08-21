@@ -10,6 +10,7 @@ Hence, occasionally changes will be backwards incompatible (although they will a
 
 ### Fixed
 - `to_tikz` no longer drops Hadamards on edges that touch a boundary. Such an edge was exported as a plain wire plus a `hadamard` node that no `\draw` referenced, so the Hadamard was lost on reimport and the diagram gained a disconnected H-box. These edges now use the same `hadamard edge` style as every other Hadamard edge (by @gauthamkanagaraj).
+- `match_phase_gadgets` no longer treats a symbolic boolean axel as constant pi in its scalar and `phase_negate` bookkeeping. Symbolic-axel parity groups are skipped by default; opt in via `apply_to_boolean_axels=True` on `merge_phase_gadgets_for_simp`/`_for_apply`. (by @dlyongemallo)
 
 ## [0.10.5] - 2026-08-01
 

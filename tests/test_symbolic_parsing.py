@@ -439,8 +439,19 @@ class TestPolyConjugate(unittest.TestCase):
 class TestSymbolicBooleanRewrite(unittest.TestCase):
 
     def test_t_injection_reduces_correctly(self):
-        """T injection should reduce to phase pi/4 regardless of measurement result."""
+        """`full_reduce` on a T-injection with a boolean-axel measurement outcome
+        must commute with substituting c[0].
 
+        Under the fix for issue #436, `full_reduce` no longer silently collapses
+        a boolean-axel gadget into a Pauli-negated phase (which produced the
+        c[0]=1 answer regardless of the actual boolean value); it preserves the
+        boolean structure. Correctness is expressed by tensor equivalence:
+        substituting c[0] into the reduced diagram yields the same linear map
+        as substituting c[0] into the unsimplified diagram, for both c[0]=0
+        and c[0]=1. `_r0` is the fresh boolean phase left by the leading
+        `reset` on the ancilla; we substitute it to 0 on both sides so the
+        tensors are concrete.
+        """
         circ = zx.qasm("""
 OPENQASM 2.0;
 include "qelib1.inc";
@@ -453,19 +464,15 @@ cx q[0],q[1];
 measure q[1] -> c[0];
 if (c==1) s q[0];
 """)
-        g = circ.to_graph()
-        zx.full_reduce(g)
-        # The leading `reset` on a fresh input leaves an orphan discard
-        # component with a fresh boolean phase that `full_reduce` does not
-        # remove. Drop it so only the injected phase remains.
-        zx.drop_orphan_reset_discards(g)
-
-        phases = g.phases()
-        non_zero = {v: p for v, p in phases.items() if p != 0}
-        self.assertEqual(len(non_zero), 1, f"Expected 1 non-zero phase, got {non_zero}")
-
-        actual_phase = list(non_zero.values())[0]
-        self.assertEqual(actual_phase, Fraction(1, 4), f"Expected Fraction(1,4), got {actual_phase}")
+        g_ref = circ.to_graph()
+        g_simp = circ.to_graph()
+        zx.full_reduce(g_simp)
+        for c_val in (0, 1):
+            subs = {'c[0]': Fraction(c_val), '_r0': Fraction(0)}
+            ref = g_ref.substitute_variables(subs)
+            got = g_simp.substitute_variables(subs)
+            self.assertTrue(zx.compare_tensors(ref, got, preserve_scalar=True),
+                            f"full_reduce diverged from reference for c[0]={c_val}")
 
 
 
