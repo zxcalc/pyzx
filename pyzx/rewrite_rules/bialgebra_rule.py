@@ -17,8 +17,9 @@
 """
 This module contains the implementation of the bialgebra rule.
 
-This rule acts on two connected vertices, supporting both Z-X bialgebra
-and X-H bialgebra (X spider with standard H-box). The check functions
+This rule acts on two connected vertices, supporting Z-X bialgebra
+X-H bialgebra with any legacy H-box phase or unit complex label. The
+X-H with phase≠1 case is a special case of Fourier hyperpivot. The check functions
 return a boolean indicating whether the rule can be applied to the two
 given vertices. The safe version of the applier (bialgebra) will
 automatically call the basic checker, while the unsafe version of the
@@ -39,18 +40,27 @@ __all__ = ['check_bialgebra_reduce',
            'is_bialg_op_match',
            ]
 
+import cmath
 from collections import defaultdict
+from itertools import combinations
 from typing import Callable, Optional, List, Tuple, Dict
 from pyzx.utils import (EdgeType, FractionLike, VertexType, is_pauli,
-                        is_standard_hbox)
+                        get_h_box_label, hbox_has_complex_label,
+                        is_standard_hbox, set_h_box_label)
 from pyzx.graph.base import BaseGraph, VT, ET, upair
 
 RewriteOutputType = Tuple[Dict[Tuple[VT,VT],List[int]], List[VT], List[ET], bool]
 
 
+def _hbox_has_phase_label(g: BaseGraph[VT, ET], vertex: VT) -> bool:
+    """Whether an H-box is represented by a phase or an equivalent unit label."""
+    return (not hbox_has_complex_label(g, vertex) or
+            cmath.isclose(abs(get_h_box_label(g, vertex)), 1.0))
+
+
 def check_bialgebra(g: BaseGraph[VT,ET], v1: VT, v2: VT) -> bool:
     """Checks if the bialgebra rule can be applied to a given pair of vertices.
-    Supports both Z-X bialgebra and X-H bialgebra (X spider with standard H-box)."""
+    Supports Z-X bialgebra and X-H bialgebra with a phase-valued H-box."""
     if not (v1 in g.vertices() and v2 in g.vertices()): return False
 
     if not (g.num_edges(v1, v2) >= 1 and
@@ -64,11 +74,12 @@ def check_bialgebra(g: BaseGraph[VT,ET], v1: VT, v2: VT) -> bool:
         (g.type(v1) == VertexType.Z and g.type(v2) == VertexType.X)):
         return is_pauli(g.phase(v1)) and is_pauli(g.phase(v2))
 
-    # X-H bialgebra: X spider must be phase-free, H-box must be standard.
+    # X-H bialgebra: X spider must be phase-free and an explicit complex
+    # label must represent a phase.
     if g.type(v1) == VertexType.X and g.type(v2) == VertexType.H_BOX:
-        return g.phase(v1) == 0 and is_standard_hbox(g, v2)
+        return g.phase(v1) == 0 and _hbox_has_phase_label(g, v2)
     if g.type(v1) == VertexType.H_BOX and g.type(v2) == VertexType.X:
-        return is_standard_hbox(g, v1) and g.phase(v2) == 0
+        return g.phase(v2) == 0 and _hbox_has_phase_label(g, v1)
 
     return False
 
@@ -90,6 +101,8 @@ def check_bialgebra_reduce(g: BaseGraph[VT,ET], v1: VT, v2: VT) -> bool:
     v1n = [n for n in g.neighbors(v1) if not n == v2]
     v2n = [n for n in g.neighbors(v2) if not n == v1]
     if (check_bialgebra(g, v1, v2) and
+        (g.type(v1) != VertexType.H_BOX or is_standard_hbox(g, v1)) and
+        (g.type(v2) != VertexType.H_BOX or is_standard_hbox(g, v2)) and
         all([_is_valid_reduce_neighbor(g, n, g.type(v2)) for n in v1n]) and
         all([_is_valid_reduce_neighbor(g, n, g.type(v1)) for n in v2n]) and
         EdgeType.SIMPLE in [g.edge_type(edge) for edge in g.edges(v1,v2)]):
@@ -100,24 +113,90 @@ def bialgebra(g: BaseGraph[VT, ET], v1: VT, v2: VT) -> bool:
     if not check_bialgebra(g, v1, v2): return False
     return unsafe_bialgebra(g, v1, v2)
 
+def _add_edge(etab: Dict[Tuple[VT, VT], List[int]], vertex1: VT, vertex2: VT, edge_type: EdgeType = EdgeType.SIMPLE) -> None:
+    pair = upair(vertex1, vertex2)
+    if pair not in etab:
+        etab[pair] = [0, 0]
+    type_index = 0 if edge_type == EdgeType.SIMPLE else 1
+    etab[pair][type_index] += 1
+
+def _connect_generalized_xh_bialgebra(
+        g: BaseGraph[VT, ET],
+        x_vertex: VT,
+        h_vertex: VT,
+        x_copies: List[VT],
+        h_copies: List[VT],
+        etab: Dict[Tuple[VT, VT], List[int]],
+        ) -> None:
+    """Create the subset H-boxes for the generalized X-H bialgebra rule.
+
+    For ``n`` neighbours of the X spider, this can create up to
+    ``2**n - 1`` H-boxes. Identity-labelled H-boxes are omitted.
+    """
+    h_box_phase = g.phase(h_vertex)
+    h_box_label = (get_h_box_label(g, h_vertex)
+                   if hbox_has_complex_label(g, h_vertex) else None)
+    new_h_boxes: List[VT] = []
+
+    for subset_size in range(1, len(x_copies) + 1):
+        exponent = (-2) ** (subset_size - 1)
+        if h_box_label is None:
+            phase = exponent * h_box_phase
+            if phase % 2 == 0:
+                continue
+        else:
+            label = h_box_label ** exponent
+            if cmath.isclose(label, 1):
+                continue
+
+        for vertices in combinations(x_copies, subset_size):
+            if h_box_label is None:
+                new_h_box = g.add_vertex(VertexType.H_BOX, phase=phase)
+            else:
+                new_h_box = g.add_vertex(VertexType.H_BOX)
+                set_h_box_label(g, new_h_box, label)
+            new_h_boxes.append(new_h_box)
+            for vertex in vertices:
+                _add_edge(etab, new_h_box, vertex)
+            for vertex in h_copies:
+                _add_edge(etab, new_h_box, vertex)
+
+    column_qubit = (g.qubit(x_vertex) + g.qubit(h_vertex)) / 2
+    column_row = (g.row(x_vertex) + g.row(h_vertex)) / 2
+    first_qubit = column_qubit - (len(new_h_boxes) - 1) / 2
+    for index, new_h_box in enumerate(new_h_boxes):
+        g.set_position(new_h_box, first_qubit + index, column_row)
+
 def unsafe_bialgebra(g: BaseGraph[VT,ET], v1: VT, v2: VT ) -> bool:
     """Applies the bialgebra rule to a given pair of spiders (Z-X or X-H)."""
     rem_verts = []
-    etab = {}
+    etab: Dict[Tuple[VT, VT], List[int]] = {}
 
     rem_verts.append(v1)
     rem_verts.append(v2)
     v = (v1,v2)
     new_verts: Tuple[List[VT],List[VT]] = ([],[]) # new vertices for v1 and v2
 
+    is_xh_bialgebra = (g.type(v1) == VertexType.H_BOX or
+                       g.type(v2) == VertexType.H_BOX)
+    if is_xh_bialgebra:
+        x_vertex = v1 if g.type(v1) == VertexType.X else v2
+        h_vertex = v1 if g.type(v1) == VertexType.H_BOX else v2
+        is_generalized_xh = not is_standard_hbox(g, h_vertex)
+    else:
+        is_generalized_xh = False
+
     # Determine the vertex type and phase for copies placed at each side's
     # neighbours. copy_type[i] is the type for new vertices at v[i]'s
     # neighbours; copy_phase[i] is the corresponding phase.
     # For Z-X bialgebra: neighbours of v[i] get copies of v[j].
-    # For X-H bialgebra: neighbours of X get H-box copies (phase 1), but
-    # neighbours of the H-box get Z spiders (phase 0), not X spiders.
+    # For X-H bialgebra: standard H-boxes use H-box and Z-spider copies;
+    # the generalized case uses Z-spider copies on both sides.
     copy_phase: Tuple[FractionLike, FractionLike]
-    if g.type(v1) == VertexType.H_BOX or g.type(v2) == VertexType.H_BOX:
+    if is_generalized_xh:
+        copy_type = (VertexType.Z, VertexType.Z)
+        copy_phase = (0, 0)
+    elif is_xh_bialgebra:
         if g.type(v1) == VertexType.X:
             copy_type = (VertexType.H_BOX, VertexType.Z)
             copy_phase = (1, 0)
@@ -164,21 +243,21 @@ def unsafe_bialgebra(g: BaseGraph[VT,ET], v1: VT, v2: VT ) -> bool:
                     g.set_phase(newv2, copy_phase[j])
                     new_verts[j].append(newv2)
                     other_vertex = newv2
-                if upair(newv, other_vertex) not in etab:
-                    etab[upair(newv, other_vertex)] = [0, 0]
-                type_index = 0 if g.edge_type(e) == EdgeType.SIMPLE else 1
-                etab[upair(newv, other_vertex)][type_index] += 1
+                _add_edge(etab, newv, other_vertex, g.edge_type(e))
             elif i == 0: # only add new vertex once
                 multi_edge_found = True
 
-    for n1 in new_verts[0]:
-        for n2 in new_verts[1]:
-            if upair(n1,n2) not in etab:
-                etab[upair(n1,n2)] = [0, 0]
-            etab[upair(n1,n2)][0] += 1
+    if is_generalized_xh:
+        x_index = 0 if v1 == x_vertex else 1
+        _connect_generalized_xh_bialgebra(
+            g, x_vertex, h_vertex,
+            new_verts[x_index], new_verts[1 - x_index], etab)
+    else:
+        for n1 in new_verts[0]:
+            for n2 in new_verts[1]:
+                _add_edge(etab, n1, n2)
 
     if g.type(v1) == VertexType.H_BOX or g.type(v2) == VertexType.H_BOX: # x-h bialgebra
-        x_vertex = v1 if g.type(v2) == VertexType.H_BOX else v2
         g.scalar.add_power(-(g.vertex_degree(x_vertex)-2))
     else: # z-x bialgebra
         g.scalar.add_power((g.vertex_degree(v1)-2)*(g.vertex_degree(v2)-2))
@@ -250,7 +329,7 @@ def is_bialg_op_match(g: BaseGraph[VT,ET],vertices: list[VT]) -> bool:
 
 def unsafe_bialgebra_op(g: BaseGraph[VT,ET],
         matches: Tuple[List[VT], List[VT]],
-        edge_type: Optional[EdgeType] = EdgeType.SIMPLE
+        edge_type: EdgeType = EdgeType.SIMPLE
         ) -> bool:
     """Applies the bialgebra rule to a connected pair of Z and X spiders in the opposite direction"""
     def get_neighbors_and_loops(type1_vertices: List[VT], type2_vertices: List[VT]) -> Tuple[List[Tuple[VT, EdgeType]], List[EdgeType]]:
@@ -276,7 +355,7 @@ def unsafe_bialgebra_op(g: BaseGraph[VT,ET],
 
     def update_etab(etab, new_vertex, neighbors, loops):
         for n, et in neighbors + [(new_vertex, et) for et in loops]:
-            etab[upair(new_vertex, n)][0 if et == EdgeType.SIMPLE else 1] += 1
+            _add_edge(etab, new_vertex, n, et)
 
     type1_vertices, type2_vertices = matches
     neighbors1, loops1 = get_neighbors_and_loops(type1_vertices, type2_vertices)
@@ -286,10 +365,7 @@ def unsafe_bialgebra_op(g: BaseGraph[VT,ET],
     new_vertex2 = add_vertex_with_averages(type2_vertices, g, g.type(type1_vertices[0]))
 
     etab: dict = defaultdict(lambda: [0, 0])
-    if edge_type == EdgeType.SIMPLE:
-        etab[upair(new_vertex1, new_vertex2)] = [1, 0]
-    else:
-        etab[upair(new_vertex1, new_vertex2)] = [0, 1]
+    _add_edge(etab, new_vertex1, new_vertex2, edge_type)
     update_etab(etab, new_vertex1, neighbors1, loops1)
     update_etab(etab, new_vertex2, neighbors2, loops2)
 

@@ -15,10 +15,12 @@
 # limitations under the License.
 
 
+import cmath
 import itertools
 import unittest
 import sys
 from fractions import Fraction
+from math import pi
 from types import ModuleType
 from typing import Optional
 
@@ -29,7 +31,7 @@ if __name__ == '__main__':
 from pyzx.graph import Graph
 from pyzx.graph.multigraph import Multigraph
 from pyzx.symbolic import new_var
-from pyzx.utils import EdgeType, VertexType, set_h_box_label
+from pyzx.utils import EdgeType, VertexType, get_h_box_label, set_h_box_label
 from pyzx.rewrite_rules.bialgebra_rule import (
     check_bialgebra, check_bialgebra_reduce, bialgebra, unsafe_bialgebra,
 )
@@ -129,8 +131,19 @@ class TestCheckBialgebraXH(unittest.TestCase):
 
         self.assertTrue(check_bialgebra(g, v1, v2))
 
-    def test_xh_pair_nonstandard_hbox(self):
-        """X spider with non-standard H-box should not match."""
+    def test_xh_pair_unit_complex_label(self):
+        """X spider with a non-standard unit complex label should match."""
+        g = Graph()
+        v1 = g.add_vertex(VertexType.X, 0, 0)
+        v2 = g.add_vertex(VertexType.H_BOX, 0, 1)
+        set_h_box_label(g, v2, 1j)
+        g.add_edge((v1, v2), EdgeType.SIMPLE)
+
+        self.assertTrue(check_bialgebra(g, v1, v2))
+        self.assertTrue(check_bialgebra(g, v2, v1))
+
+    def test_xh_pair_off_unit_circle_label(self):
+        """The generalized rule rejects labels not known to represent phases."""
         g = Graph()
         v1 = g.add_vertex(VertexType.X, 0, 0)
         v2 = g.add_vertex(VertexType.H_BOX, 0, 1)
@@ -150,15 +163,25 @@ class TestCheckBialgebraXH(unittest.TestCase):
 
         self.assertFalse(check_bialgebra(g, v1, v2))
 
-    def test_xh_pair_hbox_wrong_phase(self):
-        """X spider with H-box having non-standard phase should not match."""
+    def test_xh_pair_nonstandard_hbox_phase(self):
+        """X spider with a non-standard nonzero H-box phase should match."""
         g = Graph()
         v1 = g.add_vertex(VertexType.X, 0, 0)
         v2 = g.add_vertex(VertexType.H_BOX, 0, 1)
         g.set_phase(v2, Fraction(1, 2))
         g.add_edge((v1, v2), EdgeType.SIMPLE)
 
-        self.assertFalse(check_bialgebra(g, v1, v2))
+        self.assertTrue(check_bialgebra(g, v1, v2))
+
+    def test_xh_pair_zero_hbox_phase(self):
+        """The generalized rule accepts the identity H-box phase."""
+        g = Graph()
+        v1 = g.add_vertex(VertexType.X, 0, 0)
+        v2 = g.add_vertex(VertexType.H_BOX, 0, 1)
+        g.set_phase(v2, 0)
+        g.add_edge((v1, v2), EdgeType.SIMPLE)
+
+        self.assertTrue(check_bialgebra(g, v1, v2))
 
     def test_zh_pair_does_not_match(self):
         """Z spider with H-box should not match (only X-H is supported)."""
@@ -261,14 +284,15 @@ class TestBialgebraApplyZX(unittest.TestCase):
 class TestBialgebraApplyXH(unittest.TestCase):
     """Tests for applying the bialgebra rule to X-H pairs."""
 
-    def _make_xh_bialgebra_graph(self, d_x, d_h):
+    def _make_xh_bialgebra_graph(self, d_x, d_h, h_phase=1, h_label=None):
         """Build a graph with a phase-free X spider of degree d_x
         connected to a standard H-box of degree d_h via a simple edge.
         Each vertex gets (d-1) boundary neighbours plus the X-H edge."""
         g = Graph()
         x = g.add_vertex(VertexType.X, 0, 1)
-        h = g.add_vertex(VertexType.H_BOX, 1, 1)
-        g.set_phase(h, 1)
+        h = g.add_vertex(VertexType.H_BOX, 1, 1, phase=h_phase)
+        if h_label is not None:
+            set_h_box_label(g, h, h_label)
         g.add_edge((x, h))
         ins = []
         for i in range(d_x - 1):
@@ -305,6 +329,49 @@ class TestBialgebraApplyXH(unittest.TestCase):
 
         self.assertTrue(bialgebra(g, v1, v2))
 
+    def test_generalized_xh_bialgebra_structure(self):
+        """A non-standard H-box expands into one box per nontrivial subset."""
+        g, x, h = self._make_xh_bialgebra_graph(3, 2, h_label=1j)
+        column_qubit = (g.qubit(x) + g.qubit(h)) / 2
+        column_row = (g.row(x) + g.row(h)) / 2
+
+        self.assertTrue(bialgebra(g, x, h))
+
+        hboxes = [v for v in g.vertices() if g.type(v) == VertexType.H_BOX]
+        self.assertEqual(len(hboxes), 3)
+        self.assertCountEqual(
+            [get_h_box_label(g, v) for v in hboxes],
+            [1j, 1j, -1],
+        )
+        self.assertEqual({g.row(v) for v in hboxes}, {column_row})
+        self.assertEqual(
+            sorted(g.qubit(v) for v in hboxes),
+            [column_qubit - 1, column_qubit, column_qubit + 1],
+        )
+
+    def test_generalized_xh_equivalent_label_representations(self):
+        """Equivalent phase and complex labels omit the same identity terms."""
+        phase_graph, phase_x, phase_h = self._make_xh_bialgebra_graph(
+            4, 2, h_phase=Fraction(1, 2))
+        label_graph, label_x, label_h = self._make_xh_bialgebra_graph(
+            4, 2, h_label=cmath.exp(1j * pi / 2))
+
+        self.assertTrue(bialgebra(phase_graph, phase_x, phase_h))
+        self.assertTrue(bialgebra(label_graph, label_x, label_h))
+
+        phase_hboxes = [
+            v for v in phase_graph.vertices()
+            if phase_graph.type(v) == VertexType.H_BOX]
+        label_hboxes = [
+            v for v in label_graph.vertices()
+            if label_graph.type(v) == VertexType.H_BOX]
+        self.assertEqual(len(phase_hboxes), 6)
+        self.assertEqual(len(label_hboxes), len(phase_hboxes))
+        self.assertEqual(
+            sorted(phase_graph.vertex_degree(v) for v in phase_hboxes),
+            sorted(label_graph.vertex_degree(v) for v in label_hboxes),
+        )
+
     @unittest.skipUnless(np, "numpy needs to be installed for this to run")
     def test_xh_bialgebra_preserves_semantics(self):
         """X-H bialgebra must preserve the tensor (including scalar)
@@ -326,6 +393,26 @@ class TestBialgebraApplyXH(unittest.TestCase):
         g_orig = g.copy()
         unsafe_bialgebra(g, h, x)
         self.assertTrue(compare_tensors(g, g_orig, preserve_scalar=True))
+
+    @unittest.skipUnless(np, "numpy needs to be installed for this to run")
+    def test_generalized_xh_bialgebra_preserves_semantics(self):
+        """Generalized X-H bialgebra preserves tensors and scalars."""
+        for h_phase, h_label, d_x, d_h in [
+                (0, None, 2, 2),
+                (Fraction(1, 2), None, 2, 2),
+                (Fraction(1, 2), None, 3, 2),
+                (0, 1j, 2, 3),
+                (0, 1j, 3, 2),
+        ]:
+            with self.subTest(h_phase=h_phase, h_label=h_label,
+                              d_x=d_x, d_h=d_h):
+                g, x, h = self._make_xh_bialgebra_graph(
+                    d_x, d_h, h_phase=h_phase, h_label=h_label)
+                g_orig = g.copy()
+                self.assertTrue(bialgebra(g, h, x))
+                self.assertTrue(
+                    compare_tensors(g, g_orig, preserve_scalar=True),
+                    "Generalized X-H bialgebra changed the scalar")
 
 
 class TestBialgebraParallelEdgePositions(unittest.TestCase):
@@ -353,6 +440,27 @@ class TestBialgebraParallelEdgePositions(unittest.TestCase):
         new_verts = [v for v in g.vertices() if v not in verts_before
                      and g.type(v) != VertexType.BOUNDARY]
         positions = [(g.qubit(v), g.row(v)) for v in new_verts]
+        self.assertEqual(len(set(positions)), len(positions),
+                         f"Overlapping positions: {positions}")
+
+    def test_generalized_xh_parallel_edges_between_matched_pair(self):
+        """Generalized X-H copies from parallel edges have distinct positions."""
+        g = Multigraph()
+        g.set_auto_simplify(False)
+        x = g.add_vertex(VertexType.X, 0, 0)
+        h = g.add_vertex(VertexType.H_BOX, 0, 2,
+                         phase=Fraction(1, 2))
+        b_in = g.add_vertex(VertexType.BOUNDARY, 0, -1)
+        b_out = g.add_vertex(VertexType.BOUNDARY, 0, 3)
+        g.add_edge((b_in, x))
+        for _ in range(3):
+            g.add_edge((x, h))
+        g.add_edge((h, b_out))
+
+        self.assertTrue(bialgebra(g, x, h))
+        copies = [v for v in g.vertices() if g.type(v) == VertexType.Z]
+        positions = [(g.qubit(v), g.row(v)) for v in copies]
+        self.assertEqual(len(positions), 6)
         self.assertEqual(len(set(positions)), len(positions),
                          f"Overlapping positions: {positions}")
 
@@ -428,6 +536,17 @@ class TestCheckBialgebraReduce(unittest.TestCase):
         g.add_edge((v2, x2), EdgeType.SIMPLE)
 
         self.assertTrue(check_bialgebra_reduce(g, v1, v2))
+
+    def test_reduce_rejects_nonstandard_xh_pair(self):
+        """Generalized X-H bialgebra is manual-only."""
+        g = Graph()
+        x = g.add_vertex(VertexType.X, 0, 0)
+        h = g.add_vertex(VertexType.H_BOX, 0, 1,
+                         phase=Fraction(1, 2))
+        g.add_edge((x, h), EdgeType.SIMPLE)
+
+        self.assertTrue(check_bialgebra(g, x, h))
+        self.assertFalse(check_bialgebra_reduce(g, x, h))
 
     def test_reduce_boundary_neighbour(self):
         """Bialgebra reduce should not match when a neighbour is a boundary."""

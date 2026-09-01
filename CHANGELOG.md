@@ -8,6 +8,8 @@ Hence, occasionally changes will be backwards incompatible (although they will a
 
 ## [Unreleased]
 
+### Added
+- The X-H bialgebra rule now supports phase-valued H-boxes, including explicit unit-complex labels. The generalized rule is applied explicitly, while automatic simplification remains restricted to standard H-boxes. (by @RazinShaikh)
 ## [0.10.6] - 2026-09-01
 
 ### Fixed
