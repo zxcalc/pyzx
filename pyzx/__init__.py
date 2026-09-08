@@ -17,7 +17,9 @@
 __version__ = "0.10.6"
 
 from .graph.graph import Graph
+from .graph.time import *
 from .circuit import Circuit, gates, id
+from .circuit.scheduling import *
 from .linalg import Mat2
 from .utils import settings, VertexType, EdgeType, original_colors, rgb_colors, grayscale_colors
 from .quimb import to_quimb_tensor

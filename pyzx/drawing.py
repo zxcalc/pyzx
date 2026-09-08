@@ -40,6 +40,7 @@ lines: Any = None
 
 from .utils import settings, get_mode, phase_to_s, VertexType, FloatInt, get_z_box_label, get_h_box_label, hbox_has_complex_label
 from .graph.base import BaseGraph, VT, ET
+from .graph.time import get_delay, get_timestep
 from .circuit import Circuit
 
 if get_mode() == "notebook":
@@ -53,20 +54,26 @@ if TYPE_CHECKING:
 def draw(g: Union[BaseGraph[VT,ET], Circuit], labels: bool=False, **kwargs) -> Any:
     """Draws the given Circuit or Graph.
     Depending on the value of ``pyzx.settings.drawing_backend``
-    either uses matplotlib or d3 to draw."""
+    either uses matplotlib or d3 to draw.
+
+    ``show_time`` (matplotlib only) draws every wire whose earlier spider has a
+    non-zero ``delay`` as a squiggle; see :func:`draw_matplotlib`. It is ignored
+    by the d3 backend, where the numbers can instead be shown with
+    ``draw_d3(g, vdata=['timestep', 'delay'])``."""
 
     # allow global setting to labels=False
     # TODO: probably better to make labels Optional[bool]
     labels = labels or settings.show_labels
+    show_time = kwargs.pop('show_time', False)
     if get_mode() == "shell":
-        return draw_matplotlib(g, labels, **kwargs)
+        return draw_matplotlib(g, labels, show_time=show_time, **kwargs)
     elif get_mode() == "browser":
         return draw_d3(g, labels, **kwargs)
     else: # in notebook
         if settings.drawing_backend == "d3":
             return draw_d3(g, labels, **kwargs)
         elif settings.drawing_backend == "matplotlib":
-            return draw_matplotlib(g, labels, **kwargs)
+            return draw_matplotlib(g, labels, show_time=show_time, **kwargs)
         else:
             raise TypeError("Unsupported drawing backend '{}'".format(settings.drawing_backend))
 
@@ -159,8 +166,17 @@ def draw_matplotlib(
         figsize:Tuple[FloatInt,FloatInt]         =(8,2),
         h_edge_draw: Literal['blue', 'box']      ='blue',
         show_scalar: bool                        =False,
-        rows: Optional[Tuple[FloatInt,FloatInt]] =None
+        rows: Optional[Tuple[FloatInt,FloatInt]] =None,
+        show_time: bool                          =False
         ) -> Any: # TODO: Returns a matplotlib figure
+    """Draw a Graph or Circuit with matplotlib.
+
+    When ``show_time`` is set, spiders carrying a ``timestep`` (see
+    :mod:`pyzx.graph.time`) are labelled ``t<timestep>``, and any wire along a
+    single qubit whose earlier spider has a non-zero ``delay`` is drawn as a
+    squiggle labelled ``Δ<delay>`` at its midpoint.  Graphs without time data
+    are unaffected.
+    """
 
     # lazy import matplotlib
     global plt, path, patches, lines
@@ -212,6 +228,16 @@ def draw_matplotlib(
         else:
             ecol = 'black'
 
+        # A wire along a single qubit whose earlier spider has a non-zero
+        # ``delay`` (gate duration) is drawn as a squiggle spanning the wire,
+        # with one full wiggle per unit of delay.
+        squiggly_wire = False
+        if show_time and dy == 0 and dx != 0:
+            earlier = g.edge_s(e) if sp[0] <= tp[0] else g.edge_t(e)
+            delay_val = get_delay(g, earlier)
+            if delay_val and delay_val > 0:
+                squiggly_wire = True
+
         if bend_wire:
             bend = 0.25
             mid = (sp[0] + 0.5 * dx + bend * dy, sp[1] + 0.5 * dy - bend * dx)
@@ -219,6 +245,19 @@ def draw_matplotlib(
             pth = path.Path([sp,mid,tp], [path.Path.MOVETO, path.Path.CURVE3, path.Path.LINETO])
             patch = patches.PathPatch(pth, edgecolor=ecol, linewidth=0.8, fill=False)
             ax.add_patch(patch)
+        elif squiggly_wire:
+            mid = (sp[0] + 0.5*dx, sp[1] + 0.5*dy)
+            n_wiggles = max(1, int(delay_val))
+            steps = max(24, 12 * n_wiggles)
+            amp = 0.07
+            pts = [(sp[0] + (i/steps)*dx,
+                    sp[1] + amp*math.sin((i/steps) * n_wiggles * 2*math.pi))
+                   for i in range(steps + 1)]
+            pth = path.Path(pts, [path.Path.MOVETO] + [path.Path.LINETO]*steps)
+            ax.add_patch(patches.PathPatch(pth, edgecolor=ecol, linewidth=0.8,
+                                           fill=False, zorder=0))
+            plt.text(mid[0], mid[1] + amp + 0.1, "Δ{}".format(int(delay_val)),
+                     ha='center', va='bottom', color="#8000a0", fontsize=6)
         else:
             pos = 0.5 if dx == 0 or dy == 0 else 0.4
             mid = (sp[0] + pos*dx, sp[1] + pos*dy)
@@ -272,6 +311,11 @@ def draw_matplotlib(
 
         if labels: plt.text(p[0]+0.25, p[1]+0.25, str(v), ha='center', color='gray', fontsize=5)
         if phase_str: plt.text(p[0], p[1]-a_offset, phase_str, ha='center', color='blue', fontsize=8)
+        if show_time:
+            ts = get_timestep(g, v)
+            if ts is not None:
+                plt.text(p[0], p[1]+0.33, "t{}".format(ts), ha='center', va='bottom',
+                         color='#00a0a0', fontsize=6)
 
     if show_scalar:
         x = min((g.row(v) for v in g.vertices()), default = 0)

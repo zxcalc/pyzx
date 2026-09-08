@@ -15,8 +15,10 @@ Hence, occasionally changes will be backwards incompatible (although they will a
 ### Removed
 - Support for the PyQuil compiler was dropped. Breaking changes include the removal of `PyQuilCircuit`, `Architecture.to_quil_device`, `CompileMode.QUIL_COMPILER`, and any related functionality in the scripts module. (by @96-LB)
 - Support for the `graph_tool` and `igraph` backends has been officially dropped. (by @96-LB)
+### Added
+- 1+1D time dependency for circuits. `circuit_to_graph` / `Circuit.to_graph` take an optional `gate_durations` argument (gate class or name to a non-negative integer duration); when given, gates are scheduled as-soon-as-possible in discrete integer time and every spider is tagged with `timestep` and `delay` vertex data. New module `pyzx.circuit.scheduling` (`schedule_gates`, `used_qubits`) and `pyzx.graph.time` wsith helpers (`get_timestep`, `get_delay`, ...), the space-time cost metrics `spacetime_metrics` / `time_extent`, and `time_slice` for extracting the sub-diagram in a window of timesteps. `draw` / `draw_matplotlib` gain a `show_time` option that labels each timed spider with its `timestep` and draws a wire whose earlier spider has a non-zero `delay` as a squiggle labelled with that duration. With no `gate_durations` the graph is unchanged.
 
-## [0.10.6] - 2026-09-01
+## [0.10.6] - 2026-09-01s
 
 ### Fixed
 - `GraphDiff` now tracks, applies, and serializes changes to a graph's global scalar. (by @RazinShaikh)
