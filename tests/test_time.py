@@ -180,6 +180,35 @@ class TestTimeSlice(unittest.TestCase):
         with self.assertRaises(ValueError):
             time_slice(g, 3, 1)
 
+    def test_boundaries_ordered_by_qubit(self):
+        # A window in the middle of the circuit cuts every qubit line; the
+        # fresh boundaries must come out in qubit order, not edge-iteration
+        # order, so the slice has a predictable input/output layout.
+        c = Circuit(3)
+        c.add_gate(HAD(0)); c.add_gate(HAD(1)); c.add_gate(HAD(2))
+        c.add_gate(ParityPhase(Fraction(1, 4), 0, 1, 2))
+        c.add_gate(HAD(0)); c.add_gate(HAD(1)); c.add_gate(HAD(2))
+        g = c.to_graph(gate_durations={'CNOT': 4, 'ZPhase': 1})
+        lo, hi = time_extent(g)
+        sl = time_slice(g, lo + 1, hi - 1)
+        in_qubits = [sl.qubit(v) for v in sl.inputs()]
+        out_qubits = [sl.qubit(v) for v in sl.outputs()]
+        self.assertEqual(in_qubits, sorted(in_qubits))
+        self.assertEqual(out_qubits, sorted(out_qubits))
+
+    @unittest.skipUnless(np is not None, "numpy required")
+    def test_isolated_gadget_slice_reproduces_subcircuit(self):
+        # When the window is exactly a sub-circuit, the slice + full_reduce is
+        # tensor-equal to that sub-circuit (with boundaries in qubit order).
+        import pyzx as zx
+        only = Circuit(3)
+        only.add_gate(ParityPhase(Fraction(1, 4), 0, 1, 2))
+        g = only.to_graph(gate_durations={'CNOT': 4, 'ZPhase': 1})
+        lo, hi = time_extent(g)
+        sl = time_slice(g, lo, hi)
+        zx.full_reduce(sl)
+        self.assertTrue(zx.compare_tensors(sl, only.to_graph(), preserve_scalar=False))
+
     @unittest.skipUnless(np is not None, "numpy required")
     def test_full_range_slice_matches_original_tensor(self):
         c = _example_circuit()

@@ -166,7 +166,9 @@ def time_slice(g: BaseGraph[VT, ET], start: int,
     ``BOUNDARY`` vertex, so the result is a valid ZX-diagram (with inputs and
     outputs set) that can be reasoned about on its own -- for instance compared
     against a phase gadget.  The new boundary is registered as an input when the
-    dropped neighbour lies before the window and as an output otherwise.
+    dropped neighbour lies before the window and as an output otherwise.  Inputs
+    and outputs are ordered by qubit (then row), so the diagram has the same
+    boundary order a circuit on those qubits would.
 
     The returned graph has the same backend as ``g``.  Vertex data is copied;
     the scalar is not.
@@ -213,6 +215,7 @@ def time_slice(g: BaseGraph[VT, ET], start: int,
             else:
                 outputs.append(b)
 
-    h.set_inputs(tuple(inputs))
-    h.set_outputs(tuple(outputs))
+    by_qubit_row = lambda b: (h.qubit(b), h.row(b))
+    h.set_inputs(tuple(sorted(inputs, key=by_qubit_row)))
+    h.set_outputs(tuple(sorted(outputs, key=by_qubit_row)))
     return h
