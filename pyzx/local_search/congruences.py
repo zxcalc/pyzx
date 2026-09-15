@@ -21,18 +21,18 @@ This module contains two congruences (i.e., non-simplification rewrite rules) fo
 """
 
 
-import numpy as np
 import itertools
+from collections.abc import Callable, Iterable, Sized
 from fractions import Fraction
 
+import numpy as np
 
-import sys
-if __name__ == '__main__':
-    sys.path.append('..')
-from pyzx.utils import VertexType, EdgeType
+from ..graph.base import ET, VT, BaseGraph
+from ..utils import EdgeType, VertexType
+
 
 ### Utilities
-def toggle_edge(g, v1, v2):
+def toggle_edge(g: BaseGraph[VT, ET], v1: VT, v2: VT) -> None:
     """
     Utility function that toggles the connectivity between two spiders in a graph-like ZX-diagram.
 
@@ -45,7 +45,7 @@ def toggle_edge(g, v1, v2):
     else:
         g.add_edge((v1, v2), edgetype=EdgeType.HADAMARD)
 
-def toggle_subset_connectivity(g, vs1, vs2):
+def toggle_subset_connectivity(g: BaseGraph[VT, ET], vs1: Iterable[VT], vs2: Iterable[VT]) -> None:
     """
     Utility function that toggles the connectivity between two subsets of spiders in a graph-like ZX-diagram.
 
@@ -58,7 +58,7 @@ def toggle_subset_connectivity(g, vs1, vs2):
         for v2 in vs2:
             toggle_edge(g, v1, v2)
 
-def uniform_weights(g, elts):
+def uniform_weights(g: BaseGraph[VT, ET], elts: Sized) -> list[float]:
     """
     Assigns uniform weights to elements for selection.
     Used as weight function for random local complementation and random pivoting functions.
@@ -69,7 +69,7 @@ def uniform_weights(g, elts):
     """
     return [1 / len(elts)] * len(elts)
 
-def unfuse(g, v):
+def unfuse(g: BaseGraph[VT, ET], v: VT) -> VT:
     """
     For a Z-spider with a phase and neighbors that are both BOUNDARY and Z, unfuse the phase
     in the form of a new spider that holds the connectivity to the boundaries. Note that v will
@@ -107,7 +107,7 @@ def unfuse(g, v):
 
 
 ### Local Complementation
-def is_lc_vertex(g, v):
+def is_lc_vertex(g: BaseGraph[VT, ET], v: VT) -> bool:
     """Checks if a spider in a ZX-diagram is a valid subject for local complementation.
 
     :param g: Graph where the check is performed.
@@ -127,7 +127,7 @@ def is_lc_vertex(g, v):
 
 
 # Assumes that v is a Z-spider (green)
-def lc_cong(g, v):
+def lc_cong(g: BaseGraph[VT, ET], v: VT) -> None:
     """Applies local complementation at a provided spider in a ZX-diagram. Assumes v is a Z spider.
 
     :param g: Graph where the operation is applied.
@@ -156,7 +156,7 @@ def lc_cong(g, v):
     g.add_edge((v, new_v), edgetype=EdgeType.HADAMARD)
 
 
-def lc_cong2(g, v):
+def lc_cong2(g: BaseGraph[VT, ET], v: VT) -> None:
     """Applies local complementation at a provided spider in a ZX-diagram.
 
     :param g: Graph where the operation is applied.
@@ -179,12 +179,11 @@ def lc_cong2(g, v):
     # apply_rule(g, lcomp, [[v, list(g.neighbors(v))]])
 
 
-
-def apply_rand_lc(g, weight_func=uniform_weights):
+def apply_rand_lc(g: BaseGraph[VT, ET], weight_func: Callable[[BaseGraph[VT, ET], list[VT]], list[float]] = uniform_weights) -> None:
     """Applies local complementation to randomly selected spider.
 
     :param g: Graph where the operation is applied.
-    :param weight_func: Function to determine weights for selection.    
+    :param weight_func: Function to determine weights for selection.
     """
 
     lc_vs = [v for v in g.vertices() if is_lc_vertex(g, v)]
@@ -198,7 +197,7 @@ def apply_rand_lc(g, weight_func=uniform_weights):
 
 
 # TODO: May want to add some additional cases when we know it's not useful (as in the LC case)
-def is_pivot_edge(g, e):
+def is_pivot_edge(g: BaseGraph[VT, ET], e: ET) -> bool:
     """
     Checks if a given edge in a ZX-diagram is a suitable candidate for pivoting
     
@@ -210,7 +209,7 @@ def is_pivot_edge(g, e):
     v1, v2 = g.edge_st(e)
     return g.type(v1) == VertexType.Z and g.type(v2) == VertexType.Z
 
-def pivot_cong(g, v1, v2):
+def pivot_cong(g: BaseGraph[VT, ET], v1: VT, v2: VT) -> None:
     """
     Applies pivoting to two connected spiders
 
@@ -253,8 +252,7 @@ def pivot_cong(g, v1, v2):
 
 
 
-
-def apply_rand_pivot(g, weight_func=uniform_weights):
+def apply_rand_pivot(g: BaseGraph[VT, ET], weight_func: Callable[[BaseGraph[VT, ET], list[ET]], list[float]] = uniform_weights) -> None:
     """
     Applies pivoting to a randomly selected pair of connected spiders.
 
