@@ -30,18 +30,16 @@ __all__ = [
         'unsafe_lcomp']
 
 
-from typing import Tuple, List, Dict
-
 from fractions import Fraction
 
-from pyzx.utils import EdgeType, VertexType
-from pyzx.graph.base import BaseGraph, VT, ET
+from ..utils import EdgeType, VertexType
+from ..graph.base import BaseGraph, VT, ET
 
 
 def check_lcomp(
-        g: BaseGraph[VT,ET],
-        v: VT
-        ) -> bool:
+    g: BaseGraph[VT, ET],
+    v: VT
+) -> bool:
     """Checks if a given vertex can be simplified using the local complementation rule.
 
     :param g: An instance of a ZX-graph.
@@ -70,7 +68,7 @@ def check_lcomp(
     return True
 
 
-def lcomp(g: BaseGraph[VT,ET], v: VT) -> bool:
+def lcomp(g: BaseGraph[VT, ET], v: VT) -> bool:
     """First checks if the rule can be applied, then performs a local complementation based rewrite rule on the given graph and vertex.
     See "Graph Theoretic Simplification of Quantum Circuits using the ZX calculus" (arXiv:1902.03178)
     for more details on the rewrite"""
@@ -79,12 +77,12 @@ def lcomp(g: BaseGraph[VT,ET], v: VT) -> bool:
     return False
 
 
-def unsafe_lcomp(g: BaseGraph[VT,ET], v: VT) -> bool:
+def unsafe_lcomp(g: BaseGraph[VT, ET], v: VT) -> bool:
     """Performs a local complementation based rewrite rule on the given graph with the
     given vertex. See "Graph Theoretic Simplification of Quantum Circuits using the ZX calculus" (arXiv:1902.03178)
     for more details on the rewrite"""
-    etab: Dict[Tuple[VT,VT],List[int]] = dict()
-    rem: List[VT] = []
+    etab: dict[tuple[VT,VT], list[int]] = {}
+    rem: list[VT] = []
 
     vn = list(g.neighbors(v))
 

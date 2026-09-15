@@ -29,12 +29,11 @@ __all__ = ['check_hbox_parallel_not',
            'unsafe_hbox_parallel_not_remove']
 
 
-from typing import Dict, List, Tuple
-from pyzx.utils import EdgeType, VertexType, is_standard_hbox
-from pyzx.graph.base import BaseGraph, ET, VT, upair
+from ..utils import EdgeType, VertexType, is_standard_hbox
+from ..graph.base import BaseGraph, ET, VT, upair
 
 
-def is_NOT_gate(g, v, n1, n2):
+def is_NOT_gate(g: BaseGraph[VT, ET], v: VT, n1: VT, n2: VT) -> bool:
     """Returns whether the vertex v in graph g is a NOT gate between its neighbours n1 and n2."""
     return (
         (
@@ -49,11 +48,7 @@ def is_NOT_gate(g, v, n1, n2):
     )
 
 
-def check_hbox_parallel_not(
-        g: BaseGraph[VT,ET],
-        h: VT,
-        n: VT
-        ) -> bool:
+def check_hbox_parallel_not(g: BaseGraph[VT, ET], h: VT, n: VT) -> bool:
     """Finds H-boxes that are connected to a Z-spider both directly and via a NOT.
     :param g: Graph to check.
     :param h: H-box to check.
@@ -78,20 +73,20 @@ def check_hbox_parallel_not(
     return True
 
 
-def hbox_parallel_not_remove(g: BaseGraph[VT,ET], h: VT, n: VT) -> bool:
+def hbox_parallel_not_remove(g: BaseGraph[VT, ET], h: VT, n: VT) -> bool:
     """If a Z-spider is connected to an H-box via a regular wire and a NOT, then they disconnect, and the H-box is turned into a Z-spider."""
     if check_hbox_parallel_not(g,h,n): return unsafe_hbox_parallel_not_remove(g,h,n)
     return False
 
 
-def unsafe_hbox_parallel_not_remove(g: BaseGraph[VT,ET], h: VT, n: VT) -> bool:
+def unsafe_hbox_parallel_not_remove(g: BaseGraph[VT, ET], h: VT, n: VT) -> bool:
     """Disconnects the Z-spider and H-box, and the H-box is turned into a Z-spider.
     :param g: Graph to check.
     :param h: H-box to check.
     :param n: NOT connecting hbox and Z-spider."""
 
-    rem = []
-    etab: Dict[Tuple[VT,VT], List[int]] = {}
+    rem: list[VT] = []
+    etab: dict[tuple[VT, VT], list[int]] = {}
     types = g.types()
 
     rem.append(h)

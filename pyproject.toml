@@ -78,6 +78,7 @@ warn_unused_configs = true
 module = [
     "pyzx.circuit.*",
     "pyzx.graph.*",
+    "pyzx.rewrite_rules.*",
     "pyzx.routing.*",
     "pyzx.web.*"
 ]

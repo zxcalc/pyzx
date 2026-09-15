@@ -26,34 +26,32 @@ Boolean parameter into a non-Boolean phase), call :func:`merge_phase_gadgets_for
 ``simplify.gadget_simp`` wrapper cannot forward this keyword.
 """
 
-from typing import Tuple, List, Dict, FrozenSet
-from typing import Optional
 from fractions import Fraction
 
-from pyzx.utils import FractionLike, phase_is_pauli, push_pauli_axel
-from pyzx.graph.base import BaseGraph, VT, ET
-from pyzx.symbolic import Poly
+from ..utils import FractionLike, phase_is_pauli, push_pauli_axel
+from ..graph.base import BaseGraph, VT, ET
+from ..symbolic import Poly
 
 
 __all__ = ['merge_phase_gadgets_for_simp',
         'merge_phase_gadgets_for_apply']
 
-MatchGadgetType = Tuple[VT,VT,FractionLike,List[VT],List[VT]]
+MatchGadgetType = tuple[VT, VT, FractionLike, list[VT], list[VT]]
 
-def merge_phase_gadgets_for_simp(g: BaseGraph[VT,ET], apply_to_boolean_axels: bool = False) -> bool:
+def merge_phase_gadgets_for_simp(g: BaseGraph[VT, ET], apply_to_boolean_axels: bool = False) -> bool:
     """Runs :func:`match_phase_gadgets` and if any matches are found runs :func:`merge_phase_gadgets`"""
     matches = match_phase_gadgets(g, apply_to_boolean_axels=apply_to_boolean_axels)
     if len(matches) == 0: return False
     return merge_phase_gadgets(g, matches)
 
-def merge_phase_gadgets_for_apply(g: BaseGraph[VT,ET], vertices: List[VT], apply_to_boolean_axels: bool = False) -> bool:
+def merge_phase_gadgets_for_apply(g: BaseGraph[VT, ET], vertices: list[VT], apply_to_boolean_axels: bool = False) -> bool:
     """Runs :func:`match_phase_gadgets` on the input vertices and if any matches are found runs :func:`merge_phase_gadgets`"""
     checked_vertices = list([v for v in g.vertices() if (v in vertices)])
     matches = match_phase_gadgets(g, checked_vertices, apply_to_boolean_axels=apply_to_boolean_axels)
     if len(matches) == 0: return False
     return merge_phase_gadgets(g, matches)
 
-def match_phase_gadgets(g: BaseGraph[VT,ET], vertices:Optional[List[VT]]=None, apply_to_boolean_axels: bool = False) -> List[MatchGadgetType[VT]]:
+def match_phase_gadgets(g: BaseGraph[VT, ET], vertices: list[VT] | None = None, apply_to_boolean_axels: bool = False) -> list[MatchGadgetType[VT]]:
     """Determines which phase gadgets act on the same vertices, so that they can be fused together.
 
     :param g: An instance of a ZX-graph.
@@ -68,8 +66,8 @@ def match_phase_gadgets(g: BaseGraph[VT,ET], vertices:Optional[List[VT]]=None, a
 
     phases = g.phases()
 
-    parities: Dict[FrozenSet[VT], List[VT]] = dict()
-    gadgets: Dict[VT,VT] = dict()
+    parities: dict[frozenset[VT], list[VT]] = {}
+    gadgets: dict[VT, VT] = {}
     inputs = g.inputs()
     outputs = g.outputs()
     # First we find all the phase-gadgets, and the list of vertices they act on
@@ -89,7 +87,7 @@ def match_phase_gadgets(g: BaseGraph[VT,ET], vertices:Optional[List[VT]]=None, a
             if par in parities: parities[par].append(n)
             else: parities[par] = [n]
 
-    m: List[MatchGadgetType[VT]] = []
+    m: list[MatchGadgetType[VT]] = []
     for par, gad in parities.items():
         # Skip parity groups whose axels include a symbolic Boolean Poly unless the
         # caller opted in: absorbing that axel here would convert its Boolean parameter
@@ -128,9 +126,9 @@ def match_phase_gadgets(g: BaseGraph[VT,ET], vertices:Optional[List[VT]]=None, a
             m.append((v, n, totphase, gad, [gadgets[n] for n in gad]))
     return m
 
-def merge_phase_gadgets(g: BaseGraph[VT,ET], matches: List[MatchGadgetType[VT]]) -> bool:
+def merge_phase_gadgets(g: BaseGraph[VT, ET], matches: list[MatchGadgetType[VT]]) -> bool:
     """Given the output of :func:``match_phase_gadgets``, removes phase gadgets that act on the same set of targets."""
-    rem: List[VT] = []
+    rem: list[VT] = []
 
 
     for v, n, phase, othergadgets, othertargets in matches:
@@ -145,4 +143,3 @@ def merge_phase_gadgets(g: BaseGraph[VT,ET], matches: List[MatchGadgetType[VT]])
 
     g.remove_vertices(rem)
     return True
-
