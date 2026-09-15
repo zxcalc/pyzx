@@ -23,8 +23,6 @@ PyZX
    notebooks/gettingstarted
    notebooks/gates
    notebooks/rules
-   notebooks/time_dependency
-   notebooks/time_scheduling
 
 Indices and tables
 ==================

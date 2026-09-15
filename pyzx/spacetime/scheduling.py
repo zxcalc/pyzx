@@ -22,7 +22,7 @@ This assigns every gate of a :class:`~pyzx.circuit.Circuit` an integer
 uses this, when given a ``gate_durations`` argument, to annotate the spiders of
 the resulting ZX-diagram with 1+1D space-time information.
 
-See :mod:`pyzx.graph.time` for reading that information back off a graph, for
+See :mod:`pyzx.spacetime.timing` for reading that information back off a graph, for
 the space-time cost metrics, and for extracting a time-slice sub-diagram.
 """
 
@@ -30,7 +30,7 @@ from __future__ import annotations
 
 from typing import Mapping, Sequence
 
-from .gates import Gate
+from ..circuit.gates import Gate
 
 __all__ = ['used_qubits', 'gate_duration', 'schedule_gates']
 

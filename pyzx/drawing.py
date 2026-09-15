@@ -40,7 +40,7 @@ lines: Any = None
 
 from .utils import settings, get_mode, phase_to_s, VertexType, FloatInt, get_z_box_label, get_h_box_label, hbox_has_complex_label
 from .graph.base import BaseGraph, VT, ET
-from .graph.time import get_delay, get_timestep
+from .spacetime.timing import get_delay, get_timestep
 from .circuit import Circuit
 
 if get_mode() == "notebook":
@@ -172,7 +172,7 @@ def draw_matplotlib(
     """Draw a Graph or Circuit with matplotlib.
 
     When ``show_time`` is set, spiders carrying a ``timestep`` (see
-    :mod:`pyzx.graph.time`) are labelled ``t<timestep>``, and any wire along a
+    :mod:`pyzx.spacetime.timing`) are labelled ``t<timestep>``, and any wire along a
     single qubit whose earlier spider has a non-zero ``delay`` is drawn as a
     squiggle labelled ``Δ<delay>`` at its midpoint.  Graphs without time data
     are unaffected.

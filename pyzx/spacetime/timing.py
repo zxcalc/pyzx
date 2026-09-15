@@ -24,9 +24,10 @@ A graph produced by :func:`~pyzx.circuit.graphparser.circuit_to_graph` with a
     integer tick at which the operation that created the spider starts.
 
 ``delay``
-    integer duration of that operation, ``0`` for an instantaneous gate.  The
-    next operation on the same qubit starts at least ``max(delay, 1)`` ticks
-    later.
+    integer duration of that operation, ``0`` for an instantaneous gate.  An
+    operation occupies the ticks ``[timestep, timestep + max(delay, 1))``, i.e.
+    a single tick when instantaneous, and the next operation on the same qubit
+    starts at least ``max(delay, 1)`` ticks later.
 
 This module has the helpers to read and write those, the space-time cost
 metrics of a circuit-as-diagram, and :func:`time_slice` to cut out the
@@ -37,7 +38,7 @@ from __future__ import annotations
 
 from typing import Optional
 
-from .base import BaseGraph, VT, ET
+from ..graph.base import BaseGraph, VT, ET
 from ..utils import VertexType
 
 __all__ = [
@@ -73,6 +74,11 @@ def set_delay(g: BaseGraph[VT, ET], v: VT, d: int) -> None:
     g.set_vdata(v, DELAY_KEY, int(d))
 
 
+def _last_tick(timestep: int, delay: int) -> int:
+    """Last tick occupied by an operation starting at ``timestep`` with ``delay``."""
+    return timestep + max(delay, 1) - 1
+
+
 def has_time_data(g: BaseGraph[VT, ET]) -> bool:
     """Return whether any vertex of ``g`` carries a ``timestep``."""
     return any(get_timestep(g, v) is not None for v in g.vertices())
@@ -82,8 +88,9 @@ def time_extent(g: BaseGraph[VT, ET]) -> Optional[tuple[int, int]]:
     """Return ``(first_tick, last_tick)`` spanned by the timed spiders of ``g``.
 
     Boundary vertices are ignored, so the extent covers the operations only.
-    ``last_tick`` accounts for delays: it is ``max(timestep + delay)``.  Returns
-    ``None`` if no non-boundary vertex carries a ``timestep``.
+    ``last_tick`` is the last tick occupied by any operation, accounting for
+    delays: ``max(timestep + max(delay, 1) - 1)``.  Returns ``None`` if no
+    non-boundary vertex carries a ``timestep``.
     """
     starts = []
     ends = []
@@ -94,7 +101,7 @@ def time_extent(g: BaseGraph[VT, ET]) -> Optional[tuple[int, int]]:
         if t is None:
             continue
         starts.append(t)
-        ends.append(t + get_delay(g, v))
+        ends.append(_last_tick(t, get_delay(g, v)))
     if not starts:
         return None
     return (min(starts), max(ends))
@@ -138,7 +145,7 @@ def spacetime_metrics(g: BaseGraph[VT, ET]) -> dict[str, int]:
 
     starts = {t for t, _, _ in data}
     first = min(starts)
-    last = max(t + d for t, d, _ in data)
+    last = max(_last_tick(t, d) for t, d, _ in data)
 
     active: dict[int, set] = {}
     for t, d, q in data:
@@ -158,9 +165,10 @@ def time_slice(g: BaseGraph[VT, ET], start: int,
     """Return the sub-diagram of ``g`` living in a window of timesteps.
 
     With ``stop=None`` the window is the single timestep ``start``; otherwise it
-    is the inclusive range ``[start, stop]``.  A spider is kept when its occupied
-    interval ``[timestep, timestep + delay]`` intersects the window; spiders
-    without a ``timestep`` are dropped.
+    is the inclusive range ``[start, stop]``.  A spider is kept when the ticks it
+    occupies, ``[timestep, timestep + max(delay, 1))``, meet the window; spiders
+    without a ``timestep`` are dropped.  A gate that finishes exactly when the
+    window starts is therefore *not* included.
 
     Every edge from a kept spider to a dropped one is reconnected to a fresh
     ``BOUNDARY`` vertex, so the result is a valid ZX-diagram (with inputs and
@@ -182,7 +190,7 @@ def time_slice(g: BaseGraph[VT, ET], start: int,
         t = get_timestep(g, v)
         if t is None:
             return False
-        return t <= stop and t + get_delay(g, v) >= start
+        return t <= stop and _last_tick(t, get_delay(g, v)) >= start
 
     h = g.__class__()
 

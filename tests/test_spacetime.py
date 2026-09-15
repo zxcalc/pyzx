@@ -27,8 +27,8 @@ if __name__ == '__main__':
 
 from pyzx.circuit import Circuit
 from pyzx.circuit.gates import CNOT, HAD, ZPhase, XPhase, ParityPhase, CCZ
-from pyzx.circuit.scheduling import used_qubits, gate_duration, schedule_gates
-from pyzx.graph.time import (
+from pyzx.spacetime import used_qubits, gate_duration, schedule_gates
+from pyzx.spacetime import (
     get_timestep, get_delay, set_delay, has_time_data, time_extent,
     spacetime_metrics, time_slice,
 )
@@ -139,6 +139,17 @@ class TestMetrics(unittest.TestCase):
         g = c.to_graph(gate_durations={'CNOT': 3})
         self.assertEqual(time_extent(g), (0, 4))
 
+    def test_delayed_last_gate_depth_matches_volume(self):
+        # A lone CNOT with delay 3 occupies ticks 0, 1, 2 on both qubits: the
+        # wall-clock depth is 3 and so is the per-qubit volume.
+        c = Circuit(2)
+        c.add_gate(CNOT(0, 1))
+        g = c.to_graph(gate_durations={'CNOT': 3})
+        self.assertEqual(time_extent(g), (0, 2))
+        m = spacetime_metrics(g)
+        self.assertEqual(m['time_depth'], 3)
+        self.assertEqual(m['spacetime_volume'], 6)
+
     def test_zeros_without_time_data(self):
         c = _example_circuit()
         g = c.to_graph()
@@ -173,6 +184,16 @@ class TestTimeSlice(unittest.TestCase):
                    if sl.type(v) != VertexType.BOUNDARY}
         self.assertIn(0, kept_ts)
         self.assertIn(4, kept_ts)
+
+    def test_slice_excludes_gate_that_just_finished(self):
+        # CNOT occupies ticks [1, 4); the Rz on q0 starts at 4.  A single-tick
+        # slice at 4 must contain the Rz only, not the CNOT that ended there.
+        c = _example_circuit()
+        g = c.to_graph(gate_durations={'CNOT': 3})
+        sl = time_slice(g, 4)
+        non_boundary = [v for v in sl.vertices() if sl.type(v) != VertexType.BOUNDARY]
+        self.assertEqual(len(non_boundary), 1)
+        self.assertEqual(sl.phase(non_boundary[0]), Fraction(1, 4))
 
     def test_bad_range(self):
         c = _example_circuit()

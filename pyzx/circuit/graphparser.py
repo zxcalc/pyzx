@@ -23,8 +23,8 @@ from ..utils import EdgeType, FloatInt, VertexType, settings
 from . import Circuit
 from .gates import (NOT, SX, ConditionalGate, Gate, InitAncilla, Measurement,
                     PostSelect, Reset, S, T, TargetMapper, XPhase, Z, ZPhase)
-from .scheduling import schedule_gates
-from ..graph.time import set_delay, set_timestep
+from ..spacetime.scheduling import schedule_gates
+from ..spacetime.timing import set_delay, set_timestep
 
 
 def _poly_phase_to_conditional_gate(
@@ -289,9 +289,9 @@ def circuit_to_graph(
 
     ``gate_durations`` opts in to 1+1D space-time annotation. When it is not
     ``None``, the gates are scheduled as soon as possible in discrete integer
-    time (see :func:`~pyzx.circuit.scheduling.schedule_gates`) and every spider
+    time (see :func:`~pyzx.spacetime.scheduling.schedule_gates`) and every spider
     is tagged with ``timestep`` and ``delay`` vertex data (see
-    :mod:`pyzx.graph.time`). It maps a gate class or gate name to a
+    :mod:`pyzx.spacetime.timing`). It maps a gate class or gate name to a
     non-negative integer duration; unlisted gates are instantaneous. Pass
     ``{}`` for a pure dependency layering. When ``gate_durations is None``
     (default) no annotation happens and the output is unchanged.

@@ -79,6 +79,7 @@ module = [
     "pyzx.circuit.*",
     "pyzx.graph.*",
     "pyzx.routing.*",
+    "pyzx.spacetime.*",
     "pyzx.web.*"
 ]
 disallow_untyped_defs = true
