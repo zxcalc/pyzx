@@ -65,13 +65,13 @@ __all__ = [
 
 import itertools
 import math
-from typing import Callable, Optional, List
+from collections.abc import Callable
 
-from pyzx.graph.base import BaseGraph, VT, ET
-from pyzx.utils import VertexType, EdgeType, is_pauli
+from ..graph.base import BaseGraph, VT, ET
+from ..utils import VertexType
 
 
-def _linear_sum_assignment_itertools(cost_matrix) -> tuple[list, list]:
+def _linear_sum_assignment_itertools(cost_matrix: list[list[float]]) -> tuple[list[int], list[int]]:
     rows = list(range(len(cost_matrix)))
     cols = list(range(len(cost_matrix[0]) if cost_matrix else 0))
 
@@ -90,9 +90,9 @@ def _linear_sum_assignment_itertools(cost_matrix) -> tuple[list, list]:
 
 
 def _find_best_pairing(
-        g: BaseGraph[VT, ET],
-        neighbors: list[VT],
-        new_vertices: list[VT]
+    g: BaseGraph[VT, ET],
+    neighbors: list[VT],
+    new_vertices: list[VT]
 ) -> tuple:
     """Finds the optimal assignment using the Hungarian algorithm if available,
     otherwise falls back to lighter solvers / heuristics."""
@@ -116,9 +116,9 @@ def _find_best_pairing(
 
 
 def _find_best_assignment(
-        g: BaseGraph[VT, ET],
-        items_to_assign: list[VT],
-        available_slots: list[VT]
+    g: BaseGraph[VT, ET],
+    items_to_assign: list[VT],
+    available_slots: list[VT]
 ) -> dict[VT, VT]:
     """
     Finds the optimal assignment of items to slots (where len(slots) >= len(items))
@@ -171,9 +171,9 @@ def _get_n_cycle_coords(N: int, q: float, r: float) -> list[tuple[float, float]]
 
 
 def _unsafe_unfuse_spider(
-        g: BaseGraph[VT, ET],
-        v: VT,
-        coords_func: Callable
+    g: BaseGraph[VT, ET],
+    v: VT,
+    coords_func: Callable
 ) -> bool:
     """A generic function to unfuse a spider into a polygon of new spiders."""
     v_type = g.type(v)
@@ -235,7 +235,7 @@ def unsafe_unfuse_5_FE(g: BaseGraph[VT, ET], v: VT) -> bool:
     return _unsafe_unfuse_spider(g, v, lambda x, y: _get_n_cycle_coords(5, x, y))
 
 def check_unfuse_n_2FE(g: BaseGraph[VT, ET], v: VT) -> bool:
-    return g.type(v) in (VertexType.X, VertexType.Z) and g.phase(v) == 0 
+    return g.type(v) in (VertexType.X, VertexType.Z) and g.phase(v) == 0
 
 def unfuse_n_2FE(g: BaseGraph[VT, ET], v: VT) -> bool:
     """Unfuses a degree-n spider into a n-sided polygon"""
@@ -270,9 +270,9 @@ def _split_neighbors_into_groups(g: BaseGraph[VT, ET], neighbors: list[VT]) -> t
 
 
 def _calculate_new_spider_positions(
-        g: BaseGraph[VT, ET],
-        group1: list[VT],
-        group2: list[VT]
+    g: BaseGraph[VT, ET],
+    group1: list[VT],
+    group2: list[VT]
 ) -> tuple[float, float, float]:
     """Calculates the average positions for the two new central spiders based on the groups."""
     all_neighbors = group1 + group2
@@ -285,8 +285,7 @@ def _calculate_new_spider_positions(
     return pos_q1, pos_q2, start_from
 
 
-def _unfuse_2n_spider_core(g: BaseGraph[VT, ET], v: VT, w: Optional[int] = None) -> tuple[
-    VT, VT]:
+def _unfuse_2n_spider_core(g: BaseGraph[VT, ET], v: VT, w: int | None = None) -> tuple[VT, VT]:
     """
     The core function that performs the 2n-degree unfusing operation.
 
@@ -329,7 +328,7 @@ def _unfuse_2n_spider_core(g: BaseGraph[VT, ET], v: VT, w: Optional[int] = None)
     return inner_1, inner_2
 
 
-def unfuse_2n_FE(g: BaseGraph[VT, ET], v: VT, w: Optional[int] = None) -> bool:
+def unfuse_2n_FE(g: BaseGraph[VT, ET], v: VT, w: int | None = None) -> bool:
     """
     Unfuses a degree-2n spider into two degree-n spiders.
 
@@ -342,7 +341,7 @@ def unfuse_2n_FE(g: BaseGraph[VT, ET], v: VT, w: Optional[int] = None) -> bool:
     return unsafe_unfuse_2n_FE(g, v, w)
 
 
-def unsafe_unfuse_2n_FE(g: BaseGraph[VT, ET], v: VT, w: Optional[int] = None) -> bool:
+def unsafe_unfuse_2n_FE(g: BaseGraph[VT, ET], v: VT, w: int | None = None) -> bool:
     """
     Unfuses a degree-2n spider into two degree-n spiders.
 
@@ -354,7 +353,7 @@ def unsafe_unfuse_2n_FE(g: BaseGraph[VT, ET], v: VT, w: Optional[int] = None) ->
     return True
 
 
-def unfuse_2n_plus_FE(g: BaseGraph[VT, ET], v: VT, w: Optional[int] = None) -> bool:
+def unfuse_2n_plus_FE(g: BaseGraph[VT, ET], v: VT, w: int | None = None) -> bool:
     """
     Unfuses a degree-(2n + 1) spider into a degree-n spider and a degree-(n + 1) spider.
 
@@ -367,7 +366,7 @@ def unfuse_2n_plus_FE(g: BaseGraph[VT, ET], v: VT, w: Optional[int] = None) -> b
     return unsafe_unfuse_2n_plus_FE(g, v, w)
 
 
-def unsafe_unfuse_2n_plus_FE(g: BaseGraph[VT, ET], v: VT, w: Optional[int] = None) -> bool:
+def unsafe_unfuse_2n_plus_FE(g: BaseGraph[VT, ET], v: VT, w: int | None = None) -> bool:
     """
     Unfuses a degree-(2n + 1) spider into a degree-n spider and a degree-(n + 1) spider.
 
@@ -383,7 +382,7 @@ def check_recursive_unfuse_FE(g: BaseGraph[VT, ET], v: VT) -> bool:
     return g.type(v) in (VertexType.X, VertexType.Z) and g.phase(v) == 0
 
 
-def recursive_unfuse_FE(g: BaseGraph[VT, ET], v: VT, w: Optional[int] = None) -> bool:
+def recursive_unfuse_FE(g: BaseGraph[VT, ET], v: VT, w: int | None = None) -> bool:
     """
     Recursively unfuses a spider.
 
@@ -396,7 +395,7 @@ def recursive_unfuse_FE(g: BaseGraph[VT, ET], v: VT, w: Optional[int] = None) ->
     return unsafe_recursive_unfuse_FE(g, v, w)
 
 
-def unsafe_recursive_unfuse_FE(g: BaseGraph[VT, ET], v: VT, w: Optional[int] = None) -> bool:
+def unsafe_recursive_unfuse_FE(g: BaseGraph[VT, ET], v: VT, w: int | None = None) -> bool:
     """
     Recursively unfuses a spider.
 

@@ -32,18 +32,18 @@ __all__ = [
         'unsafe_fuse']
 
 
-from pyzx.utils import (get_w_io, get_z_box_label, EdgeType, VertexType,
+from ..utils import (get_w_io, get_z_box_label, EdgeType, VertexType,
                         set_z_box_label, vertex_is_w, vertex_is_z_like,
                         FloatInt)
-from typing import List, Any, Dict, Tuple
+from typing import Any
 from fractions import Fraction
 
-from pyzx.rewrite_rules.z_to_z_box_rule import unsafe_z_to_z_box
-from pyzx.graph.base import BaseGraph, VT, ET
+from ..rewrite_rules.z_to_z_box_rule import unsafe_z_to_z_box
+from ..graph.base import BaseGraph, VT, ET
 
 # Fuse spiders
 
-def check_fuse(g: BaseGraph[VT,ET], v: VT, w: VT) -> bool:
+def check_fuse(g: BaseGraph[VT, ET], v: VT, w: VT) -> bool:
     """Checks if two vertices can be fused. Accepts Z, X or w_input/output vertices"""
     if check_fuse_w(g, v, w):
         return True
@@ -57,12 +57,12 @@ def check_fuse(g: BaseGraph[VT,ET], v: VT, w: VT) -> bool:
         return True
     return False
 
-def fuse(g: BaseGraph[VT,ET], v: VT, w: VT) -> bool:
+def fuse(g: BaseGraph[VT, ET], v: VT, w: VT) -> bool:
     """Checks if two vertices can be fused and then fuses them."""
     if not check_fuse(g, v, w): return False
     return unsafe_fuse(g, v, w)
 
-def unsafe_fuse(g: BaseGraph[VT,ET], v: VT, w: VT) -> bool:
+def unsafe_fuse(g: BaseGraph[VT, ET], v: VT, w: VT) -> bool:
     """Fuses two vertices into one"""
     if vertex_is_w(g.type(v)):
         return unsafe_fuse_w(g, v, w)
@@ -89,7 +89,7 @@ def unsafe_fuse(g: BaseGraph[VT,ET], v: VT, w: VT) -> bool:
         g.fuse_phases(v, w)
 
 
-    etab: Dict[Tuple[VT, VT], List[int]] = dict()
+    etab: dict[tuple[VT, VT], list[int]] = {}
 
     for e in g.incident_edges(w):
         source, target = g.edge_st(e)
@@ -113,7 +113,7 @@ def unsafe_fuse(g: BaseGraph[VT,ET], v: VT, w: VT) -> bool:
 
 # Fuse w
 
-def check_fuse_w(g: BaseGraph[VT,ET], v: VT, w: VT) -> bool:
+def check_fuse_w(g: BaseGraph[VT, ET], v: VT, w: VT) -> bool:
     """Checks if two vertices are either w_input or w_output and whether they can be fused."""
     if not (v in g.vertices() and w in g.vertices()): return False
 
@@ -125,16 +125,16 @@ def check_fuse_w(g: BaseGraph[VT,ET], v: VT, w: VT) -> bool:
             return True
     return False
 
-def fuse_w(g: BaseGraph[VT,ET], v: VT, w: VT) -> bool:
+def fuse_w(g: BaseGraph[VT, ET], v: VT, w: VT) -> bool:
     """Checks and then performs W fusion on a given set of vertices."""
     if not check_fuse_w(g, v, w): return False
     return unsafe_fuse_w(g, v, w)
 
-def unsafe_fuse_w(g: BaseGraph[VT,ET], v: VT, w: VT) -> bool:
+def unsafe_fuse_w(g: BaseGraph[VT, ET], v: VT, w: VT) -> bool:
     """Performs W fusion on a given set of vertices.
     Note: Does not check if fuse can be applied before applying the rule"""
-    rem_verts: List[VT] = []
-    etab: Dict[Tuple[VT,VT],List[int]] = dict()
+    rem_verts: list[VT] = []
+    etab: dict[tuple[VT, VT], list[int]] = {}
 
     v1_in, v1_out = get_w_io(g, v)
     v2_in, v2_out = get_w_io(g, w)
@@ -163,7 +163,7 @@ def unsafe_fuse_w(g: BaseGraph[VT,ET], v: VT, w: VT) -> bool:
 
 #TODO: fix this to work with Rewrite class
 
-def unfuse(g: BaseGraph[VT,ET], m: List[Any], qubit:FloatInt=-1, row:FloatInt=-1) -> VT:
+def unfuse(g: BaseGraph[VT, ET], m: list[Any], qubit: FloatInt = -1, row: FloatInt = -1) -> VT:
     """Undoes a single spider fusion, given a match ``m``. A match is a list with 3
     elements given by::
 
@@ -194,4 +194,3 @@ def unfuse(g: BaseGraph[VT,ET], m: List[Any], qubit:FloatInt=-1, row:FloatInt=-1
         g.set_phase(v, g.phase(u))
         g.set_phase(u, 0)
     return v
-

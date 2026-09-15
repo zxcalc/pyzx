@@ -29,16 +29,15 @@ __all__ = ['check_copy',
            'copy',
            'unsafe_copy',]
 
-from typing import Optional
-from pyzx.utils import EdgeType, VertexType, toggle_vertex, vertex_is_zx, is_standard_hbox
+from ..utils import EdgeType, VertexType, toggle_vertex, vertex_is_zx, is_standard_hbox
 
-from pyzx.graph.base import BaseGraph, ET, VT
+from ..graph.base import BaseGraph, ET, VT
 
 
 def check_copy(
-        g: BaseGraph[VT,ET],
-        v: VT
-        ) -> bool:
+    g: BaseGraph[VT, ET],
+    v: VT
+) -> bool:
     """Checks if input is an arity-1 spider (with a 0 or pi phase) that can be copied through its neighbor."""
 
     if not (v in g.vertices()): return False
@@ -56,7 +55,7 @@ def check_copy(
 
     if not vertex_is_zx(tv): return False
 
-    copy_type: Optional[VertexType]  = check_copy_zx(g, v, w)
+    copy_type: VertexType | None  = check_copy_zx(g, v, w)
     if copy_type is not None: return True
 
     copy_type = check_copy_h(g, v, w)
@@ -66,9 +65,10 @@ def check_copy(
 
 
 def check_copy_zx(
-        g: BaseGraph[VT,ET],
-        v: VT,
-        w: VT) -> Optional[VertexType]:
+    g: BaseGraph[VT, ET],
+    v: VT,
+    w: VT
+) -> VertexType | None:
     """Checks if the two given vertices are zx spiders and if v can be copied through its neighbor."""
     tv = g.types()[v]
     tw = g.types()[w]
@@ -86,9 +86,10 @@ def check_copy_zx(
 
 
 def check_copy_h(
-        g: BaseGraph[VT,ET],
-        v: VT,
-        w: VT) -> Optional[VertexType]:
+    g: BaseGraph[VT, ET],
+    v: VT,
+    w: VT
+) -> VertexType | None:
     """Checks if the w is a H-box and if v can be copied through its neighbor."""
     tv = g.types()[v]
     tw = g.types()[w]
@@ -123,7 +124,7 @@ def check_copy_h(
     else : return None
 
 
-def copy(g: BaseGraph[VT,ET], v: VT) -> bool:
+def copy(g: BaseGraph[VT, ET], v: VT) -> bool:
     """Checks if the given vertex can be copied through its neighbor, and then applies the rule"""
     match: bool
     if check_copy(g, v):
@@ -133,9 +134,9 @@ def copy(g: BaseGraph[VT,ET], v: VT) -> bool:
 
 
 def unsafe_copy(
-        g: BaseGraph[VT,ET],
-        v: VT
-        ) -> bool:
+    g: BaseGraph[VT, ET],
+    v: VT
+) -> bool:
     """Copy arity-1 spider through their neighbor."""
     rem = []
     types = g.types()
@@ -147,7 +148,7 @@ def unsafe_copy(
 
     rem.append(v)
 
-    copy_type: Optional[VertexType]  = check_copy_zx(g, v, w)
+    copy_type: VertexType | None  = check_copy_zx(g, v, w)
     if copy_type is None: copy_type = check_copy_h(g, v, w)
 
     if copy_type == VertexType.BOUNDARY:
@@ -181,5 +182,3 @@ def unsafe_copy(
 
     g.remove_vertices(rem)
     return True
-
-

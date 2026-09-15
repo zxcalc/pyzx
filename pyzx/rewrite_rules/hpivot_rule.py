@@ -24,30 +24,29 @@ __all__ = ['hpivot',
 
 from fractions import Fraction
 from itertools import combinations
-from typing import List, Tuple, Optional
-from pyzx.utils import VertexType, toggle_edge, FractionLike, FloatInt, is_standard_hbox
-from pyzx.graph.base import BaseGraph, ET, VT
+from ..utils import VertexType, toggle_edge, FractionLike, FloatInt, is_standard_hbox
+from ..graph.base import BaseGraph, ET, VT
 
 
-hpivot_match_output = List[Tuple[
+hpivot_match_output = list[tuple[
     VT,
     VT,
     VT,
-    List[VT],
-    List[VT],
-    List[List[VT]],
-    List[Tuple[FractionLike, List[VT]]]
+    list[VT],
+    list[VT],
+    list[list[VT]],
+    list[tuple[FractionLike, list[VT]]]
 ]]
 
 
 
-def simp_hpivot(g: BaseGraph[VT,ET]) -> bool:
+def simp_hpivot(g: BaseGraph[VT, ET]) -> bool:
     """Runs :func:`match_hpivot` and if any matches are found runs :func:`unsafe_hpivot`"""
     matches = match_hpivot(g)
     if len(matches) == 0: return False
     return unsafe_hpivot(g, matches)
 
-def hpivot(g: BaseGraph[VT,ET], vertices: List[VT]) -> bool:
+def hpivot(g: BaseGraph[VT, ET], vertices: list[VT]) -> bool:
     """Dummy function, may have undefined behavior"""
     checked_vertices = list([v for v in g.vertices() if (v in vertices)])
     matches = match_hpivot(g, checked_vertices)
@@ -56,9 +55,7 @@ def hpivot(g: BaseGraph[VT,ET], vertices: List[VT]) -> bool:
 
 
 # hpivot
-def match_hpivot(
-        g: BaseGraph[VT, ET], vertices: Optional[List[VT]] = None
-) -> hpivot_match_output:
+def match_hpivot(g: BaseGraph[VT, ET], vertices: list[VT] | None = None) -> hpivot_match_output:
     """Finds a matching of the hyper-pivot rule. Note this currently assumes
     hboxes don't have phases.
 

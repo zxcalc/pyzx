@@ -9,6 +9,7 @@ Hence, occasionally changes will be backwards incompatible (although they will a
 ## [Unreleased]
 
 ### Fixed
+- Pauli-flow finder now correctly accounts for Pauli-Y vertices in correction sets.
 - Moved `RootHeuristic.RootHeuristicProtocol` and `SplitHeuristic.SplitHeuristicProtocol` to module level to fix a `DeprecationWarning` in Python 3.11+. Though these classes exist only for type annotations, this is technically a breaking change. (by @96-LB)
 - The `pyzx.web` module now raises an error when computing Pauli webs of a graph which has H-boxes with non-default phase, instead of returning an invalid web which ignores the phase. (by @96-LB)
 
@@ -25,6 +26,9 @@ Hence, occasionally changes will be backwards incompatible (although they will a
 - Automatic tensor contraction now falls back to the naive strategy for diagrams containing vertex types other than boundaries, Z-spiders, or X-spiders, fixing default contraction for W-spiders and Z-boxes (by @henriquejsza).
 - `to_tikz` no longer drops Hadamards on edges that touch a boundary. Such an edge was exported as a plain wire plus a `hadamard` node that no `\draw` referenced, so the Hadamard was lost on reimport and the diagram gained a disconnected H-box. These edges now use the same `hadamard edge` style as every other Hadamard edge (by @gauthamkanagaraj).
 - `match_phase_gadgets` no longer treats a symbolic boolean axel as constant pi in its scalar and `phase_negate` bookkeeping. Symbolic-axel parity groups are skipped by default; opt in via `apply_to_boolean_axels=True` on `merge_phase_gadgets_for_simp`/`_for_apply`. (by @dlyongemallo)
+
+### Added
+- Added support for the ZW-Bialgebra rule (by @doczenwiry).
 
 ## [0.10.5] - 2026-08-01
 
