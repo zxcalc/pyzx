@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Optional, Tuple, List, cast
+from typing import cast
 
 from .red_green import to_red_green_form
 from .firing_assignments import (
@@ -28,8 +28,8 @@ from ..pauliweb import PauliWeb
 
 
 def _compute(
-    graph: BaseGraph[int, Tuple[int, int]], *, stabilisers: bool, detecting_regions: bool
-) -> Tuple[Optional[List[PauliWeb[int, Tuple[int, int]]]], Optional[List[PauliWeb[int, Tuple[int, int]]]]]:
+    graph: BaseGraph[int, tuple[int, int]], *, stabilisers: bool, detecting_regions: bool
+) -> tuple[list[PauliWeb[int, tuple[int, int]]] | None, list[PauliWeb[int, tuple[int, int]]] | None]:
     """
     Performs full stabiliser and detecting region computation, depending on the given flags. Enabling both flags in one
     call is preferred to enabling them in separate calls as they may share basic computations.
@@ -98,7 +98,7 @@ def _compute(
     return stabs, regions
 
 
-def compute_stabilisers(graph: BaseGraph[int, Tuple[int, int]]) -> List[PauliWeb[int, Tuple[int, int]]]:
+def compute_stabilisers(graph: BaseGraph[int, tuple[int, int]]) -> list[PauliWeb[int, tuple[int, int]]]:
     """
     :return: A set of stabilising webs for the given diagram that forms a basis for the diagrams stabilisers when
         restricted to its boundary. A full basis for all stabilising webs is only obtained by combining the return value
@@ -111,7 +111,7 @@ def compute_stabilisers(graph: BaseGraph[int, Tuple[int, int]]) -> List[PauliWeb
     return stabs
 
 
-def compute_detecting_regions(graph: BaseGraph[int, Tuple[int, int]]) -> List[PauliWeb[int, Tuple[int, int]]]:
+def compute_detecting_regions(graph: BaseGraph[int, tuple[int, int]]) -> list[PauliWeb[int, tuple[int, int]]]:
     """
     :return: A basis for the detecting regions of the given diagram.
     """
@@ -122,8 +122,8 @@ def compute_detecting_regions(graph: BaseGraph[int, Tuple[int, int]]) -> List[Pa
     return regions
 
 
-def compute_pauli_webs(graph: BaseGraph[int, Tuple[int, int]])\
-        -> Tuple[List[PauliWeb[int, Tuple[int, int]]], List[PauliWeb[int, Tuple[int, int]]]]:
+def compute_pauli_webs(graph: BaseGraph[int, tuple[int, int]])\
+        -> tuple[list[PauliWeb[int, tuple[int, int]]] | None, list[PauliWeb[int, tuple[int, int]]] | None]:
     """
     See .compute_stabilisers and .compute_detecting_regions of this package.
     """

@@ -35,13 +35,11 @@ __all__ = ['check_pauli',
 
 from fractions import Fraction
 
-from typing import List, Dict, Tuple
+from ..utils import EdgeType, VertexType, FractionLike, phase_is_pauli, push_pauli_axel, vertex_is_zx, toggle_vertex, is_standard_hbox
+from ..graph.base import BaseGraph, VT, ET, upair
+from ..symbolic import Poly
 
-from pyzx.utils import EdgeType, VertexType, FractionLike, phase_is_pauli, push_pauli_axel, vertex_is_zx, toggle_vertex, is_standard_hbox
-from pyzx.graph.base import BaseGraph, VT, ET, upair
-from pyzx.symbolic import Poly
-
-def check_pauli(g: BaseGraph[VT,ET], v: VT, w: VT) -> bool:
+def check_pauli(g: BaseGraph[VT, ET], v: VT, w: VT) -> bool:
     """Checks if a w is a Pauli and v is a spider we can push it through
     :param g: Graph to check
     :param v: Spider
@@ -72,13 +70,13 @@ def check_pauli(g: BaseGraph[VT,ET], v: VT, w: VT) -> bool:
     return False
 
 
-def pauli_push(g: BaseGraph[VT,ET], v:VT,w:VT, apply_to_boolean_axels: bool = False) -> bool:
+def pauli_push(g: BaseGraph[VT, ET], v:VT,w:VT, apply_to_boolean_axels: bool = False) -> bool:
     """Pushes a Pauli (i.e. a pi phase) through another spider."""
     if check_pauli(g, v, w): return unsafe_pauli_push(g, v, w, apply_to_boolean_axels=apply_to_boolean_axels)
     return False
 
 
-def unsafe_pauli_push(g: BaseGraph[VT,ET], v:VT, w:VT, apply_to_boolean_axels: bool = False) -> bool:
+def unsafe_pauli_push(g: BaseGraph[VT, ET], v:VT, w:VT, apply_to_boolean_axels: bool = False) -> bool:
     """Pushes a Pauli (i.e. a pi phase) through another spider.
     :param g: Graph to push to
     :param v: Vertex to push through
@@ -87,9 +85,9 @@ def unsafe_pauli_push(g: BaseGraph[VT,ET], v:VT, w:VT, apply_to_boolean_axels: b
         boolean Poly phase. If True, when ``v`` is a non-Pauli spider this push converts
         the boolean parameter into a non-boolean phase."""
 
-    rem_verts: List[VT] = []
-    rem_edges: List[ET] = []
-    etab: Dict[Tuple[VT,VT], List[int]] = dict()
+    rem_verts: list[VT] = []
+    rem_edges: list[ET] = []
+    etab: dict[tuple[VT,VT], list[int]] = {}
 
     # w is a Pauli and v is the spider we are going to push it through
 

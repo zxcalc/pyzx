@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Dict, List, NamedTuple, Tuple, cast
+from typing import NamedTuple, cast
 
 from ..graph.base import BaseGraph
 from ..linalg import Z2, Mat2
@@ -31,12 +31,12 @@ class GraphOrdering(NamedTuple):
     The collections identify vertices from the graph and mappings between the ordering and the graph vertex ids
     are provided.
     """
-    graph_to_ordering: Dict[int, int]
-    ordering_to_graph: Dict[int, int]
+    graph_to_ordering: dict[int, int]
+    ordering_to_graph: dict[int, int]
 
-    z_boundaries: Dict[int, int]
-    internal_spiders: List[int]
-    pi_2_spiders: List[int]
+    z_boundaries: dict[int, int]
+    internal_spiders: list[int]
+    pi_2_spiders: list[int]
 
     def ord(self, s: int) -> int:
         return self.graph_to_ordering[s]
@@ -45,7 +45,7 @@ class GraphOrdering(NamedTuple):
         return self.ordering_to_graph[o]
 
 
-def determine_ordering(g: BaseGraph[int, Tuple[int, int]]) -> GraphOrdering:
+def determine_ordering(g: BaseGraph[int, tuple[int, int]]) -> GraphOrdering:
     """
     Creates an ordering of all vertices in the graph, such that the three groups of spiders (see GraphOrdering class
     for details) have contiguous ordering indices. The group order is:
@@ -56,8 +56,8 @@ def determine_ordering(g: BaseGraph[int, Tuple[int, int]]) -> GraphOrdering:
     internal_spiders = list(g.vertex_set().difference(boundaries).difference(z_boundaries.keys()))
     pi_2_spiders = list(filter(lambda _v: g.phase(_v).denominator == 2, internal_spiders))
 
-    graph_to_ordering: Dict[int, int] = dict()
-    ordering_to_graph: Dict[int, int] = dict()
+    graph_to_ordering: dict[int, int] = {}
+    ordering_to_graph: dict[int, int] = {}
     idx = 0
     for boundary in z_boundaries.keys():
         graph_to_ordering[boundary] = idx
@@ -75,7 +75,7 @@ def determine_ordering(g: BaseGraph[int, Tuple[int, int]]) -> GraphOrdering:
     return GraphOrdering(graph_to_ordering, ordering_to_graph, z_boundaries, internal_spiders, pi_2_spiders)
 
 
-def create_firing_verification(g: BaseGraph[int, Tuple[int, int]], ordering: GraphOrdering) -> Mat2:
+def create_firing_verification(g: BaseGraph[int, tuple[int, int]], ordering: GraphOrdering) -> Mat2:
     """
     Based on a graph with an accompanying vertex ordering, creates a 'firing verification matrix' that exactly has the
     space of all valid firing assignments (equivalent to Pauli webs) as its nullspace.
@@ -107,8 +107,8 @@ def create_firing_verification(g: BaseGraph[int, Tuple[int, int]], ordering: Gra
 
 
 def convert_firing_assignment_to_web_prototype(
-    g: BaseGraph[int, Tuple[int, int]], ordering: GraphOrdering, v: List[Z2]
-) -> PauliWeb:
+    g: BaseGraph[int, tuple[int, int]], ordering: GraphOrdering, v: list[Z2]
+) -> PauliWeb[int, tuple[int, int]]:
     """
     Based on a graph with an accompanying vertex ordering, takes a valid firing assignment and converts it to a Pauli
     web valid on the given graph. Note that the graph is assumed to be in red-green form, and functions from this file

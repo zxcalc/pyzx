@@ -28,12 +28,11 @@ __all__ = ['check_connected_hboxes',
            'unsafe_fuse_hboxes']
 
 
-from typing import Dict, List, Tuple, Set
-from pyzx.utils import EdgeType, VertexType, is_standard_hbox
-from pyzx.graph.base import BaseGraph, ET, VT, upair
+from ..utils import EdgeType, VertexType, is_standard_hbox
+from ..graph.base import BaseGraph, ET, VT, upair
 
 
-def check_connected_hboxes(g: BaseGraph[VT ,ET], v: VT, w: VT) -> bool:
+def check_connected_hboxes(g: BaseGraph[VT, ET], v: VT, w: VT) -> bool:
     """Matches Hadamard-edges that are connected to H-boxes, as these can be fused,
     see the rule (HS1) of https://arxiv.org/pdf/1805.02175.pdf.
 
@@ -44,7 +43,7 @@ def check_connected_hboxes(g: BaseGraph[VT ,ET], v: VT, w: VT) -> bool:
     if not g.connected(v, w): return False
 
     e = g.edge(v, w)
-    m : Set[ET] = set()
+    m: set[ET] = set()
     ty = g.types()
 
     if g.edge_type(e) != EdgeType.HADAMARD: return False
@@ -55,17 +54,17 @@ def check_connected_hboxes(g: BaseGraph[VT ,ET], v: VT, w: VT) -> bool:
 
     return True
 
-def fuse_hboxes(g: BaseGraph[VT ,ET], v1: VT, v2: VT) -> bool:
+def fuse_hboxes(g: BaseGraph[VT, ET], v1: VT, v2: VT) -> bool:
     """Fuses two neighboring H-boxes together, if they can be fused.
         See rule (HS1) of https://arxiv.org/pdf/1805.02175.pdf."""
     if check_connected_hboxes(g, v1, v2): return unsafe_fuse_hboxes(g, v1, v2)
     return False
 
-def unsafe_fuse_hboxes(g: BaseGraph[VT ,ET], v1: VT, v2: VT) -> bool:
+def unsafe_fuse_hboxes(g: BaseGraph[VT, ET], v1: VT, v2: VT) -> bool:
     """Fuses two neighboring H-boxes together.
     See rule (HS1) of https://arxiv.org/pdf/1805.02175.pdf."""
     rem_verts = []
-    etab: Dict[Tuple[VT ,VT], List[int]] = {}
+    etab: dict[tuple[VT, VT], list[int]] = {}
 
     if not is_standard_hbox(g, v2):  # Ensure v2 is the standard one.
         v1, v2 = v2, v1
@@ -84,4 +83,3 @@ def unsafe_fuse_hboxes(g: BaseGraph[VT ,ET], v1: VT, v2: VT) -> bool:
     g.remove_isolated_vertices()
 
     return True
-

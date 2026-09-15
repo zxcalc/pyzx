@@ -50,12 +50,10 @@ __all__ = [
     'unsafe_unfuse_1_FE'
 ]
 
-from pyzx.graph.base import BaseGraph, VT, ET
-from pyzx.rewrite_rules import (
-    fuse as _fuse,
-)
-from pyzx.utils import is_pauli, VertexType
-from pyzx.rewrite_rules.fuse_rule import check_fuse
+from ..graph.base import BaseGraph, VT, ET
+from ..rewrite_rules import fuse as _fuse
+from ..utils import is_pauli, VertexType
+from ..rewrite_rules.fuse_rule import check_fuse
 
 
 def check_fuse_1_FE(g: BaseGraph[VT, ET], v: VT) -> bool:

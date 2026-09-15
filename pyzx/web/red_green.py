@@ -14,9 +14,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from collections.abc import Iterable
 from dataclasses import dataclass
 from fractions import Fraction
-from typing import Dict, List, Tuple, Iterable, Optional, Any
+from typing import Any
 
 from ..pauliweb import PauliWeb
 from ..utils import VertexType, EdgeType
@@ -33,7 +34,7 @@ class ExpandedHadamard:
     r1_node: int
     r2_node: int
     r3_node: int
-    origin: Optional[int]
+    origin: int | None
     flipped_decomposition: bool
 
 
@@ -42,10 +43,10 @@ class AdditionalNodes:
     Represents collections of additional nodes introduced during conversion of a graph to red-green form, additionally
     storing the original identities of the removed nodes (if any).
     """
-    extra_id_nodes: List[ExtraIdNode]
-    expanded_hadamards: List[ExpandedHadamard]
+    extra_id_nodes: list[ExtraIdNode]
+    expanded_hadamards: list[ExpandedHadamard]
 
-    def __init__(self, extra_id_nodes: List[ExtraIdNode], expanded_hadamards: List[ExpandedHadamard]):
+    def __init__(self, extra_id_nodes: list[ExtraIdNode], expanded_hadamards: list[ExpandedHadamard]):
         self.extra_id_nodes = extra_id_nodes
         self.expanded_hadamards = expanded_hadamards
 
@@ -53,13 +54,13 @@ class AdditionalNodes:
     def empty() -> "AdditionalNodes":
         return AdditionalNodes([], [])
 
-    def add_extra_id_node(self, node: int):
+    def add_extra_id_node(self, node: int) -> None:
         self.extra_id_nodes.append(ExtraIdNode(node))
 
-    def add_expanded_hadamard(self, expanded_hadamard: ExpandedHadamard):
+    def add_expanded_hadamard(self, expanded_hadamard: ExpandedHadamard) -> None:
         self.expanded_hadamards.append(expanded_hadamard)
 
-    def _remove_extra_id_node(self, adj: Dict[int, Dict[int, Any]], web: PauliWeb, id_node: ExtraIdNode):
+    def _remove_extra_id_node(self, adj: dict[int, dict[int, Any]], web: PauliWeb[int, tuple[int, int]], id_node: ExtraIdNode) -> None:
         v1, v2 = adj[id_node.node].keys()
         web.add_half_edge((v1, v2), web[v1, id_node.node])
         web.add_half_edge((v2, v1), web[v1, id_node.node])
@@ -71,7 +72,7 @@ class AdditionalNodes:
         del adj[id_node.node][v2]
         del adj[v2][id_node.node]
 
-    def _remove_expanded_hadamard(self, adj: Dict[int, Dict[int, Any]], web: PauliWeb, hadamard: ExpandedHadamard):
+    def _remove_expanded_hadamard(self, adj: dict[int, dict[int, Any]], web: PauliWeb[int, tuple[int, int]], hadamard: ExpandedHadamard) -> None:
         w1, w2, w3 = hadamard.r1_node, hadamard.r2_node, hadamard.r3_node
         w1_left, w1_right = adj[w1].keys()
         l = w1_left if w1_right == w2 else w1_right
@@ -103,7 +104,7 @@ class AdditionalNodes:
         del adj[w3][r]
         del adj[r][w3]
 
-    def remove_from(self, g: BaseGraph[int, Tuple[int, int]], web: PauliWeb) -> None:
+    def remove_from(self, g: BaseGraph[int, tuple[int, int]], web: PauliWeb[int, tuple[int, int]]) -> None:
         """
         For a given graph in red-green form and a Pauli web that is valid on it, reverses the node introduction used to
         achieve the red-green form on the Pauli web. That is, this function fuses neighbouring edge colorings in the web
@@ -116,7 +117,7 @@ class AdditionalNodes:
             self._remove_expanded_hadamard(adj, web, hadamard)
 
 
-def _place_node_between(g: BaseGraph[int, Tuple[int, int]], _type: VertexType, n1: int, n2: int) -> int:
+def _place_node_between(g: BaseGraph[int, tuple[int, int]], _type: VertexType, n1: int, n2: int) -> int:
     node = g.add_vertex(_type)
     g.remove_edge((n1, n2))
     g.add_edges([(n1, node), (node, n2)])
@@ -128,12 +129,12 @@ _euler_decomposition_xzx = [VertexType.X, VertexType.Z, VertexType.X]
 _euler_decomposition_zxz = [VertexType.Z, VertexType.X, VertexType.Z]
 
 
-def _euler_expand_edges(g: BaseGraph[int, Tuple[int, int]]) -> Iterable[ExpandedHadamard]:
+def _euler_expand_edges(g: BaseGraph[int, tuple[int, int]]) -> Iterable[ExpandedHadamard]:
     """
     A cut down version of pyzx.euler_expansion which does not add global scalars and does not prematurely 'merge' spiders
     """
 
-    def _decompose_between(_v1: int, _v2: int, _flip: bool) -> Tuple[int, int, int]:
+    def _decompose_between(_v1: int, _v2: int, _flip: bool) -> tuple[int, int, int]:
         # Change decomposition to avoid introducing more X-spiders due to adjacent Z-spider
         pattern = _euler_decomposition_xzx if _flip else _euler_decomposition_zxz
 
@@ -150,34 +151,38 @@ def _euler_expand_edges(g: BaseGraph[int, Tuple[int, int]]) -> Iterable[Expanded
     for v in list(g.vertices()):
         if g.type(v) != VertexType.H_BOX:
             continue
-        
-        try:
-            v1, v2 = g.neighbors(v)
-        except ValueError:
+
+        neighbors = g.neighbors(v)
+        if len(neighbors) != 2:
             raise ValueError(f"Hadamard vertex {v} does not have exactly two neighbors.")
-        
+
+        if g.phase(v) != 1:
+            raise ValueError(f"H-box vertex {v} has incorrect phase. Hadamard gates should have phase pi.")
+
+        v1, v2 = neighbors
         v1_edge_type = g.edge_type((v1, v))
         v2_edge_type = g.edge_type((v2, v))
 
         g.remove_vertex(v)
         g.add_edge((v1, v2))
 
-        flip = g.type(v1) == g.type(v2) and g.type(v1) == VertexType.X
+        flip = (g.type(v1) == g.type(v2) == VertexType.X)
         w1, w2, w3 = _decompose_between(v1, v2, flip)
         g.set_edge_type((v1, w1), v1_edge_type)
         g.set_edge_type((w3, v2), v2_edge_type)
 
         expanded_hadamards.append(ExpandedHadamard(w1, w2, w3, origin=v, flipped_decomposition=flip))
 
-    for v1, v2 in list(filter(lambda e: g.edge_type(e) == EdgeType.HADAMARD, g.edges())):
-        flip = g.type(v1) == g.type(v2) and g.type(v1) == VertexType.Z
+    hadamard_edges = (e for e in g.edges() if g.edge_type(e) == EdgeType.HADAMARD)
+    for v1, v2 in hadamard_edges:
+        flip = (g.type(v1) == g.type(v2) == VertexType.Z)
         w1, w2, w3 = _decompose_between(v1, v2, flip)
         expanded_hadamards.append(ExpandedHadamard(w1, w2, w3, origin=None, flipped_decomposition=flip))
 
     return expanded_hadamards
 
 
-def _ensure_red_green(g: BaseGraph[int, Tuple[int, int]]) -> Iterable[int]:
+def _ensure_red_green(g: BaseGraph[int, tuple[int, int]]) -> Iterable[int]:
     new_nodes = []
     # Introduce intermediate nodes
     for s, t in list(g.edges()):
@@ -209,7 +214,7 @@ def _ensure_red_green(g: BaseGraph[int, Tuple[int, int]]) -> Iterable[int]:
     return new_nodes
 
 
-def to_red_green_form(g: BaseGraph[int, Tuple[int, int]]) -> AdditionalNodes:
+def to_red_green_form(g: BaseGraph[int, tuple[int, int]]) -> AdditionalNodes:
     """
     Converts a graph to red-green form in-place. Returns an object that identifies all nodes introduced / removed and
     that can reverse the conversion process on Pauli webs of the converted graph. See the AdditionalNodes class for

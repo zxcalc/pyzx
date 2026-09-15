@@ -28,11 +28,11 @@ __all__ = ['check_remove_id',
            'remove_id',
            'unsafe_remove_id']
 
-from pyzx.graph.base import BaseGraph, VT, ET
-from pyzx.utils import EdgeType, VertexType, get_z_box_label, vertex_is_w, get_w_io
+from ..graph.base import BaseGraph, VT, ET
+from ..utils import EdgeType, VertexType, get_z_box_label, vertex_is_w, get_w_io
 
 
-def check_remove_id(g: BaseGraph[VT,ET], v: VT) -> bool:
+def check_remove_id(g: BaseGraph[VT, ET], v: VT) -> bool:
     """Checks if the given vertex can be removed."""
     if not (v in g.vertices()): return False
 
@@ -42,7 +42,7 @@ def check_remove_id(g: BaseGraph[VT,ET], v: VT) -> bool:
     return check_remove_zx(g, v)
 
 
-def remove_id(g: BaseGraph[VT,ET], v: VT) -> bool:
+def remove_id(g: BaseGraph[VT, ET], v: VT) -> bool:
     """Checks if the spider v can be removed and then does so"""
     if vertex_is_w(g.type(v)) and check_remove_id_w(g, v):
         return unsafe_remove_id_w(g, v)
@@ -53,7 +53,7 @@ def remove_id(g: BaseGraph[VT,ET], v: VT) -> bool:
     return False
 
 
-def unsafe_remove_id(g: BaseGraph[VT,ET], v: VT) -> bool:
+def unsafe_remove_id(g: BaseGraph[VT, ET], v: VT) -> bool:
     """Removes the identity spider v"""
 
     if vertex_is_w(g.type(v)):
@@ -64,7 +64,7 @@ def unsafe_remove_id(g: BaseGraph[VT,ET], v: VT) -> bool:
 
 # Remove identity subrules
 
-def check_remove_zx(g: BaseGraph[VT,ET], v: VT) -> bool:
+def check_remove_zx(g: BaseGraph[VT, ET], v: VT) -> bool:
     """Checks if the given vertex of type zx can be removed."""
     if not g.vertex_degree(v) == 2:
         return False
@@ -81,7 +81,7 @@ def check_remove_zx(g: BaseGraph[VT,ET], v: VT) -> bool:
         return True
     return False
 
-def unsafe_remove_zx(g: BaseGraph[VT,ET], v: VT) -> bool:
+def unsafe_remove_zx(g: BaseGraph[VT, ET], v: VT) -> bool:
     """Removes the identity spider v of type ZX. Does not handle self-loops,
     which ``check_remove_zx`` rejects (a single self-loop on a degree-2 vertex
     yields only one incident edge on some backends)."""
