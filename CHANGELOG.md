@@ -16,6 +16,8 @@ Hence, occasionally changes will be backwards incompatible (although they will a
 ### Removed
 - Support for the PyQuil compiler was dropped. Breaking changes include the removal of `PyQuilCircuit`, `Architecture.to_quil_device`, `CompileMode.QUIL_COMPILER`, and any related functionality in the scripts module. (by @96-LB)
 - Support for the `graph_tool` and `igraph` backends has been officially dropped. (by @96-LB)
+### Added
+- New optional submodule `pyzx.spacetime` for 1+1D space-time annotation of circuits. `Circuit.to_graph` / `circuit_to_graph` take an optional `gate_durations` argument (mapping a gate class or name to a non-negative integer duration); when given, gates are scheduled as-soon-as-possible in discrete integer time (`spacetime.schedule_gates`) and every spider is tagged with `timestep` and `delay` vertex data. `spacetime.spacetime_metrics` / `spacetime.time_extent` give the space-time cost of the circuit, and `spacetime.time_slice` extracts the sub-diagram in a window of timesteps. `draw` / `draw_matplotlib` gain a `show_time` option that labels each timed spider with its `timestep` and draws a wire whose earlier spider has a non-zero `delay` as a squiggle labelled with that duration. Without `gate_durations` the output graph is unchanged. See `demos/SpacetimeCircuits.ipynb`.
 
 ## [0.10.6] - 2026-09-01
 

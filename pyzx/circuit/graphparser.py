@@ -23,6 +23,8 @@ from ..utils import EdgeType, FloatInt, VertexType, settings
 from . import Circuit
 from .gates import (NOT, SX, ConditionalGate, Gate, InitAncilla, Measurement,
                     PostSelect, Reset, S, T, TargetMapper, XPhase, Z, ZPhase)
+from ..spacetime.scheduling import schedule_gates
+from ..spacetime.timing import set_delay, set_timestep
 
 
 def _poly_phase_to_conditional_gate(
@@ -279,10 +281,20 @@ def circuit_to_graph(
     initialize_qubits: list[bool] | None = None,
     postselect_qubits: list[int] | None = None,
     elide_initial_resets: bool = False,
+    gate_durations: dict | None = None,
 ) -> BaseGraph:
     """Turns the circuit into a ZX-Graph.
     If ``compress_rows`` is set, it tries to put single qubit gates on different qubits,
     on the same row.
+
+    ``gate_durations`` opts in to 1+1D space-time annotation. When it is not
+    ``None``, the gates are scheduled as soon as possible in discrete integer
+    time (see :func:`~pyzx.spacetime.scheduling.schedule_gates`) and every spider
+    is tagged with ``timestep`` and ``delay`` vertex data (see
+    :mod:`pyzx.spacetime.timing`). It maps a gate class or gate name to a
+    non-negative integer duration; unlisted gates are instantaneous. Pass
+    ``{}`` for a pure dependency layering. When ``gate_durations is None``
+    (default) no annotation happens and the output is unchanged.
 
     ``initialize_qubits`` denotes whether each input should be connected to |0⟩,
     ``postselect_qubits`` denotes for each measurement whether it should be
@@ -326,9 +338,17 @@ def circuit_to_graph(
         reset_count += 1
         return name
 
+    schedule = (schedule_gates(c.gates, gate_durations)
+                if gate_durations is not None else None)
+    final_tick = (max((ts + max(d, 1) for ts, d in schedule), default=0)
+                  if schedule is not None else 0)
+
     # Create input vertices
     for i in range(c.qubits):
         v = g.add_vertex(VertexType.BOUNDARY,i,0)
+        if schedule is not None:
+            set_timestep(g, v, 0)
+            set_delay(g, v, 0)
         inputs.append(v)
         q_mapper.add_label(i, 1)
         q_mapper.set_prev_vertex(i, v)
@@ -345,7 +365,8 @@ def circuit_to_graph(
         c_mapper.set_prev_vertex(i, v)
 
 
-    for gate in c.gates:
+    for gate_idx, gate in enumerate(c.gates):
+        verts_before = set(g.vertices()) if schedule is not None else None
         if isinstance(gate, Measurement):
             measure_targets.add(gate.target)
         if isinstance(gate, InitAncilla):
@@ -423,6 +444,12 @@ def circuit_to_graph(
                 q_mapper.set_all_rows_to_max()
                 c_mapper.set_all_rows_to_max()
 
+        if schedule is not None and verts_before is not None:
+            ts, delay = schedule[gate_idx]
+            for nv in set(g.vertices()) - verts_before:
+                set_timestep(g, nv, ts)
+                set_delay(g, nv, delay)
+
     # Create output vertices
     r = max(q_mapper.max_row(), c_mapper.max_row())
     measure_vertices = []
@@ -435,6 +462,9 @@ def circuit_to_graph(
                 v = g.add_vertex(VertexType.BOUNDARY, o, r)
                 if is_classical:
                     g.set_vdata(v, 'is_classical', True)
+                elif schedule is not None:
+                    set_timestep(g, v, final_tick)
+                    set_delay(g, v, 0)
                 outputs.append(v)
                 g.add_edge((u,v))
             else:
