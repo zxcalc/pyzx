@@ -138,6 +138,30 @@ Below is listed the content of ``drawing.py``.
    :undoc-members:
 
 
+.. _spacetime:
+
+Space-time annotation of circuits
+---------------------------------
+
+Below is listed the content of the optional ``pyzx.spacetime`` submodule.
+It is only active when :meth:`~pyzx.circuit.Circuit.to_graph` is given a
+``gate_durations`` argument; see the
+`SpacetimeCircuits notebook <https://github.com/zxcalc/pyzx/blob/master/demos/SpacetimeCircuits.ipynb>`_
+for a walkthrough.
+
+.. module:: spacetime
+
+.. automodule:: pyzx.spacetime.scheduling
+   :members:
+   :undoc-members:
+   :member-order: bysource
+
+.. automodule:: pyzx.spacetime.timing
+   :members:
+   :undoc-members:
+   :member-order: bysource
+
+
 Tikz functionality
 ----------------------------------
 

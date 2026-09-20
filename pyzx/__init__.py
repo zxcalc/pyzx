@@ -39,6 +39,7 @@ from .rewrite_rules import *
 from . import optimize
 from . import simplify
 from . import hsimplify
+from . import spacetime
 from . import ft_simplify
 from . import d3
 from . import tikz

@@ -302,6 +302,7 @@ class Circuit:
         compress_rows: bool = True,
         backend: str | None = None,
         elide_initial_resets: bool = False,
+        gate_durations: dict | None = None,
     ) -> BaseGraph:
         """Turns the circuit into a ZX-Graph.
         If ``compress_rows`` is set, it tries to put single qubit gates on different qubits,
@@ -316,7 +317,10 @@ class Circuit:
         :meth:`initialize_qubits` or OpenQASM-style implicit |0⟩
         inputs); otherwise eliding turns the leading ``Reset`` into a
         no-op instead of trace-out-and-reprepare. See
-        :func:`circuit_to_graph` for details."""
+        :func:`circuit_to_graph` for details.
+
+        ``gate_durations`` opts in to 1+1D space-time annotation of the
+        resulting graph; see :func:`circuit_to_graph`."""
         from .graphparser import circuit_to_graph
 
         return circuit_to_graph(
@@ -326,6 +330,7 @@ class Circuit:
             initialize_qubits=self._initialize_qubits,
             postselect_qubits=self._postselect_qubits,
             elide_initial_resets=elide_initial_resets,
+            gate_durations=gate_durations,
         )
 
     def to_tensor(self, preserve_scalar: bool = True, strategy: str = 'auto') -> np.ndarray:
