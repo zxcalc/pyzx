@@ -1,6 +1,6 @@
 """
 This file handles the overhead for managing decompositions. See pyzx.simulation.__init__.py for details on how to add
-a new decomposition. 
+a new decomposition.
 """
 
 from enum import Enum
@@ -8,7 +8,7 @@ import inspect
 import warnings
 from typing import Callable
 from ..common import SumGraph
-from ...graph.base import BaseGraph,VT,ET
+from ...graph.base import BaseGraph, VT, ET
 
 class Decomp(Enum):
     BSS          = "bss"
@@ -24,15 +24,15 @@ class Decomp(Enum):
     CUT_WISHBONE = "cut_wishbone"
 
 class DecompSpec:
-    def __init__(self, fn:Callable|None=None, validation_fn:Callable|None=None, alpha:float|None=None, reference:str="") -> None:
+    def __init__(self, fn: Callable | None = None, validation_fn: Callable | None = None, alpha: float | None = None, reference: str = "") -> None:
         self.fn = fn
         self.validation_fn = validation_fn
         self.alpha = alpha
         self.reference = reference
 
-_REGISTRY: dict[Decomp,DecompSpec] = {} # this stores all the loaded decompositions, indexable by their enum names
+_REGISTRY: dict[Decomp, DecompSpec] = {} # this stores all the loaded decompositions, indexable by their enum names
 
-def apply_decomp(kind:Decomp, g:BaseGraph[VT,ET], *args, **kwargs) -> SumGraph:
+def apply_decomp(kind: Decomp, g: BaseGraph[VT, ET], *args, **kwargs) -> SumGraph:
     """Applies an instance of the specified decomposition to the provided graph with the decomposition-specific arguments."""
     if isinstance(kind, str):
         kind = Decomp(kind)
@@ -47,7 +47,7 @@ def apply_decomp(kind:Decomp, g:BaseGraph[VT,ET], *args, **kwargs) -> SumGraph:
         raise RuntimeError(f"Decomposition {kind} is not properly registered.")
     return decomp_fn(g, *args, **kwargs)
 
-def check_valid(kind:Decomp, g:BaseGraph[VT,ET], *args, **kwargs) -> bool:
+def check_valid(kind: Decomp, g: BaseGraph[VT, ET], *args, **kwargs) -> bool:
     validity_fn = get_validity_checker(kind)
     if (validity_fn is not None):
         return validity_fn(g, *args, **kwargs)
@@ -59,12 +59,12 @@ def check_valid(kind:Decomp, g:BaseGraph[VT,ET], *args, **kwargs) -> bool:
         )
     return True
 
-def _get_or_create_spec(kind:Decomp) -> DecompSpec:
+def _get_or_create_spec(kind: Decomp) -> DecompSpec:
     if kind not in _REGISTRY:
         _REGISTRY[kind] = DecompSpec()
     return _REGISTRY[kind]
 
-def register_decomp(kind:Decomp, alpha:float|None=None, reference:str="") -> Callable:
+def register_decomp(kind: Decomp, alpha: float | None = None, reference: str = "") -> Callable:
     """Registers a decomposition.
 
     This decorator associates a decomposition function with a ``Decomp``
@@ -93,7 +93,7 @@ def register_decomp(kind:Decomp, alpha:float|None=None, reference:str="") -> Cal
         return fn
     return decorator
 
-def register_validity_checker(kind:Decomp) -> Callable:
+def register_validity_checker(kind: Decomp) -> Callable:
     """Registers a validity checker for the decomposition.
 
     This decorator associates a validity checker function with a ``Decomp`` enum entry.
@@ -120,7 +120,7 @@ def register_validity_checker(kind:Decomp) -> Callable:
         return fn
     return decorator
 
-def _check_signatures_match(kind:Decomp,spec) -> bool:
+def _check_signatures_match(kind: Decomp, spec) -> bool:
     if spec.fn is not None and spec.validation_fn is not None and not (inspect.signature(spec.fn).parameters == inspect.signature(spec.validation_fn).parameters):
         raise TypeError(
             f"Signature parameters mismatch for decomposition {kind}. "
@@ -129,19 +129,19 @@ def _check_signatures_match(kind:Decomp,spec) -> bool:
         )
     return True
 
-def get_decomp(kind:Decomp) -> Callable|None:
+def get_decomp(kind: Decomp) -> Callable | None:
     return _REGISTRY[kind].fn
 
-def get_validity_checker(kind:Decomp) -> Callable|None:
+def get_validity_checker(kind: Decomp) -> Callable | None:
     return _REGISTRY[kind].validation_fn
 
-def get_alpha(kind:Decomp) -> float|None:
+def get_alpha(kind: Decomp) -> float | None:
     return _REGISTRY[kind].alpha
 
-def get_reference(kind:Decomp) -> str:
+def get_reference(kind: Decomp) -> str:
     return _REGISTRY[kind].reference
 
-def get_decomp_spec(kind:Decomp) -> DecompSpec:
+def get_decomp_spec(kind: Decomp) -> DecompSpec:
     return _REGISTRY[kind]
 
 #########################################################################

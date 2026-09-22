@@ -1,11 +1,11 @@
 """
 This file handles the overhead for managing decomposition strategies. See pyzx.simulation.__init__.py for details on how to add
-a new decomposition strategy. 
+a new decomposition strategy.
 """
 
 from enum import Enum
-from typing import Callable, List
-from ...graph.base import BaseGraph,VT,ET
+from typing import Callable
+from ...graph.base import BaseGraph, VT, ET
 
 class Strategy(Enum):
     BSS        = "bss"
@@ -13,13 +13,13 @@ class Strategy(Enum):
     MAGIC_CAT  = "magic_cat"
 
 class StrategySpec:
-    def __init__(self, fn:Callable|None=None, reference:str="") -> None:
+    def __init__(self, fn: Callable | None = None, reference: str = "") -> None:
         self.fn = fn
         self.reference = reference
 
-_REGISTRY: dict[Strategy,StrategySpec] = {} # this stores all the loaded decomposition strategies, indexable by their enum names
+_REGISTRY: dict[Strategy, StrategySpec] = {} # this stores all the loaded decomposition strategies, indexable by their enum names
 
-def simulate(kind:Strategy, g:BaseGraph[VT,ET], *args, **kwargs) -> complex:
+def simulate(kind: Strategy, g: BaseGraph[VT, ET], *args, **kwargs) -> complex:
     """Runs full_decompose and sums the resulting scalars to return the probability amplitude.
     
     Args:
@@ -33,7 +33,7 @@ def simulate(kind:Strategy, g:BaseGraph[VT,ET], *args, **kwargs) -> complex:
     terms = full_decompose(kind, g, *args, **kwargs)
     return sum(g.scalar.to_number() for g in terms) # todo - avoid using .to_number() here; also, use a JAX parallel summation perhaps?
 
-def full_decompose(kind:Strategy, g:BaseGraph[VT,ET], *args, **kwargs) -> List[BaseGraph[VT,ET]]: # todo - perhaps beter to return as a SumGraph?
+def full_decompose(kind: Strategy, g: BaseGraph[VT, ET], *args, **kwargs) -> list[BaseGraph[VT, ET]]: # todo - perhaps beter to return as a SumGraph?
     """Fully decomposes a given graph based on the specified decomposition strategy
 
     Args:
@@ -52,7 +52,7 @@ def full_decompose(kind:Strategy, g:BaseGraph[VT,ET], *args, **kwargs) -> List[B
         raise RuntimeError(f"Decomposition strategy {kind} is not properly registered.")
     return strat_fn(g, *args, **kwargs)
 
-def register_strategy(kind:Strategy, reference:str="") -> Callable:
+def register_strategy(kind: Strategy, reference: str = "") -> Callable:
     """Registers a decomposition strategy.
 
     This decorator associates a decomposition strategy function with a ``Decomp``
@@ -77,13 +77,13 @@ def register_strategy(kind:Strategy, reference:str="") -> Callable:
         return fn
     return decorator
 
-def get_strategy(kind:Strategy) -> Callable|None:
+def get_strategy(kind: Strategy) -> Callable | None:
     return _REGISTRY[kind].fn
 
-def get_reference(kind:Strategy) -> str:
+def get_reference(kind: Strategy) -> str:
     return _REGISTRY[kind].reference
 
-def get_strategy_spec(kind:Strategy) -> StrategySpec:
+def get_strategy_spec(kind: Strategy) -> StrategySpec:
     return _REGISTRY[kind]
 
 ######################################################################
