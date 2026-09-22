@@ -3,37 +3,38 @@ Common data structures and helper functions used by many or all decompositions a
 This file largely contains code copied from the now-deprecated pyzx.simulate.py file.
 """
 
-import random
 import math
-sq2 = math.sqrt(2)
-#omega = (1+1j)/sq2
+import random
 from fractions import Fraction
+from typing import Any, Generic
 
 import numpy as np
 
-from ..utils import EdgeType, FractionLike, VertexType, toggle_vertex, toggle_edge, ave_pos
 from .. import simplify
 from ..circuit import Circuit
-from ..graph.base import BaseGraph, VT, ET
+from ..graph.base import ET, VT, BaseGraph
 from ..symbolic import Poly
+from ..utils import EdgeType, FractionLike, VertexType, toggle_edge, toggle_vertex
 
-class SumGraph(object):
+sq2 = math.sqrt(2)
+
+class SumGraph(Generic[VT, ET]):
     """Container class for a sum of ZX-diagrams"""
-    graphs: list[BaseGraph]
-    def __init__(self, graphs: list[BaseGraph] | None = None) -> None:
+    graphs: list[BaseGraph[VT, ET]]
+    def __init__(self, graphs: list[BaseGraph[VT, ET]] | None = None) -> None:
         if graphs is not None:
             self.graphs = graphs
         else:
             self.graphs = []
             
-    def to_tensor(self, strategy: str = 'auto') -> np.ndarray:
+    def to_tensor(self, strategy: str = 'auto') -> np.ndarray[Any, Any]:
         if not self.graphs: return np.zeros((1,1))
         t = self.graphs[0].to_tensor(True, strategy=strategy)
         for i in range(len(self.graphs)-1):
             t = t + self.graphs[i+1].to_tensor(True, strategy=strategy)
         return t
 
-    def to_matrix(self, strategy: str = 'auto') -> np.ndarray:
+    def to_matrix(self, strategy: str = 'auto') -> np.ndarray[Any, Any]:
         if not self.graphs: return np.zeros((1,1))
         t = self.graphs[0].to_matrix(True, strategy=strategy)
         for i in range(len(self.graphs)-1):
@@ -128,12 +129,14 @@ class SumGraph(object):
             terms.append(g)
         return SumGraph(terms)
 
-    def sample(self,
+    def sample(
+        self,
         qubits: list[int],
         post_selected: dict[int,str] | None = None,
-        amount:int=10,
+        amount:int = 10,
         epsilon: float = 0.05,
-        quiet:bool=True) -> list[list[tuple[int,int]]]:
+        quiet: bool = True
+    ) -> list[list[tuple[int,int]]]:
         """Implements the weak simulation algorithm of https://arxiv.org/pdf/1808.00128.pdf.
         ``qubits`` should be a list of qubit numbers from which measurement outcomes in the
         computational basis are to be sampled. ``post_selected`` should be in the format of
@@ -266,17 +269,19 @@ def calculate_path_sum(g: BaseGraph[VT, ET]) -> complex:
     # r = results
     # return g.scalar.to_number()*sq2**(-prefactor)*(r[0]-r[4]+omega*(r[1]-r[5]) +1j*(r[2]-r[6]) + 1j*omega*(r[3]-r[7]))
 
-def gen_catlike_term(g_initial: BaseGraph[VT, ET],
-                     vertices: list[VT],
-                     ph_base: FractionLike,
-                     ph_central: FractionLike,
-                     ph_appendix: FractionLike,
-                     eType_base: EdgeType,
-                     eType_appendix: EdgeType,
-                     scal_positive: bool,
-                     scal_power: int,
-                     scal_phase: FractionLike,
-                     pi_case: bool = False) -> BaseGraph[VT, ET]:
+def gen_catlike_term(
+    g_initial: BaseGraph[VT, ET],
+    vertices: list[VT],
+    ph_base: FractionLike,
+    ph_central: FractionLike,
+    ph_appendix: FractionLike,
+    eType_base: EdgeType,
+    eType_appendix: EdgeType,
+    scal_positive: bool,
+    scal_power: int,
+    scal_phase: FractionLike,
+    pi_case: bool = False
+) -> BaseGraph[VT, ET]:
     """Insert a term from a cat or magic5 decomposition into a graph.
 
     Used for constructing graph terms with local structure of the form of the
