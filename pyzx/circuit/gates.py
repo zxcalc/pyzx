@@ -271,14 +271,12 @@ class Gate:
         return s
 
     def to_qasm(self) -> str:
-        n = self.qasm_name
+        n = self.qasm_name_adjoint if getattr(self, "adjoint", None) else self.qasm_name
         if n == 'undefined':
             bg = self.to_basic_gates()
             if len(bg) == 1:
                 raise TypeError("Gate {} doesn't have a QASM description".format(str(self)))
             return "\n".join(g.to_qasm() for g in bg)
-        if getattr(self, "adjoint", None):
-            n = self.qasm_name_adjoint
 
         args = []
         for a in ["ctrl1","ctrl2", "control", "target"]:
@@ -297,7 +295,7 @@ class Gate:
 
     def to_qc(self) -> str:
         n = self.qc_name
-        if getattr(self, "adjoint", None):
+        if getattr(self, "adjoint", None) and n != 'undefined':
             n += "*"
         if n == 'undefined':
             if isinstance(self, (ZPhase, XPhase)):
@@ -520,13 +518,14 @@ class SX(XPhase):
 class CSX(Gate):
     name = 'CSX'
     qasm_name = 'csx'
-    def __init__(self, control: int, target: int) -> None:
+    def __init__(self, control: int, target: int, adjoint: bool = False) -> None:
         self.target = target
         self.control = control
+        self.adjoint = adjoint
 
     def to_basic_gates(self) -> list[Gate]:
         return [HAD(self.target)] + \
-               CPhase(self.control,self.target,Fraction(1,2)).to_basic_gates() + \
+               CPhase(self.control,self.target,Fraction(1,2)*(-1 if self.adjoint else 1)).to_basic_gates() + \
                [HAD(self.target)]
 
     def to_graph(self, g: BaseGraph[VT, ET], q_mapper: TargetMapper[VT], c_mapper: TargetMapper[VT]) -> None:
@@ -1171,6 +1170,14 @@ class U2(Gate):  # See https://arxiv.org/pdf/1707.03429.pdf
                 XPhase(self.target,phase=Fraction(1,2)),
                 ZPhase(self.target,phase=(self.theta+Fraction(1,2))%2)]
 
+    def to_adjoint(self) -> 'U2':
+        # U2(phi, lambda) = U3(pi/2, phi, lambda), so its adjoint is U3(-pi/2, -lambda, -phi),
+        # which equals U3(pi/2, pi-lambda, pi-phi) = U2(pi-lambda, pi-phi).
+        g = self.copy()
+        g.theta, g.phi = 1 - self.phi, 1 - self.theta
+        g.phases = [g.theta, g.phi]
+        return g
+
     def to_graph(self, g: BaseGraph[VT, ET], q_mapper: TargetMapper[VT], c_mapper: TargetMapper[VT]) -> None:
         for gate in self.to_basic_gates():
             gate.to_graph(g, q_mapper, c_mapper)
@@ -1192,6 +1199,13 @@ class U3(Gate):  # See equation (5) of https://arxiv.org/pdf/1707.03429.pdf
                 ZPhase(self.target,phase=(self.theta+1)%2),
                 XPhase(self.target,phase=Fraction(1,2)),
                 ZPhase(self.target,phase=(self.phi+3)%2)]
+
+    def to_adjoint(self) -> 'U3':
+        # U3(theta, phi, lambda)^dagger = U3(-theta, -lambda, -phi)
+        g = self.copy()
+        g.theta, g.phi, g.rho = -self.theta, -self.rho, -self.phi
+        g.phases = [g.theta, g.phi, g.rho]
+        return g
 
     def to_graph(self, g: BaseGraph[VT, ET], q_mapper: TargetMapper[VT], c_mapper: TargetMapper[VT]) -> None:
         for gate in self.to_basic_gates():
@@ -1218,6 +1232,13 @@ class CU3(Gate):
                [CNOT(self.control, self.target)] + \
                U3(self.target, half_phase(self.theta), self.phi, 0).to_basic_gates()
 
+    def to_adjoint(self) -> 'CU3':
+        # Controlled-U3(theta, phi, lambda)^dagger = Controlled-U3(-theta, -lambda, -phi)
+        g = self.copy()
+        g.theta, g.phi, g.rho = -self.theta, -self.rho, -self.phi
+        g.phases = [g.theta, g.phi, g.rho]
+        return g
+
     def to_graph(self, g: BaseGraph[VT, ET], q_mapper: TargetMapper[VT], c_mapper: TargetMapper[VT]) -> None:
         for gate in self.to_basic_gates():
             gate.to_graph(g, q_mapper, c_mapper)
@@ -1241,6 +1262,13 @@ class CU(Gate):
     def to_basic_gates(self) -> list[Gate]:
         return [ZPhase(self.control,phase=self.gamma)] + \
                CU3(self.control,self.target,self.theta,self.phi,self.rho).to_basic_gates()
+
+    def to_adjoint(self) -> 'CU':
+        # CU(theta, phi, lambda, gamma)^dagger = CU(-theta, -lambda, -phi, -gamma)
+        g = self.copy()
+        g.theta, g.phi, g.rho, g.gamma = -self.theta, -self.rho, -self.phi, -self.gamma
+        g.phases = [g.theta, g.phi, g.rho, g.gamma]
+        return g
 
     def to_graph(self, g: BaseGraph[VT, ET], q_mapper: TargetMapper[VT], c_mapper: TargetMapper[VT]) -> None:
         for gate in self.to_basic_gates():
