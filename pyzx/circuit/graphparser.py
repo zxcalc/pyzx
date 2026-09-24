@@ -19,7 +19,7 @@ import warnings
 from ..graph import Graph
 from ..graph.base import ET, VT, BaseGraph
 from ..symbolic import Poly, new_var
-from ..utils import EdgeType, FloatInt, VertexType, settings
+from ..utils import EdgeType, FloatInt, VertexType, settings, toggle_vertex
 from . import Circuit
 from .gates import (NOT, SX, ConditionalGate, Gate, InitAncilla, Measurement,
                     PostSelect, Reset, S, T, TargetMapper, XPhase, Z, ZPhase)
@@ -209,18 +209,26 @@ def graph_to_circuit(g: BaseGraph[VT, ET], split_phases: bool = True) -> Circuit
             n = neigh[0]
             if qs[n] != q:
                 raise TypeError("Graph doesn't seem circuit like: cross qubit connections")
-            if g.edge_type(g.edge(n,v)) == EdgeType.HADAMARD:
-                c.add_gate("HAD", q)
-            if t == VertexType.BOUNDARY: #vertex is an output
-                continue
             # Outcome / discard leaves are tagged in vertex data;
             # check the tag first so the leaf is recognised even after
             # ``g.substitute_variables(...)`` has unwrapped its Poly
             # phase to a concrete Fraction/int.
             outcome_type = g.vdata(v, 'outcome_type')
-            if outcome_type == 'reset_discard':
-                continue
             if outcome_type == 'measurement':
+                # The leaf hangs off the on-wire spider ``n``, so its edge is
+                # not part of the qubit wire and must not produce a gate. After
+                # a colour change (e.g. ``to_gh``) the leaf and its edge type
+                # may both have flipped: seen from ``n``, a Hadamard edge flips
+                # the leaf's colour, and the leaf must end up with the colour
+                # opposite to ``n``. A Z spider then measures in the Z basis
+                # and an X spider in the X basis.
+                leaf_type = t
+                if g.edge_type(g.edge(n, v)) == EdgeType.HADAMARD:
+                    leaf_type = toggle_vertex(leaf_type)
+                if {ty[n], leaf_type} != {VertexType.Z, VertexType.X}:
+                    raise TypeError("Graph doesn't seem circuit like: "
+                                    "measurement leaf {} is not attached to a "
+                                    "spider of the opposite colour".format(v))
                 # Prefer the classical destination stored in vdata so
                 # the round-trip is correct after the leaf's Poly phase
                 # has been substituted to a concrete value (in which
@@ -228,7 +236,17 @@ def graph_to_circuit(g: BaseGraph[VT, ET], split_phases: bool = True) -> Circuit
                 result_symbol = g.vdata(v, 'result_symbol')
                 if result_symbol is None:
                     result_symbol = str(phase)
+                if ty[n] == VertexType.X:
+                    c.add_gate("HAD", q)
                 c.add_gate(Measurement(int(q), result_symbol=result_symbol))
+                if ty[n] == VertexType.X:
+                    c.add_gate("HAD", q)
+                continue
+            if g.edge_type(g.edge(n,v)) == EdgeType.HADAMARD:
+                c.add_gate("HAD", q)
+            if t == VertexType.BOUNDARY: #vertex is an output
+                continue
+            if outcome_type == 'reset_discard':
                 continue
             if isinstance(phase, Poly):
                 # Untagged Poly phase on the wire: conditional gate.

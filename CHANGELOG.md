@@ -9,6 +9,7 @@ Hence, occasionally changes will be backwards incompatible (although they will a
 ## [Unreleased]
 
 ### Fixed
+- `Circuit.from_graph` no longer changes the measurement basis after a colour change of the measurement leaf (e.g. by `to_gh`). The edge to the leaf is not part of the qubit wire, so a Hadamard edge there no longer emits a `HAD` gate; instead the basis is read from the colours of the leaf and the on-wire spider (#520). (by @a6hinandh)
 - Pauli-flow finder now correctly accounts for Pauli-Y vertices in correction sets.
 - Moved `RootHeuristic.RootHeuristicProtocol` and `SplitHeuristic.SplitHeuristicProtocol` to module level to fix a `DeprecationWarning` in Python 3.11+. Though these classes exist only for type annotations, this is technically a breaking change. (by @96-LB)
 - The `pyzx.web` module now raises an error when computing Pauli webs of a graph which has H-boxes with non-default phase, instead of returning an invalid web which ignores the phase. (by @96-LB)
