@@ -184,6 +184,13 @@ class TestCircuit(unittest.TestCase):
         c2 = Circuit.from_qasm(c.to_qasm())
         self.assertTrue(c.verify_equality(c2))
 
+    def test_csx_adjoint_to_qc(self):
+        c = Circuit(2)
+        c.add_gate(CSX(0, 1, adjoint=True))
+        self.assertNotIn('undefined', c.to_qc())
+        c2 = Circuit.from_qc(c.to_qc())
+        self.assertTrue(c.verify_equality(c2))
+
 @unittest.skipUnless(np, "numpy needs to be installed for this to run")
 class TestPhaseGadgetGate(unittest.TestCase):
     def test_gate_creation(self):

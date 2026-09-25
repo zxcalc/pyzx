@@ -295,8 +295,6 @@ class Gate:
 
     def to_qc(self) -> str:
         n = self.qc_name
-        if getattr(self, "adjoint", None) and n != 'undefined':
-            n += "*"
         if n == 'undefined':
             if isinstance(self, (ZPhase, XPhase)):
                 bg = self.split_phases()
@@ -307,6 +305,8 @@ class Gate:
                 if len(bg) == 1:
                     raise TypeError("Gate {} doesn't have a .qc description".format(str(self)))
             return "\n".join(g.to_qc() for g in bg)
+        if getattr(self, "adjoint", None):
+            n += "*"
         args = []
         for a in ["ctrl1","ctrl2", "control", "target"]:
             if hasattr(self, a): args.append("q{:d}".format(getattr(self,a)))
@@ -1171,8 +1171,8 @@ class U2(Gate):  # See https://arxiv.org/pdf/1707.03429.pdf
                 ZPhase(self.target,phase=(self.theta+Fraction(1,2))%2)]
 
     def to_adjoint(self) -> 'U2':
-        # U2(phi, lambda) = U3(pi/2, phi, lambda), so its adjoint is U3(-pi/2, -lambda, -phi),
-        # which equals U3(pi/2, pi-lambda, pi-phi) = U2(pi-lambda, pi-phi).
+        # With phases in units of pi, U2(theta, phi) = U3(1/2, theta, phi), so its adjoint is
+        # U3(-1/2, -phi, -theta), which equals U3(1/2, 1 - phi, 1 - theta) = U2(1 - phi, 1 - theta).
         g = self.copy()
         g.theta, g.phi = 1 - self.phi, 1 - self.theta
         g.phases = [g.theta, g.phi]
@@ -1201,7 +1201,7 @@ class U3(Gate):  # See equation (5) of https://arxiv.org/pdf/1707.03429.pdf
                 ZPhase(self.target,phase=(self.phi+3)%2)]
 
     def to_adjoint(self) -> 'U3':
-        # U3(theta, phi, lambda)^dagger = U3(-theta, -lambda, -phi)
+        # U3(theta, phi, rho)^dagger = U3(-theta, -rho, -phi)
         g = self.copy()
         g.theta, g.phi, g.rho = -self.theta, -self.rho, -self.phi
         g.phases = [g.theta, g.phi, g.rho]
@@ -1233,7 +1233,7 @@ class CU3(Gate):
                U3(self.target, half_phase(self.theta), self.phi, 0).to_basic_gates()
 
     def to_adjoint(self) -> 'CU3':
-        # Controlled-U3(theta, phi, lambda)^dagger = Controlled-U3(-theta, -lambda, -phi)
+        # CU3(theta, phi, rho)^dagger = CU3(-theta, -rho, -phi)
         g = self.copy()
         g.theta, g.phi, g.rho = -self.theta, -self.rho, -self.phi
         g.phases = [g.theta, g.phi, g.rho]
@@ -1264,7 +1264,7 @@ class CU(Gate):
                CU3(self.control,self.target,self.theta,self.phi,self.rho).to_basic_gates()
 
     def to_adjoint(self) -> 'CU':
-        # CU(theta, phi, lambda, gamma)^dagger = CU(-theta, -lambda, -phi, -gamma)
+        # CU(theta, phi, rho, gamma)^dagger = CU(-theta, -rho, -phi, -gamma)
         g = self.copy()
         g.theta, g.phi, g.rho, g.gamma = -self.theta, -self.rho, -self.phi, -self.gamma
         g.phases = [g.theta, g.phi, g.rho, g.gamma]
