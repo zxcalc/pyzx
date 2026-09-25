@@ -200,7 +200,7 @@ class Gate:
 
     def __eq__(self, other: object) -> bool:
         if type(self) != type(other): return False
-        for a in ["target","control","phase","adjoint"]:
+        for a in ["target","control","phase","phases","adjoint"]:
             if hasattr(self,a):
                 if not hasattr(other,a): return False
                 if getattr(self,a) != getattr(other,a): return False

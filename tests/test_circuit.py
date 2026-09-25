@@ -128,6 +128,16 @@ class TestCircuit(unittest.TestCase):
         cz_matrix = np.array([[1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,-1]])
         self.assertTrue(compare_tensors(c.to_matrix(),cz_matrix))
 
+    def test_gate_equality_compares_phases(self):
+        from pyzx.circuit.gates import U2, U3, CU3, CU, ConditionalGate
+        self.assertEqual(U3(0, Fraction(1,2), Fraction(1,4), 0), U3(0, Fraction(1,2), Fraction(1,4), 0))
+        self.assertNotEqual(U3(0, Fraction(1,2), Fraction(1,4), Fraction(-1,2)), U3(0, 0, 0, 0))
+        self.assertNotEqual(U2(0, Fraction(1,3), 0), U2(0, 0, Fraction(1,3)))
+        self.assertNotEqual(CU3(0, 1, Fraction(1,3), 0, 0), CU3(0, 1, 0, 0, 0))
+        self.assertNotEqual(CU(0, 1, 0, 0, 0, Fraction(1,4)), CU(0, 1, 0, 0, 0, 0))
+        self.assertNotEqual(ConditionalGate("c", 1, U3(0, Fraction(1,2), 0, 0), 1),
+                            ConditionalGate("c", 1, U3(0, 0, 0, 0), 1))
+
     def test_measurement_gate(self):
         c = Circuit(2)
         c1 = Circuit(2)
