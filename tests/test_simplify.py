@@ -26,7 +26,7 @@ from pyzx import VertexType
 if __name__ == '__main__':
     sys.path.append('..')
     sys.path.append('.')
-from pyzx.graph import Graph
+from pyzx.graph import EdgeType, Graph
 from pyzx.circuit import Circuit
 from pyzx.circuit.qasmparser import qasm
 from pyzx.symbolic import Poly
@@ -392,9 +392,43 @@ class TestSimplify(unittest.TestCase):
         self.assertTrue(compare_tensors(c,g))
 
     def test_full_reduce_with_h_box(self):
-        """Test that calls to :func:`full_reduce` with a graph containing H-boxes raises an error.
+        """Test that calls to :func:`full_reduce` with a graph containing general H-boxes raises an error.
         This is a common mistake made by users (e.g., see issues #161 and #200).
         """
+        g = Graph()
+        v0 = g.add_vertex(VertexType.BOUNDARY, 0, 0)
+        v1 = g.add_vertex(VertexType.BOUNDARY, 0, 1)
+        v2 = g.add_vertex(VertexType.BOUNDARY, 1, 0)
+        h = g.add_vertex(VertexType.H_BOX, 1, 1)
+        g.add_edge((v0, h))
+        g.add_edge((v1, h))
+        g.add_edge((v2, h))
+
+        with self.assertRaises(ValueError) as context:
+            full_reduce(g)
+        self.assertTrue("Input graph is not a ZX-diagram" in str(context.exception))
+
+    def test_full_reduce_with_arity_one_h_box(self):
+        """Test that calls to :func:`full_reduce` fuses arity 1 H-boxes into adjacent Z spiders.
+        Regression test for #497."""
+        g = Graph()
+        v0 = g.add_vertex(VertexType.BOUNDARY, 0, 0)
+        v1 = g.add_vertex(VertexType.Z, 0, 1)
+        v2 = g.add_vertex(VertexType.BOUNDARY, 0, 2)
+        h = g.add_vertex(VertexType.H_BOX, 1, 1)
+        g.add_edge((v0, v1))
+        g.add_edge((v1, v2))
+        g.add_edge((h, v1))
+
+        g.auto_detect_io()
+        t = g.to_tensor()
+        full_reduce(g)
+        self.assertTrue(g.phase(v1) == 1)
+        self.assertTrue(compare_tensors(t, g.to_tensor()))
+
+    def test_full_reduce_with_arity_two_h_box(self):
+        """Test that calls to :func:`full_reduce` treats arity 2 H-boxes as Hadamard edges.
+        Regression test for #497."""
         g = Graph()
         v0 = g.add_vertex(VertexType.BOUNDARY, 0, 0)
         v1 = g.add_vertex(VertexType.H_BOX, 0, 1)
@@ -402,9 +436,11 @@ class TestSimplify(unittest.TestCase):
         g.add_edge((v0, v1))
         g.add_edge((v1, v2))
 
-        with self.assertRaises(ValueError) as context:
-            full_reduce(g)
-        self.assertTrue("Input graph is not a ZX-diagram" in str(context.exception))
+        g.auto_detect_io()
+        t = g.to_tensor()
+        full_reduce(g)
+        self.assertTrue(g.edge_type((v0, v2)) is EdgeType.HADAMARD)
+        self.assertTrue(compare_tensors(t, g.to_tensor()))
 
     def test_full_reduce_scalar(self):
         """Test that checks whether a scalar is correctly removed from a graph using full_reduce.
@@ -472,7 +508,7 @@ class TestSimplify(unittest.TestCase):
             self.assertTrue(compare_tensors(g0, g, preserve_scalar=True))
     
     def test_copy_simp(self):
-        g = Graph() 
+        g = Graph()
 
         v0 = g.add_vertex(VertexType.Z, 0, 0)
         v1 = g.add_vertex(VertexType.X, 0, 1)
@@ -495,7 +531,7 @@ class TestSimplify(unittest.TestCase):
 
     
     def test_copy_simp_full_reduce(self):
-        g = Graph() 
+        g = Graph()
 
         v0 = g.add_vertex(VertexType.Z, 0, 0)
         v1 = g.add_vertex(VertexType.X, 0, 1)
