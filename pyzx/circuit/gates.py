@@ -549,7 +549,9 @@ class YPhase(Gate):
             return True
         return False
 
-    def __str__(self) -> str:
+    def to_quipper(self) -> str:
+        if not self.print_phase:
+            return super().to_quipper()
         return 'QRot["exp(-i%Y)",{!s}]({!s})'.format(math.pi*self.phase/2,self.target)
 
     def to_basic_gates(self) -> list[Gate]:
