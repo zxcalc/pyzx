@@ -10,10 +10,11 @@ from fractions import Fraction
 
 
 def is_Tlike(g: BaseGraph[VT, ET], v: VT) -> tuple[bool, int]:
-    if (g.phase(v) * 4) % 2 == 1:
-        return (True, ((g.phase(v) * 4) - 1) // 2)
+    phase = g.phase(v)
+    if isinstance(phase, (int, Fraction)) and (phase * 4) % 2 == 1:
+        return (True, (phase * 4 - 1) // 2)
     else:
-        return (False, None)
+        return (False, 1)
 
 
 def sort_neighbours(g: BaseGraph[VT, ET], v: VT) -> tuple[list[VT], list[VT], list[VT], list[VT]]:
@@ -27,7 +28,7 @@ def sort_neighbours(g: BaseGraph[VT, ET], v: VT) -> tuple[list[VT], list[VT], li
         xy.remove(v)
         if not is_Tlike(g, xy[0])[0] or not is_Tlike(g, xy[1])[0] or\
             any([g.type(vertex) != VertexType.Z for vertex in [xy[0], xy[1], z]]) or\
-            any([g.edge_type(edge) != EdgeType.HADAMARD for edge in [(v, z), (z, xy[0]), (z, xy[1])]]):
+            any([g.edge_type(edge) != EdgeType.HADAMARD for edge in [g.edge(v, z), g.edge(z, xy[0]), g.edge(z, xy[1])]]):
             others.append(z)
         elif len(g.neighbors(xy[0])) == 1:  # so first item of xy is x
             xs.append(xy[0])
@@ -73,7 +74,7 @@ def decompose(g: BaseGraph[VT, ET], v: VT) -> SumGraph:
                 g_a.set_phase(y, Fraction(l + k + 1, 2))
         for i, vertex in enumerate(others):
             new_vertex = g_a.add_vertex(VertexType.Z, -1, i, phase=a)  # location added to make testing easier
-            if g.edge_type((v, vertex)) == EdgeType.SIMPLE:
+            if g.edge_type(g.edge(v, vertex)) == EdgeType.SIMPLE:
                 g_a.add_edge((vertex, new_vertex), EdgeType.HADAMARD)
             else:  # if edgetype is Hadamard:
                 g_a.add_edge((vertex, new_vertex), EdgeType.SIMPLE)

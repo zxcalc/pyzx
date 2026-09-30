@@ -10,10 +10,11 @@ from fractions import Fraction
 
 
 def is_Tlike(g: BaseGraph[VT, ET], v: VT) -> tuple[bool, int]:
-    if (g.phase(v) * 4) % 2 == 1:
-        return (True, ((g.phase(v) * 4) - 1) // 2)
+    phase = g.phase(v)
+    if isinstance(phase, (int, Fraction)) and (phase * 4) % 2 == 1:
+        return (True, (phase * 4 - 1) // 2)
     else:
-        return (False, None)
+        return (False, 1)
 
 
 def sort_neighbours(g: BaseGraph[VT, ET], y1: VT, y2: VT) -> tuple[list[VT], list[VT], list[VT]]:
@@ -21,7 +22,7 @@ def sort_neighbours(g: BaseGraph[VT, ET], y1: VT, y2: VT) -> tuple[list[VT], lis
     xs, y1_others, y2_others = [], [], []
     for x in g.neighbors(y1):
         if x not in g.neighbors(y2) or len(g.neighbors(x)) != 2 or not is_Tlike(g, x)[0] or g.type(x) != VertexType.Z or\
-            g.edge_type((x, y1)) != EdgeType.HADAMARD or g.edge_type((x, y2)) != EdgeType.HADAMARD:
+            g.edge_type(g.edge(x, y1)) != EdgeType.HADAMARD or g.edge_type(g.edge(x, y2)) != EdgeType.HADAMARD:
             y1_others.append(x)
         else:
             xs.append(x)
@@ -58,11 +59,11 @@ def decompose(g: BaseGraph[VT, ET], y1: VT, y2: VT) -> SumGraph:
         g_a.scalar.add_phase(Fraction(a * (2*k + 1), 4))
         v = g_a.add_vertex(VertexType.Z, (g.qubit(y1) + g.qubit(y2))/2, (g.row(y1) + g.row(y2))/2, Fraction(k + l + 1 - a*(2*k + 1), 2))
         for other in y1_others:
-            g_a.add_edge((v, other), edgetype=(g.edge_type((y1, other))))
+            g_a.add_edge((v, other), edgetype=(g.edge_type(g.edge(y1, other))))
         for other in y2_others:
             pi_phase = g_a.add_vertex(VertexType.Z, (g.qubit(y2) + g.qubit(other))/2, (g.row(y2) + g.row(other))/2, a)
             g_a.add_edge((pi_phase, v), EdgeType.HADAMARD)
-            if g.edge_type((other, y2)) == EdgeType.SIMPLE:
+            if g.edge_type(g.edge(other, y2)) == EdgeType.SIMPLE:
                 g_a.add_edge((pi_phase, other), EdgeType.HADAMARD)
             else:  # if edgetype was Hadamard
                 g_a.add_edge((pi_phase, other))

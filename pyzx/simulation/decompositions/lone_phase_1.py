@@ -10,10 +10,11 @@ from fractions import Fraction
 
 
 def is_Tlike(g: BaseGraph[VT, ET], v: VT) -> tuple[bool, int]:
-    if (g.phase(v) * 4) % 2 == 1:
-        return (True, ((g.phase(v) * 4) - 1) // 2)
+    phase = g.phase(v)
+    if isinstance(phase, (int, Fraction)) and (phase * 4) % 2 == 1:
+        return (True, (phase * 4 - 1) // 2)
     else:
-        return (False, None)
+        return (False, 1)
 
 
 def sort_neighbours(g: BaseGraph[VT, ET], v: VT) -> tuple[list[VT], list[VT]]:
@@ -55,7 +56,7 @@ def decompose(g: BaseGraph[VT, ET], v: VT) -> SumGraph:
         g_a.remove_vertices(xs + [v])
         for i, vertex in enumerate(others):
             new_vertex = g_a.add_vertex(VertexType.Z, -1, i, phase=a)  # Location added to make testing easier
-            if g.edge_type((v, vertex)) == EdgeType.SIMPLE:
+            if g.edge_type(g.edge(v, vertex)) == EdgeType.SIMPLE:
                 g_a.add_edge((vertex, new_vertex), EdgeType.HADAMARD)
             else:  # if edgetype is Hadamard:
                 g_a.add_edge((vertex, new_vertex), EdgeType.SIMPLE)

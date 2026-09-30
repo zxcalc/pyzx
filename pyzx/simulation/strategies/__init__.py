@@ -11,7 +11,7 @@ class Strategy(Enum):
     BSS        = "bss"
     CUT_RANDOM = "cut_random"
     MAGIC_CAT  = "magic_cat"
-    LPMC       = "lpmc"
+    LP_MC3       = "lpmc"
 
 class StrategySpec:
     def __init__(self, fn:Callable|None=None, reference:str="") -> None:
@@ -93,3 +93,4 @@ def get_strategy_spec(kind:Strategy) -> StrategySpec:
 from . import bss
 from . import cut_random
 from . import magic_cat
+from . import lpmc

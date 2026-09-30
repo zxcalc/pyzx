@@ -24,8 +24,8 @@ class Decomp(Enum):
     CUT_WISHBONE = "cut_wishbone"
     LONE_PHASE_1 = "lone_phase_1"
     LONE_PHASE_2 = "lone_phase_2"
-    MULTICAT3_1  = "multicat3_1"
-    MULTICAT3_2  = "multicat3_2"
+    MULTI_CAT3_1  = "multicat3_1"
+    MULTI_CAT3_2  = "multicat3_2"
 
 class DecompSpec:
     def __init__(self, fn:Callable|None=None, validation_fn:Callable|None=None, alpha:float|None=None, reference:str="") -> None:

@@ -10,10 +10,11 @@ from fractions import Fraction
 
 
 def is_Tlike(g: BaseGraph[VT, ET], v: VT) -> tuple[bool, int]:
-    if (g.phase(v) * 4) % 2 == 1:
-        return (True, ((g.phase(v) * 4) - 1) // 2)
+    phase = g.phase(v)
+    if isinstance(phase, (int, Fraction)) and (phase * 4) % 2 == 1:
+        return (True, (phase * 4 - 1) // 2)
     else:
-        return (False, None)
+        return (False, 1)
 
 
 def sort_neighbours(g: BaseGraph[VT, ET], z1: VT, z2: VT) -> tuple[list[VT], list[VT], list[VT], list[VT], list[VT]]:
@@ -32,7 +33,7 @@ def sort_neighbours(g: BaseGraph[VT, ET], z1: VT, z2: VT) -> tuple[list[VT], lis
 
         if not is_Tlike(g, xy[0])[0] or not is_Tlike(g, xy[1])[0] or\
             any([g.type(vertex) != VertexType.Z for vertex in [xy[0], xy[1], v]]) or\
-            any([g.edge_type(edge) != EdgeType.HADAMARD for edge in [(z1, v), (z2, v), (xy[0], v), (xy[1], v)]]):
+            any([g.edge_type(edge) != EdgeType.HADAMARD for edge in [g.edge(z1, v), g.edge(z2, v), g.edge(xy[0], v), g.edge(xy[1], v)]]):
             z1_others.append(v)
         elif len(g.neighbors(xy[0])) == 1:  # so first item of xy is y
             xs.append(xy[1])
@@ -83,11 +84,11 @@ def decompose(g: BaseGraph[VT, ET], z1: VT, z2: VT) -> SumGraph:
         g_a.scalar.add_phase(Fraction(a * (2*k + 1), 4))
         v = g_a.add_vertex(VertexType.Z, (g.qubit(z1) + g.qubit(z2))/2, (g.row(z1) + g.row(z2))/2, Fraction(k + l + 1 - a*(2*k + 1), 2))
         for other in z1_others:
-            g_a.add_edge((v, other), edgetype=(g.edge_type((z1, other))))
+            g_a.add_edge((v, other), edgetype=(g.edge_type(g.edge(z1, other))))
         for other in z2_others:
             pi_phase = g_a.add_vertex(VertexType.Z, (g.qubit(z2) + g.qubit(other))/2, (g.row(z2) + g.row(other))/2, a)
             g_a.add_edge((pi_phase, v), EdgeType.HADAMARD)
-            if g.edge_type((other, z2)) == EdgeType.SIMPLE:
+            if g.edge_type(g.edge(other, z2)) == EdgeType.SIMPLE:
                 g_a.add_edge((pi_phase, other), EdgeType.HADAMARD)
             else:  # if edgetype was Hadamard
                 g_a.add_edge((pi_phase, other))
