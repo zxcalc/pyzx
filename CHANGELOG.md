@@ -8,6 +8,8 @@ Hence, occasionally changes will be backwards incompatible (although they will a
 
 ## [Unreleased]
 
+## [0.10.7] - 2026-10-01
+
 ### Fixed
 - Pauli-flow finder now correctly accounts for Pauli-Y vertices in correction sets.
 - Moved `RootHeuristic.RootHeuristicProtocol` and `SplitHeuristic.SplitHeuristicProtocol` to module level to fix a `DeprecationWarning` in Python 3.11+. Though these classes exist only for type annotations, this is technically a breaking change. (by @96-LB)
