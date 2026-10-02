@@ -81,6 +81,8 @@ module = [
     "pyzx.local_search.*",
     "pyzx.rewrite_rules.*",
     "pyzx.routing.*",
+    "pyzx.simulation.*",
+    "pyzx.simulation.*.*",
     "pyzx.web.*"
 ]
 disallow_untyped_defs = true
