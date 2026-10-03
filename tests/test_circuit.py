@@ -147,6 +147,19 @@ class TestCircuit(unittest.TestCase):
         self.assertTrue(c1.verify_equality(c2,up_to_swaps=True))
         self.assertFalse(c1.verify_equality(c2,up_to_swaps=False))
 
+    def test_from_graph_rejects_conditional_gate(self):
+        from pyzx.circuit.gates import ConditionalGate, Measurement, S
+        circuit = Circuit(2, bit_amount=1)
+        circuit.add_gate("HAD", 0)
+        circuit.add_gate("HAD", 1)
+        circuit.add_gate(Measurement(0, result_bit=0))
+        circuit.add_gate(ConditionalGate("c", 1, S(1), 1))
+
+        graph = circuit.to_graph()
+
+        with self.assertRaises(NotImplementedError):
+            Circuit.from_graph(graph)
+
 @unittest.skipUnless(np, "numpy needs to be installed for this to run")
 class TestPhaseGadgetGate(unittest.TestCase):
     def test_gate_creation(self):
