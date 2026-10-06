@@ -448,16 +448,43 @@ class TestBialgebraApplyXH(unittest.TestCase):
                 (Fraction(1, 2), None, 3, 2),
                 (0, 1j, 2, 3),
                 (0, 1j, 3, 2),
+                (Fraction(1, 4), None, 4, 2),
+                (0, cmath.exp(1j * pi / 4), 4, 2),
+                (Fraction(1, 3), None, 3, 1),
+                (Fraction(1, 3), None, 1, 3),
+                (0, 1j, 3, 1),
+                (0, 1j, 1, 3),
         ]:
-            with self.subTest(h_phase=h_phase, h_label=h_label,
-                              d_x=d_x, d_h=d_h):
+            for reverse in (False, True):
+                with self.subTest(h_phase=h_phase, h_label=h_label,
+                                  d_x=d_x, d_h=d_h, reverse=reverse):
+                    g, x, h = self._make_xh_bialgebra_graph(
+                        d_x, d_h, h_phase=h_phase, h_label=h_label)
+                    g_orig = g.copy()
+                    vertices = (h, x) if reverse else (x, h)
+                    self.assertTrue(bialgebra(g, *vertices))
+                    self.assertTrue(
+                        compare_tensors(g, g_orig, preserve_scalar=True),
+                        "Generalized X-H bialgebra changed the scalar")
+
+    @unittest.skipUnless(np, "numpy needs to be installed for this to run")
+    def test_generalized_xh_symbolic_phase_preserves_semantics(self):
+        """Symbolic H-box phases preserve tensors after substitution."""
+        theta = new_var('theta', is_bool=False)
+        for reverse in (False, True):
+            with self.subTest(reverse=reverse):
                 g, x, h = self._make_xh_bialgebra_graph(
-                    d_x, d_h, h_phase=h_phase, h_label=h_label)
+                    4, 2, h_phase=theta)
                 g_orig = g.copy()
-                self.assertTrue(bialgebra(g, h, x))
-                self.assertTrue(
-                    compare_tensors(g, g_orig, preserve_scalar=True),
-                    "Generalized X-H bialgebra changed the scalar")
+                vertices = (h, x) if reverse else (x, h)
+                self.assertTrue(bialgebra(g, *vertices))
+                for value in (0, Fraction(1, 4), Fraction(1, 3)):
+                    with self.subTest(value=value):
+                        substituted = g.substitute_variables({'theta': value})
+                        original = g_orig.substitute_variables(
+                            {'theta': value})
+                        self.assertTrue(compare_tensors(
+                            substituted, original, preserve_scalar=True))
 
 
 class TestBialgebraParallelEdgePositions(unittest.TestCase):
@@ -488,8 +515,9 @@ class TestBialgebraParallelEdgePositions(unittest.TestCase):
         self.assertEqual(len(set(positions)), len(positions),
                          f"Overlapping positions: {positions}")
 
+    @unittest.skipUnless(np, "numpy needs to be installed for this to run")
     def test_generalized_xh_parallel_edges_between_matched_pair(self):
-        """Generalized X-H copies from parallel edges have distinct positions."""
+        """Parallel X-H edges preserve tensors and copy positions."""
         g = Multigraph()
         g.set_auto_simplify(False)
         x = g.add_vertex(VertexType.X, 0, 0)
@@ -501,8 +529,12 @@ class TestBialgebraParallelEdgePositions(unittest.TestCase):
         for _ in range(3):
             g.add_edge((x, h))
         g.add_edge((h, b_out))
+        g.set_inputs((b_in,))
+        g.set_outputs((b_out,))
+        g_orig = g.copy()
 
         self.assertTrue(bialgebra(g, x, h))
+        self.assertTrue(compare_tensors(g, g_orig, preserve_scalar=True))
         copies = [v for v in g.vertices() if g.type(v) == VertexType.Z]
         positions = [(g.qubit(v), g.row(v)) for v in copies]
         self.assertEqual(len(positions), 6)
