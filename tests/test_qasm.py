@@ -1591,6 +1591,32 @@ class TestQASM(unittest.TestCase):
         """)
         self.assertEqual(c.bits, 5)
 
+    def test_measure_basis_preserved_after_colour_change(self):
+        """Test that colour-changing the measurement leaf does not change the measurement basis (#520)."""
+        from pyzx.circuit.gates import HAD, Measurement
+        from pyzx.simplify import to_gh, to_rg
+        src = """
+        OPENQASM 3.0;
+        include "stdgates.inc";
+        qubit[1] q;
+        bit[1] c;
+        c[0] = measure q[0];
+        """
+        # to_gh turns the X leaf green and its edge into a Hadamard edge:
+        # the extracted circuit must not gain a Hadamard before the measurement.
+        g = Circuit.from_qasm(src).to_graph()
+        to_gh(g)
+        self.assertEqual(Circuit.from_graph(g).gates, [Measurement(0, result_symbol='c[0]')])
+
+        # With a red on-wire spider the same measurement is drawn in the X frame.
+        g = Circuit.from_qasm(src).to_graph()
+        on_wire = [v for v in g.vertices() if g.type(v) == VertexType.Z]
+        to_rg(g, init_x=set(on_wire))
+        gates = [gate for gate in Circuit.from_graph(g).gates]
+        measurement = gates.index(Measurement(0, result_symbol='c[0]'))
+        # The Hadamards before the measurement cancel, so it is still a Z-basis measurement.
+        self.assertEqual(sum(isinstance(gate, HAD) for gate in gates[:measurement]) % 2, 0)
+
     def test_measure_undeclared_creg(self):
         """Test that measure into an undeclared classical register raises."""
         with self.assertRaises(TypeError) as ctx:
