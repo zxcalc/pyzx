@@ -9,7 +9,7 @@ Hence, occasionally changes will be backwards incompatible (although they will a
 ## [Unreleased]
 
 ### Fixed
-- `Circuit.from_graph()` now raises `NotImplementedError` when extracting conditional gates instead of silently returning a circuit with potentially incorrect gate ordering (by @akshaysoftware).
+- `graph_to_circuit()` in `graphparser.py` now raises a `NotImplementedError` when extracting conditional gates instead of silently returning a circuit with potentially incorrect gate ordering (by @akshaysoftware).
 
 ## [0.10.7] - 2026-10-01
 

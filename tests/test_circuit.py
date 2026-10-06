@@ -149,16 +149,35 @@ class TestCircuit(unittest.TestCase):
 
     def test_from_graph_rejects_conditional_gate(self):
         from pyzx.circuit.gates import ConditionalGate, Measurement, S
+        from pyzx.circuit.graphparser import graph_to_circuit
         circuit = Circuit(2, bit_amount=1)
         circuit.add_gate("HAD", 0)
         circuit.add_gate("HAD", 1)
         circuit.add_gate(Measurement(0, result_bit=0))
         circuit.add_gate(ConditionalGate("c", 1, S(1), 1))
 
-        graph = circuit.to_graph()
+        for compress_rows in (True, False):
+            graph = circuit.to_graph(compress_rows=compress_rows)
+            for converter in (Circuit.from_graph, graph_to_circuit):
+                for split_phases in (True, False):
+                    with self.subTest(compress_rows=compress_rows,
+                                      converter=converter.__name__,
+                                      split_phases=split_phases):
+                        with self.assertRaisesRegex(
+                                NotImplementedError, "does not support conditional gates"):
+                            converter(graph, split_phases=split_phases)
 
-        with self.assertRaises(NotImplementedError):
-            Circuit.from_graph(graph)
+    def test_from_graph_preserves_symbolic_rotations(self):
+        from pyzx.circuit.graphparser import graph_to_circuit
+        from pyzx.symbolic import new_var
+
+        for gate_name in ("ZPhase", "XPhase"):
+            circuit = Circuit(1)
+            circuit.add_gate(gate_name, 0, phase=new_var("alpha", is_bool=False))
+            graph = circuit.to_graph()
+            for converter in (Circuit.from_graph, graph_to_circuit):
+                with self.subTest(gate=gate_name, converter=converter.__name__):
+                    self.assertEqual(converter(graph).gates, circuit.gates)
 
 @unittest.skipUnless(np, "numpy needs to be installed for this to run")
 class TestPhaseGadgetGate(unittest.TestCase):

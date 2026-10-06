@@ -294,13 +294,7 @@ class Circuit:
         ``split_phases`` governs whether nodes with phases should be split into
         Z,S, and T gates or if generic ZPhase/XPhase gates should be used."""
         from .graphparser import graph_to_circuit
-
-        result = graph_to_circuit(g, split_phases=split_phases)
-
-        if any(isinstance(gate, ConditionalGate) for gate in result.gates):
-            raise NotImplementedError("Circuit.from_graph() does not support conditional gates")
-
-        return result
+        return graph_to_circuit(g, split_phases=split_phases)
 
     def to_graph(
         self,

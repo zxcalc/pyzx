@@ -234,7 +234,8 @@ def graph_to_circuit(g: BaseGraph[VT, ET], split_phases: bool = True) -> Circuit
                 # Untagged Poly phase on the wire: conditional gate.
                 cgate = _poly_phase_to_conditional_gate(phase, t, int(q))
                 if cgate is not None:
-                    c.add_gate(cgate)
+                    raise NotImplementedError(
+                        "graph_to_circuit() does not support conditional gates")
                 elif phase != 0:
                     gate_name = "ZPhase" if t == VertexType.Z else "XPhase"
                     c.add_gate(gate_name, q, phase=phase)
