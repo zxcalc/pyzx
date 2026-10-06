@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__version__ = "0.10.6"
+__version__ = "0.10.7"
 
 from .graph.graph import Graph
 from .circuit import Circuit, gates, id

@@ -4,7 +4,7 @@ and https://www.cs.ox.ac.uk/people/aleks.kissinger/theses/codsi-thesis.pdf.
 """
 
 from . import Decomp, register_decomp, register_validity_checker
-from ...graph.base import BaseGraph,VT,ET
+from ...graph.base import BaseGraph, VT, ET
 from ...utils import VertexType, ave_pos, EdgeType
 from ..common import SumGraph
 
@@ -13,7 +13,7 @@ from ..common import SumGraph
     alpha=float("inf"),
     reference="https://arxiv.org/pdf/2403.10964, https://www.cs.ox.ac.uk/people/aleks.kissinger/theses/codsi-thesis.pdf"
 )
-def decompose(g:BaseGraph[VT,ET], e:ET, ty:VertexType=VertexType.Z) -> SumGraph:
+def decompose(g: BaseGraph[VT, ET], e: ET, ty: VertexType = VertexType.Z) -> SumGraph:
     """Applies the ``cutting'' decomposition to an edge. The type ty decides whether to cut with Z- branches or X- branches."""
     g  = g.clone()
     g0 = g.clone()
@@ -48,7 +48,7 @@ def decompose(g:BaseGraph[VT,ET], e:ET, ty:VertexType=VertexType.Z) -> SumGraph:
     return SumGraph([g0,g1])
 
 @register_validity_checker(Decomp.CUT_EDGE)
-def check_valid(g:BaseGraph[VT,ET], e:ET, ty:VertexType=VertexType.Z) -> bool:
+def check_valid(g: BaseGraph[VT, ET], e: ET, ty: VertexType = VertexType.Z) -> bool:
     assert ty in (VertexType.Z, VertexType.X), (f"Invalid edge cut type {ty!r}. Expected {VertexType.Z!r} or {VertexType.X!r}.")
     u,v = g.edge_st(e); assert g.connected(u,v), (f"Invalid edge cut. Edge {e} does not exist in graph {g}.")
     # todo - these should probably be raise errors rather than assertions?

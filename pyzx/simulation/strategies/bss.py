@@ -7,17 +7,16 @@ vertex cutting decomposition as a fallback.
 import random
 from ..decompositions import Decomp, apply_decomp
 from . import Strategy, register_strategy
-from ...graph.base import BaseGraph,VT,ET
+from ...graph.base import BaseGraph, VT, ET
 from ..common import SumGraph
 from ...utils import VertexType
 from ...simplify import tcount
-from typing import Any, Dict, List
 
 @register_strategy(
     Strategy.BSS,
     reference="https://arxiv.org/abs/2109.01076"
 )
-def decompose(g:BaseGraph[VT,ET]) -> List[BaseGraph[VT,ET]]: #todo - return a SumGraph rather than a List
+def decompose(g: BaseGraph[VT, ET]) -> list[BaseGraph[VT, ET]]: #todo - return a SumGraph rather than a List
     """Apply the Kissinger and van de Wetering (2021) decomposition strategy based on BSS with a Magic2 and vertex cutting fallback when T-count < 6."""
     if tcount(g) == 0: return [g]
     gsum = replace_magic_states(g, True)
@@ -28,8 +27,9 @@ def decompose(g:BaseGraph[VT,ET]) -> List[BaseGraph[VT,ET]]: #todo - return a Su
         output.extend(decompose(h))
     return output
 
-def replace_magic_states(g: BaseGraph[VT,ET], pick_random:Any=False) -> SumGraph:
-    """This function takes in a ZX-diagram in graph-like form 
+RandomSeed = int | float | str | bytes | bytearray | None
+def replace_magic_states(g: BaseGraph[VT, ET], pick_random: bool | RandomSeed = False) -> SumGraph:
+    """This function takes in a ZX-diagram in graph-like form
     (all spiders fused, only Z spiders, only H-edges between spiders),
     and splits it into a sum over smaller diagrams by using the magic
     state decomposition of Bravyi, Smith, and Smolin (2016), PRX 6, 021043.
@@ -41,7 +41,7 @@ def replace_magic_states(g: BaseGraph[VT,ET], pick_random:Any=False) -> SumGraph
     boundary = []
     internal = []
     gadgets = []
-    ranking: Dict[VT, int] = dict()
+    ranking: dict[VT, int] = {}
     inputs = g.inputs()
     outputs = g.outputs()
     for v in g.vertices():
@@ -70,7 +70,7 @@ def replace_magic_states(g: BaseGraph[VT,ET], pick_random:Any=False) -> SumGraph
     if not pick_random:
         candidates = sorted(ranking.keys(), key=lambda v: ranking[v], reverse=True)[:num_replace]
     else:
-        if not isinstance(pick_random,bool):
+        if not isinstance(pick_random, bool):
             random.seed(pick_random)
         candidates = random.sample(list(ranking.keys()),num_replace)
 
