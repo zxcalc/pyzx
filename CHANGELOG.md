@@ -9,6 +9,7 @@ Hence, occasionally changes will be backwards incompatible (although they will a
 ## [Unreleased]
 
 ### Fixed
+- `graph_to_circuit()` in `graphparser.py` now raises a `NotImplementedError` when extracting conditional gates instead of silently returning a circuit with potentially incorrect gate ordering (by @akshaysoftware).
 - `Var.rebind_to_registry` no longer loses a variable's Boolean type when the target registry does not know the variable yet (it read the type *after* switching registries). Copying a graph whose Boolean variables were created outside its registry silently turned them continuous, also on the original graph, so Pauli checks on symbolic phases failed.
 - `Circuit.from_graph` no longer changes the measurement basis after a colour change of the measurement leaf (e.g. by `to_gh`). The edge to the leaf is not part of the qubit wire, so a Hadamard edge there no longer emits a `HAD` gate; instead the basis is read from the colours of the leaf and the on-wire spider (#520). (by @a6hinandh)
 - `to_adjoint` now returns the correct adjoint for the `U2`, `U3`, `CU3`, `CU` and `CSX` gates, which were previously returned unchanged. This made `Circuit.adjoint` and `Circuit.verify_equality` give wrong results for circuits containing these gates (#519). `CSX` gained an `adjoint` argument, and adjoint gates without a dedicated QASM/.qc name are now exported as their basic gates. (by @a6hinandh)

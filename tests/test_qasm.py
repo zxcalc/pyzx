@@ -27,6 +27,8 @@ if __name__ == '__main__':
 from pyzx.simplify import full_reduce, drop_orphan_reset_discards
 from pyzx.extract import extract_circuit
 from pyzx.circuit import Circuit
+from pyzx.circuit.gates import ConditionalGate
+from pyzx.graph.base import BaseGraph
 from pyzx.symbolic import Poly
 from pyzx.utils import VertexType
 from fractions import Fraction
@@ -1716,6 +1718,22 @@ class TestQASM(unittest.TestCase):
         self.assertEqual(gate.condition_value, 0)
         self.assertEqual(gate.register_size, 2)
 
+    def _decode_single_conditional_phase(self, graph: BaseGraph) -> ConditionalGate:
+        """Test phase decoding independently of unsupported circuit extraction."""
+        from pyzx.circuit.graphparser import _poly_phase_to_conditional_gate
+
+        symbolic_vertices = [v for v in graph.vertices()
+                             if isinstance(graph.phase(v), Poly)]
+        self.assertEqual(len(symbolic_vertices), 1)
+        vertex = symbolic_vertices[0]
+        phase = graph.phase(vertex)
+        assert isinstance(phase, Poly)
+        gate = _poly_phase_to_conditional_gate(
+            phase, graph.type(vertex), int(graph.qubit(vertex)))
+        self.assertIsInstance(gate, ConditionalGate)
+        assert isinstance(gate, ConditionalGate)
+        return gate
+
     def test_conditional_gate_to_graph_z(self):
         """Test that a conditional Z gate creates a vertex with symbolic boolean phase."""
         from pyzx.circuit.gates import ConditionalGate, Measurement, Z
@@ -1732,7 +1750,7 @@ class TestQASM(unittest.TestCase):
         self.assertGreaterEqual(len(sym_verts), 2)
 
     def test_conditional_gate_to_graph_negated(self):
-        """Test that if(c==0) round-trips through graph extraction."""
+        """Test that if(c==0) is decoded correctly but circuit extraction is rejected."""
         from pyzx.circuit.gates import ConditionalGate, Z
         from pyzx.circuit.graphparser import graph_to_circuit
         from pyzx.symbolic import Poly
@@ -1741,35 +1759,37 @@ class TestQASM(unittest.TestCase):
         g = c1.to_graph()
         sym_verts = [v for v in g.vertices() if isinstance(g.phase(v), Poly)]
         self.assertEqual(len(sym_verts), 1)
-        # Extract back and verify the condition is recovered.
-        c2 = graph_to_circuit(g)
-        cond_gates = [gt for gt in c2.gates if isinstance(gt, ConditionalGate)]
-        self.assertEqual(len(cond_gates), 1)
-        self.assertEqual(cond_gates[0].condition_register, "c")
-        self.assertEqual(cond_gates[0].condition_value, 0)
+        gate = self._decode_single_conditional_phase(g)
+        self.assertEqual(gate.condition_register, "c")
+        self.assertEqual(gate.condition_value, 0)
+        self.assertEqual(gate, c1.gates[0])
+        with self.assertRaises(NotImplementedError):
+            graph_to_circuit(g)
 
     def test_conditional_gate_multi_bit_graph_extraction(self):
-        """Test that multi-bit Z conditions (including 0-bits) round-trip through graph."""
+        """Test multi-bit condition decoding independently of circuit extraction."""
         from pyzx.circuit.gates import ConditionalGate, Z
         from pyzx.circuit.graphparser import graph_to_circuit
         # if(c==1) with a 2-bit register: bit 0 set, bit 1 clear.
         c1 = Circuit(1)
         c1.gates = [ConditionalGate("c", 1, Z(0), 2)]
         g = c1.to_graph()
-        c2 = graph_to_circuit(g)
-        cond_gates = [gt for gt in c2.gates if isinstance(gt, ConditionalGate)]
-        self.assertEqual(len(cond_gates), 1)
-        self.assertEqual(cond_gates[0].condition_value, 1)
-        self.assertEqual(cond_gates[0].register_size, 2)
+        gate = self._decode_single_conditional_phase(g)
+        self.assertEqual(gate.condition_value, 1)
+        self.assertEqual(gate.register_size, 2)
+        self.assertEqual(gate, c1.gates[0])
+        with self.assertRaises(NotImplementedError):
+            graph_to_circuit(g)
         # if(c==0) with a 2-bit register: both bits clear.
         c3 = Circuit(1)
         c3.gates = [ConditionalGate("c", 0, Z(0), 2)]
         g = c3.to_graph()
-        c4 = graph_to_circuit(g)
-        cond_gates = [gt for gt in c4.gates if isinstance(gt, ConditionalGate)]
-        self.assertEqual(len(cond_gates), 1)
-        self.assertEqual(cond_gates[0].condition_value, 0)
-        self.assertEqual(cond_gates[0].register_size, 2)
+        gate = self._decode_single_conditional_phase(g)
+        self.assertEqual(gate.condition_value, 0)
+        self.assertEqual(gate.register_size, 2)
+        self.assertEqual(gate, c3.gates[0])
+        with self.assertRaises(NotImplementedError):
+            graph_to_circuit(g)
 
     def test_conditional_gate_qasm_round_trip(self):
         """Test that conditional gates survive a QASM round-trip."""
@@ -1793,41 +1813,45 @@ class TestQASM(unittest.TestCase):
             self.assertEqual(type(g1), type(g2))
 
     def test_conditional_gate_graph_extraction(self):
-        """Test that a conditional gate round-trips through the graph."""
+        """Test that a conditional Z phase is decoded but circuit extraction is rejected."""
         from pyzx.circuit.gates import ConditionalGate, Z
         from pyzx.circuit.graphparser import graph_to_circuit
         c1 = Circuit(1)
         c1.gates = [ConditionalGate("c", 1, Z(0), 1)]
         g = c1.to_graph()
-        c2 = graph_to_circuit(g)
-        cond_gates = [gt for gt in c2.gates if isinstance(gt, ConditionalGate)]
-        self.assertEqual(len(cond_gates), 1)
-        self.assertEqual(cond_gates[0].condition_register, "c")
-        self.assertEqual(cond_gates[0].condition_value, 1)
+        gate = self._decode_single_conditional_phase(g)
+        self.assertEqual(gate.condition_register, "c")
+        self.assertEqual(gate.condition_value, 1)
+        self.assertEqual(gate, c1.gates[0])
+        with self.assertRaises(NotImplementedError):
+            graph_to_circuit(g)
 
     def test_conditional_gate_x_type_graph_extraction(self):
-        """Test that conditional X-type gates (NOT, XPhase) round-trip through the graph."""
+        """Test X-type phase decoding independently of circuit extraction."""
         from pyzx.circuit.gates import ConditionalGate, NOT, XPhase
         from pyzx.circuit.graphparser import graph_to_circuit
-        # Conditional NOT: phase 1 should recover as NOT.
+        # Conditional NOT with phase 1.
         c1 = Circuit(1)
         c1.gates = [ConditionalGate("c", 1, NOT(0), 1)]
         g = c1.to_graph()
-        c2 = graph_to_circuit(g)
-        cond_gates = [gt for gt in c2.gates if isinstance(gt, ConditionalGate)]
-        self.assertEqual(len(cond_gates), 1)
-        self.assertEqual(cond_gates[0].condition_register, "c")
-        self.assertEqual(cond_gates[0].condition_value, 1)
-        self.assertIsInstance(cond_gates[0].inner_gate, NOT)
-        # Conditional XPhase with a non-Clifford phase falls back to XPhase.
+        gate = self._decode_single_conditional_phase(g)
+        self.assertEqual(gate.condition_register, "c")
+        self.assertEqual(gate.condition_value, 1)
+        self.assertIsInstance(gate.inner_gate, NOT)
+        self.assertEqual(gate, c1.gates[0])
+        with self.assertRaises(NotImplementedError):
+            graph_to_circuit(g)
+        # Conditional XPhase with a non-Clifford phase.
         c3 = Circuit(1)
         c3.gates = [ConditionalGate("c", 1, XPhase(0, Fraction(1, 4)), 1)]
         g = c3.to_graph()
-        c4 = graph_to_circuit(g)
-        cond_gates = [gt for gt in c4.gates if isinstance(gt, ConditionalGate)]
-        self.assertEqual(len(cond_gates), 1)
-        self.assertIsInstance(cond_gates[0].inner_gate, XPhase)
-        self.assertEqual(cond_gates[0].inner_gate.phase, Fraction(1, 4))
+        gate = self._decode_single_conditional_phase(g)
+        self.assertIsInstance(gate.inner_gate, XPhase)
+        assert isinstance(gate.inner_gate, XPhase)
+        self.assertEqual(gate.inner_gate.phase, Fraction(1, 4))
+        self.assertEqual(gate, c3.gates[0])
+        with self.assertRaises(NotImplementedError):
+            graph_to_circuit(g)
 
     def test_qec_measure_conditional_correction(self):
         """End-to-end test: measure + conditional Pauli correction (QEC pattern)."""
@@ -1998,33 +2022,30 @@ class TestQASM(unittest.TestCase):
 
     def test_measure_not_extracted_as_conditional(self):
         """Measurement X spiders must not be misidentified as conditional gates."""
-        from pyzx.circuit.gates import ConditionalGate, Measurement, Z
+        from pyzx.circuit.gates import Measurement
         from pyzx.circuit.graphparser import graph_to_circuit
         c1 = Circuit(2)
         c1.gates = [
             Measurement(0, result_symbol="c[0]"),
-            ConditionalGate("c", 1, Z(0), 1),
         ]
         g = c1.to_graph()
         c2 = graph_to_circuit(g)
-        # Only the Z-type conditional should be extracted; the measurement
-        # X spider should NOT become a second ConditionalGate.
-        cond_gates = [gt for gt in c2.gates if isinstance(gt, ConditionalGate)]
-        self.assertEqual(len(cond_gates), 1)
-        self.assertEqual(cond_gates[0].condition_value, 1)
+        self.assertEqual(c2.gates, c1.gates)
 
-    def test_conditional_s_graph_round_trip(self):
-        """Test that conditional S gate preserves phase through graph."""
+    def test_conditional_s_graph_extraction(self):
+        """Test that a conditional S phase is decoded but circuit extraction is rejected."""
         from pyzx.circuit.gates import ConditionalGate, S
         from pyzx.circuit.graphparser import graph_to_circuit
         c1 = Circuit(1)
         c1.gates = [ConditionalGate("c", 1, S(0), 1)]
         g = c1.to_graph()
-        c2 = graph_to_circuit(g)
-        cond_gates = [gt for gt in c2.gates if isinstance(gt, ConditionalGate)]
-        self.assertEqual(len(cond_gates), 1)
-        self.assertIsInstance(cond_gates[0].inner_gate, S)
-        self.assertEqual(cond_gates[0].inner_gate.phase, Fraction(1, 2))
+        gate = self._decode_single_conditional_phase(g)
+        self.assertIsInstance(gate.inner_gate, S)
+        assert isinstance(gate.inner_gate, S)
+        self.assertEqual(gate.inner_gate.phase, Fraction(1, 2))
+        self.assertEqual(gate, c1.gates[0])
+        with self.assertRaises(NotImplementedError):
+            graph_to_circuit(g)
 
     def test_conditional_sdg_qasm_round_trip(self):
         """Test that conditional sdg survives QASM round-trip."""
@@ -2070,18 +2091,19 @@ class TestQASM(unittest.TestCase):
             """)
         self.assertIn("Unknown classical register", str(ctx.exception))
 
-    def test_conditional_multi_bit_partial_value_graph_round_trip(self):
-        """Test if(c==2) with 2-bit register (bit 1 set, bit 0 clear)."""
+    def test_conditional_multi_bit_partial_value_graph_extraction(self):
+        """Test decoding if(c==2) with a 2-bit register; circuit extraction is rejected."""
         from pyzx.circuit.gates import ConditionalGate, Z
         from pyzx.circuit.graphparser import graph_to_circuit
         c1 = Circuit(1)
         c1.gates = [ConditionalGate("c", 2, Z(0), 2)]
         g = c1.to_graph()
-        c2 = graph_to_circuit(g)
-        cond_gates = [gt for gt in c2.gates if isinstance(gt, ConditionalGate)]
-        self.assertEqual(len(cond_gates), 1)
-        self.assertEqual(cond_gates[0].condition_value, 2)
-        self.assertEqual(cond_gates[0].register_size, 2)
+        gate = self._decode_single_conditional_phase(g)
+        self.assertEqual(gate.condition_value, 2)
+        self.assertEqual(gate.register_size, 2)
+        self.assertEqual(gate, c1.gates[0])
+        with self.assertRaises(NotImplementedError):
+            graph_to_circuit(g)
 
     def test_classical_bits_in_c_mapper(self):
         """Classical bit labels should be in c_mapper, not q_mapper."""
