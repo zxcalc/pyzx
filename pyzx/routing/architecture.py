@@ -319,7 +319,7 @@ class Architecture:
             filename = self.name + ".png"
         plt.savefig(filename)
 
-    def floyd_warshall(self, subgraph_vertices: Sequence[int], upper: bool = True, rec_vertices: Sequence[int] = []) -> dict[tuple[int, int], tuple[int, list[tuple[int, int]]]]:
+    def floyd_warshall(self, subgraph_vertices: Sequence[int], upper: bool = True, rec_vertices: Sequence[int] = ()) -> dict[tuple[int, int], tuple[int, list[tuple[int, int]]]]:
         """
         Implementation of the Floyd-Warshall algorithm to calculate the all-pair distances in a given graph.
 

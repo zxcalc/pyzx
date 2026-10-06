@@ -31,7 +31,7 @@ from pyzx.generate import cliffordT, cliffords
 from pyzx.simplify import clifford_simp
 from pyzx.extract import extract_circuit
 from pyzx.circuit import Circuit, PhaseGadget
-from pyzx.circuit.gates import ParityPhase, FSim
+from pyzx.circuit.gates import ParityPhase, FSim, U2, U3, CU3, CU, CSX
 from pyzx.utils import VertexType, EdgeType
 from fractions import Fraction
 
@@ -80,6 +80,18 @@ class TestCircuit(unittest.TestCase):
         self.assertEqual(self.c.qubits, c2.qubits)
         self.assertListEqual(self.c.gates,c2.gates)
 
+    def test_yphase_to_quipper_and_back(self):
+        # Regression test for #526.
+        from pyzx.circuit.gates import YPhase, Y
+        self.assertEqual(str(YPhase(0, Fraction(1,3))), "YPhase(0,phase=1/3)")
+        self.assertEqual(str(Y(0)), "Y(0)")
+        for gate in [YPhase(0, Fraction(1,3)), YPhase(0, Fraction(-3,4)), Y(0)]:
+            with self.subTest(gate=str(gate)):
+                c = Circuit(1)
+                c.add_gate(gate)
+                c2 = Circuit.from_quipper(c.to_quipper())
+                self.assertTrue(compare_tensors(c.to_matrix(), c2.to_matrix(), preserve_scalar=False))
+
     def test_load_quipper_from_file(self):
         c1 = Circuit.from_quipper_file(os.path.join(mydir,"test_circuit.circuit"))
         c2 = Circuit.from_quipper_file(os.path.join(mydir,"test_circuit_nocontrol_noqubits.circuit"))
@@ -127,6 +139,16 @@ class TestCircuit(unittest.TestCase):
         c.add_gate("CZ",0,1)
         cz_matrix = np.array([[1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,-1]])
         self.assertTrue(compare_tensors(c.to_matrix(),cz_matrix))
+
+    def test_gate_equality_compares_phases(self):
+        from pyzx.circuit.gates import U2, U3, CU3, CU, ConditionalGate
+        self.assertEqual(U3(0, Fraction(1,2), Fraction(1,4), 0), U3(0, Fraction(1,2), Fraction(1,4), 0))
+        self.assertNotEqual(U3(0, Fraction(1,2), Fraction(1,4), Fraction(-1,2)), U3(0, 0, 0, 0))
+        self.assertNotEqual(U2(0, Fraction(1,3), 0), U2(0, 0, Fraction(1,3)))
+        self.assertNotEqual(CU3(0, 1, Fraction(1,3), 0, 0), CU3(0, 1, 0, 0, 0))
+        self.assertNotEqual(CU(0, 1, 0, 0, 0, Fraction(1,4)), CU(0, 1, 0, 0, 0, 0))
+        self.assertNotEqual(ConditionalGate("c", 1, U3(0, Fraction(1,2), 0, 0), 1),
+                            ConditionalGate("c", 1, U3(0, 0, 0, 0), 1))
 
     def test_measurement_gate(self):
         c = Circuit(2)
@@ -178,6 +200,50 @@ class TestCircuit(unittest.TestCase):
             for converter in (Circuit.from_graph, graph_to_circuit):
                 with self.subTest(gate=gate_name, converter=converter.__name__):
                     self.assertEqual(converter(graph).gates, circuit.gates)
+
+    def test_adjoint_of_parametrised_gates(self):
+        # Regression test for #519: gates storing their angles in .phases instead of .phase
+        # were returned unchanged by to_adjoint.
+        gates = [
+            U2(0, Fraction(1,3), Fraction(3,4)),
+            U3(0, Fraction(1,2), Fraction(1,4), Fraction(-1,2)),
+            CU3(0, 1, Fraction(1,3), Fraction(1,4), Fraction(5,6)),
+            CU(0, 1, Fraction(1,3), Fraction(1,4), Fraction(5,6), Fraction(1,8)),
+            CSX(0, 1),
+            CSX(1, 0),
+        ]
+        for gate in gates:
+            with self.subTest(gate=str(gate)):
+                c = Circuit(2)
+                c.add_gate(gate)
+                adj = c.adjoint()
+                self.assertTrue(compare_tensors(c.to_matrix().conj().T, adj.to_matrix(), preserve_scalar=False))
+                self.assertTrue(compare_tensors(adj.adjoint().to_matrix(), c.to_matrix(), preserve_scalar=False))
+                # verify_equality is only a one-sided check, and full_reduce cannot prove
+                # the controlled gates with generic angles equal to themselves.
+                if not isinstance(gate, (CU3, CU)):
+                    self.assertTrue(c.verify_equality(c.copy()))
+
+    def test_verify_equality_u3(self):
+        header = 'OPENQASM 2.0;\ninclude "qelib1.inc";\nqreg q[1];\n'
+        left = Circuit.from_qasm(header + "u3(pi/2,pi/4,-pi/2) q[0];")
+        right = Circuit.from_qasm(header + "u3(-pi/2,pi/2,-pi/4) q[0];")
+        self.assertFalse(left.verify_equality(right))
+        self.assertTrue(left.verify_equality(left.copy()))
+
+    def test_csx_adjoint_to_qasm(self):
+        c = Circuit(2)
+        c.add_gate(CSX(0, 1, adjoint=True))
+        self.assertNotIn('undefined', c.to_qasm())
+        c2 = Circuit.from_qasm(c.to_qasm())
+        self.assertTrue(c.verify_equality(c2))
+
+    def test_csx_adjoint_to_qc(self):
+        c = Circuit(2)
+        c.add_gate(CSX(0, 1, adjoint=True))
+        self.assertNotIn('undefined', c.to_qc())
+        c2 = Circuit.from_qc(c.to_qc())
+        self.assertTrue(c.verify_equality(c2))
 
 @unittest.skipUnless(np, "numpy needs to be installed for this to run")
 class TestPhaseGadgetGate(unittest.TestCase):

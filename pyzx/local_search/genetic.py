@@ -128,7 +128,7 @@ class GeneticOptimizer(Generic[VT, ET]):
         actions: list[Callable[[Circuit, BaseGraph[VT, ET]], tuple[bool, tuple[Circuit, BaseGraph[VT, ET]]]]] | None = None,
         score: Callable[[Mutant[VT, ET]], float] = default_score
     ) -> None:
-        self.actions = actions if actions is not None else [rand_pivot, rand_lc]
+        self.actions = list(actions) if actions is not None else [rand_pivot, rand_lc]
         self.score = score # function that maps Mutant -> Double
         self.mutants: list[Mutant[VT, ET]] = []
 

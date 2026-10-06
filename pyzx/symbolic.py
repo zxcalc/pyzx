@@ -97,9 +97,14 @@ class Var:
         return self.__copy__()
 
     def rebind_to_registry(self, new_registry: VarRegistry) -> None:
-        """Rebind this variable to a new registry"""
+        """Rebind this variable to a new registry.
+
+        If ``new_registry`` does not know this variable yet, its current
+        Boolean/continuous type is carried over; a type already recorded in
+        ``new_registry`` takes precedence."""
+        if self.name not in new_registry.vars():
+            new_registry.set_type(self.name, self.is_bool)
         self._registry = new_registry
-        new_registry.set_type(self.name, self.is_bool)
 
 class Term:
     """Product of symbolic variables with associated integer exponents.
