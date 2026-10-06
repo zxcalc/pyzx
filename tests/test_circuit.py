@@ -80,6 +80,18 @@ class TestCircuit(unittest.TestCase):
         self.assertEqual(self.c.qubits, c2.qubits)
         self.assertListEqual(self.c.gates,c2.gates)
 
+    def test_yphase_to_quipper_and_back(self):
+        # Regression test for #526.
+        from pyzx.circuit.gates import YPhase, Y
+        self.assertEqual(str(YPhase(0, Fraction(1,3))), "YPhase(0,phase=1/3)")
+        self.assertEqual(str(Y(0)), "Y(0)")
+        for gate in [YPhase(0, Fraction(1,3)), YPhase(0, Fraction(-3,4)), Y(0)]:
+            with self.subTest(gate=str(gate)):
+                c = Circuit(1)
+                c.add_gate(gate)
+                c2 = Circuit.from_quipper(c.to_quipper())
+                self.assertTrue(compare_tensors(c.to_matrix(), c2.to_matrix(), preserve_scalar=False))
+
     def test_load_quipper_from_file(self):
         c1 = Circuit.from_quipper_file(os.path.join(mydir,"test_circuit.circuit"))
         c2 = Circuit.from_quipper_file(os.path.join(mydir,"test_circuit_nocontrol_noqubits.circuit"))

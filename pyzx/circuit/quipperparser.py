@@ -53,6 +53,8 @@ def parse_quipper_block(lines: list[str]) -> Circuit:
                 gtype = "ZPhase"
             elif gate[i+4:i+8] == '-i%X':
                 gtype = "XPhase"
+            elif gate[i+4:i+8] == '-i%Y':
+                gtype = "YPhase"
             else:
                 raise TypeError("Unsupported expression: " + gate)
             val = gate[gate.find(',')+1: gate.find(']')]
@@ -78,6 +80,7 @@ def parse_quipper_block(lines: list[str]) -> Circuit:
         if len(l) == 1 or (len(l) == 2 and l[1].find("nocontrol") != -1):  # no controls
             if gname == "H": c.add_gate("HAD", t)
             elif gname == "not": c.add_gate("NOT", t)
+            elif gname == "Y": c.add_gate("Y", t)
             elif gname == "Z": c.add_gate("Z", t)
             elif gname == "S": c.add_gate("S", t, adjoint=adjoint)
             elif gname == "T": c.add_gate("T", t, adjoint=adjoint)
