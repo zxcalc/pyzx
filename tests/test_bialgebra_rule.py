@@ -152,6 +152,51 @@ class TestCheckBialgebraXH(unittest.TestCase):
 
         self.assertFalse(check_bialgebra(g, v1, v2))
 
+    def test_xh_pair_hbox_expansion_cap(self):
+        """Oversized generalized expansions are rejected without mutation."""
+        for h_phase, h_label in [
+                (Fraction(1, 3), None),
+                (0, cmath.exp(1j * pi / 3)),
+                (Fraction(1, 2), None),
+        ]:
+            for degree, expected in [(14, True), (15, False), (25, False)]:
+                with self.subTest(h_phase=h_phase, h_label=h_label,
+                                  degree=degree):
+                    g = Graph()
+                    x = g.add_vertex(VertexType.X, 0, 0)
+                    h = g.add_vertex(VertexType.H_BOX, 0, 1, phase=h_phase)
+                    if h_label is not None:
+                        set_h_box_label(g, h, h_label)
+                    g.add_edge((x, h))
+                    for index in range(degree - 1):
+                        neighbor = g.add_vertex(VertexType.BOUNDARY, index, -1)
+                        g.add_edge((x, neighbor))
+
+                    original = g.to_json()
+                    self.assertEqual(check_bialgebra(g, x, h), expected)
+                    self.assertEqual(check_bialgebra(g, h, x), expected)
+                    if not expected:
+                        self.assertFalse(bialgebra(g, x, h))
+                        self.assertFalse(bialgebra(g, h, x))
+                    self.assertEqual(g.to_json(), original)
+
+    def test_xh_pair_standard_hbox_exempt_from_expansion_cap(self):
+        """The standard X-H rule does not use the exponential expansion."""
+        for h_phase, h_label in [(1, None), (0, -1)]:
+            with self.subTest(h_phase=h_phase, h_label=h_label):
+                g = Graph()
+                x = g.add_vertex(VertexType.X, 0, 0)
+                h = g.add_vertex(VertexType.H_BOX, 0, 1, phase=h_phase)
+                if h_label is not None:
+                    set_h_box_label(g, h, h_label)
+                g.add_edge((x, h))
+                for index in range(24):
+                    neighbor = g.add_vertex(VertexType.BOUNDARY, index, -1)
+                    g.add_edge((x, neighbor))
+
+                self.assertTrue(check_bialgebra(g, x, h))
+                self.assertTrue(check_bialgebra(g, h, x))
+
     def test_xh_pair_x_has_phase(self):
         """X spider with non-zero phase and H-box should not match."""
         g = Graph()

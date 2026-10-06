@@ -51,6 +51,8 @@ from pyzx.graph.base import BaseGraph, VT, ET, upair
 
 RewriteOutputType = Tuple[Dict[Tuple[VT,VT],List[int]], List[VT], List[ET], bool]
 
+_MAX_BIALGEBRA_H_BOXES = 10_000
+
 
 def _hbox_has_phase_label(g: BaseGraph[VT, ET], vertex: VT) -> bool:
     """Whether an H-box is represented by a phase or an equivalent unit label."""
@@ -60,7 +62,9 @@ def _hbox_has_phase_label(g: BaseGraph[VT, ET], vertex: VT) -> bool:
 
 def check_bialgebra(g: BaseGraph[VT,ET], v1: VT, v2: VT) -> bool:
     """Checks if the bialgebra rule can be applied to a given pair of vertices.
-    Supports Z-X bialgebra and X-H bialgebra with a phase-valued H-box."""
+    Supports Z-X bialgebra and X-H bialgebra with a phase-valued H-box.
+    Generalized X-H expansion is limited to 10,000 potential H-boxes,
+    counted before identity-labelled terms are omitted."""
     if not (v1 in g.vertices() and v2 in g.vertices()): return False
 
     if not (g.num_edges(v1, v2) >= 1 and
@@ -77,11 +81,21 @@ def check_bialgebra(g: BaseGraph[VT,ET], v1: VT, v2: VT) -> bool:
     # X-H bialgebra: X spider must be phase-free and an explicit complex
     # label must represent a phase.
     if g.type(v1) == VertexType.X and g.type(v2) == VertexType.H_BOX:
-        return g.phase(v1) == 0 and _hbox_has_phase_label(g, v2)
-    if g.type(v1) == VertexType.H_BOX and g.type(v2) == VertexType.X:
-        return g.phase(v2) == 0 and _hbox_has_phase_label(g, v1)
+        x_vertex, h_vertex = v1, v2
+    elif g.type(v1) == VertexType.H_BOX and g.type(v2) == VertexType.X:
+        x_vertex, h_vertex = v2, v1
+    else:
+        return False
 
-    return False
+    if g.phase(x_vertex) != 0:
+        return False
+    if not _hbox_has_phase_label(g, h_vertex):
+        return False
+    if is_standard_hbox(g, h_vertex):
+        return True
+
+    num_h_boxes = 2 ** (g.vertex_degree(x_vertex) - 1) - 1
+    return num_h_boxes <= _MAX_BIALGEBRA_H_BOXES
 
 def _is_valid_reduce_neighbor(g: BaseGraph[VT,ET], n: VT, expected_type: VertexType) -> bool:
     """Checks if a neighbour is valid for bialgebra reduction.
