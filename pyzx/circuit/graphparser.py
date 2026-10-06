@@ -236,6 +236,10 @@ def graph_to_circuit(g: BaseGraph[VT, ET], split_phases: bool = True) -> Circuit
                 result_symbol = g.vdata(v, 'result_symbol')
                 if result_symbol is None:
                     result_symbol = str(phase)
+                # There is no X-basis Measurement gate, so an X-basis
+                # measurement is written as a Z-basis one conjugated by
+                # Hadamards. If X-basis measurements are ever added, emit one
+                # here instead.
                 if ty[n] == VertexType.X:
                     c.add_gate("HAD", q)
                 c.add_gate(Measurement(int(q), result_symbol=result_symbol))
