@@ -16,6 +16,7 @@ Hence, occasionally changes will be backwards incompatible (although they will a
 - Moved `RootHeuristic.RootHeuristicProtocol` and `SplitHeuristic.SplitHeuristicProtocol` to module level to fix a `DeprecationWarning` in Python 3.11+. Though these classes exist only for type annotations, this is technically a breaking change. (by @96-LB)
 - `YPhase` and `Y` now print like other gates instead of in Quipper syntax, and their Quipper output (`QRot["exp(-i%Y)",...]` and `QGate["Y"]`) can be read back by `Circuit.from_quipper` (#526). (by @a6hinandh)
 - The `pyzx.web` module now raises an error when computing Pauli webs of a graph which has H-boxes with non-default phase, instead of returning an invalid web which ignores the phase. (by @96-LB)
+- `Gate.__eq__` now also compares `phases`, so gates storing their angles there (`U2`, `U3`, `CU3`, `CU`) no longer compare equal when their angles differ. (by @a6hinandh)
 
 ### Removed
 - Support for the PyQuil compiler was dropped. Breaking changes include the removal of `PyQuilCircuit`, `Architecture.to_quil_device`, `CompileMode.QUIL_COMPILER`, and any related functionality in the scripts module. (by @96-LB)
