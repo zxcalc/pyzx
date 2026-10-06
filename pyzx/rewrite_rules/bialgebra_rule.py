@@ -284,7 +284,7 @@ def unsafe_bialgebra(g: BaseGraph[VT,ET], v1: VT, v2: VT ) -> bool:
             for n2 in new_verts[1]:
                 _add_edge(etab, n1, n2)
 
-    if g.type(v1) == VertexType.H_BOX or g.type(v2) == VertexType.H_BOX: # x-h bialgebra
+    if is_xh_bialgebra:
         g.scalar.add_power(-(g.vertex_degree(x_vertex)-2))
     else: # z-x bialgebra
         g.scalar.add_power((g.vertex_degree(v1)-2)*(g.vertex_degree(v2)-2))
