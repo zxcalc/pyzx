@@ -14,6 +14,7 @@ Hence, occasionally changes will be backwards incompatible (although they will a
 - `to_adjoint` now returns the correct adjoint for the `U2`, `U3`, `CU3`, `CU` and `CSX` gates, which were previously returned unchanged. This made `Circuit.adjoint` and `Circuit.verify_equality` give wrong results for circuits containing these gates (#519). `CSX` gained an `adjoint` argument, and adjoint gates without a dedicated QASM/.qc name are now exported as their basic gates. (by @a6hinandh)
 - `YPhase` and `Y` now print like other gates instead of in Quipper syntax, and their Quipper output (`QRot["exp(-i%Y)",...]` and `QGate["Y"]`) can be read back by `Circuit.from_quipper` (#526). (by @a6hinandh)
 - `Gate.__eq__` now also compares `phases`, so gates storing their angles there (`U2`, `U3`, `CU3`, `CU`) no longer compare equal when their angles differ. (by @a6hinandh)
+- `Mat2.gauss` no longer shares pivot columns between calls; extraction and routing helpers avoid mutable defaults, and genetic optimizers copy caller-supplied action lists. (by @pmitos)
 
 ## [0.10.7] - 2026-10-01
 
