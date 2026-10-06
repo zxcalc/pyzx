@@ -475,6 +475,37 @@ if (c==1) s q[0];
                             f"full_reduce diverged from reference for c[0]={c_val}")
 
 
+class TestVarRegistryRebinding(unittest.TestCase):
+    """Rebinding variables between registries must not lose their type."""
+
+    def test_rebind_keeps_bool_type_when_target_unaware(self):
+        a = new_var('a', is_bool=True)
+        var = next(iter(a.free_vars()))
+        self.assertTrue(var.is_bool)
+        var.rebind_to_registry(VarRegistry())
+        self.assertTrue(var.is_bool)
+        self.assertTrue(a.is_pauli)
+
+    def test_rebind_target_type_takes_precedence(self):
+        a = new_var('a', is_bool=True)
+        var = next(iter(a.free_vars()))
+        target = VarRegistry({'a': False})
+        var.rebind_to_registry(target)
+        self.assertFalse(var.is_bool)
+
+    def test_graph_copy_keeps_boolean_phases(self):
+        """Regression: copying a graph whose Boolean variables were created
+        outside the graph's registry used to flip them to continuous, also
+        on the original graph, so Pauli checks on symbolic phases failed."""
+        from pyzx.graph import Graph
+        from pyzx.utils import VertexType, is_pauli
+        a = new_var('a', is_bool=True)
+        g = Graph()
+        v = g.add_vertex(VertexType.Z, 0, 0, phase=a)
+        h = g.copy()
+        self.assertTrue(is_pauli(g.phase(v)))
+        self.assertTrue(is_pauli(h.phase(next(iter(h.vertices())))))
+        self.assertTrue(h.var_registry.get_type('a'))
 
 if __name__ == '__main__':
     unittest.main()

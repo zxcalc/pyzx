@@ -249,6 +249,36 @@ class TestBialgebraApplyZX(unittest.TestCase):
         unsafe_bialgebra(g, z, x)
         self.assertEqual(g.scalar.phase, a * b)
 
+    @unittest.skipUnless(np, "numpy needs to be installed for this to run")
+    def test_symbolic_pauli_preserves_semantics(self):
+        """Z-X bialgebra with symbolic Boolean phases must preserve the
+        tensor (including scalar) under every assignment of the Boolean
+        variables, for a range of spider degrees.  The new spiders at each
+        side carry the *other* spider's phase and the scalar picks up
+        (-1)^(a*b)."""
+        for d_z, d_x in itertools.product(range(2, 5), repeat=2):
+            with self.subTest(d_z=d_z, d_x=d_x):
+                a = new_var('a', is_bool=True)
+                b = new_var('b', is_bool=True)
+                g, z, x = self._make_zx_bialgebra_graph(d_z, d_x, a, b)
+                g_orig = g.copy()
+                self.assertTrue(check_bialgebra(g, z, x))
+                unsafe_bialgebra(g, z, x)
+                for v in g.vertices():
+                    if g.type(v) == VertexType.BOUNDARY:
+                        continue
+                    # copies at z's old neighbours are X spiders with x's
+                    # phase b; copies at x's old neighbours are Z with a.
+                    expected = b if g.type(v) == VertexType.X else a
+                    self.assertEqual(g.phase(v), expected)
+                for a_val, b_val in itertools.product([0, 1], repeat=2):
+                    with self.subTest(a=a_val, b=b_val):
+                        g_sub = g.substitute_variables({'a': a_val, 'b': b_val})
+                        orig_sub = g_orig.substitute_variables({'a': a_val, 'b': b_val})
+                        self.assertTrue(
+                            compare_tensors(g_sub, orig_sub, preserve_scalar=True),
+                            "Bialgebra with symbolic phases changed the tensor or scalar")
+
     def test_symbolic_zero_preserves_type(self):
         """Bialgebra with one symbolic phase and one concrete zero must
         leave the scalar phase as a Fraction, not convert to Poly."""
