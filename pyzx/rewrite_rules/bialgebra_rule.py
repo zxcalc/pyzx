@@ -17,14 +17,13 @@
 """
 This module contains the implementation of the bialgebra rule.
 
-This rule acts on two connected vertices, supporting Z-X bialgebra
-X-H bialgebra with any legacy H-box phase or unit complex label. The
-X-H with phase≠1 case is a special case of Fourier hyperpivot. The check functions
-return a boolean indicating whether the rule can be applied to the two
-given vertices. The safe version of the applier (bialgebra) will
-automatically call the basic checker, while the unsafe version of the
-applier will assume that the given input is correct and will apply the
-rule without running the check first.
+This rule acts on two connected vertices, supporting Z-X bialgebra and
+X-H bialgebra with H-box phases or complex labels. The generalized X-H
+case is a special case of Fourier hyperpivot.
+The check functions return a boolean indicating whether the rule can be
+applied to the two given vertices. The safe applier (bialgebra) calls the
+basic checker, while the unsafe applier assumes correct input and applies
+the rule without running the check first.
 
 This rewrite rule can be called using simplify.bialg_simp.apply(g, v, w)
 or simplify.bialg_simp(g).
@@ -54,17 +53,31 @@ RewriteOutputType = Tuple[Dict[Tuple[VT,VT],List[int]], List[VT], List[ET], bool
 _MAX_BIALGEBRA_H_BOXES = 10_000
 
 
-def _hbox_has_phase_label(g: BaseGraph[VT, ET], vertex: VT) -> bool:
-    """Whether an H-box is represented by a phase or an equivalent unit label."""
-    return (not hbox_has_complex_label(g, vertex) or
-            cmath.isclose(abs(get_h_box_label(g, vertex)), 1.0))
+def _hbox_label_is_safe(
+        g: BaseGraph[VT, ET], vertex: VT, num_targets: int) -> bool:
+    """Check that an H-box label can be expanded safely."""
+    if not hbox_has_complex_label(g, vertex):
+        return True
+
+    label = get_h_box_label(g, vertex)
+    if label == 0 or not cmath.isfinite(label):
+        return False
+    for subset_size in range(1, num_targets + 1):
+        try:
+            subset_label = label ** ((-2) ** (subset_size - 1))
+        except (OverflowError, ZeroDivisionError):
+            return False
+        if subset_label == 0 or not cmath.isfinite(subset_label):
+            return False
+    return True
 
 
 def check_bialgebra(g: BaseGraph[VT,ET], v1: VT, v2: VT) -> bool:
     """Checks if the bialgebra rule can be applied to a given pair of vertices.
-    Supports Z-X bialgebra and X-H bialgebra with a phase-valued H-box.
-    Generalized X-H expansion is limited to 10,000 potential H-boxes,
-    counted before identity-labelled terms are omitted."""
+    Supports Z-X bialgebra and X-H bialgebra with phased and complex H-boxes.
+
+    Generalized X-H expansion is capped at 10,000 potential H-boxes.
+    """
     if not (v1 in g.vertices() and v2 in g.vertices()): return False
 
     if not (g.num_edges(v1, v2) >= 1 and
@@ -78,8 +91,7 @@ def check_bialgebra(g: BaseGraph[VT,ET], v1: VT, v2: VT) -> bool:
         (g.type(v1) == VertexType.Z and g.type(v2) == VertexType.X)):
         return is_pauli(g.phase(v1)) and is_pauli(g.phase(v2))
 
-    # X-H bialgebra: X spider must be phase-free and an explicit complex
-    # label must represent a phase.
+    # X-H bialgebra: the X spider must be phase-free.
     if g.type(v1) == VertexType.X and g.type(v2) == VertexType.H_BOX:
         x_vertex, h_vertex = v1, v2
     elif g.type(v1) == VertexType.H_BOX and g.type(v2) == VertexType.X:
@@ -89,13 +101,14 @@ def check_bialgebra(g: BaseGraph[VT,ET], v1: VT, v2: VT) -> bool:
 
     if g.phase(x_vertex) != 0:
         return False
-    if not _hbox_has_phase_label(g, h_vertex):
-        return False
     if is_standard_hbox(g, h_vertex):
         return True
 
-    num_h_boxes = 2 ** (g.vertex_degree(x_vertex) - 1) - 1
-    return num_h_boxes <= _MAX_BIALGEBRA_H_BOXES
+    num_targets = g.vertex_degree(x_vertex) - 1
+    num_h_boxes = 2 ** num_targets - 1
+    if num_h_boxes > _MAX_BIALGEBRA_H_BOXES:
+        return False
+    return _hbox_label_is_safe(g, h_vertex, num_targets)
 
 def _is_valid_reduce_neighbor(g: BaseGraph[VT,ET], n: VT, expected_type: VertexType) -> bool:
     """Checks if a neighbour is valid for bialgebra reduction.

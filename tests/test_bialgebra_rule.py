@@ -131,26 +131,36 @@ class TestCheckBialgebraXH(unittest.TestCase):
 
         self.assertTrue(check_bialgebra(g, v1, v2))
 
-    def test_xh_pair_unit_complex_label(self):
-        """X spider with a non-standard unit complex label should match."""
-        g = Graph()
-        v1 = g.add_vertex(VertexType.X, 0, 0)
-        v2 = g.add_vertex(VertexType.H_BOX, 0, 1)
-        set_h_box_label(g, v2, 1j)
-        g.add_edge((v1, v2), EdgeType.SIMPLE)
+    def test_xh_pair_complex_labels(self):
+        """Valid complex labels match in either argument order."""
+        for label in (1j, 2, 0.5, -2, 2+3j):
+            with self.subTest(label=label):
+                g = Graph()
+                v1 = g.add_vertex(VertexType.X, 0, 0)
+                v2 = g.add_vertex(VertexType.H_BOX, 0, 1)
+                set_h_box_label(g, v2, label)
+                g.add_edge((v1, v2), EdgeType.SIMPLE)
 
-        self.assertTrue(check_bialgebra(g, v1, v2))
-        self.assertTrue(check_bialgebra(g, v2, v1))
+                self.assertTrue(check_bialgebra(g, v1, v2))
+                self.assertTrue(check_bialgebra(g, v2, v1))
 
-    def test_xh_pair_off_unit_circle_label(self):
-        """The generalized rule rejects labels not known to represent phases."""
-        g = Graph()
-        v1 = g.add_vertex(VertexType.X, 0, 0)
-        v2 = g.add_vertex(VertexType.H_BOX, 0, 1)
-        set_h_box_label(g, v2, 2+3j)
-        g.add_edge((v1, v2), EdgeType.SIMPLE)
+    def test_xh_pair_invalid_label_rejected_without_mutation(self):
+        """Zero and nonfinite labels are rejected even with no subset boxes."""
+        for label in (0, complex(float('nan'), 0),
+                      complex(float('inf'), 0), complex(0, float('inf')),
+                      complex(0, float('nan'))):
+            with self.subTest(label=label):
+                g = Graph()
+                x = g.add_vertex(VertexType.X, 0, 0)
+                h = g.add_vertex(VertexType.H_BOX, 0, 1)
+                set_h_box_label(g, h, label)
+                g.add_edge((x, h))
 
-        self.assertFalse(check_bialgebra(g, v1, v2))
+                original = g.to_json()
+                for vertices in ((x, h), (h, x)):
+                    self.assertFalse(check_bialgebra(g, *vertices))
+                    self.assertFalse(bialgebra(g, *vertices))
+                    self.assertEqual(g.to_json(), original)
 
     def test_xh_pair_hbox_expansion_cap(self):
         """Oversized generalized expansions are rejected without mutation."""
@@ -158,6 +168,7 @@ class TestCheckBialgebraXH(unittest.TestCase):
                 (Fraction(1, 3), None),
                 (0, cmath.exp(1j * pi / 3)),
                 (Fraction(1, 2), None),
+                (0, 1.01),
         ]:
             for degree, expected in [(14, True), (15, False), (25, False)]:
                 with self.subTest(h_phase=h_phase, h_label=h_label,
@@ -331,7 +342,7 @@ class TestBialgebraApplyXH(unittest.TestCase):
 
     def _make_xh_bialgebra_graph(self, d_x, d_h, h_phase=1, h_label=None):
         """Build a graph with a phase-free X spider of degree d_x
-        connected to a standard H-box of degree d_h via a simple edge.
+        connected to an H-box of degree d_h via a simple edge.
         Each vertex gets (d-1) boundary neighbours plus the X-H edge."""
         g = Graph()
         x = g.add_vertex(VertexType.X, 0, 1)
@@ -439,6 +450,19 @@ class TestBialgebraApplyXH(unittest.TestCase):
         unsafe_bialgebra(g, h, x)
         self.assertTrue(compare_tensors(g, g_orig, preserve_scalar=True))
 
+    def test_generalized_xh_rejects_unsafe_label_powers(self):
+        """Overflow and underflow are rejected before any graph mutation."""
+        for label, degree in [(2, 12), (0.5, 13),
+                              (1e-100, 4), (1e-200, 3)]:
+            with self.subTest(label=label, degree=degree):
+                g, x, h = self._make_xh_bialgebra_graph(
+                    degree, 2, h_label=label)
+                original = g.to_json()
+                for vertices in ((x, h), (h, x)):
+                    self.assertFalse(check_bialgebra(g, *vertices))
+                    self.assertFalse(bialgebra(g, *vertices))
+                    self.assertEqual(g.to_json(), original)
+
     @unittest.skipUnless(np, "numpy needs to be installed for this to run")
     def test_generalized_xh_bialgebra_preserves_semantics(self):
         """Generalized X-H bialgebra preserves tensors and scalars."""
@@ -454,6 +478,12 @@ class TestBialgebraApplyXH(unittest.TestCase):
                 (Fraction(1, 3), None, 1, 3),
                 (0, 1j, 3, 1),
                 (0, 1j, 1, 3),
+                (0, 2, 4, 2),
+                (0, 0.5, 4, 3),
+                (0, -2, 3, 2),
+                (0, 2+3j, 4, 3),
+                (0, 2, 3, 1),
+                (0, 2, 1, 3),
         ]:
             for reverse in (False, True):
                 with self.subTest(h_phase=h_phase, h_label=h_label,
@@ -616,14 +646,19 @@ class TestCheckBialgebraReduce(unittest.TestCase):
 
     def test_reduce_rejects_nonstandard_xh_pair(self):
         """Generalized X-H bialgebra is manual-only."""
-        g = Graph()
-        x = g.add_vertex(VertexType.X, 0, 0)
-        h = g.add_vertex(VertexType.H_BOX, 0, 1,
-                         phase=Fraction(1, 2))
-        g.add_edge((x, h), EdgeType.SIMPLE)
+        for label in (None, 1j, 2, 0.5, -2, 2+3j):
+            with self.subTest(label=label):
+                g = Graph()
+                x = g.add_vertex(VertexType.X, 0, 0)
+                h = g.add_vertex(VertexType.H_BOX, 0, 1,
+                                 phase=Fraction(1, 2))
+                if label is not None:
+                    set_h_box_label(g, h, label)
+                g.add_edge((x, h), EdgeType.SIMPLE)
 
-        self.assertTrue(check_bialgebra(g, x, h))
-        self.assertFalse(check_bialgebra_reduce(g, x, h))
+                self.assertTrue(check_bialgebra(g, x, h))
+                self.assertFalse(check_bialgebra_reduce(g, x, h))
+                self.assertFalse(check_bialgebra_reduce(g, h, x))
 
     def test_reduce_boundary_neighbour(self):
         """Bialgebra reduce should not match when a neighbour is a boundary."""
