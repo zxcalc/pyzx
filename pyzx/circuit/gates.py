@@ -200,7 +200,7 @@ class Gate:
 
     def __eq__(self, other: object) -> bool:
         if type(self) != type(other): return False
-        for a in ["target","control","phase","adjoint"]:
+        for a in ["target","control","phase","phases","adjoint"]:
             if hasattr(self,a):
                 if not hasattr(other,a): return False
                 if getattr(self,a) != getattr(other,a): return False
@@ -548,7 +548,9 @@ class YPhase(Gate):
             return True
         return False
 
-    def __str__(self) -> str:
+    def to_quipper(self) -> str:
+        if not self.print_phase:
+            return super().to_quipper()
         return 'QRot["exp(-i%Y)",{!s}]({!s})'.format(math.pi*self.phase/2,self.target)
 
     def to_basic_gates(self) -> list[Gate]:
