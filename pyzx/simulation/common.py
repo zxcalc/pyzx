@@ -3,45 +3,45 @@ Common data structures and helper functions used by many or all decompositions a
 This file largely contains code copied from the now-deprecated pyzx.simulate.py file.
 """
 
-import random
 import math
-sq2 = math.sqrt(2)
-#omega = (1+1j)/sq2
+import random
 from fractions import Fraction
-from typing import List, Optional, Dict, Tuple, Any
+from typing import Any, Generic
 
 import numpy as np
 
-from ..utils import EdgeType, FractionLike, VertexType, toggle_vertex, toggle_edge, ave_pos
 from .. import simplify
 from ..circuit import Circuit
-from ..graph.base import BaseGraph,VT,ET
+from ..graph.base import ET, VT, BaseGraph
 from ..symbolic import Poly
+from ..utils import EdgeType, FractionLike, VertexType, toggle_edge, toggle_vertex
 
-class SumGraph(object):
+sq2 = math.sqrt(2)
+
+class SumGraph(Generic[VT, ET]):
     """Container class for a sum of ZX-diagrams"""
-    graphs: List[BaseGraph]
-    def __init__(self, graphs:Optional[List[BaseGraph]]=None) -> None:
+    graphs: list[BaseGraph[VT, ET]]
+    def __init__(self, graphs: list[BaseGraph[VT, ET]] | None = None) -> None:
         if graphs is not None:
             self.graphs = graphs
         else:
             self.graphs = []
             
-    def to_tensor(self, strategy: str = 'auto') -> np.ndarray:
+    def to_tensor(self, strategy: str = 'auto') -> np.ndarray[Any, Any]:
         if not self.graphs: return np.zeros((1,1))
         t = self.graphs[0].to_tensor(True, strategy=strategy)
         for i in range(len(self.graphs)-1):
             t = t + self.graphs[i+1].to_tensor(True, strategy=strategy)
         return t
 
-    def to_matrix(self, strategy: str = 'auto') -> np.ndarray:
+    def to_matrix(self, strategy: str = 'auto') -> np.ndarray[Any, Any]:
         if not self.graphs: return np.zeros((1,1))
         t = self.graphs[0].to_matrix(True, strategy=strategy)
         for i in range(len(self.graphs)-1):
             t = t + self.graphs[i+1].to_matrix(True, strategy=strategy)
         return t
 
-    def full_reduce(self, quiet:bool=True) -> None:
+    def full_reduce(self, quiet: bool = True) -> None:
         terms = []
         for i, g in enumerate(self.graphs):
             if not quiet:
@@ -51,7 +51,7 @@ class SumGraph(object):
             elif not quiet: print("Graph {:d} is zero".format(i))
         self.graphs = terms
 
-    def reduce_scalar(self, quiet:bool=True) -> None:
+    def reduce_scalar(self, quiet: bool = True) -> None:
         terms = []
         for i, g in enumerate(self.graphs):
             if not quiet:
@@ -97,7 +97,7 @@ class SumGraph(object):
             val += g.scalar.to_number()
         return val
 
-    def estimate_norm(self, epsilon:float=0.05) -> float:
+    def estimate_norm(self, epsilon: float = 0.05) -> float:
         """Uses the algorithm of https://arxiv.org/pdf/1808.00128.pdf (p.22)
         to estimate the norm squared of this state."""
         count = int(4*(1/epsilon)**2)
@@ -107,7 +107,7 @@ class SumGraph(object):
             total += abs(val)**2
         return total/count
 
-    def post_select(self, qubits: Dict[int, str]) -> 'SumGraph':
+    def post_select(self, qubits: dict[int, str]) -> 'SumGraph':
         """Outputs a new GraphSum, where for every term we replace the post-selected
         outputs by an effects. The argument ``qubits`` should be ``{q1:e1, q2:e2,...}``
         where the ``e1,e2,`` etc. are in the set ``{'0', '1', '+', '-'}``."""
@@ -129,12 +129,14 @@ class SumGraph(object):
             terms.append(g)
         return SumGraph(terms)
 
-    def sample(self,
-        qubits: List[int],
-        post_selected:Optional[Dict[int,str]]=None,
-        amount:int=10,
-        epsilon:float=0.05,
-        quiet:bool=True) -> List[List[Tuple[int,int]]]:
+    def sample(
+        self,
+        qubits: list[int],
+        post_selected: dict[int,str] | None = None,
+        amount:int = 10,
+        epsilon: float = 0.05,
+        quiet: bool = True
+    ) -> list[list[tuple[int,int]]]:
         """Implements the weak simulation algorithm of https://arxiv.org/pdf/1808.00128.pdf.
         ``qubits`` should be a list of qubit numbers from which measurement outcomes in the
         computational basis are to be sampled. ``post_selected`` should be in the format of
@@ -155,7 +157,7 @@ class SumGraph(object):
         if not quiet: print("Estimated original norm:", norm)
         if norm < 0.01 and not quiet:
             print("Norm very close to zero. Possibly post-selected to zero probability event?")
-        probs : Dict[str,float] = {}
+        probs : dict[str,float] = {}
         outputs = []
         for i in range(amount):
             if not quiet: print("Sample", i)
@@ -192,16 +194,16 @@ class SumGraph(object):
             outputs.append(output)
         return outputs
     
-def calculate_path_sum(g: BaseGraph[VT,ET]) -> complex:
+def calculate_path_sum(g: BaseGraph[VT, ET]) -> complex:
     """Input should be a fully reduced scalar graph-like Clifford+T ZX-diagram.
     Calculates the scalar it represents."""
     if g.num_vertices() < 2: return g.to_tensor().flatten()[0]
     phases = g.phases()
     prefactor = 0
-    variable_dict : Dict[VT,int] = dict()
-    variables: List[int] = [] # Contains the phases of each of the variables
+    variable_dict : dict[VT,int] = {}
+    variables: list[int] = [] # Contains the phases of each of the variables
     czs = []
-    xors = dict()
+    xors = {}
     for v in g.vertices():
         if v in variable_dict: continue
         if not phases[v]: continue #It is the axle of a phase gadget, ignore it
@@ -267,17 +269,19 @@ def calculate_path_sum(g: BaseGraph[VT,ET]) -> complex:
     # r = results
     # return g.scalar.to_number()*sq2**(-prefactor)*(r[0]-r[4]+omega*(r[1]-r[5]) +1j*(r[2]-r[6]) + 1j*omega*(r[3]-r[7]))
 
-def gen_catlike_term(g_initial: BaseGraph[VT, ET],
-                     vertices: List[VT],
-                     ph_base: FractionLike,
-                     ph_central: FractionLike,
-                     ph_appendix: FractionLike,
-                     eType_base: EdgeType,
-                     eType_appendix: EdgeType,
-                     scal_positive: bool,
-                     scal_power: int,
-                     scal_phase: FractionLike,
-                     pi_case: bool = False) -> BaseGraph[VT, ET]:
+def gen_catlike_term(
+    g_initial: BaseGraph[VT, ET],
+    vertices: list[VT],
+    ph_base: FractionLike,
+    ph_central: FractionLike,
+    ph_appendix: FractionLike,
+    eType_base: EdgeType,
+    eType_appendix: EdgeType,
+    scal_positive: bool,
+    scal_power: int,
+    scal_phase: FractionLike,
+    pi_case: bool = False
+) -> BaseGraph[VT, ET]:
     """Insert a term from a cat or magic5 decomposition into a graph.
 
     Used for constructing graph terms with local structure of the form of the

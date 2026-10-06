@@ -3,7 +3,7 @@ The cat3 state decomposition introduced in https://arxiv.org/pdf/2202.09202.
 """
 
 from . import Decomp, register_decomp, register_validity_checker
-from ...graph.base import BaseGraph,VT,ET
+from ...graph.base import BaseGraph, VT, ET
 from ...utils import EdgeType
 from ..common import SumGraph, gen_catlike_term, check_catn
 from fractions import Fraction
@@ -13,7 +13,7 @@ from fractions import Fraction
     alpha=1/3,
     reference="https://arxiv.org/abs/2202.09202"
 )
-def decompose(g:BaseGraph[VT,ET], v:VT) -> SumGraph:
+def decompose(g: BaseGraph[VT, ET], v: VT) -> SumGraph:
     """Apply the cat3 decomposition to a vertex v of graph g."""
     # Generate the terms of the decomposition
     neighbors = list(g.neighbors(v))
@@ -33,6 +33,6 @@ def decompose(g:BaseGraph[VT,ET], v:VT) -> SumGraph:
     return SumGraph([g_A, g_B]) # todo - ideally be consistent with whether to use g0,g1 or g_left,g_right, or g_A,g_B, etc.
 
 @register_validity_checker(Decomp.CAT_3)
-def check_valid(g:BaseGraph[VT,ET], v:VT) -> bool:
+def check_valid(g: BaseGraph[VT, ET], v: VT) -> bool:
     check_catn(g, v, 3)
     return True

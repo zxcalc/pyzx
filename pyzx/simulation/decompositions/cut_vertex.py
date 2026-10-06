@@ -4,7 +4,7 @@ and https://www.cs.ox.ac.uk/people/aleks.kissinger/theses/codsi-thesis.pdf.
 """
 
 from . import Decomp, register_decomp, register_validity_checker
-from ...graph.base import BaseGraph,VT,ET
+from ...graph.base import BaseGraph, VT, ET
 from ...utils import VertexType, ave_pos, toggle_vertex
 from ..common import SumGraph
 
@@ -13,7 +13,7 @@ from ..common import SumGraph
     alpha=1.0, # assuming it is a T-spider that is cut. Otherwise, alpha=inf
     reference="https://arxiv.org/pdf/2403.10964, https://www.cs.ox.ac.uk/people/aleks.kissinger/theses/codsi-thesis.pdf"
 )
-def decompose(g:BaseGraph[VT,ET], v:VT) -> SumGraph:
+def decompose(g: BaseGraph[VT, ET], v: VT) -> SumGraph:
     """Applies the ``cutting'' decomposition to a vertex."""
     g  = g.clone()
     g0 = g.clone()
@@ -41,7 +41,7 @@ def decompose(g:BaseGraph[VT,ET], v:VT) -> SumGraph:
     return SumGraph([g0,g1])
 
 @register_validity_checker(Decomp.CUT_VERTEX)
-def check_valid(g:BaseGraph[VT,ET], v:VT) -> bool:
+def check_valid(g: BaseGraph[VT, ET], v: VT) -> bool:
     assert v in g.vertices(), (f"Invalid vertex cut. Vertex {v} does not exist in graph {g}.")
     assert g.type(v) in (VertexType.Z, VertexType.X), (f"Invalid cut on vertex {v} of type {g.type(v)}. Must be applied to a vertex of type {VertexType.Z!r} or {VertexType.X!r}.")
     # todo - these should probably be raise errors rather than assertions?
