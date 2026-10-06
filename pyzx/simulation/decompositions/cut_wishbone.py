@@ -5,19 +5,19 @@ used in https://arxiv.org/abs/2412.17182 and https://www.cs.ox.ac.uk/people/alek
 """
 
 from . import Decomp, register_decomp, register_validity_checker
-from ...graph.base import BaseGraph,VT,ET
+from ...graph.base import BaseGraph, VT, ET
 from ...utils import VertexType, FractionLike
 from ..common import SumGraph
-from typing import List
 
 @register_decomp(
     Decomp.CUT_WISHBONE,
     alpha=1.0, # assuming one cuts a T-like spider with a T-like separator phase. Otherwise, alpha=inf
     reference="https://arxiv.org/abs/2412.17182, https://www.cs.ox.ac.uk/people/aleks.kissinger/theses/ahmad-thesis.pdf"
 )
-def decompose(g:BaseGraph[VT,ET], v:VT, neighs:List[VT]=[], ph:FractionLike=0) -> SumGraph:
+def decompose(g: BaseGraph[VT, ET], v: VT, neighs: list[VT] | None = None, ph: FractionLike = 0) -> SumGraph:
     """Applies the ``wishbone cut'' (or ``separator cut'') decomposition to vertex v of graph g, pulling out the neighbours ``neighs'' and a phase ``ph''."""
     g = g.clone()
+    neighs = [] if neighs is None else neighs
     
     for i in neighs:
         if not i in g.neighbors(v):
@@ -48,7 +48,8 @@ def decompose(g:BaseGraph[VT,ET], v:VT, neighs:List[VT]=[], ph:FractionLike=0) -
     return SumGraph([gLeft,gRight]) # todo - ideally be consistent with whether to use g0,g1 or g_left,g_right, or g_A,g_B, etc.
 
 @register_validity_checker(Decomp.CUT_WISHBONE)
-def check_valid(g:BaseGraph[VT,ET], v:VT, neighs:List[VT]=[], ph:FractionLike=0) -> bool:
+def check_valid(g: BaseGraph[VT, ET], v: VT, neighs: list[VT] | None = None, ph: FractionLike = 0) -> bool:
+    neighs = [] if neighs is None else neighs
     assert v in g.vertices(), (f"Invalid wishbone cut. Vertex {v} does not exist in graph {g}.")
     assert g.type(v) in (VertexType.Z, VertexType.X), (f"Invalid wishbone cut on vertex {v} of type {g.type(v)}. Must be applied to a vertex of type {VertexType.Z!r} or {VertexType.X!r}.")
     assert all(g.connected(v,neigh) for neigh in neighs), (f"Invalid wishbone cut on vertex {v}. Target neighbours {neighs} are not all connected to vertex {v}.")

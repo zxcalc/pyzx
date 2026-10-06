@@ -3,10 +3,9 @@ The Bravyi-Smith-Smolin decomposition introduced in https://arxiv.org/abs/1506.0
 """
 
 from . import Decomp, register_decomp, register_validity_checker
-from ...graph.base import BaseGraph,VT,ET
+from ...graph.base import BaseGraph, VT, ET
 from ..common import SumGraph, sq2
 from ...utils import VertexType, EdgeType
-from typing import List
 from fractions import Fraction
 
 MAGIC_GLOBAL = -(7+5*sq2)/(2+2j)
@@ -22,8 +21,8 @@ MAGIC_PHI = 10 - 7*sq2
     alpha=0.4678924870096,
     reference="https://arxiv.org/abs/1506.01396, https://arxiv.org/abs/2109.01076"
 )
-def decompose(g:BaseGraph[VT,ET], verts:List[VT]) -> SumGraph:
-    """This function takes in a ZX-diagram in graph-like form 
+def decompose(g: BaseGraph[VT, ET], verts: list[VT]) -> SumGraph:
+    """This function takes in a ZX-diagram in graph-like form
     (all spiders fused, only Z spiders, only H-edges between spiders),
     and splits it into a sum over smaller diagrams by using the magic
     state decomposition of Bravyi, Smith, and Smolin (2016), PRX 6, 021043.
@@ -39,20 +38,20 @@ def decompose(g:BaseGraph[VT,ET], verts:List[VT]) -> SumGraph:
     return SumGraph(graphs)
 
 @register_validity_checker(Decomp.BSS)
-def check_valid(g:BaseGraph[VT,ET], verts:List[VT]) -> bool:
+def check_valid(g: BaseGraph[VT, ET], verts: list[VT]) -> bool:
     assert len(verts)==6, f"Invalid application of BSS decomposition. Expected 6 vertices but {len(verts)} were specified."
     assert all(v in g.vertices() for v in verts), f"Invalid application of BSS decomposition. One or more vertex among {verts} is not a valid vertex in {g}."
     assert all(g.type(v)==VertexType.Z for v in verts), f"Invalid application of BSS decomposition. Specified vertices {verts} are not all Z-spiders."
     return True
 
-def replace_B60(g: BaseGraph[VT,ET], verts: List[VT]) -> BaseGraph[VT,ET]:
+def replace_B60(g: BaseGraph[VT, ET], verts: list[VT]) -> BaseGraph[VT, ET]:
     g.scalar.add_float(MAGIC_B60)
     g.scalar.add_power(-6)
     for v in verts:
         g.add_to_phase(v,Fraction(-1,4))
     return g
 
-def replace_B66(g: BaseGraph[VT,ET], verts: List[VT]) -> BaseGraph[VT,ET]:
+def replace_B66(g: BaseGraph[VT, ET], verts: list[VT]) -> BaseGraph[VT, ET]:
     g.scalar.add_float(MAGIC_B66)
     g.scalar.add_power(-6)
     g.scalar.add_phase(Fraction(1))
@@ -61,7 +60,7 @@ def replace_B66(g: BaseGraph[VT,ET], verts: List[VT]) -> BaseGraph[VT,ET]:
         g.add_to_phase(v,Fraction(1))
     return g
 
-def replace_E6(g: BaseGraph[VT,ET], verts: List[VT]) -> BaseGraph[VT,ET]:
+def replace_E6(g: BaseGraph[VT, ET], verts: list[VT]) -> BaseGraph[VT, ET]:
     g.scalar.add_float(MAGIC_E6)
     g.scalar.add_power(4)
     g.scalar.add_phase(Fraction(1,2))
@@ -74,7 +73,7 @@ def replace_E6(g: BaseGraph[VT,ET], verts: List[VT]) -> BaseGraph[VT,ET]:
     g.add_edges([(v,w) for v in verts],EdgeType.HADAMARD)
     return g
 
-def replace_O6(g: BaseGraph[VT,ET], verts: List[VT]) -> BaseGraph[VT,ET]:
+def replace_O6(g: BaseGraph[VT, ET], verts: list[VT]) -> BaseGraph[VT, ET]:
     g.scalar.add_float(MAGIC_O6)
     g.scalar.add_power(4)
     g.scalar.add_phase(Fraction(1,2))
@@ -87,7 +86,7 @@ def replace_O6(g: BaseGraph[VT,ET], verts: List[VT]) -> BaseGraph[VT,ET]:
     g.add_edges([(v,w) for v in verts],EdgeType.HADAMARD)
     return g
 
-def replace_K6(g: BaseGraph[VT,ET], verts: List[VT]) -> BaseGraph[VT,ET]:
+def replace_K6(g: BaseGraph[VT, ET], verts: list[VT]) -> BaseGraph[VT, ET]:
     g.scalar.add_float(MAGIC_K6)
     g.scalar.add_power(5)
     g.scalar.add_phase(Fraction(1,4))
@@ -99,7 +98,7 @@ def replace_K6(g: BaseGraph[VT,ET], verts: List[VT]) -> BaseGraph[VT,ET]:
     g.add_edges([(v,w) for v in verts],EdgeType.SIMPLE)
     return g
 
-def replace_phi1(g: BaseGraph[VT,ET], verts: List[VT]) -> BaseGraph[VT,ET]:
+def replace_phi1(g: BaseGraph[VT, ET], verts: list[VT]) -> BaseGraph[VT, ET]:
     g.scalar.add_float(MAGIC_PHI)
     g.scalar.add_power(9)
     g.scalar.add_phase(Fraction(3,2))
@@ -116,7 +115,7 @@ def replace_phi1(g: BaseGraph[VT,ET], verts: List[VT]) -> BaseGraph[VT,ET]:
     g.add_edges([(w1,w3),(w1,w4),(w2,w4),(w2,w5),(w3,w5)],EdgeType.HADAMARD)
     return g
 
-def replace_phi2(g: BaseGraph[VT,ET], verts: List[VT]) -> BaseGraph[VT,ET]:
+def replace_phi2(g: BaseGraph[VT, ET], verts: list[VT]) -> BaseGraph[VT, ET]:
     v1,v2,v3,v4,v5,v6 = verts
     verts = [v1,v2,v4,v5,v6,v3]
     return replace_phi1(g,verts)
