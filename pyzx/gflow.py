@@ -106,10 +106,15 @@ def gflow(
         correct: Set[VT] = set()
 
         # a list of nodes that can currently be used in the correction set of the next node
+        # Keep candidate v when its column in the current flow-demand matrix
+        # is nonzero on an unprocessed row. This can arise either from a graph
+        # edge or, for Pauli-Y, from the diagonal coefficient M[v, v] = 1.
         candidates = [
             v
             for v in (processed | pauli_x | pauli_y).difference(pattern_inputs)
-            if focus or any(w not in processed for w in g.neighbors(v))
+            if focus
+            or (v in pauli_y and v not in processed)
+            or any(w not in processed for w in g.neighbors(v))
         ]
 
         if focus:
@@ -117,7 +122,8 @@ def gflow(
         else:
             clean = [v for v in vertices
                         if v not in processed and 
-                        any(w in candidates for w in g.neighbors(v))]
+                        ((v in pauli_y and v in candidates)
+                         or any(w in candidates for w in g.neighbors(v)))]
 
         # compute the "flow-demand matrix", which is essentially the bi-adjacency matrix from
         # "clean" to "candidates", which additionally relates every Y-measured node to
@@ -126,7 +132,13 @@ def gflow(
                    for v in candidates] for w in clean])
 
         for index, u in enumerate(clean):
-            if not focus or (u not in processed and any(w in candidates for w in g.neighbors(u))):
+            if not focus or (
+                u not in processed
+                and (
+                    (u in pauli_y and u in candidates)
+                    or any(w in candidates for w in g.neighbors(u))
+                )
+            ):
                 vu = zerovec.copy()
                 vu.data[index][0] = 1
                 x = m.solve(vu)

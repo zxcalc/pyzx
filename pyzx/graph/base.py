@@ -87,7 +87,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
     """Base class for letting graph backends interact with PyZX.
     For a backend to work with PyZX, there should be a class that implements
     all the methods of this class. For implementations of this class see
-    :class:`~pyzx.graph.graph_s.GraphS` or :class:`~pyzx.graph.graph_ig.GraphIG`."""
+    :class:`~pyzx.graph.graph_s.GraphS` or :class:`~pyzx.graph.multigraph.Multigraph`."""
 
     backend: ClassVar[str] = 'None'
 
@@ -326,16 +326,15 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         """Returns the name of an edge between `s` and `t`.
 
         This default implementation, used by backends with parallel edges that
-        do not provide a specialized edge lookup (e.g., the ``graph_tool``
-        backend), raises `ValueError` if there is no such edge, or if `et` is
-        `None` and parallel edges of differing types make the choice ambiguous;
-        in that case pass `et`, or iterate with :meth:`edges` /
-        :meth:`incident_edges`. If `et` is given, the first edge of that type
-        is returned.
+        do not provide a specialized edge lookup raises `ValueError` if there
+        is no such edge, or if `et` is `None` and parallel edges of differing
+        types make the choice ambiguous; in that case pass `et`, or iterate
+        with :meth:`edges` / :meth:`incident_edges`. If `et` is given, the
+        first edge of that type is returned.
 
         Note: the `multigraph` backend overrides this with its own
-        implementation, and backends without parallel edges (`GraphS`,
-        `GraphIG`) override it with simpler semantics that do not raise when the
+        implementation, and backends without parallel edges (i.e., `GraphS`)
+        override it with simpler semantics that do not raise when the
         edge is absent; see those overrides."""
         matched: Optional[ET] = None
         matched_type: Optional[EdgeType] = None

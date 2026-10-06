@@ -1,4 +1,4 @@
-# PyZX - Python library for quantum circuit rewriting 
+# PyZX - Python library for quantum circuit rewriting
 #        and optimization using the ZX-calculus
 # Copyright (C) 2018 - Aleks Kissinger and John van de Wetering
 
@@ -62,7 +62,6 @@ class CompileMode(Enum):
     Compilation modes for the cnot mapper procedures
     """
 
-    QUIL_COMPILER = "quilc"
     NO_COMPILER = "not_compiled"
     TKET_COMPILER = "tket"
 
@@ -402,180 +401,173 @@ def route_circuit(
             if hasattr(gate, "name") and gate.name in ["CNOT", "CZ"]
         ]
     )
-    if mode == CompileMode.QUIL_COMPILER:
-        from pyzx.pyquil_circuit import PyQuilCircuit
 
-        compiled_circuit = PyQuilCircuit.from_circuit(
-            c, architecture
-        )  # TODO fix this to include other gates aswell
-        compiled_circuit.compile()
-    else:
-        g = c.to_graph()
-        g = teleport_reduce(g)
-        interior_clifford_simp(g)
-        g = g.copy()  # reduces the number of gates when extracting.
-        if type(architecture) == type(""):
-            architecture = create_architecture(architecture)
+    g = c.to_graph()
+    g = teleport_reduce(g)
+    interior_clifford_simp(g)
+    g = g.copy()  # reduces the number of gates when extracting.
+    if type(architecture) == type(""):
+        architecture = create_architecture(architecture)
 
-        def gauss_func(m, permutation=None, col=False):
-            cn = CNOTMaker()
-            if False:  # mode == ElimMode.GAUSS_MODE:
-                return m.to_cnots()
-            if col:
-                if permutation is None:
-                    permutation = list(range(m.cols()))
-                m = Mat2([[row[col] for col in permutation] for row in m.data])
+    def gauss_func(m, permutation=None, col=False):
+        cn = CNOTMaker()
+        if False:  # mode == ElimMode.GAUSS_MODE:
+            return m.to_cnots()
+        if col:
+            if permutation is None:
+                permutation = list(range(m.cols()))
+            m = Mat2([[row[col] for col in permutation] for row in m.data])
+            rank = gauss(
+                ElimMode.STEINER_MODE,
+                m,
+                architecture,
+                full_reduce=True,
+                x=cn,
+                permutation=permutation,
+            )
+        else:
+            m = m.copy()
+            if mode in genetic_elim_modes:
                 rank = gauss(
-                    ElimMode.STEINER_MODE,
+                    mode,
+                    m,
+                    architecture,
+                    full_reduce=True,
+                    x=cn,
+                    permutation=permutation,
+                    row=False,
+                    col=True,
+                    population_size=population,
+                    crossover_prob=crossover_prob,
+                    mutate_prob=mutation_prob,
+                    n_iterations=iterations,
+                )
+            else:
+                rank = gauss(
+                    mode,
                     m,
                     architecture,
                     full_reduce=True,
                     x=cn,
                     permutation=permutation,
                 )
-            else:
-                m = m.copy()
-                if mode in genetic_elim_modes:
-                    rank = gauss(
-                        mode,
-                        m,
-                        architecture,
-                        full_reduce=True,
-                        x=cn,
-                        permutation=permutation,
-                        row=False,
-                        col=True,
-                        population_size=population,
-                        crossover_prob=crossover_prob,
-                        mutate_prob=mutation_prob,
-                        n_iterations=iterations,
-                    )
-                else:
-                    rank = gauss(
-                        mode,
-                        m,
-                        architecture,
-                        full_reduce=True,
-                        x=cn,
-                        permutation=permutation,
-                    )
-            # print(permutation)
-            # print(len(cn.cnots), cn.cnots)
-            return cn.cnots
+        # print(permutation)
+        # print(len(cn.cnots), cn.cnots)
+        return cn.cnots
 
-        best_permutation = [i for i in range(g.qubit_count())]
-        best_solution = None
-        if allow_output_perm not in [True, False]:  # mode in genetic_elim_modes:
+    best_permutation = [i for i in range(g.qubit_count())]
+    best_solution = None
+    if allow_output_perm not in [True, False]:  # mode in genetic_elim_modes:
 
-            def fitness(permutation):
-                new_g = g.copy()
-                compiled_g, _ = simple_extract_no_gadgets(
-                    new_g,
-                    gauss_func,
-                    initial_qubit_placement=permutation.tolist(),
-                    allow_output_perm=allow_output_perm,
-                )
-                compiled_circuit = Circuit.from_graph(compiled_g)
-                compiled_circuit = basic_optimization(compiled_circuit, do_swaps=False)
-                return metric(compiled_circuit)
-
-            # Build a reversed circuit to find a new initial qubit placement.
-            rev_c = Circuit(g.qubit_count())
-            for gate in reversed(c.gates):
-                rev_c.add_gate(gate)
-            rev_g = rev_c.to_graph()
-            rev_g = teleport_reduce(rev_g)
-            interior_clifford_simp(rev_g)
-            rev_g = rev_g.copy()  # reduces the number of gates when extracting.
-
-            def step(permutation):
-                new_g = g.copy()
-                compiled_g, output_perm = simple_extract_no_gadgets(
-                    new_g,
-                    gauss_func,
-                    initial_qubit_placement=permutation.tolist(),
-                    allow_output_perm=allow_output_perm,
-                )
-                compiled_circuit = Circuit.from_graph(compiled_g)
-                compiled_circuit = basic_optimization(compiled_circuit, do_swaps=False)
-                solution = (permutation.tolist(), compiled_circuit, output_perm)
-                new_g = rev_g.copy()
-                compiled_g, output_perm = simple_extract_no_gadgets(
-                    new_g,
-                    gauss_func,
-                    initial_qubit_placement=output_perm,
-                    allow_output_perm=allow_output_perm,
-                )
-                # compiled_circuit = Circuit.from_graph(compiled_g)
-                # compiled_circuit = basic_optimization(compiled_circuit, do_swaps=False)
-                return np.asarray(output_perm), solution, metric(compiled_circuit)
-
-            # optimizer = GeneticAlgorithm(population, crossover_prob, mutation_prob, fitness, quiet=False)
-            optimizer = ParticleSwarmOptimization(
-                swarm_size=swarm_size,
-                step_func=step,
-                s_best_crossover=s_crossover,
-                p_best_crossover=p_crossover,
-                mutation=pso_mutation,
-            )
-            best_solution = optimizer.find_optimum(
-                architecture.n_qubits, n_steps, False
-            )
-
-        if best_solution is None:
+        def fitness(permutation):
             new_g = g.copy()
-            compiled_g, final_placement = simple_extract_no_gadgets(
+            compiled_g, _ = simple_extract_no_gadgets(
                 new_g,
                 gauss_func,
-                initial_qubit_placement=best_permutation,
+                initial_qubit_placement=permutation.tolist(),
                 allow_output_perm=allow_output_perm,
             )
             compiled_circuit = Circuit.from_graph(compiled_g)
             compiled_circuit = basic_optimization(compiled_circuit, do_swaps=False)
-        else:
-            best_permutation, compiled_circuit, final_placement = best_solution
-        print("Permutation found!", best_permutation)
-        print("Done extracting!", final_placement)
-        # sanity checks.
-        from ..tensor import compare_tensors
+            return metric(compiled_circuit)
 
-        print("Initial CNOT/CZ count:", metric(c))
-        if allow_output_perm:
-            compiled_circuit2 = Circuit.from_graph(compiled_circuit.to_graph())
-            swap_map = {i: final_placement[i] for i, q in enumerate(best_permutation)}
-            for t1, t2 in permutation_as_swaps(swap_map):
-                compiled_circuit2.add_gate("CNOT", control=t1, target=t2)
-                compiled_circuit2.add_gate("CNOT", control=t2, target=t1)
-                compiled_circuit2.add_gate("CNOT", control=t1, target=t2)
-            print(
-                "Extract circuit equals initial circuit? (with appended swaps)",
-                compare_tensors(c, compiled_circuit2),
-            )  # check extraction procedure
-        else:
-            print(
-                "Extract circuit equals initial circuit? (without appended swaps)",
-                compare_tensors(c, compiled_circuit),
-            )  # check extraction procedure
-        qubit_lookup = {
-            i: best_permutation.index(i) for i in range(len(best_permutation))
-        }
-        illegal_gates = [
-            gate
-            for gate in compiled_circuit.gates
-            if hasattr(gate, "name")
-            and (gate.name == "CNOT" or gate.name == "CZ")
-            and not (
-                architecture.graph.connected(
-                    qubit_lookup[gate.target], qubit_lookup[gate.control]
-                )
-                or architecture.graph.connected(
-                    qubit_lookup[gate.control], qubit_lookup[gate.target]
-                )
+        # Build a reversed circuit to find a new initial qubit placement.
+        rev_c = Circuit(g.qubit_count())
+        for gate in reversed(c.gates):
+            rev_c.add_gate(gate)
+        rev_g = rev_c.to_graph()
+        rev_g = teleport_reduce(rev_g)
+        interior_clifford_simp(rev_g)
+        rev_g = rev_g.copy()  # reduces the number of gates when extracting.
+
+        def step(permutation):
+            new_g = g.copy()
+            compiled_g, output_perm = simple_extract_no_gadgets(
+                new_g,
+                gauss_func,
+                initial_qubit_placement=permutation.tolist(),
+                allow_output_perm=allow_output_perm,
             )
-        ]
-        print("All CNOT/CZ gates allowed in the architecture?", len(illegal_gates) == 0)
-        if illegal_gates:
-            print("Which ones?", illegal_gates)
+            compiled_circuit = Circuit.from_graph(compiled_g)
+            compiled_circuit = basic_optimization(compiled_circuit, do_swaps=False)
+            solution = (permutation.tolist(), compiled_circuit, output_perm)
+            new_g = rev_g.copy()
+            compiled_g, output_perm = simple_extract_no_gadgets(
+                new_g,
+                gauss_func,
+                initial_qubit_placement=output_perm,
+                allow_output_perm=allow_output_perm,
+            )
+            # compiled_circuit = Circuit.from_graph(compiled_g)
+            # compiled_circuit = basic_optimization(compiled_circuit, do_swaps=False)
+            return np.asarray(output_perm), solution, metric(compiled_circuit)
+
+        # optimizer = GeneticAlgorithm(population, crossover_prob, mutation_prob, fitness, quiet=False)
+        optimizer = ParticleSwarmOptimization(
+            swarm_size=swarm_size,
+            step_func=step,
+            s_best_crossover=s_crossover,
+            p_best_crossover=p_crossover,
+            mutation=pso_mutation,
+        )
+        best_solution = optimizer.find_optimum(
+            architecture.n_qubits, n_steps, False
+        )
+
+    if best_solution is None:
+        new_g = g.copy()
+        compiled_g, final_placement = simple_extract_no_gadgets(
+            new_g,
+            gauss_func,
+            initial_qubit_placement=best_permutation,
+            allow_output_perm=allow_output_perm,
+        )
+        compiled_circuit = Circuit.from_graph(compiled_g)
+        compiled_circuit = basic_optimization(compiled_circuit, do_swaps=False)
+    else:
+        best_permutation, compiled_circuit, final_placement = best_solution
+    print("Permutation found!", best_permutation)
+    print("Done extracting!", final_placement)
+    # sanity checks.
+    from ..tensor import compare_tensors
+
+    print("Initial CNOT/CZ count:", metric(c))
+    if allow_output_perm:
+        compiled_circuit2 = Circuit.from_graph(compiled_circuit.to_graph())
+        swap_map = {i: final_placement[i] for i, q in enumerate(best_permutation)}
+        for t1, t2 in permutation_as_swaps(swap_map):
+            compiled_circuit2.add_gate("CNOT", control=t1, target=t2)
+            compiled_circuit2.add_gate("CNOT", control=t2, target=t1)
+            compiled_circuit2.add_gate("CNOT", control=t1, target=t2)
+        print(
+            "Extract circuit equals initial circuit? (with appended swaps)",
+            compare_tensors(c, compiled_circuit2),
+        )  # check extraction procedure
+    else:
+        print(
+            "Extract circuit equals initial circuit? (without appended swaps)",
+            compare_tensors(c, compiled_circuit),
+        )  # check extraction procedure
+    qubit_lookup = {
+        i: best_permutation.index(i) for i in range(len(best_permutation))
+    }
+    illegal_gates = [
+        gate
+        for gate in compiled_circuit.gates
+        if hasattr(gate, "name")
+        and (gate.name == "CNOT" or gate.name == "CZ")
+        and not (
+            architecture.graph.connected(
+                qubit_lookup[gate.target], qubit_lookup[gate.control]
+            )
+            or architecture.graph.connected(
+                qubit_lookup[gate.control], qubit_lookup[gate.target]
+            )
+        )
+    ]
+    print("All CNOT/CZ gates allowed in the architecture?", len(illegal_gates) == 0)
+    if illegal_gates:
+        print("Which ones?", illegal_gates)
 
     print("Final CNOT/CZ count:", metric(compiled_circuit))
 
@@ -656,10 +648,7 @@ def batch_route_circuits(
     for architecture in arch_iter:
         circuits[architecture.name] = {}
         for mode in modes:
-            if mode == CompileMode.QUIL_COMPILER:
-                n_compile_list = range(n_compile)
-            else:
-                n_compile_list = [None]
+            n_compile_list = [None]
             new_dest_folder = os.path.join(dest_folder, architecture.name, mode)
             os.makedirs(new_dest_folder, exist_ok=True)
             if mode in genetic_elim_modes:
@@ -669,8 +658,6 @@ def batch_route_circuits(
                 mutation_iter = mutation_probs
                 circuits[architecture.name][mode] = {}
             else:
-                if mode == CompileMode.QUIL_COMPILER:
-                    circuits[architecture.name][mode] = []
                 pop_iter = [None]
                 iter_iter = [None]
                 crossover_iter = [None]
@@ -726,86 +713,62 @@ def batch_route_circuits(
                                                                     origin_file
                                                                 )
                                                             )
-                                                            try:
-                                                                start_time = time.time()
-                                                                circuit = route_circuit(
-                                                                    original_circuit,
-                                                                    architecture,
-                                                                    mode=mode,
-                                                                    dest_file=dest_file,
-                                                                    population=population,
-                                                                    iterations=iteration,
-                                                                    crossover_prob=crossover_prob,
-                                                                    mutation_prob=mutation_prob,
-                                                                    allow_output_perm=allow_output_perm,
-                                                                    swarm_size=swarm,
-                                                                    n_steps=steps,
-                                                                    s_crossover=sco,
-                                                                    p_crossover=pco,
-                                                                    pso_mutation=pso_m,
-                                                                )
-                                                                end_time = time.time()
-                                                                if (
-                                                                    metrics_file
-                                                                    is not None
-                                                                ):
-                                                                    metrics.append(
-                                                                        make_metrics(
-                                                                            circuit,
-                                                                            origin_file,
-                                                                            architecture.name,
-                                                                            mode,
-                                                                            dest_file,
-                                                                            population,
-                                                                            iteration,
-                                                                            crossover_prob,
-                                                                            mutation_prob,
-                                                                            end_time
-                                                                            - start_time,
-                                                                            i,
-                                                                        )
-                                                                    )
-                                                                if (
-                                                                    mode
-                                                                    in genetic_elim_modes
-                                                                ):
-                                                                    circuits[
-                                                                        architecture.name
-                                                                    ][mode][
-                                                                        (
-                                                                            population,
-                                                                            iteration,
-                                                                            crossover_prob,
-                                                                            mutation_prob,
-                                                                        )
-                                                                    ] = circuit
-                                                                elif (
-                                                                    mode
-                                                                    == CompileMode.QUIL_COMPILER
-                                                                ):
-                                                                    circuits[
-                                                                        architecture.name
-                                                                    ][mode].append(
-                                                                        circuit
-                                                                    )
-                                                                else:
-                                                                    circuits[
-                                                                        architecture.name
-                                                                    ][mode] = circuit
-                                                            except KeyError as e:  # Should only happen with quilc
-                                                                if (
-                                                                    mode
-                                                                    == CompileMode.QUIL_COMPILER
-                                                                ):
-                                                                    print(
-                                                                        "\033[31mCould not compile",
+                                                            start_time = time.time()
+                                                            circuit = route_circuit(
+                                                                original_circuit,
+                                                                architecture,
+                                                                mode=mode,
+                                                                dest_file=dest_file,
+                                                                population=population,
+                                                                iterations=iteration,
+                                                                crossover_prob=crossover_prob,
+                                                                mutation_prob=mutation_prob,
+                                                                allow_output_perm=allow_output_perm,
+                                                                swarm_size=swarm,
+                                                                n_steps=steps,
+                                                                s_crossover=sco,
+                                                                p_crossover=pco,
+                                                                pso_mutation=pso_m,
+                                                            )
+                                                            end_time = time.time()
+                                                            if (
+                                                                metrics_file
+                                                                is not None
+                                                            ):
+                                                                metrics.append(
+                                                                    make_metrics(
+                                                                        circuit,
                                                                         origin_file,
-                                                                        "into",
+                                                                        architecture.name,
+                                                                        mode,
                                                                         dest_file,
-                                                                        end="\033[0m\n",
+                                                                        population,
+                                                                        iteration,
+                                                                        crossover_prob,
+                                                                        mutation_prob,
+                                                                        end_time
+                                                                        - start_time,
+                                                                        i,
                                                                     )
-                                                                else:
-                                                                    raise e
+                                                                )
+                                                            if (
+                                                                mode
+                                                                in genetic_elim_modes
+                                                            ):
+                                                                circuits[
+                                                                    architecture.name
+                                                                ][mode][
+                                                                    (
+                                                                        population,
+                                                                        iteration,
+                                                                        crossover_prob,
+                                                                        mutation_prob,
+                                                                    )
+                                                                ] = circuit
+                                                            else:
+                                                                circuits[
+                                                                    architecture.name
+                                                                ][mode] = circuit
 
     if len(metrics) > 0 and DataFrame != None:
         df = DataFrame(metrics)
@@ -823,15 +786,7 @@ def batch_route_circuits(
 
 def count_cnots_circuit(mode, circuit, n_compile=1, store_circuit_as=None):
     count = -1
-    if mode == CompileMode.QUIL_COMPILER:
-        from pyzx.pyquil_circuit import PyQuilCircuit
-
-        if isinstance(circuit, PyQuilCircuit):
-            count = (
-                sum([circuit.compiled_cnot_count() for i in range(n_compile)])
-                / n_compile
-            )
-    elif mode == CompileMode.NO_COMPILER:
+    if mode == CompileMode.NO_COMPILER:
         count = circuit.count_cnots()
     if store_circuit_as is not None:
         with open(store_circuit_as, "w") as f:
@@ -939,10 +894,7 @@ def batch_map_cnot_circuits(
         circuits[architecture.name] = {}
         for mode in modes:
             n_compile_list: Iterable[int]
-            if mode == CompileMode.QUIL_COMPILER:
-                n_compile_list = range(n_compile)
-            else:
-                n_compile_list = [0]
+            n_compile_list = [0]
             new_dest_folder = os.path.join(dest_folder, architecture.name, mode)
             os.makedirs(new_dest_folder, exist_ok=True)
             if mode in genetic_elim_modes:
@@ -952,8 +904,6 @@ def batch_map_cnot_circuits(
                 mutation_iter = mutation_probs
                 circuits[architecture.name][mode] = {}
             else:
-                if mode == CompileMode.QUIL_COMPILER:
-                    circuits[architecture.name][mode] = []
                 pop_iter = [0]
                 iter_iter = [0]
                 crossover_iter = [0]
@@ -981,63 +931,47 @@ def batch_map_cnot_circuits(
                                             mode,
                                             dest_filename,
                                         )
-                                        try:
-                                            start_time = time.time()
-                                            circuit = map_cnot_circuit(
-                                                origin_file,
-                                                architecture,
-                                                mode=mode,
-                                                dest_file=dest_file,
-                                                population=population,
-                                                iterations=iteration,
-                                                crossover_prob=crossover_prob,
-                                                mutation_prob=mutation_prob,
-                                            )
-                                            end_time = time.time()
-                                            if metrics_file is not None:
-                                                metrics.append(
-                                                    make_metrics(
-                                                        circuit,
-                                                        origin_file,
-                                                        architecture.name,
-                                                        mode,
-                                                        dest_file,
-                                                        population,
-                                                        iteration,
-                                                        crossover_prob,
-                                                        mutation_prob,
-                                                        end_time - start_time,
-                                                        i,
-                                                    )
-                                                )
-                                            if mode in genetic_elim_modes:
-                                                circuits[architecture.name][mode][
-                                                    (
-                                                        population,
-                                                        iteration,
-                                                        crossover_prob,
-                                                        mutation_prob,
-                                                    )
-                                                ] = circuit
-                                            elif mode == CompileMode.QUIL_COMPILER:
-                                                circuits[architecture.name][
-                                                    mode
-                                                ].append(circuit)
-                                            else:
-                                                circuits[architecture.name][
-                                                    mode
-                                                ] = circuit
-                                        except KeyError as e:  # Should only happen with quilc
-                                            if mode == CompileMode.QUIL_COMPILER:
-                                                print(
-                                                    "\033[31mCould not compile",
+                                        start_time = time.time()
+                                        circuit = map_cnot_circuit(
+                                            origin_file,
+                                            architecture,
+                                            mode=mode,
+                                            dest_file=dest_file,
+                                            population=population,
+                                            iterations=iteration,
+                                            crossover_prob=crossover_prob,
+                                            mutation_prob=mutation_prob,
+                                        )
+                                        end_time = time.time()
+                                        if metrics_file is not None:
+                                            metrics.append(
+                                                make_metrics(
+                                                    circuit,
                                                     origin_file,
-                                                    "into",
+                                                    architecture.name,
+                                                    mode,
                                                     dest_file,
-                                                    end="\033[0m\n",
+                                                    population,
+                                                    iteration,
+                                                    crossover_prob,
+                                                    mutation_prob,
+                                                    end_time - start_time,
+                                                    i,
                                                 )
-                                            else:
-                                                raise e
+                                            )
+                                        if mode in genetic_elim_modes:
+                                            circuits[architecture.name][mode][
+                                                (
+                                                    population,
+                                                    iteration,
+                                                    crossover_prob,
+                                                    mutation_prob,
+                                                )
+                                            ] = circuit
+                                        else:
+                                            circuits[architecture.name][
+                                                mode
+                                            ] = circuit
 
     if metrics_file is not None and len(metrics) > 0 and DataFrame is not None:
         df = DataFrame(metrics)
@@ -1089,11 +1023,6 @@ def map_cnot_circuit(
             n_iterations=iterations,
             **kwargs,
         )
-    elif mode == CompileMode.QUIL_COMPILER:
-        from pyzx.pyquil_circuit import PyQuilCircuit
-
-        compiled_circuit = PyQuilCircuit.from_CNOT_tracker(circuit, architecture)
-        compiled_circuit.compile()
 
     if dest_file is not None:
         compiled_qasm = compiled_circuit.to_qasm()
@@ -1155,11 +1084,7 @@ def sequential_map_cnot_circuits(
     for architecture in arch_iter:
         circuits[architecture.name] = {}
         for mode in modes:
-            n_compile_list: Iterable[int]
-            if mode == CompileMode.QUIL_COMPILER:
-                n_compile_list = range(n_compile)
-            else:
-                n_compile_list = [0]
+            n_compile_list: Iterable[int] = [0]
             new_dest_folder = os.path.join(dest_folder, architecture.name, str(mode))
             os.makedirs(new_dest_folder, exist_ok=True)
             if mode in genetic_elim_modes or mode in pso_elim_modes:
@@ -1169,8 +1094,6 @@ def sequential_map_cnot_circuits(
                 mutation_iter = mutation_probs
                 circuits[architecture.name][mode] = {}
             else:
-                if mode == CompileMode.QUIL_COMPILER:
-                    circuits[architecture.name][mode] = []
                 pop_iter = [None]
                 iter_iter = [None]
                 crossover_iter = [None]
@@ -1191,37 +1114,27 @@ def sequential_map_cnot_circuits(
                             for i in n_compile_list:
                                 # dest_filename = create_dest_filename(origin_file, population, iteration, crossover_prob, mutation_prob, i)
                                 # dest_file = os.path.join(dest_folder, architecture.name, mode, dest_filename)
-                                try:
-                                    print("Sequence length", len(matrices))
-                                    start_time = time.time()
-                                    _circs, permutations, score = sequential_gauss(
-                                        matrices,
-                                        architecture=architecture,
-                                        mode=mode,
-                                        population_size=population,
-                                        n_iterations=iteration,
-                                        crossover_prob=crossover_prob,
-                                        mutate_prob=mutation_prob,
-                                    )
-                                    end_time = time.time()
-                                    print("score:", score)
-                                    print("time (s):", end_time - start_time)
-                                except KeyError as e:  # Should only happen with quilc
-                                    if mode == CompileMode.QUIL_COMPILER:
-                                        print(
-                                            "\033[31mCould not compile",
-                                            origin_file,
-                                            end="\033[0m\n",
-                                        )
-                                    else:
-                                        raise e
+                                print("Sequence length", len(matrices))
+                                start_time = time.time()
+                                _circs, permutations, score = sequential_gauss(
+                                    matrices,
+                                    architecture=architecture,
+                                    mode=mode,
+                                    population_size=population,
+                                    n_iterations=iteration,
+                                    crossover_prob=crossover_prob,
+                                    mutate_prob=mutation_prob,
+                                )
+                                end_time = time.time()
+                                print("score:", score)
+                                print("time (s):", end_time - start_time)
 
     return circuits
 
 def main(args):
     parser = argparse.ArgumentParser(prog="pyzx router", description=description)
     parser.add_argument("QASM_source",nargs="+",help="The QASM file or folder with QASM files to be routed.")
-    parser.add_argument("-m","--mode",nargs="+",dest="mode",default=ElimMode.STEINER_MODE,help="The mode specifying how to route. choose 'all' for using all modes.",choices=elim_modes + [CompileMode.QUIL_COMPILER, "all"])
+    parser.add_argument("-m","--mode",nargs="+",dest="mode",default=ElimMode.STEINER_MODE,help="The mode specifying how to route. choose 'all' for using all modes.",choices=elim_modes + ["all"])
     parser.add_argument("-a","--architecture",nargs="+",dest="architecture",default=SQUARE,choices=architectures,help="Which architecture it should run compile to.")
     parser.add_argument("-q","--qubits",nargs="+",default=None,type=int,help="The number of qubits for the architecture.")
     parser.add_argument("--output_perm",default="y",choices=["y", "n", "pso"],help="Whether the location of the output qubits can be different for the input location. Qubit locations can be optimized with pso.")
@@ -1239,7 +1152,7 @@ def main(args):
     # parser.add_argument("--perm", default="both", choices=["row", "col", "both"], help="Whether to find a single optimal permutation that permutes the rows, columns or both with the genetic algorithm.")
     parser.add_argument("--destination",help="Destination file or folder where the compiled circuit should be stored. Otherwise the source folder is used.")
     parser.add_argument("--metrics_csv",default=None,help="The location to store compiling metrics as csv, if not given, the metrics are not calculated. Only used when the source is a folder")
-    parser.add_argument("--n_compile",default=1,type=int,help="How often to run the Quilc compiler, since it is not deterministic.")
+    # parser.add_argument("--n_compile",default=1,type=int,help="How often to run the Quilc compiler, since it is not deterministic.")
     parser.add_argument("--subfolder", default=None,type=str,nargs="+",help="Possible subfolders from the main QASM source to compile from. Less typing when source folders are in the same folder. Can also be used for subfiles.")
 
     # args = parser.parse_args(args)
@@ -1282,7 +1195,7 @@ def main(args):
     sources = [s for s in sources if not s.endswith("py")]
     # print(sources)
     if "all" in args.mode:
-        mode = elim_modes + [CompileMode.QUIL_COMPILER]
+        mode = elim_modes
     else:
         mode = args.mode
 

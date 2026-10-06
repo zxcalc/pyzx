@@ -28,11 +28,11 @@ __all__ = ['check_zero_hbox',
 
 
 import cmath
-from pyzx.utils import VertexType, get_h_box_label, hbox_has_complex_label
-from pyzx.graph.base import BaseGraph, ET, VT
+from ..utils import VertexType, get_h_box_label, hbox_has_complex_label
+from ..graph.base import BaseGraph, ET, VT
 
 
-def check_zero_hbox(g: BaseGraph[VT,ET], v:VT) -> bool:
+def check_zero_hbox(g: BaseGraph[VT, ET], v:VT) -> bool:
     """Matches H-boxes with label 1 (or phase 0)."""
     types = g.types()
     if types[v] != VertexType.H_BOX:
@@ -42,12 +42,12 @@ def check_zero_hbox(g: BaseGraph[VT,ET], v:VT) -> bool:
     return g.phase(v) == 0
 
 
-def zero_hbox(g: BaseGraph[VT,ET], v: VT) -> bool:
+def zero_hbox(g: BaseGraph[VT, ET], v: VT) -> bool:
     """Checks if the given vertex can be removed, then removes H-boxes with a phase of 2pi=0."""
     if check_zero_hbox(g, v): return unsafe_zero_hbox(g, v)
     return False
 
-def unsafe_zero_hbox(g: BaseGraph[VT,ET], v: VT) -> bool:
+def unsafe_zero_hbox(g: BaseGraph[VT, ET], v: VT) -> bool:
     """Removes H-boxes with a phase of 2pi=0.
     Note that this rule is only semantically correct when all its neighbors are white spiders."""
     g.remove_vertex(v)

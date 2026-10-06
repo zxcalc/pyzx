@@ -57,6 +57,29 @@ class TestMat2(unittest.TestCase):
                 if self.m3.data[i][j] != 0: flagged = True
         self.assertFalse(flagged)
 
+    def test_gauss_reentrant_calls_do_not_share_pivots(self):
+        class ReentrantMat2(Mat2):
+            def __init__(self, data):
+                super().__init__(data)
+                self.interleaved = False
+
+            def row_add(self, r0, r1):
+                if not self.interleaved:
+                    self.interleaved = True
+                    # The row operation occurs after pivots 0 and 1. If the
+                    # default list is shared, this inserts a foreign pivot 0
+                    # and corrupts the outer call's backward reduction.
+                    Mat2([[1]]).gauss()
+                super().row_add(r0, r1)
+
+        m = ReentrantMat2([[1,0,0,0],
+                           [0,1,0,0],
+                           [0,0,0,1],
+                           [0,0,1,0]])
+        self.assertEqual(m.gauss(full_reduce=True), 4)
+        self.assertTrue(m.interleaved)
+        self.assertEqual(m, Mat2.id(4))
+
     def test_rank_of_matrix(self):
         self.assertEqual(self.m3.rank(),4)
 

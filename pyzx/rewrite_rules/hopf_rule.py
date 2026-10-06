@@ -29,11 +29,10 @@ __all__ = ['check_hopf',
            'hopf',
            'unsafe_hopf']
 
-from typing import Tuple, List, Dict
-from pyzx.utils import EdgeType, vertex_is_z_like, vertex_is_zx_like
-from pyzx.graph.base import BaseGraph, VT, ET
+from ..utils import EdgeType, vertex_is_z_like, vertex_is_zx_like
+from ..graph.base import BaseGraph, VT, ET
 
-MatchHopfType = Tuple[VT, VT, EdgeType]
+MatchHopfType = tuple[VT, VT, EdgeType]
 
 
 def check_hopf(g: BaseGraph[VT, ET], v: VT, w: VT) -> bool:
@@ -71,8 +70,8 @@ def hopf(g: BaseGraph[VT, ET], v: VT, w: VT) -> bool:
 def unsafe_hopf(g: BaseGraph[VT, ET], v: VT, w: VT) -> bool:
     """Removes parallel edges between the given vertices.
     """
-    etab: Dict[Tuple[VT, VT], List[int]] = dict()
-    rem_edges: List[ET] = []
+    etab: dict[tuple[VT, VT], list[int]] = {}
+    rem_edges: list[ET] = []
 
     # Determine the edge type to remove from the spider colours, matching
     # the logic in `check_hopf`. Looking up the type via `g.edge(v, w)` is

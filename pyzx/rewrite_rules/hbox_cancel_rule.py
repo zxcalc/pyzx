@@ -30,8 +30,8 @@ __all__ = ['check_hbox_cancel',
            'hbox_cancel',
            'unsafe_hbox_cancel']
 
-from pyzx.graph.base import BaseGraph, VT, ET
-from pyzx.utils import EdgeType, VertexType, is_standard_hbox
+from ..graph.base import BaseGraph, VT, ET
+from ..utils import EdgeType, VertexType, is_standard_hbox
 
 
 def check_hbox_cancel(g: BaseGraph[VT, ET], v: VT) -> bool:

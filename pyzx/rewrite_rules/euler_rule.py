@@ -31,8 +31,8 @@ __all__ = ['check_hadamard_edge',
 
 
 from fractions import Fraction
-from pyzx.utils import EdgeType, VertexType, vertex_is_zx, toggle_vertex
-from pyzx.graph.base import BaseGraph, VT, ET, upair
+from ..utils import EdgeType, VertexType, vertex_is_zx, toggle_vertex
+from ..graph.base import BaseGraph, VT, ET, upair
 
 
 def check_hadamard_edge(g: BaseGraph[VT, ET], v:VT, w:VT) -> bool:

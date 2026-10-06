@@ -25,28 +25,26 @@ __all__ = ['safe_apply_supplementarity',
            ]
 
 
-from typing import Tuple, List, Dict, Set, FrozenSet
-from typing import Optional
-from typing_extensions import Literal
-from pyzx.symbolic import Poly
-from pyzx.graph.base import BaseGraph, VT, ET
+from typing import Literal
+from ..symbolic import Poly
+from ..graph.base import BaseGraph, VT, ET
 
-MatchSupplementarityType = Tuple[VT, VT, Literal[1, 2], FrozenSet[VT]]
+MatchSupplementarityType = tuple[VT, VT, Literal[1, 2], frozenset[VT]]
 
-def simp_supplementarity(g: BaseGraph[VT,ET]) -> bool:
+def simp_supplementarity(g: BaseGraph[VT, ET]) -> bool:
     """Runs :func:`match_supplementarity` and if any matches are found runs :func:`unsafe_apply_supplementarity`"""
     matches = match_supplementarity(g)
     if len(matches) <= 0: return False
     return unsafe_apply_supplementarity(g, matches)
 
-def safe_apply_supplementarity(g: BaseGraph[VT,ET], vertices: List[VT]) -> bool:
+def safe_apply_supplementarity(g: BaseGraph[VT, ET], vertices: list[VT]) -> bool:
     """Runs :func:`match_supplementarity` on the input vertices and if any matches are found runs :func:`unsafe_apply_supplementarity`"""
     checked_vertices = list([v for v in g.vertices() if (v in vertices)])
     matches = match_supplementarity(g, checked_vertices)
     if len(matches) <= 0: return False
     return unsafe_apply_supplementarity(g, matches)
 
-def match_supplementarity(g: BaseGraph[VT,ET], vertices: Optional[List[VT]]=None) -> List[MatchSupplementarityType[VT]]:
+def match_supplementarity(g: BaseGraph[VT, ET], vertices: list[VT] | None = None) -> list[MatchSupplementarityType[VT]]:
     """Finds pairs of non-Clifford spiders that are connected to exactly the same set of vertices.
 
     :param g: An instance of a ZX-graph.
@@ -57,9 +55,9 @@ def match_supplementarity(g: BaseGraph[VT,ET], vertices: Optional[List[VT]]=None
     else: candidates = g.vertex_set()
     phases = g.phases()
 
-    parities: Dict[FrozenSet[VT],List[VT]] = dict()
-    m: List[MatchSupplementarityType[VT]] = []
-    taken: Set[VT] = set()
+    parities: dict[frozenset[VT],list[VT]] = {}
+    m: list[MatchSupplementarityType[VT]] = []
+    taken: set[VT] = set()
     # First we find all the non-Clifford vertices and their list of neighbors
     while len(candidates) > 0:
         v = candidates.pop()
@@ -91,11 +89,11 @@ def match_supplementarity(g: BaseGraph[VT,ET], vertices: Optional[List[VT]]=None
     return m
 
 def unsafe_apply_supplementarity(
-        g: BaseGraph[VT,ET],
-        matches: List[MatchSupplementarityType[VT]]
-        ) -> bool:
+    g: BaseGraph[VT, ET],
+    matches: list[MatchSupplementarityType[VT]]
+) -> bool:
     """Given the output of :func:``match_supplementarity``, removes non-Clifford spiders that act on the same set of targets through supplementarity."""
-    rem: List[VT] = []
+    rem: list[VT] = []
     for v, w, t, neigh in matches:
         rem.append(v)
         rem.append(w)
@@ -124,5 +122,3 @@ def unsafe_apply_supplementarity(
     g.remove_isolated_vertices()
 
     return True
-
-

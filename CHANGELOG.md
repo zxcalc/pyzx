@@ -11,6 +11,26 @@ Hence, occasionally changes will be backwards incompatible (although they will a
 ### Added
 - The X-H bialgebra rule now supports H-box with phases and complex labels. Automatic simplification remains restricted to standard H-boxes. (by @RazinShaikh)
 
+### Fixed
+- `graph_to_circuit()` in `graphparser.py` now raises a `NotImplementedError` when extracting conditional gates instead of silently returning a circuit with potentially incorrect gate ordering (by @akshaysoftware).
+- `Var.rebind_to_registry` no longer loses a variable's Boolean type when the target registry does not know the variable yet (it read the type *after* switching registries). Copying a graph whose Boolean variables were created outside its registry silently turned them continuous, also on the original graph, so Pauli checks on symbolic phases failed.
+- `Circuit.from_graph` no longer changes the measurement basis after a colour change of the measurement leaf (e.g. by `to_gh`). The edge to the leaf is not part of the qubit wire, so a Hadamard edge there no longer emits a `HAD` gate; instead the basis is read from the colours of the leaf and the on-wire spider (#520). (by @a6hinandh)
+- `to_adjoint` now returns the correct adjoint for the `U2`, `U3`, `CU3`, `CU` and `CSX` gates, which were previously returned unchanged. This made `Circuit.adjoint` and `Circuit.verify_equality` give wrong results for circuits containing these gates (#519). `CSX` gained an `adjoint` argument, and adjoint gates without a dedicated QASM/.qc name are now exported as their basic gates. (by @a6hinandh)
+- `YPhase` and `Y` now print like other gates instead of in Quipper syntax, and their Quipper output (`QRot["exp(-i%Y)",...]` and `QGate["Y"]`) can be read back by `Circuit.from_quipper` (#526). (by @a6hinandh)
+- `Gate.__eq__` now also compares `phases`, so gates storing their angles there (`U2`, `U3`, `CU3`, `CU`) no longer compare equal when their angles differ. (by @a6hinandh)
+- `Mat2.gauss` no longer shares pivot columns between calls; extraction and routing helpers avoid mutable defaults, and genetic optimizers copy caller-supplied action lists. (by @pmitos)
+
+## [0.10.7] - 2026-10-01
+
+### Fixed
+- Pauli-flow finder now correctly accounts for Pauli-Y vertices in correction sets.
+- Moved `RootHeuristic.RootHeuristicProtocol` and `SplitHeuristic.SplitHeuristicProtocol` to module level to fix a `DeprecationWarning` in Python 3.11+. Though these classes exist only for type annotations, this is technically a breaking change. (by @96-LB)
+- The `pyzx.web` module now raises an error when computing Pauli webs of a graph which has H-boxes with non-default phase, instead of returning an invalid web which ignores the phase. (by @96-LB)
+
+### Removed
+- Support for the PyQuil compiler was dropped. Breaking changes include the removal of `PyQuilCircuit`, `Architecture.to_quil_device`, `CompileMode.QUIL_COMPILER`, and any related functionality in the scripts module. (by @96-LB)
+- Support for the `graph_tool` and `igraph` backends has been officially dropped. (by @96-LB)
+
 ## [0.10.6] - 2026-09-01
 
 ### Fixed
@@ -18,6 +38,9 @@ Hence, occasionally changes will be backwards incompatible (although they will a
 - Automatic tensor contraction now falls back to the naive strategy for diagrams containing vertex types other than boundaries, Z-spiders, or X-spiders, fixing default contraction for W-spiders and Z-boxes (by @henriquejsza).
 - `to_tikz` no longer drops Hadamards on edges that touch a boundary. Such an edge was exported as a plain wire plus a `hadamard` node that no `\draw` referenced, so the Hadamard was lost on reimport and the diagram gained a disconnected H-box. These edges now use the same `hadamard edge` style as every other Hadamard edge (by @gauthamkanagaraj).
 - `match_phase_gadgets` no longer treats a symbolic boolean axel as constant pi in its scalar and `phase_negate` bookkeeping. Symbolic-axel parity groups are skipped by default; opt in via `apply_to_boolean_axels=True` on `merge_phase_gadgets_for_simp`/`_for_apply`. (by @dlyongemallo)
+
+### Added
+- Added support for the ZW-Bialgebra rule (by @doczenwiry).
 
 ## [0.10.5] - 2026-08-01
 

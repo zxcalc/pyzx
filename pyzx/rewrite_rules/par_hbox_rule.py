@@ -32,26 +32,25 @@ __all__ = ['check_par_hbox_for_simp',
            'par_hbox_avg',]
 
 
-from typing import Dict, List, Tuple, Optional, Set, FrozenSet
-from pyzx.utils import EdgeType, VertexType, hbox_has_complex_label, get_h_box_label, set_h_box_label
-from pyzx.graph.base import BaseGraph, ET, VT
+from ..utils import EdgeType, VertexType, hbox_has_complex_label, get_h_box_label, set_h_box_label
+from ..graph.base import BaseGraph, ET, VT
 
 
 ## Multiply rule:
 
 
-def check_par_hbox_for_simp(g: BaseGraph[VT,ET]) -> bool:
+def check_par_hbox_for_simp(g: BaseGraph[VT, ET]) -> bool:
     """Runs :func:`match_par_hbox` and returns whether any matches were found."""
     matches = match_par_hbox(g)
     return len(matches) > 0
 
-def simp_par_hbox(g: BaseGraph[VT,ET]) -> bool:
+def simp_par_hbox(g: BaseGraph[VT, ET]) -> bool:
     """Runs :func:`match_par_hbox` and if any matches are found runs :func:`unsafe_par_hbox`"""
     matches = match_par_hbox(g)
     if len(matches) == 0: return False
     return unsafe_par_hbox(g, matches)
 
-def par_hbox(g: BaseGraph[VT,ET], vertices: List[VT]) -> bool:
+def par_hbox(g: BaseGraph[VT, ET], vertices: list[VT]) -> bool:
     """Runs :func:`match_par_hbox` on given vertices and if any matches are found runs :func:`unsafe_par_hbox`"""
     checked_vertices = list([v for v in g.vertices() if (v in vertices)])
     matches = match_par_hbox(g, checked_vertices)
@@ -59,17 +58,15 @@ def par_hbox(g: BaseGraph[VT,ET], vertices: List[VT]) -> bool:
     return unsafe_par_hbox(g, matches)
 
 
-TYPE_MATCH_PAR_HBOX = Tuple[List[VT],List[VT],List[VT]]
+TYPE_MATCH_PAR_HBOX = tuple[list[VT], list[VT], list[VT]]
 
-def match_par_hbox(
-        g: BaseGraph[VT, ET],
-        vertices: Optional[List[VT]] = None) -> List[TYPE_MATCH_PAR_HBOX]:
+def match_par_hbox(g: BaseGraph[VT, ET], vertices: list[VT] | None = None) -> list[TYPE_MATCH_PAR_HBOX]:
     """Matches sets of H-boxes that are connected in parallel (via optional NOT gates)
     to the same white spiders."""
     if vertices is not None: candidates = set(vertices)
     else: candidates = g.vertex_set()
 
-    groupings: Dict[Tuple[FrozenSet[VT], FrozenSet[VT]], Tuple[List[VT], List[VT], List[VT]]] = dict()
+    groupings: dict[tuple[frozenset[VT], frozenset[VT]], tuple[list[VT], list[VT], list[VT]]] = {}
     ty = g.types()
     for h in candidates:
         if ty[h] != VertexType.H_BOX: continue
@@ -114,15 +111,15 @@ def match_par_hbox(
         else:
             groupings[group] = ([h], NOTs, [])
 
-    m = []
+    m: list[TYPE_MATCH_PAR_HBOX] = []
     for (n_r, n_N), (hs, firstNOTs, NOTs) in groupings.items():
         if len(hs) < 2: continue
         m.append((hs, firstNOTs, NOTs))
     return m
 
-def unsafe_par_hbox(g: BaseGraph[VT, ET], matches: List[TYPE_MATCH_PAR_HBOX]) -> bool:
+def unsafe_par_hbox(g: BaseGraph[VT, ET], matches: list[TYPE_MATCH_PAR_HBOX]) -> bool:
     """Implements the `multiply rule' (M) from https://arxiv.org/abs/1805.02175"""
-    rem_verts = []
+    rem_verts: list[VT] = []
     for hs, firstNOTs, NOTs in matches:
         p = sum(g.phase(h) for h in hs) % 2
         rem_verts.extend(hs[1:])
@@ -140,18 +137,18 @@ def unsafe_par_hbox(g: BaseGraph[VT, ET], matches: List[TYPE_MATCH_PAR_HBOX]) ->
 
 ## Intro rule:
 
-def check_par_hbox_intro_for_simp(g: BaseGraph[VT,ET]) -> bool:
+def check_par_hbox_intro_for_simp(g: BaseGraph[VT, ET]) -> bool:
     """Runs :func:`match_par_hbox_intro` and returns whether any matches were found."""
     matches = match_par_hbox_intro(g)
     return len(matches) != 0
 
-def simp_par_hbox_intro(g: BaseGraph[VT,ET]) -> bool:
+def simp_par_hbox_intro(g: BaseGraph[VT, ET]) -> bool:
     """Runs :func:`match_par_hbox_intro` and if any matches are found runs :func:`unsafe_par_hbox_intro`"""
     matches = match_par_hbox_intro(g)
     if len(matches) == 0: return False
     return unsafe_par_hbox_intro(g, matches)
 
-def par_hbox_intro(g: BaseGraph[VT,ET], vertices: List[VT]) -> bool:
+def par_hbox_intro(g: BaseGraph[VT, ET], vertices: list[VT]) -> bool:
     """Runs :func:`match_par_hbox_intro` on given vertices and if any matches are found runs :func:`unsafe_par_hbox_intro`"""
     checked_vertices = list([v for v in g.vertices() if (v in vertices)])
     matches = match_par_hbox_intro(g, checked_vertices)
@@ -159,14 +156,14 @@ def par_hbox_intro(g: BaseGraph[VT,ET], vertices: List[VT]) -> bool:
     return unsafe_par_hbox_intro(g, matches)
 
 
-TYPE_MATCH_PAR_HBOX_INTRO = Tuple[VT, VT, VT, List[VT], Set[VT]]
-def match_par_hbox_intro(g: BaseGraph[VT, ET], vertices: Optional[List[VT]]=None) -> List[TYPE_MATCH_PAR_HBOX_INTRO]:
+TYPE_MATCH_PAR_HBOX_INTRO = tuple[VT, VT, VT, list[VT], set[VT]]
+def match_par_hbox_intro(g: BaseGraph[VT, ET], vertices: list[VT] | None = None) -> list[TYPE_MATCH_PAR_HBOX_INTRO]:
     """Matches sets of H-boxes that are connected in parallel (via optional NOT gates)
     to the same white spiders, but with just one NOT different, so that the Intro rule can be applied there."""
     if vertices is not None: candidates = set(vertices)
     else: candidates = g.vertex_set()
 
-    groupings: Dict[FrozenSet[VT], List[Tuple[VT, List[VT], Set[VT], Set[VT], Set[VT]]]] = dict()
+    groupings: dict[frozenset[VT], list[tuple[VT, list[VT], set[VT], set[VT], set[VT]]]] = {}
     ty = g.types()
     for h in candidates:
         if ty[h] != VertexType.H_BOX: continue
@@ -243,7 +240,7 @@ def match_par_hbox_intro(g: BaseGraph[VT, ET], vertices: Optional[List[VT]]=None
 
 
 
-def unsafe_par_hbox_intro(g: BaseGraph[VT, ET], matches: List[TYPE_MATCH_PAR_HBOX_INTRO]) -> bool:
+def unsafe_par_hbox_intro(g: BaseGraph[VT, ET], matches: list[TYPE_MATCH_PAR_HBOX_INTRO]) -> bool:
     """Removes an H-box according to the Intro rule (See Section 3.2 of arxiv:2103.06610)."""
     rem_verts = []
     rem_edges = []
@@ -264,18 +261,18 @@ def unsafe_par_hbox_intro(g: BaseGraph[VT, ET], matches: List[TYPE_MATCH_PAR_HBO
 
 ## Average rule:
 
-def check_par_hbox_avg_for_simp(g: BaseGraph[VT,ET]) -> bool:
+def check_par_hbox_avg_for_simp(g: BaseGraph[VT, ET]) -> bool:
     """Runs :func:`match_par_hbox_avg` and returns whether any matches were found."""
     matches = match_par_hbox_avg(g)
     return len(matches) > 0
 
-def simp_par_hbox_avg(g: BaseGraph[VT,ET]) -> bool:
+def simp_par_hbox_avg(g: BaseGraph[VT, ET]) -> bool:
     """Runs :func:`match_par_hbox_avg` and if any matches are found runs :func:`unsafe_par_hbox_avg`."""
     matches = match_par_hbox_avg(g)
     if len(matches) == 0: return False
     return unsafe_par_hbox_avg(g, matches)
 
-def par_hbox_avg(g: BaseGraph[VT,ET], vertices: List[VT]) -> bool:
+def par_hbox_avg(g: BaseGraph[VT, ET], vertices: list[VT]) -> bool:
     """Runs :func:`match_par_hbox_avg` on given vertices and if any matches are found runs :func:`unsafe_par_hbox_avg`."""
     checked_vertices = list([v for v in g.vertices() if (v in vertices)])
     matches = match_par_hbox_avg(g, checked_vertices)
@@ -283,11 +280,11 @@ def par_hbox_avg(g: BaseGraph[VT,ET], vertices: List[VT]) -> bool:
     return unsafe_par_hbox_avg(g, matches)
 
 
-TYPE_MATCH_PAR_HBOX_AVG = Tuple[VT, VT, VT]
+TYPE_MATCH_PAR_HBOX_AVG = tuple[VT, VT, VT]
 
 def match_par_hbox_avg(
         g: BaseGraph[VT, ET],
-        vertices: Optional[List[VT]] = None) -> List[TYPE_MATCH_PAR_HBOX_AVG]:
+        vertices: list[VT] | None = None) -> list[TYPE_MATCH_PAR_HBOX_AVG]:
     """Matches pairs of H-boxes connected through a NOT gate (degree-2 spider with
     phase pi) that share the same neighbourhood: Z-spiders via SIMPLE edges and
     X-spiders via HADAMARD edges.
@@ -300,17 +297,17 @@ def match_par_hbox_avg(
     else: candidates = g.vertex_set()
 
     ty = g.types()
-    matched: Set[VT] = set()
-    matches: List[TYPE_MATCH_PAR_HBOX_AVG] = []
+    matched: set[VT] = set()
+    matches: list[TYPE_MATCH_PAR_HBOX_AVG] = []
 
     for h in candidates:
         if ty[h] != VertexType.H_BOX: continue
         if h in matched: continue
 
         suitable = True
-        neighbors_regular: Set[VT] = set()
-        partner: Optional[VT] = None
-        not_gate: Optional[VT] = None
+        neighbors_regular: set[VT] = set()
+        partner: VT | None = None
+        not_gate: VT | None = None
 
         for v in g.neighbors(h):
             e = g.edge(v, h)
@@ -363,7 +360,7 @@ def match_par_hbox_avg(
         if partner in matched: continue
 
         # Verify the partner H-box has the same regular neighbours.
-        partner_regular: Set[VT] = set()
+        partner_regular: set[VT] = set()
         partner_ok = True
         for v in g.neighbors(partner):
             if v == not_gate: continue
@@ -394,14 +391,14 @@ def match_par_hbox_avg(
     return matches
 
 
-def unsafe_par_hbox_avg(g: BaseGraph[VT, ET], matches: List[TYPE_MATCH_PAR_HBOX_AVG]) -> bool:
+def unsafe_par_hbox_avg(g: BaseGraph[VT, ET], matches: list[TYPE_MATCH_PAR_HBOX_AVG]) -> bool:
     """Implements the average rule (A) from https://arxiv.org/abs/1805.02175.
 
     Replaces two H-boxes connected through a NOT gate with a single H-box
     whose label is the average of the two original labels. Multiplies the
     scalar by 2.
     """
-    rem_verts: List[VT] = []
+    rem_verts: list[VT] = []
     for h1, h2, not_gate in matches:
         a = get_h_box_label(g, h1)
         b = get_h_box_label(g, h2)

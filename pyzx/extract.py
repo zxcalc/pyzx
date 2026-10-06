@@ -111,12 +111,12 @@ def column_optimal_swap(m: Mat2) -> Dict[int,int]:
 def _find_targets(
         conn: Dict[int,Set[int]],
         connr: Dict[int,Set[int]],
-        target:Dict[int,int]={}
+        target:Optional[Dict[int,int]]=None
         ) -> Optional[Dict[int,int]]:
     """Helper function for :func:`column_optimal_swap`.
     Recursively makes a choice for a permutation that places additional ones on the diagonal.
     Backtracks when it gets stuck in an unfavorable configuration."""
-    target = target.copy()
+    target = {} if target is None else target.copy()
     r = len(conn)
     c = len(connr)
 

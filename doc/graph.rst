@@ -33,7 +33,7 @@ Similarly, the type of an edge is stored as one of the integers ``EdgeType.SIMPL
 Backends
 --------
 
-ZX-graphs can be represented internally in different ways. The default backend is :class:`pyzx.graph.graph_s.GraphS`, which is written entirely in Python and stores at most one edge between a pair of vertices. The :class:`pyzx.graph.multigraph.Multigraph` backend is also available when you need to keep parallel edges explicitly. A partial implementation using the ``python-igraph`` package is also available as :class:`pyzx.graph.graph_ig.GraphIG`. A new backend can be constructed by subclassing :class:`pyzx.graph.base.BaseGraph`.
+ZX-graphs can be represented internally in different ways. The default backend is :class:`pyzx.graph.graph_s.GraphS`, which is written entirely in Python and stores at most one edge between a pair of vertices. The :class:`pyzx.graph.multigraph.Multigraph` backend is also available when you need to keep parallel edges explicitly. A new backend can be constructed by subclassing :class:`pyzx.graph.base.BaseGraph`.
 
 Multigraph backend
 ^^^^^^^^^^^^^^^^^^
@@ -76,7 +76,7 @@ Some rewrites are specifically about parallel edges. In particular, :mod:`pyzx.r
 Creating and modifying ZX-diagrams
 ----------------------------------
 
-To create an empty ZX-diagram call ``g=zx.Graph()``. 
+To create an empty ZX-diagram call ``g=zx.Graph()``.
 You can then add a vertex and set its data by calling for example ``v = g.add_vertex(zx.VertexType.Z, qubit=0, row=1, phase=1)``. To add an edge between vertices ``v`` and ``w`` you call ``g.add_edge(g.edge(v,w),edgetype=zx.EdgeType.SIMPLE)``.
 
 These functions are probably best used in some type of loop or function so that you don't have to set everything by hand. If you wish to create a ZX-diagram in the shape of a circuit it is probably better to use the :class:`~pyzx.circuit.Circuit`, or if you don't care about the exact structure of the circuit, one of the functions in :mod:`~pyzx.generate`.

@@ -19,15 +19,16 @@
 This module contains objective functions to guide local search over ZX-diagrams. The wgc method defines a measure of circuit complexity -- a weighted gate count where 2-qubit counts incur a higher cost. The g_wgc takes a ZX-diagram as input and optionally applies various optimizations before measuring the complexity of the circuit obtained via extraction.
 """
 
-import sys
-if __name__ == '__main__':
-    sys.path.append('..')
-from pyzx.extract import extract_circuit
-from pyzx.simplify import full_reduce
-from pyzx.optimize import basic_optimization
+
+from ..circuit import Circuit
+from ..extract import extract_circuit
+from ..graph.base import ET, VT, BaseGraph
+from ..optimize import basic_optimization
+from ..simplify import full_reduce
+
 
 # Weighted gate count
-def wgc(c, two_qb_weight=10):
+def wgc(c: Circuit, two_qb_weight: float = 10) -> float:
     """A measure of the complexity of a given circuit.
 
     :param c: Circuit to evaluate.
@@ -42,7 +43,7 @@ def wgc(c, two_qb_weight=10):
     return two_qb_weight * n2 + single_qubit_count
 
 # Weighted gate count of a ZX-diagram
-def g_wgc(g, two_qb_weight=10, g_simplify=False, c_simplify=True):
+def g_wgc(g: BaseGraph[VT, ET], two_qb_weight: float = 10, g_simplify: bool = False, c_simplify: bool = True) -> float:
     """A measure of the complexity of the circuit obtained from a a ZX-diagram
 
     :param g: ZX-diagram to evaluate.

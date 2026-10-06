@@ -33,7 +33,7 @@ __all__ = ['bialg_simp','bialg_op_simp','spider_simp', 'id_simp', 'phase_free_si
         'lcomp_simp', 'clifford_simp', 'tcount', 'to_gh', 'to_rg',
         'full_reduce', 'teleport_reduce', 'reduce_scalar', 'supplementarity_simp',
         'to_clifford_normal_form_graph', 'to_graph_like', 'is_graph_like', 'copy_simp',
-        'drop_orphan_reset_discards']
+        'drop_orphan_reset_discards', 'zw_bialgebra_simp', 'zw_bialgebra_op_simp']
 
 
 from typing import cast, List, Tuple, Dict, Set, Callable, TypeVar, Optional, Union
@@ -139,6 +139,13 @@ euler_expansion_rewrite: RewriteSimpDoubleVertex = RewriteSimpDoubleVertex(check
 
 pi_commute_rewrite: RewriteSingleVertex = RewriteSingleVertex(check_pi_commute, unsafe_pi_commute)
 """Pushes a pi phase out of the given vertex. CANNOT be run automatically on the entire graph."""
+
+zw_bialgebra_simp: RewriteSimpDoubleVertex = RewriteSimpDoubleVertex(check_bialgebra_zw_forward, unsafe_bialgebra_zw_forward, check_bialgebra_zw_forward_restricted)
+"""Applies the ZW Bialgebra rule to a given WZ-edge (n.b. W_OUTPUT - W_INPUT - Z). Can be run automatically on the entire graph."""
+
+zw_bialgebra_op_simp: RewriteSimpGraph = RewriteSimpGraph(apply_bialgebra_zw_reverse, apply_bialgebra_zw_reverse_auto)
+"""Applies the ZW Bialgebra rule to a given ZW-complete bipartite pattern. Can be run automatically on the entire graph."""
+zw_bialgebra_op_simp.is_match = is_bialgebra_zw_reverse_match # type: ignore
 
 def phase_free_simp(g: BaseGraph[VT,ET]) -> bool:
     '''Performs the following set of simplifications on the graph:
@@ -376,9 +383,8 @@ def drop_orphan_reset_discards(g: BaseGraph[VT,ET]) -> int:
 
     # Step 3: collect every vertex/var to drop in one pass, then mutate
     # the graph in a single ``remove_vertices`` batch. This keeps the
-    # accumulated vertex IDs valid for the duration of the pass:
-    # backends that reindex on deletion (e.g. igraph) only renumber
-    # once the batch is committed.
+    # accumulated vertex IDs valid for the duration of the pass: backends
+    # that reindex on deletion only renumber once the batch is committed.
     remove_set: Set[VT] = set()
     removed = 0
     for chain, var_name in candidates:

@@ -15,18 +15,16 @@
 # limitations under the License.
 
 
-from tqdm import tqdm
-import random
 import math
-import numpy as np
+import random
+from collections.abc import Callable
 
-from .congruences import uniform_weights, apply_rand_lc, apply_rand_pivot
+from tqdm import tqdm
+
+from ..graph.base import ET, VT, BaseGraph
+from ..simplify import full_reduce
+from .congruences import apply_rand_lc, apply_rand_pivot, uniform_weights
 from .scores import g_wgc
-import sys
-if __name__ == '__main__':
-    sys.path.append('..')
-from pyzx.simplify import full_reduce
-
 
 """
 This module contains an implementation of simulated annealing over ZX-diagrams. Equivalent ZX-diagrams are generated using the congruences defined in congruences.py. The default energy function is defined in scores.py. The default goal of this approach is to reduce the 2-qubit count of a fully-simplified ZX-diagram (i.e., of that circuit obtained via extraction).
@@ -36,17 +34,19 @@ This module contains an implementation of simulated annealing over ZX-diagrams. 
 __all__ = ['anneal']
 
 # simulated annealing
-def anneal(g, iters=1000,
-           temp=25,
-           cool=0.005,
-           score=g_wgc,
-           cong_ps=[0.5, 0.5],
-           lc_select=uniform_weights,
-           pivot_select=uniform_weights,
-           full_reduce_prob=0.1,
-           reset_prob=0.0,
-           quiet=False
-):
+def anneal(
+    g: BaseGraph[VT, ET],
+    iters: int = 1000,
+    temp: float = 25,
+    cool: float = 0.005,
+    score: Callable[[BaseGraph[VT, ET]], float] = g_wgc,
+    cong_ps: list[float] = [0.5, 0.5],
+    lc_select: Callable[[BaseGraph[VT, ET], list[VT]], list[float]] = uniform_weights,
+    pivot_select: Callable[[BaseGraph[VT, ET], list[ET]], list[float]] = uniform_weights,
+    full_reduce_prob: float = 0.1,
+    reset_prob: float = 0.0,
+    quiet: bool = False
+) -> tuple[BaseGraph[VT, ET], list[float]]:
     """
     Performs simulated annealing over ZX-diagram to minimize energy function.
 
@@ -70,7 +70,7 @@ def anneal(g, iters=1000,
     sz = score(g_best)
     sz_best = sz
 
-    best_scores = list()
+    best_scores: list[float] = []
 
     for i in tqdm(range(iters), desc="annealing...", disable=quiet):
 

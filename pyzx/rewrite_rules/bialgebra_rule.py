@@ -42,13 +42,12 @@ __all__ = ['check_bialgebra_reduce',
 import cmath
 from collections import defaultdict
 from itertools import combinations
-from typing import Callable, Optional, List, Tuple, Dict
-from pyzx.utils import (EdgeType, FractionLike, VertexType, is_pauli,
-                        get_h_box_label, hbox_has_complex_label,
-                        is_standard_hbox, set_h_box_label)
-from pyzx.graph.base import BaseGraph, VT, ET, upair
+from ..utils import (EdgeType, FractionLike, VertexType, is_pauli,
+                     get_h_box_label, hbox_has_complex_label,
+                     is_standard_hbox, set_h_box_label)
+from ..graph.base import BaseGraph, VT, ET, upair
 
-RewriteOutputType = Tuple[Dict[Tuple[VT,VT],List[int]], List[VT], List[ET], bool]
+RewriteOutputType = tuple[dict[tuple[VT, VT], list[int]], list[VT], list[ET], bool]
 
 _MAX_BIALGEBRA_H_BOXES = 10_000
 
@@ -72,7 +71,7 @@ def _hbox_label_is_safe(
     return True
 
 
-def check_bialgebra(g: BaseGraph[VT,ET], v1: VT, v2: VT) -> bool:
+def check_bialgebra(g: BaseGraph[VT, ET], v1: VT, v2: VT) -> bool:
     """Checks if the bialgebra rule can be applied to a given pair of vertices.
     Supports Z-X bialgebra and X-H bialgebra with phased and complex H-boxes.
 
@@ -110,7 +109,7 @@ def check_bialgebra(g: BaseGraph[VT,ET], v1: VT, v2: VT) -> bool:
         return False
     return _hbox_label_is_safe(g, h_vertex, num_targets)
 
-def _is_valid_reduce_neighbor(g: BaseGraph[VT,ET], n: VT, expected_type: VertexType) -> bool:
+def _is_valid_reduce_neighbor(g: BaseGraph[VT, ET], n: VT, expected_type: VertexType) -> bool:
     """Checks if a neighbour is valid for bialgebra reduction.
     For H-boxes, requires a standard H-box. For spiders, requires phase 0."""
     if g.type(n) != expected_type:
@@ -119,7 +118,7 @@ def _is_valid_reduce_neighbor(g: BaseGraph[VT,ET], n: VT, expected_type: VertexT
         return is_standard_hbox(g, n)
     return g.phase(n) == 0
 
-def check_bialgebra_reduce(g: BaseGraph[VT,ET], v1: VT, v2: VT) -> bool:
+def check_bialgebra_reduce(g: BaseGraph[VT, ET], v1: VT, v2: VT) -> bool:
     """Checks if the bialgebra rule can be applied to a given pair of vertices.
     Supports both Z-X and X-H bialgebra.
     NOTE: only returns true if the spiders are not neighbouring any boundary vertices."""
@@ -140,7 +139,12 @@ def bialgebra(g: BaseGraph[VT, ET], v1: VT, v2: VT) -> bool:
     if not check_bialgebra(g, v1, v2): return False
     return unsafe_bialgebra(g, v1, v2)
 
-def _add_edge(etab: Dict[Tuple[VT, VT], List[int]], vertex1: VT, vertex2: VT, edge_type: EdgeType = EdgeType.SIMPLE) -> None:
+def _add_edge(
+        etab: dict[tuple[VT, VT], list[int]],
+        vertex1: VT,
+        vertex2: VT,
+        edge_type: EdgeType | None = EdgeType.SIMPLE,
+        ) -> None:
     pair = upair(vertex1, vertex2)
     if pair not in etab:
         etab[pair] = [0, 0]
@@ -151,9 +155,9 @@ def _connect_generalized_xh_bialgebra(
         g: BaseGraph[VT, ET],
         x_vertex: VT,
         h_vertex: VT,
-        x_copies: List[VT],
-        h_copies: List[VT],
-        etab: Dict[Tuple[VT, VT], List[int]],
+        x_copies: list[VT],
+        h_copies: list[VT],
+        etab: dict[tuple[VT, VT], list[int]],
         ) -> None:
     """Create the subset H-boxes for the generalized X-H bialgebra rule.
 
@@ -163,7 +167,7 @@ def _connect_generalized_xh_bialgebra(
     h_box_phase = g.phase(h_vertex)
     h_box_label = (get_h_box_label(g, h_vertex)
                    if hbox_has_complex_label(g, h_vertex) else None)
-    new_h_boxes: List[VT] = []
+    new_h_boxes: list[VT] = []
 
     for subset_size in range(1, len(x_copies) + 1):
         exponent = (-2) ** (subset_size - 1)
@@ -194,15 +198,15 @@ def _connect_generalized_xh_bialgebra(
     for index, new_h_box in enumerate(new_h_boxes):
         g.set_position(new_h_box, first_qubit + index, column_row)
 
-def unsafe_bialgebra(g: BaseGraph[VT,ET], v1: VT, v2: VT ) -> bool:
+def unsafe_bialgebra(g: BaseGraph[VT, ET], v1: VT, v2: VT) -> bool:
     """Applies the bialgebra rule to a given pair of spiders (Z-X or X-H)."""
     rem_verts = []
-    etab: Dict[Tuple[VT, VT], List[int]] = {}
+    etab: dict[tuple[VT, VT], list[int]] = {}
 
     rem_verts.append(v1)
     rem_verts.append(v2)
     v = (v1,v2)
-    new_verts: Tuple[List[VT],List[VT]] = ([],[]) # new vertices for v1 and v2
+    new_verts: tuple[list[VT], list[VT]] = ([], []) # new vertices for v1 and v2
 
     is_xh_bialgebra = (g.type(v1) == VertexType.H_BOX or
                        g.type(v2) == VertexType.H_BOX)
@@ -219,7 +223,7 @@ def unsafe_bialgebra(g: BaseGraph[VT,ET], v1: VT, v2: VT ) -> bool:
     # For Z-X bialgebra: neighbours of v[i] get copies of v[j].
     # For X-H bialgebra: standard H-boxes use H-box and Z-spider copies;
     # the generalized case uses Z-spider copies on both sides.
-    copy_phase: Tuple[FractionLike, FractionLike]
+    copy_phase: tuple[FractionLike, FractionLike]
     if is_generalized_xh:
         copy_type = (VertexType.Z, VertexType.Z)
         copy_phase = (0, 0)
@@ -236,7 +240,7 @@ def unsafe_bialgebra(g: BaseGraph[VT,ET], v1: VT, v2: VT ) -> bool:
 
     for i, j in [(0, 1), (1, 0)]:
         multi_edge_found = False
-        neighbour_edge_count: dict = {}
+        neighbour_edge_count: dict[VT, int] = {}
         for e in g.incident_edges(v[i]):
             source, target = g.edge_st(e)
             other_vertex = source if source != v[i] else target
@@ -297,13 +301,13 @@ def unsafe_bialgebra(g: BaseGraph[VT,ET], v1: VT, v2: VT ) -> bool:
     g.add_edge_table(etab)
     return True
 
-def simp_bialgebra_op(g: BaseGraph[VT,ET]) -> bool:
+def simp_bialgebra_op(g: BaseGraph[VT, ET]) -> bool:
     """Runs :func:`match_bialgebra_op` and if any matches are found runs :func:`unsafe_bialgebra_op`"""
     matches = match_bialgebra_op(g)
     if matches is None: return False
     return unsafe_bialgebra_op(g, matches)
 
-def safe_apply_bialgebra_op(g: BaseGraph[VT,ET], vertices: List[VT]) -> bool:
+def safe_apply_bialgebra_op(g: BaseGraph[VT, ET], vertices: list[VT]) -> bool:
     """Runs :func:`match_bialgebra_op` on the input vertices and if any matches are found runs :func:`unsafe_bialgebra_op`"""
     checked_vertices = list([v for v in g.vertices() if (v in vertices)])
     matches = match_bialgebra_op(g, checked_vertices)
@@ -311,11 +315,12 @@ def safe_apply_bialgebra_op(g: BaseGraph[VT,ET], vertices: List[VT]) -> bool:
     return unsafe_bialgebra_op(g, matches)
 
 
-def match_bialgebra_op(g: BaseGraph[VT,ET],
-        vertices: Optional[List[VT]]=None,
-        vertex_type: Optional[Tuple[VertexType, VertexType]] = None,
-        edge_type: Optional[EdgeType] = None
-        ) -> Optional[Tuple[List[VT], List[VT]]]:
+def match_bialgebra_op(
+        g: BaseGraph[VT, ET],
+        vertices: list[VT] | None = None,
+        vertex_type: tuple[VertexType, VertexType] | None = None,
+        edge_type: EdgeType | None = None
+) -> tuple[list[VT], list[VT]] | None:
     if vertices is not None: candidates = set(vertices)
     else: candidates = g.vertex_set()
 
@@ -349,19 +354,20 @@ def match_bialgebra_op(g: BaseGraph[VT,ET],
                 return None
     return type1_vertices, type2_vertices
 
-def is_bialg_op_match(g: BaseGraph[VT,ET],vertices: list[VT]) -> bool:
+def is_bialg_op_match(g: BaseGraph[VT, ET], vertices: list[VT]) -> bool:
     """Checks if the given vertices form a valid match for the bialgebra operation."""
     match = match_bialgebra_op(g, vertices)
     return match is not None
 
-def unsafe_bialgebra_op(g: BaseGraph[VT,ET],
-        matches: Tuple[List[VT], List[VT]],
-        edge_type: EdgeType = EdgeType.SIMPLE
-        ) -> bool:
+def unsafe_bialgebra_op(
+    g: BaseGraph[VT, ET],
+    matches: tuple[list[VT], list[VT]],
+    edge_type: EdgeType | None = EdgeType.SIMPLE
+) -> bool:
     """Applies the bialgebra rule to a connected pair of Z and X spiders in the opposite direction"""
-    def get_neighbors_and_loops(type1_vertices: List[VT], type2_vertices: List[VT]) -> Tuple[List[Tuple[VT, EdgeType]], List[EdgeType]]:
-        neighbors: List[Tuple[VT, EdgeType]] = []
-        loops: List[EdgeType] = []
+    def get_neighbors_and_loops(type1_vertices: list[VT], type2_vertices: list[VT]) -> tuple[list[tuple[VT, EdgeType]], list[EdgeType]]:
+        neighbors: list[tuple[VT, EdgeType]] = []
+        loops: list[EdgeType] = []
         for v1 in type1_vertices:
             for edge in g.incident_edges(v1):
                 edge_st = g.edge_st(edge)
@@ -375,12 +381,17 @@ def unsafe_bialgebra_op(g: BaseGraph[VT,ET],
                     neighbors.append((neighbor, g.edge_type(edge)))
         return neighbors, loops
 
-    def add_vertex_with_averages(vertices, g, vtype):
+    def add_vertex_with_averages(vertices: list[VT], g: BaseGraph[VT, ET], vtype: VertexType) -> VT:
         average_row = sum(g.row(v) for v in vertices) / len(vertices)
         average_qubit = sum(g.qubit(v) for v in vertices) / len(vertices)
         return g.add_vertex(vtype, average_qubit, average_row)
 
-    def update_etab(etab, new_vertex, neighbors, loops):
+    def update_etab(
+        etab: dict[tuple[VT, VT], list[int]],
+        new_vertex: VT,
+        neighbors: list[tuple[VT, EdgeType]],
+        loops: list[EdgeType]
+    ) -> None:
         for n, et in neighbors + [(new_vertex, et) for et in loops]:
             _add_edge(etab, new_vertex, n, et)
 
@@ -391,7 +402,7 @@ def unsafe_bialgebra_op(g: BaseGraph[VT,ET],
     new_vertex1 = add_vertex_with_averages(type1_vertices, g, g.type(type2_vertices[0]))
     new_vertex2 = add_vertex_with_averages(type2_vertices, g, g.type(type1_vertices[0]))
 
-    etab: dict = defaultdict(lambda: [0, 0])
+    etab: dict[tuple[VT, VT], list[int]] = defaultdict(lambda: [0, 0])
     _add_edge(etab, new_vertex1, new_vertex2, edge_type)
     update_etab(etab, new_vertex1, neighbors1, loops1)
     update_etab(etab, new_vertex2, neighbors2, loops2)

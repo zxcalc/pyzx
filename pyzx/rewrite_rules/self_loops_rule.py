@@ -29,10 +29,9 @@ __all__ = ['check_self_loop',
            'unsafe_remove_self_loop']
 
 
-from typing import List, Dict
 from fractions import Fraction
-from pyzx.utils import  EdgeType, vertex_is_zx_like
-from pyzx.rewrite import *
+from ..utils import EdgeType, vertex_is_zx_like
+from ..rewrite import BaseGraph, VT, ET
 
 
 def check_self_loop(g: BaseGraph[VT, ET], v: VT) -> bool:
@@ -66,8 +65,8 @@ def unsafe_remove_self_loop(g: BaseGraph[VT, ET], v: VT) -> bool:
     given vertex. Removes all self-loops of the given type
     """
 
-    etab: Dict[Tuple[VT, VT], List[int]] = dict()
-    rem_edges: List[ET] = []
+    etab: dict[tuple[VT, VT], list[int]] = {}
+    rem_edges: list[ET] = []
     ns = g.num_edges(v, v, EdgeType.SIMPLE)
     nh = g.num_edges(v, v, EdgeType.HADAMARD)
 

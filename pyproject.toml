@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pyzx"
-version = "0.10.6"
+version = "0.10.7"
 description = "Library for quantum circuit rewriting and optimisation using the ZX-calculus"
 readme = "readme.md"
 license = "Apache-2.0"
@@ -76,8 +76,14 @@ warn_unused_configs = true
 
 [[tool.mypy.overrides]]
 module = [
+    "pyzx.circuit.*",
     "pyzx.graph.*",
-    "pyzx.circuit.*"
+    "pyzx.local_search.*",
+    "pyzx.rewrite_rules.*",
+    "pyzx.routing.*",
+    "pyzx.simulation.*",
+    "pyzx.simulation.*.*",
+    "pyzx.web.*"
 ]
 disallow_untyped_defs = true
 
@@ -86,16 +92,9 @@ module = "pyzx.optimize"
 ignore_errors = true
 
 [[tool.mypy.overrides]]
-module = "pyzx.routing.*"
-disallow_untyped_defs = true
-
-[[tool.mypy.overrides]]
 module = [
     "numpy.*",
-    "igraph.*",
-    "graph_tool.*",
     "networkx.*",
-    "pyquil.*",
     "matplotlib.*",
     "pandas.*",
     "ipywidgets.*",
@@ -107,7 +106,7 @@ module = [
 ignore_missing_imports = true
 
 [tool.bumpversion]
-current_version = "0.10.6"
+current_version = "0.10.7"
 commit = true
 tag = true
 tag_name = "v{new_version}"

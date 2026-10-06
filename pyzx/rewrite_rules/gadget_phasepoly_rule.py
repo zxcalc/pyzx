@@ -15,9 +15,9 @@
 # limitations under the License.
 
 """
-This module contains the implementation of the gadget phasepoly rule. 
-This finds 4 groups of phase-gadgets that act on the same set of 4 vertices 
-in order to apply a rewrite based on rule R_13 of 
+This module contains the implementation of the gadget phasepoly rule.
+This finds 4 groups of phase-gadgets that act on the same set of 4 vertices
+in order to apply a rewrite based on rule R_13 of
 the paper *A Finite Presentation of CNOT-Dihedral Operators*.
 
 This rule acts on an entire graph and should only be called using the using
@@ -27,25 +27,22 @@ simplify.gadget_phasepoly_simp(g).
 __all__ = ['gadgets_phasepoly_for_simp',
            'gadgets_phasepoly_for_apply']
 
-from typing import Tuple, List, Dict, Set, FrozenSet
-from typing import Union
-
 from fractions import Fraction
 import itertools
 
-from pyzx.utils import EdgeType, VertexType
-from pyzx.graph.base import BaseGraph, VT, ET
+from ..utils import EdgeType, VertexType
+from ..graph.base import BaseGraph, VT, ET
 
 
-MatchPhasePolyType = Tuple[List[VT], Dict[FrozenSet[VT],Union[VT,Tuple[VT,VT]]]]
+MatchPhasePolyType = tuple[list[VT], dict[frozenset[VT], VT | tuple[VT, VT]]]
 
 
 
-def match_gadgets_phasepoly(g: BaseGraph[VT,ET]) -> List[MatchPhasePolyType[VT]]:
+def match_gadgets_phasepoly(g: BaseGraph[VT, ET]) -> list[MatchPhasePolyType[VT]]:
     """Finds 4 groups of phase-gadgets that act on the same set of 4 vertices in order to apply a rewrite based on
     rule R_13 of the paper *A Finite Presentation of CNOT-Dihedral Operators*."""
-    targets: Dict[VT,Set[FrozenSet[VT]]] = {}
-    gadgets: Dict[FrozenSet[VT], Tuple[VT,VT]] = {}
+    targets: dict[VT, set[frozenset[VT]]] = {}
+    gadgets: dict[frozenset[VT], tuple[VT, VT]] = {}
     inputs = g.inputs()
     outputs = g.outputs()
     for v in g.vertices():
@@ -62,7 +59,7 @@ def match_gadgets_phasepoly(g: BaseGraph[VT,ET]) -> List[MatchPhasePolyType[VT]]
             if v in targets: targets[v].add(frozenset([v]))
             else: targets[v] = {frozenset([v])}
     targets = {t:s for t,s in targets.items() if len(s)>1}
-    matches: Dict[FrozenSet[VT], Set[FrozenSet[VT]]] = {}
+    matches: dict[frozenset[VT], set[frozenset[VT]]] = {}
 
     for v1,t1 in targets.items():
         s = t1.difference(frozenset([v1]))
@@ -77,13 +74,13 @@ def match_gadgets_phasepoly(g: BaseGraph[VT,ET]) -> List[MatchPhasePolyType[VT]]
             for t in c: a.update([i for s in targets[t] for i in s if i in targets])
             for group in itertools.combinations(a.difference(c),4-len(c)):
                 gr = list(group)+list(c)
-                b: Set[FrozenSet[VT]] = set()
+                b: set[frozenset[VT]] = set()
                 for t in gr: b.update([s for s in targets[t] if s.issubset(gr)])
                 if len(b)>7:
                     matches[frozenset(gr)] = b
 
-    m: List[MatchPhasePolyType[VT]] = []
-    taken: Set[VT] = set()
+    m: list[MatchPhasePolyType[VT]] = []
+    taken: set[VT] = set()
     for groupp, gad in sorted(matches.items(), key=lambda x: len(x[1]), reverse=True):
         if taken.intersection(groupp): continue
         m.append((list(groupp), {s:(gadgets[s] if len(s)>1 else list(s)[0]) for s in gad}))
@@ -92,18 +89,19 @@ def match_gadgets_phasepoly(g: BaseGraph[VT,ET]) -> List[MatchPhasePolyType[VT]]
     return m
 
 
-def gadgets_phasepoly_for_apply(g: BaseGraph[VT,ET], vertices: List[VT]) -> bool:
+def gadgets_phasepoly_for_apply(g: BaseGraph[VT, ET], vertices: list[VT]) -> bool:
     """Dummy function, do not use"""
     return False
 
-def gadgets_phasepoly_for_simp(g: BaseGraph[VT,ET]) -> bool:
+def gadgets_phasepoly_for_simp(g: BaseGraph[VT, ET]) -> bool:
     """Runs :func:`match_gadgets_phasepoly` and if any matches are found runs :func:`apply_gadget_phasepoly`"""
     matches = match_gadgets_phasepoly(g)
     if (len(matches)==0): return False
     return apply_gadget_phasepoly(g, matches)
 
 
-def apply_gadget_phasepoly(g: BaseGraph[VT,ET], matches: List[MatchPhasePolyType[VT]]) -> bool:
+
+def apply_gadget_phasepoly(g: BaseGraph[VT, ET], matches: list[MatchPhasePolyType[VT]]) -> bool:
     """Uses the output of :func:`match_gadgets_phasepoly` to apply a rewrite based
     on rule R_13 of the paper *A Finite Presentation of CNOT-Dihedral Operators*."""
     rs = g.rows()
@@ -117,14 +115,14 @@ def apply_gadget_phasepoly(g: BaseGraph[VT,ET], matches: List[MatchPhasePolyType
                 v2 = group[j]
                 f = frozenset({v1,v2})
                 if f in gadgets:
-                    n,v = gadgets[f] # type: ignore # complex typing situation
+                    n, v = gadgets[f] # type: ignore # complex typing situation
                     phase = phases[v]
                     if phases[n]:
                         phase = -phase
                         g.set_phase(n,0)
                 else:
-                    n = g.add_vertex(VertexType.Z,-1, rs[v2]+0.5)
-                    v = g.add_vertex(VertexType.Z,-2, rs[v2]+0.5)
+                    n = g.add_vertex(VertexType.Z, -1, rs[v2]+0.5)
+                    v = g.add_vertex(VertexType.Z, -2, rs[v2]+0.5)
                     phase = 0
                     g.add_edges([(n,v),(v1,n),(v2,n)],EdgeType.HADAMARD)
                 g.set_phase(v, phase + Fraction(3,4))
@@ -133,7 +131,7 @@ def apply_gadget_phasepoly(g: BaseGraph[VT,ET], matches: List[MatchPhasePolyType
                     v3 = group[k]
                     f = frozenset({v1,v2,v3})
                     if f in gadgets:
-                        n,v = gadgets[f] # type: ignore
+                        n, v = gadgets[f] # type: ignore
                         phase = phases[v]
                         if phases[n]:
                             phase = -phase
@@ -146,7 +144,7 @@ def apply_gadget_phasepoly(g: BaseGraph[VT,ET], matches: List[MatchPhasePolyType
                     g.set_phase(v, phase + Fraction(1,4))
         f = frozenset(group)
         if f in gadgets:
-            n,v = gadgets[f] # type: ignore
+            n, v = gadgets[f] # type: ignore
             phase = phases[v]
             if phases[n]:
                 phase = -phase

@@ -59,6 +59,21 @@ class RoutingMethod(Enum):
         return f"{self.value}"
 
 
+class RootHeuristicProtocol(Protocol):
+    """Function signature of heuristics for choosing the root of a Steiner tree during phase polynomial routing."""
+
+    def __call__(
+        self,
+        architecture: Architecture,
+        matrix: Mat2,
+        cols_to_use: list[int],
+        qubits: list[int],
+        column: int,
+        phase_qubit: int,
+        **kwargs: Any
+    ) -> list[tuple[int, int]]:
+        ...
+
 class RootHeuristic(Enum):
     """
     Heuristics for choosing the root of a Steiner tree during phase polynomial routing.
@@ -81,20 +96,6 @@ class RootHeuristic(Enum):
         Converts RootHeuristic into a string
         """
         return f"{self.value}"
-    
-    
-    class RootHeuristicProtocol(Protocol):
-        def __call__(
-            self,
-            architecture: Architecture,
-            matrix: Mat2,
-            cols_to_use: list[int],
-            qubits: list[int],
-            column: int,
-            phase_qubit: int,
-            **kwargs: Any
-        ) -> list[tuple[int, int]]:
-            ...
 
     def to_function(self) -> RootHeuristicProtocol:
         """
@@ -111,6 +112,20 @@ class RootHeuristic(Enum):
             return rec_root_heuristic
         else:
             raise KeyError(f"The root heuristic '{self}' is not implemented")
+
+
+class SplitHeuristicProtocol(Protocol):
+    """Function signature of heuristics for choosing nodes to split a circuit during phase polynomial routing."""
+
+    def __call__(
+        self,
+        architecture: Architecture,
+        matrix: Mat2,
+        cols_to_use: list[int],
+        qubits: list[int],
+        **kwargs: Any
+    ) -> list[int]:
+        ...
 
 
 class SplitHeuristic(Enum):
@@ -132,17 +147,6 @@ class SplitHeuristic(Enum):
         Converts SplitHeuristic into a string
         """
         return f"{self.value}"
-    
-    class SplitHeuristicProtocol(Protocol):
-        def __call__(
-            self,
-            architecture: Architecture,
-            matrix: Mat2,
-            cols_to_use: list[int],
-            qubits: list[int],
-            **kwargs: Any
-        ) -> list[int]:
-            ...
 
     def to_function(
         self,

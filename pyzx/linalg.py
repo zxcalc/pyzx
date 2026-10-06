@@ -145,7 +145,7 @@ class Mat2(object):
         """Permute the columns of the matrix according to the permutation p."""
         self.data = [[self.data[i][j] for j in p] for i in range(self.rows())]
     
-    def gauss(self, full_reduce:bool=False, x:Any=None, y:Any=None, blocksize:int=6, pivot_cols:List[int]=[]) -> int:
+    def gauss(self, full_reduce:bool=False, x:Any=None, y:Any=None, blocksize:int=6, pivot_cols:Optional[List[int]]=None) -> int:
         """Compute the echelon form. Returns the number of non-zero rows in the result, i.e.
         the rank of the matrix.
 
@@ -173,9 +173,11 @@ class Mat2(object):
         row_add(), and y any object that implements col_add().
         """
 
+        if pivot_cols is None:
+            pivot_cols = []
+
         rows = self.rows()
         cols = self.cols()
-        #pivot_cols = []
         pivot_row = 0
         for sec in range(math.ceil(cols / blocksize)):
             i0 = sec * blocksize

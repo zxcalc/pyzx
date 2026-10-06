@@ -1,4 +1,4 @@
-# PyZX - Python library for quantum circuit rewriting 
+# PyZX - Python library for quantum circuit rewriting
 #        and optimization using the ZX-calculus
 # Copyright (C) 2018 - Aleks Kissinger and John van de Wetering
 
@@ -29,10 +29,10 @@ __all__ = [
         'pi_commute',
         'unsafe_pi_commute',]
 
-from pyzx.graph.base import BaseGraph, VT, ET
-from pyzx.rewrite_rules.color_change_rule import color_change_diagram
+from ..graph.base import BaseGraph, VT, ET
+from ..rewrite_rules.color_change_rule import color_change_diagram
 
-from pyzx.utils import EdgeType, VertexType, vertex_is_zx
+from ..utils import EdgeType, VertexType, vertex_is_zx
 
 
 

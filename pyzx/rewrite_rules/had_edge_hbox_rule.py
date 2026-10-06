@@ -28,31 +28,31 @@ __all__ = ['check_hadamard',
            'had_edge_to_hbox',
            'unsafe_had_edge_to_hbox']
 
-from pyzx.utils import EdgeType, VertexType, is_standard_hbox
-from pyzx.graph.base import BaseGraph, ET, VT
-from pyzx.rewrite_rules.euler_rule import check_hadamard_edge
+from ..utils import EdgeType, VertexType, is_standard_hbox
+from ..graph.base import BaseGraph, ET, VT
+from ..rewrite_rules.euler_rule import check_hadamard_edge
 
-def check_hadamard(g: BaseGraph[VT ,ET], v: VT) -> bool:
+def check_hadamard(g: BaseGraph[VT, ET], v: VT) -> bool:
     """Returns whether the vertex v in graph g is a Hadamard gate."""
     if g.type(v) != VertexType.H_BOX: return False
     if not is_standard_hbox(g, v): return False
     if g.vertex_degree(v) != 2: return False
     return True
 
-def replace_hadamard(g: BaseGraph[VT ,ET], v: VT) -> bool:
+def replace_hadamard(g: BaseGraph[VT, ET], v: VT) -> bool:
     """First checks if the vertex is a H-box and then replaces it with a Hadamard edge."""
     if check_hadamard(g, v): return unsafe_replace_hadamard(g, v)
     return False
 
-def unsafe_replace_hadamard(g: BaseGraph[VT ,ET], v: VT) -> bool:
+def unsafe_replace_hadamard(g: BaseGraph[VT, ET], v: VT) -> bool:
     """Replaces a Hadamard gate with a Hadamard edge."""
     n1 ,n2 = g.neighbors(v)
-    et1 = g.edge_type(g.edge(v ,n1))
-    et2 = g.edge_type(g.edge(v ,n2))
+    et1 = g.edge_type(g.edge(v, n1))
+    et2 = g.edge_type(g.edge(v, n2))
     if et1 == et2: # both connecting edges are HADAMARD or SIMPLE
-        g.add_edge((n1 ,n2), EdgeType.HADAMARD)
+        g.add_edge((n1, n2), EdgeType.HADAMARD)
     else:
-        g.add_edge((n1 ,n2), EdgeType.SIMPLE)
+        g.add_edge((n1, n2), EdgeType.SIMPLE)
     g.remove_vertex(v)
     g.scalar.add_power(1) # Correct for the sqrt(2) difference in H-boxes and H-edges
     return True
@@ -63,7 +63,7 @@ def had_edge_to_hbox(g: BaseGraph[VT, ET], v: VT, w: VT) -> bool:
     if check_hadamard_edge(g, v, w): return unsafe_had_edge_to_hbox(g, v, w)
     return False
 
-def unsafe_had_edge_to_hbox(g: BaseGraph[VT ,ET], v: VT, w: VT) -> bool:
+def unsafe_had_edge_to_hbox(g: BaseGraph[VT, ET], v: VT, w: VT) -> bool:
     """Converts a Hadamard edge to a Hadamard gate.
     Note that while this works with multigraphs, it will put the new H-box in the middle of the vertices,
     so that the diagram might look wrong.
@@ -91,5 +91,3 @@ def unsafe_had_edge_to_hbox(g: BaseGraph[VT ,ET], v: VT, w: VT) -> bool:
         g.set_qubit(h, q)
     g.set_row(h, (rs + rt) / 2)
     return True
-
-

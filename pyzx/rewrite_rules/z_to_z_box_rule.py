@@ -30,17 +30,16 @@ __all__ = [
         'unsafe_z_to_z_box',]
 
 
-from typing import List, Callable, Optional
 import numpy as np
 
-from pyzx.symbolic import Poly
+from ..symbolic import Poly
 
-from pyzx.graph.base import BaseGraph, VT, ET
-from pyzx.utils import VertexType, set_z_box_label
+from ..graph.base import BaseGraph, VT, ET
+from ..utils import VertexType, set_z_box_label
 
 
 def check_z_to_z_box(
-        g: BaseGraph[VT,ET],
+        g: BaseGraph[VT, ET],
         v: VT ) -> bool:
     """checks if a given vertex can be converted to Z-boxes."""
 
@@ -51,13 +50,13 @@ def check_z_to_z_box(
         return True
     return False
 
-def z_to_z_box(g: BaseGraph[VT,ET], v: VT) -> bool:
+def z_to_z_box(g: BaseGraph[VT, ET], v: VT) -> bool:
     """Checks and converts a Z vertex to a Z-box."""
     if check_z_to_z_box(g, v):
         return unsafe_z_to_z_box(g, v)
     return False
 
-def unsafe_z_to_z_box(g: BaseGraph[VT,ET], v: VT) -> bool:
+def unsafe_z_to_z_box(g: BaseGraph[VT, ET], v: VT) -> bool:
     """Converts a Z vertex to a Z-box."""
 
     g.set_type(v, VertexType.Z_BOX)

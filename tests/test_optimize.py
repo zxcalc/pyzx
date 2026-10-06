@@ -139,6 +139,15 @@ rx(pi*0.545344) q[1];
         optimized = basic_optimization(c.to_basic_gates())
         self.assertIsNotNone(optimized)
 
+    def test_issue_514_xphase_with_pending_not(self):
+        """Regression test for issue #514: XPhase with pending NOT in basic_optimization."""
+        c = Circuit(1)
+        c.add_gate(NOT(0))
+        c.add_gate(XPhase(0, Fraction(1, 4)))
+        c.add_gate(HAD(0))
+        optimized = basic_optimization(c.to_basic_gates())
+        self.assertTrue(c.verify_equality(optimized))
+
 
 if __name__ == '__main__':
     unittest.main()

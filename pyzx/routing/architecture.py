@@ -302,20 +302,6 @@ class Architecture:
         """
         return set(self.graph.neighbors(vertex))
 
-    def to_quil_device(self): # type: ignore # TODO: this legacy function doesn't work -- remove?
-        """
-        Convert the graph to a PyQuil NxDevive object.
-
-        :return: A NxDevice object relating to the graphs topology representing this architecture
-        """
-        # Only required here
-        import networkx as nx
-        from pyquil.device import NxDeviceA
-        edges = [edge for edge in self.graph.edges() if edge[0] in self.vertices]
-        topology = nx.from_edgelist(edges)
-        device = NxDevice(topology)
-        return device
-
     def visualize(self, filename: str | None = None) -> None:
         """
         Visualise the graph and save it as a png image file.
@@ -333,7 +319,7 @@ class Architecture:
             filename = self.name + ".png"
         plt.savefig(filename)
 
-    def floyd_warshall(self, subgraph_vertices: Sequence[int], upper: bool = True, rec_vertices: Sequence[int] = []) -> dict[tuple[int, int], tuple[int, list[tuple[int, int]]]]:
+    def floyd_warshall(self, subgraph_vertices: Sequence[int], upper: bool = True, rec_vertices: Sequence[int] = ()) -> dict[tuple[int, int], tuple[int, list[tuple[int, int]]]]:
         """
         Implementation of the Floyd-Warshall algorithm to calculate the all-pair distances in a given graph.
 
@@ -1104,7 +1090,6 @@ def create_architecture(name: str | Architecture, **kwargs: Any) -> Architecture
     :return: The architecture.
     """
     # Source Rigetti architectures: https://www.rigetti.com/qpu
-    # TODO create the architectures from names in pyquil.list_quantum_computers() <- needs mapping
     # Source IBM architectures: http://iic.jku.at/files/eda/2018_tcad_mapping_quantum_circuit_to_ibm_qx.pdf​
     # IBM architectures are currently ignoring CNOT direction.
     if isinstance(name, Architecture):
