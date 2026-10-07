@@ -1,4 +1,4 @@
-"""
+r"""
 The magic5 decomposition shown on page 8 of https://arxiv.org/pdf/2202.09202, which achieves a state-of-the-art alpha of ~0.396
 for a T^{\otimes n} state.
 """
