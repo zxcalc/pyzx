@@ -222,9 +222,15 @@ def reduce_scalar(g: BaseGraph[VT,ET], quiet:bool=True, stats:Optional[Stats]=No
 def full_reduce(g: BaseGraph[VT,ET], matchf: Optional[Callable[[Union[VT, ET]],bool]]=None, quiet:bool=True, stats:Optional[Stats]=None) -> None:
     """The main simplification routine of PyZX. It uses a combination of :func:`clifford_simp` and
     the gadgetization strategies :func:`pivot_gadget_simp` and :func:`gadget_simp`. It also attempts to run :func:`supplementarity_simp` and :func:`copy_simp`."""
+
+    from .hsimplify import from_hypergraph_form  # Imported here to prevent circularity
+
+    # First, convert arity 2 H-boxes to Hadamard edges and fuse arity 1 H-boxes into adjacent Z spiders
+    from_hypergraph_form(g)
+
     if any(g.types()[h] == VertexType.H_BOX for h in g.vertices()):
-        raise ValueError("Input graph is not a ZX-diagram as it contains an H-box. "
-                         "Maybe call pyzx.hsimplify.from_hypergraph_form(g) first?")
+        raise ValueError("Input graph is not a ZX-diagram as it contains an H-box.")
+
     interior_clifford_simp(g)
     pivot_gadget_simp(g)
     while True:

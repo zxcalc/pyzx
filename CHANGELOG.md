@@ -8,6 +8,9 @@ Hence, occasionally changes will be backwards incompatible (although they will a
 
 ## [Unreleased]
 
+### Changed
+- `simplify.full_reduce` now replaces arity 2 H-boxes with Hadamard edges and fuses arity 1 H-boxes into adjacent Z spiders. This is equivalent to calling `hsimplify.from_hypergraph_form` beforehand in older versions. (by @96-LB)
+
 ### Fixed
 - `graph_to_circuit()` in `graphparser.py` now raises a `NotImplementedError` when extracting conditional gates instead of silently returning a circuit with potentially incorrect gate ordering (by @akshaysoftware).
 - `Var.rebind_to_registry` no longer loses a variable's Boolean type when the target registry does not know the variable yet (it read the type *after* switching registries). Copying a graph whose Boolean variables were created outside its registry silently turned them continuous, also on the original graph, so Pauli checks on symbolic phases failed.
