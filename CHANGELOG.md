@@ -11,6 +11,9 @@ Hence, occasionally changes will be backwards incompatible (although they will a
 ### Added
 - The X-H bialgebra rule now supports H-box with phases and complex labels. Automatic simplification remains restricted to standard H-boxes. (by @RazinShaikh)
 
+### Changed
+- `simplify.full_reduce` now replaces arity 2 H-boxes with Hadamard edges and fuses arity 1 H-boxes into adjacent Z spiders. This is equivalent to calling `hsimplify.from_hypergraph_form` beforehand in older versions. (by @96-LB)
+
 ### Fixed
 - `graph_to_circuit()` in `graphparser.py` now raises a `NotImplementedError` when extracting conditional gates instead of silently returning a circuit with potentially incorrect gate ordering (by @akshaysoftware).
 - `Var.rebind_to_registry` no longer loses a variable's Boolean type when the target registry does not know the variable yet (it read the type *after* switching registries). Copying a graph whose Boolean variables were created outside its registry silently turned them continuous, also on the original graph, so Pauli checks on symbolic phases failed.
@@ -19,6 +22,9 @@ Hence, occasionally changes will be backwards incompatible (although they will a
 - `YPhase` and `Y` now print like other gates instead of in Quipper syntax, and their Quipper output (`QRot["exp(-i%Y)",...]` and `QGate["Y"]`) can be read back by `Circuit.from_quipper` (#526). (by @a6hinandh)
 - `Gate.__eq__` now also compares `phases`, so gates storing their angles there (`U2`, `U3`, `CU3`, `CU`) no longer compare equal when their angles differ. (by @a6hinandh)
 - `Mat2.gauss` no longer shares pivot columns between calls; extraction and routing helpers avoid mutable defaults, and genetic optimizers copy caller-supplied action lists. (by @pmitos)
+
+### Removed
+- Python 3.10 is no longer supported because it has reached end-of-life.
 
 ## [0.10.7] - 2026-10-01
 
