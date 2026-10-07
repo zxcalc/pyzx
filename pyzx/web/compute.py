@@ -122,8 +122,8 @@ def compute_detecting_regions(graph: BaseGraph[int, tuple[int, int]]) -> list[Pa
     return regions
 
 
-def compute_pauli_webs(graph: BaseGraph[int, tuple[int, int]])\
-        -> tuple[list[PauliWeb[int, tuple[int, int]]] | None, list[PauliWeb[int, tuple[int, int]]] | None]:
+def compute_pauli_webs(graph: BaseGraph[int, tuple[int, int]]) \
+        -> tuple[list[PauliWeb[int, tuple[int, int]]], list[PauliWeb[int, tuple[int, int]]]]:
     """
     See .compute_stabilisers and .compute_detecting_regions of this package.
     """
