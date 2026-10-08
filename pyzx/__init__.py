@@ -32,6 +32,7 @@ from .local_search.genetic import GeneticOptimizer
 from .circuit.qasmparser import qasm
 from .circuit.sqasm import sqasm
 from . import generate
+from . import gflow
 from . import todd
 from . import linalg
 from . import extract
