@@ -216,7 +216,7 @@ class Poly:
             if t not in counter: counter[t] = c
             else: counter[t] += c
             counter_t = counter[t] # need to assign to variable to avoid type errors
-            if not isinstance(counter_t, complex) and len(t.vars) > 0 and all(tt[0].is_bool for tt in t.vars):
+            if not isinstance(counter_t, complex) and len(t.vars) >= 0 and all(tt[0].is_bool for tt in t.vars):
                 counter[t] = counter_t % 2
 
         # remove terms with coefficient 0

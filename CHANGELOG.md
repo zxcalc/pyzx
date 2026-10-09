@@ -22,6 +22,7 @@ Hence, occasionally changes will be backwards incompatible (although they will a
 - `YPhase` and `Y` now print like other gates instead of in Quipper syntax, and their Quipper output (`QRot["exp(-i%Y)",...]` and `QGate["Y"]`) can be read back by `Circuit.from_quipper` (#526). (by @a6hinandh)
 - `Gate.__eq__` now also compares `phases`, so gates storing their angles there (`U2`, `U3`, `CU3`, `CU`) no longer compare equal when their angles differ. (by @a6hinandh)
 - `Mat2.gauss` no longer shares pivot columns between calls; extraction and routing helpers avoid mutable defaults, and genetic optimizers copy caller-supplied action lists. (by @pmitos)
+- Symbolic boolean terms now correctly reduce modulo 2 during phase addition. (#545) (by @RazinShaikh)
 
 ### Removed
 - Python 3.10 is no longer supported because it has reached end-of-life.
