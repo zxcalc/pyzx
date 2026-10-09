@@ -74,10 +74,10 @@ First, we need to define the specific architecture we want to target. The
 function :func:`~pyzx.routing.create_architecture` can create a number of
 pre-defined :class:`~pyzx.routing.Architecture` objects.::
 
-	import pyzx.routing.architecture
+	import pyzx.routing.architecture as architecture
 	
 	# Create a 9-qubit square grid architecture
-	grid_arch = architecture.create_architecture(architecture.SQUARE, 9)
+	grid_arch = architecture.create_architecture(architecture.SQUARE, n_qubits=9)
 	
 	# Create a IBM qx5 architecture
 	ibm_arch = architecture.create_architecture(architecture.IBM_QX5)
