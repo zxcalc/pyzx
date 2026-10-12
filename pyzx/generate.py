@@ -760,7 +760,7 @@ def qft(qubits: int) -> Circuit:
     return c
 
 def gaussian_random_qubit_target(rand: Union[random.Random, types.ModuleType], q0: int, qubits: int, sigma: float|None) -> int:
-    """Selects a random target qubit according to a discrete Gaussian distribution
+    r"""Selects a random target qubit according to a discrete Gaussian distribution
     favouring short-range interactions.
 
     Given a control qubit ``q0``, this function samples a distinct target qubit

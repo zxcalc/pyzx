@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""
+r"""
 This module contains the implementation of the fault-equivalent fusion rules that fuse multiple spiders into a single spider.
 
 The check function returns a boolean indicating whether the rule can be applied.
