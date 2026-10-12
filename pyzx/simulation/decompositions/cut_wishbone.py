@@ -42,6 +42,9 @@ def decompose(g: BaseGraph[VT, ET], v: VT, neighs: list[VT] | None = None, ph: F
     gLeft  = g.clone()
     gRight = g.clone()
     
+    gLeft.scalar.add_power(-2)
+    gRight.scalar.add_power(-2)
+    
     gRight.add_to_phase(v_left,1)
     gRight.add_to_phase(v_right,1)
     
