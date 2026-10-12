@@ -245,7 +245,7 @@ def compute_pauli_webs(g: BaseGraph[VT,ET], backwards:bool=True, debug:Optional[
     if not debug is None:
         debug['g1'] = g1
 
-    gf = pauli_flow(g1, focus=True, reverse=backwards)
+    gf = pauli_flow(g1, include_ground_constraints=True, reverse=backwards)
     if not gf:
         raise ValueError("Graph must have Pauli flow")
     order, corr = gf

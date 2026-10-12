@@ -15,7 +15,7 @@ PyZX
    Optimizing and simplifying circuits <notebooks/simplify>
    graph
    representations
-   cubic_flow
+   flow
    api
 
 .. toctree::

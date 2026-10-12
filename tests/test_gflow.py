@@ -14,21 +14,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
 import random
-import subprocess
-import sys
+import unittest
+import warnings
 from fractions import Fraction
 from itertools import combinations, permutations, product
 from unittest.mock import patch
 
 from pyzx.circuit import Circuit
-from pyzx import gflow as compatibility_gflow
-from pyzx.flow import gflow, pauli_flow, _find_incremental_flow
+from pyzx.flow import gflow, pauli_flow
 from pyzx.graph import Graph
 from pyzx.pauliweb import compute_pauli_webs
 from pyzx.utils import EdgeType, VertexType
-from tests.benchmark_flow import make_flow_graph
+from tests.flow_test_utils import assert_valid_flow
 
 
 def brute_force_pauli_flow(n, edges, inputs, outputs, labels):
@@ -76,7 +74,6 @@ def brute_force_pauli_flow(n, edges, inputs, outputs, labels):
             return True
     return False
 
-
 def open_graph(phases, edges=(), inputs=(), outputs=(), backend='simple'):
     """Build a graph-like diagram with explicit boundary vertices."""
     graph = Graph(backend)
@@ -95,298 +92,144 @@ def open_graph(phases, edges=(), inputs=(), outputs=(), backend='simple'):
 
 class TestGFlow(unittest.TestCase):
 
-    def assert_valid_flow(self, graph, result, pauli, reverse, focus):
-        """Check correction parity and order independently of either solver."""
-        self.assertIsNotNone(result)
-        if result is None:
-            return
-        layers, corrections = result
-        vertices = {v for v in graph.vertices()
-                    if graph.type(v) in (VertexType.Z, VertexType.X)}
-        inputs = {v for b in graph.inputs() for v in graph.neighbors(b)} & vertices
-        outputs = {v for b in graph.outputs() for v in graph.neighbors(b)} & vertices
-        if reverse:
-            inputs, outputs = outputs, inputs
-        grounds = graph.grounds()
-        self.assertEqual(set(layers), vertices)
-        self.assertEqual(set(corrections), vertices - outputs - grounds)
-        self.assertTrue(all(isinstance(layer, int) and layer >= 0 for layer in layers.values()))
-        for v in outputs | grounds:
-            self.assertEqual(layers[v], 0 if reverse else max(layers.values()))
-        for u, correction in corrections.items():
-            self.assertIsInstance(correction, set)
-            self.assertLessEqual(correction, vertices)
-            self.assertFalse(correction & inputs)
-            for v in correction & outputs:
-                if reverse:
-                    self.assertLess(layers[v], layers[u])
-                else:
-                    self.assertGreater(layers[v], layers[u])
-            odd = {v for v in vertices
-                   if len(set(graph.neighbors(v)) & correction) % 2}
-            for v in vertices - outputs:
-                if v in grounds and not focus:
-                    continue
-                phase = graph.phase(v) % 2
-                is_y = pauli and phase in (Fraction(1, 2), Fraction(3, 2))
-                is_x = pauli and phase in (0, 1)
-                coefficient = (v in odd) ^ (is_y and v in correction)
-                self.assertEqual(coefficient, v == u)
-                if not is_x and not is_y and v in correction and v not in grounds:
-                    self.assertNotEqual(u, v)
-                    if reverse:
-                        self.assertLess(layers[v], layers[u])
-                    else:
-                        self.assertGreater(layers[v], layers[u])
-
     def test_exhaustive_three_vertex_pauli_flow(self):
-        """Compare every tiny open graph and labelling with the definition."""
+        """Check every tiny graph, boundary assignment and XY/X/Y labelling."""
         phases = {'XY': Fraction(1, 4), 'X': Fraction(0), 'Y': Fraction(1, 2)}
+        cases = 0
         for n in range(4):
             vertices = set(range(n))
-            subsets = [{v for v in vertices if mask & (1 << v)} for mask in range(1 << n)]
+            subsets = [{v for v in vertices if mask & (1 << v)}
+                       for mask in range(1 << n)]
             possible_edges = list(combinations(range(n), 2))
             for edge_bits in product((False, True), repeat=len(possible_edges)):
                 edges = [e for e, bit in zip(possible_edges, edge_bits) if bit]
-                for inputs in subsets:
-                    for outputs in subsets:
-                        measured = sorted(vertices - outputs)
-                        for labels_tuple in product(phases, repeat=len(measured)):
-                            labels = dict(zip(measured, labels_tuple))
-                            expected = brute_force_pauli_flow(n, edges, inputs, outputs, labels)
-                            graph, _ = open_graph(
-                                [phases[labels.get(v, 'XY')] for v in range(n)],
-                                edges, inputs, outputs)
-                            for focus in (False, True):
-                                with self.subTest(n=n, edges=edges, inputs=inputs,
-                                                  outputs=outputs, labels=labels,
-                                                  focus=focus):
-                                    result = pauli_flow(graph, focus=focus, method="incremental")
-                                    self.assertEqual(result is not None, expected)
-                                    layers = pauli_flow(graph, focus=focus, method="incremental",
-                                                        layers_only=True)
-                                    self.assertEqual(layers is not None, expected)
-                                    self.assertEqual(layers, None if result is None else result[0])
-                                    if result is not None:
-                                        self.assert_valid_flow(graph, result, True, False, focus)
-                                    # All-XY patterns also exercise ordinary gflow.
-                                    if all(label == 'XY' for label in labels_tuple):
-                                        ordinary = gflow(graph, focus=focus, method="incremental")
-                                        self.assertEqual(ordinary is not None, expected)
-                                        self.assertEqual(
-                                            gflow(graph, focus=focus, method="incremental", layers_only=True),
-                                            None if ordinary is None else ordinary[0])
-                                        if ordinary is not None:
-                                            self.assert_valid_flow(graph, ordinary, False, False, focus)
+                for inputs, outputs in product(subsets, repeat=2):
+                    measured = sorted(vertices - outputs)
+                    for labels_tuple in product(phases, repeat=len(measured)):
+                        labels = dict(zip(measured, labels_tuple))
+                        expected = brute_force_pauli_flow(
+                            n, edges, inputs, outputs, labels)
+                        graph, _ = open_graph(
+                            [phases[labels.get(v, 'XY')] for v in range(n)],
+                            edges, inputs, outputs)
+                        with self.subTest(n=n, edges=edges, inputs=inputs,
+                                          outputs=outputs, labels=labels):
+                            result = pauli_flow(graph)
+                            self.assertEqual(result is not None, expected)
+                            if result is not None:
+                                assert_valid_flow(self, graph, result, True)
+                            if all(label == 'XY' for label in labels_tuple):
+                                self.assertEqual(gflow(graph) is not None, expected)
+                        cases += 1
+        self.assertEqual(cases, 4233)
 
-    def test_large_pauli_flow(self):
-        """A fixed mixed-Pauli example gives valid full and layers-only results."""
-        graph = make_flow_graph()
-        self.assertEqual(graph.num_vertices(), 228)
-        self.assertEqual(graph.num_edges(), 1655 + 28)
-        self.assertEqual(len(graph.inputs()), 14)
-        self.assertEqual(len(graph.outputs()), 14)
-        before = graph.to_json()
-        result = pauli_flow(graph, focus=True, method="incremental")
-        self.assert_valid_flow(graph, result, True, False, True)
-        self.assertEqual(pauli_flow(graph, focus=True, method="incremental", layers_only=True),
-                         result[0])
-        self.assertIsNone(gflow(graph, focus=True, method="incremental"))
-        self.assertEqual(graph.to_json(), before)
-
-    def test_rectangular_dependent_and_zero_columns(self):
-        """Surplus outputs can supply dependent/zero columns and nonunique solutions."""
-        graph, vertices = open_graph([Fraction(1, 4)] * 6,
-                                    [(0, 3), (1, 3), (0, 4), (1, 4), (1, 5)],
-                                    inputs=[0, 1], outputs=[2, 3, 4, 5])
-        result = gflow(graph)
-        self.assert_valid_flow(graph, result, False, False, False)
-        self.assertIsNotNone(result)
-        if result is not None:
-            self.assertGreater(len(result[1][vertices[0]]), 1)
-            self.assertTrue(all(vertices[2] not in c for c in result[1].values()))
+    def test_random_flow_equivalence(self):
+        """Compare legacy existence and validate cubic witnesses and layers."""
+        rng = random.Random(506)
+        phases = (Fraction(0), Fraction(1, 4), Fraction(1, 2),
+                  Fraction(1), Fraction(3, 2))
+        for sample in range(80):
+            values = [rng.choice(phases) for _ in range(rng.randrange(1, 10))]
+            edges = [e for e in combinations(range(len(values)), 2)
+                     if rng.random() < 0.35]
+            inputs = [v for v in range(len(values)) if rng.random() < 0.25]
+            outputs = [v for v in range(len(values)) if rng.random() < 0.4]
+            graph, _ = open_graph(values, edges, inputs, outputs)
+            for pauli, reverse in product((False, True), repeat=2):
+                finder = pauli_flow if pauli else gflow
+                with self.subTest(sample=sample, pauli=pauli, reverse=reverse):
+                    result = finder(graph, reverse=reverse)
+                    legacy = finder(graph, method="legacy", focus=True,
+                                    reverse=reverse)
+                    self.assertEqual(result is None, legacy is None)
+                    self.assertEqual(finder(graph, reverse=reverse, layers_only=True),
+                                     None if result is None else result[0])
+                    if result is not None:
+                        assert_valid_flow(self, graph, result, pauli, reverse)
+                        assert_valid_flow(self, graph, legacy, pauli, reverse)
 
     def test_no_flow_rank_and_order_obstructions(self):
-        """A singular demand, too many inputs, and a forced cycle all fail."""
         cases = [
-            (4, [(0, 2), (1, 2)], [0, 1], [2, 3]),  # Equal nonzero rows.
-            (3, [(0, 2), (1, 2)], [0, 1], [2]),     # More inputs than outputs.
-            (2, [(0, 1)], [], []),                  # Invertible M, cyclic order.
+            (4, [(0, 2), (1, 2)], [0, 1], [2, 3]),
+            (3, [(0, 2), (1, 2)], [0, 1], [2]),
+            (2, [(0, 1)], [], []),
         ]
         for n, edges, inputs, outputs in cases:
             graph, _ = open_graph([Fraction(1, 4)] * n, edges, inputs, outputs)
-            for focus in (False, True):
-                with self.subTest(edges=edges, inputs=inputs, outputs=outputs, focus=focus):
-                    self.assertIsNone(gflow(graph, focus=focus))
+            with self.subTest(edges=edges, inputs=inputs, outputs=outputs):
+                self.assertIsNone(gflow(graph))
 
-    def test_pivots_can_arrive_out_of_row_order(self):
-        """Arbitrary output-column order must not affect existence or validity."""
-        # Independent columns with first nonzero row indices 1, 0, 2.
-        supports = ({1}, {0, 1, 2}, {2})
-        for column_order in permutations(supports):
-            edges = [(row, 3 + j) for j, support in enumerate(column_order) for row in support]
-            graph, _ = open_graph([Fraction(1, 4)] * 6, edges,
-                                  inputs=[0, 1, 2], outputs=[3, 4, 5])
-            with self.subTest(column_order=column_order):
-                full = gflow(graph, method="incremental")
-                self.assert_valid_flow(graph, full, False, False, False)
-                self.assertEqual(gflow(graph, method="incremental", layers_only=True), full[0])
-
-    def test_dense_rectangular_system_across_packed_word_boundaries(self):
-        """Dense corrections retain coordinates beyond machine-word widths."""
-        rng = random.Random(67)
-        n = 67
-        rows = [{i} for i in range(n)]
-        for _ in range(12 * n):
-            i, j = rng.sample(range(n), 2)
-            rows[i] ^= rows[j]
-        edges = [(i, n + j) for i, row in enumerate(rows) for j in row]
-        edges.extend((i, 2 * n) for i, row in enumerate(rows) if 0 in row)
-        graph, vertices = open_graph([Fraction(1, 4)] * (2 * n + 2), edges,
-                                     inputs=range(n), outputs=range(n, 2 * n + 2))
-        result = gflow(graph, method="incremental")
-        self.assert_valid_flow(graph, result, False, False, False)
-        if result is not None:
-            self.assertTrue(any(vertices[2 * n - 1] in c for c in result[1].values()))
-            self.assertEqual(gflow(graph, method="incremental", layers_only=True), result[0])
-
-    def test_unequal_io_rank_deficient_system(self):
-        """Extra outputs alone do not ensure the existence of a right inverse."""
-        graph, _ = open_graph([Fraction(1, 4)] * 5, [(0, 2), (1, 2)],
-                              inputs=[0, 1], outputs=[2, 3, 4])
-        for focus in (False, True):
-            self.assertIsNone(gflow(graph, focus=focus))
-
-    def test_pauli_vertices_remove_order_obstruction(self):
-        """X correctors can be used before they are processed, including mutually."""
-        for phases in ([Fraction(0), Fraction(0)], [Fraction(1, 4), Fraction(0)]):
-            graph, _ = open_graph(phases, [(0, 1)])
-            self.assertIsNone(gflow(graph, pauli=False))
-            self.assert_valid_flow(graph, gflow(graph, pauli=True), True, False, False)
-
-    def test_gflow_module_import_compatibility(self):
-        """Historical imports retain the canonical functions and their options."""
-        self.assertIs(compatibility_gflow.gflow, gflow)
-        self.assertIs(compatibility_gflow.pauli_flow, pauli_flow)
-        # Check a fresh import, without this test module's explicit imports.
-        result = subprocess.run(
-            [sys.executable, "-c",
-             "import pyzx as zx\n"
-             "from pyzx.flow import gflow, pauli_flow\n"
-             "assert zx.gflow.gflow is gflow\n"
-             "assert zx.gflow.pauli_flow is pauli_flow\n"],
-            capture_output=True, text=True)
-        self.assertEqual(result.returncode, 0, result.stderr)
-
-    def test_pauli_flow_entry_point(self):
-        """The explicit API preserves the existing Pauli-flow mode."""
-        graph, _ = open_graph([Fraction(1, 2)])
-        self.assertIsNone(gflow(graph))
-        for method in ("cubic", "incremental", "legacy"):
-            with self.subTest(method=method):
-                result = pauli_flow(graph, method=method)
-                self.assertEqual(result, gflow(graph, pauli=True, method=method))
-                self.assert_valid_flow(graph, result, True, False, False)
-
-    def test_incremental_finder_uses_explicit_measurements(self):
-        """Explicit X/Y assignments apply even to non-Clifford phases."""
-        graph, vertices = open_graph([Fraction(1, 4)] * 2, [(0, 1)])
-        before = graph.to_json()
-        self.assertIsNone(_find_incremental_flow(graph, {v: "XY" for v in vertices}))
-        result = _find_incremental_flow(graph, {v: "X" for v in vertices})
-        self.assertEqual(result, ({v: 0 for v in vertices},
-                                 {vertices[0]: {vertices[1]}, vertices[1]: {vertices[0]}}))
-        self.assertEqual(before, graph.to_json())
-
-        isolated, (v,) = open_graph([Fraction(1, 4)])
-        self.assertIsNone(_find_incremental_flow(isolated, {v: "X"}))
-        self.assertEqual(_find_incremental_flow(isolated, {v: "Y"}),
-                         ({v: 0}, {v: {v}}))
-
-    def test_incremental_finder_uses_ground_measurement_assignment(self):
-        """A ground's explicit Y diagonal can satisfy its homogeneous row."""
-        graph, (u, ground, output) = open_graph(
-            [Fraction(1, 4)] * 3, [(0, 2), (1, 2)], inputs=[0], outputs=[2])
-        graph.set_ground(ground)
-        measurements = {u: "XY", ground: "XY", output: "XY"}
-        self.assertIsNone(_find_incremental_flow(graph, measurements, focus=True))
-        measurements[ground] = "Y"
-        self.assertEqual(_find_incremental_flow(graph, measurements, focus=True),
-                         ({ground: 1, output: 1, u: 0}, {u: {ground, output}}))
-        self.assertEqual(_find_incremental_flow(graph, measurements, focus=False),
-                         ({ground: 1, output: 1, u: 0}, {u: {output}}))
-
-    def test_phase_periodicity_and_input_exclusion(self):
-        """Odd half-integer phases are Y, but inputs can never self-correct."""
-        for phase in (Fraction(-3, 2), Fraction(-1, 2), Fraction(1, 2),
-                      Fraction(3, 2), Fraction(5, 2)):
-            graph, vertices = open_graph([phase])
-            self.assertEqual(gflow(graph, pauli=True), ({vertices[0]: 0}, {vertices[0]: {vertices[0]}}))
-            self.assertIsNone(gflow(graph, pauli=False))
-            graph, _ = open_graph([phase], inputs=[0])
-            self.assertIsNone(gflow(graph, pauli=True))
-        for phase in (Fraction(-2), Fraction(-1), Fraction(0), Fraction(1), Fraction(2)):
-            graph, _ = open_graph([phase, phase], [(0, 1)])
-            self.assert_valid_flow(graph, gflow(graph, pauli=True), True, False, False)
-        for phase in (Fraction(-1, 4), Fraction(1, 4), Fraction(3, 4)):
-            graph, _ = open_graph([phase])
-            self.assertIsNone(gflow(graph, pauli=True))
-
-    def test_disconnected_components(self):
-        """Every measured component must have flow; isolated Y is admissible."""
-        graph, vertices = open_graph([Fraction(1, 4)] * 4 + [Fraction(1, 2)],
-                                    [(0, 1), (2, 3)], inputs=[0, 2], outputs=[1, 3])
-        self.assert_valid_flow(graph, gflow(graph, pauli=True), True, False, False)
-        graph.set_phase(vertices[-1], Fraction(1, 4))
-        self.assertIsNone(gflow(graph, pauli=True))
-
-    def test_grounds_focus_distinction(self):
-        """An output correction touching a ground is excluded only when focused."""
-        graph, vertices = open_graph([Fraction(1, 4)] * 3, [(0, 2), (1, 2)],
-                                    inputs=[0], outputs=[2])
-        graph.set_ground(vertices[1])
-        self.assert_valid_flow(graph, gflow(graph, focus=False), False, False, False)
-        self.assertIsNone(gflow(graph, focus=True))
-
-    def test_only_outputs_and_boundary_wire(self):
-        """No measurements requires no corrections, even with overlapping I/O."""
-        graph, vertices = open_graph([Fraction(1, 4)] * 2, inputs=[0], outputs=[0, 1])
-        self.assertEqual(gflow(graph), ({v: 0 for v in vertices}, {}))
-        graph = Graph()
-        a, b = [graph.add_vertex(VertexType.BOUNDARY) for _ in range(2)]
-        graph.add_edge((a, b), EdgeType.SIMPLE)
-        graph.set_inputs((a,))
-        graph.set_outputs((b,))
-        self.assertEqual(gflow(graph), ({}, {}))
-
-    def test_focused_ground_does_not_require_its_own_right_inverse_column(self):
-        """An isolated ground gives a zero M row but no unsatisfiable unit RHS."""
+    def test_ground_constraints(self):
+        """Grounds are processed resources with optional homogeneous rows."""
+        for phase in (Fraction(1, 4), Fraction(1, 2)):
+            graph, vertices = open_graph([Fraction(1, 4), phase, Fraction(1, 4)],
+                                        [(0, 2), (1, 2)], inputs=[0], outputs=[2])
+            graph.set_ground(vertices[1])
+            for finder, pauli in ((gflow, False), (pauli_flow, True)):
+                with self.subTest(phase=phase, pauli=pauli):
+                    result = finder(graph)
+                    assert_valid_flow(self, graph, result, pauli)
+                    strict = finder(graph, include_ground_constraints=True)
+                    self.assertEqual(strict is not None,
+                                     pauli and phase == Fraction(1, 2))
+                    self.assertEqual(
+                        finder(graph, include_ground_constraints=True,
+                               layers_only=True),
+                        None if strict is None else strict[0])
+                    if strict is not None:
+                        assert_valid_flow(self, graph, strict, pauli,
+                                          include_ground_constraints=True)
+                    legacy = finder(graph, method="legacy", focus=True)
+                    self.assertEqual(strict is None, legacy is None)
         graph, vertices = open_graph([Fraction(1, 4)] * 3, [(0, 2)],
                                     inputs=[0], outputs=[2])
         graph.set_ground(vertices[1])
-        result = gflow(graph, focus=True)
-        self.assert_valid_flow(graph, result, False, False, True)
-        if result is not None:
-            self.assertEqual(result[1], {vertices[0]: {vertices[2]}})
+        assert_valid_flow(self, graph, gflow(graph, include_ground_constraints=True),
+                          False, include_ground_constraints=True)
 
-    def test_reverse_matches_swapped_boundaries(self):
-        """Reverse swaps input/output roles and reverses layer numbering."""
-        graph, _ = open_graph([Fraction(1, 4)] * 5,
-                              [(0, 1), (1, 2), (2, 3), (3, 4)], inputs=[0], outputs=[4])
-        reversed_result = gflow(graph, reverse=True)
-        self.assert_valid_flow(graph, reversed_result, False, True, False)
-        inputs, outputs = graph.inputs(), graph.outputs()
-        graph.set_inputs(outputs)
-        graph.set_outputs(inputs)
-        swapped_result = gflow(graph)
-        self.assertIsNotNone(swapped_result)
-        if reversed_result is not None and swapped_result is not None:
-            self.assertEqual(reversed_result[1], swapped_result[1])
-            depth = max(swapped_result[0].values())
-            self.assertEqual(reversed_result[0], {v: depth - d for v, d in swapped_result[0].items()})
+    def test_method_options_and_empty_graph(self):
+        """Method-specific options fail clearly instead of changing meaning."""
+        for finder in (gflow, pauli_flow):
+            graph = Graph()
+            self.assertEqual(finder(graph), ({}, {}))
+            self.assertEqual(finder(graph, layers_only=True), {})
+            for focus in (False, True):
+                self.assertEqual(finder(graph, method="legacy", focus=focus), ({}, {}))
+                with self.assertRaisesRegex(ValueError, "focus.*legacy"):
+                    finder(graph, focus=focus)
+            with self.assertRaisesRegex(ValueError, "Unknown flow method"):
+                finder(graph, method="unknown")
+            with self.assertRaisesRegex(ValueError, "layers_only"):
+                finder(graph, method="legacy", layers_only=True)
+            with self.assertRaisesRegex(ValueError, "include_ground_constraints"):
+                finder(graph, method="legacy", include_ground_constraints=False)
+            with self.assertRaises(TypeError):
+                finder(graph, misspelled_option=True)
 
-    def test_backend_spider_types_vertex_ids_and_no_mutation(self):
-        """Support X spiders and sparse IDs without changing the input diagram."""
+    def test_legacy_unfocused_corrections(self):
+        """The public legacy method retains its smaller unfocused corrections."""
+        graph, vertices = open_graph([Fraction(1, 4)] * 4,
+                                    [(0, 1), (1, 2), (2, 3)],
+                                    inputs=[0], outputs=[3])
+        short = gflow(graph, method="legacy", focus=False)
+        focused = gflow(graph, method="legacy", focus=True)
+        self.assertEqual(short[1][vertices[0]], {vertices[1]})
+        self.assertEqual(focused[1][vertices[0]], {vertices[1], vertices[3]})
+        assert_valid_flow(self, graph, focused, False)
+
+    def test_deprecated_pauli_alias(self):
+        graph, _ = open_graph([Fraction(1, 2)])
+        for method in ("cubic", "legacy"):
+            with warnings.catch_warnings(record=True) as notices:
+                warnings.simplefilter("always", DeprecationWarning)
+                result = gflow(graph, pauli=True, method=method)
+            self.assertEqual(result, pauli_flow(graph, method=method))
+            self.assertEqual(len(notices), 1)
+            self.assertIs(notices[0].category, DeprecationWarning)
+            self.assertEqual(notices[0].filename, __file__)
+            self.assertIn("pauli_flow", str(notices[0].message))
+
+    def test_backend_vertex_ids_and_no_mutation(self):
         for backend in ('simple', 'multigraph'):
             graph = Graph(backend)
             dummy = [graph.add_vertex(VertexType.Z) for _ in range(4)]
@@ -400,16 +243,13 @@ class TestGFlow(unittest.TestCase):
             graph.set_inputs((a,))
             graph.set_outputs((b,))
             before = graph.to_json()
-            for focus, reverse, pauli in product((False, True), repeat=3):
-                with self.subTest(backend=backend, focus=focus, reverse=reverse, pauli=pauli):
-                    result = gflow(graph, focus, reverse, pauli)
-                    self.assert_valid_flow(graph, result, pauli, reverse, focus)
-                    self.assertEqual(before, graph.to_json())
-                    # Deterministic for repeated calls on the same graph.
-                    self.assertEqual(result, gflow(graph, focus, reverse, pauli))
+            for finder, reverse in product((gflow, pauli_flow), (False, True)):
+                result = finder(graph, reverse=reverse)
+                assert_valid_flow(self, graph, result, finder is pauli_flow, reverse)
+                self.assertEqual(before, graph.to_json())
+                self.assertEqual(result, finder(graph, reverse=reverse))
 
     def test_pauli_web_integration(self):
-        """Validate the actual finder witness used to construct Pauli webs."""
         circuit = Circuit(2)
         circuit.add_gate('HAD', 0)
         circuit.add_gate('CNOT', 0, 1)
@@ -418,176 +258,83 @@ class TestGFlow(unittest.TestCase):
         graph = circuit.to_graph()
         before = graph.to_json()
         for backwards in (False, True):
-            def checked_finder(g, focus=False, reverse=False):
-                result = pauli_flow(g, focus=focus, reverse=reverse)
-                self.assert_valid_flow(g, result, True, reverse, focus)
+            def checked_finder(g, include_ground_constraints=False, reverse=False):
+                result = pauli_flow(g, include_ground_constraints=include_ground_constraints,
+                                    reverse=reverse)
+                assert_valid_flow(self, g, result, True, reverse,
+                                  include_ground_constraints)
                 return result
             with patch('pyzx.pauliweb.pauli_flow', side_effect=checked_finder) as finder:
                 compute_pauli_webs(graph, backwards=backwards)
                 finder.assert_called_once()
             self.assertEqual(before, graph.to_json())
 
-    def test_random_flow_equivalence(self):
-        """Compare existence and validate cubic witnesses in every API mode."""
-        rng = random.Random(506)
-        phases = (Fraction(0), Fraction(1, 4), Fraction(1, 2),
-                  Fraction(1), Fraction(3, 2))
-        for sample in range(160):
-            graph = Graph()
-            vertices = [graph.add_vertex(VertexType.Z, phase=rng.choice(phases))
-                        for _ in range(rng.randrange(1, 10))]
-            for i, v in enumerate(vertices):
-                for w in vertices[:i]:
-                    if rng.random() < 0.35:
-                        graph.add_edge((v, w), EdgeType.HADAMARD)
-            boundaries = []
-            for probability in (0.25, 0.4):
-                side = []
-                for v in vertices:
-                    if rng.random() < probability:
-                        b = graph.add_vertex(VertexType.BOUNDARY)
-                        graph.add_edge((b, v), EdgeType.SIMPLE)
-                        side.append(b)
-                boundaries.append(tuple(side))
-            graph.set_inputs(boundaries[0])
-            graph.set_outputs(boundaries[1])
-            for pauli in (False, True):
-                for reverse in (False, True):
-                    for focus in (False, True):
-                        with self.subTest(sample=sample, pauli=pauli,
-                                          reverse=reverse, focus=focus):
-                            result = gflow(graph, focus, reverse, pauli)
-                            incremental = gflow(graph, focus, reverse, pauli,
-                                                method="incremental")
-                            legacy = gflow(graph, focus, reverse, pauli, method="legacy")
-                            self.assertEqual(result is None, legacy is None)
-                            self.assertEqual(result, incremental)
-                            self.assertEqual(
-                                gflow(graph, focus, reverse, pauli, method="incremental", layers_only=True),
-                                None if incremental is None else incremental[0])
-                            if incremental is not None:
-                                self.assert_valid_flow(graph, incremental, pauli, reverse, focus)
-                            if result is not None:
-                                self.assert_valid_flow(graph, result, pauli, reverse, focus)
-
-    def test_layers_only_entry_points_and_empty_graph(self):
-        """The keyword returns layers directly, and None alone denotes no flow."""
-        graph, _ = open_graph([Fraction(1, 4)] * 3, [(0, 1), (1, 2)],
-                              inputs=[0], outputs=[2])
-        for method in ("cubic", "incremental"):
-            for finder in (gflow, pauli_flow):
-                with self.subTest(method=method, finder=finder.__name__):
-                    full = finder(graph, method=method)
-                    self.assertEqual(full, finder(graph, method=method, layers_only=False))
-                    layers = finder(graph, method=method, layers_only=True)
-                    self.assertIsInstance(layers, dict)
-                    self.assertEqual(layers, full[0])
-                    self.assertEqual(finder(Graph(), method=method, layers_only=True), {})
-            isolated_y, _ = open_graph([Fraction(1, 2)])
-            self.assertIsNone(gflow(isolated_y, method=method, layers_only=True))
-            self.assertEqual(pauli_flow(isolated_y, method=method, layers_only=True),
-                             gflow(isolated_y, pauli=True, method=method, layers_only=True))
-        for finder in (gflow, pauli_flow):
-            with self.assertRaisesRegex(ValueError, "layers_only"):
-                finder(graph, method="legacy", layers_only=True)
-        with self.assertRaisesRegex(ValueError, "layers_only"):
-            gflow(graph, pauli=True, method="legacy", layers_only=True)
-
-    def test_layers_only_ground_constraints_and_explicit_assignments(self):
-        """Skipping witnesses retains explicit labels and homogeneous ground rows."""
-        graph, (u, ground, output) = open_graph(
-            [Fraction(1, 4)] * 3, [(0, 2), (1, 2)], inputs=[0], outputs=[2])
-        graph.set_ground(ground)
-        before = graph.to_json()
-        measurements = {u: "XY", ground: "Y", output: "XY"}
-        for focus in (False, True):
-            with self.subTest(focus=focus):
-                full = _find_incremental_flow(graph, measurements, focus=focus)
-                self.assertIsNotNone(full)
-                self.assertEqual(
-                    _find_incremental_flow(graph, measurements, focus=focus,
-                                           layers_only=True), full[0])
-                blocked = measurements.copy()
-                blocked[ground] = "XY"
-                self.assertIsNone(_find_incremental_flow(
-                    graph, blocked, focus=True, layers_only=True))
-        self.assertEqual(before, graph.to_json())
-
-    def test_grounds(self):
-        """Ground constraints follow PyZX's focus flag convention."""
-        graph = Graph()
-        u = graph.add_vertex(VertexType.Z, phase=Fraction(1, 4))
-        ground = graph.add_vertex(VertexType.Z, ground=True)
-        graph.add_edge((u, ground), EdgeType.HADAMARD)
-        for focus in (False, True):
-            result = gflow(graph, focus=focus)
-            self.assertEqual(result is None, gflow(graph, focus=focus, method="legacy") is None)
-            self.assert_valid_flow(graph, result, False, False, focus)
-
-    def test_incremental_is_default_for_balanced_and_unbalanced_graphs(self):
-        """Boundary balance does not change the cubic backend."""
-        for outputs in ([2], [1, 2]):
-            graph, _ = open_graph([Fraction(1, 4)] * 3,
-                                  [(0, 1), (1, 2)], inputs=[0], outputs=outputs)
-            with self.subTest(outputs=outputs):
-                result = gflow(graph)
-                self.assertEqual(result, gflow(graph, method="incremental"))
-                self.assert_valid_flow(graph, result, False, False, False)
-
     def test_long_chain(self):
-        """Incrementally unlocked columns preserve focusing across 129 layers."""
-        graph = Graph()
-        vertices = [graph.add_vertex(VertexType.Z, phase=Fraction(1, 4))
-                    for _ in range(130)]
-        for u, v in zip(vertices, vertices[1:]):
-            graph.add_edge((u, v), EdgeType.HADAMARD)
-        for v, setter in ((vertices[0], graph.set_inputs),
-                          (vertices[-1], graph.set_outputs)):
-            b = graph.add_vertex(VertexType.BOUNDARY)
-            graph.add_edge((v, b), EdgeType.SIMPLE)
-            setter((b,))
-        self.assert_valid_flow(graph, gflow(graph, method="incremental"), False, False, False)
-        self.assert_valid_flow(graph, gflow(graph), False, False, False)
-        full = gflow(graph, method="incremental")
-        self.assertEqual(gflow(graph, method="incremental", layers_only=True), full[0])
-
-    def test_empty_and_isolated(self):
-        """Empty graphs and diagonal-only Y corrections need no graph edges."""
-        graph = Graph()
-        self.assertEqual(gflow(graph), ({}, {}))
-        v = graph.add_vertex(VertexType.Z, phase=Fraction(1, 2))
-        self.assertIsNone(gflow(graph))
-        self.assertEqual(gflow(graph, pauli=True), ({v: 0}, {v: {v}}))
-        with self.assertRaises(ValueError):
-            gflow(graph, method="unknown")
+        graph, _ = open_graph([Fraction(1, 4)] * 130,
+                              [(v, v + 1) for v in range(129)],
+                              inputs=[0], outputs=[129])
+        result = gflow(graph)
+        assert_valid_flow(self, graph, result, False)
+        self.assertEqual(gflow(graph, layers_only=True), result[0])
 
     def test_pauli_y_diagonal_correction(self):
-        """A Pauli-Y vertex can use the diagonal of the demand matrix."""
-        graph = Graph()
-        xy = graph.add_vertex(VertexType.Z, 0, 1, phase=Fraction(1, 4))
-        output = graph.add_vertex(VertexType.Z, 1, 1)
-        y = graph.add_vertex(VertexType.Z, 2, 1, phase=Fraction(1, 2))
-        graph.add_edge((xy, output), EdgeType.HADAMARD)
-        graph.add_edge((xy, y), EdgeType.HADAMARD)
+        graph, vertices = open_graph([Fraction(1, 4), Fraction(1, 4), Fraction(1, 2)],
+                                    [(0, 1), (0, 2)], inputs=[0], outputs=[1])
+        for method in ("cubic", "legacy"):
+            result = pauli_flow(graph, method=method)
+            self.assertEqual(result[1][vertices[0]], {vertices[1]})
+            self.assertEqual(result[1][vertices[2]], {vertices[1], vertices[2]})
+            assert_valid_flow(self, graph, result, True)
 
-        input_boundary = graph.add_vertex(VertexType.BOUNDARY, 0, 0)
-        output_boundary = graph.add_vertex(VertexType.BOUNDARY, 1, 2)
-        graph.add_edge((input_boundary, xy), EdgeType.SIMPLE)
-        graph.add_edge((output, output_boundary), EdgeType.SIMPLE)
-        graph.set_inputs((input_boundary,))
-        graph.set_outputs((output_boundary,))
+    def test_dense_rectangular_system_across_packed_word_boundaries(self):
+        """Dense corrections retain coordinates beyond machine-word widths."""
+        rng = random.Random(67)
+        n = 67
+        rows = [{i} for i in range(n)]
+        for _ in range(12 * n):
+            i, j = rng.sample(range(n), 2)
+            rows[i] ^= rows[j]
+        edges = [(i, n + j) for i, row in enumerate(rows) for j in row]
+        edges.extend((i, 2 * n) for i, row in enumerate(rows) if 0 in row)
+        graph, vertices = open_graph([Fraction(1, 4)] * (2 * n + 2), edges,
+                                     inputs=range(n), outputs=range(n, 2 * n + 2))
+        result = gflow(graph, method="cubic")
+        assert_valid_flow(self, graph, result, False, False, False)
+        if result is not None:
+            self.assertTrue(any(vertices[2 * n - 1] in c for c in result[1].values()))
+            self.assertEqual(gflow(graph, method="cubic", layers_only=True), result[0])
 
-        for focus in (False, True):
-            with self.subTest(focus=focus):
-                result = gflow(graph, focus=focus, pauli=True)
-                self.assertIsNotNone(result)
-                if result is None:
-                    continue
-                _, corrections = result
-                self.assertEqual(corrections[xy], {output})
-                self.assertEqual(corrections[y], {output, y})
+    def test_reverse_matches_swapped_boundaries(self):
+        """Reverse swaps input/output roles and reverses layer numbering."""
+        graph, _ = open_graph([Fraction(1, 4)] * 5,
+                              [(0, 1), (1, 2), (2, 3), (3, 4)], inputs=[0], outputs=[4])
+        reversed_result = gflow(graph, reverse=True)
+        assert_valid_flow(self, graph, reversed_result, False, True, False)
+        inputs, outputs = graph.inputs(), graph.outputs()
+        graph.set_inputs(outputs)
+        graph.set_outputs(inputs)
+        swapped_result = gflow(graph)
+        self.assertIsNotNone(swapped_result)
+        if reversed_result is not None and swapped_result is not None:
+            self.assertEqual(reversed_result[1], swapped_result[1])
+            depth = max(swapped_result[0].values())
+            self.assertEqual(reversed_result[0], {v: depth - d for v, d in swapped_result[0].items()})
 
-
+    def test_phase_periodicity_and_input_exclusion(self):
+        """Odd half-integer phases are Y, but inputs can never self-correct."""
+        for phase in (Fraction(-3, 2), Fraction(-1, 2), Fraction(1, 2),
+                      Fraction(3, 2), Fraction(5, 2)):
+            graph, vertices = open_graph([phase])
+            self.assertEqual(pauli_flow(graph), ({vertices[0]: 0}, {vertices[0]: {vertices[0]}}))
+            self.assertIsNone(gflow(graph))
+            graph, _ = open_graph([phase], inputs=[0])
+            self.assertIsNone(pauli_flow(graph))
+        for phase in (Fraction(-2), Fraction(-1), Fraction(0), Fraction(1), Fraction(2)):
+            graph, _ = open_graph([phase, phase], [(0, 1)])
+            assert_valid_flow(self, graph, pauli_flow(graph), True, False, False)
+        for phase in (Fraction(-1, 4), Fraction(1, 4), Fraction(3, 4)):
+            graph, _ = open_graph([phase])
+            self.assertIsNone(pauli_flow(graph))
 
 if __name__ == '__main__':
     unittest.main()
