@@ -5,7 +5,7 @@ Apply available cat decompositions (cat3 to cat6) in order of ascending alpha, w
 from ..decompositions import Decomp, apply_decomp
 from . import Strategy, register_strategy
 from ...graph.base import BaseGraph, VT, ET
-from ..common import SumGraph
+from ..common import SumGraph, check_catn
 from ...simplify import tcount
 
 @register_strategy(
@@ -28,12 +28,17 @@ def replace_states(g: BaseGraph[VT, ET]) -> SumGraph:
     if (v is not None): return apply_decomp(Decomp.CAT_N, g=g, v=v)
     else: return apply_fallback(g)
 
-def find_best_cat(g: BaseGraph[VT, ET]) -> int | None:
+def find_best_cat(g: BaseGraph[VT, ET]) -> VT | None:
     """Returns the best cat state vertex in graph g. (Ranked by alpha of cats 4 to 6.) Returns None if none are found."""
     for deg in [4,6,5,3]:
         for v in g.vertices():
             if g.phase(v) not in (0,1): continue # Find next Pauli (0 or pi phase) spider
-            if g.vertex_degree(v) == deg: return v
+            if g.vertex_degree(v) == deg:
+                try:
+                    check_catn(g, v, deg)
+                    return v
+                except (ValueError, NotImplementedError):
+                    continue
     return None
 
 def apply_fallback(g: BaseGraph[VT, ET]) -> SumGraph:
