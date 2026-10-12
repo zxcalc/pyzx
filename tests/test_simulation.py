@@ -15,10 +15,10 @@
 # limitations under the License.
 
 from fractions import Fraction
-from types import ModuleType
-from typing import Optional
-import unittest
 import sys
+import unittest
+
+import numpy as np
 
 if __name__ == '__main__':
     sys.path.append('..')
@@ -26,6 +26,7 @@ if __name__ == '__main__':
 
 from pyzx.circuit import Circuit
 from pyzx.graph import Graph
+from pyzx.graph.base import BaseGraph
 from pyzx.utils import EdgeType, VertexType
 from pyzx.simulation import (
     Decomp,
@@ -40,14 +41,7 @@ from pyzx.simulation import (
     get_strategy_spec
 )
 
-np: Optional[ModuleType]
-try:
-    import numpy as np
-except ImportError:
-    np = None
 
-
-@unittest.skipUnless(np, "numpy needs to be installed for simulation tests to run")
 class TestSimulationDecompositions(unittest.TestCase):
     """General tests verifying mathematical correctness and validity of all stabiliser decompositions."""
 
@@ -224,11 +218,10 @@ class TestSimulationDecompositions(unittest.TestCase):
                 self.assertTrue(alpha is None or isinstance(alpha, (int, float)))
 
 
-@unittest.skipUnless(np, "numpy needs to be installed for simulation tests to run")
 class TestSimulationStrategies(unittest.TestCase):
     """General tests verifying classical simulation strategies."""
 
-    def _canonical_closed_circuit(self, n_qubits: int, depth: int = 4) -> Graph:
+    def _canonical_closed_circuit(self, n_qubits: int, depth: int = 4) -> BaseGraph:
         """Helper to create a closed Clifford+T diagram with known amplitude."""
         c = Circuit(n_qubits)
         for i in range(n_qubits):
@@ -264,7 +257,7 @@ class TestSimulationStrategies(unittest.TestCase):
 
         for strat in [Strategy.BSS, Strategy.CUT_RANDOM, Strategy.MAGIC_CAT]:
             with self.subTest(strategy=strat.value):
-                terms = full_decompose(strat, g)
+                terms: list[BaseGraph] = full_decompose(strat, g)
                 self.assertIsInstance(terms, list)
                 self.assertGreater(len(terms), 0)
                 # Sum of term scalars must match the true amplitude
