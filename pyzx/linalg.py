@@ -1,4 +1,4 @@
-# PyZX - Python library for quantum circuit rewriting 
+# PyZX - Python library for quantum circuit rewriting
 #        and optimization using the ZX-calculus
 # Copyright (C) 2018 - Aleks Kissinger and John van de Wetering
 
@@ -15,34 +15,34 @@
 # limitations under the License.
 
 import math
+from typing import Any, Literal, overload
+
 import numpy as np
-from typing import Union, Any, Tuple, List, Optional, Dict, cast
-from typing_extensions import Literal
 from numpy.typing import NDArray
 
 from .circuit.gates import CNOT
 
 try:
-    from .linalg_c import do_gauss as gauss_fast # type: ignore
+    from .linalg_c import do_gauss as gauss_fast  # type: ignore
 except ImportError:
    gauss_fast = None
 
-Z2 = Literal[0,1]
-MatLike = List[List[Z2]]
+Z2 = Literal[0, 1]
+MatLike = list[list[Z2]]
 
-class Mat2(object):
+class Mat2:
     """A matrix over Z2, with methods for multiplication, primitive row and column
     operations, Gaussian elimination, rank, and epi-mono factorisation."""
     
     @staticmethod
     def id(n: int) -> 'Mat2':
         return Mat2([[1 if i == j else 0
-            for j in range(n)] 
+            for j in range(n)]
               for i in range(n)])
     @staticmethod
-    def zeros(m:int, n: int) -> 'Mat2':
+    def zeros(m: int, n: int) -> 'Mat2':
         return Mat2([[0
-            for j in range(n)] 
+            for j in range(n)]
               for i in range(m)])
     @staticmethod
     def unit_vector(d: int, i: int) -> 'Mat2':
@@ -51,19 +51,26 @@ class Mat2(object):
     def __init__(self, data: MatLike):
         self.data: MatLike = data
     def __mul__(self, m: 'Mat2') -> 'Mat2':
-        return Mat2([[cast(Z2, sum(self.data[i][k] * m.data[k][j] for k in range(len(m.data))) % 2)
+        return Mat2([[1 if sum(self.data[i][k] * m.data[k][j] for k in range(len(m.data))) % 2 else 0
                       for j in range(len(m.data[0]))] for i in range(len(self.data))])
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, Mat2): return False
         if self.rows() != other.rows() or self.cols() != other.cols(): return False
         return all(self.data[i][j] == other.data[i][j] for i in range(len(self.data)) for j in range(len(self.data[i])))
     def __str__(self) -> str:
-        return "\n".join("[ " + 
+        return "\n".join("[ " +
             "  ".join(str(value) for value in row) +
             " ]" for row in self.data)
     def __repr__(self) -> str:
         return str(self)
-    def __getitem__(self, key: Tuple[Union[int,slice],Union[int,slice]]) -> Union['Mat2',Z2]:
+    
+    @overload
+    def __getitem__(self, key: tuple[int, int]) -> Z2: ...
+    
+    @overload
+    def __getitem__(self, key: tuple[int, slice] | tuple[slice, int] | tuple[slice, slice]) -> 'Mat2': ...
+    
+    def __getitem__(self, key: tuple[int | slice, int | slice]) -> 'Mat2 | Z2':
         # For a pair of indices: if either is a slice, return the
         # selected sub-matrix. Otherwise, return the selected element.
         if isinstance(key,tuple):
@@ -76,17 +83,21 @@ class Mat2(object):
                 return self.data[rs][cs]
         else:
             raise IndexError("Expected a pair of indices/slices.")
-    def __setitem__(self, key, val):
+    
+    @overload
+    def __setitem__(self, key: tuple[int, int], val: Z2) -> None: ...
+    
+    @overload
+    def __setitem__(self, key: tuple[int, slice] | tuple[slice, int] | tuple[slice, slice], val: 'Mat2') -> None: ...
+    
+    def __setitem__(self, key: tuple[int | slice, int | slice], val: Z2 | 'Mat2') -> None:
         # For a pair of indices: if either is a slice, expect a Mat2
         # and overwrite the selected sub-matrix. Otherwise, expect
         # Z2 and overwrite the selected element.
         if isinstance(key,tuple):
             rs,cs = key
 
-            if isinstance(val,Mat2):
-                d = val.data
-            else:
-                d = [[val]]
+            d: MatLike | list[list[Z2]] = val.data if isinstance(val, Mat2) else [[val]]
 
             if isinstance(rs,slice):
                 rr = range(*rs.indices(self.rows()))
@@ -138,14 +149,14 @@ class Mat2(object):
             self.data[r][c0] = self.data[r][c1]
             self.data[r][c1] = v
     
-    def permute_rows(self, p: List[int]) -> None:
+    def permute_rows(self, p: list[int]) -> None:
         """Permute the rows of the matrix according to the permutation p."""
         self.data = [self.data[i] for i in p]
-    def permute_cols(self, p: List[int]) -> None:
+    def permute_cols(self, p: list[int]) -> None:
         """Permute the columns of the matrix according to the permutation p."""
         self.data = [[self.data[i][j] for j in p] for i in range(self.rows())]
     
-    def gauss(self, full_reduce:bool=False, x:Any=None, y:Any=None, blocksize:int=6, pivot_cols:Optional[List[int]]=None) -> int:
+    def gauss(self, full_reduce: bool = False, x: Any = None, y: Any = None, blocksize: int = 6, pivot_cols: list[int] | None = None) -> int:
         """Compute the echelon form. Returns the number of non-zero rows in the result, i.e.
         the rank of the matrix.
 
@@ -184,7 +195,7 @@ class Mat2(object):
             i1 = min(cols, (sec+1) * blocksize)
 
             # search for duplicate chunks of 'blocksize' bits and eliminate them
-            chunks: Dict[Tuple[Z2,...],int] = dict()
+            chunks: dict[tuple[Z2,...],int] = {}
             for r in range(pivot_row, rows):
                 t = tuple(self.data[r][i0:i1])
                 if not any(t): continue
@@ -228,7 +239,7 @@ class Mat2(object):
                 i1 = min(cols, (sec+1) * blocksize)
 
                 # search for duplicate chunks of 'blocksize' bits and eliminate them
-                chunks = dict()
+                chunks = {}
                 for r in range(pivot_row, -1, -1):
                     t = tuple(self.data[r][i0:i1])
                     if not any(t): continue
@@ -256,7 +267,7 @@ class Mat2(object):
         m = self.copy()
         return m.gauss()
 
-    def factor(self) -> Tuple['Mat2','Mat2']:
+    def factor(self) -> 'tuple[Mat2, Mat2]':
         """Produce a factorisation m = m0 * m1, where
 
         m0.cols() = m1.rows() = m.rank()
@@ -276,7 +287,7 @@ class Mat2(object):
         m1 = Mat2([m1.data[i] for i in range(rank)])
         return (m0, m1)
 
-    def inverse(self) -> Optional['Mat2']:
+    def inverse(self) -> 'Mat2 | None':
         """Returns the inverse of m is invertible and None otherwise."""
         if self.rows() != self.cols(): return None
         m = self.copy()
@@ -285,7 +296,7 @@ class Mat2(object):
         if rank < self.rows(): return None
         else: return inv
 
-    def solve(self, b: 'Mat2') -> Optional['Mat2']:
+    def solve(self, b: 'Mat2') -> 'Mat2 | None':
         """Return a vector x such that M * x = b, or None if there is no solution."""
         m = self.copy()
         b1 = b.copy()
@@ -317,7 +328,7 @@ class Mat2(object):
         #     x.data = x.data + [[0]]*(m.cols()-x.rows())
         # return x
 
-    def nullspace(self, should_copy:bool=True) -> List[List[Z2]]:
+    def nullspace(self, should_copy: bool = True) -> list[list[Z2]]:
         """Returns a list of non-zero vectors that span the nullspace
         of the matrix. If the matrix has trivial kernel it returns the empty list."""
         if gauss_fast:
@@ -338,18 +349,18 @@ class Mat2(object):
                     nonpivots.remove(j)
                     pivots.append(j)
                     break
-        vectors:List[List[Z2]] = []
+        vectors: list[list[Z2]] = []
         for n in nonpivots:
-            v:List[Z2] = [0]*cols
+            v: list[Z2] = [0]*cols
             v[n] = 1
             for r, p in zip(m.data, pivots):
                 if r[n]: v[p] = 1
             vectors.append(v)
         return vectors
 
-    def to_cnots(self, optimize: bool = False, use_log_blocksize: bool = False) -> List[CNOT]:
+    def to_cnots(self, optimize: bool = False, use_log_blocksize: bool = False) -> list[CNOT]:
         """Returns a list of CNOTs that implements the matrix as a reversible circuit of qubits."""
-        cn: Optional[CNOTMaker]
+        cn: CNOTMaker | None
         if not optimize:
             cn = CNOTMaker()
             blocksize = 5
@@ -368,13 +379,13 @@ class Mat2(object):
                     best_cn = cn
             cn = best_cn
         assert cn is not None
-        return cn.cnots # list(reversed(cn.cnots)) 
+        return cn.cnots # list(reversed(cn.cnots))
 
 
-class CNOTMaker(object):
+class CNOTMaker:
     def __init__(self) -> None:
-        self.cnots: List[CNOT] = []
-    def row_add(self, r1:int, r2:int) -> None:
+        self.cnots: list[CNOT] = []
+    def row_add(self, r1: int, r2: int) -> None:
         self.cnots.append(CNOT(r2,r1))
 
 
@@ -388,16 +399,16 @@ class REF:
     """
     BASE = 64
 
-    def __init__(self, adj_mat: NDArray[np.int8]):
+    def __init__(self, adj_mat: NDArray[np.int8]) -> None:
         self.n = len(adj_mat)
         self.N = (self.n + self.BASE - 1) // self.BASE * self.BASE
         self.taken = [False] * self.N
         adj_mat_padded = np.hstack([adj_mat, np.zeros((self.n, self.N - self.n), dtype=adj_mat.dtype)])
         self.adj_mat = np.packbits(adj_mat_padded, axis=-1, bitorder='little').view(np.uint64)
-        self.ref: List[NDArray[np.uint64]] = []
-        self.pivot_cols: List[int] = []
+        self.ref: list[NDArray[np.uint64]] = []
+        self.pivot_cols: list[int] = []
 
-    def _add_row(self, row_arr: NDArray[np.uint64], start_col: int = 0):
+    def _add_row(self, row_arr: NDArray[np.uint64], start_col: int = 0) -> None:
         pivot_row = 0
         for col in range(start_col, self.N):
             if self.taken[col]:
@@ -413,7 +424,7 @@ class REF:
                     self.pivot_cols.insert(pivot_row, col)
                     break
 
-    def take(self, v: int):
+    def take(self, v: int) -> None:
         """
         Move a vertex from the right part to the left in O(n^2) time.
         Args:
@@ -428,15 +439,17 @@ class REF:
             self._add_row(row_arr, v + 1)
         self._add_row(self.adj_mat[v])
 
-    def rank(self):
+    def rank(self) -> int:
         """
         Cut-rank of the partition, computed in O(1) time.
         """
         return len(self.pivot_cols)
 
 
-def rank_factorise(A: NDArray[np.int8],
-                   mode: str = 'compact') -> Tuple[NDArray[np.int8], NDArray[np.int8], NDArray[np.int8]]:
+def rank_factorise(
+    A: NDArray[np.int8],
+    mode: Literal['compact', 'full', 'invert'] = 'compact'
+) -> tuple[NDArray[np.int8], NDArray[np.int8], NDArray[np.int8]]:
     """
     Rank factorisation of a matrix over GF(2), i.e. A = UΣV. Three modes are available:
 

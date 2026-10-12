@@ -1,4 +1,4 @@
-# PyZX - Python library for quantum circuit rewriting 
+# PyZX - Python library for quantum circuit rewriting
 #        and optimization using the ZX-calculus
 # Copyright (C) 2018 - Aleks Kissinger and John van de Wetering
 
@@ -20,23 +20,22 @@ These tikz files are designed to be easily readable by the program `Tikzit <http
 
 
 import base64
-import json
-import re
-import tempfile
-import os
-import subprocess
-import shutil
-import time
-from fractions import Fraction
-from typing import List, Dict, Tuple, Union, Optional, Set
-
 import cmath
-from .utils import (get_z_box_label, set_z_box_label, get_h_box_label, set_h_box_label,
-                    hbox_has_complex_label, settings, EdgeType, VertexType, FloatInt)
-from .graph.base import BaseGraph, VT, ET
+import json
+import os
+import re
+import shutil
+import subprocess
+import tempfile
+from fractions import Fraction
+
+from .circuit import Circuit
+from .graph.base import ET, VT, BaseGraph
 from .graph.graph import Graph
 from .graph.jsonparser import string_to_phase
-from .circuit import Circuit
+from .utils import (EdgeType, FloatInt, VertexType, get_h_box_label,
+                    get_z_box_label, hbox_has_complex_label, set_h_box_label,
+                    set_z_box_label, settings)
 
 TIKZ_BASE = """
 \\begin{{tikzpicture}}
@@ -49,9 +48,9 @@ TIKZ_BASE = """
 \\end{{tikzpicture}}
 """
 
-def _to_tikz(g: BaseGraph[VT,ET], draw_scalar:bool = False,
-    xoffset:FloatInt=0, yoffset:FloatInt=0, idoffset:int=0
-    ) -> Tuple[List[str],List[str]]:
+def _to_tikz(g: BaseGraph[VT, ET], draw_scalar: bool = False,
+    xoffset: FloatInt = 0, yoffset: FloatInt = 0, idoffset: int = 0
+    ) -> tuple[list[str],list[str]]:
     """Converts a ZX-graph ``g`` to a string representing a tikz diagram.
     The optional arguments are used by :func:`to_tikz_sequence`.
     """
@@ -140,7 +139,7 @@ def _to_tikz(g: BaseGraph[VT,ET], draw_scalar:bool = False,
     return (verts, edges)
 
 
-def _encode_tikz_metadata(g: BaseGraph[VT, ET]) -> Optional[str]:
+def _encode_tikz_metadata(g: BaseGraph[VT, ET]) -> str | None:
     """Base64-encoded JSON of var_registry types for TikZ comment. None if no variables."""
     if not hasattr(g, "var_registry"):
         return None
@@ -154,7 +153,7 @@ def _encode_tikz_metadata(g: BaseGraph[VT, ET]) -> Optional[str]:
     return base64.urlsafe_b64encode(payload).decode("ascii")
 
 
-def to_tikz(g: BaseGraph[VT,ET], draw_scalar:bool=False) -> str:
+def to_tikz(g: BaseGraph[VT, ET], draw_scalar: bool = False) -> str:
     """Converts a ZX-graph ``g`` to a string representing a tikz diagram.
     If the graph has a var_registry with variables, prepend a metadata comment
     so symbolic variable types survive a TikZ round-trip."""
@@ -165,7 +164,7 @@ def to_tikz(g: BaseGraph[VT,ET], draw_scalar:bool=False) -> str:
         return "% pyzx-metadata: " + payload + "\n" + tikz
     return tikz
 
-def to_tikz_sequence(graphs:List[BaseGraph], draw_scalar:bool=False, maxwidth:FloatInt=10) -> str:
+def to_tikz_sequence(graphs: list[BaseGraph], draw_scalar: bool = False, maxwidth: FloatInt = 10) -> str:
     """Given a list of ZX-graphs, outputs a single tikz diagram with the graphs presented in a grid.
     ``maxwidth`` is the maximum width of the diagram, before a graph is put on a new row in the tikz diagram."""
     xoffset: FloatInt = -maxwidth
@@ -188,8 +187,8 @@ def to_tikz_sequence(graphs:List[BaseGraph], draw_scalar:bool=False, maxwidth:Fl
 
 
 
-def tikzit(g: Union[BaseGraph[VT,ET],Circuit,str], draw_scalar:bool=False) -> None:
-    """Opens Tikzit with the graph ``g`` opened as a tikz diagram. 
+def tikzit(g: BaseGraph[VT, ET] | Circuit | str, draw_scalar: bool = False) -> None:
+    """Opens Tikzit with the graph ``g`` opened as a tikz diagram.
     For this to work, ``zx.settings.tikzit_location`` must be pointed towards the Tikzit executable.
     Even though this function is intended to be used with Tikzit, ``zx.tikz.tikzit_location``
     can point towards any executable that takes a tikz file as an input, such as a text processor."""
@@ -242,7 +241,7 @@ _TIKZ_METADATA_RE = re.compile(
 )
 
 
-def _extract_braced_group(s: str, start: int) -> Tuple[Optional[str], int]:
+def _extract_braced_group(s: str, start: int) -> tuple[str | None, int]:
     """Return the contents of the braced group starting at ``start`` and the next index."""
     if start >= len(s) or s[start] != "{":
         return None, start
@@ -257,7 +256,7 @@ def _extract_braced_group(s: str, start: int) -> Tuple[Optional[str], int]:
     return None, start
 
 
-def _normalise_tikzit_phase_expr(expr: str) -> Optional[str]:
+def _normalise_tikzit_phase_expr(expr: str) -> str | None:
     """Convert simple Tikzit LaTeX syntax into the expression syntax accepted by string_to_phase."""
     expr = expr.strip()
     if not expr:
@@ -287,7 +286,7 @@ def _normalise_tikzit_phase_expr(expr: str) -> Optional[str]:
             return None
         return f"({normalised_fraction})*{normalised_suffix}"
 
-    tokens: List[str] = []
+    tokens: list[str] = []
     i = 0
     while i < len(expr):
         c = expr[i]
@@ -349,7 +348,7 @@ def _normalise_tikzit_phase_expr(expr: str) -> Optional[str]:
             continue
         return None
 
-    output: List[str] = []
+    output: list[str] = []
     for token in tokens:
         if output:
             prev = output[-1]
@@ -361,7 +360,7 @@ def _normalise_tikzit_phase_expr(expr: str) -> Optional[str]:
     return "".join(output)
 
 
-def _normalise_tikzit_phase_label(label: str) -> Optional[str]:
+def _normalise_tikzit_phase_label(label: str) -> str | None:
     """Normalise Tikzit labels before parsing them with string_to_phase."""
     label = label.strip()
     if not label:
@@ -369,7 +368,7 @@ def _normalise_tikzit_phase_label(label: str) -> Optional[str]:
     return _normalise_tikzit_phase_expr(label)
 
 
-def _extract_tikz_metadata(s: str) -> Tuple[str, Dict[str, bool]]:
+def _extract_tikz_metadata(s: str) -> tuple[str, dict[str, bool]]:
     """Strip optional metadata comment from tikz string; return (clean_tikz, variable_types)."""
     lines = s.splitlines()
     match = None
@@ -402,13 +401,13 @@ def _extract_tikz_metadata(s: str) -> Tuple[str, Dict[str, bool]]:
 
 def tikz_to_graph(
     s: str,
-    warn_overlap:bool= True,
-    fuse_overlap:bool = True,
-    ignore_nonzx:bool = False,
-    backend:Optional[str]=None,
-    ignore_invalid_phases:bool = False,
-    ignore_parse_errors:bool = False,
-    remove_identity_nodes:bool = False) -> BaseGraph:
+    warn_overlap: bool =  True,
+    fuse_overlap: bool = True,
+    ignore_nonzx: bool = False,
+    backend: str | None = None,
+    ignore_invalid_phases: bool = False,
+    ignore_parse_errors: bool = False,
+    remove_identity_nodes: bool = False) -> BaseGraph:
     """Converts a tikz diagram into a pyzx Graph.
     The tikz diagram is assumed to be one generated by Tikzit,
     and hence should have a nodelayer and a edgelayer..
@@ -443,9 +442,9 @@ def tikz_to_graph(
     if variable_types and hasattr(g, "var_registry"):
         for name, is_bool in variable_types.items():
             g.var_registry.set_type(name, is_bool)
-    index_dict: Dict[int,VT] = {} # type: ignore
-    position_dict: Dict[str,List[int]] = {}
-    none_style_vertices: Set[VT] = set()  # type: ignore
+    index_dict: dict[int, VT] = {} # type: ignore
+    position_dict: dict[str, list[int]] = {}
+    none_style_vertices: set[VT] = set()  # type: ignore
     for c,l in enumerate(lines[2:]):
         if l == r'\end{pgfonlayer}': break
         # l should look like
@@ -557,7 +556,7 @@ def tikz_to_graph(
         g.rebind_variables_to_registry()
 
     # done parsing the vertices, now we parse the edges
-    etab: Dict[ET, List[int]] = {} # type: ignore
+    etab: dict[ET, list[int]] = {} # type: ignore
 
     if lines[c+3] != r'\begin{pgfonlayer}{edgelayer}':
         raise ValueError(tikz_error_message)

@@ -17,39 +17,38 @@
 
 import json
 import os
-from fractions import Fraction
 import traceback
+from fractions import Fraction
+from typing import Any
 
-from typing import Optional, List, Tuple, Set, Dict, Any, Union
-
-import pyperclip # type: ignore # Needed for clipboard actions
-
-from .utils import EdgeType, VertexType
-from .utils import settings, get_mode, phase_to_s, FloatInt
-from .drawing import matrix_to_latex
-from .graph import Scalar
-from .graph.graph import GraphS
-from . import tikz
+import pyperclip  # Needed for clipboard actions
 
 from pyzx.editor_actions import MATCHES_EDGES, operations, operations_to_js
 
+from . import tikz
+from .drawing import matrix_to_latex
+from .graph import Scalar
+from .graph.graph_s import GraphS
+from .utils import (EdgeType, FloatInt, VertexType, get_mode, phase_to_s,
+                    settings)
+
 if get_mode() == 'notebook':
 	import ipywidgets as widgets
-	from traitlets import Unicode, Float
-	from IPython.display import display, HTML
+	from IPython.display import HTML, display
+	from traitlets import Float, Unicode
 else:
 	# Make some dummy classes to prevent errors with the definition
 	# of ZXEditorWidget
-	class DOMWidget(object):
+	class DOMWidget:
 		pass
-	class Unicode(object): # type: ignore
-		def __init__(self,*args,**kwargs):
+	class Unicode: # type: ignore
+		def __init__(self, *args: Any, **kwargs: Any) -> None:
 			pass
-		def tag(self, sync=False):
+		def tag(self, sync: bool = False) -> None:
 			pass
 	class Float(Unicode): # type: ignore
 		pass
-	class widgets(object): # type: ignore
+	class widgets: # type: ignore
 		register = lambda x: x
 		DOMWidget = DOMWidget
 
@@ -92,7 +91,7 @@ In [1]: zx.spider_simp(g)
 >>> Now the view of g in the editor above is updated.
 """
 
-def help():
+def help() -> None:
 	print(HELP_STRING)
 
 ERROR_STRING = """This functionality is only supported in a Jupyter Notebook.
@@ -118,7 +117,7 @@ def load_js() -> None:
 			</script>""".format(settings.d3_load_string,data1,data2)
 	display(HTML(text))
 
-def s_to_phase(s: str, t:VertexType=VertexType.Z) -> Fraction:
+def s_to_phase(s: str, t: VertexType = VertexType.Z) -> Fraction:
 	if not s:
 		if t!= VertexType.H_BOX: return Fraction(0)
 		else: return Fraction(1)
@@ -131,7 +130,7 @@ def s_to_phase(s: str, t:VertexType=VertexType.Z) -> Fraction:
 	if not s: return Fraction(1)
 	return Fraction(int(s))
 
-def graph_to_json(g: GraphS, scale:FloatInt, verts:Optional[List[int]]=None,edges:Optional[List[Tuple[int,int]]]=None) -> str:
+def graph_to_json(g: GraphS, scale: FloatInt, verts: list[int] | None = None, edges: list[tuple[int, int]] | None = None) -> str:
 	if verts is None:
 		verts = list(g.vertices())
 	if edges is None:
@@ -173,10 +172,11 @@ class ZXEditorWidget(widgets.DOMWidget):
 	def __init__(
 			self,
 			graph: GraphS,
-			show_matrix:bool=False,
-			show_scalar:bool=False,
-			*args, **kwargs
-			) -> None:
+			show_matrix: bool = False,
+			show_scalar: bool = False,
+			*args: Any,
+			**kwargs: Any
+		) -> None:
 		super().__init__(*args,**kwargs)
 		self.observe(self._handle_graph_change, 'graph_json')
 		self.observe(self._selection_changed, 'graph_selected')
@@ -185,11 +185,11 @@ class ZXEditorWidget(widgets.DOMWidget):
 		self.graph = graph
 		self.show_matrix = show_matrix
 		self.show_scalar = show_scalar
-		self.undo_stack: List[Tuple[str,str]] = [('initial',str(self.graph_json))]
+		self.undo_stack: list[tuple[str, str]] = [('initial',str(self.graph_json))]
 		self.undo_position: int = 1
 		self.halt_callbacks: bool = False
-		self.snapshots: List[GraphS] = []
-		self.msg: List[str] = []
+		self.snapshots: list[GraphS] = []
+		self.msg: list[str] = []
 		self.output = widgets.Output()
 		self.scalar_view = widgets.Label()
 		self.matrix_view = widgets.Label()
@@ -198,7 +198,7 @@ class ZXEditorWidget(widgets.DOMWidget):
 	def update(self) -> None:
 		self.graph_json = graph_to_json(self.graph, self.graph.scale) # type: ignore
 
-	def _update_matrix(self):
+	def _update_matrix(self) -> None:
 		if self.show_scalar:
 			s = self.graph.scalar.to_latex()
 			if s == '': s = '1'
@@ -218,7 +218,7 @@ class ZXEditorWidget(widgets.DOMWidget):
 			return
 		self.matrix_view.value = matrix_to_latex(m)
 
-	def _parse_selection(self) -> Tuple[Set[int],Set[Tuple[int,int]]]:
+	def _parse_selection(self) -> tuple[set[int], set[tuple[int, int]]]:
 		"""Helper function for `_selection_changed` and `_apply_operation`."""
 		selection = json.loads(self.graph_selected)
 		g = self.graph
@@ -227,7 +227,7 @@ class ZXEditorWidget(widgets.DOMWidget):
 		edge_set.update([g.edge(v,w) for v in vertex_set for w in vertex_set if g.connected(v,w)])
 		return vertex_set, edge_set
 
-	def _selection_changed(self, change):
+	def _selection_changed(self, change: dict[str, Any]) -> None:
 		"""Is called when the selection in the editor changes.
 		Updates the action buttons so that the correct ones are active."""
 		try:
@@ -243,7 +243,7 @@ class ZXEditorWidget(widgets.DOMWidget):
 		except Exception as e:
 			with self.output: print(traceback.format_exc())
 
-	def _apply_operation(self, change):
+	def _apply_operation(self, change: dict[str, Any]) -> None:
 		"""called when one of the action buttons is clicked.
 		Performs the action on the selection."""
 		try:
@@ -272,11 +272,11 @@ class ZXEditorWidget(widgets.DOMWidget):
 			self.graph_selected = json.dumps(selection)
 			self.button_clicked = ''
 			self.update()
-			self._selection_changed(None)
+			self._selection_changed({})
 		except Exception as e:
 			with self.output: print(traceback.format_exc())
 
-	def _perform_action(self, change):
+	def _perform_action(self, change: dict[str, Any]) -> None:
 		try:
 			action = change['new']
 			if action == '': return
@@ -367,7 +367,7 @@ class ZXEditorWidget(widgets.DOMWidget):
 		except Exception as e:
 			with self.output: print(e)
 
-	def graph_from_json(self, js: Dict[str,Any]) -> None:
+	def graph_from_json(self, js: dict[str, Any]) -> None:
 		try:
 			scale = self.graph.scale # type: ignore
 			marked = self.graph.vertex_set()
@@ -403,7 +403,7 @@ class ZXEditorWidget(widgets.DOMWidget):
 		except Exception as e:
 			with self.output: print(traceback.format_exc())
 	
-	def _handle_graph_change(self, change):
+	def _handle_graph_change(self, change: dict[str, Any]) -> None:
 		"""Called whenever the graph in the editor is modified."""
 		if self.halt_callbacks: return
 		self.msg.append("Handling graph change")
@@ -416,7 +416,7 @@ class ZXEditorWidget(widgets.DOMWidget):
 			with self.output: print(traceback.format_exc())
 		
 
-	def to_graph(self, zh:bool=True) -> GraphS:
+	def to_graph(self, zh: bool = True) -> GraphS:
 		return self.graph
 
 			
@@ -425,10 +425,10 @@ _d3_editor_id = 0
 
 def edit(
 		g: GraphS,
-		scale:Optional[FloatInt]=None,
-		show_matrix:bool=False,
-		show_scalar:bool=False,
-		show_errors:bool=True) -> ZXEditorWidget:
+		scale: FloatInt | None = None,
+		show_matrix: bool = False,
+		show_scalar: bool = False,
+		show_errors: bool = True) -> ZXEditorWidget:
 	"""Start an instance of an ZX-diagram editor on a given graph ``g``.
 	Only usable in a Jupyter Notebook.
 	When this function is called it displays a Jupyter Widget that allows

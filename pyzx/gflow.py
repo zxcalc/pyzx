@@ -14,17 +14,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from fractions import Fraction
-from typing import Dict, Set, Tuple, Optional
-
 from .linalg import Mat2
 from .graph.base import BaseGraph, VT, ET
 from .utils import phase_is_clifford, phase_is_pauli, vertex_is_zx
 
 
 def gflow(
-    g: BaseGraph[VT, ET], focus: bool=False, reverse: bool=False, pauli: bool=False
-) -> Optional[Tuple[Dict[VT, int], Dict[VT, Set[VT]]]]:
+    g: BaseGraph[VT, ET],
+    focus: bool = False,
+    reverse: bool = False,
+    pauli: bool = False
+) -> tuple[dict[VT, int], dict[VT, set[VT]]] | None:
     r"""Compute the gflow of a diagram in graph-like form.
 
     :param g: A graphlike ZX diagram.
@@ -69,15 +69,15 @@ def gflow(
     end
     ```
     """
-    l: Dict[VT, int] = {}
-    gflow: Dict[VT, Set[VT]] = {}
+    l: dict[VT, int] = {}
+    gflow: dict[VT, set[VT]] = {}
     ty = g.types()
 
-    vertices: Set[VT] = set(v for v in g.vertices() if vertex_is_zx(ty[v]))
-    pattern_inputs: Set[VT] = set()
-    pattern_outputs: Set[VT] = set()
-    pauli_x: Set[VT] = set()
-    pauli_y: Set[VT] = set()
+    vertices: set[VT] = set(v for v in g.vertices() if vertex_is_zx(ty[v]))
+    pattern_inputs: set[VT] = set()
+    pattern_outputs: set[VT] = set()
+    pauli_x: set[VT] = set()
+    pauli_y: set[VT] = set()
 
     for inp in g.inputs():
         pattern_inputs |= set(n for n in g.neighbors(inp) if vertex_is_zx(ty[n]))
@@ -95,7 +95,7 @@ def gflow(
             elif phase_is_clifford(p):
                 pauli_y.add(v)
 
-    processed: Set[VT] = pattern_outputs.copy() | g.grounds()
+    processed: set[VT] = pattern_outputs.copy() | g.grounds()
     non_outputs = list(vertices.difference(pattern_outputs))
     zerovec = Mat2.zeros(len(non_outputs), 1)
     for v in processed:
@@ -103,7 +103,7 @@ def gflow(
 
     k: int = 1
     while True:
-        correct: Set[VT] = set()
+        correct: set[VT] = set()
 
         # a list of nodes that can currently be used in the correction set of the next node
         # Keep candidate v when its column in the current flow-demand matrix
@@ -121,14 +121,14 @@ def gflow(
             clean = non_outputs
         else:
             clean = [v for v in vertices
-                        if v not in processed and 
+                        if v not in processed and
                         ((v in pauli_y and v in candidates)
                          or any(w in candidates for w in g.neighbors(v)))]
 
         # compute the "flow-demand matrix", which is essentially the bi-adjacency matrix from
         # "clean" to "candidates", which additionally relates every Y-measured node to
         # itself.
-        m = Mat2([[1 if g.connected(v,w) or (v==w and v in pauli_y) else 0 
+        m = Mat2([[1 if g.connected(v,w) or (v==w and v in pauli_y) else 0
                    for v in candidates] for w in clean])
 
         for index, u in enumerate(clean):
@@ -154,4 +154,3 @@ def gflow(
         else:
             processed.update(correct)
             k += 1
-

@@ -1,4 +1,4 @@
-# PyZX - Python library for quantum circuit rewriting 
+# PyZX - Python library for quantum circuit rewriting
 #        and optimization using the ZX-calculus
 # Copyright (C) 2018 - Aleks Kissinger and John van de Wetering
 
@@ -24,28 +24,30 @@
 #               Use pyzx/simulation/... instead                #
 ################################################################
 
-from .simulation import Decomp, Strategy, apply_decomp, full_decompose
-from .simulation import common
-from .simulation.common import SumGraph
 import warnings
-from typing import List, Any
-from . import simplify
-from .graph.base import BaseGraph,VT,ET
-from .simulation.strategies import bss
+from typing import Any
 
-def calculate_path_sum(g: BaseGraph[VT,ET]) -> complex:
+from . import simplify
+from .graph.base import ET, VT, BaseGraph
+from .simulation import Decomp, Strategy, apply_decomp, common, full_decompose
+from .simulation.common import SumGraph
+from .simulation.strategies import bss
+from .utils import EdgeType, FractionLike
+
+
+def calculate_path_sum(g: BaseGraph[VT, ET]) -> complex:
     warnings.warn(("pyzx.simulate.calculate_path_sum(g) is deprecated. Use pyzx.simulation.common.calculate_path_sum(g) instead."),DeprecationWarning,stacklevel=2)
     return common.calculate_path_sum(g)
 
-def find_stabilizer_decomp(g: BaseGraph[VT,ET]) -> List[BaseGraph[VT,ET]]:
+def find_stabilizer_decomp(g: BaseGraph[VT, ET]) -> list[BaseGraph[VT, ET]]:
     warnings.warn(("pyzx.simulate.find_stabilizer_decomp(g) is deprecated. Use pyzx.simulation.full_decompose(Strategy.BSS,g) instead."),DeprecationWarning,stacklevel=2)
     return full_decompose(Strategy.BSS,g)
 
-def replace_magic_states(g: BaseGraph[VT,ET], pick_random:Any=False) -> SumGraph:
+def replace_magic_states(g: BaseGraph[VT, ET], pick_random: Any = False) -> SumGraph:
     warnings.warn(("pyzx.simulate.replace_magic_states(g,pick_random) is deprecated. Use pyzx.simulation.strategies.bss.replace_magic_states(g,pick_random) instead."),DeprecationWarning,stacklevel=2)
     return bss.replace_magic_states(g,pick_random)
 
-def max_terms_needed(g: BaseGraph[VT,ET]) -> int:
+def max_terms_needed(g: BaseGraph[VT, ET]) -> int:
     """Returns the maximum amount of stabilizer terms that g could be split in
     by :func:``find_stabilizer_decomp``."""
     warnings.warn(("pyzx.simulate.max_terms_needed(g) is deprecated. This assumes the BSS decomposition strategy of Kissinger and van de Wetering, 2021."),DeprecationWarning,stacklevel=2)
@@ -57,29 +59,31 @@ def max_terms_needed(g: BaseGraph[VT,ET]) -> int:
     if v in (2,1): return count*2
     return count
 
-def cut_vertex(g,v):
+def cut_vertex(g: BaseGraph[VT, ET], v: VT) -> SumGraph[VT, ET]:
     warnings.warn(("pyzx.simulate.cut_vertex(g,v) is deprecated. Use pyzx.simulation.apply_decomp(Decomp.CUT_VERTEX,g,v) instead."),DeprecationWarning,stacklevel=2)
     return apply_decomp(Decomp.CUT_VERTEX,g,v)
 
-def cut_edge(g,e,ty=1):
+def cut_edge(g: BaseGraph[VT, ET], e: ET, ty: int = 1) -> SumGraph[VT, ET]:
     warnings.warn(("pyzx.simulate.cut_edge(g,e,ty) is deprecated. Use pyzx.simulation.apply_decomp(Decomp.CUT_EDGE,g,e,ty) instead."),DeprecationWarning,stacklevel=2)
     return apply_decomp(Decomp.CUT_EDGE,g,e,ty)
 
-def cut_wishbone(g,v,neighs,ph):
+def cut_wishbone(g: BaseGraph[VT, ET], v: VT, neighs: list[VT], ph: float) -> SumGraph[VT, ET]:
     warnings.warn(("pyzx.simulate.cut_wishbone(g,v,neighs,ph) is deprecated. Use pyzx.simulation.apply_decomp(Decomp.CUT_WISHBONE,g,v,neighs,ph) instead."),DeprecationWarning,stacklevel=2)
     return apply_decomp(Decomp.CUT_WISHBONE,g,v,neighs,ph)
 
-def gen_catlike_term(g_initial: BaseGraph[VT, ET],
-                     vertices: List[VT],
-                     ph_base,
-                     ph_central,
-                     ph_appendix,
-                     eType_base,
-                     eType_appendix,
-                     scal_positive,
-                     scal_power,
-                     scal_phase,
-                     pi_case: bool = False) -> BaseGraph[VT, ET]:
+def gen_catlike_term(
+    g_initial: BaseGraph[VT, ET],
+    vertices: list[VT],
+    ph_base: FractionLike,
+    ph_central: FractionLike,
+    ph_appendix: FractionLike,
+    eType_base: EdgeType,
+    eType_appendix: EdgeType,
+    scal_positive: bool,
+    scal_power: int,
+    scal_phase: FractionLike,
+    pi_case: bool = False
+) -> BaseGraph[VT, ET]:
     warnings.warn(("pyzx.simulate.gen_catlike_term(...) is deprecated. Use pyzx.simulation.common.gen_catlike_term(...) instead."),DeprecationWarning,stacklevel=2)
     return common.gen_catlike_term(g_initial,vertices,ph_base,ph_central,ph_appendix,eType_base,eType_appendix,scal_positive,scal_power,scal_phase,pi_case)
 
@@ -87,7 +91,7 @@ def check_catn(g: BaseGraph[VT, ET], vertex: VT, n: int) -> bool:
     warnings.warn(("pyzx.simulate.check_catn(g,v,n) is deprecated. Use pyzx.simulation.common.check_catn(g,v,n) instead."),DeprecationWarning,stacklevel=2)
     return common.check_catn(g,vertex,n)
 
-def apply_magic5(g: BaseGraph[VT,ET], verts: List[VT]) -> SumGraph:
+def apply_magic5(g: BaseGraph[VT, ET], verts: list[VT]) -> SumGraph:
     warnings.warn(("pyzx.simulate.apply_magic5(g,v) is deprecated. Use pyzx.simulation.apply_decomp(Decomp.MAGIC_5,g,v) instead."),DeprecationWarning,stacklevel=2)
     return apply_decomp(Decomp.MAGIC_5,g,verts)
 

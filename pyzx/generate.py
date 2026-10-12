@@ -27,29 +27,29 @@ __all__ = [
     "qft",
 ]
 
-import random, types, math
+import math
+import random
+import types
 from fractions import Fraction
-
-from typing import Optional, List, Set, Union
-from typing_extensions import Literal
+from typing import Any, Literal
 
 import numpy as np
-from pyzx.circuit.gates import CNOT, ZPhase
-from pyzx.linalg import Mat2, MatLike
 
-from pyzx.routing.cnot_mapper import ElimMode
-from pyzx.routing.parity_maps import CNOT_tracker, Parity
-from pyzx.routing.phase_poly import PhasePoly, mat22partition
-
-from .utils import EdgeType, VertexType, FloatInt, FractionLike, vertex_is_w, set_z_box_label
+from .circuit import Circuit
+from .circuit.gates import CNOT, ZPhase
 from .graph import Graph
 from .graph.base import BaseGraph
-from .circuit import Circuit
+from .linalg import Mat2, MatLike
+from .routing.cnot_mapper import ElimMode
+from .routing.parity_maps import CNOT_tracker, Parity
+from .routing.phase_poly import PhasePoly, mat22partition
+from .utils import (EdgeType, FloatInt, FractionLike, VertexType,
+                    set_z_box_label, vertex_is_w)
 
 # TODO: This file needs some cleanup, as probably all functions should just return a Circuit instead of a Graph
 
 
-def identity(qubits: int, depth: FloatInt=1,backend:Optional[str]=None) -> BaseGraph:
+def identity(qubits: int, depth: FloatInt = 1, backend: str | None = None) -> BaseGraph[Any, Any]:
     """Generates a :func:`pyzx.graph.Graph` representing an identity circuit.
 
     Args:
@@ -72,11 +72,11 @@ def identity(qubits: int, depth: FloatInt=1,backend:Optional[str]=None) -> BaseG
     return g
 
 def spider(
-    typ:Union[Literal["Z"], Literal["X"], Literal["H"], Literal["W"], Literal["ZBox"], VertexType],
+    typ: Literal["Z", "X", "H", "W", "ZBox"] | VertexType,
     inputs: int,
     outputs: int,
-    phase:Optional[Union[FractionLike, complex]]=None,
-    ) -> BaseGraph:
+    phase: FractionLike | complex | None = None,
+) -> BaseGraph[int, tuple[int, int]]:
     """Returns a Graph containing a single spider of the specified type
     and with the specified number of inputs and outputs."""
     if typ == "Z": typ = VertexType.Z
@@ -124,14 +124,14 @@ def spider(
 
 
 def CNOT_HAD_PHASE_circuit(
-        qubits: int,
-        depth: int,
-        p_had: float = 0.2,
-        p_t: float = 0.2,
-        clifford:bool=False,
-        seed:Optional[int]=None,
-        sigma:Optional[float]=None
-        ) -> Circuit:
+    qubits: int,
+    depth: int,
+    p_had: float = 0.2,
+    p_t: float = 0.2,
+    clifford: bool = False,
+    seed: int | None = None,
+    sigma: float | None = None
+) -> Circuit:
     """Construct a Circuit consisting of CNOT, HAD and phase gates.
     The default phase gate is the T gate, but if ``clifford=True``\\ , then
     this is replaced by the S gate.
@@ -151,7 +151,7 @@ def CNOT_HAD_PHASE_circuit(
         A random circuit consisting of Hadamards, CNOT gates and phase gates.
 
     """
-    rand: Union[random.Random, types.ModuleType]
+    rand: random.Random | types.ModuleType
     if (seed is not None): rand = random.Random(seed)
     else: rand = random
     p_cnot = 1-p_had-p_t
@@ -170,7 +170,13 @@ def CNOT_HAD_PHASE_circuit(
     return c
 
 
-def cnots(qubits: int, depth: int, backend:Optional[str]=None, seed:Optional[int]=None, sigma:Optional[float]=None) -> BaseGraph:
+def cnots(
+    qubits: int,
+    depth: int,
+    backend: str | None = None,
+    seed: int | None = None,
+    sigma: float | None = None
+) -> BaseGraph[Any, Any]:
     """Generates a circuit consisting of randomly placed CNOT gates.
     
     Args:
@@ -187,11 +193,11 @@ def cnots(qubits: int, depth: int, backend:Optional[str]=None, seed:Optional[int
     """
     # initialise and add input row
 
-    q: List[int] = list(range(qubits))                          # qubit index, initialised with input
+    q: list[int] = list(range(qubits))                          # qubit index, initialised with input
     r: int = 1                                                  # current rank
-    ty: List[VertexType] = [VertexType.BOUNDARY] * qubits  # types of vertices
-    qs: List[int] = list(range(qubits))                         # tracks qubit indices of vertices
-    rs: List[int] = [0] * qubits                                # tracks rank of vertices
+    ty: list[VertexType] = [VertexType.BOUNDARY] * qubits  # types of vertices
+    qs: list[int] = list(range(qubits))                         # tracks qubit indices of vertices
+    rs: list[int] = [0] * qubits                                # tracks rank of vertices
     v = qubits                                                  # next vertex to add
     es = []                                                     # edges to add
 
@@ -206,7 +212,7 @@ def cnots(qubits: int, depth: int, backend:Optional[str]=None, seed:Optional[int
     r += 1
 
     # random CNOTs
-    rand: Union[random.Random, types.ModuleType]
+    rand: random.Random | types.ModuleType
     if (seed is not None): rand = random.Random(seed)
     else: rand = random
     for i in range(depth):
@@ -257,25 +263,25 @@ def cnots(qubits: int, depth: int, backend:Optional[str]=None, seed:Optional[int
     g.scalar.add_power(depth)
     return g
 
-def accept(p: float, rand:Union[random.Random,types.ModuleType]=random) -> bool:
+def accept(p: float, rand: random.Random | types.ModuleType=random) -> bool:
     return p>rand.random()
 
-def random_phase(add_t: bool, rand:Union[random.Random,types.ModuleType]=random) -> Fraction:
+def random_phase(add_t: bool, rand: random.Random | types.ModuleType = random) -> Fraction:
     if add_t: return Fraction(rand.randint(1,8),4)
     return Fraction(rand.randint(1,4),2)
 
 def cliffordTmeas(
-        qubits: int,
-        depth: int,
-        p_t:Optional[float]=None,
-        p_s:Optional[float]=None,
-        p_hsh:Optional[float]=None,
-        p_cnot:Optional[float]=None,
-        p_meas:Optional[float]=None,
-        backend:Optional[str]=None,
-        seed:Optional[int]=None,
-        sigma:Optional[float]=None
-        ) -> BaseGraph:
+    qubits: int,
+    depth: int,
+    p_t: float | None = None,
+    p_s: float | None = None,
+    p_hsh: float | None = None,
+    p_cnot: float | None = None,
+    p_meas: float | None = None,
+    backend: str | None = None,
+    seed: int | None = None,
+    sigma: float | None = None
+) -> BaseGraph[Any, Any]:
     """Generates a circuit consisting of randomly placed Clifford+T gates. Optionally, take
     probabilities of adding T, S, HSH, CNOT, and measurements.
     If probabilities for only a subset of gates is given, any remaining probability will be
@@ -300,7 +306,7 @@ def cliffordTmeas(
     v = 0                     # next vertex to add
     r = 0                     # current row
     
-    rand: Union[random.Random, types.ModuleType]
+    rand: random.Random | types.ModuleType
     if (seed is not None): rand = random.Random(seed)
     else: rand = random
 
@@ -400,16 +406,16 @@ def cliffordTmeas(
     return g
 
 def cliffordT(
-        qubits: int,
-        depth: int,
-        p_t:Optional[float]=None,
-        p_s:Optional[float]=None,
-        p_hsh:Optional[float]=None,
-        p_cnot:Optional[float]=None,
-        backend:Optional[str]=None,
-        seed:Optional[int]=None,
-        sigma:Optional[float]=None
-        ) -> BaseGraph:
+    qubits: int,
+    depth: int,
+    p_t: float | None = None,
+    p_s: float | None = None,
+    p_hsh: float | None = None,
+    p_cnot: float | None = None,
+    backend: str | None = None,
+    seed: int | None = None,
+    sigma: float | None = None
+) -> BaseGraph[Any, Any]:
     """Generates a circuit consisting of randomly placed Clifford+T gates. Optionally, take
     probabilities of adding T, S, HSH, and CNOT. If probabilities for only a subset of gates
     is given, any remaining probability will be uniformly distributed among the remaining
@@ -431,14 +437,14 @@ def cliffordT(
     return cliffordTmeas(qubits, depth, p_t, p_s, p_hsh, p_cnot, 0, backend, seed, sigma)
 
 def cliffords(
-        qubits: int,
-        depth: int,
-        no_hadamard:bool=False,
-        t_gates:bool=False,
-        backend:Optional[str]=None,
-        seed:Optional[int]=None,
-        sigma:Optional[float]=None
-        ):
+    qubits: int,
+    depth: int,
+    no_hadamard: bool = False,
+    t_gates: bool = False,
+    backend: str | None = None,
+    seed: int | None = None,
+    sigma: float | None = None
+) -> BaseGraph[Any, Any]:
     """Generates a circuit consisting of randomly placed Clifford gates.
     Uses a different approach to generating Clifford circuits then :func:`cliffordT`.
 
@@ -463,7 +469,7 @@ def cliffords(
 
     q = list(range(qubits))   # qubit index, initialised with input
     r = 1                     # current rank
-    ty: List[VertexType] = [VertexType.BOUNDARY] * qubits         # types of vertices
+    ty: list[VertexType] = [VertexType.BOUNDARY] * qubits         # types of vertices
     qs = list(range(qubits))  # tracks qubit indices of vertices
     rs = [0] * qubits         # tracks rank of vertices
     v = qubits                # next vertex to add
@@ -482,7 +488,7 @@ def cliffords(
     r += 1
 
     # random gates
-    rand: Union[random.Random, types.ModuleType]
+    rand: random.Random | types.ModuleType
     if (seed is not None): rand = random.Random(seed)
     else: rand = random
     for i in range(depth):
@@ -572,7 +578,7 @@ def circuit_identity_phasepoly() -> Circuit:
     return c
 
 
-def circuit_identity_commuting_controls(alpha:Fraction,beta:Fraction) -> Circuit:
+def circuit_identity_commuting_controls(alpha: Fraction, beta: Fraction) -> Circuit:
     """Returns the circuit UVU*V* where U=NCZ(2beta) and V=CX(2alpha).
     Since these operations commute this circuit is equal to the identity.
     See page 13 of https://arxiv.org/pdf/1705.11151.pdf for more details."""
@@ -696,7 +702,7 @@ def phase_poly_from_gadgets(n_qubits: int, n_gadgets: int) -> Circuit:
     :param n_gadgets: Number of phase gadgets to generate.
     :return: A random phase polynomial circuit.
     """
-    parities: Set[Parity] = set()
+    parities: set[Parity] = set()
     if n_gadgets > 2**n_qubits:
         n_gadgets = n_qubits ^ 3
     if n_qubits < 26:
@@ -721,7 +727,8 @@ def phase_poly_from_gadgets(n_qubits: int, n_gadgets: int) -> Circuit:
     return phase_poly.rec_gray_synth(ElimMode.GAUSS_MODE, architecture=None)[0]
 
 
-def build_random_parity_map(qubits: int, n_cnots: int, circuit=None) -> MatLike:
+
+def build_random_parity_map(qubits: int, n_cnots: int, circuit: list[Circuit] | Circuit | None = None) -> MatLike:
     """
     Builds a random parity map.
 
@@ -759,7 +766,7 @@ def qft(qubits: int) -> Circuit:
             c.add_gate('CPhase', j, i, Fraction(1, 2**(j-i+1)))
     return c
 
-def gaussian_random_qubit_target(rand: Union[random.Random, types.ModuleType], q0: int, qubits: int, sigma: float|None) -> int:
+def gaussian_random_qubit_target(rand: random.Random | types.ModuleType, q0: int, qubits: int, sigma: float | None) -> int:
     """Selects a random target qubit according to a discrete Gaussian distribution
     favouring short-range interactions.
 

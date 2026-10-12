@@ -14,25 +14,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""This file contains the definition of the symbolic representation of 
+"""This file contains the definition of the symbolic representation of
 parameters that can be used in Graphs. Var defines a variable, which can
 either be a Boolean or continuous variable. Term is a product of variables,
-and Poly is a sum of terms. 
+and Poly is a sum of terms.
 Lark is used to define a parser that can translate a string into a Poly.
 """
 
-from typing import Any, Callable, Mapping, Union, Optional, Dict, List, Tuple, Set
+from collections.abc import Callable, Mapping
+from fractions import Fraction
+from typing import Any
+
 from lark import Lark, Transformer, Tree
 from lark.exceptions import UnexpectedToken, VisitError
-from fractions import Fraction
 
 
 class VarRegistry:
     """Registry to track variable types (Boolean/continuous) for a specific graph"""
 
-    types: Dict[str, bool]  # name -> is_bool
+    types: dict[str, bool]  # name -> is_bool
 
-    def __init__(self, types: Optional[Dict[str, bool]] = None):
+    def __init__(self, types: dict[str, bool] | None = None):
         self.types = types if types is not None else {}
 
     def get_type(self, name: str, default: bool = False) -> bool:
@@ -43,7 +45,7 @@ class VarRegistry:
         """Set the type of a variable"""
         self.types[name] = is_bool
 
-    def vars(self) -> Set[str]:
+    def vars(self) -> set[str]:
         """Get the set of variable names in the registry"""
         return set(self.types.keys())
 
@@ -59,7 +61,7 @@ class Var:
     name: str
     _registry: VarRegistry
 
-    def __init__(self, name: str, is_bool: bool = False, registry: Optional[VarRegistry] = None):
+    def __init__(self, name: str, is_bool: bool = False, registry: VarRegistry | None = None):
         self.name = name
         if registry is None:
             self._registry = VarRegistry()
@@ -110,12 +112,12 @@ class Term:
     """Product of symbolic variables with associated integer exponents.
     Example: x^2 * y * z^3 is represented as Term([(x, 2), (y, 1), (z, 3)])
     """
-    vars: List[Tuple[Var, int]]
+    vars: list[tuple[Var, int]]
 
-    def __init__(self, vars: List[Tuple[Var,int]]) -> None:
+    def __init__(self, vars: list[tuple[Var,int]]) -> None:
         self.vars = vars
 
-    def free_vars(self) -> Set[Var]:
+    def free_vars(self) -> set[Var]:
         return set(var for var, _ in self.vars)
 
     def __repr__(self) -> str:
@@ -134,7 +136,7 @@ class Term:
         Boolean variables are treated idempotently (x^2 = x), ensuring their
         exponent is reduced to 1 when multiplying.
         """
-        vs = dict()
+        vs = {}
         for v, c in self.vars + other.vars:
             if v not in vs: vs[v] = c
             else: vs[v] += c
@@ -163,7 +165,7 @@ class Term:
         """Check if this term is a Boolean term (i.e. all variables are Boolean)"""
         return all(v.is_bool for v, _ in self.vars)
 
-    def substitute(self, var_map: Mapping[Var, Union[float, complex, 'Fraction', 'Poly']]) -> Tuple[Union[int, float, complex, 'Fraction', 'Poly'], 'Term']:
+    def substitute(self, var_map: Mapping[Var, 'float | complex | Fraction | Poly']) -> tuple['int | float | complex | Fraction | Poly', 'Term']:
         """Evaluate variables present in ``var_map`` and return residual term.
 
         The method extracts the factor contributed by substituted variables
@@ -174,7 +176,7 @@ class Term:
 
         Example: substituting {x: 2} in x^2*y^3 gives (4, Term([(y, 3)]))
         """
-        coeff: Union[int, float, complex, 'Fraction', 'Poly'] = 1
+        coeff: 'int | float | complex | Fraction | Poly' = 1
         new_vars = []
         for v, c in self.vars:
             if v in var_map:
@@ -197,21 +199,21 @@ class Poly:
     Example: 3*x^2*y + (1/2)*y*z + 5 is represented as
     Poly([(3, Term([(x,2),(y,1)])), (1/2, Term([(y,1),(z,1)])), (5, Term([]))])
     """
-    terms: List[Tuple[Union[int, float, complex, Fraction], Term]]
+    terms: list[tuple[int | float | complex | Fraction, Term]]
 
-    def __init__(self, terms: List[Tuple[Union[int, float, complex, Fraction], Term]]) -> None:
+    def __init__(self, terms: list[tuple[int | float | complex | Fraction, Term]]) -> None:
         self.terms = terms
 
-    def free_vars(self) -> Set[Var]:
+    def free_vars(self) -> set[Var]:
         output = set()
         for _, term in self.terms:
             output.update(term.free_vars())
         return output
 
-    def __add__(self, other: Union['Poly', Fraction, int, float, complex]) -> 'Poly':
+    def __add__(self, other: 'Poly | Fraction | int | float | complex') -> 'Poly':
         if isinstance(other, (int, float, complex, Fraction)):
             other = Poly([(other, Term([]))])
-        counter = dict()
+        counter = {}
         for c, t in self.terms + other.terms:
             if t not in counter: counter[t] = c
             else: counter[t] += c
@@ -230,13 +232,13 @@ class Poly:
     def __neg__(self) -> 'Poly':
         return Poly([(-c, t) for c, t in self.terms])
 
-    def __sub__(self, other: Union['Poly', Fraction, int, float, complex]) -> 'Poly':
+    def __sub__(self, other: 'Poly | Fraction | int | float | complex') -> 'Poly':
         return self + (-other)
 
-    def __rsub__(self, other: Union['Poly', Fraction, int, float, complex]) -> 'Poly':
+    def __rsub__(self, other: 'Poly | Fraction | int | float | complex') -> 'Poly':
         return other + (-self)
 
-    def __mul__(self, other: Union['Poly', Fraction, int, float, complex]) -> 'Poly':
+    def __mul__(self, other: 'Poly | Fraction | int | float | complex') -> 'Poly':
         if isinstance(other, (int, float, complex, Fraction)):
             other = Poly([(other, Term([]))])
         p = Poly([])
@@ -247,7 +249,7 @@ class Poly:
 
     __rmul__ = __mul__
 
-    def __truediv__(self, other: Union['Poly', Fraction, int, float, complex]) -> 'Poly':
+    def __truediv__(self, other: 'Poly | Fraction | int | float | complex') -> 'Poly':
         if isinstance(other, (int, float, complex, Fraction)):
             other = Poly([(other, Term([]))])
         if len(other.terms) == 0:
@@ -308,7 +310,7 @@ class Poly:
         if not isinstance(other, Poly): return False
         return set(self.terms) == set(other.terms)
 
-    def __lt__(self, other: Union['Poly', Fraction, int, float, complex]) -> bool:
+    def __lt__(self, other: 'Poly | Fraction | int | float | complex') -> bool:
         if isinstance(other, (int, float, complex, Fraction)):
             other = Poly([(other, Term([]))])
         if len(self.terms) != len(other.terms):
@@ -319,13 +321,13 @@ class Poly:
                 return c1 < c2
         return False
 
-    def __le__(self, other: Union['Poly', Fraction, int, float, complex]) -> bool:
+    def __le__(self, other: 'Poly | Fraction | int | float | complex') -> bool:
         return self == other or self < other
 
-    def __gt__(self, other: Union['Poly', Fraction, int, float, complex]) -> bool:
+    def __gt__(self, other: 'Poly | Fraction | int | float | complex') -> bool:
         return not self <= other
 
-    def __ge__(self, other: Union['Poly', Fraction, int, float, complex]) -> bool:
+    def __ge__(self, other: 'Poly | Fraction | int | float | complex') -> bool:
         return not self < other
 
     def __hash__(self) -> int:
@@ -386,7 +388,7 @@ class Poly:
 
     def conjugate(self) -> 'Poly':
         """Return the complex conjugate of the polynomial."""
-        def conj_coeff(c):
+        def conj_coeff(c: int | float | complex | Fraction) -> int | float | complex | Fraction:
             if isinstance(c, complex):
                 return c.conjugate()
             return c
@@ -397,7 +399,7 @@ class Poly:
         for _, term in self.terms:
             term.rebind_variables_to_registry(new_registry)
 
-    def substitute(self, var_map: Mapping[Var, Union[float, complex, 'Fraction', 'Poly']]) -> 'Poly':
+    def substitute(self, var_map: Mapping[Var, 'float | complex | Fraction | Poly']) -> 'Poly':
         """Partially evaluate the polynomial with the provided variable values.
 
         Values may be scalars (float, complex, Fraction) or Poly instances
@@ -411,11 +413,11 @@ class Poly:
                 p += Poly([(c * coeff, term)])
         return p
 
-def new_var(name: str, is_bool: bool, registry: Optional[VarRegistry] = None) -> Poly:
+def new_var(name: str, is_bool: bool, registry: VarRegistry | None = None) -> Poly:
     """Create a polynomial consisting of a single symbolic variable."""
     return Poly([(1, Term([(Var(name, is_bool, registry), 1)]))])
 
-def new_const(coeff: Union[int, Fraction]) -> Poly:
+def new_const(coeff: int | Fraction) -> Poly:
     """Create a constant polynomial with the given coefficient."""
     return Poly([(coeff, Term([]))])
 
@@ -462,34 +464,34 @@ class PolyTransformer(Transformer):
         super().__init__()
         self._new_var = new_var
 
-    def start(self, items: List[Any]) -> Poly:
+    def start(self, items: list[Any]) -> Poly:
         return items[0]
 
-    def add(self, items: List[Any]) -> Poly:
+    def add(self, items: list[Any]) -> Poly:
         return items[0] + items[1]
 
-    def sub(self, items: List[Any]) -> Poly:
+    def sub(self, items: list[Any]) -> Poly:
         return items[0] - items[1]
 
-    def term(self, items: List[Any]) -> Poly:
+    def term(self, items: list[Any]) -> Poly:
         return items[0]
 
-    def neg_term(self, items: List[Any]) -> Poly:
+    def neg_term(self, items: list[Any]) -> Poly:
         return -items[0]  # Negate the pos_term
 
-    def pos_term(self, items: List[Any]) -> Poly:
+    def pos_term(self, items: list[Any]) -> Poly:
         result = items[0]
         for op, operand in items[1:]:
             result = result / operand if op == "/" else result * operand
         return result
 
-    def mul_factor(self, items: List[Any]) -> Tuple[str, Poly]:
+    def mul_factor(self, items: list[Any]) -> tuple[str, Poly]:
         return ("*", items[0])
 
-    def div_factor(self, items: List[Any]) -> Tuple[str, Poly]:
+    def div_factor(self, items: list[Any]) -> tuple[str, Poly]:
         return ("/", items[0])
 
-    def factor(self, items: List[Any]) -> Poly:
+    def factor(self, items: list[Any]) -> Poly:
         if len(items) == 1:
             return items[0]
         # Handle exponentiation: base^exponent
@@ -497,28 +499,28 @@ class PolyTransformer(Transformer):
         exponent = items[1]
         return base ** exponent
 
-    def neg_factor(self, items: List[Any]) -> Poly:
+    def neg_factor(self, items: list[Any]) -> Poly:
         return -items[0]
 
-    def base(self, items: List[Any]) -> Poly:
+    def base(self, items: list[Any]) -> Poly:
         return items[0]
 
-    def exponent(self, items: List[Any]) -> int:
+    def exponent(self, items: list[Any]) -> int:
         return items[0].terms[0][0]
 
-    def var(self, items: List[Any]) -> Poly:
+    def var(self, items: list[Any]) -> Poly:
         v = str(items[0])
         if len(items) > 1 and items[1] is not None:
             v += "[{}]".format(int(items[1]))
         return self._new_var(v)
 
-    def pi(self, _: List[Any]) -> Poly:
+    def pi(self, _: list[Any]) -> Poly:
         return new_const(1)
 
-    def intf(self, items: List[Any]) -> Poly:
+    def intf(self, items: list[Any]) -> Poly:
         return new_const(int(items[0]))
 
-    def decimal(self, items: List[Any]) -> Poly:
+    def decimal(self, items: list[Any]) -> Poly:
         return new_const(Fraction(float(items[0])).limit_denominator())
 
 def parse(expr: str, new_var: Callable[[str], Poly]) -> Poly:
@@ -545,7 +547,7 @@ def parse(expr: str, new_var: Callable[[str], Poly]) -> Poly:
         raise e.orig_exc from None
 
 
-def parse_phase_list(text: str) -> Tuple[List[str], int]:
+def parse_phase_list(text: str) -> tuple[list[str], int]:
     """Parse a parenthesised, comma-separated list of expressions.
 
     ``text`` must start with ``(``; trailing content past the matching ``)``

@@ -14,6 +14,7 @@ from .. import simplify
 from ..circuit import Circuit
 from ..graph.base import ET, VT, BaseGraph
 from ..symbolic import Poly
+from ..tensor import TensorStrategy
 from ..utils import EdgeType, FractionLike, VertexType, toggle_edge, toggle_vertex
 
 sq2 = math.sqrt(2)
@@ -27,14 +28,14 @@ class SumGraph(Generic[VT, ET]):
         else:
             self.graphs = []
             
-    def to_tensor(self, strategy: str = 'auto') -> np.ndarray[Any, Any]:
+    def to_tensor(self, strategy: TensorStrategy = 'auto') -> np.ndarray[Any, Any]:
         if not self.graphs: return np.zeros((1,1))
         t = self.graphs[0].to_tensor(True, strategy=strategy)
         for i in range(len(self.graphs)-1):
             t = t + self.graphs[i+1].to_tensor(True, strategy=strategy)
         return t
 
-    def to_matrix(self, strategy: str = 'auto') -> np.ndarray[Any, Any]:
+    def to_matrix(self, strategy: TensorStrategy = 'auto') -> np.ndarray[Any, Any]:
         if not self.graphs: return np.zeros((1,1))
         t = self.graphs[0].to_matrix(True, strategy=strategy)
         for i in range(len(self.graphs)-1):

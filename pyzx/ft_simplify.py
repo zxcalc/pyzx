@@ -17,12 +17,12 @@
 """This file is structured the same way as `simplify.py`, but instead contains
 simplifications with using only fault-equivalent rewrites"""
 
-from pyzx.rewrite import RewriteSimpSingleVertex, RewriteSimpGraph
-from pyzx.rewrite_rules.fuse_1_FE_rule import *
-from pyzx.rewrite_rules.unfuse_FE_rules import *
-from pyzx.rewrite_rules.fuse_FE_rules import *
-from pyzx.rewrite_rules.remove_id_rule import *
-from pyzx.ft_rewrite import RewriteSimpSingleVertex_ft
+from .ft_rewrite import RewriteSimpSingleVertex_ft
+from .rewrite import RewriteSimpGraph, RewriteSimpSingleVertex
+from .rewrite_rules.fuse_1_FE_rule import *
+from .rewrite_rules.fuse_FE_rules import *
+from .rewrite_rules.remove_id_rule import *
+from .rewrite_rules.unfuse_FE_rules import *
 
 
 elim_FE_simp: RewriteSimpSingleVertex = RewriteSimpSingleVertex(check_remove_id, unsafe_remove_id)

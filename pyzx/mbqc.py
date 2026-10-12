@@ -1,13 +1,13 @@
+from collections.abc import Iterable
+from fractions import Fraction
+
 from . import Graph
 from .graph.base import BaseGraph
 from .symbolic import Poly
-from .utils import VertexType, EdgeType, FractionLike
-
-from fractions import Fraction
-from typing import List, Tuple
+from .utils import EdgeType, FractionLike, VertexType
 
 
-def cluster_state(m: int, n: int, inputs: List[Tuple[int,int]]=[]) -> BaseGraph:
+def cluster_state(m: int, n: int, inputs: Iterable[tuple[int, int]] = ()) -> BaseGraph:
     """Build a cluster state m qubits tall and n qubits wide. Optionally, give a list of grid positions
     which serve as inputs."""
     g = Graph()
@@ -31,7 +31,7 @@ def cluster_state(m: int, n: int, inputs: List[Tuple[int,int]]=[]) -> BaseGraph:
     g.set_outputs(tuple(outp))
     return g
 
-def measure(g:BaseGraph, pos:Tuple[int,int], t:VertexType=VertexType.Z, phase:FractionLike=0):
+def measure(g: BaseGraph, pos: tuple[int, int], t: VertexType = VertexType.Z, phase: FractionLike = 0) -> None:
     """Measure the qubit at the given grid position, basis, and phase."""
     q = 2*pos[0]-0.8
     r = 2*pos[1]+0.8
@@ -53,7 +53,7 @@ def measure(g:BaseGraph, pos:Tuple[int,int], t:VertexType=VertexType.Z, phase:Fr
     if not found:
         raise ValueError("Couldn't find a qubit at that position")
 
-def apply_pauli(g:BaseGraph, pos:Tuple[int,int], t:VertexType=VertexType.Z, phase:FractionLike=1):
+def apply_pauli(g: BaseGraph, pos: tuple[int, int], t: VertexType = VertexType.Z, phase: FractionLike = 1) -> None:
     """Measure the qubit at the given grid position, basis, and phase."""
 
     if phase == 0:

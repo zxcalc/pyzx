@@ -28,9 +28,11 @@ The RewriteSimpGraph class is for rewrites that act on the entire graph at once,
 because their behaviour is too complex to fit into these other cases.
 """
 
-from typing import Callable, Optional, Generic, Set, Tuple, List
+from collections.abc import Callable
+from typing import Generic
 
-from .graph.base import BaseGraph, VT, ET
+from .graph.base import ET, VT, BaseGraph
+
 
 class Rewrite(Generic[VT, ET]):
 
@@ -61,9 +63,12 @@ class RewriteSingleVertex(Rewrite[VT, ET]):
     rmv_isolated: bool
 
 
-    def __init__(self, is_match: Callable[[BaseGraph[VT, ET], VT], bool],
-                 applier: Callable[[BaseGraph[VT, ET], VT], bool],
-                 rmv_isolated: bool = False) -> None:
+    def __init__(
+        self,
+        is_match: Callable[[BaseGraph[VT, ET], VT], bool],
+        applier: Callable[[BaseGraph[VT, ET], VT], bool],
+        rmv_isolated: bool = False
+    ) -> None:
         super().__init__()
         self.is_match = is_match
         self.applier = applier
@@ -86,22 +91,25 @@ class RewriteSimpSingleVertex(RewriteSingleVertex[VT, ET]):
         function that will perform the rewrite rule.
     is_match : Callable[[BaseGraph[VT, ET], VT], bool]
         function that checks whether a given vertex can be rewritten.
-    simp_match : Optional[Callable[[BaseGraph[VT, ET], VT], bool]]
+    simp_match : Callable[[BaseGraph[VT, ET], VT], bool] | None
         optional function that checks whether graph can be rewritten automatically.
     rmv_isolated : bool
         whether to remove isolated vertices after running the applier.
     """
-    simp_match: Optional[Callable[[BaseGraph[VT, ET], VT], bool]]
+    simp_match: Callable[[BaseGraph[VT, ET], VT], bool] | None
 
-    def __init__(self, is_match: Callable[[BaseGraph[VT, ET], VT], bool],
-                 applier: Callable[[BaseGraph[VT, ET], VT], bool],
-                 simp_match: Optional[Callable[[BaseGraph[VT, ET], VT], bool]] = None,
-                 rmv_isolated: bool = False) -> None:
+    def __init__(
+        self,
+        is_match: Callable[[BaseGraph[VT, ET], VT], bool],
+        applier: Callable[[BaseGraph[VT, ET], VT], bool],
+        simp_match: Callable[[BaseGraph[VT, ET], VT], bool] | None = None,
+        rmv_isolated: bool = False
+    ) -> None:
         super().__init__(is_match, applier, rmv_isolated)
         self.simp_match = simp_match
 
-    def find_all_matches(self, graph: BaseGraph[VT, ET]) -> Set[VT]:
-        all_matches: Set[VT] = set()
+    def find_all_matches(self, graph: BaseGraph[VT, ET]) -> set[VT]:
+        all_matches: set[VT] = set()
         if self.simp_match is not None:
             match = self.simp_match
         else:
@@ -146,9 +154,12 @@ class RewriteDoubleVertex(Rewrite[VT, ET]):
     applier: Callable[[BaseGraph[VT, ET], VT, VT], bool]
     is_match: Callable[[BaseGraph[VT, ET], VT, VT], bool]
 
-    def __init__(self, is_match: Callable[[BaseGraph[VT, ET], VT, VT], bool],
-                 applier: Callable[[BaseGraph[VT, ET], VT, VT], bool],
-                 rmv_isolated: bool = False) -> None:
+    def __init__(
+        self,
+        is_match: Callable[[BaseGraph[VT, ET], VT, VT], bool],
+        applier: Callable[[BaseGraph[VT, ET], VT, VT], bool],
+        rmv_isolated: bool = False
+    ) -> None:
         super().__init__()
         self.is_match = is_match
         self.applier = applier
@@ -172,7 +183,7 @@ class RewriteSimpDoubleVertex(RewriteDoubleVertex[VT, ET]):
         function that will perform the rewrite rule.
     is_match : Callable[[BaseGraph[VT, ET], VT, VT], bool]
         function that checks whether the given vertices can be rewritten.
-    simp_match : Optional[Callable[[BaseGraph[VT, ET], VT, VT], bool]]
+    simp_match : Callable[[BaseGraph[VT, ET], VT, VT], bool] | None
         optional function that checks whether graph can be rewritten automatically.
     rmv_isolated : bool
         whether to remove isolated vertices after running the applier.
@@ -181,28 +192,31 @@ class RewriteSimpDoubleVertex(RewriteDoubleVertex[VT, ET]):
         If False (the default), `(v1, v2)` and `(v2, v1)` are deduplicated by sorting
         before being added to the match set. If True, both orderings are kept as
         distinct matches; use this when the rule is asymmetric in its arguments.
-    simp_override : Optional[Callable[[BaseGraph[VT, ET]], bool]]
+    simp_override : Callable[[BaseGraph[VT, ET]], bool] | None
         optional whole-graph routine to run instead of the default per-pair simp loop.
         Use this when the rule needs to batch-match before any apply (e.g., rules
         that introduce new vertices which would otherwise interact with later matches).
     """
-    simp_match: Optional[Callable[[BaseGraph[VT, ET], VT, VT], bool]]
-    simp_override: Optional[Callable[[BaseGraph[VT, ET]], bool]]
+    simp_match: Callable[[BaseGraph[VT, ET], VT, VT], bool] | None
+    simp_override: Callable[[BaseGraph[VT, ET]], bool] | None
     is_ordered: bool
 
-    def __init__(self, is_match: Callable[[BaseGraph[VT, ET], VT, VT], bool],
-                 applier: Callable[[BaseGraph[VT, ET], VT, VT], bool],
-                 simp_match: Optional[Callable[[BaseGraph[VT, ET], VT, VT], bool]] = None,
-                 is_ordered: bool = False,
-                 rmv_isolated: bool = False,
-                 simp_override: Optional[Callable[[BaseGraph[VT, ET]], bool]] = None) -> None:
+    def __init__(
+        self,
+        is_match: Callable[[BaseGraph[VT, ET], VT, VT], bool],
+        applier: Callable[[BaseGraph[VT, ET], VT, VT], bool],
+        simp_match: Callable[[BaseGraph[VT, ET], VT, VT], bool] | None = None,
+        is_ordered: bool = False,
+        rmv_isolated: bool = False,
+        simp_override: Callable[[BaseGraph[VT, ET]], bool] | None = None
+    ) -> None:
         super().__init__(is_match, applier, rmv_isolated)
         self.simp_match = simp_match
         self.is_ordered = is_ordered
         self.simp_override = simp_override
 
-    def find_all_matches(self, graph: BaseGraph[VT, ET]) -> Set[Tuple[VT, VT]]:
-        all_matches: Set[Tuple[VT, VT]] = set()
+    def find_all_matches(self, graph: BaseGraph[VT, ET]) -> set[tuple[VT, VT]]:
+        all_matches: set[tuple[VT, VT]] = set()
         if self.simp_match is not None:
             match = self.simp_match
         else:
@@ -253,21 +267,20 @@ class RewriteSimpGraph(Rewrite[VT, ET]):
     simp_applier : Callable[[BaseGraph[VT, ET]], bool]
         that both checks if a rewrite can be done and performs the rule on the entire graph.
     """
-    applier: Callable[[BaseGraph[VT, ET], List[VT]], bool]
+    applier: Callable[[BaseGraph[VT, ET], list[VT]], bool]
     simp_applier: Callable[[BaseGraph[VT, ET]], bool]
     is_ordered: bool
 
     def __init__(self,
-                 applier: Callable[[BaseGraph[VT, ET], List[VT]], bool],
+                 applier: Callable[[BaseGraph[VT, ET], list[VT]], bool],
                  simp_applier: Callable[[BaseGraph[VT, ET]], bool]) -> None:
         super().__init__()
         self.applier = applier
         self.simp_applier = simp_applier
 
 
-    def apply(self, graph: BaseGraph[VT, ET], vertices: List[VT]) -> bool:
+    def apply(self, graph: BaseGraph[VT, ET], vertices: list[VT]) -> bool:
         return self.applier(graph, vertices)
 
     def simp(self, graph: BaseGraph[VT, ET]) -> bool:
         return  self.simp_applier(graph)
-

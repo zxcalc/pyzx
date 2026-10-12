@@ -17,14 +17,14 @@
 """This file is structured the same way as `simplify.py`, but instead contains the rewrites
 that deal specifically with H-boxes and ZH-diagrams."""
 
-from .simplify import pivot_simp, lcomp_simp, pivot_gadget_simp, pivot_boundary_simp, spider_simp, id_simp
-from .simplify import to_gh, copy_simp
-from .rewrite_rules import *
 from .rewrite import *
-from typing import Tuple, List
-from pyzx.utils import EdgeType, VertexType
+from .rewrite_rules import *
+from .simplify import (copy_simp, id_simp, lcomp_simp, pivot_boundary_simp,
+                       pivot_gadget_simp, pivot_simp, spider_simp, to_gh)
+from .utils import EdgeType, VertexType
 
-def hadamard_simp(g: BaseGraph[VT,ET], quiet:bool=False) -> int:
+
+def hadamard_simp(g: BaseGraph[VT, ET], quiet: bool = False) -> int:
     """Converts as many Hadamards represented by H-boxes to Hadamard-edges."""
     # We can't use the regular simp function, because removing H-nodes could lead to an infinite loop,
     # since sometimes g.add_edge_table() decides that we can't change an H-box into an H-edge.
@@ -42,7 +42,7 @@ def hadamard_simp(g: BaseGraph[VT,ET], quiet:bool=False) -> int:
     if not quiet and i>0: print(' {!s} iterations'.format(i))
     return i
 
-def to_hypergraph_form(g: BaseGraph[VT,ET]) -> None:
+def to_hypergraph_form(g: BaseGraph[VT, ET]) -> None:
     """Convert a Graph g to hypergraph form (see https://arxiv.org/abs/2003.13564)
     First, all X spiders are turned into Z-spiders by color-change,
     then all interior Hadamard edges are replaced by arity-2 hboxes
@@ -50,8 +50,8 @@ def to_hypergraph_form(g: BaseGraph[VT,ET]) -> None:
     Finally, to ensure H-boxes are only connected to white spiders,
     additional identities are introduced"""
     to_gh(g)
-    del_e: List[ET] = []
-    add_e: List[Tuple[VT,VT]] = []
+    del_e: list[ET] = []
+    add_e: list[tuple[VT, VT]] = []
     types = g.types()
     phases = g.phases()
     es = list(g.edges())
@@ -103,7 +103,7 @@ def to_hypergraph_form(g: BaseGraph[VT,ET]) -> None:
         g.remove_edges(del_e)
         g.add_edges(add_e)
 
-def from_hypergraph_form(g: BaseGraph[VT,ET]) -> None:
+def from_hypergraph_form(g: BaseGraph[VT, ET]) -> None:
     """Convert a graph with hboxes and no interior Hadamard edges back to 'ZX-friendly'
     form. All arity-2 hboxes with phase pi are turned into Hadamard edges and all
     arity-1 hboxes connected to Z-spiders are fused in. Note that more general hboxes
@@ -154,7 +154,7 @@ hbox_cancel_simp: RewriteSimpSingleVertex = RewriteSimpSingleVertex(check_hbox_c
 just_hpivot_simp: RewriteSimpGraph = RewriteSimpGraph(hpivot, simp_hpivot)
 """Performs hyper-pivot rewrite. This should only be called through :func:`hpivot_simp`."""
 
-def hpivot_simp(g: BaseGraph[VT,ET]) -> bool:
+def hpivot_simp(g: BaseGraph[VT, ET]) -> bool:
     """Performs the hyper-pivot rewrite. Also does the necessary rewrites to prepare the graph before applying the rule. Should only be run on the entire graph."""
     spider_simp(g)
     id_simp(g)
@@ -175,7 +175,7 @@ def hpivot_simp(g: BaseGraph[VT,ET]) -> bool:
         count += 1
     return count > 0
 
-def zh_simp(g: BaseGraph[VT,ET]) -> int:
+def zh_simp(g: BaseGraph[VT, ET]) -> int:
     """Does a bunch of rewrites to simplify diagrams containing
     arbitrary Z-spiders, X-spiders and H-boxes.
     Tries to do as many "non-complicating" rewrites before doing

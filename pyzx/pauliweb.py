@@ -16,12 +16,14 @@
 
 from __future__ import annotations
 
-from .gflow import gflow
-from .utils import EdgeType, VertexType, vertex_is_zx, phase_is_clifford
-from .graph.base import BaseGraph, VT, ET
-
-from typing import Any, Optional, Dict, Tuple, Generic, Iterable
 import random
+from collections.abc import Iterable
+from typing import Any, Generic
+
+from .gflow import gflow
+from .graph.base import ET, VT, BaseGraph
+from .utils import EdgeType, VertexType, phase_is_clifford, vertex_is_zx
+
 
 def multiply_paulis(p1: str, p2: str) -> str:
     if p1 == 'I': return p2
@@ -55,15 +57,15 @@ class PauliWeb(Generic[VT, ET]):
     (ii) is called a boundary of the web.
     """
     
-    def __init__(self, g: BaseGraph[VT,ET]):
+    def __init__(self, g: BaseGraph[VT, ET]) -> None:
         self.g = g
-        self.es: Dict[Tuple[VT,VT], str] = dict()
+        self.es: dict[tuple[VT, VT], str] = {}
     
-    def __getitem__(self, edge: Tuple[VT, VT]):
+    def __getitem__(self, edge: tuple[VT, VT]) -> str:
         return self.es.get(edge, 'I')
     
     @staticmethod
-    def random(g: BaseGraph[VT,ET], pX=0.1, pY=0.1, pZ=0.1):
+    def random(g: BaseGraph[VT, ET], pX: float = 0.1, pY: float = 0.1, pZ: float = 0.1) -> PauliWeb[VT, ET]:
         w = PauliWeb(g)
         for e in g.edges():
             s,t = g.edge_st(e)
@@ -83,7 +85,7 @@ class PauliWeb(Generic[VT, ET]):
         pw.es = self.es.copy()
         return pw
     
-    def add_half_edge(self, v_pair: Tuple[VT, VT], pauli: str):
+    def add_half_edge(self, v_pair: tuple[VT, VT], pauli: str) -> None:
         s, t = v_pair
         p = multiply_paulis(self.es.get((s,t), 'I'), pauli)
         if p == 'I':
@@ -91,7 +93,7 @@ class PauliWeb(Generic[VT, ET]):
         else:
             self.es[(s,t)] = p
     
-    def add_edge(self, v_pair: Tuple[VT, VT], pauli: str):
+    def add_edge(self, v_pair: tuple[VT, VT], pauli: str) -> None:
         s, t = v_pair
         # Reject missing edges up front: on backends like ``GraphS`` that
         # return a canonical pair regardless of existence, ``edge``/``edge_type``
@@ -102,18 +104,18 @@ class PauliWeb(Generic[VT, ET]):
         self.add_half_edge((s,t), pauli)
         self.add_half_edge((t,s), pauli if et == EdgeType.SIMPLE else h_pauli(pauli))
     
-    def remove_edges(self, v_pairs: Iterable[Tuple[VT, VT]]):
+    def remove_edges(self, v_pairs: Iterable[tuple[VT, VT]]) -> None:
         for s, t in v_pairs:
             self.es.pop((s, t), '')
             self.es.pop((t, s), '')
     
-    def vertices(self):
+    def vertices(self) -> set[VT]:
         return set(v for (v,_) in self.es)
     
-    def half_edges(self) -> Dict[Tuple[VT,VT],str]:
+    def half_edges(self) -> dict[tuple[VT, VT],str]:
         return self.es
     
-    def __repr__(self):
+    def __repr__(self) -> str:
         return 'PauliWeb' + str(self.vertices())
     
     def __mul__(self, other: PauliWeb[VT, ET]) -> PauliWeb[VT, ET]:
@@ -130,7 +132,7 @@ class PauliWeb(Generic[VT, ET]):
                 comm = not comm
         return comm
     
-    def graph_with_errors(self) -> BaseGraph[VT,ET]:
+    def graph_with_errors(self) -> BaseGraph[VT, ET]:
         g = self.g.clone()
         edges = set((s,t) if s < t else (t,s) for s,t in self.es)
         for s,t in edges:
@@ -194,18 +196,22 @@ class PauliWeb(Generic[VT, ET]):
 
 
 
-# def transpose_corrections(c: Dict[VT, Set[VT]]) -> Dict[VT, Set[VT]]:
-#     ct: Dict[VT, Set[VT]] = dict()
+# def transpose_corrections(c: dict[VT, set[VT]]) -> dict[VT, set[VT]]:
+#     ct: dict[VT, set[VT]] = {}
 #     for k,s in c.items():
 #         for v in s:
 #             if v not in ct: ct[v] = set()
 #             ct[v].add(k)
 #     return ct
 
-def compute_pauli_webs(g: BaseGraph[VT,ET], backwards:bool=True, debug:Optional[Dict[str,Any]]=None) -> Tuple[Dict[VT, int], Dict[VT, PauliWeb[VT,ET]], Dict[VT, PauliWeb[VT,ET]]]:
+def compute_pauli_webs(
+    g: BaseGraph[VT, ET],
+    backwards: bool = True,
+    debug: dict[str, Any] | None = None
+) -> tuple[dict[VT, int], dict[VT, PauliWeb[VT, ET]], dict[VT, PauliWeb[VT, ET]]]:
     g1 = g.clone()
-    color_edge: Dict[VT, Tuple[VT,VT]] = dict()
-    boundary: Dict[VT, VT] = dict()
+    color_edge: dict[VT, tuple[VT, VT]] = {}
+    boundary: dict[VT, VT] = {}
 
     for e in g.edges():
         s, t = g.edge_st(e)
@@ -252,8 +258,8 @@ def compute_pauli_webs(g: BaseGraph[VT,ET], backwards:bool=True, debug:Optional[
     vset = g.vertex_set()
     order = { v: i for v,i in order.items() if v in vset and not phase_is_clifford(g.phase(v)) }
 
-    zwebs: Dict[VT, PauliWeb[VT,ET]] = dict()
-    xwebs: Dict[VT, PauliWeb[VT,ET]] = dict()
+    zwebs: dict[VT, PauliWeb[VT, ET]] = {}
+    xwebs: dict[VT, PauliWeb[VT, ET]] = {}
     for v,c in corr.items():
         pw = PauliWeb(g)
         for v1 in c:
