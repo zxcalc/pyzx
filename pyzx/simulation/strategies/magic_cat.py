@@ -37,7 +37,7 @@ def find_best_cat(g: BaseGraph[VT, ET]) -> VT | None:
                 try:
                     check_catn(g, v, deg)
                     return v
-                except (ValueError, NotImplementedError):
+                except ValueError:
                     continue
     return None
 
