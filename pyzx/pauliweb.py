@@ -18,9 +18,9 @@ from __future__ import annotations
 
 import random
 from collections.abc import Iterable
-from typing import Any, Generic
+from typing import Any, Generic, Iterable
 
-from .gflow import gflow
+from .flow import pauli_flow
 from .graph.base import ET, VT, BaseGraph
 from .utils import EdgeType, VertexType, phase_is_clifford, vertex_is_zx
 
@@ -251,9 +251,9 @@ def compute_pauli_webs(
     if not debug is None:
         debug['g1'] = g1
 
-    gf = gflow(g1, focus=True, reverse=backwards, pauli=True)
+    gf = pauli_flow(g1, include_ground_constraints=True, reverse=backwards)
     if not gf:
-        raise ValueError("Graph must have gFlow")
+        raise ValueError("Graph must have Pauli flow")
     order, corr = gf
     vset = g.vertex_set()
     order = { v: i for v,i in order.items() if v in vset and not phase_is_clifford(g.phase(v)) }

@@ -280,7 +280,7 @@ def permuted_gauss(
             permsize, n_iterations, continued=True
         ))
     else:
-        best_permutation = np.arange(len(matrix.data)).tolist()
+        best_permutation = np.arange(len(matrix.data))
 
     n_qubits = len(matrix.data)
     row_perm = best_permutation if row else np.arange(len(matrix.data))

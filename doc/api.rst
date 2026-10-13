@@ -35,6 +35,14 @@ Circuit API
    :members:
 
 
+Flow finding
+------------
+
+.. automodule:: pyzx.flow
+   :members: gflow, pauli_flow
+   :member-order: bysource
+
+
 .. _generate:
 
 Generating Circuits

@@ -15,6 +15,7 @@ PyZX
    Optimizing and simplifying circuits <notebooks/simplify>
    graph
    representations
+   flow
    api
 
 .. toctree::
