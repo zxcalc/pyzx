@@ -460,13 +460,15 @@ class PolyTransformer(Transformer):
     The parse trees are built using the grammar defined in `poly_grammar`.
     It is used in the `parse` function below to convert a string into a Poly.
     """
-    def __init__(self, new_var: Callable[[str], Poly]):
+
+    def __init__(self, new_var: Callable[[str], Poly]) -> None:
         super().__init__()
         self._new_var = new_var
+
     @staticmethod
-    def _combine_raw(terms):
+    def _combine_raw(terms: list[tuple[int | float | complex | Fraction, Term]]) -> Poly:
         """Combine identical terms without Boolean coefficient reduction."""
-        coefficients = {}
+        coefficients: dict[Term, int | float | complex | Fraction] = {}
 
         for coefficient, term in terms:
             if term in coefficients:
@@ -481,7 +483,7 @@ class PolyTransformer(Transformer):
         ])
 
     @staticmethod
-    def _raw_multiply(left, right):
+    def _raw_multiply(left: Poly, right: Poly) -> Poly:
         """Multiply polynomials without premature Boolean simplification."""
         products = [
             (c1 * c2, t1 * t2)
@@ -491,7 +493,7 @@ class PolyTransformer(Transformer):
         return PolyTransformer._combine_raw(products)
 
     @staticmethod
-    def _normalize(poly):
+    def _normalize(poly: Poly) -> Poly:
         """Apply the normal Poly addition rules to a completed expression."""
         result = Poly([])
         for coefficient, term in poly.terms:
