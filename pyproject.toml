@@ -40,6 +40,7 @@ dev = [
     "matplotlib>=2.2",
     "mypy~=2.4.0",
     "types-tqdm~=4.66",
+    "types-pyperclip~=1.11",
 ]
 test = [
     "qiskit~=1.0.0",
@@ -75,7 +76,10 @@ warn_unused_configs = true
 disallow_untyped_defs = true
 
 [[tool.mypy.overrides]]
-module = "pyzx.scripts.*"
+module = [
+    "pyzx.scripts.*",
+    "tests.*"
+]
 disallow_untyped_defs = false
 
 [[tool.mypy.overrides]]
