@@ -394,6 +394,36 @@ class TestSymbolicParsing(unittest.TestCase):
 
 
 class TestBooleanIdempotency(unittest.TestCase):
+    def test_mixed_boolean_continuous_multiplication_order(self):
+        """Multiplication order must not discard mixed Boolean terms."""
+        registry = VarRegistry({"a": True, "x": False})
+
+        def lookup(name):
+            return new_var(name, registry.get_type(name), registry)
+
+        expressions = [
+            "2*x*a",
+            "2*a*x",
+            "a*2*x",
+            "x*a*2",
+            "(2*a)*x",
+            "2*(a*x)",
+        ]
+
+        results = [parse(expression, lookup) for expression in expressions]
+        expected = results[0]
+
+        self.assertNotEqual(expected, Poly([]))
+
+        for expression, actual in zip(expressions[1:], results[1:]):
+            with self.subTest(expression=expression):
+                self.assertEqual(actual, expected)
+
+        # Boolean-only terms must still be simplified.
+        # Complete arithmetic before simplifying Boolean-only terms.
+        self.assertEqual(parse("2*a/2", lookup), parse("a", lookup))
+        self.assertEqual(parse("2*a*x/2", lookup), parse("a*x", lookup))
+        self.assertEqual(parse("2*a", lookup), Poly([]))
 
     def test_term_mul_bool_idempotent(self):
         """Multiplying a boolean variable by itself must reduce a^2 to a."""

@@ -461,15 +461,53 @@ class PolyTransformer(Transformer):
     def __init__(self, new_var: Callable[[str], Poly]):
         super().__init__()
         self._new_var = new_var
+    @staticmethod
+    def _combine_raw(terms):
+        """Combine identical terms without Boolean coefficient reduction."""
+        coefficients = {}
+
+        for coefficient, term in terms:
+            if term in coefficients:
+                coefficients[term] += coefficient
+            else:
+                coefficients[term] = coefficient
+
+        return Poly([
+            (coefficient, term)
+            for term, coefficient in coefficients.items()
+            if coefficient != 0
+        ])
+
+    @staticmethod
+    def _raw_multiply(left, right):
+        """Multiply polynomials without premature Boolean simplification."""
+        products = [
+            (c1 * c2, t1 * t2)
+            for c1, t1 in left.terms
+            for c2, t2 in right.terms
+        ]
+        return PolyTransformer._combine_raw(products)
+
+    @staticmethod
+    def _normalize(poly):
+        """Apply the normal Poly addition rules to a completed expression."""
+        result = Poly([])
+        for coefficient, term in poly.terms:
+            result += Poly([(coefficient, term)])
+        return result
 
     def start(self, items: List[Any]) -> Poly:
         return items[0]
 
     def add(self, items: List[Any]) -> Poly:
-        return items[0] + items[1]
+        return self._combine_raw(items[0].terms + items[1].terms)
 
     def sub(self, items: List[Any]) -> Poly:
-        return items[0] - items[1]
+        return self._combine_raw(
+            items[0].terms
+            + [(-coefficient, term)
+               for coefficient, term in items[1].terms]
+        )
 
     def term(self, items: List[Any]) -> Poly:
         return items[0]
@@ -479,8 +517,14 @@ class PolyTransformer(Transformer):
 
     def pos_term(self, items: List[Any]) -> Poly:
         result = items[0]
+
         for op, operand in items[1:]:
-            result = result / operand if op == "/" else result * operand
+            if op == "/":
+                # Simplify the divisor before checking that it is constant.
+                result = result / self._normalize(operand)
+            else:
+                result = self._raw_multiply(result, operand)
+
         return result
 
     def mul_factor(self, items: List[Any]) -> Tuple[str, Poly]:
@@ -492,10 +536,15 @@ class PolyTransformer(Transformer):
     def factor(self, items: List[Any]) -> Poly:
         if len(items) == 1:
             return items[0]
-        # Handle exponentiation: base^exponent
+
         base = items[0]
         exponent = items[1]
-        return base ** exponent
+
+        result = new_const(1)
+        for _ in range(exponent):
+            result = self._raw_multiply(result, base)
+
+        return result
 
     def neg_factor(self, items: List[Any]) -> Poly:
         return -items[0]
@@ -540,7 +589,8 @@ def parse(expr: str, new_var: Callable[[str], Poly]) -> Poly:
                     "`pi` is a phase marker, not a scalar, and cannot appear "
                     "in a divisor; divisors must be rational constants")
     try:
-        return PolyTransformer(new_var).transform(tree)
+        result = PolyTransformer(new_var).transform(tree)
+        return PolyTransformer._normalize(result)
     except VisitError as e:
         raise e.orig_exc from None
 
