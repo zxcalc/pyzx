@@ -1,12 +1,12 @@
 from typing import Literal
 
-from .graph import Graph
 from .graph.base import BaseGraph
+from .graph.graph_s import GraphS
 from .linalg import Mat2
 from .utils import VertexType
 
 
-def generate_css_encoder_graph(S: Mat2, L: Mat2 | None = None, type: Literal['Z-X', 'X-Z'] = 'Z-X') -> tuple[BaseGraph[int, tuple[int, int]], list]:
+def generate_css_encoder_graph(S: Mat2, L: Mat2 | None = None, type: Literal['Z-X', 'X-Z'] = 'Z-X') -> tuple[BaseGraph[int, tuple[int, int]], list[list[int]]]:
     """Returns a phase-free PyZX Graph of the encoder for a CSS code,
       given its stabilizers (S), logical operators (L), and normal form type (type).
       Normal form type can be 'Z-X' or 'X-Z' (Definitions 4.3.1 and 4.3.7 of Picturing Quantum Software).
@@ -26,10 +26,10 @@ def generate_css_encoder_graph(S: Mat2, L: Mat2 | None = None, type: Literal['Z-
     elif type == 'X-Z':
         r1type, r2type = VertexType.X, VertexType.Z
 
-    g = Graph()
-    logical_verts = []
-    stabilizer_verts = []
-    output_verts = []
+    g = GraphS()
+    logical_verts: list[int] = []
+    stabilizer_verts: list[int] = []
+    output_verts: list[int] = []
     num_L = L.rows() if L is not None else 0
     num_S = S.rows() if S is not None else 0
     n = S.cols() if S is not None else 0
