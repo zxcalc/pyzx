@@ -1,16 +1,16 @@
 from collections.abc import Iterable
 from fractions import Fraction
 
-from . import Graph
 from .graph.base import BaseGraph
+from .graph.graph_s import GraphS
 from .symbolic import Poly
 from .utils import EdgeType, FractionLike, VertexType
 
 
-def cluster_state(m: int, n: int, inputs: Iterable[tuple[int, int]] = ()) -> BaseGraph:
+def cluster_state(m: int, n: int, inputs: Iterable[tuple[int, int]] = ()) -> BaseGraph[int, tuple[int, int]]:
     """Build a cluster state m qubits tall and n qubits wide. Optionally, give a list of grid positions
     which serve as inputs."""
-    g = Graph()
+    g = GraphS()
     vs = [[g.add_vertex(VertexType.Z, qubit=2*q,row=2*r) for r in range(n)] for q in range(m)]
     inp = []
     outp = []
