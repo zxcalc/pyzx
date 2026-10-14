@@ -441,6 +441,10 @@ class TestBooleanIdempotency(unittest.TestCase):
         a = new_var('a', is_bool=True)
         self.assertEqual(a * (1 + a), Poly([]))
 
+    def test_boolean_phase_mod_drops_zero_terms(self):
+        """Reducing (a + 1) + 1 modulo 2 must give a, without a leftover 0 term."""
+        a = new_var('a', is_bool=True)
+        self.assertEqual(((a + 1) + 1) % 2, a)
 
 class TestPolyConjugate(unittest.TestCase):
 
@@ -503,6 +507,28 @@ if (c==1) s q[0];
             got = g_simp.substitute_variables(subs)
             self.assertTrue(zx.compare_tensors(ref, got, preserve_scalar=True),
                             f"full_reduce diverged from reference for c[0]={c_val}")
+
+    def test_fusing_boolean_phase_with_pi_drops_constant(self):
+        """Fusing phases (a+1)π and π must give a, with no leftover 0 term."""
+        import pyzx as zx
+        from pyzx.graph import Graph
+        from pyzx.utils import VertexType
+        a = new_var('a', is_bool=True)
+        g = Graph()
+        b1 = g.add_vertex(VertexType.BOUNDARY, 0, 0)
+        v1 = g.add_vertex(VertexType.Z, 0, 1, phase=a + 1)
+        v2 = g.add_vertex(VertexType.Z, 0, 2, phase=1)
+        b2 = g.add_vertex(VertexType.BOUNDARY, 0, 3)
+        g.add_edges([(b1, v1), (v1, v2), (v2, b2)])
+        g.set_inputs((b1,))
+        g.set_outputs((b2,))
+        zx.simplify.spider_simp(g)
+        phases = [
+            g.phase(v) for v in g.vertices()
+            if g.type(v) == VertexType.Z
+        ]
+        self.assertEqual(len(phases), 1)
+        self.assertEqual(phases[0], a)
 
 
 class TestVarRegistryRebinding(unittest.TestCase):
