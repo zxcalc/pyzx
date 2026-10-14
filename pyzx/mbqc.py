@@ -7,7 +7,7 @@ from .symbolic import Poly
 from .utils import EdgeType, FractionLike, VertexType
 
 
-def cluster_state(m: int, n: int, inputs: Iterable[tuple[int, int]] = ()) -> BaseGraph[int, tuple[int, int]]:
+def cluster_state(m: int, n: int, inputs: list[tuple[int, int]] | None = None) -> BaseGraph[int, tuple[int, int]]:
     """Build a cluster state m qubits tall and n qubits wide. Optionally, give a list of grid positions
     which serve as inputs."""
     g = GraphS()
@@ -22,10 +22,11 @@ def cluster_state(m: int, n: int, inputs: Iterable[tuple[int, int]] = ()) -> Bas
             g.add_edge((vs[q][r], o))
             outp.append(o)
             
-            if (q,r) in inputs:
-                i = g.add_vertex(VertexType.BOUNDARY, qubit=2*q+0.8, row=2*r-0.8)
-                g.add_edge((vs[q][r], i))
-                inp.append(i)
+            if inputs is not None:
+                if (q,r) in inputs:
+                    i = g.add_vertex(VertexType.BOUNDARY, qubit=2*q+0.8, row=2*r-0.8)
+                    g.add_edge((vs[q][r], i))
+                    inp.append(i)
 
     g.set_inputs(tuple(inp))
     g.set_outputs(tuple(outp))

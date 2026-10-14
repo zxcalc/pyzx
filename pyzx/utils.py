@@ -130,7 +130,8 @@ def get_w_partner(g: 'BaseGraph[VT, ET]', v: 'VT') -> 'VT':
     assert vertex_is_w(g.type(v))
     for edge in g.incident_edges(v):
         if g.edge_type(edge) == EdgeType.W_IO:
-            u = edge[0] if edge[1] == v else edge[1] # type: ignore # TODO: This can potentially raise an exception
+            s, t = g.edge_st(edge)
+            u = s if t == v else t
             assert vertex_is_w(g.type(u))
             return u
     assert False

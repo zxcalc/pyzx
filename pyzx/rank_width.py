@@ -23,17 +23,16 @@ from collections.abc import Iterable, Sequence
 from copy import deepcopy
 from itertools import product
 from math import log2, pi, sqrt
-from typing import Literal, TypeAlias
+from typing import Literal, TypeAlias, cast, overload
 
 import numpy as np
 from numpy.typing import NDArray
 
-from .utils import EdgeType, VertexType
 from .graph.base import BaseGraph
-from .graph.multigraph import Multigraph
 from .linalg import REF, generalised_inverse, rank_factorise
 from .simplify import full_reduce
 from .symbolic import Poly
+from .utils import EdgeType, VertexType
 
 GraphT: TypeAlias = BaseGraph[int, tuple[int, int]]
 def adjacency_matrix(
@@ -125,8 +124,14 @@ def calc_ranks(
     return result
 
 
+@overload
+def rank_width(decomp: DecompList | int | None, g: GraphT, calc_rs: Literal[True] = True) -> int: ...
+
+@overload
+def rank_width(decomp: RankDecompInfo, g: GraphT, calc_rs: Literal[False] = False) -> int: ...
+
 def rank_width(
-    decomp: DecompList | int | None,
+    decomp: RankDecompInfo | DecompList | int | None,
     g: GraphT,
     calc_rs: bool = True
 ) -> int:
@@ -149,11 +154,23 @@ def rank_width(
             return data[1].rank()
         return max(data[1].rank(), iterate(data[0][0]), iterate(data[0][1]))
 
-    return iterate(calc_ranks(decomp, g) if calc_rs else decomp) # type: ignore # TODO: This seems like a type error?
+    if calc_rs:
+        decomp = cast(DecompList | int | None, decomp)
+        score = iterate(calc_ranks(decomp, g))
+    else:
+        decomp = cast(RankDecompInfo, decomp)
+        score = iterate(decomp)
 
+    return score
+
+@overload
+def rank_score_flops(decomp: DecompList | int | None, g: GraphT, calc_rs: Literal[True] = True) -> float: ...
+
+@overload
+def rank_score_flops(decomp: RankDecompInfo, g: GraphT, calc_rs: Literal[False]) -> float: ...
 
 def rank_score_flops(
-    decomp: DecompList | int | None,
+    decomp: RankDecompInfo | DecompList | int | None,
     g: GraphT,
     calc_rs: bool = True
 ) -> float:
@@ -177,7 +194,13 @@ def rank_score_flops(
         r1, r2, r3 = data[0][0][1].rank(), data[0][1][1].rank(), data[1].rank()
         return score1 + score2 + 2 ** (r1 + r2 + r3 - max(r1, r2, r3))
 
-    score = iterate(calc_ranks(decomp, g) if calc_rs else decomp) # type: ignore # TODO: This seems like a type error?
+    if calc_rs:
+        decomp = cast(DecompList | int | None, decomp)
+        score = iterate(calc_ranks(decomp, g))
+    else:
+        decomp = cast(RankDecompInfo, decomp)
+        score = iterate(decomp)
+
     return log2(max(score, 1))
 
 

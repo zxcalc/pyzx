@@ -67,7 +67,7 @@ def cut_edge(g: BaseGraph[VT, ET], e: ET, ty: int = 1) -> SumGraph[VT, ET]:
     warnings.warn(("pyzx.simulate.cut_edge(g,e,ty) is deprecated. Use pyzx.simulation.apply_decomp(Decomp.CUT_EDGE,g,e,ty) instead."),DeprecationWarning,stacklevel=2)
     return apply_decomp(Decomp.CUT_EDGE,g,e,ty)
 
-def cut_wishbone(g: BaseGraph[VT, ET], v: VT, neighs: list[VT], ph: float) -> SumGraph[VT, ET]:
+def cut_wishbone(g: BaseGraph[VT, ET], v: VT, neighs: list[VT] | None, ph: FractionLike) -> SumGraph[VT, ET]:
     warnings.warn(("pyzx.simulate.cut_wishbone(g,v,neighs,ph) is deprecated. Use pyzx.simulation.apply_decomp(Decomp.CUT_WISHBONE,g,v,neighs,ph) instead."),DeprecationWarning,stacklevel=2)
     return apply_decomp(Decomp.CUT_WISHBONE,g,v,neighs,ph)
 
