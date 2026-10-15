@@ -284,7 +284,9 @@ class Poly:
             if isinstance(c, complex) or not t.is_bool:
                 new_terms.append((c, t))
             else:
-                new_terms.append((c % other, t))
+                reduced = c % other
+                if reduced != 0:
+                    new_terms.append((reduced, t))
         return Poly(new_terms)
 
     def __repr__(self) -> str:
