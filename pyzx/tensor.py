@@ -1,4 +1,4 @@
-# PyZX - Python library for quantum circuit rewriting 
+# PyZX - Python library for quantum circuit rewriting
 #        and optimization using the ZX-calculus
 # Copyright (C) 2018 - Aleks Kissinger and John van de Wetering
 
@@ -30,22 +30,23 @@ __all__ = ['tensorfy', 'compare_tensors', 'compose_tensors',
 import itertools
 from math import pi, sqrt
 
-from typing import Optional
+import numpy as np
 
 from .symbolic import Poly
 
-
-import numpy as np
 np.set_printoptions(suppress=True)
 
 # typing imports
-from typing import TYPE_CHECKING, List, Dict, Union
+from typing import TYPE_CHECKING, Literal, TypeAlias
+
 from numpy.typing import NDArray
-from .utils import FractionLike, FloatInt, VertexType, EdgeType, get_z_box_label
+
+from .utils import EdgeType, FloatInt, VertexType, get_z_box_label
+
 if TYPE_CHECKING:
-    from .graph.base import BaseGraph, VT, ET
     from .circuit import Circuit
-TensorConvertible = Union[np.ndarray, 'Circuit', 'BaseGraph']
+    from .graph.base import ET, VT, BaseGraph
+TensorConvertible: TypeAlias = 'np.ndarray | Circuit | BaseGraph'
 
 _RANK_WIDTH_VERTEX_TYPES = frozenset({
     VertexType.BOUNDARY,
@@ -78,7 +79,7 @@ def X_to_tensor(arity: int, phase: float) -> np.ndarray:
             m[i] -= np.exp(1j*phase)
     return np.power(np.sqrt(0.5),arity)*m.reshape([2]*arity)
 
-def H_to_tensor(arity: int, phase: float, label: Optional[complex] = None) -> np.ndarray:
+def H_to_tensor(arity: int, phase: float, label: complex | None = None) -> np.ndarray:
     m = np.ones(2**arity, dtype = complex)
     if label is not None:
         m[-1] = label
@@ -96,7 +97,7 @@ def W_to_tensor(arity: int) -> np.ndarray:
         m[tuple(index)] = 1
     return m
 
-def pop_and_shift(verts, indices):
+def pop_and_shift(verts: list['VT'], indices: dict['VT', list[int]]) -> list[int]:
     res = [indices[v].pop() for v in verts if v in indices]
     for i in sorted(res,reverse=True):
         for w,l in indices.items():
@@ -107,10 +108,13 @@ def pop_and_shift(verts, indices):
             indices[w] = l2
     return res
 
-def tensorfy(g: 'BaseGraph[VT,ET]',
-             preserve_scalar: bool = True,
-             strategy: str = 'auto',
-             verbose: bool = False) -> NDArray[np.complex128]:
+TensorStrategy: TypeAlias = Literal['auto', 'naive', 'rw-auto', 'rw-greedy-b2t', 'rw-greedy-linear']
+def tensorfy(
+    g: 'BaseGraph[VT, ET]',
+    preserve_scalar: bool = True,
+    strategy: TensorStrategy  = 'auto',
+    verbose: bool = False
+) -> NDArray[np.complex128]:
     """
     Returns a multidimensional numpy array representing the linear map the ZX diagram implements.
     Available simulation strategies are:
@@ -144,16 +148,17 @@ def tensorfy(g: 'BaseGraph[VT,ET]',
         return tensorfy_naive(g, preserve_scalar=preserve_scalar)
     elif strategy.startswith('rw-'):
         from .rank_width import tensorfy_rw
-        return tensorfy_rw(g, strategy=strategy, preserve_scalar=preserve_scalar, verbose=verbose)
+        # TODO: This could fail if g's ET is not tuple[VT, VT, ...]
+        return tensorfy_rw(g, strategy=strategy, preserve_scalar=preserve_scalar, verbose=verbose) # type: ignore
     else:
         raise ValueError('Unknown simulation strategy')
 
-def tensorfy_naive(g: 'BaseGraph[VT,ET]', preserve_scalar: bool = True) -> NDArray[np.complex128]:
+def tensorfy_naive(g: 'BaseGraph[VT, ET]', preserve_scalar: bool = True) -> NDArray[np.complex128]:
     rows = g.rows()
     phases = g.phases()
     types = g.types()
     depth = g.depth()
-    verts_row: Dict[FloatInt, List['VT']] = {}
+    verts_row: dict[FloatInt, list['VT']] = {}
     for v in g.vertices():
         r = rows[v]
         if r in verts_row: verts_row[r].append(v)
@@ -277,8 +282,12 @@ def tensor_to_matrix(t: np.ndarray, inputs: int, outputs: int) -> np.ndarray:
         rows.append(row)
     return np.array(rows)
 
-def compare_tensors(t1: TensorConvertible,t2: TensorConvertible,
-                    preserve_scalar: bool=False, strategy: str='auto') -> bool:
+def compare_tensors(
+    t1: TensorConvertible,
+    t2: TensorConvertible,
+    preserve_scalar: bool = False,
+    strategy: TensorStrategy = 'auto'
+) -> bool:
     """Returns true if ``t1`` and ``t2`` represent equal tensors by calling :func:`~pyzx.tensor.tensorfy`.
     When `preserve_scalar` is False (the default), equality is checked up to nonzero rescaling.
 
@@ -304,7 +313,7 @@ def compare_tensors(t1: TensorConvertible,t2: TensorConvertible,
         raise ValueError("Tensor is too close to zero")
     return np.allclose(t1/a,t2/t2.flat[i])
 
-def find_scalar_correction(t1: TensorConvertible, t2:TensorConvertible) -> complex:
+def find_scalar_correction(t1: TensorConvertible, t2: TensorConvertible) -> complex:
     """Returns the complex number ``z`` such that ``t1 = z*t2``.
 
     Warning:
@@ -376,7 +385,7 @@ def adjoint(t: np.ndarray) -> np.ndarray:
 
 def is_unitary(g: 'BaseGraph') -> bool:
     """Returns whether the given ZX-graph is equal to a unitary (up to a number)."""
-    from .generate import identity # Imported here to prevent circularity
+    from .generate import identity  # Imported here to prevent circularity
     adj = g.adjoint()
     adj.compose(g)
     return compare_tensors(adj.to_tensor(), identity(len(g.inputs()),2).to_tensor(), False)

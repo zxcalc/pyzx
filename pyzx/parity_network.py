@@ -1,4 +1,4 @@
-# PyZX - Python library for quantum circuit rewriting 
+# PyZX - Python library for quantum circuit rewriting
 #        and optimization using the ZX-calculus
 # Copyright (C) 2018 - Aleks Kissinger and John van de Wetering
 
@@ -14,16 +14,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import List, Tuple, cast
-from typing_extensions import Literal
+from typing import Literal
 
 from .circuit.gates import CNOT
 
-def parity_network(n: int, S: List[List[Literal[0,1]]]) -> List[CNOT]:
+def parity_network(n: int, S: list[list[Literal[0, 1]]]) -> list[CNOT]:
     """Implements the parity network algorithm of https://arxiv.org/pdf/1712.01859.pdf.
     Specifically, it follows the pseudo-code of page 14."""
-    c = [] # List of cnots
-    Q: List[Tuple[List[List[Literal[0,1]]],List[int],int]] = [] # stack
+    c = [] # list of cnots
+    Q: list[tuple[list[list[Literal[0, 1]]], list[int], int]] = [] # stack
     Q.append((S,list(range(n)),-1))
     while Q:
         S, I, i = Q.pop()
@@ -36,7 +35,7 @@ def parity_network(n: int, S: List[List[Literal[0,1]]]) -> List[CNOT]:
                         c.append(CNOT(j,i))
                         for (Sp,Ip,ip) in (Q+[(S,I,i)]):
                             for y in Sp:
-                                y[j] = cast(Literal[0,1], (y[i]+y[j])%2)
+                                y[j] = 1 if (y[i] + y[j]) % 2 else 0
                         break
                 else:
                     break

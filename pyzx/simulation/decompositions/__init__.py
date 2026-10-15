@@ -42,7 +42,7 @@ class DecompSpec:
 
 _REGISTRY: dict[Decomp, DecompSpec] = {} # this stores all the loaded decompositions, indexable by their enum names
 
-def apply_decomp(kind: Decomp, g: BaseGraph[VT, ET], *args: Any, **kwargs: Any) -> SumGraph:
+def apply_decomp(kind: Decomp, g: BaseGraph[VT, ET], *args: Any, **kwargs: Any) -> SumGraph[VT, ET]:
     """Applies an instance of the specified decomposition to the provided graph with the decomposition-specific arguments."""
     if isinstance(kind, str):
         kind = Decomp(kind)

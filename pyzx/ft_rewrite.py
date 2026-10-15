@@ -17,9 +17,11 @@
 """This module is structured the same as the regular rewrite module, but adds support for passing a fault weight to the rewrite rules.
 """
 
-from typing import Callable, Optional, Generic, Set, Tuple, List
+from collections.abc import Callable
+
+from .graph.base import ET, VT, BaseGraph
 from .rewrite import Rewrite
-from .graph.base import BaseGraph, VT, ET
+
 
 class Rewrite_ft(Rewrite[VT, ET]):
 
@@ -37,7 +39,7 @@ class RewriteSingleVertex_ft(Rewrite_ft[VT, ET]):
     Rewrite class that works on a single vertex. Can only be run manually on specific vertices, otherwise may enter an infinite loop.
     Parameters
     ----------
-    applier: Callable[[BaseGraph[VT, ET], VT, Optional[int]], bool]
+    applier: Callable[[BaseGraph[VT, ET], VT, int | None], bool]
         function that will perform the rewrite rule.
     is_match : Callable[[BaseGraph[VT, ET], VT], bool]
         function that checks whether a given vertex can be rewritten.
@@ -45,23 +47,26 @@ class RewriteSingleVertex_ft(Rewrite_ft[VT, ET]):
         whether to remove isolated vertices after running the applier.
     """
 
-    applier: Callable[[BaseGraph[VT, ET], VT, Optional[int]], bool]
+    applier: Callable[[BaseGraph[VT, ET], VT, int | None], bool]
     is_match: Callable[[BaseGraph[VT, ET], VT], bool]
     rmv_isolated: bool
-    weight: Optional[int]
+    weight: int | None
 
 
-    def __init__(self, is_match: Callable[[BaseGraph[VT, ET], VT], bool],
-                 applier: Callable[[BaseGraph[VT, ET], VT, Optional[int]], bool],
-                 rmv_isolated: bool = False,
-                 weight: Optional[int] = None) -> None:
+    def __init__(
+        self,
+        is_match: Callable[[BaseGraph[VT, ET], VT], bool],
+        applier: Callable[[BaseGraph[VT, ET], VT, int | None], bool],
+        rmv_isolated: bool = False,
+        weight: int | None = None
+    ) -> None:
         super().__init__()
         self.is_match = is_match
         self.applier = applier
         self.rmv_isolated = rmv_isolated
         self.weight = weight
 
-    def apply(self, graph: BaseGraph[VT, ET], v: VT, weight: Optional[int] = None) -> bool:
+    def apply(self, graph: BaseGraph[VT, ET], v: VT, weight: int | None = None) -> bool:
         applied: bool = False
         w = weight if weight is not None else self.weight
         if self.is_match(graph, v):
@@ -75,26 +80,29 @@ class RewriteSimpSingleVertex_ft(RewriteSingleVertex_ft[VT, ET]):
     Rewrite class that works on a single vertex. Can be run automatically using simp(g)
     Parameters
     ----------
-    applier : Callable[[BaseGraph[VT, ET], VT, Optional[int]], bool]
+    applier : Callable[[BaseGraph[VT, ET], VT, int | None], bool]
         function that will perform the rewrite rule.
     is_match : Callable[[BaseGraph[VT, ET], VT], bool]
         function that checks whether a given vertex can be rewritten.
-    simp_match : Optional[Callable[[BaseGraph[VT, ET], VT], bool]]
+    simp_match : Callable[[BaseGraph[VT, ET], VT], bool] | None
         optional function that checks whether graph can be rewritten automatically.
     rmv_isolated : bool
         whether to remove isolated vertices after running the applier.
     """
-    simp_match: Optional[Callable[[BaseGraph[VT, ET], VT], bool]]
+    simp_match: Callable[[BaseGraph[VT, ET], VT], bool] | None
 
-    def __init__(self, is_match: Callable[[BaseGraph[VT, ET], VT], bool],
-                 applier: Callable[[BaseGraph[VT, ET], VT, Optional[int]], bool],
-                 simp_match: Optional[Callable[[BaseGraph[VT, ET], VT], bool]] = None,
-                 rmv_isolated: bool = False) -> None:
+    def __init__(
+        self,
+        is_match: Callable[[BaseGraph[VT, ET], VT], bool],
+        applier: Callable[[BaseGraph[VT, ET], VT, int | None], bool],
+        simp_match: Callable[[BaseGraph[VT, ET], VT], bool] | None = None,
+        rmv_isolated: bool = False
+    ) -> None:
         super().__init__(is_match, applier, rmv_isolated)
         self.simp_match = simp_match
 
-    def find_all_matches(self, graph: BaseGraph[VT, ET]) -> Set[VT]:
-        all_matches: Set[VT] = set()
+    def find_all_matches(self, graph: BaseGraph[VT, ET]) -> set[VT]:
+        all_matches: set[VT] = set()
         if self.simp_match is not None:
             match = self.simp_match
         else:

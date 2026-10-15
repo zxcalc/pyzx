@@ -17,16 +17,17 @@
 __all__ = ['draw', 'arrange_scalar_diagram', 'draw_matplotlib', 'draw_d3',
            'draw_3d', 'matrix_to_latex', 'print_matrix', 'graphs_to_gif']
 
-import os
-import math
 import cmath
-import json
-import string
-import random
 import importlib
+import json
+import math
+import os
+import random
+import string
+from collections.abc import Iterable
 from fractions import Fraction
-from typing import Dict, List, Tuple, Optional, Union, Iterable, Any, TYPE_CHECKING
-from typing_extensions import Literal
+from typing import TYPE_CHECKING, Any, Iterable, Literal
+
 import numpy as np
 
 from .pauliweb import PauliWeb
@@ -38,19 +39,21 @@ patches: Any = None
 lines: Any = None
 
 
-from .utils import settings, get_mode, phase_to_s, VertexType, FloatInt, get_z_box_label, get_h_box_label, hbox_has_complex_label
-from .graph.base import BaseGraph, VT, ET
 from .circuit import Circuit
+from .graph.base import ET, VT, BaseGraph
+from .utils import (FloatInt, VertexType, get_h_box_label, get_mode,
+                    get_z_box_label, hbox_has_complex_label, phase_to_s,
+                    settings)
 
 if get_mode() == "notebook":
-    from IPython.display import display, HTML
+    from IPython.display import HTML, display
 elif get_mode() == "browser":
-    from browser import document, html # type: ignore
+    from browser import document, html  # type: ignore
 
 if TYPE_CHECKING:
     from ipywidgets import Label
 
-def draw(g: Union[BaseGraph[VT,ET], Circuit], labels: bool=False, **kwargs) -> Any:
+def draw(g: BaseGraph[VT, ET] | Circuit, labels: bool = False, **kwargs: Any) -> Any:
     """Draws the given Circuit or Graph.
     Depending on the value of ``pyzx.settings.drawing_backend``
     either uses matplotlib or d3 to draw."""
@@ -70,7 +73,7 @@ def draw(g: Union[BaseGraph[VT,ET], Circuit], labels: bool=False, **kwargs) -> A
         else:
             raise TypeError("Unsupported drawing backend '{}'".format(settings.drawing_backend))
 
-def pack_circuit_nf(g: BaseGraph[VT,ET], nf:Literal['grg','gslc'] ='grg') -> None:
+def pack_circuit_nf(g: BaseGraph[VT, ET], nf: Literal['grg', 'gslc'] = 'grg') -> None:
     x_index = 0
     ty = g.types()
 
@@ -115,15 +118,15 @@ def pack_circuit_nf(g: BaseGraph[VT,ET], nf:Literal['grg','gslc'] ='grg') -> Non
     else:
         raise ValueError("Unknown normal form: " + str(nf))
 
-def arrange_scalar_diagram(g: BaseGraph[VT,ET]) -> None:
+def arrange_scalar_diagram(g: BaseGraph[VT, ET]) -> None:
     g.normalize()
     rs = g.rows()
     qs = g.qubits()
     ty = g.types()
-    gadgets: Dict[Tuple[VT,VT], FloatInt] = {}
+    gadgets: dict[tuple[VT, VT], FloatInt] = {}
     verts = []
     min_row = 1000000
-    rows_used: Dict[FloatInt, List[VT]] = dict()
+    rows_used: dict[FloatInt, list[VT]] = {}
     for v in g.vertices():
         if len(list(g.neighbors(v))) == 1:
             w = list(g.neighbors(v))[0]
@@ -154,13 +157,13 @@ def arrange_scalar_diagram(g: BaseGraph[VT,ET]) -> None:
         g.set_qubit(w,0)
 
 def draw_matplotlib(
-        g:      Union[BaseGraph[VT,ET], Circuit],
-        labels: bool                             =False,
-        figsize:Tuple[FloatInt,FloatInt]         =(8,2),
-        h_edge_draw: Literal['blue', 'box']      ='blue',
-        show_scalar: bool                        =False,
-        rows: Optional[Tuple[FloatInt,FloatInt]] =None
-        ) -> Any: # TODO: Returns a matplotlib figure
+    g: BaseGraph[VT, ET] | Circuit,
+    labels: bool = False,
+    figsize: tuple[FloatInt,FloatInt] = (8,2),
+    h_edge_draw: Literal['blue', 'box'] = 'blue',
+    show_scalar: bool = False,
+    rows: tuple[FloatInt, FloatInt] | None = None
+) -> Any: # TODO: Returns a matplotlib figure
 
     # lazy import matplotlib
     global plt, path, patches, lines
@@ -181,11 +184,11 @@ def draw_matplotlib(
     ax.set(xlim=(0, 1), ylim=(0, 1))
     ax.xaxis.set_visible(False)
     ax.yaxis.set_visible(False)
-    vs_on_row: Dict[FloatInt, int] = {} # count the vertices on each row
+    vs_on_row: dict[FloatInt, int] = {} # count the vertices on each row
     for v in g.vertices():
         vs_on_row[g.row(v)] = vs_on_row.get(g.row(v), 0) + 1
 
-    #Dict[VT,Tuple[FloatInt,FloatInt]]
+    #dict[VT,tuple[FloatInt,FloatInt]]
     layout = {v:(g.row(v),-g.qubit(v)) for v in g.vertices()}
 
     if rows is not None:
@@ -301,18 +304,18 @@ random_graphid = random.Random()
 #     library_code += '</script>'
 #     display(HTML(library_code))
 
-def auto_layout_vertex_locs(g:BaseGraph[VT, ET]): #Force-based graph drawing algorithm given by Eades(1984):
+def auto_layout_vertex_locs(g: BaseGraph[VT, ET]) -> tuple[dict[VT, tuple[float, float]], float, float]: #Force-based graph drawing algorithm given by Eades(1984):
     c1 = 2 #Sample parameters that work decently well
     c2 = 1
     c3 = 1
     c4 = .1
-    v_locs:Dict[VT, Tuple[float, float]] = dict()
+    v_locs: dict[VT, tuple[float, float]] = {}
     if len(list(g.vertices())) == 0:
         return {}, 0, 0
     for v in g.vertices():
         v_locs[v]=(random.random()*math.sqrt(g.num_vertices()),  random.random()*math.sqrt(g.num_vertices()))
     for i in range(100): #100 iterations of force-based drawing
-        forces:Dict[VT, Tuple[float, float]] = dict()
+        forces: dict[VT, tuple[float, float]] = {}
         for v in g.vertices():
             forces[v] = (0, 0)
             for v1 in g.vertices():
@@ -336,12 +339,14 @@ def auto_layout_vertex_locs(g:BaseGraph[VT, ET]): #Force-based graph drawing alg
     v_locs = {k:(v[0]-min_x, v[1]-min_y) for k, v in v_locs.items()} #translate to origin
     return v_locs, max_x-min_x, max_y-min_y
 
-def graph_json(g: BaseGraph[VT, ET],
-               coords: Dict[VT, Tuple[Any, Any, Any]],
-               vdata: Optional[List[str]]=None,
-               pauli_web: Optional[PauliWeb[VT,ET]]=None) -> str:
+def graph_json(
+    g: BaseGraph[VT, ET],
+    coords: dict[VT, tuple[Any, Any, Any]],
+    vdata: list[str] | None = None,
+    pauli_web: PauliWeb[VT, ET] | None = None
+) -> str:
 
-    def get_phase_str(v):
+    def get_phase_str(v: VT) -> str:
         """Get phase string for a vertex, handling complex labels."""
         ty = g.type(v)
         if ty == VertexType.Z_BOX:
@@ -367,7 +372,7 @@ def graph_json(g: BaseGraph[VT, ET],
              for v in g.vertices()]
 
     # keep track of the number of parallel edges seen for a source/target pair
-    counts: Dict[Tuple[str,str], int] = dict()
+    counts: dict[tuple[str, str], int] = {}
     links = []
     for e in g.edges():
         s = str(g.edge_s(e))
@@ -391,15 +396,15 @@ def graph_json(g: BaseGraph[VT, ET],
 
 
 def draw_d3(
-    g: Union[BaseGraph[VT,ET], Circuit],
-    labels:bool=False,
-    scale:Optional[FloatInt]=None,
-    auto_hbox:Optional[bool]=None,
-    show_scalar:bool=False,
-    vdata: Optional[List[str]]=None,
-    pauli_web: Optional[PauliWeb[VT,ET]]=None,
+    g: BaseGraph[VT, ET] | Circuit,
+    labels: bool = False,
+    scale: FloatInt | None = None,
+    auto_hbox: bool | None = None,
+    show_scalar: bool = False,
+    vdata: list[str] | None = None,
+    pauli_web: PauliWeb[VT, ET] | None = None,
     auto_layout: bool = False
-    ) -> Any:
+) -> Any:
     """If auto_layout is checked, will automatically space vertices of graph
     with no regard to qubit/row."""
     if get_mode() not in ("notebook", "browser"):
@@ -483,10 +488,10 @@ showGraph('#graph-output-{id}',
 
 
 def draw_3d(
-    g: Union[BaseGraph[VT,ET], Circuit],
-    labels: bool=False,
-    pauli_web: Optional[PauliWeb[VT,ET]]=None
-    ) -> Any:
+    g: BaseGraph[VT, ET] | Circuit,
+    labels: bool = False,
+    pauli_web: PauliWeb[VT, ET] | None = None
+) -> Any:
 
     if isinstance(g, Circuit):
         g = g.to_graph(zh=False)
@@ -575,7 +580,7 @@ for v,s in simple_vals.items():
         special_vals[-v+w] = f"\\left({t}-{s}\\right)"
         special_vals[-v-w] = f"-\\left({t}+{s}\\right)"
 
-def strip_brackets(s:str) -> str:
+def strip_brackets(s: str) -> str:
     if s.startswith("(") and s.endswith(")"):
         return s[1:-1]
     if s.startswith("\\left(") and s.endswith("\\right)"):
@@ -746,7 +751,7 @@ def matrix_to_latex(m: np.ndarray) -> str:
     return out
 
 
-def print_matrix(m: Union[np.ndarray,BaseGraph,Circuit]) -> None:
+def print_matrix(m: np.ndarray | BaseGraph | Circuit) -> None:
     """Display a Label() Jupyter widget with a pretty LaTeX representation of the given matrix.
     Instead of a matrix, can also give a Circuit or Graph.
     """
@@ -760,7 +765,7 @@ def print_matrix(m: Union[np.ndarray,BaseGraph,Circuit]) -> None:
     display(Label(matrix_to_latex(m)))
 
 
-def graphs_to_gif(graphs: List[BaseGraph], filename: str, frame_duration: float=0.5):
+def graphs_to_gif(graphs: list[BaseGraph[VT, ET]], filename: str, frame_duration: float = 0.5) -> str:
     """Given a list of graphs, outputs an animated gif showing them in sequence.
 
     Args:
@@ -775,7 +780,7 @@ def graphs_to_gif(graphs: List[BaseGraph], filename: str, frame_duration: float=
     import tempfile
     from pathlib import Path
     try:
-        import imageio # type: ignore
+        import imageio  # type: ignore
     except ImportError:
         raise Exception("This function requires imageio to be installed (try: pip install imageio).")
 

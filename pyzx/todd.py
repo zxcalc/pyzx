@@ -1,4 +1,4 @@
-# PyZX - Python library for quantum circuit rewriting 
+# PyZX - Python library for quantum circuit rewriting
 #        and optimization using the ZX-calculus
 # Copyright (C) 2018 - Aleks Kissinger and John van de Wetering
 
@@ -23,31 +23,32 @@ The main entry point is :func:`todd_simp`, which is used in :func:`pyzx.optimize
 
 from __future__ import print_function
 
-from fractions import Fraction
+import random
 import subprocess
 import tempfile
 import time
-import random
-from typing import Optional, Dict, Tuple, List, Set, Iterable, cast
+from collections.abc import Iterable
+from fractions import Fraction
+from typing import cast
 
 import numpy as np
 
-from .circuit.gates import Gate, T, S, Z, ZPhase, CZ, CNOT, ParityPhase
-from .utils import settings, EdgeType, VertexType, FractionLike
-from .graph.base import BaseGraph, VT, ET, upair
-from .linalg import Mat2, MatLike, Z2
-from .extract import permutation_as_swaps, column_optimal_swap
+from .circuit.gates import CNOT, CZ, Gate, ParityPhase, S, T, Z, ZPhase
+from .extract import permutation_as_swaps
+from .graph.base import ET, VT, BaseGraph, upair
+from .linalg import Z2, Mat2, MatLike
 from .parity_network import parity_network
 from .symbolic import Poly
+from .utils import EdgeType, FractionLike, VertexType, settings
 
 USE_REED_MULLER: bool = False
 
 
-class ParityPolynomial(object):
+class ParityPolynomial:
     """Class used to represent phase polynomials in the standard
     ParityPhase view. For example: x1@x2 + 3x2 + 5x1@x2@x3"""
-    terms: Dict[Tuple[int,...],int]
-    def __init__(self,qubits:int, poly:Optional['ParityPolynomial']=None) -> None:
+    terms: dict[tuple[int,...], int]
+    def __init__(self,qubits: int, poly: 'ParityPolynomial | None' = None) -> None:
         self.qubits = qubits
         if poly is not None:
             self.terms = poly.terms.copy()
@@ -63,7 +64,7 @@ class ParityPolynomial(object):
             l.append("{!s}{}".format(val if val!=1 else "", "@".join("x{:d}".format(v) for v in sorted(list(t)))))
         return " + ".join(l)
     
-    def __repr__(self):
+    def __repr__(self) -> str:
         return str(self)
     
     def add_term(self, term: Iterable[int], value: int) -> None:
@@ -87,15 +88,15 @@ class ParityPolynomial(object):
         """Converts the phase polynomial into a parity matrix."""
         cols = []
         for par, val in self.terms.items():
-            col: List[Z2] = [1 if i in par else 0 for i in range(self.qubits)]
+            col: list[Z2] = [1 if i in par else 0 for i in range(self.qubits)]
             for i in range(val): cols.append(col)
         return Mat2(cols).transpose()
 
-class ParitySingle(object):
+class ParitySingle:
     """Class used for representing a single parity expression
     like x1@x2@x4"""
-    def __init__(self,startval: int) -> None:
-        self.par: Set[int] = {startval}
+    def __init__(self, startval: int) -> None:
+        self.par: set[int] = {startval}
     
     def __str__(self) -> str:
         return "@".join("x{:d}".format(i) for i in sorted(self.par))
@@ -107,15 +108,15 @@ class ParitySingle(object):
         self.par.symmetric_difference_update(other.par)
 
 
-class MultiLinearPoly(object):
+class MultiLinearPoly:
     """Class for representing phase polynomials in the multilinear formalism.
     For example: x1 + x2 + 2x1x2 + 4x1x2x3"""
     def __init__(self) -> None:
-        self.l: Dict[int,int]            = {}
-        self.q: Dict[Tuple[int,int],int] = {}
-        self.c: Set[Tuple[int,int,int]]  = set()
+        self.l: dict[int, int] = {}
+        self.q: dict[tuple[int, int], int] = {}
+        self.c: set[tuple[int, int, int]] = set()
     
-    def add_parity(self, par:Iterable[int], subtract:bool=False) -> None:
+    def add_parity(self, par: Iterable[int], subtract: bool = False) -> None:
         p = []
         mult = -1 if subtract else 1
         for i,v in enumerate(par):
@@ -135,14 +136,14 @@ class MultiLinearPoly(object):
                     if (v1,v2,v3) not in self.c: self.c.add((v1,v2,v3))
                     else: self.c.remove((v1,v2,v3))
     
-    def add_par_matrix(self, a: Mat2, subtract:bool=False) -> None:
+    def add_par_matrix(self, a: Mat2, subtract: bool = False) -> None:
         for col in a.transpose().data:
             self.add_parity(col,subtract=subtract)
     
-    def to_clifford(self) -> List[Gate]:
-        """Returns the phase polynomial in terms of Clifford Z-rotations 
+    def to_clifford(self) -> list[Gate]:
+        """Returns the phase polynomial in terms of Clifford Z-rotations
         and CZs. If the phase polyomial is not Clifford it raises an ValueError."""
-        gates: List[Gate] = []
+        gates: list[Gate] = []
         for t, v in self.l.items():
             if v == 2:
                 gates.append(S(t,adjoint=False))
@@ -162,9 +163,9 @@ class MultiLinearPoly(object):
         return gates
 
 
-def par_matrix_to_gates(a: Mat2) -> List[Gate]:
+def par_matrix_to_gates(a: Mat2) -> list[Gate]:
     """Convert a parity matrix into T gates and ParityPhase gates."""
-    gates: List[Gate] = []
+    gates: list[Gate] = []
     phase = Fraction(1,4)
     for col in a.transpose().data:
         targets = [i for i,v in enumerate(col) if v]
@@ -174,7 +175,7 @@ def par_matrix_to_gates(a: Mat2) -> List[Gate]:
             gates.append(ParityPhase(phase, *targets))
     return gates
 
-def phase_gates_to_poly(gates: List[Gate], qubits: int) -> Tuple[ParityPolynomial,List[ParitySingle]]:
+def phase_gates_to_poly(gates: list[Gate], qubits: int) -> tuple[ParityPolynomial, list[ParitySingle]]:
     """Convert a CNOT+T+CZ circuit into a phase polynomial representation
     using :class:`ParityPolynomial`."""
     phase_poly = ParityPolynomial(qubits)
@@ -206,7 +207,7 @@ def phase_gates_to_poly(gates: List[Gate], qubits: int) -> Tuple[ParityPolynomia
 
 
 
-def xi(m: Mat2, z: List[Z2]) -> Mat2:
+def xi(m: Mat2, z: list[Z2]) -> Mat2:
     """Constructs the \\chi matrix from the TOpt paper."""
     arr = np.asarray(m.data)
     rows = m.rows()
@@ -244,17 +245,17 @@ def xi(m: Mat2, z: List[Z2]) -> Mat2:
                 elif z[gamma]:
                     data.append(rab.tolist())
                     continue
-    for r in m.data: data.append(r.copy())            
+    for r in m.data: data.append(r.copy())
     return Mat2(data)
 
 
-def find_todd_match(m: Mat2) -> Tuple[int,int, Optional[List[Z2]],Optional[List[Z2]]]:
+def find_todd_match(m: Mat2) -> tuple[int, int, list[Z2] | None, list[Z2] | None]:
     """Tries to find a match for the TODD algorithm given a parity matrix."""
     rows = m.rows()
     cols = m.cols()
     for a in range(cols):
         for b in range(a+1, cols):
-            z: List[Z2] = [0]*rows
+            z: list[Z2] = [0]*rows
             for i in range(rows):
                 r = m.data[i]
                 if r[a]:
@@ -295,7 +296,7 @@ def remove_trivial_cols(m: Mat2) -> int:
             break
     return newcols
 
-def do_todd_single(m: Mat2) -> Tuple[Mat2,int]:
+def do_todd_single(m: Mat2) -> tuple[Mat2, int]:
     """Find a single TODD match and apply it to the matrix."""
     startcols = m.cols()
     a,b,z,y = find_todd_match(m)
@@ -316,7 +317,7 @@ def do_todd_single(m: Mat2) -> Tuple[Mat2,int]:
                 
     return m.transpose(), startcols - newcols
 
-def todd_iter(m: Mat2, quiet:bool=True) -> Mat2:
+def todd_iter(m: Mat2, quiet: bool = True) -> Mat2:
     """Keep finding TODD matches until nothing is found anymore.
     If ``zx.settings.topt_command`` is set it uses the TOpt implementation of TODD."""
     m = m.transpose()
@@ -334,7 +335,7 @@ def todd_iter(m: Mat2, quiet:bool=True) -> Mat2:
             return m
         if not quiet: print(reduced, end='.')
 
-def call_topt(m: Mat2, quiet:bool=True) -> Mat2:
+def call_topt(m: Mat2, quiet: bool = True) -> Mat2:
     """Calls and parses the output of the TOpt implementation of TODD."""
     assert settings.topt_command is not None
     if not quiet:
@@ -362,7 +363,7 @@ def call_topt(m: Mat2, quiet:bool=True) -> Mat2:
     data: MatLike = []
     try:
         for row in rows:
-            data.append([cast(Z2, i) for i in row])
+            data.append([cast(Z2, i) for i in row]) # TODO: This is not actually converting to int here
     except ValueError:
         print(out)
         print(rows)
@@ -383,9 +384,9 @@ def call_topt(m: Mat2, quiet:bool=True) -> Mat2:
     return m2
 
 
-def todd_simp(gates: List[Gate], qubits: int, quiet:bool=True) -> Tuple[List[Gate],Dict[int,int]]:
-    """Run the TODD algorithm on a CNOT+CZ+T set of gates and 
-    apply the necessary Clifford corrections. Uses the 
+def todd_simp(gates: list[Gate], qubits: int, quiet: bool = True) -> tuple[list[Gate], dict[int, int]]:
+    """Run the TODD algorithm on a CNOT+CZ+T set of gates and
+    apply the necessary Clifford corrections. Uses the
     CNOT parity algorithm from https://arxiv.org/pdf/1712.01859.pdf
     to synthesize the necessary parities."""
     phase_poly, parity_polys = phase_gates_to_poly(gates, qubits)
@@ -394,7 +395,7 @@ def todd_simp(gates: List[Gate], qubits: int, quiet:bool=True) -> Tuple[List[Gat
     m = phase_poly.to_par_matrix()
     m2 = todd_iter(m,quiet=quiet)
 
-    newgates: List[Gate] = []
+    newgates: list[Gate] = []
     parities = []
     for col in m2.transpose().data:
         if sum(col) == 1:
@@ -441,7 +442,7 @@ def todd_simp(gates: List[Gate], qubits: int, quiet:bool=True) -> Tuple[List[Gat
     return newgates, {v:k for k,v in perm.items()}
 
 
-def todd_on_graph(g: BaseGraph[VT,ET]) -> None:
+def todd_on_graph(g: BaseGraph[VT, ET]) -> None:
     """Runs the TODD algorithm on a graph. The variables are determined
     by looking at which vertices have phase gadgets attached to them.
     Note that this produces graphs that can only be transformed into circuits
@@ -462,7 +463,7 @@ def todd_on_graph(g: BaseGraph[VT,ET]) -> None:
     if not gadgets:
         print("No phase gadgets found")
         return
-    variables: Set[VT] = set()
+    variables: set[VT] = set()
     for par in gadgets.keys():
         variables.update(par)
     
@@ -475,7 +476,7 @@ def todd_on_graph(g: BaseGraph[VT,ET]) -> None:
 
     cols = []
     for par, (_,v) in gadgets.items():
-        col: List[Z2] = [0]*nt
+        col: list[Z2] = [0]*nt
         for t in par:
             col[targets.index(t)] = 1
         phase = g.phase(v)
@@ -484,7 +485,7 @@ def todd_on_graph(g: BaseGraph[VT,ET]) -> None:
     m2 = todd_iter(parmatrix)
     
     newgadgets = []
-    phases: Dict[VT,FractionLike] = dict()
+    phases: dict[VT,FractionLike] = {}
     for col in m2.transpose().data:
         if sum(col) == 1:
             i = next(i for i,a in enumerate(col) if a)
@@ -500,7 +501,7 @@ def todd_on_graph(g: BaseGraph[VT,ET]) -> None:
     p.add_par_matrix(parmatrix,False)
     p.add_par_matrix(m2,True)
     correction = p.to_clifford()
-    add_czs: Dict[Tuple[VT,VT], List[int]] = {}
+    add_czs: dict[tuple[VT, VT], list[int]] = {}
     for clif in correction:
         if isinstance(clif, ZPhase):
             v = targets[clif.target]
@@ -536,7 +537,7 @@ def todd_on_graph(g: BaseGraph[VT,ET]) -> None:
         else:
             g.remove_vertices((n,v))
     
-    edges: List[Tuple[VT,VT]] = []
+    edges: list[tuple[VT, VT]] = []
     for par in newgadgets:
         pos = sum(rs[t] for t in par)/len(par) + 0.5
         while pos in positions: pos += 0.5

@@ -19,15 +19,19 @@ import math
 import numbers
 import os
 from argparse import ArgumentTypeError
+from collections.abc import Callable, Sequence
 from enum import IntEnum
 from fractions import Fraction
-from typing import Union, Optional, List, Dict, Any
-from typing_extensions import Literal, Final
+from typing import TYPE_CHECKING, Any, Literal, SupportsFloat, TypeVar
 
 from .symbolic import Poly
 
-FloatInt = Union[float,int]
-FractionLike = Union[Fraction,int,Poly]
+if TYPE_CHECKING:
+    # Imported here to prevent circularity
+    from .graph.base import ET, VT, BaseGraph
+
+FloatInt = float | int
+FractionLike = Fraction | int | Poly
 
 def push_pauli_axel(axel: FractionLike, leaf: FractionLike) -> FractionLike:
     """Return the new ``leaf`` phase acquired when a Pauli ``axel`` is pushed
@@ -122,16 +126,17 @@ def vertex_is_zx_like(ty: VertexType) -> bool:
 def vertex_is_w(ty: VertexType) -> bool:
     return ty == VertexType.W_INPUT or ty == VertexType.W_OUTPUT
 
-def get_w_partner(g, v):
+def get_w_partner(g: 'BaseGraph[VT, ET]', v: 'VT') -> 'VT':
     assert vertex_is_w(g.type(v))
     for edge in g.incident_edges(v):
         if g.edge_type(edge) == EdgeType.W_IO:
-            u = edge[0] if edge[1] == v else edge[1]
+            s, t = g.edge_st(edge)
+            u = s if t == v else t
             assert vertex_is_w(g.type(u))
             return u
     assert False
 
-def get_w_io(g, v):
+def get_w_io(g: 'BaseGraph[VT, ET]', v: 'VT') -> tuple['VT', 'VT']:
     v2 = get_w_partner(g, v)
     if g.type(v) == VertexType.W_INPUT:
         return v, v2
@@ -148,7 +153,7 @@ def toggle_edge(ty: EdgeType) -> EdgeType:
     """Swap the regular and Hadamard edge types."""
     return EdgeType.HADAMARD if ty == EdgeType.SIMPLE else EdgeType.SIMPLE
 
-def phase_to_s(a: FractionLike, t:VertexType=VertexType.Z, poly_with_pi:bool=False, limit_denominator: bool = True) -> str:
+def phase_to_s(a: FractionLike, t: VertexType = VertexType.Z, poly_with_pi: bool = False, limit_denominator: bool = True) -> str:
     if isinstance(a, Fraction) or isinstance(a, int):
         return phase_fraction_to_s(a, t, limit_denominator=limit_denominator)
     else: # a is a Poly
@@ -157,7 +162,7 @@ def phase_to_s(a: FractionLike, t:VertexType=VertexType.Z, poly_with_pi:bool=Fal
         else:
             return str(a)
 
-def phase_fraction_to_s(a: FractionLike, t:VertexType=VertexType.Z, limit_denominator: bool = True) -> str:
+def phase_fraction_to_s(a: FractionLike, t: VertexType = VertexType.Z, limit_denominator: bool = True) -> str:
     if (a == 0 and t != VertexType.H_BOX): return ''
     if (a == 1 and t == VertexType.H_BOX): return ''
     if isinstance(a, Poly):
@@ -247,7 +252,7 @@ grayscale_colors = {
     'Zdark': '#dddddd',
 }
 
-class Settings(object): # namespace class
+class Settings: # namespace class
     mode: Literal["notebook", "browser", "shell", ""] = "shell"
     drawing_backend: Literal["d3","matplotlib"] = "d3"
     # Maximum denominator when converting floats to fractions (e.g., for phase values).
@@ -262,12 +267,12 @@ class Settings(object): # namespace class
     d3_load_string: str = ""
     tikzit_location: str = "" # Path to tikzit executable
     quantomatic_location: str = "" # Path to quantomatic executable
-    topt_command: Optional[List[str]] = None # Argument-separated command to run TOpt such as ["wsl", "./TOpt"]
+    topt_command: list[str] | None = None # Argument-separated command to run TOpt such as ["wsl", "./TOpt"]
     show_labels: bool = False
-    tikz_classes: Dict[str,str] = tikz_classes
+    tikz_classes: dict[str, str] = tikz_classes
     default_qasm_version: int = 2
-    colors: Dict[str, str] = original_colors
-    javascript_importmap: Dict[str, Any] = {
+    colors: dict[str, str] = original_colors
+    javascript_importmap: dict[str, Any] = {
         "imports": {
             "three": "https://cdn.jsdelivr.net/npm/three@0.172.0/build/three.module.js",
             "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.172.0/examples/jsm/",
@@ -299,10 +304,10 @@ except ValueError: # relpath raises this Exception when the drive letters don't 
 
 
 settings.mode = ''
-def get_mode():
+def get_mode() -> Literal['', 'notebook', 'browser', 'shell']:
     if settings.mode == '':
         try:
-            import IPython # type: ignore
+            import IPython  # type: ignore
             ipython_instance = IPython.get_ipython()
             if ipython_instance is None: raise Exception
             if 'IPKernelApp' in ipython_instance.config:
@@ -312,7 +317,7 @@ def get_mode():
             ipython_instance.config.InlineBackend.figure_format = 'svg'
         except:
             try:
-                import browser # type: ignore
+                import browser  # type: ignore
                 settings.mode = "browser"
             except:
                 settings.mode = "shell"
@@ -321,20 +326,20 @@ def get_mode():
 
 
 
-def restricted_float(x):
+def restricted_float(x: str | SupportsFloat) -> float:
     x = float(x)
     if x < 0.0 or x > 1.0:
         raise ArgumentTypeError("%r not in range [0.0, 1.0]." % (x,))
     return x
 
 
-def make_into_list(possible_list: Any) -> List[Any]:
-    if not isinstance(possible_list, List):
+def make_into_list(possible_list: Any) -> list[Any]:
+    if not isinstance(possible_list, list):
         return [possible_list]
     return possible_list
 
-
-def maxelements(seq, key=None, reverse=False):
+T = TypeVar('T')
+def maxelements(seq: Sequence[T], key: Callable[[T], Any] | None = None, reverse: bool = False) -> list[int]:
     """
     Return list of position(s) of largest element.
 
@@ -361,7 +366,7 @@ def maxelements(seq, key=None, reverse=False):
     return indices
 
 
-def is_pauli(phase):
+def is_pauli(phase: Any) -> bool:
     """
     Check whether phase is Pauli.
 
@@ -371,16 +376,16 @@ def is_pauli(phase):
         return True
     return getattr(phase, 'is_pauli', False)
 
-def get_z_box_label(g, v):
+def get_z_box_label(g: 'BaseGraph[VT, ET]', v: 'VT') -> Any:
     assert g.type(v) == VertexType.Z_BOX
     return g.vdata(v, 'label', 1)
 
-def set_z_box_label(g, v, label):
+def set_z_box_label(g: 'BaseGraph[VT, ET]', v: 'VT', label: Any) -> None:
     assert g.type(v) == VertexType.Z_BOX
     g.set_vdata(v, 'label', label)
 
 
-def get_h_box_label(g, v) -> complex:
+def get_h_box_label(g: 'BaseGraph[VT, ET]', v: 'VT') -> complex:
     assert g.type(v) == VertexType.H_BOX
     label = g.vdata(v, 'label', None)
     if label is not None:
@@ -390,12 +395,12 @@ def get_h_box_label(g, v) -> complex:
         raise ValueError("Cannot convert symbolic phase to complex label")
     return cmath.exp(1j * math.pi * float(phase))
 
-def set_h_box_label(g, v, label: complex) -> None:
+def set_h_box_label(g: 'BaseGraph[VT, ET]', v: 'VT', label: complex) -> None:
     assert g.type(v) == VertexType.H_BOX
     g.set_vdata(v, 'label', complex(label))
     g.set_phase(v, 0)
 
-def is_standard_hbox(g, v) -> bool:
+def is_standard_hbox(g: 'BaseGraph[VT, ET]', v: 'VT') -> bool:
     """Check if H-box has the standard Hadamard label (-1)."""
     assert g.type(v) == VertexType.H_BOX
     label = g.vdata(v, 'label', None)
@@ -403,11 +408,12 @@ def is_standard_hbox(g, v) -> bool:
         return cmath.isclose(label, -1)
     return g.phase(v) == 1
 
-def hbox_has_complex_label(g, v) -> bool:
+def hbox_has_complex_label(g: 'BaseGraph[VT, ET]', v: 'VT') -> bool:
     """Check if H-box uses a complex label instead of legacy phase."""
     assert g.type(v) == VertexType.H_BOX
     return g.vdata(v, 'label', None) is not None
 
 
 # Return position 'perc'%-distance between 2 points:
-def ave_pos(a,b,perc=1/2): return (abs(a-b))*(perc) + min(a,b)
+def ave_pos(a: float, b: float, perc: float = 1/2) -> float:
+    return (abs(a - b))*(perc) + min(a, b)

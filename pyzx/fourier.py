@@ -1,5 +1,5 @@
 
-# PyZX - Python library for quantum circuit rewriting 
+# PyZX - Python library for quantum circuit rewriting
 #        and optimization using the ZX-calculus
 # Copyright (C) 2025 - Aleks Kissinger and John van de Wetering
 
@@ -15,23 +15,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from pyzx.graph.multigraph import Edge
-from .utils import EdgeType, VertexType
-from .graph.base import BaseGraph, VT, ET
-from itertools import combinations
 from fractions import Fraction
+from itertools import combinations
 
-def check_fourier(g: BaseGraph[VT,ET], v: VT) -> bool:
+from .graph.base import ET, VT, BaseGraph
+from .utils import EdgeType, VertexType
+
+
+def check_fourier(g: BaseGraph[VT, ET], v: VT) -> bool:
     """Returns True if the given node is an H-box adjacent to Z spiders"""
     ty = g.types()
     if (ty[v] == VertexType.H_BOX and
-        all(ty[w] == VertexType.Z for w in g.neighbors(v)) and 
+        all(ty[w] == VertexType.Z for w in g.neighbors(v)) and
         all(g.edge_type(e) == EdgeType.SIMPLE for e in g.incident_edges(v))):
         return True
     else:
         return False
 
-def fourier(g: BaseGraph[VT, ET], v: VT, graph_like: bool=False) -> bool:
+def fourier(g: BaseGraph[VT, ET], v: VT, graph_like: bool = False) -> bool:
     """Applies the graphical fourier transform, replacing the given H-box of arity k with
     2**k phase gadgets."""
     if not check_fourier(g, v): return False
@@ -63,7 +64,7 @@ def fourier(g: BaseGraph[VT, ET], v: VT, graph_like: bool=False) -> bool:
             pos += 1
     return True
 
-def check_ifourier(g: BaseGraph[VT,ET], v: VT) -> bool:
+def check_ifourier(g: BaseGraph[VT, ET], v: VT) -> bool:
     """Returns True if the given node is the phase part of a phase gadget, and the gadget is
     connected to all Z spiders.
     

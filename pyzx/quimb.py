@@ -1,4 +1,4 @@
-# PyZX - Python library for quantum circuit rewriting 
+# PyZX - Python library for quantum circuit rewriting
 #        and optimization using the ZX-calculus
 # Copyright (C) 2018 - Aleks Kissinger and John van de Wetering
 
@@ -14,10 +14,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import importlib
 import math
 from typing import Any
+
 import numpy as np
-import importlib
 
 # try:
 #     import quimb as qu # type:ignore
@@ -28,10 +29,10 @@ import importlib
 qu: Any = None
 qtn: Any = None
 
-from .utils import EdgeType, VertexType, FractionLike
 from .graph.base import BaseGraph
 from .simplify import to_gh
 from .symbolic import Poly
+from .utils import EdgeType, FractionLike, VertexType
 
 
 def _cexp(phase: FractionLike) -> complex:
@@ -41,7 +42,7 @@ def _cexp(phase: FractionLike) -> complex:
     return np.exp(1j * np.pi * float(phase))
 
 
-def to_quimb_tensor(g: BaseGraph) -> "qtn.TensorNetwork": # type:ignore
+def to_quimb_tensor(g: BaseGraph) -> "qtn.TensorNetwork": # type: ignore
     """Converts tensor network representing the given :func:`pyzx.graph.Graph`.
     Pretty printing: to_tensor(g).draw(color = ['V', 'H'])
     

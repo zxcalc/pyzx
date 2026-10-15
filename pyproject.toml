@@ -40,6 +40,7 @@ dev = [
     "matplotlib>=2.2",
     "mypy~=2.4.0",
     "types-tqdm~=4.66",
+    "types-pyperclip~=1.11",
 ]
 test = [
     "qiskit~=1.0.0",
@@ -72,19 +73,14 @@ pyzx = ["js/*.js", "py.typed"]
 python_version = "3.11"
 warn_return_any = false
 warn_unused_configs = true
+disallow_untyped_defs = true
 
 [[tool.mypy.overrides]]
 module = [
-    "pyzx.circuit.*",
-    "pyzx.graph.*",
-    "pyzx.local_search.*",
-    "pyzx.rewrite_rules.*",
-    "pyzx.routing.*",
-    "pyzx.simulation.*",
-    "pyzx.simulation.*.*",
-    "pyzx.web.*"
+    "pyzx.scripts.*",
+    "tests.*"
 ]
-disallow_untyped_defs = true
+disallow_untyped_defs = false
 
 [[tool.mypy.overrides]]
 module = "pyzx.optimize"

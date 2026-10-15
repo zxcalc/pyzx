@@ -28,7 +28,7 @@ import numpy as np
 from typing_extensions import Self
 
 from ..symbolic import Poly, Var, VarRegistry
-from ..tensor import tensor_to_matrix, tensorfy
+from ..tensor import TensorStrategy, tensor_to_matrix, tensorfy
 from ..utils import (EdgeType, FloatInt, FractionLike, VertexType,
                      assert_phase_real, get_h_box_label, get_z_box_label,
                      hbox_has_complex_label, set_h_box_label, set_z_box_label,
@@ -821,11 +821,11 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
                 raise TypeError("Unknown output effect " + s)
         self.set_outputs(tuple(new_outputs))
 
-    def to_tensor(self, preserve_scalar: bool = True, strategy: str = 'auto') -> np.ndarray:
+    def to_tensor(self, preserve_scalar: bool = True, strategy: TensorStrategy = 'auto') -> np.ndarray:
         """Returns a representation of the graph as a tensor using :func:`~pyzx.tensor.tensorfy`"""
         return tensorfy(self, preserve_scalar, strategy)
 
-    def to_matrix(self, preserve_scalar: bool = True, strategy: str = 'auto') -> np.ndarray:
+    def to_matrix(self, preserve_scalar: bool = True, strategy: TensorStrategy = 'auto') -> np.ndarray:
         """Returns a representation of the graph as a matrix using :func:`~pyzx.tensor.tensorfy`"""
         return tensor_to_matrix(tensorfy(self, preserve_scalar, strategy), self.num_inputs(), self.num_outputs())
 

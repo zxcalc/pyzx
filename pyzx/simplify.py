@@ -36,24 +36,24 @@ __all__ = ['bialg_simp','bialg_op_simp','spider_simp', 'id_simp', 'phase_free_si
         'drop_orphan_reset_discards', 'zw_bialgebra_simp', 'zw_bialgebra_op_simp']
 
 
-from typing import cast, List, Tuple, Dict, Set, Callable, TypeVar, Optional, Union
-from typing_extensions import Literal
 import itertools
+from collections.abc import Callable
+from typing import Literal, TypeVar, cast
 
 from .circuit import Circuit
-from .rewrite_rules import *
+from .graph.base import ET, VT, BaseGraph
 from .rewrite import *
+from .rewrite_rules import *
 from .symbolic import Poly
 from .tensor import compare_tensors
-
-from .utils import EdgeType, VertexType, get_z_box_label, toggle_edge, vertex_is_zx, phase_is_clifford
-from .graph.base import BaseGraph, VT, ET
+from .utils import (EdgeType, VertexType, get_z_box_label, phase_is_clifford,
+                    toggle_edge, vertex_is_zx)
 
 MatchObject = TypeVar('MatchObject')
 
-class Stats(object):
+class Stats:
     def __init__(self) -> None:
-        self.num_rewrites: Dict[str,int] = {}
+        self.num_rewrites: dict[str, int] = {}
     def count_rewrites(self, rule: str, n: int) -> None:
         if rule in self.num_rewrites:
             self.num_rewrites[rule] += n
@@ -97,7 +97,7 @@ fuse_simp: RewriteSimpDoubleVertex = RewriteSimpDoubleVertex(check_fuse, unsafe_
 remove_self_loop_simp: RewriteSimpSingleVertex = RewriteSimpSingleVertex(check_self_loop, unsafe_remove_self_loop)
 """Removes all self loops on a vertex. Can be run automatically."""
 
-def spider_simp(g: BaseGraph[VT,ET]) -> bool:
+def spider_simp(g: BaseGraph[VT, ET]) -> bool:
     """Performs spider fusion and then removes any self loops"""
     i = fuse_simp(g)
     j = remove_self_loop_simp(g)
@@ -147,14 +147,14 @@ zw_bialgebra_op_simp: RewriteSimpGraph = RewriteSimpGraph(apply_bialgebra_zw_rev
 """Applies the ZW Bialgebra rule to a given ZW-complete bipartite pattern. Can be run automatically on the entire graph."""
 zw_bialgebra_op_simp.is_match = is_bialgebra_zw_reverse_match # type: ignore
 
-def phase_free_simp(g: BaseGraph[VT,ET]) -> bool:
+def phase_free_simp(g: BaseGraph[VT, ET]) -> bool:
     '''Performs the following set of simplifications on the graph:
     spider -> bialg'''
     i1 = spider_simp(g)
     i2 = bialg_simp(g)
     return i1 or i2
 
-def basic_simp(g: BaseGraph[VT,ET]) -> bool:
+def basic_simp(g: BaseGraph[VT, ET]) -> bool:
     """Keeps doing the simplifications ``id_simp`` and ``spider_simp`` until none of them can be applied anymore.
     If starting from a circuit, the result should still have causal flow."""
     spider_simp(g)
@@ -168,7 +168,7 @@ def basic_simp(g: BaseGraph[VT,ET]) -> bool:
         i += 1
     return i != 0
 
-def interior_clifford_simp(g: BaseGraph[VT,ET]) -> bool:
+def interior_clifford_simp(g: BaseGraph[VT, ET]) -> bool:
     """Keeps doing the simplifications ``id_simp``, ``spider_simp``,
     ``pivot_simp`` and ``lcomp_simp`` until none of them can be applied anymore."""
     spider_simp(g)
@@ -183,7 +183,7 @@ def interior_clifford_simp(g: BaseGraph[VT,ET]) -> bool:
         i += 1
     return i != 0
 
-def clifford_simp(g: BaseGraph[VT,ET], matchf: Optional[Callable[[Union[VT, ET]],bool]]=None, quiet:bool=True, stats:Optional[Stats]=None) -> int:
+def clifford_simp(g: BaseGraph[VT, ET], matchf: Callable[[VT | ET], bool] | None = None, quiet: bool = True, stats: Stats | None = None) -> int:
     """Keeps doing rounds of :func:`interior_clifford_simp` and
     :func:`pivot_boundary_simp` until they can't be applied anymore."""
     i = False
@@ -194,7 +194,7 @@ def clifford_simp(g: BaseGraph[VT,ET], matchf: Optional[Callable[[Union[VT, ET]]
             break
     return i
 
-def reduce_scalar(g: BaseGraph[VT,ET], quiet:bool=True, stats:Optional[Stats]=None) -> int:
+def reduce_scalar(g: BaseGraph[VT, ET], quiet: bool = True, stats: Stats | None = None) -> int:
     """Modification of ``full_reduce`` that is tailered for scalar ZX-diagrams.
     It skips the boundary pivots. Input must already be in graph-like form."""
     i = 0
@@ -219,11 +219,12 @@ def reduce_scalar(g: BaseGraph[VT,ET], quiet:bool=True, stats:Optional[Stats]=No
     return i
 
 
-def full_reduce(g: BaseGraph[VT,ET], matchf: Optional[Callable[[Union[VT, ET]],bool]]=None, quiet:bool=True, stats:Optional[Stats]=None) -> None:
+def full_reduce(g: BaseGraph[VT, ET], matchf: Callable[[VT | ET], bool] | None = None, quiet: bool = True, stats: Stats | None = None) -> None:
     """The main simplification routine of PyZX. It uses a combination of :func:`clifford_simp` and
     the gadgetization strategies :func:`pivot_gadget_simp` and :func:`gadget_simp`. It also attempts to run :func:`supplementarity_simp` and :func:`copy_simp`."""
 
-    from .hsimplify import from_hypergraph_form  # Imported here to prevent circularity
+    from .hsimplify import \
+        from_hypergraph_form  # Imported here to prevent circularity
 
     # First, convert arity 2 H-boxes to Hadamard edges and fuse arity 1 H-boxes into adjacent Z spiders
     from_hypergraph_form(g)
@@ -244,7 +245,7 @@ def full_reduce(g: BaseGraph[VT,ET], matchf: Optional[Callable[[Union[VT, ET]],b
             g.remove_isolated_vertices()
             break
 
-def _debug_full_reduce(g: BaseGraph[VT,ET]) -> None:
+def _debug_full_reduce(g: BaseGraph[VT, ET]) -> None:
     """A utility to debug full_reduce. It compares tensors after each simplification step to identify the first step that causes graphs to diverge."""
     if any(g.types()[h] == VertexType.H_BOX for h in g.vertices()):
         raise ValueError("Input graph is not a ZX-diagram as it contains an H-box. "
@@ -253,11 +254,11 @@ def _debug_full_reduce(g: BaseGraph[VT,ET]) -> None:
     initial_tensor = g.to_tensor()
 
     class SanityCheckError(RuntimeError):
-        def __init__(self, message: str, g: BaseGraph[VT,ET]):
+        def __init__(self, message: str, g: BaseGraph[VT, ET]) -> None:
             super().__init__(message)
             self.g = g
 
-    def sanity_check(g1: BaseGraph[VT,ET], message: str):
+    def sanity_check(g1: BaseGraph[VT, ET], message: str) -> None:
         if not compare_tensors(g1.to_tensor(), initial_tensor, True):
             raise SanityCheckError(f"full_reduce step failed: {message}", g1)
     print("starting interior_clifford_simp")
@@ -290,7 +291,7 @@ def _debug_full_reduce(g: BaseGraph[VT,ET]) -> None:
             break
     print("done")
 
-def drop_orphan_reset_discards(g: BaseGraph[VT,ET]) -> int:
+def drop_orphan_reset_discards(g: BaseGraph[VT, ET]) -> int:
     """Remove orphan reset-discard components.
 
     A leading ``reset`` on a fresh ``qreg`` input emitted with
@@ -319,14 +320,14 @@ def drop_orphan_reset_discards(g: BaseGraph[VT,ET]) -> int:
     """
     inputs_set = set(g.inputs())
 
-    def trace_chain(leaf: VT) -> Optional[List[VT]]:
+    def trace_chain(leaf: VT) -> list[VT] | None:
         """Walk from ``leaf`` outward through phase-0 degree-2 spiders.
         Returns the chain ``[boundary, ..., leaf]`` if it terminates at
         a degree-1 input boundary, or ``None`` otherwise."""
         if g.vertex_degree(leaf) != 1:
             return None
-        chain: List[VT] = [leaf]
-        visited: Set[VT] = {leaf}
+        chain: list[VT] = [leaf]
+        visited: set[VT] = {leaf}
         current = next(iter(g.neighbors(leaf)))
         while True:
             if current in visited:
@@ -350,7 +351,7 @@ def drop_orphan_reset_discards(g: BaseGraph[VT,ET]) -> int:
 
     # Step 1: find candidate (chain, var_name) pairs from each tagged
     # discard leaf with a ``1*_rN`` boolean phase.
-    candidates: List[Tuple[List[VT], str]] = []
+    candidates: list[tuple[list[VT], str]] = []
     for v in g.vertices():
         if g.vdata(v, 'outcome_type') != 'reset_discard':
             continue
@@ -374,7 +375,7 @@ def drop_orphan_reset_discards(g: BaseGraph[VT,ET]) -> int:
     # Step 2: variable freshness. Each ``_rN`` must appear nowhere
     # else: not on another vertex's phase, not on a Z-box label, and
     # not in the scalar.
-    var_locations: Dict[str, Set[VT]] = {}
+    var_locations: dict[str, set[VT]] = {}
     for v in g.vertices():
         p = g.phase(v)
         if isinstance(p, Poly):
@@ -391,7 +392,7 @@ def drop_orphan_reset_discards(g: BaseGraph[VT,ET]) -> int:
     # the graph in a single ``remove_vertices`` batch. This keeps the
     # accumulated vertex IDs valid for the duration of the pass: backends
     # that reindex on deletion only renumber once the batch is committed.
-    remove_set: Set[VT] = set()
+    remove_set: set[VT] = set()
     removed = 0
     for chain, var_name in candidates:
         leaf = chain[-1]
@@ -413,7 +414,7 @@ def drop_orphan_reset_discards(g: BaseGraph[VT,ET]) -> int:
     return removed
 
 
-def teleport_reduce(g: BaseGraph[VT,ET]) -> BaseGraph[VT,ET]:
+def teleport_reduce(g: BaseGraph[VT, ET]) -> BaseGraph[VT, ET]:
     """This simplification procedure runs :func:`full_reduce` in a way
     that does not change the graph structure of the resulting diagram.
     The only thing that is different in the output graph are the location and value of the phases."""
@@ -421,7 +422,7 @@ def teleport_reduce(g: BaseGraph[VT,ET]) -> BaseGraph[VT,ET]:
     s.full_reduce()
     return s.mastergraph
 
-def _debug_teleport_reduce(g: BaseGraph[VT,ET]) -> BaseGraph[VT,ET]:
+def _debug_teleport_reduce(g: BaseGraph[VT, ET]) -> BaseGraph[VT, ET]:
     """A utility to debug teleport_reduce. It internally calls _debug_full_reduce."""
     s = Simplifier(g)
     s._debug_full_reduce()
@@ -430,14 +431,14 @@ def _debug_teleport_reduce(g: BaseGraph[VT,ET]) -> BaseGraph[VT,ET]:
 
 class Simplifier(Generic[VT, ET]):
     """Class used for :func:`teleport_reduce`."""
-    def __init__(self, g: BaseGraph[VT,ET]) -> None:
+    def __init__(self, g: BaseGraph[VT, ET]) -> None:
         g.track_phases = True
         self.mastergraph = g.copy()
         self.simplifygraph = g.copy()
         self.simplifygraph.set_phase_master(self)
-        self.phantom_phases: Dict[VT, Tuple[VT,int]] = dict()
+        self.phantom_phases: dict[VT, tuple[VT,int]] = {}
 
-    def fuse_phases(self,i1:int, i2: int) -> None:
+    def fuse_phases(self, i1: int, i2: int) -> None:
         try:
             v1 = self.mastergraph.vertex_from_phase_index(i1)
             v2 = self.mastergraph.vertex_from_phase_index(i2)
@@ -485,7 +486,7 @@ class Simplifier(Generic[VT, ET]):
         _debug_full_reduce(self.simplifygraph)
 
 
-def to_gh(g: BaseGraph[VT,ET]) -> None:
+def to_gh(g: BaseGraph[VT, ET]) -> None:
     """Turns every red node into a green node by applying a Hadamard to the edges incident to red nodes"""
     ty = g.types()
     for v in g.vertices():
@@ -496,7 +497,7 @@ def to_gh(g: BaseGraph[VT,ET]) -> None:
                 g.set_edge_type(e, toggle_edge(et))
 
 
-def max_cut(g: BaseGraph[VT,ET], vs0: Optional[Set[VT]]=None, vs1: Optional[Set[VT]]=None) -> Tuple[Set[VT],Set[VT]]:
+def max_cut(g: BaseGraph[VT, ET], vs0: set[VT] | None = None, vs1: set[VT] | None = None) -> tuple[set[VT],set[VT]]:
     """Approximate the MAX-CUT of a graph, starting with an initial partition
 
     This uses the quadratic-time SG3 heuristic explained by Wang et al in https://arxiv.org/abs/2312.10895 .
@@ -507,7 +508,7 @@ def max_cut(g: BaseGraph[VT,ET], vs0: Optional[Set[VT]]=None, vs1: Optional[Set[
     remaining = set(g.vertices()) - vs0 - vs1
     while len(remaining) > 0:
         score_max = -1
-        v_max: Optional[VT] = None
+        v_max: VT | None = None
         in0 = True
         for v in remaining:
             wt0 = sum(len(list(g.edges(v,w))) for w in vs1)
@@ -526,7 +527,7 @@ def max_cut(g: BaseGraph[VT,ET], vs0: Optional[Set[VT]]=None, vs1: Optional[Set[
         else: vs1.add(v_max)
     return(vs0, vs1)
 
-def to_rg(g: BaseGraph[VT,ET], init_z: Optional[Set[VT]]=None, init_x: Optional[Set[VT]]=None) -> None:
+def to_rg(g: BaseGraph[VT, ET], init_z: set[VT] | None = None, init_x: set[VT] | None = None) -> None:
     """Try to eliminate H-edges by turning green nodes red
 
     This implements a quadratic-time max-cut heuristic to eliminate H-edges. In the future, we may want
@@ -569,7 +570,7 @@ def to_rg(g: BaseGraph[VT,ET], init_z: Optional[Set[VT]]=None, init_x: Optional[
             for e in g.incident_edges(v):
                 g.set_edge_type(e, toggle_edge(g.edge_type(e)))
 
-def gadgetize(g: BaseGraph[VT,ET], graphlike:bool=True):
+def gadgetize(g: BaseGraph[VT, ET], graphlike: bool = True) -> None:
     """Convert every non-Clifford phase to a phase gadget"""
     for v in list(g.vertices()):
         p = g.phase(v)
@@ -586,7 +587,7 @@ def gadgetize(g: BaseGraph[VT,ET], graphlike:bool=True):
             g.set_phase(y, p)
             g.set_phase(v, 0)
 
-def tcount(g: Union[BaseGraph[VT,ET], Circuit]) -> int:
+def tcount(g: BaseGraph[VT, ET] | Circuit) -> int:
     """Returns the amount of nodes in g that have a non-Clifford phase."""
     if isinstance(g, Circuit):
         return g.tcount()
@@ -600,11 +601,11 @@ def tcount(g: Union[BaseGraph[VT,ET], Circuit]) -> int:
 # The iterator functions below have been deprecated
 
 # def simp_iter(
-#         g: BaseGraph[VT,ET],
+#         g: BaseGraph[VT, ET],
 #         name: str,
-#         match: Callable[..., List[MatchObject]],
-#         rewrite: Callable[[BaseGraph[VT,ET],List[MatchObject]],RewriteOutputType[VT,ET]]
-#         ) -> Iterator[Tuple[BaseGraph[VT,ET],str]]:
+#         match: Callable[..., list[MatchObject]],
+#         rewrite: Callable[[BaseGraph[VT, ET],list[MatchObject]],RewriteOutputType[VT,ET]]
+#         ) -> Iterator[tuple[BaseGraph[VT, ET],str]]:
 #     """Version of :func:`simp` that instead of performing all rewrites at once, returns an iterator."""
 #     i = 0
 #     new_matches = True
@@ -621,40 +622,40 @@ def tcount(g: Union[BaseGraph[VT,ET], Circuit]) -> int:
 #             yield g, name+str(i)
 #             new_matches = True
 #
-# def pivot_iter(g: BaseGraph[VT,ET]) -> Iterator[Tuple[BaseGraph[VT,ET],str]]:
+# def pivot_iter(g: BaseGraph[VT, ET]) -> Iterator[tuple[BaseGraph[VT, ET],str]]:
 #     """Returns an iterator for the pivot rule, using a list of matches supplied by :func:`match_pivot_parallel`."""
 #     return simp_iter(g, 'pivot', pivot_simp)
 #
-# def pivot_gadget_iter(g: BaseGraph[VT,ET]) -> Iterator[Tuple[BaseGraph[VT,ET],str]]:
+# def pivot_gadget_iter(g: BaseGraph[VT, ET]) -> Iterator[tuple[BaseGraph[VT, ET],str]]:
 #     """Returns an iterator for the pivoting rewrite, using a list of matches supplied by :func:`match_pivot_gadget`."""
 #     return simp_iter(g, 'pivot_gadget', match_pivot_gadget, pivot)
 #
-# def pivot_boundary_iter(g: BaseGraph[VT,ET]) -> Iterator[Tuple[BaseGraph[VT,ET],str]]:
+# def pivot_boundary_iter(g: BaseGraph[VT, ET]) -> Iterator[tuple[BaseGraph[VT, ET],str]]:
 #     """Returns an iterator for the pivoting rewrite, using a list of matches supplied by :func:`match_pivot_boundary`."""
 #     return simp_iter(g, 'pivot_boundary', match_pivot_boundary, pivot)
 #
-# def lcomp_iter(g: BaseGraph[VT,ET]) -> Iterator[Tuple[BaseGraph[VT,ET],str]]:
+# def lcomp_iter(g: BaseGraph[VT, ET]) -> Iterator[tuple[BaseGraph[VT, ET],str]]:
 #     """Returns an iterator for the local complementation based rewrite rule, using a list of matches supplied by :func:`match_lcomp_parallel`."""
 #     return simp_iter(g, 'lcomp', lcomp_simp)
 #
-# def bialg_iter(g: BaseGraph[VT,ET]) -> Iterator[Tuple[BaseGraph[VT,ET],str]]:
+# def bialg_iter(g: BaseGraph[VT, ET]) -> Iterator[tuple[BaseGraph[VT, ET],str]]:
 #     """Returns an iterator for the bialgebra rewrite rule, using a list of matches supplied by :func:`match_bialg(_parallel)`."""
 #     return simp_iter(g, 'bialg', bialg_simp)
 #
-# def spider_iter(g: BaseGraph[VT,ET]) -> Iterator[Tuple[BaseGraph[VT,ET],str]]:
+# def spider_iter(g: BaseGraph[VT, ET]) -> Iterator[tuple[BaseGraph[VT, ET],str]]:
 #     """Returns an iterator for spider fusion, using a list of matches supplied by :func:`match_spider_parallel`."""
 #     return simp_iter(g, 'spider', match_spider_parallel, spider)
 #
-# def id_iter(g: BaseGraph[VT,ET]) -> Iterator[Tuple[BaseGraph[VT,ET],str]]:
+# def id_iter(g: BaseGraph[VT, ET]) -> Iterator[tuple[BaseGraph[VT, ET],str]]:
 #     """Returns an iterator for removing non-interacting identity vertices, as found by :func:`match_ids_parallel`."""
 #     return simp_iter(g, 'id', match_ids_parallel, remove_ids)
 #
-# def gadget_iter(g: BaseGraph[VT,ET]) -> Iterator[Tuple[BaseGraph[VT,ET],str]]:
+# def gadget_iter(g: BaseGraph[VT, ET]) -> Iterator[tuple[BaseGraph[VT, ET],str]]:
 #     """Returns an iterator for removing phase gadgets that act on the same set of targets, as found by :func:`match_phase_gadgets`"""
 #     return simp_iter(g, 'gadget', match_phase_gadgets, merge_phase_gadgets)
 #
 #
-# def clifford_iter(g: BaseGraph[VT,ET]) -> Iterator[Tuple[BaseGraph[VT,ET],str]]:
+# def clifford_iter(g: BaseGraph[VT, ET]) -> Iterator[tuple[BaseGraph[VT, ET],str]]:
 #     """Like :func:`clifford_simp`, but returns an iterator instead of performing the rewrites all at once."""
 #     ok = True
 #     while ok:
@@ -665,7 +666,7 @@ def tcount(g: Union[BaseGraph[VT,ET], Circuit]) -> int:
 #             ok = True
 #             yield g, step
 #
-# def interior_clifford_iter(g: BaseGraph[VT,ET]) -> Iterator[Tuple[BaseGraph[VT,ET],str]]:
+# def interior_clifford_iter(g: BaseGraph[VT, ET]) -> Iterator[tuple[BaseGraph[VT, ET],str]]:
 #     """Like :func:`interior_clifford_simp`, but returns an iterator instead of performing the rewrites all at once."""
 #     yield from spider_iter(g)
 #     to_gh(g)
@@ -686,7 +687,7 @@ def tcount(g: Union[BaseGraph[VT,ET], Circuit]) -> int:
 #             ok = True
 #             yield g, step
 #
-# def full_reduce_iter(g: BaseGraph[VT,ET]) -> Iterator[Tuple[BaseGraph[VT,ET],str]]:
+# def full_reduce_iter(g: BaseGraph[VT, ET]) -> Iterator[tuple[BaseGraph[VT, ET],str]]:
 #     """Like :func:`full_reduce`, but returns an iterator instead of performing the rewrites all at once."""
 #     yield from interior_clifford_iter(g)
 #     yield from pivot_gadget_iter(g)
@@ -704,7 +705,7 @@ def tcount(g: Union[BaseGraph[VT,ET], Circuit]) -> int:
 #             ok = True
 #             yield g, f"pivot_gadget -> {step}"
 
-def is_graph_like(g: BaseGraph[VT,ET], strict:bool=False) -> bool:
+def is_graph_like(g: BaseGraph[VT, ET], strict: bool = False) -> bool:
     """Checks if a ZX-diagram is graph-like:
     only contains Z-spiders which are connected by Hadamard edges.
     If `strict` is True, then also checks that each boundary vertex is connected to a Z-spider,
@@ -748,7 +749,7 @@ def is_graph_like(g: BaseGraph[VT,ET], strict:bool=False) -> bool:
     return True
 
 
-def to_graph_like(g: BaseGraph[VT,ET]) -> None:
+def to_graph_like(g: BaseGraph[VT, ET]) -> None:
     """Puts a ZX-diagram in graph-like form."""
 
     # turn all red spiders into green spiders
@@ -813,7 +814,7 @@ def to_graph_like(g: BaseGraph[VT,ET]) -> None:
 
     assert(is_graph_like(g,strict=True))
 
-def unfuse_non_cliffords(g: BaseGraph[VT,ET]) -> None:
+def unfuse_non_cliffords(g: BaseGraph[VT, ET]) -> None:
     """Unfuses any non-Clifford spider into a magic state connected to a phase-free spider
 
     Replaces any spider with a non-Clifford phase p and degree n > 1 with a degree 1 spider with phase p connected to
@@ -827,7 +828,7 @@ def unfuse_non_cliffords(g: BaseGraph[VT,ET]) -> None:
             g.set_phase(v, 0)
             g.add_edge((v, v1))
 
-def to_clifford_normal_form_graph(g: BaseGraph[VT,ET]) -> None:
+def to_clifford_normal_form_graph(g: BaseGraph[VT, ET]) -> None:
     """Converts a graph that is Clifford into the form described by the right-hand side of eq. (11) of
     *Graph-theoretic Simplification of Quantum Circuits with the ZX-calculus* (https://arxiv.org/abs/1902.03178).
     That is, writes it as a series of layers:

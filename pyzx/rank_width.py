@@ -19,23 +19,27 @@
 # The method's complexity depends on the cut-rank structure of the ZX diagram.
 # Additionally, several heuristics were implemented for finding good rank-decompositions.
 
-import numpy as np
-from numpy.typing import NDArray
+from collections.abc import Iterable, Sequence
 from copy import deepcopy
 from itertools import product
-from typing import Tuple, List, Iterable, Union
-from math import sqrt, pi, log2
+from math import log2, pi, sqrt
+from typing import Literal, TypeAlias, cast, overload
 
-from .simplify import full_reduce
-from .graph import VertexType, EdgeType
+import numpy as np
+from numpy.typing import NDArray
+
 from .graph.base import BaseGraph
-from .linalg import REF, rank_factorise, generalised_inverse
+from .linalg import REF, generalised_inverse, rank_factorise
+from .simplify import full_reduce
 from .symbolic import Poly
+from .utils import EdgeType, VertexType
 
-
-def adjacency_matrix(g: BaseGraph,
-                     v_left: Iterable[int],
-                     v_right: Iterable[int]) -> NDArray[np.int8]:
+GraphT: TypeAlias = BaseGraph[int, tuple[int, int]]
+def adjacency_matrix(
+    g: GraphT,
+    v_left: Iterable[int],
+    v_right: Iterable[int]
+) -> NDArray[np.int8]:
     """
     Compute the adjacency matrix between two subsets of graph vertices.
 
@@ -59,8 +63,8 @@ def adjacency_matrix(g: BaseGraph,
             mat[left_id[v]][right_id[u]] = 1
     return mat
 
-
-def linear_decomposition(order: Iterable) -> Union[List, int, None]:
+DecompList: TypeAlias = list["int | DecompList"]
+def linear_decomposition(order: Sequence[int | DecompList]) -> DecompList | int | None:
     """
     Join the elements of the order into a linear rank-decomposition.
 
@@ -76,8 +80,11 @@ def linear_decomposition(order: Iterable) -> Union[List, int, None]:
     return decomp
 
 
-def calc_ranks(decomp: Union[List, int, None],
-               g: BaseGraph) -> Union[List, Tuple, None]:
+RankDecompInfo: TypeAlias = tuple[int | list["RankDecompInfo"], REF, set[int]]
+def calc_ranks(
+    decomp: DecompList | int | None,
+    g: GraphT
+) -> RankDecompInfo | None:
     """
     Calculate cut-ranks for each edge of the rank-decomposition.
 
@@ -94,7 +101,7 @@ def calc_ranks(decomp: Union[List, int, None],
     v_id = {v: i for i, v in enumerate(v_all)}
     mat = adjacency_matrix(g, v_all, v_all)
 
-    def iterate(elem):
+    def iterate(elem: DecompList | int) -> RankDecompInfo:
         if isinstance(elem, int):
             ref = REF(mat)
             ref.take(v_id[elem])
@@ -117,9 +124,17 @@ def calc_ranks(decomp: Union[List, int, None],
     return result
 
 
-def rank_width(decomp: Union[List, int, None],
-               g: BaseGraph,
-               calc_rs: bool = True) -> int:
+@overload
+def rank_width(decomp: DecompList | int | None, g: GraphT, calc_rs: Literal[True] = True) -> int: ...
+
+@overload
+def rank_width(decomp: RankDecompInfo, g: GraphT, calc_rs: Literal[False] = False) -> int: ...
+
+def rank_width(
+    decomp: RankDecompInfo | DecompList | int | None,
+    g: GraphT,
+    calc_rs: bool = True
+) -> int:
     """
     Calculate the width of a rank-decomposition.
 
@@ -132,19 +147,33 @@ def rank_width(decomp: Union[List, int, None],
         rank-decomposition width
     """
 
-    def iterate(data):
+    def iterate(data: RankDecompInfo | None) -> int:
         if data is None:
             return 0
         if isinstance(data[0], int):
             return data[1].rank()
         return max(data[1].rank(), iterate(data[0][0]), iterate(data[0][1]))
 
-    return iterate(calc_ranks(decomp, g) if calc_rs else decomp)
+    if calc_rs:
+        decomp = cast(DecompList | int | None, decomp)
+        score = iterate(calc_ranks(decomp, g))
+    else:
+        decomp = cast(RankDecompInfo, decomp)
+        score = iterate(decomp)
 
+    return score
 
-def rank_score_flops(decomp: Union[List, int, None],
-                     g: BaseGraph,
-                     calc_rs: bool = True) -> float:
+@overload
+def rank_score_flops(decomp: DecompList | int | None, g: GraphT, calc_rs: Literal[True] = True) -> float: ...
+
+@overload
+def rank_score_flops(decomp: RankDecompInfo, g: GraphT, calc_rs: Literal[False]) -> float: ...
+
+def rank_score_flops(
+    decomp: RankDecompInfo | DecompList | int | None,
+    g: GraphT,
+    calc_rs: bool = True
+) -> float:
     """
     Calculate the contraction complexity of a rank-decomposition.
 
@@ -157,7 +186,7 @@ def rank_score_flops(decomp: Union[List, int, None],
         log2(flops)
     """
 
-    def iterate(data):
+    def iterate(data: RankDecompInfo | None) -> float:
         if data is None or isinstance(data[0], int):
             return 0
         score1 = iterate(data[0][0])
@@ -165,11 +194,17 @@ def rank_score_flops(decomp: Union[List, int, None],
         r1, r2, r3 = data[0][0][1].rank(), data[0][1][1].rank(), data[1].rank()
         return score1 + score2 + 2 ** (r1 + r2 + r3 - max(r1, r2, r3))
 
-    score = iterate(calc_ranks(decomp, g) if calc_rs else decomp)
+    if calc_rs:
+        decomp = cast(DecompList | int | None, decomp)
+        score = iterate(calc_ranks(decomp, g))
+    else:
+        decomp = cast(RankDecompInfo, decomp)
+        score = iterate(decomp)
+
     return log2(max(score, 1))
 
 
-def greedy_linear_order(g: BaseGraph) -> List[int]:
+def greedy_linear_order(g: GraphT) -> list[int]:
     """
     Linear rank-decomposition obtained by greedily taking the next vertex.
 
@@ -199,8 +234,7 @@ def greedy_linear_order(g: BaseGraph) -> List[int]:
         ref.take(min_u)
     return order
 
-
-def greedy_b2t_decomposition(g: BaseGraph) -> Union[List, int, None]:
+def greedy_b2t_decomposition(g: GraphT) -> DecompList | int | None:
     """
     Rank-decomposition built greedily from bottom to top.
 
@@ -213,16 +247,16 @@ def greedy_b2t_decomposition(g: BaseGraph) -> Union[List, int, None]:
     n = g.num_vertices()
     vert = list(g.vertices())
     mat = adjacency_matrix(g, vert, vert)
-    refs = []
+    refs: list[REF] = []
     for i in range(n):
         ref = REF(mat)
         ref.take(i)
         refs.append(ref)
-    decomps = [vert[i] for i in range(n)]
+    decomps: DecompList = [vert[i] for i in range(n)]
     leaves = [{i} for i in range(n)]
     loc = list(range(n))
-    refs_next = dict()
-    edges: List = [set() for _ in range(n)]
+    refs_next: dict[tuple[int, int], REF] = {}
+    edges: list[set[int]] = [set() for _ in range(n)]
     for i in range(n):
         for j in refs[i].pivot_cols:
             ref = deepcopy(refs[i])
@@ -271,9 +305,11 @@ def greedy_b2t_decomposition(g: BaseGraph) -> Union[List, int, None]:
     return linear_decomposition(decomps)
 
 
-def generate_decomposition(g: BaseGraph,
-                           strategy: str = 'rw-auto',
-                           verbose: bool = False) -> Union[List, int, None]:
+def generate_decomposition(
+    g: GraphT,
+    strategy: Literal['rw-greedy-b2t', 'rw-greedy-linear', 'rw-auto'] = 'rw-auto',
+    verbose: bool = False
+) -> DecompList | int | None:
     """
     Generate rank-decomposition of a ZX diagram using a specific strategy.
 
@@ -322,8 +358,10 @@ def mat_image(M: NDArray[np.int8]) -> NDArray[np.int64]:
     return ys
 
 
-def apply_parity_map(Psi: NDArray[np.complex128],
-                     M: NDArray[np.int8]) -> NDArray[np.complex128]:
+def apply_parity_map(
+    Psi: NDArray[np.complex128],
+    M: NDArray[np.int8]
+) -> NDArray[np.complex128]:
     """
     Apply parity map M to state Psi.
 
@@ -361,11 +399,13 @@ def phase_tensor(E: NDArray[np.int8]) -> NDArray[np.complex128]:
     return P
 
 
-def conv_naive(Psi_v: NDArray[np.complex128],
-               Psi_w: NDArray[np.complex128],
-               E_vw: NDArray[np.int8],
-               E_vu: NDArray[np.int8],
-               E_wu: NDArray[np.int8]) -> NDArray[np.complex128]:
+def conv_naive(
+    Psi_v: NDArray[np.complex128],
+    Psi_w: NDArray[np.complex128],
+    E_vw: NDArray[np.int8],
+    E_vu: NDArray[np.int8],
+    E_wu: NDArray[np.int8]
+) -> NDArray[np.complex128]:
     """
     Perform convolution naively in 2^{r_u + r_v + r_w} time.
 
@@ -395,11 +435,13 @@ def conv_naive(Psi_v: NDArray[np.complex128],
     return Psi_u.reshape((-1, 2 ** r_u), order='F')
 
 
-def conv_vw(Psi_v: NDArray[np.complex128],
-            Psi_w: NDArray[np.complex128],
-            E_vw: NDArray[np.int8],
-            E_vu: NDArray[np.int8],
-            E_wu: NDArray[np.int8]) -> NDArray[np.complex128]:
+def conv_vw(
+    Psi_v: NDArray[np.complex128],
+    Psi_w: NDArray[np.complex128],
+    E_vw: NDArray[np.int8],
+    E_vu: NDArray[np.int8],
+    E_wu: NDArray[np.int8]
+) -> NDArray[np.complex128]:
     """
     Perform convolution in 2^{r_v + r_w} time:
       1. Compute Psi_v ⊗ Psi_w and multiply by the phase tensor for E_vw
@@ -422,11 +464,13 @@ def conv_vw(Psi_v: NDArray[np.complex128],
     return Psi_u
 
 
-def conv_uv(Psi_v: NDArray[np.complex128],
-            Psi_w: NDArray[np.complex128],
-            E_vw: NDArray[np.int8],
-            E_vu: NDArray[np.int8],
-            E_wu: NDArray[np.int8]) -> NDArray[np.complex128]:
+def conv_uv(
+    Psi_v: NDArray[np.complex128],
+    Psi_w: NDArray[np.complex128],
+    E_vw: NDArray[np.int8],
+    E_vu: NDArray[np.int8],
+    E_wu: NDArray[np.int8]
+) -> NDArray[np.complex128]:
     """
     Perform convolution in 2^{r_u + r_v} time:
       1. Apply parity map [E_vw^T, E_wu] to Psi_w
@@ -455,12 +499,14 @@ def conv_uv(Psi_v: NDArray[np.complex128],
     return Psi_u
 
 
-def conv(Psi_v: NDArray[np.complex128],
-         Psi_w: NDArray[np.complex128],
-         E_vw: NDArray[np.int8],
-         E_vu: NDArray[np.int8],
-         E_wu: NDArray[np.int8],
-         verbose: bool = False) -> Tuple[NDArray[np.complex128], bool]:
+def conv(
+    Psi_v: NDArray[np.complex128],
+    Psi_w: NDArray[np.complex128],
+    E_vw: NDArray[np.int8],
+    E_vu: NDArray[np.int8],
+    E_wu: NDArray[np.int8],
+    verbose: bool = False
+) -> tuple[NDArray[np.complex128], bool]:
     """
     Convolution in time O(2^{r_u + r_v + r_w - max(r_u, r_v, r_w)}) by calling a suitable subroutine.
 
@@ -490,10 +536,11 @@ def conv(Psi_v: NDArray[np.complex128],
         return conv_uv(Psi_v, Psi_w, E_vw, E_vu, E_wu), False
 
 
-def tensorfy_rw_subtree(g: BaseGraph,
-                        subtree: Union[List, int],
-                        verbose: bool = False) -> Tuple[
-    NDArray[np.complex128], NDArray[np.int8], NDArray[np.bool_], List[int]]:
+def tensorfy_rw_subtree(
+    g: GraphT,
+    subtree: DecompList | int,
+    verbose: bool = False
+) -> tuple[NDArray[np.complex128], NDArray[np.int8], NDArray[np.bool_], list[int]]:
     """
     Returns the simulated version of the subdiagram induced by the leaves from the subtree.
 
@@ -564,10 +611,12 @@ def tensorfy_rw_subtree(g: BaseGraph,
     return Psi_u, M_u, S_u, B_u
 
 
-def tensorfy_rw(g: BaseGraph,
-                strategy: str = 'rw-auto',
-                preserve_scalar: bool = True,
-                verbose: bool = False) -> NDArray[np.complex128]:
+def tensorfy_rw(
+    g: GraphT,
+    strategy: Literal['rw-auto', 'rw-greedy-b2t', 'rw-greedy-linear'] = 'rw-auto',
+    preserve_scalar: bool = True,
+    verbose: bool = False
+) -> NDArray[np.complex128]:
     """
     Evaluate the tensor diagram corresponding to g using the rank-width method.
 

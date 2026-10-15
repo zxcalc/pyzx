@@ -21,6 +21,7 @@ from typing import Any, Union
 import numpy as np
 
 from ..graph.base import BaseGraph
+from ..tensor import TensorStrategy
 from ..utils import EdgeType
 from .gates import (CCZ, CHAD, CNOT, CRX, CRY, CRZ, CSWAP, CSX, CU, CU3, CY,
                     CZ, HAD, NOT, RXX, RZZ, SWAP, SX, U2, U3, XCX,
@@ -328,11 +329,11 @@ class Circuit:
             elide_initial_resets=elide_initial_resets,
         )
 
-    def to_tensor(self, preserve_scalar: bool = True, strategy: str = 'auto') -> np.ndarray:
+    def to_tensor(self, preserve_scalar: bool = True, strategy: TensorStrategy = 'auto') -> np.ndarray:
         """Returns a numpy tensor describing the circuit."""
         return self.to_graph().to_tensor(preserve_scalar, strategy)
 
-    def to_matrix(self, preserve_scalar: bool = True, strategy: str = 'auto') -> np.ndarray:
+    def to_matrix(self, preserve_scalar: bool = True, strategy: TensorStrategy = 'auto') -> np.ndarray:
         """Returns a numpy matrix describing the circuit."""
         return self.to_graph().to_matrix(preserve_scalar, strategy)
 
