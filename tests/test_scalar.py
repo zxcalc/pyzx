@@ -201,6 +201,19 @@ class TestScalar(unittest.TestCase):
         expected_sum = {0: 1, p1: 2, (p1 + p2) % 2: -1}
         self.assertEqual(scalar.sum_of_phases, expected_sum)
 
+    def test_add_spider_pair_opposite_non_cliffords(self):
+        """Opposite non-Clifford phases are measured in units of pi."""
+        for p1, expected in (
+            (Fraction(1, 3), np.sqrt(2) / 2),
+            (Fraction(2, 3), -np.sqrt(2) / 2),
+            (Fraction(4, 3), -np.sqrt(2) / 2),
+            (Fraction(5, 3), np.sqrt(2) / 2),
+        ):
+            with self.subTest(p1=p1):
+                scalar = Scalar()
+                scalar.add_spider_pair(p1, 2 - p1)
+                self.assertAlmostEqual(scalar.to_number(), expected)
+
     def test_add_spider_pair_pauli_cases(self):
         """Test add_spider_pair with Pauli phases (0 and 1)"""
         # Case 1: p1 = 0
