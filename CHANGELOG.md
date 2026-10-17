@@ -23,6 +23,7 @@ Hence, occasionally changes will be backwards incompatible (although they will a
 - `gflow(..., pauli=True)` issues a `DeprecationWarning`; use `pauli_flow(...)` instead. The alias remains supported. (by @pmitos)
 
 ### Fixed
+- Corrected scalar evaluation for opposite non-Clifford spider phases by converting pi units to radians in `Scalar.add_spider_pair`.
 - `graph_to_circuit()` in `graphparser.py` now raises a `NotImplementedError` when extracting conditional gates instead of silently returning a circuit with potentially incorrect gate ordering (by @akshaysoftware).
 - `Var.rebind_to_registry` no longer loses a variable's Boolean type when the target registry does not know the variable yet (it read the type *after* switching registries). Copying a graph whose Boolean variables were created outside its registry silently turned them continuous, also on the original graph, so Pauli checks on symbolic phases failed.
 - `Circuit.from_graph` no longer changes the measurement basis after a colour change of the measurement leaf (e.g. by `to_gh`). The edge to the leaf is not part of the qubit wire, so a Hadamard edge there no longer emits a `HAD` gate; instead the basis is read from the colours of the leaf and the on-wire spider (#520). (by @a6hinandh)
