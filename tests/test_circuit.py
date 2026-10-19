@@ -31,7 +31,7 @@ from pyzx.generate import cliffordT, cliffords
 from pyzx.simplify import clifford_simp
 from pyzx.extract import extract_circuit
 from pyzx.circuit import Circuit, PhaseGadget
-from pyzx.circuit.gates import ParityPhase, FSim, U2, U3, CU3, CU, CSX
+from pyzx.circuit.gates import ParityPhase, FSim, U2, U3, CU3, CU, CSX, RZZ
 from pyzx.utils import VertexType, EdgeType
 from fractions import Fraction
 
@@ -341,6 +341,91 @@ class TestPhaseGadgetGate(unittest.TestCase):
         pp2_copy = pp2.copy()
         self.assertFalse(pp2_copy.as_gadget)
 
+    def test_phase_gadget_copy(self):
+        pg = PhaseGadget(Fraction(1, 4), 0, 1, 2)
+        pg_copy = pg.copy()
+        self.assertIsInstance(pg_copy, PhaseGadget)
+        self.assertEqual(pg_copy.phase, Fraction(1, 4))
+        self.assertEqual(pg_copy.targets, (0, 1, 2))
+        self.assertTrue(pg_copy.as_gadget)
+
+    def test_phase_gadget_circuit_operations(self):
+        c = Circuit(3)
+        c.add_gate(PhaseGadget(Fraction(1, 4), 0, 1, 2))
+        c_copy = c.copy()
+        self.assertEqual(len(c_copy.gates), 1)
+        self.assertIsInstance(c_copy.gates[0], PhaseGadget)
+        self.assertTrue(c_copy.gates[0].as_gadget)
+
+        c_adj = c.adjoint()
+        self.assertEqual(len(c_adj.gates), 1)
+        self.assertEqual(c_adj.gates[0].phase, -Fraction(1, 4))
+        self.assertTrue(c_adj.gates[0].as_gadget)
+
+        c_tensor = c @ c
+        self.assertEqual(c_tensor.qubits, 6)
+        self.assertEqual(c_tensor.gates[1].targets, (3, 4, 5))
+
+    def test_phase_gadget_export(self):
+        c = Circuit(3)
+        c.add_gate(PhaseGadget(Fraction(1, 4), 0, 1, 2))
+        qasm = c.to_qasm()
+        self.assertNotIn("undefined", qasm)
+        self.assertIn("cx q[0], q[1];", qasm)
+        self.assertIn("rz(0.25*pi) q[2];", qasm)
+        self.assertNotIn("undefined", c.to_qc())
+        self.assertNotIn("undefined", c.to_quipper())
+
+    def test_rzz_gate_operations(self):
+        rzz = RZZ(0, 1, Fraction(1, 4))
+        rzz_copy = rzz.copy()
+        self.assertIsInstance(rzz_copy, RZZ)
+        self.assertEqual(rzz_copy.control, 0)
+        self.assertEqual(rzz_copy.target, 1)
+        self.assertEqual(rzz_copy.targets, (0, 1))
+        self.assertEqual(rzz_copy.phase, Fraction(1, 4))
+
+        rzz_adj = rzz.to_adjoint()
+        self.assertEqual(rzz_adj.phase, -Fraction(1, 4))
+        self.assertEqual(rzz_adj.control, 0)
+        self.assertEqual(rzz_adj.target, 1)
+
+    def test_rzz_reposition(self):
+        rzz = RZZ(0, 1, Fraction(1, 4))
+        rzz_rep = rzz.reposition([2, 3])
+        self.assertEqual(rzz_rep.control, 2)
+        self.assertEqual(rzz_rep.target, 3)
+        self.assertEqual(rzz_rep.targets, (2, 3))
+        # Original should be unchanged
+        self.assertEqual(rzz.control, 0)
+        self.assertEqual(rzz.target, 1)
+        self.assertEqual(rzz.targets, (0, 1))
+        self.assertIn("q[2], q[3]", rzz_rep.to_qasm())
+
+    def test_rzz_circuit_operations(self):
+        c = Circuit(2)
+        c.add_gate(RZZ(0, 1, Fraction(1, 4)))
+        c_copy = c.copy()
+        self.assertEqual(c_copy.gates[0], c.gates[0])
+
+        c_adj = c.adjoint()
+        self.assertEqual(c_adj.gates[0].phase, -Fraction(1, 4))
+
+        c_tens = c @ c
+        self.assertEqual(c_tens.qubits, 4)
+        self.assertEqual(c_tens.gates[1].control, 2)
+        self.assertEqual(c_tens.gates[1].target, 3)
+
+    def test_parity_phase_rzz_equality(self):
+        rzz = RZZ(0, 1, Fraction(1, 4))
+        pp = ParityPhase(Fraction(1, 4), 0, 1)
+        pg = PhaseGadget(Fraction(1, 4), 0, 1)
+        self.assertNotEqual(rzz, pp)
+        self.assertNotEqual(rzz, pg)
+        self.assertNotEqual(pp, pg)
+        self.assertEqual(pg, ParityPhase(Fraction(1, 4), 0, 1, as_gadget=True))
+        self.assertEqual(RZZ(0, 1, Fraction(1, 4)), RZZ(1, 0, Fraction(1, 4)))
+
     def test_fsim_reposition(self):
         g = FSim(0, 1, Fraction(1, 2), Fraction(1, 4))
         g2 = g.reposition([2, 3, 0, 1])
@@ -352,3 +437,4 @@ class TestPhaseGadgetGate(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+

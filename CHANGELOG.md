@@ -32,6 +32,8 @@ Hence, occasionally changes will be backwards incompatible (although they will a
 - `Mat2.gauss` no longer shares pivot columns between calls; extraction and routing helpers avoid mutable defaults, and genetic optimizers copy caller-supplied action lists. (by @pmitos)
 - Symbolic expression parsing now preserves mixed Boolean/continuous products regardless of multiplication order (#539). (by @mourya-17)
 - `Poly.__mod__` no longer leaves a zero-coefficient term behind for Boolean phases, so fusing spiders with phases `(a+1)π` and `π` now gives `a` instead of `a + 0` (#544). (by @Nitesh71332)
+- `PhaseGadget` and `RZZ` now copy, invert (`adjoint`), and tensor correctly without raising `TypeError`. `RZZ.reposition` now updates `control` and `target` attributes alongside `targets`, `ParityPhase.__eq__` distinguishes `RZZ` from `ParityPhase`/`PhaseGadget`, and `PhaseGadget` can now be exported to QASM, .qc, and Quipper formats.
+
 
 ### Removed
 - Python 3.10 is no longer supported because it has reached end-of-life.

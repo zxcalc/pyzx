@@ -861,7 +861,9 @@ class ParityPhase(Gate):
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, ParityPhase): return False
+        if isinstance(other, RZZ): return False
         if self.index != other.index: return False
+        if self.as_gadget != getattr(other, "as_gadget", False): return False
         if set(self.targets) == set(other.targets) and self.phase == other.phase:
             return True
         return False
@@ -875,21 +877,36 @@ class ParityPhase(Gate):
     def _max_target(self) -> int:
         return max(self.targets)
 
-    def copy(self) -> 'ParityPhase':
-        return type(self)(self.phase, *self.targets, as_gadget=self.as_gadget)
-
     def reposition(self, mask: list[int], bit_mask: list[int] | None = None) -> 'ParityPhase':
         g = self.copy()
         g.targets = tuple(mask[t] for t in g.targets)
         return g
 
+    def _decompose_cnots(self) -> list[Gate]:
+        cnots: list[Gate] = [CNOT(self.targets[i],self.targets[i+1]) for i in range(len(self.targets)-1)]
+        p = ZPhase(self.targets[-1], self.phase)
+        return cnots + [p] + list(reversed(cnots))
+
     def to_basic_gates(self) -> list[Gate]:
         if self.as_gadget:
             # Keep as-is so to_graph() can create the phase gadget structure.
             return [self]
-        cnots: list[Gate] = [CNOT(self.targets[i],self.targets[i+1]) for i in range(len(self.targets)-1)]
-        p = ZPhase(self.targets[-1], self.phase)
-        return cnots + [p] + list(reversed(cnots))
+        return self._decompose_cnots()
+
+    def to_qasm(self) -> str:
+        if self.qasm_name != 'undefined':
+            return super().to_qasm()
+        return "\n".join(g.to_qasm() for g in self._decompose_cnots())
+
+    def to_qc(self) -> str:
+        if self.qc_name != 'undefined':
+            return super().to_qc()
+        return "\n".join(g.to_qc() for g in self._decompose_cnots())
+
+    def to_quipper(self) -> str:
+        if self.quipper_name != 'undefined':
+            return super().to_quipper()
+        return "\n".join(g.to_quipper() for g in self._decompose_cnots())
     
     def to_graph(self, g: BaseGraph[VT, ET], q_mapper: TargetMapper[VT], c_mapper: TargetMapper[VT]) -> None:
         if self.as_gadget:
@@ -927,6 +944,20 @@ class RZZ(ParityPhase):
         self.targets = (control, target)
         self.phase = phase
         self.as_gadget = False
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, RZZ): return False
+        if self.index != other.index: return False
+        if set([self.control, self.target]) == set([other.control, other.target]) and self.phase == other.phase:
+            return True
+        return False
+
+    def reposition(self, mask: list[int], bit_mask: list[int] | None = None) -> 'RZZ':
+        g = self.copy()
+        g.control = mask[self.control]
+        g.target = mask[self.target]
+        g.targets = (g.control, g.target)
+        return g
 
 
 class FSim(Gate):
