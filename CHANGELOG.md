@@ -9,6 +9,7 @@ Hence, occasionally changes will be backwards incompatible (although they will a
 ## [Unreleased]
 
 ### Added
+- Documentation and notebook examples for measurement feedforward, Boolean phase substitution, and graph-level ground markers (by @bharadwaj-b-chand04).
 - Cubic flow finding for XY, X, and Y measurements, with the previous finder available as `method="legacy"`. (by @pmitos)
 - `pyzx.flow.pauli_flow` as the entry point for Pauli flow on XY, X, and Y measurements. (by @pmitos)
 - Optional `layers_only=True` on cubic flow finders, returning partial order layers without correction sets. (by @pmitos)
