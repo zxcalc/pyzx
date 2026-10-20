@@ -424,7 +424,49 @@ class TestPhaseGadgetGate(unittest.TestCase):
         self.assertNotEqual(rzz, pg)
         self.assertNotEqual(pp, pg)
         self.assertEqual(pg, ParityPhase(Fraction(1, 4), 0, 1, as_gadget=True))
+        self.assertEqual(ParityPhase(Fraction(1, 4), 0, 1, as_gadget=True), pg)
         self.assertEqual(RZZ(0, 1, Fraction(1, 4)), RZZ(1, 0, Fraction(1, 4)))
+
+    def test_parity_phase_validation(self):
+        with self.assertRaises(ValueError):
+            ParityPhase(Fraction(1, 4))
+        with self.assertRaises(ValueError):
+            ParityPhase(Fraction(1, 4), 0, 0)
+        with self.assertRaises(ValueError):
+            RZZ(1, 1, Fraction(1, 4))
+
+    def test_qasm_roundtrip_semantic_equivalence(self):
+        c_pg = Circuit(3)
+        c_pg.add_gate(PhaseGadget(Fraction(1, 4), 0, 1, 2))
+        c_pg_rt = Circuit.from_qasm(c_pg.to_qasm())
+        self.assertTrue(compare_tensors(c_pg.to_tensor(), c_pg_rt.to_tensor(), False))
+
+        c_rzz = Circuit(2)
+        c_rzz.add_gate(RZZ(0, 1, Fraction(1, 4)))
+        c_rzz_rt = Circuit.from_qasm(c_rzz.to_qasm())
+        self.assertTrue(compare_tensors(c_rzz.to_tensor(), c_rzz_rt.to_tensor(), False))
+
+    def test_rzz_reposition_non_identity(self):
+        rzz = RZZ(0, 1, Fraction(1, 4))
+        rzz_rep = rzz.reposition([2, 0])
+        self.assertEqual(rzz_rep.control, 2)
+        self.assertEqual(rzz_rep.target, 0)
+        self.assertEqual(rzz_rep.targets, (2, 0))
+        self.assertEqual(rzz_rep.targets, (rzz_rep.control, rzz_rep.target))
+
+    def test_phase_gadget_copy_to_graph_structure(self):
+        pg = PhaseGadget(Fraction(1, 4), 0, 1, 2)
+        pg_copy = pg.copy()
+        c = Circuit(3)
+        c.add_gate(pg_copy)
+        g = c.to_graph()
+        leaf_candidates = [v for v in g.vertices()
+                           if g.type(v) == VertexType.Z
+                           and g.phase(v) == Fraction(1, 4)
+                           and g.vertex_degree(v) == 1]
+        self.assertEqual(len(leaf_candidates), 1)
+        hub = list(g.neighbors(leaf_candidates[0]))[0]
+        self.assertTrue(g.is_phase_gadget(hub))
 
     def test_fsim_reposition(self):
         g = FSim(0, 1, Fraction(1, 2), Fraction(1, 4))

@@ -855,6 +855,10 @@ class ParityPhase(Gate):
     name = 'ParityPhase'
     print_phase = True
     def __init__(self, phase: FractionLike, *targets: int, as_gadget: bool = False):
+        if not targets:
+            raise ValueError("ParityPhase requires at least one target qubit.")
+        if len(targets) != len(set(targets)):
+            raise ValueError("ParityPhase target qubits must be distinct.")
         self.targets = targets
         self.phase = phase
         self.as_gadget = as_gadget
@@ -893,20 +897,23 @@ class ParityPhase(Gate):
             return [self]
         return self._decompose_cnots()
 
+    def _export_via_cnots(self, export_attr: str) -> str:
+        return "\n".join(getattr(g, export_attr)() for g in self._decompose_cnots())
+
     def to_qasm(self) -> str:
         if self.qasm_name != 'undefined':
             return super().to_qasm()
-        return "\n".join(g.to_qasm() for g in self._decompose_cnots())
+        return self._export_via_cnots('to_qasm')
 
     def to_qc(self) -> str:
         if self.qc_name != 'undefined':
             return super().to_qc()
-        return "\n".join(g.to_qc() for g in self._decompose_cnots())
+        return self._export_via_cnots('to_qc')
 
     def to_quipper(self) -> str:
         if self.quipper_name != 'undefined':
             return super().to_quipper()
-        return "\n".join(g.to_quipper() for g in self._decompose_cnots())
+        return self._export_via_cnots('to_quipper')
     
     def to_graph(self, g: BaseGraph[VT, ET], q_mapper: TargetMapper[VT], c_mapper: TargetMapper[VT]) -> None:
         if self.as_gadget:
@@ -923,13 +930,17 @@ class ParityPhase(Gate):
                 gate.to_graph(g, q_mapper, c_mapper)
 
     def tcount(self) -> int:
-        return 1 if self.phase.denominator > 2 else 0
+        denom = getattr(self.phase, 'denominator', 1)
+        return 1 if denom > 2 else 0
 
 
 class PhaseGadget(ParityPhase):
     """A ParityPhase gate that will be represented as a phase gadget in ZX-diagrams.
 
     This is equivalent to ParityPhase(phase, *targets, as_gadget=True).
+    When exported to OpenQASM, .qc, or Quipper formats, the gate is decomposed into
+    its equivalent CNOT ladder and ZPhase rotation, as these formats do not have a
+    native phase gadget instruction.
     """
     def __init__(self, phase: FractionLike, *targets: int) -> None:
         super().__init__(phase, *targets, as_gadget=True)
@@ -939,6 +950,8 @@ class RZZ(ParityPhase):
     name = 'RZZ'
     qasm_name = 'rzz'
     def __init__(self, control: int, target: int, phase: FractionLike) -> None:
+        if control == target:
+            raise ValueError("RZZ control and target qubits must be distinct.")
         self.control = control
         self.target = target
         self.targets = (control, target)
