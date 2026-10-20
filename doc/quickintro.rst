@@ -25,7 +25,7 @@ Quantum circuits in PyZX are represented by the :class:`~pyzx.circuit.Circuit` c
 
 	circuit = zx.Circuit.load("path/to/circuit.extension")
 
-The circuit file-formats supported by ``Circuit.load`` are curently *qasm*, *qc* or *quipper*. 
+The circuit file formats supported by ``Circuit.load`` are *qasm*, *qc*, *qsim* and *quipper*.
 
 PyZX tries to automatically figure out in which format the circuit is represented. The :mod:`~pyzx.generate` module supplies several ways to generate random circuits::
 	

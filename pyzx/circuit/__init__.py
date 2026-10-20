@@ -381,9 +381,7 @@ class Circuit:
 
     @staticmethod
     def from_qsim_file(fname: str) -> 'Circuit':
-        """Produces a :class:`Circuit` based on a .qc description of a circuit.
-        If a Toffoli gate with more than 2 controls is encountered, ancilla qubits are added.
-        Currently up to 5 controls are supported."""
+        """Produces a :class:`Circuit` based on a .qsim description of a circuit."""
         from .qsimparser import parse_qsim
         with open(fname, 'r') as f:
             data = f.read()
