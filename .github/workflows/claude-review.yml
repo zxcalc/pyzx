@@ -27,6 +27,14 @@ jobs:
         with:
           fetch-depth: 0
 
+      # CLAUDE_CODE_SUBPROCESS_ENV_SCRUB requires bubblewrap, which the runner image lacks.
+      # Ubuntu 24.04 also blocks unprivileged user namespaces via AppArmor, which bwrap needs.
+      - name: Install bubblewrap
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y bubblewrap
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+
       # Everything in this step is built from the trusted checkout, BEFORE the
       # action switches the workspace to the PR branch.
       - name: Prepare sandbox
