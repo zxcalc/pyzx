@@ -42,6 +42,7 @@ from pyzx.simulation import (
     get_strategy_spec
 )
 from pyzx.simulation.strategies.magic_cat import find_best_cat
+from pyzx.simulation.strategies.lpmc3 import find_best_decomp
 
 
 class TestSimulationDecompositions(unittest.TestCase):
@@ -173,6 +174,102 @@ class TestSimulationDecompositions(unittest.TestCase):
                 self.assertEqual(len(gsum_n.graphs), expected_terms)
                 self.assertTrue(np.allclose(g.to_tensor(), gsum_n.to_tensor()))
 
+    def test_lone_phase_1(self) -> None:
+        """
+        Verify lone_phase_1 decomposition.
+        Technically this is a family of infinite decompositions, only the first 10 are tested.
+        """
+        for n in range(1, 11):
+            g = Graph()
+            v = g.add_vertex(VertexType.Z, 0, 0, Fraction(1, 4))
+            under_v = g.add_vertex(VertexType.BOUNDARY, 1, 0)
+            g.add_edge((v, under_v))
+            for i in range(n):
+                x = g.add_vertex(VertexType.Z, -1, i-1.5, Fraction(1, 4))
+                g.add_edge((v, x), EdgeType.HADAMARD)
+            g.set_outputs((under_v,))
+
+            self.assertTrue(check_valid(Decomp.LONE_PHASE_1, g, v))
+            gsum = apply_decomp(Decomp.LONE_PHASE_1, g, v)
+            self.assertEqual(len(gsum.graphs), 2)
+            self.assertTrue(np.allclose(g.to_tensor(), gsum.to_tensor()))
+
+    def test_lone_phase_2(self) -> None:
+        """
+        Verify lone_phase_2 decomposition.
+        Technically this is a family of infinite decompositions, only the first 10 are tested.
+        """
+        for n in range(1, 11):
+            g = Graph()
+            z1 = g.add_vertex(VertexType.Z, 0, 0, Fraction(1, 4))
+            z2 = g.add_vertex(VertexType.Z, 0, 8, Fraction(1, 4))
+            b1 = g.add_vertex(VertexType.BOUNDARY, 2, 0)
+            b2 = g.add_vertex(VertexType.BOUNDARY, 2, 8)
+            g.add_edges([(z1, b1), (z1, b2)])
+            for i in range(n):
+                x = g.add_vertex(VertexType.Z, -2, 2*i, Fraction(1, 4))
+                g.add_edges([(z1, x), (z2, x)], EdgeType.HADAMARD)
+            g.set_outputs((b1, b2))
+
+            self.assertTrue(check_valid(Decomp.LONE_PHASE_2, g, z1, z2))
+            gsum = apply_decomp(Decomp.LONE_PHASE_2, g, z1, z2)
+            self.assertEqual(len(gsum.graphs), 2)
+            self.assertTrue(np.allclose(g.to_tensor(), gsum.to_tensor()))
+
+    def test_multi_cat3_1(self) -> None:
+        """
+        Verify lone_phase_1 decomposition.
+        Technically this is a family of infinite decompositions, only the first 10 are tested.
+        """
+        for n in range(1, 11):
+            g = Graph()
+            v = g.add_vertex(VertexType.Z, 0, 0, Fraction(1, 4))
+            under_v = g.add_vertex(VertexType.BOUNDARY, 1, 0)
+            g.add_edge((v, under_v))
+            outputs = [under_v]
+            for i in range(n):
+                z = g.add_vertex(VertexType.Z, -1, i + 1)
+                x = g.add_vertex(VertexType.Z, -2, i + 1, Fraction(1, 4))
+                y = g.add_vertex(VertexType.Z, 0, i + 1, Fraction(1, 4))
+                under_y = g.add_vertex(VertexType.BOUNDARY, 1, i + 1)
+                g.add_edges([(v, z), (z, x), (z, y)], EdgeType.HADAMARD)
+                g.add_edge((y, under_y))
+                outputs.append(under_y)
+            g.set_outputs(tuple(outputs))
+
+            self.assertTrue(check_valid(Decomp.MULTI_CAT3_1, g, v))
+            gsum = apply_decomp(Decomp.MULTI_CAT3_1, g, v)
+            self.assertEqual(len(gsum.graphs), 2)
+            self.assertTrue(np.allclose(g.to_tensor(), gsum.to_tensor()))
+
+    def test_multi_cat3_2(self) -> None:
+        """
+        Verify lone_phase_1 decomposition.
+        Technically this is a family of infinite decompositions, only the first 10 are tested.
+        """
+        for n in range(1, 11):
+            g = Graph()
+            z1 = g.add_vertex(VertexType.Z, 0, 0, Fraction(1, 4))
+            z2 = g.add_vertex(VertexType.Z, 0, 8, Fraction(1, 4))
+            b1 = g.add_vertex(VertexType.BOUNDARY, 2, 0)
+            b2 = g.add_vertex(VertexType.BOUNDARY, 2, 8)
+            g.add_edges([(z1, b1), (z1, b2)])
+            outputs = [b1, b2]
+            for i in range(n):
+                v = g.add_vertex(VertexType.Z, -2, 2*i)
+                y = g.add_vertex(VertexType.Z, -2, 2*i + 1, Fraction(1, 4))
+                x = g.add_vertex(VertexType.Z, -4, 2*i, Fraction(1, 4))
+                above_x = g.add_vertex(VertexType.BOUNDARY, -6, 2*i,)
+                g.add_edges([(z1, v), (z2, v), (v, y), (v, x)], EdgeType.HADAMARD)
+                g.add_edge((x, above_x))
+                outputs.append(above_x)
+            g.set_outputs(tuple(outputs))
+
+            self.assertTrue(check_valid(Decomp.MULTI_CAT3_2, g, z1, z2))
+            gsum = apply_decomp(Decomp.MULTI_CAT3_2, g, z1, z2)
+            self.assertEqual(len(gsum.graphs), 2)
+            self.assertTrue(np.allclose(g.to_tensor(), gsum.to_tensor()))
+
     def test_decompositions_validity_checkers_reject_invalid(self) -> None:
         """Verify that validation checkers reject invalid parameters."""
         c = Circuit(2)
@@ -224,6 +321,32 @@ class TestSimulationDecompositions(unittest.TestCase):
         with self.assertRaises((AssertionError, RuntimeError)):
             apply_decomp(Decomp.CUT_VERTEX, g, boundary_v)
 
+        # multiple tests on lone_phase and multicat3:
+        g_lpmc3 = Graph()
+        phaseless = g_lpmc3.add_vertex(VertexType.Z, 0, 0, 0)
+        Tlike_1 = g_lpmc3.add_vertex(VertexType.Z, 0, 0, Fraction(1, 4))
+        Tlike_2 = g_lpmc3.add_vertex(VertexType.Z, 0, 0, Fraction(1, 4))
+        for d in [Decomp.LONE_PHASE_1, Decomp.MULTI_CAT3_1]:
+            # should fail on wrong number of inputs
+            with self.assertRaises((TypeError, RuntimeError)):
+                check_valid(d, g, Tlike_1, Tlike_2)
+            # should fail if any input vertex is non-Tlike
+            with self.assertRaises((ValueError, RuntimeError)):
+                check_valid(d, g, phaseless)
+            # should faul if it doesn't have the decomposition
+            with self.assertRaises((ValueError, RuntimeError)):
+                check_valid(d, g, Tlike_1)
+        for d in [Decomp.LONE_PHASE_2, Decomp.MULTI_CAT3_2]:
+            # should fail on wrong number of inputs
+            with self.assertRaises((TypeError, RuntimeError)):
+                check_valid(d, g, Tlike_1)
+            # should fail if any input vertex is non-Tlike
+            with self.assertRaises((ValueError, RuntimeError)):
+                check_valid(d, g, phaseless, Tlike_1)
+            # should faul if it doesn't have the decomposition
+            with self.assertRaises((ValueError, RuntimeError)):
+                check_valid(d, g, Tlike_1, Tlike_2)
+
     def test_decomp_metadata(self) -> None:
         """Verify all Decomp enum entries have valid specifications, alphas, and references."""
         for d in Decomp:
@@ -234,8 +357,12 @@ class TestSimulationDecompositions(unittest.TestCase):
             alpha = get_alpha(d)
             ref = get_reference(d)
             self.assertIsInstance(ref, str)
-            # CAT_N has no single alpha because it dispatches dynamically to CAT_3..CAT_6 based on spider degree
-            if d == Decomp.CAT_N:
+            # For the following 5 decompositions the alpha variable is variable, thus its value should be None
+            if d in [Decomp.CAT_N,
+                     Decomp.LONE_PHASE_1,
+                     Decomp.LONE_PHASE_2,
+                     Decomp.MULTI_CAT3_1,
+                     Decomp.MULTI_CAT3_2]:
                 self.assertIsNone(alpha)
             else:
                 self.assertIsInstance(alpha, (int, float))
@@ -276,7 +403,7 @@ class TestSimulationStrategies(unittest.TestCase):
             with self.subTest(case=name):
                 true_amp = g.to_tensor().flatten()[0]
 
-                for strat in [Strategy.BSS, Strategy.CUT_RANDOM, Strategy.MAGIC_CAT]:
+                for strat in Strategy:
                     with self.subTest(strategy=strat.value):
                         amp = simulate(strat, g)
                         self.assertTrue(
@@ -290,7 +417,7 @@ class TestSimulationStrategies(unittest.TestCase):
         g = self._canonical_closed_circuit(3, depth=2)
         true_amp = g.to_tensor().flatten()[0]
 
-        for strat in [Strategy.BSS, Strategy.CUT_RANDOM, Strategy.MAGIC_CAT]:
+        for strat in Strategy:
             with self.subTest(strategy=strat.value):
                 terms: list[BaseGraph] = full_decompose(strat, g)
                 self.assertIsInstance(terms, list)
@@ -341,6 +468,76 @@ class TestSimulationStrategies(unittest.TestCase):
 
         best = find_best_cat(g)
         self.assertEqual(best, v_real_cat, f"find_best_cat should have skipped non-cat spider {v_non_cat} and returned {v_real_cat}")
+
+    def test_find_best_decomp_finding_best_decomp(self):
+        """Tests if find_best_decomp in lpmc3 strategy actually finds the best decomp"""
+        # First we create all tests graphs, then we check correctness.
+        expected_awnsers = []
+
+        g_lp1 = Graph()
+        v = g_lp1.add_vertex(VertexType.Z, 0, 0, Fraction(1, 4))
+        under_v = g_lp1.add_vertex(VertexType.Z, 1, 0, Fraction(1, 4))
+        g_lp1.add_edge((v, under_v), EdgeType.HADAMARD)
+        for i in range(6):
+            x = g_lp1.add_vertex(VertexType.Z, -1, i-1.5, Fraction(1, 4))
+            g_lp1.add_edge((v, x), EdgeType.HADAMARD)
+        expected_awnsers.append((Decomp.LONE_PHASE_1, g_lp1, [v]))
+
+        g_lp2 = Graph()
+        z1 = g_lp2.add_vertex(VertexType.Z, 0, 0, Fraction(1, 4))
+        z2 = g_lp2.add_vertex(VertexType.Z, 0, 8, Fraction(1, 4))
+        b1 = g_lp2.add_vertex(VertexType.Z, 2, 0, Fraction(1, 4))
+        b2 = g_lp2.add_vertex(VertexType.Z, 2, 8, Fraction(1, 4))
+        g_lp2.add_edges([(z1, b1), (z1, b2)], EdgeType.HADAMARD)
+        for i in range(6):
+            x = g_lp2.add_vertex(VertexType.Z, -2, 2*i, Fraction(1, 4))
+            g_lp2.add_edges([(z1, x), (z2, x)], EdgeType.HADAMARD)
+        expected_awnsers.append((Decomp.LONE_PHASE_2, g_lp2, [z1, z2]))
+
+        g_mc31 = Graph()
+        v = g_mc31.add_vertex(VertexType.Z, 0, 0, Fraction(1, 4))
+        under_v = g_mc31.add_vertex(VertexType.Z, 1, 0, Fraction(1, 4))
+        g_mc31.add_edge((v, under_v))
+        for i in range(6):
+            z = g_mc31.add_vertex(VertexType.Z, -1, i + 1)
+            x = g_mc31.add_vertex(VertexType.Z, -2, i + 1, Fraction(1, 4))
+            y = g_mc31.add_vertex(VertexType.Z, 0, i + 1, Fraction(1, 4))
+            under_y = g_mc31.add_vertex(VertexType.Z, 1, i + 1, Fraction(1, 4))
+            g_mc31.add_edges([(v, z), (z, x), (z, y), (y, under_y)], EdgeType.HADAMARD)
+        expected_awnsers.append((Decomp.MULTI_CAT3_1, g_mc31, [v]))
+
+        g_mc32 = Graph()
+        z1 = g_mc32.add_vertex(VertexType.Z, 0, 0, Fraction(1, 4))
+        z2 = g_mc32.add_vertex(VertexType.Z, 0, 8, Fraction(1, 4))
+        b1 = g_mc32.add_vertex(VertexType.Z, 2, 0, Fraction(1, 4))
+        b2 = g_mc32.add_vertex(VertexType.Z, 2, 8, Fraction(1, 4))
+        g_mc32.add_edges([(z1, b1), (z1, b2)], EdgeType.HADAMARD)
+        for i in range(6):
+            v = g_mc32.add_vertex(VertexType.Z, -2, 2*i)
+            y = g_mc32.add_vertex(VertexType.Z, -2, 2*i + 1, Fraction(1, 4))
+            x = g_mc32.add_vertex(VertexType.Z, -4, 2*i, Fraction(1, 4))
+            above_x = g_mc32.add_vertex(VertexType.Z, -6, 2*i, Fraction(1, 4))
+            g_mc32.add_edges([(z1, v), (z2, v), (v, y), (v, x), (x, above_x)], EdgeType.HADAMARD)
+        expected_awnsers.append((Decomp.MULTI_CAT3_2, g_mc32, [z1, z2]))
+
+        for n, d in zip([3, 4, 5, 6], [Decomp.CAT_3, Decomp.CAT_4, Decomp.CAT_5, Decomp.CAT_6]):
+            g_cat = Graph()
+            v = g_cat.add_vertex(VertexType.Z, 0, 0)
+            for i in range(n):
+                x = g_cat.add_vertex(VertexType.Z, 2, i, Fraction(1, 4))
+                y = g_cat.add_vertex(VertexType.Z, 4, i, Fraction(1, 4))
+                g_cat.add_edges([(v, x), (x, y)], EdgeType.HADAMARD)
+            expected_awnsers.append((d, g_cat, [v]))
+
+        for d, g, vxs in expected_awnsers:
+            vxs2, d2 = find_best_decomp(g)
+            self.assertTrue(d == d2, msg=f"{d} is not {d2}")
+            self.assertTrue(set(vxs) == set(vxs2))
+
+        g_boring = Graph()
+        vxs, d = find_best_decomp(g_boring)
+        self.assertIsNone(vxs)
+        self.assertIsNone(d)
 
     def test_strategy_metadata(self) -> None:
         """Verify all Strategy enum entries have valid specifications and references."""
