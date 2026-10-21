@@ -27,6 +27,15 @@ jobs:
         with:
           fetch-depth: 0
 
+      # CLAUDE_CODE_SUBPROCESS_ENV_SCRUB uses Claude Code's Bash sandbox, which needs bubblewrap
+      # and socat (for its network proxy); the runner image has neither.
+      # Ubuntu 24.04 also blocks unprivileged user namespaces via AppArmor, which bwrap needs.
+      - name: Install sandbox dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y bubblewrap socat
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+
       # Everything in this step is built from the trusted checkout, BEFORE the
       # action switches the workspace to the PR branch.
       - name: Prepare sandbox
