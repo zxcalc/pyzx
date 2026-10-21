@@ -37,7 +37,7 @@ Hence, occasionally changes will be backwards incompatible (although they will a
 ### Removed
 - Python 3.10 is no longer supported because it has reached end-of-life.
 - The deprecated function `extract.streaming_extract()` was removed. Use `extract.extract_circuit()` instead.
-- The deprecated functions `jsonparser.graph_to_json_old()` and `jsonparser.graph_to_dict_old()` were removed and are no longer used as a fallback when parsing JSON using `jsonparser.graph_to_json()`. This means that the old Quantomatic format can no longer be loaded.
+- The deprecated functions `jsonparser.json_to_graph_old()` and `jsonparser.graph_to_dict_old()` were removed and are no longer used as a fallback when parsing JSON using `jsonparser.json_to_graph()`. This means that the old Quantomatic format can no longer be loaded.
 - The deprecated function `d3.draw()` was removed. Use `drawing.draw_d3()` or `drawing.draw()` instead.
 - The module `gadget_extract` was removed because it was experimental and incomplete.
 
