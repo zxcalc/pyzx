@@ -32,7 +32,7 @@ def decompose(g: BaseGraph[VT, ET]) -> list[BaseGraph[VT, ET]]:
 
 def replace_states(g: BaseGraph[VT, ET]) -> SumGraph:
     vs, decomp = find_best_decomp(g)
-    if decomp:
+    if decomp and vs:
         return apply_decomp(decomp, g, *vs)
     else:
         return apply_fallback(g)
