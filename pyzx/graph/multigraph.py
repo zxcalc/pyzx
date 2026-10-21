@@ -458,10 +458,7 @@ class Multigraph(BaseGraph[int, tuple[int, int, EdgeType]]):
         phase = normalize_phase(phase)
         old_phase = self._phase.get(vertex, Fraction(1))
         try:
-            if isinstance(old_phase, Fraction) and isinstance(phase, Fraction):
-                self._phase[vertex] = (old_phase + phase) % 2
-            else:
-                self._phase[vertex] = old_phase + phase
+            self._phase[vertex] = (old_phase + phase) % 2
         except Exception:
             self._phase[vertex] = old_phase + phase
     
