@@ -38,14 +38,14 @@ def replace_states(g: BaseGraph[VT, ET]) -> SumGraph:
         return apply_fallback(g)
 
 
-def find_best_decomp(g: BaseGraph[VT, ET]) -> tuple[list[VT] | None, Decomp | None]:
+def find_best_decomp(g: BaseGraph[VT, ET]) -> tuple[list[VT], Decomp] | tuple[None, None]:
     """
     Returns (vertices, decomp): the decomposition, the input vertices of that decomposition.
     Returns (None, None) if not like Lone_phase, multicat or cat like,
         indicating magic5, magic2 or cut should be used instead.
     """
     best_alpha = 100.0
-    best_decomp: tuple[list[VT] | None, Decomp | None] = (None, None)
+    best_decomp: tuple[list[VT], Decomp] | tuple[None, None] = (None, None)
     for v1 in g.vertices():
         for get_alpha, decomp in [(lone_phase_1.get_alpha, Decomp.LONE_PHASE_1),
                                   (multicat3_1.get_alpha, Decomp.MULTI_CAT3_1)]:
