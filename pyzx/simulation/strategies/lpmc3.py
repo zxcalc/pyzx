@@ -58,21 +58,21 @@ def find_best_decomp(g: BaseGraph[VT, ET]) -> tuple[list[VT] | None, Decomp | No
             except ValueError:
                 pass
 
-        for get_alpha, decomp in [(multicat3_2.get_alpha, Decomp.MULTI_CAT3_2),
+        for get_alpha2, decomp2 in [(multicat3_2.get_alpha, Decomp.MULTI_CAT3_2),
                                   (lone_phase_2.get_alpha, Decomp.LONE_PHASE_2)]:
             for v2 in g.vertices():
                 if v1 == v2:
                     continue
                 try:
-                    check_valid(decomp, g, v1, v2)  # crashes if invalid
-                    alpha = get_alpha(g, v1, v2)
+                    check_valid(decomp2, g, v1, v2)  # crashes if invalid
+                    alpha = get_alpha2(g, v1, v2)
                     if alpha < best_alpha:
                         best_alpha = alpha
-                        best_decomp = ([v1, v2], decomp)
+                        best_decomp = ([v1, v2], decomp2)
                 except ValueError:
                     pass
 
-        for deg, alpha, decomp in [(3, 1/3, Decomp.CAT_3),
+        for deg, alpha, decomp3 in [(3, 1/3, Decomp.CAT_3),
                                    (4, 1/4, Decomp.CAT_4),
                                    (5, 0.3169925001442, Decomp.CAT_5),
                                    (6, 0.2641604167859, Decomp.CAT_6)]:
@@ -80,7 +80,7 @@ def find_best_decomp(g: BaseGraph[VT, ET]) -> tuple[list[VT] | None, Decomp | No
                 try:
                     check_valid(Decomp.CAT_N, g, v1)
                     best_alpha = alpha
-                    best_decomp = ([v1], decomp)
+                    best_decomp = ([v1], decomp3)
                 except ValueError:
                     pass
 
