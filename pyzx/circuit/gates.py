@@ -855,13 +855,19 @@ class ParityPhase(Gate):
     name = 'ParityPhase'
     print_phase = True
     def __init__(self, phase: FractionLike, *targets: int, as_gadget: bool = False):
+        if not targets:
+            raise ValueError("ParityPhase requires at least one target qubit.")
+        if len(targets) != len(set(targets)):
+            raise ValueError("ParityPhase target qubits must be distinct.")
         self.targets = targets
         self.phase = phase
         self.as_gadget = as_gadget
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, ParityPhase): return False
+        if isinstance(other, RZZ): return False
         if self.index != other.index: return False
+        if self.as_gadget != getattr(other, "as_gadget", False): return False
         if set(self.targets) == set(other.targets) and self.phase == other.phase:
             return True
         return False
@@ -875,21 +881,39 @@ class ParityPhase(Gate):
     def _max_target(self) -> int:
         return max(self.targets)
 
-    def copy(self) -> 'ParityPhase':
-        return type(self)(self.phase, *self.targets, as_gadget=self.as_gadget)
-
     def reposition(self, mask: list[int], bit_mask: list[int] | None = None) -> 'ParityPhase':
         g = self.copy()
         g.targets = tuple(mask[t] for t in g.targets)
         return g
 
+    def _decompose_cnots(self) -> list[Gate]:
+        cnots: list[Gate] = [CNOT(self.targets[i],self.targets[i+1]) for i in range(len(self.targets)-1)]
+        p = ZPhase(self.targets[-1], self.phase)
+        return cnots + [p] + list(reversed(cnots))
+
     def to_basic_gates(self) -> list[Gate]:
         if self.as_gadget:
             # Keep as-is so to_graph() can create the phase gadget structure.
             return [self]
-        cnots: list[Gate] = [CNOT(self.targets[i],self.targets[i+1]) for i in range(len(self.targets)-1)]
-        p = ZPhase(self.targets[-1], self.phase)
-        return cnots + [p] + list(reversed(cnots))
+        return self._decompose_cnots()
+
+    def _export_via_cnots(self, export_attr: str) -> str:
+        return "\n".join(getattr(g, export_attr)() for g in self._decompose_cnots())
+
+    def to_qasm(self) -> str:
+        if self.qasm_name != 'undefined':
+            return super().to_qasm()
+        return self._export_via_cnots('to_qasm')
+
+    def to_qc(self) -> str:
+        if self.qc_name != 'undefined':
+            return super().to_qc()
+        return self._export_via_cnots('to_qc')
+
+    def to_quipper(self) -> str:
+        if self.quipper_name != 'undefined':
+            return super().to_quipper()
+        return self._export_via_cnots('to_quipper')
     
     def to_graph(self, g: BaseGraph[VT, ET], q_mapper: TargetMapper[VT], c_mapper: TargetMapper[VT]) -> None:
         if self.as_gadget:
@@ -906,13 +930,17 @@ class ParityPhase(Gate):
                 gate.to_graph(g, q_mapper, c_mapper)
 
     def tcount(self) -> int:
-        return 1 if self.phase.denominator > 2 else 0
+        denom = getattr(self.phase, 'denominator', 1)
+        return 1 if denom > 2 else 0
 
 
 class PhaseGadget(ParityPhase):
     """A ParityPhase gate that will be represented as a phase gadget in ZX-diagrams.
 
     This is equivalent to ParityPhase(phase, *targets, as_gadget=True).
+    When exported to OpenQASM, .qc, or Quipper formats, the gate is decomposed into
+    its equivalent CNOT ladder and ZPhase rotation, as these formats do not have a
+    native phase gadget instruction.
     """
     def __init__(self, phase: FractionLike, *targets: int) -> None:
         super().__init__(phase, *targets, as_gadget=True)
@@ -922,11 +950,27 @@ class RZZ(ParityPhase):
     name = 'RZZ'
     qasm_name = 'rzz'
     def __init__(self, control: int, target: int, phase: FractionLike) -> None:
+        if control == target:
+            raise ValueError("RZZ control and target qubits must be distinct.")
         self.control = control
         self.target = target
         self.targets = (control, target)
         self.phase = phase
         self.as_gadget = False
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, RZZ): return False
+        if self.index != other.index: return False
+        if set([self.control, self.target]) == set([other.control, other.target]) and self.phase == other.phase:
+            return True
+        return False
+
+    def reposition(self, mask: list[int], bit_mask: list[int] | None = None) -> 'RZZ':
+        g = self.copy()
+        g.control = mask[self.control]
+        g.target = mask[self.target]
+        g.targets = (g.control, g.target)
+        return g
 
 
 class FSim(Gate):
