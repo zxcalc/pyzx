@@ -44,8 +44,7 @@ class QASMParser:
         self.qubit_count: int = 0
         self.bit_count: int = 0
         self.circuit: Circuit | None = None
-        self.strict: bool = False
-        self.has_include: bool = False
+
 
     def parse(self, s: str, strict: bool = True) -> Circuit:
         self.gates = []
@@ -57,8 +56,7 @@ class QASMParser:
         self.qubit_count = 0
         self.bit_count = 0
         self.circuit = None
-        self.strict = strict
-        self.has_include = False
+
         lines = s.splitlines()
         r = []
         #strip comments
@@ -85,7 +83,6 @@ class QASMParser:
             m3 = re.match(r'^include\s*(["\'])stdgates\.inc\1\s*;', r[0]) if self.qasm_version == 3 else None
             m = m2 or m3
             if m:
-                self.has_include = True
                 rest = r[0][m.end():].strip()
                 if rest:
                     r[0] = rest
@@ -177,16 +174,6 @@ class QASMParser:
         body = body[:-1].strip()
         commands = [s.strip() for s in body.split(";") if s.strip()]
         if params:
-            if self.strict and not self.has_include:
-                builtin_gates = ("U",) if self.qasm_version == 3 else ("U", "CX")
-                for cmd in commands:
-                    cmd_name = (cmd.split("(", 1)[0] if "(" in cmd else cmd.split(" ", 1)[0]).strip()
-                    if cmd_name == "barrier":
-                        continue
-                    if (cmd_name not in builtin_gates and
-                            cmd_name not in self.custom_gates and
-                            cmd_name not in self.parametrized_gates):
-                        raise TypeError("File is not importing standard library")
             self.parametrized_gates[name] = (params, qubit_args, commands)
             return
         registers = {a: (k, 1) for k, a in enumerate(qubit_args)}
@@ -297,11 +284,7 @@ class QASMParser:
                 gates.append(ConditionalGate(reg_name, cond_val, ig, reg_size))
             return gates
         name, phases, args = self.extract_command_parts(c)
-        if name == "barrier": return gates
-        if name == "id":
-            if self.strict and not self.has_include and name not in self.custom_gates:
-                raise TypeError("File is not importing standard library")
-            return gates
+        if name in ("barrier", "id"): return gates
         if name == "creg":
             regname, size = self._parse_register_declaration(args[0])
             self.cregisters[regname] = size
@@ -365,19 +348,14 @@ class QASMParser:
                     for i in range(size):
                         gates.append(Reset(start + i))
             return gates
-        if name in ("opaque",):
+        if name in ("opaque", "include"):
             raise TypeError("Unsupported operation {}".format(c))
         if name == "qreg":
             regname, size = self._parse_register_declaration(args[0])
             registers[regname] = (self.qubit_count, size)
             self.qubit_count += size
             return gates
-        if self.strict and not self.has_include:
-            builtin_gates = ("U",) if self.qasm_version == 3 else ("U", "CX")
-            if (name not in builtin_gates and
-                    name not in self.custom_gates and
-                    name not in self.parametrized_gates):
-                raise TypeError("File is not importing standard library")
+
         qubit_values = []
         is_range = False
         dim = 1
@@ -391,6 +369,8 @@ class QASMParser:
                     raise TypeError("Invalid register {}".format(regname))
                 qubit_values.append([registers[regname][0]+val])
             else:
+                if a not in registers:
+                    raise TypeError("Invalid register {}".format(a))
                 if is_range:
                     if registers[a][1] != dim:
                         raise TypeError("Error in parsing {}: Register sizes do not match".format(c))
