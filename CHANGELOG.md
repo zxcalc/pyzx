@@ -13,6 +13,7 @@ Hence, occasionally changes will be backwards incompatible (although they will a
 - `pyzx.flow.pauli_flow` as the entry point for Pauli flow on XY, X, and Y measurements. (by @pmitos)
 - Optional `layers_only=True` on cubic flow finders, returning partial order layers without correction sets. (by @pmitos)
 - The X-H bialgebra rule now supports H-box with phases and complex labels. Automatic simplification remains restricted to standard H-boxes. (by @RazinShaikh)
+- Added decompositions from https://arxiv.org/pdf/2412.17182, including a strategy that uses them, and tests.
 
 ### Changed
 - The default flow finder always returns focused correction sets, which can differ from those returned by the legacy finder. Use `method="legacy", focus=False` to retain the previous choice. In the cubic method, the ground constraints for focused flow are selected separately with `include_ground_constraints`. `focus` is legacy only. (by @pmitos)
