@@ -2253,22 +2253,20 @@ class TestQASM(unittest.TestCase):
         self.assertEqual(len(c.gates), len(c2.gates))
 
     def test_qasm2_builtin_gates_without_include(self):
-        """OpenQASM 2 with only built-in gates (U, u, CX, cx) does not require include."""
+        """OpenQASM 2 with only built-in gates (U, CX) does not require include."""
         qasm = """OPENQASM 2.0;
         qreg q[2];
         creg c[1];
         U(pi, 0, pi) q[0];
-        u(0, pi, 0) q[1];
         CX q[0], q[1];
-        cx q[1], q[0];
         barrier q;
         reset q[0];
         measure q[0] -> c[0];
         """
         c = Circuit.from_qasm(qasm)
         self.assertEqual(c.qubits, 2)
-        # 4 gates (U, u, CX, cx) + 1 reset + 1 measure = 6 gates
-        self.assertEqual(len(c.gates), 6)
+        # 2 gates (U, CX) + 1 reset + 1 measure = 4 gates
+        self.assertEqual(len(c.gates), 4)
 
     def test_qasm2_custom_gate_without_include(self):
         """Custom gates defined with built-in primitives succeed without include."""
@@ -2299,9 +2297,9 @@ class TestQASM(unittest.TestCase):
 
     def test_qasm2_missing_include_raises_for_stdlib_gates(self):
         """Using gates that require the standard library raises TypeError in strict mode."""
-        for gate_stmt in ("h q[0];", "x q[0];", "rz(pi/2) q[0];", "id q[0];"):
+        for gate_stmt in ("h q[0];", "x q[0];", "rz(pi/2) q[0];", "id q[0];", "u(0, pi, 0) q[0];", "cx q[0], q[1];"):
             qasm = f"""OPENQASM 2.0;
-            qreg q[1];
+            qreg q[2];
             {gate_stmt}
             """
             with self.assertRaises(TypeError) as ctx:
@@ -2337,15 +2335,14 @@ class TestQASM(unittest.TestCase):
         qasm = """OPENQASM 3;
         qubit[1] q;
         U(pi, 0, pi) q[0];
-        u(0, 0, pi) q[0];
         """
         c = Circuit.from_qasm(qasm)
         self.assertEqual(c.qubits, 1)
-        self.assertEqual(len(c.gates), 2)
+        self.assertEqual(len(c.gates), 1)
 
     def test_qasm3_missing_include_raises_for_cx_and_stdlib_gates(self):
-        """OpenQASM 3 programs using cx or other stdgates require include 'stdgates.inc'."""
-        for gate_stmt in ("cx q[0], q[1];", "h q[0];", "x q[0];"):
+        """OpenQASM 3 programs using u, cx or other stdgates require include 'stdgates.inc'."""
+        for gate_stmt in ("u(0, 0, pi) q[0];", "cx q[0], q[1];", "h q[0];", "x q[0];"):
             qasm = f"""OPENQASM 3;
             qubit[2] q;
             {gate_stmt}
@@ -2353,6 +2350,42 @@ class TestQASM(unittest.TestCase):
             with self.assertRaises(TypeError) as ctx:
                 Circuit.from_qasm(qasm)
             self.assertIn("File is not importing standard library", str(ctx.exception))
+
+    def test_empty_code_strict_vs_nonstrict(self):
+        """Empty code raises TypeError when strict=True, returns empty circuit when strict=False."""
+        with self.assertRaises(TypeError) as ctx:
+            Circuit.from_qasm("", strict=True)
+        self.assertIn("File does not start with supported OPENQASM descriptor", str(ctx.exception))
+
+        with self.assertRaises(TypeError) as ctx:
+            Circuit.from_qasm("// only comments\n", strict=True)
+        self.assertIn("File does not start with supported OPENQASM descriptor", str(ctx.exception))
+
+        c = Circuit.from_qasm("", strict=False)
+        self.assertEqual(c.qubits, 0)
+        self.assertEqual(len(c.gates), 0)
+
+        c = Circuit.from_qasm("// only comments\n", strict=False)
+        self.assertEqual(c.qubits, 0)
+        self.assertEqual(len(c.gates), 0)
+
+    def test_mismatched_quotes_in_include_raises(self):
+        """Include statement with mismatched quotation marks is rejected."""
+        qasm = """OPENQASM 2.0;
+        include "qelib1.inc';
+        qreg q[1];
+        x q[0];
+        """
+        with self.assertRaises(TypeError):
+            Circuit.from_qasm(qasm)
+
+        qasm3 = """OPENQASM 3;
+        include "stdgates.inc';
+        qubit[1] q;
+        x q[0];
+        """
+        with self.assertRaises(TypeError):
+            Circuit.from_qasm(qasm3)
 
 
 

@@ -421,14 +421,14 @@ class Circuit:
             return quipper_center_block(fname)
 
     @staticmethod
-    def from_qasm(s: str) -> 'Circuit':
+    def from_qasm(s: str, strict: bool = True) -> 'Circuit':
         """Produces a :class:`Circuit` based on a QASM input string.
         Supports OpenQASM 2 and 3, including ``reset``, ``measure``,
         and ``if`` (classical control / feedforward) statements.
         It currently doesn't support custom gates that have parameters."""
         from .qasmparser import QASMParser
         p = QASMParser()
-        return p.parse(s)
+        return p.parse(s, strict=strict)
 
     @staticmethod
     def from_qasm_file(fname: str) -> 'Circuit':

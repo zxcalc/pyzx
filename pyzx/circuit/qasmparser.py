@@ -69,6 +69,8 @@ class QASMParser:
             if t: r.append(t)
 
         if not r:
+            if strict:
+                raise TypeError("File does not start with supported OPENQASM descriptor.")
             return Circuit(0)
 
         match = re.fullmatch(r"OPENQASM ([23])(\.\d+)?;", r[0])
@@ -79,8 +81,8 @@ class QASMParser:
             raise TypeError("File does not start with supported OPENQASM descriptor.")
 
         if r:
-            m2 = re.match(r'^include\s*["\']qelib1\.inc["\']\s*;', r[0]) if self.qasm_version == 2 else None
-            m3 = re.match(r'^include\s*["\']stdgates\.inc["\']\s*;', r[0]) if self.qasm_version == 3 else None
+            m2 = re.match(r'^include\s*(["\'])qelib1\.inc\1\s*;', r[0]) if self.qasm_version == 2 else None
+            m3 = re.match(r'^include\s*(["\'])stdgates\.inc\1\s*;', r[0]) if self.qasm_version == 3 else None
             m = m2 or m3
             if m:
                 self.has_include = True
@@ -176,7 +178,7 @@ class QASMParser:
         commands = [s.strip() for s in body.split(";") if s.strip()]
         if params:
             if self.strict and not self.has_include:
-                builtin_gates = ("u", "U") if self.qasm_version == 3 else ("u", "U", "cx", "CX")
+                builtin_gates = ("U",) if self.qasm_version == 3 else ("U", "CX")
                 for cmd in commands:
                     cmd_name = (cmd.split("(", 1)[0] if "(" in cmd else cmd.split(" ", 1)[0]).strip()
                     if cmd_name == "barrier":
@@ -371,7 +373,7 @@ class QASMParser:
             self.qubit_count += size
             return gates
         if self.strict and not self.has_include:
-            builtin_gates = ("u", "U") if self.qasm_version == 3 else ("u", "U", "cx", "CX")
+            builtin_gates = ("U",) if self.qasm_version == 3 else ("U", "CX")
             if (name not in builtin_gates and
                     name not in self.custom_gates and
                     name not in self.parametrized_gates):
