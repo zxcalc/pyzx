@@ -23,8 +23,6 @@ import warnings
 from fractions import Fraction
 from typing import TYPE_CHECKING, Any
 
-from typing_extensions import deprecated
-
 from ..symbolic import Poly, VarRegistry, new_var, parse
 from ..utils import EdgeType, VertexType, phase_to_s
 from .base import ET, VT, BaseGraph
@@ -72,119 +70,6 @@ def string_to_phase(string: str, g: 'BaseGraph | GraphDiff | None' = None) -> Fr
         if isinstance(value, (int, Fraction)):
             return Fraction(value)
         return poly
-
-@deprecated("json_to_graph_old is deprecated, use json_to_graph or dict_to_graph instead")
-def json_to_graph_old(js: str | dict[str, Any], backend: str | None = None) -> BaseGraph:
-    """Deprecated: Use :func:`json_to_graph` or :func:`dict_to_graph` instead.
-
-    Converts the json representation of a .qgraph Quantomatic graph into
-    a pyzx graph. If JSON is given as a string, parse it first."""
-    if isinstance(js, str):
-        j = json.loads(js)
-    else:
-        j = js
-    g = Graph(backend)
-    g.variable_types = j.get('variable_types',{})
-
-    names: dict[str, Any] = {} # TODO: Any = VT
-    hadamards: dict[str, list[Any]] = {}
-    for name,attr in j.get('node_vertices',{}).items():
-        if ('data' in attr and 'type' in attr['data'] and attr['data']['type'] == "hadamard"
-            and 'is_edge' in attr['data'] and attr['data']['is_edge'] == 'true'):
-            hadamards[name] = []
-            continue
-        c = attr['annotation']['coord']
-        q, r = -c[1], c[0]
-        if q == int(q): q = int(q)
-        if r == int(r): r = int(r)
-        v = g.add_vertex(qubit=q, row=r)
-        g.set_vdata(v,'name',name)
-        names[name] = v
-        if 'data' in attr:
-            d = attr['data']
-            if not 'type' in d or d['type'] == 'Z': g.set_type(v,VertexType.Z)
-            elif d['type'] == 'X': g.set_type(v,VertexType.X)
-            elif d['type'] == 'hadamard': g.set_type(v,VertexType.H_BOX)
-            elif d['type'] == 'W_input': g.set_type(v,VertexType.W_INPUT)
-            elif d['type'] == 'W_output': g.set_type(v,VertexType.W_OUTPUT)
-            elif d['type'] == 'Z_box': g.set_type(v,VertexType.Z_BOX)
-            else: raise TypeError("unsupported type '{}'".format(d['type']))
-            if 'value' in d:
-                g.set_phase(v,string_to_phase(d['value'],g))
-            else:
-                g.set_phase(v,Fraction(0,1))
-            if d.get('ground', False):
-                g.set_ground(v)
-        else:
-            g.set_type(v,VertexType.Z)
-            g.set_phase(v,Fraction(0,1))
-        for key, value in attr['annotation'].items():
-            if key == 'coord':
-                continue
-            elif key == 'label':
-                if type(value) != complex:
-                    value = string_to_phase(value,g)
-            g.set_vdata(v, key, value)
-
-    inputs = {}
-    outputs = {}
-
-    for name,attr in j.get('wire_vertices',{}).items():
-        ann = attr['annotation']
-        c = ann['coord']
-        q, r = -c[1], c[0]
-        if q == int(q): q = int(q)
-        if r == int(r): r = int(r)
-        v = g.add_vertex(VertexType.BOUNDARY,q,r)
-        g.set_vdata(v,'name',name)
-        names[name] = v
-        if "input" in ann: inputs[v] = ann["input"]
-        if "output" in ann: outputs[v] = ann["output"]
-        for key, value in attr['annotation'].items():
-            if key in ('boundary','coord','input','output'):
-                continue
-            g.set_vdata(v, key, value)
-
-    g.set_inputs(tuple(sorted(inputs.keys(),key=lambda v:inputs[v])))
-    g.set_outputs(tuple(sorted(outputs.keys(),key=lambda v:outputs[v])))
-
-    edges: dict[Any, list[int]] = {} # TODO: Any = ET
-    for edge in j.get('undir_edges',{}).values():
-        n1, n2 = edge['src'], edge['tgt']
-        if n1 in hadamards and n2 in hadamards: #Both
-            v = g.add_vertex(VertexType.Z)
-            name = "v"+str(len(names))
-            g.set_vdata(v, 'name',name)
-            names[name] = v
-            hadamards[n1].append(v)
-            hadamards[n2].append(v)
-            continue
-        if n1 in hadamards:
-            hadamards[n1].append(names[n2])
-            continue
-        if n2 in hadamards:
-            hadamards[n2].append(names[n1])
-            continue
-        if 'type' in edge and edge['type'] == 'w_io':
-            g.add_edge((names[n1],names[n2]), EdgeType.W_IO)
-            continue
-
-        amount = edges.get((names[n1],names[n2]),[0,0])
-        amount[0] += 1
-        edges[(names[n1],names[n2])] = amount
-
-    for l in hadamards.values():
-        if len(l) != 2: raise TypeError("Can't parse graphs with irregular Hadamard nodes")
-        e = tuple(l)
-        amount = edges.get(e,[0,0])
-        amount[1] += 1
-        edges[e] = amount
-
-    if "scalar" in j:
-        g.scalar = Scalar.from_json(j["scalar"])
-    g.add_edge_table(edges)
-
-    return g
 
 def graph_to_dict(g: BaseGraph[VT, ET], include_scalar: bool = True) -> dict[str, Any]:
     """Converts a PyZX graph into Python dict for JSON output.
@@ -250,117 +135,6 @@ def graph_to_dict(g: BaseGraph[VT, ET], include_scalar: bool = True) -> dict[str
     d['edges']  = edges
     return d
 
-
-@deprecated("graph_to_dict_old is deprecated, use graph_to_dict instead")
-def graph_to_dict_old(g: BaseGraph[VT, ET], include_scalar: bool = True) -> dict[str, Any]:
-    """Deprecated: Use :func:`graph_to_dict` instead.
-
-    Converts a PyZX graph into Python dict for JSON output that is compatible with the Quantomatic format.
-    If include_scalar is set to True (the default), then this includes the value
-    of g.scalar with the json, which will also be loaded by the ``from_json`` method."""
-    node_vs: dict[str, dict[str, Any]] = {}
-    wire_vs: dict[str, dict[str, Any]] = {}
-    edges: dict[str, dict[str, str]] = {}
-    names: dict[VT, str] = {}
-    freenamesv = ["v"+str(i) for i in range(g.num_vertices()+g.num_edges())]
-    freenamesb = ["b"+str(i) for i in range(g.num_vertices())]
-    inputs = g.inputs()
-    outputs = g.outputs()
-    for v in g.vertices():
-        t = g.type(v)
-        coord = [round(g.row(v),3),round(-g.qubit(v),3)]
-        name = g.vdata(v, 'name')
-        if not name:
-            if t == VertexType.BOUNDARY: name = freenamesb.pop(0)
-            else: name = freenamesv.pop(0)
-        else:
-            try:
-                freenamesb.remove(name) if t==VertexType.BOUNDARY else freenamesv.remove(name)
-            except:
-                pass
-
-        names[v] = name
-        if t == VertexType.BOUNDARY:
-            wire_vs[name] = {"annotation":{"boundary":True,"coord":coord}}
-            if v in inputs:
-                wire_vs[name]["annotation"]["input"] = inputs.index(v)
-            if v in outputs:
-                wire_vs[name]["annotation"]["output"] = outputs.index(v)
-
-            for key in g.vdata_keys(v):
-                if key in wire_vs[name]["annotation"]:
-                    continue
-                wire_vs[name]["annotation"][key] = g.vdata(v, key)
-        else:
-            node_vs[name] = {"annotation": {"coord":coord},"data":{}}
-            if t==VertexType.Z:
-                node_vs[name]["data"]["type"] = "Z"
-            elif t==VertexType.X:
-                node_vs[name]["data"]["type"] = "X"
-            elif t==VertexType.H_BOX:
-                node_vs[name]["data"]["type"] = "hadamard"
-                node_vs[name]["data"]["is_edge"] = "false"
-                # Only export label if set; legacy H-boxes use phase field instead.
-                hbox_label = g.vdata(v, 'label', None)
-                if hbox_label is not None:
-                    if isinstance(hbox_label, Fraction):
-                        hbox_label = phase_to_s(hbox_label, limit_denominator=False)
-                    node_vs[name]["annotation"]["label"] = hbox_label
-            elif t==VertexType.W_INPUT:
-                node_vs[name]["data"]["type"] = "W_input"
-            elif t==VertexType.W_OUTPUT:
-                node_vs[name]["data"]["type"] = "W_output"
-            elif t==VertexType.Z_BOX:
-                node_vs[name]["data"]["type"] = "Z_box"
-                zbox_label = g.vdata(v, 'label', 1)
-                if isinstance(zbox_label, Fraction):
-                    zbox_label = phase_to_s(zbox_label, limit_denominator=False)
-                node_vs[name]["annotation"]["label"] = zbox_label
-            else: raise Exception("Unkown vertex type "+ str(t))
-            phase = phase_to_s(g.phase(v), limit_denominator=False)
-            if phase: node_vs[name]["data"]["value"] = phase
-            if g.is_ground(v):
-                node_vs[name]["data"]["ground"] = True
-            if not node_vs[name]["data"]: del node_vs[name]["data"]
-            for key in g.vdata_keys(v):
-                if key in node_vs[name]["annotation"]:
-                    continue
-                node_vs[name]["annotation"][key] = g.vdata(v, key)
-
-    i = 0
-    for e in g.edges():
-        src,tgt = g.edge_st(e)
-        et = g.edge_type(e)
-        if et == EdgeType.SIMPLE:
-            edges["e"+ str(i)] = {"src": names[src],"tgt": names[tgt]}
-            i += 1
-        elif et == EdgeType.HADAMARD:
-            x1,y1 = g.row(src), -g.qubit(src)
-            x2,y2 = g.row(tgt), -g.qubit(tgt)
-            hadname = freenamesv.pop(0)
-            node_vs[hadname] = {"annotation": {"coord":[round((x1+x2)/2.0,3),round((y1+y2)/2.0,3)]},
-                             "data": {"type": "hadamard","is_edge": "true"}}
-            edges["e"+str(i)] = {"src": names[src],"tgt": hadname}
-            i += 1
-            edges["e"+str(i)] = {"src": names[tgt],"tgt": hadname}
-            i += 1
-        elif et == EdgeType.W_IO:
-            edges["e"+str(i)] = {"src": names[src],"tgt": names[tgt], "type": "w_io"}
-            i += 1
-        else:
-            raise TypeError("Edge of type 0")
-
-    d: dict[str, Any] = {
-        "wire_vertices": wire_vs,
-        "node_vertices": node_vs,
-        "undir_edges": edges,
-        "variable_types": g.variable_types,
-    }
-    if include_scalar:
-        d["scalar"] = g.scalar.to_dict()
-
-    return d
-
 def graph_to_json(g: BaseGraph[VT, ET], include_scalar: bool = True) -> str:
     """Converts a PyZX graph into JSON output compatible with Quantomatic.
     If include_scalar is set to True (the default), then this includes the value
@@ -372,12 +146,8 @@ def dict_to_graph(d: dict[str, Any], backend: str | None = None) -> BaseGraph:
     a pyzx Graph.
     If backend is given, it will be used as the backend for the graph,
     otherwise the backend will be read from the dict description."""
-    if not 'version' in d:
-        # Version is not specified in dictionary, will try to parse it as an older format.
-        # Suppress the deprecation warning since this is an internal fallback.
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", DeprecationWarning)
-            return json_to_graph_old(d, backend)
+    if 'version' not in d:
+        raise ValueError("No version specified. To load an older format, please use pyzx version 0.10.7 or earlier.")
     else:
         if d['version'] != 2:
             raise ValueError("Unsupported version "+str(d['version']))

@@ -34,9 +34,12 @@ Hence, occasionally changes will be backwards incompatible (although they will a
 - `Poly.__mod__` no longer leaves a zero-coefficient term behind for Boolean phases, so fusing spiders with phases `(a+1)π` and `π` now gives `a` instead of `a + 0` (#544). (by @Nitesh71332)
 - `PhaseGadget` and `RZZ` now copy, invert (`adjoint`), and tensor correctly without raising `TypeError`. `RZZ.reposition` now updates `control` and `target` attributes alongside `targets`, `ParityPhase.__eq__` distinguishes `RZZ` from `ParityPhase`/`PhaseGadget`, and `PhaseGadget` can now be exported to QASM, .qc, and Quipper formats.
 
-
 ### Removed
 - Python 3.10 is no longer supported because it has reached end-of-life.
+- The deprecated function `extract.streaming_extract()` was removed. Use `extract.extract_circuit()` instead.
+- The deprecated functions `jsonparser.graph_to_json_old()` and `jsonparser.graph_to_dict_old()` were removed and are no longer used as a fallback when parsing JSON using `jsonparser.graph_to_json()`. This means that the old Quantomatic format can no longer be loaded.
+- The deprecated function `d3.draw()` was removed. Use `drawing.draw_d3()` or `drawing.draw()` instead.
+- The module `gadget_extract` was removed because it was experimental and incomplete.
 
 ## [0.10.7] - 2026-10-01
 
