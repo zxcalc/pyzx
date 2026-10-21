@@ -31,7 +31,7 @@ def sort_neighbours(g: BaseGraph[VT, ET], v: VT) -> tuple[list[VT], list[VT]]:
     return xs, others
 
 
-def get_alpha(g: BaseGraph[VT, ET], v: VT):
+def get_alpha(g: BaseGraph[VT, ET], v: VT) -> float:
     n = len(sort_neighbours(g, v)[0])
     return 1/n
 
