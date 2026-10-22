@@ -22,7 +22,6 @@ classifiers = [
     "Development Status :: 4 - Beta",
 ]
 dependencies = [
-    "typing_extensions>=4.5.0",
     "numpy>=1.14",
     "pyperclip>=1.8.1",
     "tqdm>=4.56.0",

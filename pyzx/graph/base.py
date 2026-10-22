@@ -22,10 +22,9 @@ from collections import Counter
 from collections.abc import Callable, Collection, Iterable, Mapping, Sequence
 from fractions import Fraction
 from typing import (TYPE_CHECKING, Any, ClassVar, Generic, Literal, Optional,
-                    TypeVar)
+                    Self, TypeVar)
 
 import numpy as np
-from typing_extensions import Self
 
 from ..symbolic import Poly, Var, VarRegistry
 from ..tensor import TensorStrategy, tensor_to_matrix, tensorfy
