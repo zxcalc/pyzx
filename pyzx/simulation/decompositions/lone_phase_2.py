@@ -41,7 +41,7 @@ def get_alpha(g: BaseGraph[VT, ET], v1: VT, v2: VT) -> float:
 
 @register_decomp(
     Decomp.LONE_PHASE_2,
-    alpha=None,  # dependant on n, alpha=1/(n + 2)
+    alpha=None,  # dependent on n, alpha=1/(n + 2)
     reference='https://arxiv.org/pdf/2412.17182'
 )
 def decompose(g: BaseGraph[VT, ET], y1: VT, y2: VT) -> SumGraph:
@@ -73,14 +73,14 @@ def decompose(g: BaseGraph[VT, ET], y1: VT, y2: VT) -> SumGraph:
 @register_validity_checker(Decomp.LONE_PHASE_2)
 def check_valid(g: BaseGraph[VT, ET], y1: VT, y2: VT) -> bool:
     if y1 == y2:
-        raise ValueError(f'Vertices should be distict, {y1} was given twice')
+        raise ValueError(f'Vertices should be distinct, {y1} was given twice')
     if y2 in g.neighbors(y1):
         raise ValueError(f'Given vertices {y1} and {y2} were neighbours, which is not allowed')
     for y in [y1, y2]:
         if y not in g.vertices():
             raise ValueError(f'Vertex {y} does not exist in graph')
         elif not is_Tlike(g, y)[0] or g.type(y) != VertexType.Z:
-            raise ValueError(f'given vertex {y} should be and T-like')
+            raise ValueError(f'given vertex {y} should be green and T-like')
     if len(sort_neighbours(g, y1, y2)[0]) == 0:
         raise ValueError(f'Vertices {y1} and {y2} don\'t have lone_phase_2 structure')
     return True
