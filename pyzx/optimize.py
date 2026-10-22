@@ -517,8 +517,11 @@ class Optimizer(object):
 
         elif isinstance(g, XPhase):
             # XPhase(θ) = HAD·ZPhase(θ)·HAD, so we handle it by conjugating with HAD
-            # and processing as a ZPhase.
-            self.parse_gate(HAD(t))
+            # and processing as a ZPhase. parse_gate maps its gate's qubit through
+            # self.permutation, and t is already mapped, so the gates passed back to it
+            # must use the unmapped qubit.
+            q = self.permutation[t]
+            self.parse_gate(HAD(q))
             # Normalize phase to Fraction if needed (skip for symbolic Poly phases).
             if isinstance(g.phase, (int, float, Fraction)):
                 if isinstance(g.phase, float):
@@ -527,9 +530,9 @@ class Optimizer(object):
                     phase = Fraction(g.phase)
             else:
                 phase = g.phase  # Symbolic phase, pass through.
-            zphase_gate = ZPhase(t, phase)
+            zphase_gate = ZPhase(q, phase)
             self.parse_gate(zphase_gate)
-            self.parse_gate(HAD(t))
+            self.parse_gate(HAD(q))
 
         else:
             raise TypeError("Unknown gate {}. Maybe simplify the gates with circuit.to_basic_gates()?".format(str(g)))
