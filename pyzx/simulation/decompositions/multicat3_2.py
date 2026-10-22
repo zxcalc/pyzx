@@ -20,7 +20,7 @@ def is_Tlike(g: BaseGraph[VT, ET], v: VT) -> tuple[bool, int]:
 def sort_neighbours(g: BaseGraph[VT, ET], z1: VT, z2: VT) -> tuple[list[VT], list[VT], list[VT], list[VT], list[VT]]:
     """
     returns 5 lists: xs and ys as in the paper, vs (the vertex connecting xi, yi, z1 and z2),
-    the other neigbours of z1, and the other neigbours of z2
+    the other neighbours of z1, and the other neighbours of z2
     """
     xs, ys, vs, z1_others, z2_others = [], [], [], [], []
     for v in g.neighbors(z1):
@@ -59,7 +59,7 @@ def get_alpha(g: BaseGraph[VT, ET], v1: VT, v2: VT) -> float:
 
 @register_decomp(
     Decomp.MULTI_CAT3_2,
-    alpha=None,  # dependant on n, alpha=1/(2n + 2)
+    alpha=None,  # dependent on n, alpha=1/(2n + 2)
     reference='https://arxiv.org/pdf/2412.17182'
 )
 def decompose(g: BaseGraph[VT, ET], z1: VT, z2: VT) -> SumGraph:
@@ -98,12 +98,14 @@ def decompose(g: BaseGraph[VT, ET], z1: VT, z2: VT) -> SumGraph:
 @register_validity_checker(Decomp.MULTI_CAT3_2)
 def check_valid(g: BaseGraph[VT, ET], z1: VT, z2: VT) -> bool:
     if z1 == z2:
-        raise ValueError(f'Vertices should be distict, {z1} was given twice')
+        raise ValueError(f'Vertices should be distinct, {z1} was given twice')
+    if z1 in g.neighbors(z1):
+        raise ValueError(f'Vertices {z1} and {z2} should not be neighbours of eachother')
     for z in [z1, z2]:
         if z not in g.vertices():
             raise ValueError(f'Vertex {z} does not exist in graph')
-        elif not is_Tlike(g, z) or g.type(z) != VertexType.Z:
-            raise ValueError(f'given vertex {z} should be green and with phase pi/4')
+        elif not is_Tlike(g, z)[0] or g.type(z) != VertexType.Z:
+            raise ValueError(f'given vertex {z} should be green T-like')
     if len(sort_neighbours(g, z1, z2)[0]) == 0:
-        raise ValueError(f'Verteces {z1} and {z2} don\'t have decomposition 3 structure')
+        raise ValueError(f'Vertices {z1} and {z2} don\'t have multicat3_2 structure')
     return True
