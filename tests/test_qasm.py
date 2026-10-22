@@ -2252,6 +2252,113 @@ class TestQASM(unittest.TestCase):
         c2 = Circuit.from_qasm(qasm_out)
         self.assertEqual(len(c.gates), len(c2.gates))
 
+    def test_qasm2_without_include(self):
+        """OpenQASM 2 programs parse standard library gates without requiring include."""
+        qasm = """OPENQASM 2.0;
+        qreg q[2];
+        creg c[1];
+        h q[0];
+        cx q[0], q[1];
+        x q[1];
+        rz(pi/2) q[0];
+        u(0, pi, 0) q[1];
+        CX q[0], q[1];
+        U(pi, 0, pi) q[0];
+        barrier q;
+        reset q[0];
+        measure q[0] -> c[0];
+        """
+        c = Circuit.from_qasm(qasm)
+        self.assertEqual(c.qubits, 2)
+        # 7 gate operations + 1 reset + 1 measure = 9 gates
+        self.assertEqual(len(c.gates), 9)
+
+    def test_qasm2_custom_gate_without_include(self):
+        """Custom gates defined with stdlib gates succeed without include."""
+        qasm = """OPENQASM 2.0;
+        gate bell a, b {
+            h a;
+            cx a, b;
+        }
+        qreg q[2];
+        bell q[0], q[1];
+        """
+        c = Circuit.from_qasm(qasm)
+        self.assertEqual(c.qubits, 2)
+        self.assertEqual(len(c.gates), 2)
+
+    def test_qasm2_parametrized_custom_gate_without_include(self):
+        """Parametrized custom gates defined with stdlib gates succeed without include."""
+        qasm = """OPENQASM 2.0;
+        gate my_rx(theta) a {
+            rx(theta) a;
+        }
+        qreg q[1];
+        my_rx(pi/2) q[0];
+        """
+        c = Circuit.from_qasm(qasm)
+        self.assertEqual(c.qubits, 1)
+        self.assertEqual(len(c.gates), 1)
+
+    def test_qasm3_without_include(self):
+        """OpenQASM 3 programs parse standard library gates without requiring include."""
+        qasm = """OPENQASM 3;
+        qubit[2] q;
+        h q[0];
+        cx q[0], q[1];
+        x q[1];
+        U(pi, 0, pi) q[0];
+        """
+        c = Circuit.from_qasm(qasm)
+        self.assertEqual(c.qubits, 2)
+        self.assertEqual(len(c.gates), 4)
+
+    def test_qasm_unknown_gate_raises(self):
+        """Unrecognized gates still raise TypeError."""
+        qasm = """OPENQASM 2.0;
+        qreg q[1];
+        nonexistent_gate q[0];
+        """
+        with self.assertRaises(TypeError):
+            Circuit.from_qasm(qasm)
+
+    def test_empty_code_strict_vs_nonstrict(self):
+        """Empty code raises TypeError when strict=True, returns empty circuit when strict=False."""
+        with self.assertRaises(TypeError) as ctx:
+            Circuit.from_qasm("", strict=True)
+        self.assertIn("File does not start with supported OPENQASM descriptor", str(ctx.exception))
+
+        with self.assertRaises(TypeError) as ctx:
+            Circuit.from_qasm("// only comments\n", strict=True)
+        self.assertIn("File does not start with supported OPENQASM descriptor", str(ctx.exception))
+
+        c = Circuit.from_qasm("", strict=False)
+        self.assertEqual(c.qubits, 0)
+        self.assertEqual(len(c.gates), 0)
+
+        c = Circuit.from_qasm("// only comments\n", strict=False)
+        self.assertEqual(c.qubits, 0)
+        self.assertEqual(len(c.gates), 0)
+
+    def test_mismatched_quotes_in_include_raises(self):
+        """Include statement with mismatched quotation marks is rejected."""
+        qasm = """OPENQASM 2.0;
+        include "qelib1.inc';
+        qreg q[1];
+        x q[0];
+        """
+        with self.assertRaises(TypeError):
+            Circuit.from_qasm(qasm)
+
+        qasm3 = """OPENQASM 3;
+        include "stdgates.inc';
+        qubit[1] q;
+        x q[0];
+        """
+        with self.assertRaises(TypeError):
+            Circuit.from_qasm(qasm3)
+
+
 
 @unittest.skipUnless(stim, "stim needs to be installed for this to run")
 class TestStimQASMInterop(unittest.TestCase):

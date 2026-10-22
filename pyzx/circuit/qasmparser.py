@@ -45,6 +45,7 @@ class QASMParser:
         self.bit_count: int = 0
         self.circuit: Circuit | None = None
 
+
     def parse(self, s: str, strict: bool = True) -> Circuit:
         self.gates = []
         self.custom_gates = {}
@@ -55,6 +56,7 @@ class QASMParser:
         self.qubit_count = 0
         self.bit_count = 0
         self.circuit = None
+
         lines = s.splitlines()
         r = []
         #strip comments
@@ -64,6 +66,11 @@ class QASMParser:
             else: t = s.strip()
             if t: r.append(t)
 
+        if not r:
+            if strict:
+                raise TypeError("File does not start with supported OPENQASM descriptor.")
+            return Circuit(0)
+
         match = re.fullmatch(r"OPENQASM ([23])(\.\d+)?;", r[0])
         if match and match.group(1):
             self.qasm_version = int(match.group(1))
@@ -71,11 +78,16 @@ class QASMParser:
         elif strict:
             raise TypeError("File does not start with supported OPENQASM descriptor.")
 
-        if self.qasm_version == 2 and r[0].startswith('include "qelib1.inc";') or \
-                self.qasm_version == 3 and r[0].startswith('include "stdgates.inc";'):
-            r.pop(0)
-        elif strict:
-            raise TypeError("File is not importing standard library")
+        if r:
+            m2 = re.match(r'^include\s*(["\'])qelib1\.inc\1\s*;', r[0]) if self.qasm_version == 2 else None
+            m3 = re.match(r'^include\s*(["\'])stdgates\.inc\1\s*;', r[0]) if self.qasm_version == 3 else None
+            m = m2 or m3
+            if m:
+                rest = r[0][m.end():].strip()
+                if rest:
+                    r[0] = rest
+                else:
+                    r.pop(0)
 
         data = "\n".join(r)
         # Strip the custom command definitions from the normal commands.
@@ -336,13 +348,14 @@ class QASMParser:
                     for i in range(size):
                         gates.append(Reset(start + i))
             return gates
-        if name in ("opaque",):
+        if name in ("opaque", "include"):
             raise TypeError("Unsupported operation {}".format(c))
         if name == "qreg":
             regname, size = self._parse_register_declaration(args[0])
             registers[regname] = (self.qubit_count, size)
             self.qubit_count += size
             return gates
+
         qubit_values = []
         is_range = False
         dim = 1
@@ -356,6 +369,8 @@ class QASMParser:
                     raise TypeError("Invalid register {}".format(regname))
                 qubit_values.append([registers[regname][0]+val])
             else:
+                if a not in registers:
+                    raise TypeError("Invalid register {}".format(a))
                 if is_range:
                     if registers[a][1] != dim:
                         raise TypeError("Error in parsing {}: Register sizes do not match".format(c))
