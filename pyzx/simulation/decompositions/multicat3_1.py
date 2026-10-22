@@ -50,7 +50,7 @@ def get_alpha(g: BaseGraph[VT, ET], v: VT) -> float:
 
 @register_decomp(
     Decomp.MULTI_CAT3_1,
-    alpha=None,  # dependant on n, alpha=1/(2n + 1)
+    alpha=None,  # dependent on n, alpha=1/(2n + 1)
     reference='https://arxiv.org/pdf/2412.17182'
 )
 def decompose(g: BaseGraph[VT, ET], v: VT) -> SumGraph:
@@ -86,7 +86,7 @@ def check_valid(g: BaseGraph[VT, ET], v: VT) -> bool:
     if v not in g.vertices():
         raise ValueError(f'Vertex {v} does not exist in graph')
     elif not is_Tlike(g, v)[0] or g.type(v) != VertexType.Z:
-        raise ValueError(f'given vertex {v} should be green and with phase pi/4')
+        raise ValueError(f'given vertex {v} should be green and T-like')
     elif len(sort_neighbours(g, v)[0]) == 0:
         raise ValueError(f'Vertex {v} has no cat3\'s connected to it')
     return True
