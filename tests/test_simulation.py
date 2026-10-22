@@ -17,6 +17,7 @@
 from fractions import Fraction
 import sys
 import unittest
+from random import randint, choice
 
 import numpy as np
 
@@ -176,99 +177,201 @@ class TestSimulationDecompositions(unittest.TestCase):
 
     def test_lone_phase_1(self) -> None:
         """
-        Verify lone_phase_1 decomposition.
+        Verify lone_phase_1 decomposition, by testing 5 random valid structures.
         Technically this is a family of infinite decompositions, only the first 10 are tested.
+        Also verifies that validation checkers reject invalid parameters on last case.
         """
         for n in range(1, 11):
-            g = Graph()
-            v = g.add_vertex(VertexType.Z, 0, 0, Fraction(1, 4))
-            under_v = g.add_vertex(VertexType.BOUNDARY, 1, 0)
-            g.add_edge((v, under_v))
-            for i in range(n):
-                x = g.add_vertex(VertexType.Z, -1, i-1.5, Fraction(1, 4))
-                g.add_edge((v, x), EdgeType.HADAMARD)
-            g.set_outputs((under_v,))
+            for _ in range(5):
+                g = Graph()
+                outputs = []
+                v = g.add_vertex(VertexType.Z, 0, 0, Fraction(2*randint(0, 4) + 1, 4))
+                for i in range(randint(1, 3)):
+                    under_v = g.add_vertex(VertexType.BOUNDARY, 1, i)
+                    outputs.append(under_v)
+                    g.add_edge((v, under_v), choice([EdgeType.SIMPLE, EdgeType.HADAMARD]))
+                for i in range(n):
+                    x = g.add_vertex(VertexType.Z, -1, i-1.5, Fraction(2*randint(0, 4) + 1, 4))
+                    g.add_edge((v, x), EdgeType.HADAMARD)
+                g.set_outputs(tuple(outputs))
 
-            self.assertTrue(check_valid(Decomp.LONE_PHASE_1, g, v))
-            gsum = apply_decomp(Decomp.LONE_PHASE_1, g, v)
-            self.assertEqual(len(gsum.graphs), 2)
-            self.assertTrue(np.allclose(g.to_tensor(), gsum.to_tensor()))
+                self.assertTrue(check_valid(Decomp.LONE_PHASE_1, g, v))
+                gsum = apply_decomp(Decomp.LONE_PHASE_1, g, v)
+                self.assertEqual(len(gsum.graphs), 2)
+                self.assertTrue(np.allclose(g.to_tensor(), gsum.to_tensor()))
+
+        # Should crash when given wrong amount of vertices as input
+        with self.assertRaises((TypeError, RuntimeError)):
+            check_valid(Decomp.LONE_PHASE_1, g, v, x)
+
+        g.set_phase(v, 0)
+        # Should crash if any input vertex is not T-like
+        with self.assertRaises((ValueError, RuntimeError)):
+            check_valid(Decomp.LONE_PHASE_1, g, v)
+
+        g.set_phase(v, Fraction(1, 4))
+        g.set_type(v, VertexType.X)
+        # Should crash if any input vertex is not green
+        with self.assertRaises((ValueError, RuntimeError)):
+            check_valid(Decomp.LONE_PHASE_1, g, v)
+
+        # Should crash if it does not have the correct structure
+        with self.assertRaises((ValueError, RuntimeError)):
+            check_valid(Decomp.LONE_PHASE_1, g, x)
 
     def test_lone_phase_2(self) -> None:
         """
-        Verify lone_phase_2 decomposition.
+        Verify lone_phase_2 decomposition, by testing 5 random valid structures.
         Technically this is a family of infinite decompositions, only the first 10 are tested.
+        Also verifies that validation checkers reject invalid parameters on last case.
         """
         for n in range(1, 11):
-            g = Graph()
-            z1 = g.add_vertex(VertexType.Z, 0, 0, Fraction(1, 4))
-            z2 = g.add_vertex(VertexType.Z, 0, 8, Fraction(1, 4))
-            b1 = g.add_vertex(VertexType.BOUNDARY, 2, 0)
-            b2 = g.add_vertex(VertexType.BOUNDARY, 2, 8)
-            g.add_edges([(z1, b1), (z1, b2)])
-            for i in range(n):
-                x = g.add_vertex(VertexType.Z, -2, 2*i, Fraction(1, 4))
-                g.add_edges([(z1, x), (z2, x)], EdgeType.HADAMARD)
-            g.set_outputs((b1, b2))
+            for _ in range(5):
+                g = Graph()
+                outputs = []
+                z1 = g.add_vertex(VertexType.Z, 0, 0, Fraction(2*randint(0, 4) + 1, 4))
+                z2 = g.add_vertex(VertexType.Z, 0, 8, Fraction(2*randint(0, 4) + 1, 4))
+                for i in range(randint(1, 3)):
+                    b1 = g.add_vertex(VertexType.BOUNDARY, 2, i)
+                    outputs.append(b1)
+                    g.add_edge((z1, b1), choice([EdgeType.SIMPLE, EdgeType.HADAMARD]))
+                for i in range(randint(1, 3)):
+                    b2 = g.add_vertex(VertexType.BOUNDARY, 2, 8-i)
+                    outputs.append(b2)
+                    g.add_edge((z2, b2), choice([EdgeType.SIMPLE, EdgeType.HADAMARD]))
+                for i in range(n):
+                    x = g.add_vertex(VertexType.Z, -2, 2*i, Fraction(2*randint(0, 4) + 1, 4))
+                    g.add_edges([(z1, x), (z2, x)], EdgeType.HADAMARD)
+                g.set_outputs(tuple(outputs))
 
-            self.assertTrue(check_valid(Decomp.LONE_PHASE_2, g, z1, z2))
-            gsum = apply_decomp(Decomp.LONE_PHASE_2, g, z1, z2)
-            self.assertEqual(len(gsum.graphs), 2)
-            self.assertTrue(np.allclose(g.to_tensor(), gsum.to_tensor()))
+                self.assertTrue(check_valid(Decomp.LONE_PHASE_2, g, z1, z2))
+                gsum = apply_decomp(Decomp.LONE_PHASE_2, g, z1, z2)
+                self.assertEqual(len(gsum.graphs), 2)
+                self.assertTrue(np.allclose(g.to_tensor(), gsum.to_tensor()))
+
+        # Should crash when given wrong amount of vertices as input
+        with self.assertRaises((TypeError, RuntimeError)):
+            check_valid(Decomp.LONE_PHASE_2, g, z1)
+
+        g.set_phase(z1, 0)
+        # Should crash if any input vertex is not T-like
+        with self.assertRaises((ValueError, RuntimeError)):
+            check_valid(Decomp.LONE_PHASE_2, g, z1, z2)
+
+        g.set_phase(z1, Fraction(1, 4))
+        g.set_type(z1, VertexType.X)
+        # Should crash if any input vertex is not green
+        with self.assertRaises((ValueError, RuntimeError)):
+            check_valid(Decomp.LONE_PHASE_2, g, z1, z2)
+
+        # Should crash if it does not have the correct structure
+        with self.assertRaises((ValueError, RuntimeError)):
+            check_valid(Decomp.LONE_PHASE_2, g, z2, x)
 
     def test_multi_cat3_1(self) -> None:
         """
-        Verify lone_phase_1 decomposition.
+        Verify multi_cat3_1 decomposition, by testing 5 random valid structures.
         Technically this is a family of infinite decompositions, only the first 10 are tested.
+        Also verifies that validation checkers reject invalid parameters on last case.
         """
         for n in range(1, 11):
-            g = Graph()
-            v = g.add_vertex(VertexType.Z, 0, 0, Fraction(1, 4))
-            under_v = g.add_vertex(VertexType.BOUNDARY, 1, 0)
-            g.add_edge((v, under_v))
-            outputs = [under_v]
-            for i in range(n):
-                z = g.add_vertex(VertexType.Z, -1, i + 1)
-                x = g.add_vertex(VertexType.Z, -2, i + 1, Fraction(1, 4))
-                y = g.add_vertex(VertexType.Z, 0, i + 1, Fraction(1, 4))
-                under_y = g.add_vertex(VertexType.BOUNDARY, 1, i + 1)
-                g.add_edges([(v, z), (z, x), (z, y)], EdgeType.HADAMARD)
-                g.add_edge((y, under_y))
-                outputs.append(under_y)
-            g.set_outputs(tuple(outputs))
+            for _ in range(5):
+                g = Graph()
+                outputs = []
+                v = g.add_vertex(VertexType.Z, 0, 0, Fraction(2*randint(0, 4) + 1, 4))
+                for i in range(randint(1, 2)):
+                    under_v = g.add_vertex(VertexType.BOUNDARY, 1, i)
+                    g.add_edge((v, under_v), choice([EdgeType.SIMPLE, EdgeType.HADAMARD]))
+                    outputs.append(under_v)
+                for i in range(n):
+                    z = g.add_vertex(VertexType.Z, -1, i + 1, randint(0, 1))
+                    x = g.add_vertex(VertexType.Z, -2, i + 1, Fraction(2*randint(0, 4) + 1, 4))
+                    y = g.add_vertex(VertexType.Z, 0, i + 1, Fraction(2*randint(0, 4) + 1, 4))
+                    g.add_edges([(v, z), (z, x), (z, y)], EdgeType.HADAMARD)
+                    for j in range(randint(1, 2)):
+                        under_y = g.add_vertex(VertexType.BOUNDARY, 1 + j, i + 1)
+                        g.add_edge((y, under_y), choice([EdgeType.SIMPLE, EdgeType.HADAMARD]))
+                        outputs.append(under_y)
+                g.set_outputs(tuple(outputs))
 
-            self.assertTrue(check_valid(Decomp.MULTI_CAT3_1, g, v))
-            gsum = apply_decomp(Decomp.MULTI_CAT3_1, g, v)
-            self.assertEqual(len(gsum.graphs), 2)
-            self.assertTrue(np.allclose(g.to_tensor(), gsum.to_tensor()))
+                self.assertTrue(check_valid(Decomp.MULTI_CAT3_1, g, v))
+                gsum = apply_decomp(Decomp.MULTI_CAT3_1, g, v)
+                self.assertEqual(len(gsum.graphs), 2)
+                self.assertTrue(np.allclose(g.to_tensor(), gsum.to_tensor()))
+
+        # Should crash when given wrong amount of vertices as input
+        with self.assertRaises((TypeError, RuntimeError)):
+            check_valid(Decomp.MULTI_CAT3_1, g, v, x)
+
+        g.set_phase(v, 0)
+        # Should crash if any input vertex is not T-like
+        with self.assertRaises((ValueError, RuntimeError)):
+            check_valid(Decomp.MULTI_CAT3_1, g, v)
+
+        g.set_phase(v, Fraction(1, 4))
+        g.set_type(v, VertexType.X)
+        # Should crash if any input vertex is not green
+        with self.assertRaises((ValueError, RuntimeError)):
+            check_valid(Decomp.MULTI_CAT3_1, g, v)
+
+        # Should crash if it does not have the correct structure
+        with self.assertRaises((ValueError, RuntimeError)):
+            check_valid(Decomp.MULTI_CAT3_1, g, x)
 
     def test_multi_cat3_2(self) -> None:
         """
-        Verify lone_phase_1 decomposition.
+        Verify multi_cat3_2 decomposition.
         Technically this is a family of infinite decompositions, only the first 10 are tested.
+        Also verifies that validation checkers reject invalid parameters on last case.
         """
         for n in range(1, 11):
-            g = Graph()
-            z1 = g.add_vertex(VertexType.Z, 0, 0, Fraction(1, 4))
-            z2 = g.add_vertex(VertexType.Z, 0, 8, Fraction(1, 4))
-            b1 = g.add_vertex(VertexType.BOUNDARY, 2, 0)
-            b2 = g.add_vertex(VertexType.BOUNDARY, 2, 8)
-            g.add_edges([(z1, b1), (z1, b2)])
-            outputs = [b1, b2]
-            for i in range(n):
-                v = g.add_vertex(VertexType.Z, -2, 2*i)
-                y = g.add_vertex(VertexType.Z, -2, 2*i + 1, Fraction(1, 4))
-                x = g.add_vertex(VertexType.Z, -4, 2*i, Fraction(1, 4))
-                above_x = g.add_vertex(VertexType.BOUNDARY, -6, 2*i,)
-                g.add_edges([(z1, v), (z2, v), (v, y), (v, x)], EdgeType.HADAMARD)
-                g.add_edge((x, above_x))
-                outputs.append(above_x)
-            g.set_outputs(tuple(outputs))
+            for _ in range(5):
+                g = Graph()
+                outputs = []
+                z1 = g.add_vertex(VertexType.Z, 0, 0, Fraction(2*randint(0, 4) + 1, 4))
+                z2 = g.add_vertex(VertexType.Z, 0, 8, Fraction(2*randint(0, 4) + 1, 4))
+                for i in range(randint(1, 2)):
+                    b1 = g.add_vertex(VertexType.BOUNDARY, 1, i)
+                    g.add_edge((z1, b1), choice([EdgeType.SIMPLE, EdgeType.HADAMARD]))
+                    outputs.append(b1)
+                for i in range(randint(1, 2)):
+                    b2 = g.add_vertex(VertexType.BOUNDARY, 1, 8 - i)
+                    g.add_edge((z2, b2), choice([EdgeType.SIMPLE, EdgeType.HADAMARD]))
+                    outputs.append(b2)
+                for i in range(n):
+                    v = g.add_vertex(VertexType.Z, -2, 2*i, randint(0, 1))
+                    y = g.add_vertex(VertexType.Z, -2, 2*i + 1, Fraction(2*randint(0, 4) + 1, 4))
+                    x = g.add_vertex(VertexType.Z, -4, 2*i, Fraction(2*randint(0, 4) + 1, 4))
+                    g.add_edges([(z1, v), (z2, v), (v, y), (v, x)], EdgeType.HADAMARD)
+                    for j in range(randint(1, 2)):
+                        above_x = g.add_vertex(VertexType.BOUNDARY, -6 - j, 2*i)
+                        g.add_edge((x, above_x), choice([EdgeType.SIMPLE, EdgeType.HADAMARD]))
+                        outputs.append(above_x)
+                g.set_outputs(tuple(outputs))
 
-            self.assertTrue(check_valid(Decomp.MULTI_CAT3_2, g, z1, z2))
-            gsum = apply_decomp(Decomp.MULTI_CAT3_2, g, z1, z2)
-            self.assertEqual(len(gsum.graphs), 2)
-            self.assertTrue(np.allclose(g.to_tensor(), gsum.to_tensor()))
+                self.assertTrue(check_valid(Decomp.MULTI_CAT3_2, g, z1, z2))
+                gsum = apply_decomp(Decomp.MULTI_CAT3_2, g, z1, z2)
+                self.assertEqual(len(gsum.graphs), 2)
+                self.assertTrue(np.allclose(g.to_tensor(), gsum.to_tensor()))
+
+        # Should crash when given wrong amount of vertices as input
+        with self.assertRaises((TypeError, RuntimeError)):
+            check_valid(Decomp.MULTI_CAT3_2, g, z1)
+
+        g.set_phase(z1, 0)
+        # Should crash if any input vertex is not T-like
+        with self.assertRaises((ValueError, RuntimeError)):
+            check_valid(Decomp.MULTI_CAT3_2, g, z1, z2)
+
+        g.set_phase(z1, Fraction(1, 4))
+        g.set_type(z1, VertexType.X)
+        # Should crash if any input vertex is not green
+        with self.assertRaises((ValueError, RuntimeError)):
+            check_valid(Decomp.MULTI_CAT3_2, g, z1, z2)
+
+        # Should crash if it does not have the correct structure
+        with self.assertRaises((ValueError, RuntimeError)):
+            check_valid(Decomp.MULTI_CAT3_2, g, z1, x)
 
     def test_decompositions_validity_checkers_reject_invalid(self) -> None:
         """Verify that validation checkers reject invalid parameters."""
@@ -320,32 +423,6 @@ class TestSimulationDecompositions(unittest.TestCase):
         boundary_v = [v for v in g.vertices() if g.type(v) == VertexType.BOUNDARY][0]
         with self.assertRaises((AssertionError, RuntimeError)):
             apply_decomp(Decomp.CUT_VERTEX, g, boundary_v)
-
-        # multiple tests on lone_phase and multicat3:
-        g_lpmc3 = Graph()
-        phaseless = g_lpmc3.add_vertex(VertexType.Z, 0, 0, 0)
-        Tlike_1 = g_lpmc3.add_vertex(VertexType.Z, 0, 0, Fraction(1, 4))
-        Tlike_2 = g_lpmc3.add_vertex(VertexType.Z, 0, 0, Fraction(1, 4))
-        for d in [Decomp.LONE_PHASE_1, Decomp.MULTI_CAT3_1]:
-            # should fail on wrong number of inputs
-            with self.assertRaises((TypeError, RuntimeError)):
-                check_valid(d, g, Tlike_1, Tlike_2)
-            # should fail if any input vertex is non-Tlike
-            with self.assertRaises((ValueError, RuntimeError)):
-                check_valid(d, g, phaseless)
-            # should faul if it doesn't have the decomposition
-            with self.assertRaises((ValueError, RuntimeError)):
-                check_valid(d, g, Tlike_1)
-        for d in [Decomp.LONE_PHASE_2, Decomp.MULTI_CAT3_2]:
-            # should fail on wrong number of inputs
-            with self.assertRaises((TypeError, RuntimeError)):
-                check_valid(d, g, Tlike_1)
-            # should fail if any input vertex is non-Tlike
-            with self.assertRaises((ValueError, RuntimeError)):
-                check_valid(d, g, phaseless, Tlike_1)
-            # should faul if it doesn't have the decomposition
-            with self.assertRaises((ValueError, RuntimeError)):
-                check_valid(d, g, Tlike_1, Tlike_2)
 
     def test_decomp_metadata(self) -> None:
         """Verify all Decomp enum entries have valid specifications, alphas, and references."""
@@ -470,7 +547,10 @@ class TestSimulationStrategies(unittest.TestCase):
         self.assertEqual(best, v_real_cat, f"find_best_cat should have skipped non-cat spider {v_non_cat} and returned {v_real_cat}")
 
     def test_find_best_decomp_finding_best_decomp(self):
-        """Tests if find_best_decomp in lpmc3 strategy actually finds the best decomp"""
+        """
+        Tests if find_best_decomp in lpmc3 strategy actually finds the best decomp.
+        Also tests if these decomps get decomposed correctly.
+        """
         # First we create all tests graphs, then we check correctness.
         expected_awnsers = []
 
@@ -533,6 +613,11 @@ class TestSimulationStrategies(unittest.TestCase):
             vxs2, d2 = find_best_decomp(g)
             self.assertTrue(d == d2, msg=f"{d} is not {d2}")
             self.assertTrue(set(vxs) == set(vxs2))
+
+            terms = full_decompose(Strategy.LP_MC3, g)
+            found_val = sum(term.scalar.to_number() for term in terms)
+            true_val = g.to_tensor()
+            self.assertTrue(np.isclose(found_val, true_val))
 
         g_boring = Graph()
         vxs, d = find_best_decomp(g_boring)
