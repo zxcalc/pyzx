@@ -14,53 +14,68 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from fractions import Fraction
 import warnings
-from typing import Dict, List, Set, Tuple, Optional, Literal, Mapping, Union, overload
+from collections.abc import Mapping
+from typing import Literal, overload
 
+from .graph.base import ET, VT, BaseGraph
 from .linalg import Mat2
-from .graph.base import BaseGraph, VT, ET
 from .utils import phase_is_clifford, phase_is_pauli, vertex_is_zx
 
-
 _Measurement = Literal["XY", "X", "Y"]
-_Layers = Dict[VT, int]
-_Flow = Tuple[_Layers[VT], Dict[VT, Set[VT]]]
-_Result = Optional[Union[_Flow[VT], _Layers[VT]]]
+_Layers = dict[VT, int]
+_Flow = tuple[_Layers[VT], dict[VT, set[VT]]]
+_Result = _Flow[VT] | _Layers[VT] | None
 
 
 @overload
 def gflow(
-    g: BaseGraph[VT, ET], focus: Optional[bool]=None, reverse: bool=False,
-    pauli: bool=False, *, method: Literal["cubic", "legacy"]="cubic",
-    include_ground_constraints: Optional[bool]=None,
-    layers_only: Literal[False]=False
-) -> Optional[_Flow[VT]]: ...
+    g: BaseGraph[VT, ET],
+    focus: bool | None = None,
+    reverse: bool = False,
+    pauli: bool = False,
+    *,
+    method: Literal["cubic", "legacy"] = "cubic",
+    include_ground_constraints: bool | None = None,
+    layers_only: Literal[False] = False
+) -> _Flow[VT] | None: ...
 
 
 @overload
 def gflow(
-    g: BaseGraph[VT, ET], focus: Optional[bool]=None, reverse: bool=False,
-    pauli: bool=False, *, method: Literal["cubic", "legacy"]="cubic",
-    include_ground_constraints: Optional[bool]=None,
+    g: BaseGraph[VT, ET],
+    focus: bool | None = None,
+    reverse: bool = False,
+    pauli: bool = False,
+    *,
+    method: Literal["cubic", "legacy"] = "cubic",
+    include_ground_constraints: bool | None = None,
     layers_only: Literal[True]
-) -> Optional[_Layers[VT]]: ...
+) -> _Layers[VT] | None: ...
 
 
 @overload
 def gflow(
-    g: BaseGraph[VT, ET], focus: Optional[bool]=None, reverse: bool=False,
-    pauli: bool=False, *, method: Literal["cubic", "legacy"]="cubic",
-    include_ground_constraints: Optional[bool]=None,
+    g: BaseGraph[VT, ET],
+    focus: bool | None = None,
+    reverse: bool = False,
+    pauli: bool = False,
+    *,
+    method: Literal["cubic", "legacy"] = "cubic",
+    include_ground_constraints: bool | None = None,
     layers_only: bool
 ) -> _Result[VT]: ...
 
 
 def gflow(
-    g: BaseGraph[VT, ET], focus: Optional[bool]=None, reverse: bool=False,
-    pauli: bool=False, *, method: Literal["cubic", "legacy"]="cubic",
-    include_ground_constraints: Optional[bool]=None,
-    layers_only: bool=False
+    g: BaseGraph[VT, ET],
+    focus: bool | None = None,
+    reverse: bool = False,
+    pauli: bool = False,
+    *,
+    method: Literal["cubic", "legacy"] = "cubic",
+    include_ground_constraints: bool | None = None,
+    layers_only: bool = False
 ) -> _Result[VT]:
     r"""Find gflow with every spider interpreted as an XY measurement.
 
@@ -100,7 +115,7 @@ def gflow(
     if method == "legacy":
         return _gflow_legacy(g, focus=False if focus is None else focus,
                              reverse=reverse, pauli=False)
-    measurements: Dict[VT, _Measurement] = {
+    measurements: dict[VT, _Measurement] = {
         v: "XY" for v in g.vertices() if vertex_is_zx(g.type(v))
     }
     return _find_cubic_flow(
@@ -113,36 +128,48 @@ def gflow(
 
 @overload
 def pauli_flow(
-    g: BaseGraph[VT, ET], focus: Optional[bool]=None, reverse: bool=False,
-    *, method: Literal["cubic", "legacy"]="cubic",
-    include_ground_constraints: Optional[bool]=None,
-    layers_only: Literal[False]=False
-) -> Optional[_Flow[VT]]: ...
+    g: BaseGraph[VT, ET],
+    focus: bool | None = None,
+    reverse: bool = False,
+    *,
+    method: Literal["cubic", "legacy"] = "cubic",
+    include_ground_constraints: bool | None = None,
+    layers_only: Literal[False] = False
+) -> _Flow[VT] | None: ...
 
 
 @overload
 def pauli_flow(
-    g: BaseGraph[VT, ET], focus: Optional[bool]=None, reverse: bool=False,
-    *, method: Literal["cubic", "legacy"]="cubic",
-    include_ground_constraints: Optional[bool]=None,
+    g: BaseGraph[VT, ET],
+    focus: bool | None = None,
+    reverse: bool = False,
+    *,
+    method: Literal["cubic", "legacy"] = "cubic",
+    include_ground_constraints: bool | None = None,
     layers_only: Literal[True]
-) -> Optional[_Layers[VT]]: ...
+) ->_Layers[VT] | None: ...
 
 
 @overload
 def pauli_flow(
-    g: BaseGraph[VT, ET], focus: Optional[bool]=None, reverse: bool=False,
-    *, method: Literal["cubic", "legacy"]="cubic",
-    include_ground_constraints: Optional[bool]=None,
+    g: BaseGraph[VT, ET],
+    focus: bool | None = None,
+    reverse: bool = False,
+    *,
+    method: Literal["cubic", "legacy"] = "cubic",
+    include_ground_constraints: bool | None = None,
     layers_only: bool
 ) -> _Result[VT]: ...
 
 
 def pauli_flow(
-    g: BaseGraph[VT, ET], focus: Optional[bool]=None, reverse: bool=False,
-    *, method: Literal["cubic", "legacy"]="cubic",
-    include_ground_constraints: Optional[bool]=None,
-    layers_only: bool=False
+    g: BaseGraph[VT, ET],
+    focus: bool | None = None,
+    reverse: bool = False,
+    *,
+    method: Literal["cubic", "legacy"] = "cubic",
+    include_ground_constraints: bool | None = None,
+    layers_only: bool = False
 ) -> _Result[VT]:
     r"""Find Pauli flow for XY, X, and Y measurements.
 
@@ -173,7 +200,7 @@ def pauli_flow(
     if method == "legacy":
         return _gflow_legacy(g, focus=False if focus is None else focus,
                              reverse=reverse, pauli=True)
-    measurements: Dict[VT, _Measurement] = {}
+    measurements: dict[VT, _Measurement] = {}
     for v in g.vertices():
         if not vertex_is_zx(g.type(v)):
             continue
@@ -193,7 +220,9 @@ def pauli_flow(
 
 
 def _check_method_options(
-    method: str, focus: Optional[bool], include_ground_constraints: Optional[bool],
+    method: str,
+    focus: bool | None,
+    include_ground_constraints: bool | None,
     layers_only: bool
 ) -> None:
     """Validate backend options; None distinguishes omission from False."""
@@ -212,9 +241,12 @@ def _check_method_options(
 
 
 def _find_cubic_flow(
-    g: BaseGraph[VT, ET], measurements: Mapping[VT, _Measurement],
-    reverse: bool=False, *, include_ground_constraints: bool=False,
-    layers_only: bool=False
+    g: BaseGraph[VT, ET],
+    measurements: Mapping[VT, _Measurement],
+    reverse: bool = False,
+    *,
+    include_ground_constraints: bool = False,
+    layers_only: bool = False
 ) -> _Result[VT]:
     r"""Find focused flow from explicit XY/X/Y assignments.
 
@@ -267,14 +299,14 @@ def _find_cubic_flow(
     # Each entry is (pivot bit, transformed M column, correction coordinates).
     # Coordinates stay zero in layers-only mode.
     # Later basis vectors have zero entries at every earlier pivot.
-    basis: List[Tuple[int, int, int]] = []
+    basis: list[tuple[int, int, int]] = []
     # N only selects XY coordinates: outputs and X/Y correctors are available
     # now; each non-input XY column is added after its vertex is processed.
     # Keep every demand row, including already solved ones, to retain focusing.
     pending = [column_index[v] for v in columns if v in processed or v in paulis]
     inserted = set(pending)
     layers = {v: 0 for v in processed}
-    corrections: Dict[VT, Set[VT]] = {}
+    corrections: dict[VT, set[VT]] = {}
     depth = 0
     while active:
         for j in pending:
@@ -322,8 +354,11 @@ def _find_cubic_flow(
 
 
 def _gflow_legacy(
-    g: BaseGraph[VT, ET], focus: bool=False, reverse: bool=False, pauli: bool=False
-) -> Optional[Tuple[Dict[VT, int], Dict[VT, Set[VT]]]]:
+    g: BaseGraph[VT, ET],
+    focus: bool = False,
+    reverse: bool = False,
+    pauli: bool = False
+) -> tuple[dict[VT, int], dict[VT, set[VT]]] | None:
     r"""Compute the gflow of a diagram in graph-like form.
 
     :param g: A graphlike ZX diagram.
@@ -368,15 +403,15 @@ def _gflow_legacy(
     end
     ```
     """
-    l: Dict[VT, int] = {}
-    gflow: Dict[VT, Set[VT]] = {}
+    l: dict[VT, int] = {}
+    gflow: dict[VT, set[VT]] = {}
     ty = g.types()
 
-    vertices: Set[VT] = set(v for v in g.vertices() if vertex_is_zx(ty[v]))
-    pattern_inputs: Set[VT] = set()
-    pattern_outputs: Set[VT] = set()
-    pauli_x: Set[VT] = set()
-    pauli_y: Set[VT] = set()
+    vertices: set[VT] = set(v for v in g.vertices() if vertex_is_zx(ty[v]))
+    pattern_inputs: set[VT] = set()
+    pattern_outputs: set[VT] = set()
+    pauli_x: set[VT] = set()
+    pauli_y: set[VT] = set()
 
     for inp in g.inputs():
         pattern_inputs |= set(n for n in g.neighbors(inp) if vertex_is_zx(ty[n]))
@@ -394,7 +429,7 @@ def _gflow_legacy(
             elif phase_is_clifford(p):
                 pauli_y.add(v)
 
-    processed: Set[VT] = pattern_outputs.copy() | g.grounds()
+    processed: set[VT] = pattern_outputs.copy() | g.grounds()
     non_outputs = list(vertices.difference(pattern_outputs))
     zerovec = Mat2.zeros(len(non_outputs), 1)
     for v in processed:
@@ -402,7 +437,7 @@ def _gflow_legacy(
 
     k: int = 1
     while True:
-        correct: Set[VT] = set()
+        correct: set[VT] = set()
 
         # a list of nodes that can currently be used in the correction set of the next node
         # Keep candidate v when its column in the current flow-demand matrix
