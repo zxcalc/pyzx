@@ -67,7 +67,7 @@ def decompose(g: BaseGraph[VT, ET], v: VT) -> SumGraph:
 def check_valid(g: BaseGraph[VT, ET], v: VT) -> bool:
     if v not in g.vertices():
         raise ValueError(f'Vertex {v} does not exist in graph')
-    elif g.type(v) != Vertextype.Z or not is_Tlike(g, v)[0]:
+    elif g.type(v) != VertexType.Z or not is_Tlike(g, v)[0]:
         raise ValueError(f'given vertex {v} should be green and have a T-like phase')
     elif len(sort_neighbours(g, v)[0]) == 0:
         raise ValueError(f'Vertex {v} has no T-like phase gadgets connected with hadamard edges')
