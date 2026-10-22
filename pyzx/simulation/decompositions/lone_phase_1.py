@@ -18,7 +18,7 @@ def is_Tlike(g: BaseGraph[VT, ET], v: VT) -> tuple[bool, int]:
 
 
 def sort_neighbours(g: BaseGraph[VT, ET], v: VT) -> tuple[list[VT], list[VT]]:
-    """returns two lists: one contianing the vertices called x_i in the paper, and the others"""
+    """returns two lists: one containing the vertices called x_i in the paper, and the others"""
     xs, others = [], []
     for x in g.neighbors(v):
         if len(g.neighbors(x)) == 1 and \
@@ -38,7 +38,7 @@ def get_alpha(g: BaseGraph[VT, ET], v: VT) -> float:
 
 @register_decomp(
     Decomp.LONE_PHASE_1,
-    alpha=None,  # dependant on n, alpha=1/n
+    alpha=None,  # dependent on n, alpha=1/n
     reference='https://arxiv.org/pdf/2412.17182'
 )
 def decompose(g: BaseGraph[VT, ET], v: VT) -> SumGraph:
@@ -67,8 +67,8 @@ def decompose(g: BaseGraph[VT, ET], v: VT) -> SumGraph:
 def check_valid(g: BaseGraph[VT, ET], v: VT) -> bool:
     if v not in g.vertices():
         raise ValueError(f'Vertex {v} does not exist in graph')
-    elif not is_Tlike(g, v)[0]:
-        raise ValueError(f'given vertex {v} should have a T-like phase')
+    elif g.type(v) != Vertextype.Z or not is_Tlike(g, v)[0]:
+        raise ValueError(f'given vertex {v} should be green and have a T-like phase')
     elif len(sort_neighbours(g, v)[0]) == 0:
         raise ValueError(f'Vertex {v} has no T-like phase gadgets connected with hadamard edges')
     return True
