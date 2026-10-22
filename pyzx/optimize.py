@@ -1,4 +1,4 @@
-# PyZX - Python library for quantum circuit rewriting 
+# PyZX - Python library for quantum circuit rewriting
 #        and optimization using the ZX-calculus
 # Copyright (C) 2018 - Aleks Kissinger and John van de Wetering
 
@@ -14,20 +14,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""This module implements several optimization methods on ``Circuit``\\ s. 
+"""This module implements several optimization methods on ``Circuit``\\ s.
 The function :func:`basic_optimization` runs a set of back-and-forth gate commutation and cancellation routines.
 :func:`phase_block_optimize` does phase polynomial optimization using the TODD algorithm,
 and :func:`full_optimize` combines these two methods."""
 
 from fractions import Fraction
-from typing import overload, Tuple, List, Union, Dict, Set
-from typing_extensions import Literal
+from typing import Literal, overload
 
 from .circuit import Circuit
-from .circuit.gates import Gate, ZPhase, XPhase, CNOT, CZ, ParityPhase, NOT, HAD, SWAP, S, Z
-from .utils import settings
+from .circuit.gates import CNOT, CZ, HAD, NOT, SWAP, Gate, S, XPhase, Z, ZPhase
 from .extract import permutation_as_swaps
 from .todd import todd_simp
+from .utils import settings
 
 __all__ = ['full_optimize', 'basic_optimization', 'phase_block_optimize']
 
@@ -45,7 +44,7 @@ def full_optimize(circuit: Circuit, quiet:bool=True) -> Circuit:
 def basic_optimization(circuit: Circuit, do_swaps:bool=True, quiet:bool=True) -> Circuit:
     """Optimizes the circuit using a strategy that involves delayed placement of gates
     so that more matches for gate cancellations are found. Specifically tries to minimize
-    the number of Hadamard gates to improve the effectiveness 
+    the number of Hadamard gates to improve the effectiveness
     of phase-polynomial optimization techniques.
 
     Args:
@@ -70,7 +69,7 @@ def swap_element(l:list, e1:object, e2:object) -> None:
         l.remove(e2)
         l.append(e1)
 
-def stats(circ: Circuit) -> Tuple[int,int,int]:
+def stats(circ: Circuit) -> tuple[int,int,int]:
     two_qubit = 0
     had = 0
     non_pauli = 0
@@ -86,7 +85,7 @@ def stats(circ: Circuit) -> Tuple[int,int,int]:
 class Optimizer(object):
     """Helper class that implements the optimizations of :func:`basic_optimization`.
     Works by doing alternating forward and backward 'passes' through a circuit.
-    During a pass, we iteratively consume gates, while 
+    During a pass, we iteratively consume gates, while
     keeping track of a stack of mutually commuting gates on each qubit.
     When the gate can be combined with a gate on the stack, this is done.
     If it doesn't combine, but commutes with the gates on the stack, it is added to the stack.
@@ -98,31 +97,31 @@ class Optimizer(object):
         self.do_swaps: bool = True
     
     @overload
-    def parse_circuit(self, 
-            separate_correction:Literal[False]=False, 
-            max_iterations:int=1000, 
-            do_swaps:bool=True, 
+    def parse_circuit(self,
+            separate_correction:Literal[False]=False,
+            max_iterations:int=1000,
+            do_swaps:bool=True,
             quiet:bool=True) -> Circuit: pass
 
     @overload
-    def parse_circuit(self, 
-            separate_correction:Literal[True], 
-            max_iterations:int=1000, 
-            do_swaps:bool=True, 
-            quiet:bool=True) -> Tuple[Circuit, List[Gate]]: pass
+    def parse_circuit(self,
+            separate_correction:Literal[True],
+            max_iterations:int=1000,
+            do_swaps:bool=True,
+            quiet:bool=True) -> tuple[Circuit, list[Gate]]: pass
 
-    def parse_circuit(self, 
-            separate_correction:bool=False, 
-            max_iterations:int=1000, 
-            do_swaps:bool=True, 
+    def parse_circuit(self,
+            separate_correction:bool=False,
+            max_iterations:int=1000,
+            do_swaps:bool=True,
             quiet:bool=True
-            ) -> Union[Circuit, Tuple[Circuit, List[Gate]]]:
-        """Repeatedly does forward and backward passes trough the circuit, 
+            ) -> Circuit | tuple[Circuit, list[Gate]]:
+        """Repeatedly does forward and backward passes trough the circuit,
         until no more improvements are found.
-        When ``separate_correction`` is True, it returns the list of NOT, Z and SWAP gates that is 
+        When ``separate_correction`` is True, it returns the list of NOT, Z and SWAP gates that is
         has collected at the end separately.
 
-        When ``do_swaps`` is set to False, it does not apply the rule 
+        When ``do_swaps`` is set to False, it does not apply the rule
         CNOT(r1,r2)CNOT(r2,r1) = CNOT(r1,r2)SWAP, so that the connectivity of the circuit is preserved,
         in case the circuit already had been mapped."""
         self.do_swaps = do_swaps
@@ -152,14 +151,14 @@ class Optimizer(object):
         else:
             return self.circuit, correction
     
-    def parse_forward(self) -> Tuple[Circuit, List[Gate]]:
+    def parse_forward(self) -> tuple[Circuit, list[Gate]]:
         """Does a single forward pass trough self.circuit.gates."""
-        self.gates: Dict[int,List[Gate]] = {i:list() for i in range(self.qubits)}
-        self.available: Dict[int,List[Gate]] = {i:list() for i in range(self.qubits)}
+        self.gates: dict[int,list[Gate]] = {i:list() for i in range(self.qubits)}
+        self.available: dict[int,list[Gate]] = {i:list() for i in range(self.qubits)}
         self.availty = {i: 1 for i in range(self.qubits)}
-        self.hadamards: List[int] = []
-        self.nots: List[int] = []
-        self.zs: List[int] = []
+        self.hadamards: list[int] = []
+        self.nots: list[int] = []
+        self.zs: list[int] = []
         self.permutation = {i:i for i in range(self.qubits)}
         self.gcount = 0
         for g in self.circuit.gates:
@@ -181,7 +180,7 @@ class Optimizer(object):
         c = Circuit(self.qubits)
         c.gates = self.topological_sort_gates()
         
-        correction: List[Gate] = []
+        correction: list[Gate] = []
         for t in self.nots:
             n = NOT(t)
             correction.append(n)
@@ -194,13 +193,13 @@ class Optimizer(object):
             #c.gates.extend(SWAP(a,b).to_basic_gates())
         return c, correction
 
-    def topological_sort_gates(self) -> List[Gate]:
+    def topological_sort_gates(self) -> list[Gate]:
         """self.gates is a a {qubit:[list of gates]} dictionary. This function consumes this dictionary and outputs a
         single list of gates, with the gates in the correct order.
         Note that 2-qubit gates are present in two entries in the dictionary and are identified with an ``index`` parameter."""
         output = []
         while any(self.gates.values()):
-            available_indices: Set[int] = set()
+            available_indices: set[int] = set()
             for q, gs in self.gates.items():
                 while gs:
                     g = gs[0]
@@ -296,7 +295,7 @@ class Optimizer(object):
             if self.available[t]: # There are gates of non-commuting type on this qubit
                 self.gates[t].insert(-len(self.available[t]),s1) # And hence we must insert these gates at
                 self.gates[t].insert(-len(self.available[t]),g)  # the correct location
-            else: 
+            else:
                 self.gates[t].append(s1)
                 self.gates[t].append(g)
             s2 = S(t)
@@ -474,7 +473,7 @@ class Optimizer(object):
                 g.target = t1
                 g.control = t2
             # Push NOT gates trough the CZ
-            if t1 in self.nots: 
+            if t1 in self.nots:
                 toggle_element(self.zs, t2)
             if t2 in self.nots:
                 toggle_element(self.zs, t1)
@@ -540,7 +539,7 @@ class Optimizer(object):
 
 
 
-def greedy_consume_gates(gates: Dict[int, List[Gate]], qubits: int) -> Tuple[List[Gate],List[HAD]]:
+def greedy_consume_gates(gates: dict[int, list[Gate]], qubits: int) -> tuple[list[Gate],list[HAD]]:
     """Tries to consume as many gates as possible into a phase-polynomial block, by pushing gates past hadamards to the beginning
     as long as that is possible. Used by :func:`phase_block_optimize`.
 
@@ -591,7 +590,7 @@ def greedy_consume_gates(gates: Dict[int, List[Gate]], qubits: int) -> Tuple[Lis
             block.append(g)
             gates[g.target].remove(g)
             if g.name in ('CZ', 'CNOT'):
-                gates[g.control].remove(g)  
+                gates[g.control].remove(g)
         if to_be_appended: # We added at least one gate, so we go to the top of the loop to try again.
             continue
         # We couldn't add any easy gates, so now we go looking for gates stuck behind a HAD.
@@ -612,7 +611,7 @@ def greedy_consume_gates(gates: Dict[int, List[Gate]], qubits: int) -> Tuple[Lis
             if g.name == 'CZ' or isinstance(g, ZPhase) or (g.control == q):
                 if gatetype[q] == 0: left_ty = 2 # If no gate is on the left of the HAD we set the type correspondingly.
                 right_ty = 1
-            else: 
+            else:
                 if gatetype[q] == 0: left_ty = 1
                 right_ty = 2
             if left_ty == right_ty: continue # If the types are different, we can't commute things past the HAD into the phase-block.
@@ -626,7 +625,7 @@ def greedy_consume_gates(gates: Dict[int, List[Gate]], qubits: int) -> Tuple[Lis
                 else:  # CNOT with target on this qubit
                     if right_ty == 1: break
                 if g.index not in available:
-                    if g.name == 'CNOT':  # We only need to check CNOTs, since CZs must already be in available 
+                    if g.name == 'CNOT':  # We only need to check CNOTs, since CZs must already be in available
                         available.append(g.index)  # (because otherwise they would be behind 2 HADs)
                 else:
                     if g not in candidates:
@@ -678,22 +677,22 @@ def greedy_consume_gates(gates: Dict[int, List[Gate]], qubits: int) -> Tuple[Lis
 
 def phase_block_optimize(circuit: Circuit, pre_optimize:bool=True, quiet:bool=True) -> Circuit:
     """Optimizes the given circuit, by cutting it into phase polynomial pieces, and
-    using the `TODD algorithm <https://iopscience.iop.org/article/10.1088/2058-9565/aad604/meta>`_ 
-    to optimize each of these phase polynomials. 
-    The phase-polynomial circuits are then resynthesized using the 
+    using the `TODD algorithm <https://iopscience.iop.org/article/10.1088/2058-9565/aad604/meta>`_
+    to optimize each of these phase polynomials.
+    The phase-polynomial circuits are then resynthesized using the
     `parity network <https://iopscience.iop.org/article/10.1088/2058-9565/aad8ca/meta>`_ algorithm.
     
     Note:
         Only works with Clifford+T circuits. Will give wrong output when fed smaller rotation gates, or Toffoli-like gates.
         Depending on the number of qubits and T-gates this function can take a long time to run.
         It can be sped up somewhat by using the `TOpt implementation of TODD <https://github.com/Luke-Heyfron/TOpt>`_.
-        If this is installed, point towards it using ``zx.settings.topt_command``, such as for instance 
+        If this is installed, point towards it using ``zx.settings.topt_command``, such as for instance
         ``zx.settings.topt_command = ['wsl', '../TOpt']`` for running it in the Windows Subsystem for Linux.
 
     Args:
         circuit: The circuit to be optimized.
         pre_optimize: Whether to call :func:`basic_optimization` first.
-        quiet: Whether to print some progress indicators. Helpful when execution time is long. 
+        quiet: Whether to print some progress indicators. Helpful when execution time is long.
     """
     qubits = circuit.qubits
     o = Optimizer(circuit)
