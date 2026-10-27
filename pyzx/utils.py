@@ -19,7 +19,7 @@ import math
 import numbers
 import os
 from argparse import ArgumentTypeError
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Collection, Sequence
 from enum import IntEnum
 from fractions import Fraction
 from typing import TYPE_CHECKING, Any, Literal, SupportsFloat, TypeVar
@@ -417,3 +417,25 @@ def hbox_has_complex_label(g: 'BaseGraph[VT, ET]', v: 'VT') -> bool:
 # Return position 'perc'%-distance between 2 points:
 def ave_pos(a: float, b: float, perc: float = 1/2) -> float:
     return (abs(a - b))*(perc) + min(a, b)
+
+def is_graphlike(g: 'BaseGraph[VT, ET]', vs: Collection['VT']) -> bool:
+    """
+    Check whether a subgraph of the given graph is graph-like.
+    
+    All vertices should be Z-spiders and connected by Hadamard edges, with no parallel edges or self-loops.
+    """
+
+    types = g.types()
+    for v in vs:
+        if types.get(v) is not VertexType.Z:
+            return False
+
+        for w in vs:
+            if g.num_edges(v, w, EdgeType.SIMPLE) != 0:
+                return False
+
+            allowed_edges = 0 if v == w else 1
+            if g.num_edges(v, w, EdgeType.HADAMARD) > allowed_edges:
+                return False
+
+    return True
