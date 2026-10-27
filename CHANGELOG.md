@@ -34,6 +34,7 @@ Hence, occasionally changes will be backwards incompatible (although they will a
 - Symbolic expression parsing now preserves mixed Boolean/continuous products regardless of multiplication order (#539). (by @mourya-17)
 - `Poly.__mod__` no longer leaves a zero-coefficient term behind for Boolean phases, so fusing spiders with phases `(a+1)π` and `π` now gives `a` instead of `a + 0` (#544). (by @Nitesh71332)
 - `PhaseGadget` and `RZZ` now copy, invert (`adjoint`), and tensor correctly without raising `TypeError`. `RZZ.reposition` now updates `control` and `target` attributes alongside `targets`, `ParityPhase.__eq__` distinguishes `RZZ` from `ParityPhase`/`PhaseGadget`, and `PhaseGadget` can now be exported to QASM, .qc, and Quipper formats.
+- Multigraph phase addition now reduces Boolean polynomial phases modulo 2, fixing fused phases that could retain an even constant term (#544). (by @mourya-17)
 
 ### Removed
 - Python 3.10 is no longer supported because it has reached end-of-life.
