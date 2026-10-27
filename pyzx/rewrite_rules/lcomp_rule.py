@@ -32,8 +32,8 @@ __all__ = [
 
 from fractions import Fraction
 
-from ..utils import EdgeType, VertexType
-from ..graph.base import BaseGraph, VT, ET
+from ..graph.base import ET, VT, BaseGraph
+from ..utils import is_graphlike
 
 
 def check_lcomp(
@@ -46,24 +46,19 @@ def check_lcomp(
     :param v: An instance of a ZX-vertex.
     """
 
-    types = g.types()
+    if v not in g.vertices():
+        return False
 
-    if not (v in g.vertices()): return False
+    vs = {v, *g.neighbors(v)}
+    if not is_graphlike(g, vs):
+        return False
 
-    vt = types[v]
-    va = g.phase(v)
+    phase = g.phase(v)
+    if phase not in (1/2, 3/2):
+        return False
 
-    if vt != VertexType.Z: return False
-    if not (va == Fraction(1, 2) or va == Fraction(3, 2)): return False
-    # if not phase_is_clifford(va) or phase_is_pauli(va): return False
-
-    if g.is_ground(v): return False
-
-    if not (all(g.edge_type(e) == EdgeType.HADAMARD for e in g.incident_edges(v))): return False
-
-    vn = list(g.neighbors(v))
-
-    if not all(types[n] == VertexType.Z for n in vn): return False
+    if g.is_ground(v):
+        return False
 
     return True
 
