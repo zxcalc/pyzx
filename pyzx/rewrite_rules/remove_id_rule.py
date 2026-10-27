@@ -29,7 +29,7 @@ __all__ = ['check_remove_id',
            'unsafe_remove_id']
 
 from ..graph.base import BaseGraph, VT, ET
-from ..utils import EdgeType, VertexType, get_z_box_label, vertex_is_w, get_w_io
+from ..utils import EdgeType, VertexType, get_z_box_label, vertex_is_w, get_w_io, vertex_is_zx
 
 
 def check_remove_id(g: BaseGraph[VT, ET], v: VT) -> bool:
@@ -77,7 +77,7 @@ def check_remove_zx(g: BaseGraph[VT, ET], v: VT) -> bool:
             return False
     if g.type(v) == VertexType.Z_BOX and get_z_box_label(g, v) == 1:
         return True
-    elif g.type(v) != VertexType.Z_BOX and g.phase(v) == 0:
+    elif vertex_is_zx(g.type(v)) and g.phase(v) == 0:
         return True
     return False
 
