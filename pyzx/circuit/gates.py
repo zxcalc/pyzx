@@ -924,6 +924,7 @@ class ParityPhase(Gate):
                 anchors.append(v)
                 q_mapper.advance_next_row(t)
             g.add_phase_gadget(self.phase, anchors)
+            g.scalar.add_power(len(self.targets) - 1)
         else:
             # Decompose to CNOTs + ZPhase.
             for gate in self.to_basic_gates():

@@ -24,6 +24,7 @@ Hence, occasionally changes will be backwards incompatible (although they will a
 - `gflow(..., pauli=True)` issues a `DeprecationWarning`; use `pauli_flow(...)` instead. The alias remains supported. (by @pmitos)
 
 ### Fixed
+- `ParityPhase.to_graph` now adds the missing scalar correction factor $\sqrt{2}^{k-1}$ when `as_gadget=True` (and for `PhaseGadget`), ensuring that diagrams representing phase gadgets have the correct global scalar and unitary matrix semantics under `to_matrix()` and `compare_tensors(..., preserve_scalar=True)`.
 - `basic_optimization`, and with it `full_optimize` and `phase_block_optimize`, applied an `XPhase` gate to the wrong qubit once it had rewritten a CNOT pair into a SWAP, returning a circuit that is not equivalent to the input (e.g. `CNOT(1,0)`, `CNOT(0,1)`, `XPhase(1, 1/2)`). The gates it passes back to `parse_gate` for an `XPhase` now use the unmapped qubit. (by @Shakhtar-Sankur)
 - `graph_to_circuit()` in `graphparser.py` now raises a `NotImplementedError` when extracting conditional gates instead of silently returning a circuit with potentially incorrect gate ordering (by @akshaysoftware).
 - `Var.rebind_to_registry` no longer loses a variable's Boolean type when the target registry does not know the variable yet (it read the type *after* switching registries). Copying a graph whose Boolean variables were created outside its registry silently turned them continuous, also on the original graph, so Pauli checks on symbolic phases failed.
