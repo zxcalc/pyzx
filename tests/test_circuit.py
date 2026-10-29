@@ -31,7 +31,7 @@ from pyzx.generate import cliffordT, cliffords
 from pyzx.simplify import clifford_simp
 from pyzx.extract import extract_circuit
 from pyzx.circuit import Circuit, PhaseGadget
-from pyzx.circuit.gates import ParityPhase, FSim, U2, U3, CU3, CU, CSX, RZZ, CNOT, ZPhase
+from pyzx.circuit.gates import ParityPhase, FSim, U2, U3, CU3, CU, CSX, RZZ, CNOT, ZPhase, XCX, CX
 from pyzx.utils import VertexType, EdgeType
 from fractions import Fraction
 
@@ -91,6 +91,28 @@ class TestCircuit(unittest.TestCase):
                 c.add_gate(gate)
                 c2 = Circuit.from_quipper(c.to_quipper())
                 self.assertTrue(compare_tensors(c.to_matrix(), c2.to_matrix(), preserve_scalar=False))
+
+    def test_xcx_graph_and_quipper_roundtrip(self):
+        c = Circuit(2)
+        c.add_gate("CX", 0, 1)
+        self.assertIsInstance(c.gates[0], XCX)
+        self.assertIs(CX, XCX)
+
+        # Graph roundtrip with zh=True preserving XCX gate
+        g = c.to_graph(zh=True)
+        c_from_graph = Circuit.from_graph(g)
+        self.assertEqual(len(c_from_graph.gates), 1)
+        self.assertIsInstance(c_from_graph.gates[0], XCX)
+        self.assertTrue(compare_tensors(c.to_tensor(), c_from_graph.to_tensor(), True))
+
+        # Quipper roundtrip
+        q_str = c.to_quipper()
+        self.assertIn('QGate["X"](1) with controls=[+0]', q_str)
+        c_from_quipper = Circuit.from_quipper(q_str)
+        self.assertEqual(len(c_from_quipper.gates), 1)
+        self.assertIsInstance(c_from_quipper.gates[0], XCX)
+        self.assertEqual(c.gates, c_from_quipper.gates)
+        self.assertTrue(compare_tensors(c.to_tensor(), c_from_quipper.to_tensor(), True))
 
     def test_load_quipper_from_file(self):
         c1 = Circuit.from_quipper_file(os.path.join(mydir,"test_circuit.circuit"))
