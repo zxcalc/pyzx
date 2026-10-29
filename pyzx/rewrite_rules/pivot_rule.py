@@ -46,7 +46,7 @@ __all__ = [
 
 from collections import Counter
 
-from ..utils import VertexType, EdgeType, phase_is_pauli, phase_is_clifford
+from ..utils import VertexType, EdgeType, is_graphlike, is_graphlike, phase_is_pauli, phase_is_clifford
 from ..graph.base import BaseGraph, VT, ET
 
 MatchPivotType = tuple[tuple[VT, VT], tuple[list[VT], list[VT]]]
@@ -162,28 +162,29 @@ def check_pivot_gadget(
     :param v: An interior Pauli vertex.
     :param w: An interior non-Pauli vertex adjacent to ``v``.
     """
-    types = g.types()
+
+    if v not in g.vertices() or w not in g.vertices():
+        return False
+
+    if not g.connected(v, w):
+        return False
+
+    v_neighbors = g.neighbors(v)
+    w_neighbors = g.neighbors(w)
+    vs = {*v_neighbors, *w_neighbors} # Necessarily includes v and w by previous check
+    if not is_graphlike(g, vs):
+        return False
+
     phases = g.phases()
-    if not (v in g.vertices() and w in g.vertices()): return False
-    if not g.connected(v, w): return False
+    if not phase_is_pauli(phases[v]) or phase_is_pauli(phases[w]):
+        return False
 
-    if g.edge_type(g.edge(v, w)) != EdgeType.HADAMARD: return False
-
-    if not (types[v] == VertexType.Z and types[w] == VertexType.Z): return False
-
-    if not phase_is_pauli(phases[v]): return False
-    if phase_is_pauli(phases[w]): return False
-    if g.is_ground(v) or g.is_ground(w): return False
+    if g.is_ground(v) or g.is_ground(w):
+        return False
 
     # w must not be a phase gadget (leaf vertex).
-    if len(list(g.neighbors(w))) == 1: return False
-
-    # Both must be interior (no boundary neighbours).
-    v_boundaries = boundary_list_for_vertex(g, v)
-    if v_boundaries is None or len(v_boundaries) != 0: return False
-
-    w_boundaries = boundary_list_for_vertex(g, w)
-    if w_boundaries is None or len(w_boundaries) != 0: return False
+    if len(w_neighbors) == 1:
+        return False
 
     return True
 
