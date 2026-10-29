@@ -123,29 +123,31 @@ def check_pivot_boundary(
     :param v: An interior Pauli vertex.
     :param w: A non-Pauli Z-spider with exactly one boundary neighbour, adjacent to ``v``.
     """
-    types = g.types()
+
+    if v not in g.vertices() or w not in g.vertices():
+        return False
+
+    if not g.connected(v, w):
+        return False
+
     phases = g.phases()
-    if not (v in g.vertices() and w in g.vertices()): return False
-    if not g.connected(v, w): return False
-
-    if g.edge_type(g.edge(v, w)) != EdgeType.HADAMARD: return False
-
-    if not (types[v] == VertexType.Z and types[w] == VertexType.Z): return False
-
-    if not phase_is_pauli(phases[v]): return False
-    if phase_is_pauli(phases[w]): return False
-    if g.is_ground(v) or g.is_ground(w): return False
-
-    # v's neighbours (including w) must not be grounded, matching match_pivot_boundary.
-    if any(g.is_ground(n) for n in g.neighbors(v)): return False
-
-    # v must be interior (no boundary neighbours).
-    v_boundaries = boundary_list_for_vertex(g, v)
-    if v_boundaries is None or len(v_boundaries) != 0: return False
+    if not phase_is_pauli(phases[v]) or phase_is_pauli(phases[w]):
+        return False
 
     # w must have exactly one boundary neighbour.
     w_boundaries = boundary_list_for_vertex(g, w)
-    if w_boundaries is None or len(w_boundaries) != 1: return False
+    if w_boundaries is None or len(w_boundaries) != 1:
+        return False
+
+    v_neighbors = g.neighbors(v)
+    w_neighbors = g.neighbors(w)
+    w_boundary = w_boundaries[0]
+    vs = {*v_neighbors, *w_neighbors} - {w_boundary} # Necessarily includes v and w by connectedness check
+    if not is_graphlike(g, vs):
+        return False
+
+    if any(g.is_ground(n) for n in v_neighbors):
+        return False
 
     return True
 
@@ -169,14 +171,14 @@ def check_pivot_gadget(
     if not g.connected(v, w):
         return False
 
-    v_neighbors = g.neighbors(v)
-    w_neighbors = g.neighbors(w)
-    vs = {*v_neighbors, *w_neighbors} # Necessarily includes v and w by previous check
-    if not is_graphlike(g, vs):
-        return False
-
     phases = g.phases()
     if not phase_is_pauli(phases[v]) or phase_is_pauli(phases[w]):
+        return False
+
+    v_neighbors = g.neighbors(v)
+    w_neighbors = g.neighbors(w)
+    vs = {*v_neighbors, *w_neighbors} # Necessarily includes v and w by connectedness check
+    if not is_graphlike(g, vs):
         return False
 
     if g.is_ground(v) or g.is_ground(w):
