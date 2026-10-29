@@ -24,6 +24,7 @@ Hence, occasionally changes will be backwards incompatible (although they will a
 - `gflow(..., pauli=True)` issues a `DeprecationWarning`; use `pauli_flow(...)` instead. The alias remains supported. (by @pmitos)
 
 ### Fixed
+- `graph_to_circuit` and `parse_quipper_block` now add `XCX` gates correctly instead of raising `KeyError: 'CX'`, and `"CX"` is registered as an alias in `gate_types` and exported in `pyzx.circuit`.
 - `Circuit.to_basic_gates` now properly decomposes `PhaseGadget` and `ParityPhase(as_gadget=True)` into basic CNOT and ZPhase gates, while `Circuit.to_graph` preserves phase gadgets as native ZX-diagram gadgets.
 - `ParityPhase.to_graph` now adds the missing scalar correction factor $\sqrt{2}^{k-1}$ when `as_gadget=True` (and for `PhaseGadget`), ensuring that diagrams representing phase gadgets have the correct global scalar and unitary matrix semantics under `to_matrix()` and `compare_tensors(..., preserve_scalar=True)`.
 - `basic_optimization`, and with it `full_optimize` and `phase_block_optimize`, applied an `XPhase` gate to the wrong qubit once it had rewritten a CNOT pair into a SWAP, returning a circuit that is not equivalent to the input (e.g. `CNOT(1,0)`, `CNOT(0,1)`, `XPhase(1, 1/2)`). The gates it passes back to `parse_gate` for an `XPhase` now use the unmapped qubit. (by @Shakhtar-Sankur)
