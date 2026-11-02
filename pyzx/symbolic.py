@@ -21,7 +21,7 @@ and Poly is a sum of terms.
 Lark is used to define a parser that can translate a string into a Poly.
 """
 
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
 from fractions import Fraction
 from typing import Any
 
@@ -119,6 +119,17 @@ class Term:
 
     def free_vars(self) -> set[Var]:
         return set(var for var, _ in self.vars)
+
+    def divide(self, other: 'Term') -> tuple[int, 'Term']:
+        """Performs monomial division of this term by another term.
+
+        TODO
+        """
+        
+        other_vars = dict(other.vars)
+        quotient = min(0, min(other_vars.get(var, 0) - power for var, power in self.vars))
+        remainder = Term([(var, power - quotient) for var, power in self.vars if var in other_vars])
+        return quotient, remainder
 
     def __repr__(self) -> str:
         vs = []
@@ -423,6 +434,21 @@ def new_const(coeff: int | Fraction) -> Poly:
     """Create a constant polynomial with the given coefficient."""
     return Poly([(coeff, Term([]))])
 
+def groebner_basis(polys: Sequence[Poly], vars: Sequence[Var]) -> Sequence[Poly]:
+    """Compute a Gröbner basis for the given sequence of polynomials.
+    
+    TODO
+    """
+    # Placeholder for the actual Gröbner basis computation
+    ... # TODO
+
+def groebner_reduce(poly: Poly, basis: Sequence[Poly], vars: Sequence[Var]) -> Poly:
+    """Reduce a polynomial with respect to a Gröbner basis.
+    
+    TODO
+    """
+    # Placeholder for the actual Gröbner reduction
+    ... # TODO
 
 poly_grammar = Lark("""
     start      : expr
