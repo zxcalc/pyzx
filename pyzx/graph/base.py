@@ -1283,17 +1283,23 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
 
         return result
 
-    def prioritize_variables(self, *vars: str) -> None:
-        """Rewrite all phases in the graph in terms of the provided symbolic variables where
-        possible. Substitutions are made by inferring equalities from the diagram scalar.
-
+    def reduce_symbolic_phases(self, *priority_vars: str) -> None:
+        """Reduce all phases in the graph into a simpler form, preferring expressions in terms
+        of the provided symbolic variables where possible. Substitutions are made by inferring
+        equalities from the diagram scalar and performing a Gröbner basis reduction using degrevlex
+        ordering. These rewrites first favour reducing the degree of any polynomial phases and then
+        favour including terms involving the priority variales.
+        
         TODO
         """
 
+        # "Larger" monomials are eliminated first, so put the omitted variables before the priority variables
+        # The largest priority variable (the first one provided) should go last in the order
         all_vars = {var.name: var for var in self.scalar.free_vars()}
-        priority_vars = (all_vars[var] for var in vars if var in all_vars)
-        omitted_vars = (all_vars[var] for var in all_vars if var not in vars)
-        lex_order = (*priority_vars, *omitted_vars)
+        lex_order = (
+            *(all_vars[var] for var in all_vars if var not in priority_vars),
+            *(all_vars[var] for var in reversed(priority_vars) if var in all_vars),
+        )
 
         basis = groebner_basis([node for node in self.scalar.phasenodes if isinstance(node, Poly)], lex_order)
 
@@ -1305,25 +1311,12 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
                 if isinstance(new_phase, float):
                     new_phase = Fraction(new_phase)
                 self.set_phase(v, new_phase)
-            
+
             if self.type(v) == VertexType.Z_BOX:
                 label = get_z_box_label(self, v)
                 if isinstance(label, Poly):
                     new_label = simplify_poly(groebner_reduce(label, basis, lex_order))
                     set_z_box_label(self, v, new_label)
-
-        # var_values: dict[str, Poly] = {}
-        # for node in self.scalar.phasenodes:
-        #     if not isinstance(node, Poly):
-        #         continue
-
-        #     # We can only solve for variables which appear linearly in the polynomial
-        #     solvable_vars = node.free_vars()
-        #     for _, term in node.terms:
-        #         if len(term.vars) != 1 or term.vars[0][1] != 1:
-        #             solvable_vars.difference_update(var for var, _ in term.vars)
-
-        # self.substitute_variables(var_values, in_place = True)
 
     def __deepcopy__(self, memo: dict[int, Any]) -> Self:
         """Custom deepcopy implementation to ensure variable registry is properly handled
