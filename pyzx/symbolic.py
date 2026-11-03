@@ -21,6 +21,7 @@ and Poly is a sum of terms.
 Lark is used to define a parser that can translate a string into a Poly.
 """
 
+from collections import defaultdict
 from collections.abc import Callable, Mapping, Sequence
 from fractions import Fraction
 from typing import Any
@@ -120,16 +121,29 @@ class Term:
     def free_vars(self) -> set[Var]:
         return set(var for var, _ in self.vars)
 
-    def divide(self, other: 'Term') -> tuple[int, 'Term']:
-        """Performs monomial division of this term by another term.
+    def divide(self, other: 'Term') -> 'Term | None':
+        """Performs monomial division of this term by another term. Returns None if the division is not exact.
 
         TODO
         """
-        
-        other_vars = dict(other.vars)
-        quotient = min(0, min(other_vars.get(var, 0) - power for var, power in self.vars))
-        remainder = Term([(var, power - quotient) for var, power in self.vars if var in other_vars])
-        return quotient, remainder
+
+        self_vars = defaultdict(int, self.vars) # Defaults to 0
+        other_vars = defaultdict(int, other.vars)
+        if any(self_vars[var] < power for var, power in other.vars):
+            return None
+
+        return Term([
+            (var, power - other_vars[var])
+            for var, power in self.vars
+            if power > other_vars[var]
+        ])
+
+    @property
+    def degree(self) -> int:
+        return sum(power for _, power in self.vars)
+
+    def degree_of(self, var: Var) -> int:
+        return next((power for v, power in self.vars if v == var), 0)
 
     def __repr__(self) -> str:
         vs = []
@@ -348,7 +362,7 @@ class Poly:
 
     @property
     def degree(self) -> int:
-        powers = [sum(c for _, c in t.vars) for coeff, t in self.terms if coeff != 0]
+        powers = [t.degree for c, t in self.terms if c != 0]
         if powers:
             return max(powers)
         return 0
@@ -434,11 +448,24 @@ def new_const(coeff: int | Fraction) -> Poly:
     """Create a constant polynomial with the given coefficient."""
     return Poly([(coeff, Term([]))])
 
+def degrevlex_leading(poly: Poly, vars: Sequence[Var]) -> tuple[int | float | complex | Fraction, Term]:
+    """Get the leading term of a polynomial in degree reverse lexicographic order."""
+
+    if not poly.terms:
+        return 0, Term([])
+
+    rev = list(reversed(vars))
+    def key(term: tuple[int | float | complex | Fraction, Term]) -> tuple[int, tuple[int, ...]]:
+        return term[1].degree, tuple(-term[1].degree_of(v) for v in rev)
+
+    return max(poly.terms, key=key)
+
 def groebner_basis(polys: Sequence[Poly], vars: Sequence[Var]) -> Sequence[Poly]:
     """Compute a Gröbner basis for the given sequence of polynomials.
     
     TODO
     """
+    
     # Placeholder for the actual Gröbner basis computation
     ... # TODO
 
@@ -447,8 +474,26 @@ def groebner_reduce(poly: Poly, basis: Sequence[Poly], vars: Sequence[Var]) -> P
     
     TODO
     """
-    # Placeholder for the actual Gröbner reduction
-    ... # TODO
+
+    remainder = Poly([])
+
+    while poly != 0:
+        coeff, lt = degrevlex_leading(poly, vars)
+
+        for b in basis:
+            coeff_b, lt_b = degrevlex_leading(b, vars)
+            quotient = lt.divide(lt_b)
+            if quotient:
+                poly -= Poly([(coeff / coeff_b, quotient)]) * b
+                break
+        else:
+            term = Poly([(coeff, lt)])
+            remainder += term
+            poly -= term
+
+    return remainder
+
+
 
 poly_grammar = Lark("""
     start      : expr

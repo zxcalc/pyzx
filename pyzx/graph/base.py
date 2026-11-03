@@ -26,7 +26,7 @@ from typing import (TYPE_CHECKING, Any, ClassVar, Generic, Literal, Optional,
 
 import numpy as np
 
-from ..symbolic import Poly, Var, VarRegistry, groebner, groebner_basis, groebner_reduce
+from ..symbolic import Poly, Var, VarRegistry, groebner_basis, groebner_reduce
 from ..tensor import TensorStrategy, tensor_to_matrix, tensorfy
 from ..utils import (EdgeType, FloatInt, FractionLike, VertexType,
                      assert_phase_real, get_h_box_label, get_z_box_label,
