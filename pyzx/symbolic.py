@@ -145,6 +145,16 @@ class Term:
     def degree_of(self, var: Var) -> int:
         return next((power for v, power in self.vars if v == var), 0)
 
+    def lcm(self, other: 'Term') -> 'Term':
+        """Compute the least common multiple of two terms."""
+
+        self_vars = defaultdict(int, self.vars)
+        other_vars = defaultdict(int, other.vars)
+        return Term([
+            (var, max(self_vars[var], other_vars[var]))
+            for var in set(self_vars.keys()) | set(other_vars.keys())
+        ])
+
     def __repr__(self) -> str:
         vs = []
         for v, c in self.vars:
@@ -460,14 +470,41 @@ def degrevlex_leading(poly: Poly, vars: Sequence[Var]) -> tuple[int | float | co
 
     return max(poly.terms, key=key)
 
-def groebner_basis(polys: Sequence[Poly], vars: Sequence[Var]) -> Sequence[Poly]:
-    """Compute a Gröbner basis for the given sequence of polynomials.
+def s_polynomial(f: Poly, g: Poly, vars: Sequence[Var]) -> Poly:
+    """Compute the S-polynomial of two polynomials."""
+    if not f.terms or not g.terms:
+        return Poly([])
+
+    coeff_f, lt_f = degrevlex_leading(f, vars)
+    coeff_g, lt_g = degrevlex_leading(g, vars)
+
+    lcm = lt_f.lcm(lt_g)
+    q_f = lcm.divide(lt_f)
+    q_g = lcm.divide(lt_g)
+    assert q_f is not None and q_g is not None # Division should always be exact
+
+    return Poly([(1 / coeff_f, q_f)]) * f - Poly([(1 / coeff_g, q_g)]) * g
+
+def groebner_basis(polys: Sequence[Poly], vars: Sequence[Var]) -> list[Poly]:
+    """Compute a Gröbner basis for the given sequence of polynomials using Buchberger's algorithm.
     
     TODO
     """
-    
-    # Placeholder for the actual Gröbner basis computation
-    ... # TODO
+
+    basis = [poly for poly in polys if poly != 0]
+
+    # New elements can be added to the basis in the middle of the loop
+    # For that reason, we use an outer while loop instead of a for loop
+    i = 1
+    while i < len(basis):
+        for j in range(i):
+            s = s_polynomial(basis[i], basis[j], vars)
+            remainder = groebner_reduce(s, basis, vars)
+            if remainder != 0:
+                basis.append(remainder)
+        i += 1
+
+    return basis
 
 def groebner_reduce(poly: Poly, basis: Sequence[Poly], vars: Sequence[Var]) -> Poly:
     """Reduce a polynomial with respect to a Gröbner basis.
