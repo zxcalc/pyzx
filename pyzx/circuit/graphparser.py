@@ -286,7 +286,7 @@ def graph_to_circuit(g: BaseGraph[VT, ET], split_phases: bool = True) -> Circuit
                     if g.edge_type(g.edge(v,n)) != EdgeType.HADAMARD:
                         raise TypeError("Invalid vertical connection between vertices of the same type")
                     if t == VertexType.Z: c.add_gate("CZ", q2, q)
-                    else: c.add_gate("CX", q2, q)
+                    else: c.add_gate("XCX", q2, q)
                 else:
                     if g.edge_type(g.edge(v,n)) != EdgeType.SIMPLE:
                         raise TypeError("Invalid vertical connection between vertices of different type")
