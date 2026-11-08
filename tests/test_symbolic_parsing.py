@@ -573,5 +573,28 @@ class TestVarRegistryRebinding(unittest.TestCase):
         self.assertTrue(is_pauli(h.phase(next(iter(h.vertices())))))
         self.assertTrue(h.var_registry.get_type('a'))
 
+class TestScientificNotationParsing(unittest.TestCase):
+    def test_scientific_notation_in_symbolic_expr(self):
+        def nv(name: str):
+            return new_var(name, is_bool=False)
+
+        for text, expected_float in [
+            ("1.0e-05", 1.0e-05),
+            ("1.5E+2", 150.0),
+            ("2.e-3", 0.002),
+            (".5e-1", 0.05),
+            ("1e-5", 1e-05),
+        ]:
+            poly = parse(text, nv)
+            self.assertEqual(poly.free_vars(), set())
+            self.assertEqual(poly.terms[0][0], Fraction(expected_float).limit_denominator())
+
+    def test_scientific_notation_qasm_parsing(self):
+        import pyzx as zx
+        for angle in ("0.00001", "1.0e-05", "1.5E+2", "2.e-3", ".5e-1", "1e-5"):
+            qasm = f'OPENQASM 2.0;\ninclude "qelib1.inc";\nqreg q[1];\nrz({angle}) q[0];\n'
+            c = zx.Circuit.from_qasm(qasm)
+            self.assertEqual(len(c.gates), 1)
+
 if __name__ == '__main__':
     unittest.main()

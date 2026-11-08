@@ -8,6 +8,9 @@ Hence, occasionally changes will be backwards incompatible (although they will a
 
 ## [Unreleased]
 
+### Fixed
+- `poly_grammar` in `pyzx.symbolic` now recognizes scientific-notation floating point literals (`FLOAT`), allowing `Circuit.from_qasm` and symbolic phase parsing to parse gate angles with exponents such as `1.0e-05` (#558).
+
 ## [0.10.8] - 2026-11-01
 
 ### Added
