@@ -439,15 +439,17 @@ poly_grammar = Lark("""
     ?signed_factor : "-" factor -> neg_factor
                    | factor
     ?factor    : base ("^" exponent)?
-    base       : intf | decimal | pi | var | "(" expr ")"
+    base       : intf | floatf | decimal | pi | var | "(" expr ")"
     exponent   : intf
     var        : CNAME ("[" INT "]")?
     intf       : INT
+    floatf     : FLOAT
     decimal    : DECIMAL
     pi         : "\\pi" | "pi" | "π"
 
     %import common.INT
     %import common.DECIMAL
+    %import common.FLOAT
     %import common.CNAME
     %import common.WS
     %ignore WS
@@ -574,6 +576,8 @@ class PolyTransformer(Transformer):
         return new_const(int(items[0]))
 
     def decimal(self, items: list[Any]) -> Poly:
+        return new_const(Fraction(float(items[0])).limit_denominator())
+    def floatf(self, items: list[Any]) -> Poly:
         return new_const(Fraction(float(items[0])).limit_denominator())
 
 def parse(expr: str, new_var: Callable[[str], Poly]) -> Poly:
