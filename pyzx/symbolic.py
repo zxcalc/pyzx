@@ -142,13 +142,24 @@ class Term:
 
     @property
     def degree(self) -> int:
+        """The total degree of the term."""
         return sum(power for _, power in self.vars)
 
     def degree_of(self, var: Var) -> int:
+        """The exponent of the specified variable in the term.
+
+        :param var: The variable whose degree to return.
+        :return: The exponent of the variable in the term, or 0 if not present.
+        """
         return next((power for v, power in self.vars if v == var), 0)
 
     def lcm(self, other: 'Term') -> 'Term':
-        """Compute the least common multiple of two terms."""
+        """Compute the least common multiple of this and another term.
+
+        :param other: The other term.
+        :return: A term whose variables have the maximum exponent of each
+            variable in the two terms.
+        """
 
         self_vars = defaultdict(int, self.vars) # Defaults to 0
         other_vars = defaultdict(int, other.vars)
