@@ -1284,16 +1284,24 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         return result
 
     def reduce_symbolic_phases(self, *priority_vars: str) -> None:
-        """Reduce all phases in the graph into a simpler form, preferring expressions in terms
-        of the provided symbolic variables where possible. Substitutions are made by inferring
-        equalities from the diagram scalar and performing a Gröbner basis reduction using degrevlex
-        ordering. These rewrites first favour reducing the degree of any polynomial phases and then
+        """Reduce all phases in the graph into a simpler form, preferring
+        expressions in terms of the provided symbolic variables where
+        possible. Substitutions are made by inferring equalities from the
+        diagram scalar and performing a Gröbner basis reduction using a
+        degree reverse lexicographic monomial ordering. These rewrites
+        first favour reducing the degree of any polynomial phases and then
         favour including terms involving the priority variables.
-        
-        TODO
+
+        The graph is modified in place. Symbolic phases on vertices and
+        symbolic Z-box labels are reduced; scalar phase nodes are used as
+        polynomial relations but are not themselves modified.
+
+        :param priority_vars: Variable names ordered from highest to lowest
+            priority. Variables omitted from this sequence are placed before
+            them in the monomial ordering. Unknown names are ignored.
         """
 
-        # "Larger" monomials are eliminated first, so put the omitted variables before the priority variables
+        # "Larger" monomials are eliminated first, so put omitted variables before priority variables
         # The highest-priority variable (the first one provided) should go last in the order
         all_vars = {var.name: var for var in self.scalar.free_vars()}
         lex_order = (

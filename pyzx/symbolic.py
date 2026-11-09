@@ -122,9 +122,11 @@ class Term:
         return set(var for var, _ in self.vars)
 
     def divide(self, other: 'Term') -> 'Term | None':
-        """Performs monomial division of this term by another term. Returns None if the division is not exact.
+        """Divide this monomial term by another monomial term when possible.
 
-        TODO
+        :param other: The monomial divisor.
+        :returns: The quotient term if every exponent in this term is greater
+            than the corresponding exponent in ``other``; otherwise ``None``.
         """
 
         self_vars = defaultdict(int, self.vars) # Defaults to 0
@@ -460,10 +462,24 @@ def new_const(coeff: int | Fraction) -> Poly:
 
 
 class GroebnerBasis:
-    """TODO"""
+    """A Gröbner basis for a collection of multivariate polynomials.
+
+    The basis is constructed with Buchberger's algorithm using degree reverse
+    lexicographic monomial ordering. The supplied variable sequence determines
+    the variable ordering used.
+    """
 
     def __init__(self, polys: Sequence[Poly], vars: Sequence[Var]):
-        """TODO"""
+        """Construct a Gröbner basis from a sequence of polynomials using
+        degree reverse lexicographic monomial ordering with respect to the
+        provided variable ordering.
+
+        :param polys: Polynomials whose ideal defines the basis. Zero
+            polynomials are ignored.
+        :param vars: Variables defining the degree reverse lexicographic
+            ordering. Variables not present in this sequence have no effect
+            on leading-term comparisons.
+        """
         self.vars = list(vars)
         self.basis = [poly for poly in polys if poly != 0]
 
@@ -481,7 +497,10 @@ class GroebnerBasis:
     def degrevlex_leading(self, poly: Poly) -> tuple[int | float | complex | Fraction, Term]:
         """Get the leading term of a polynomial in degree reverse lexicographic order.
 
-        TODO"""
+        :param poly: The polynomial whose leading term should be selected.
+        :returns: A ``(coefficient, term)`` pair for the leading term. For
+            the zero polynomial, returns ``(0, Term([]))``.
+        """
 
         if not poly.terms:
             return 0, Term([])
@@ -495,7 +514,15 @@ class GroebnerBasis:
     def s_polynomial(self, f: Poly, g: Poly) -> Poly:
         """Compute the S-polynomial of two polynomials.
 
-        TODO"""
+        The S-polynomial cancels the leading terms of ``f`` and ``g`` after
+        multiplying them by the minimal monomial factors required to match
+        their leading monomials.
+
+        :param f: The first polynomial.
+        :param g: The second polynomial.
+        :returns: The S-polynomial of ``f`` and ``g``. If either input is
+            zero, the result is the zero polynomial.
+        """
 
         if not f.terms or not g.terms:
             return Poly([])
@@ -513,9 +540,15 @@ class GroebnerBasis:
         return Poly([(coeff_f, q_f)]) * f - Poly([(coeff_g, q_g)]) * g
 
     def reduce(self, poly: Poly) -> Poly:
-        """Reduce a polynomial with respect to a Gröbner basis.
+        """Reduce a polynomial with respect to this Gröbner basis.
 
-        TODO
+        Repeatedly cancels a reducible leading term using the first basis
+        polynomial whose leading monomial divides it. Terms that cannot be
+        reduced are moved into the remainder.
+
+        :param poly: The polynomial to reduce.
+        :returns: The remainder after multivariate polynomial division by this
+            basis.
         """
 
         remainder = Poly([])
