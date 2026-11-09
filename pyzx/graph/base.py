@@ -1297,7 +1297,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         # The highest-priority variable (the first one provided) should go last in the order
         all_vars = {var.name: var for var in self.scalar.free_vars()}
         lex_order = (
-            *(all_vars[var] for var in all_vars if var not in priority_vars),
+            *sorted(all_vars[var] for var in all_vars if var not in priority_vars),
             *(all_vars[var] for var in reversed(priority_vars) if var in all_vars),
         )
 

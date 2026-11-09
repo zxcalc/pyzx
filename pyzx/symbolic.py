@@ -480,7 +480,7 @@ class GroebnerBasis:
 
     def degrevlex_leading(self, poly: Poly) -> tuple[int | float | complex | Fraction, Term]:
         """Get the leading term of a polynomial in degree reverse lexicographic order.
-        
+
         TODO"""
 
         if not poly.terms:
@@ -494,7 +494,7 @@ class GroebnerBasis:
 
     def s_polynomial(self, f: Poly, g: Poly) -> Poly:
         """Compute the S-polynomial of two polynomials.
-        
+
         TODO"""
 
         if not f.terms or not g.terms:
@@ -508,11 +508,13 @@ class GroebnerBasis:
         q_g = lcm.divide(lt_g)
         assert q_f is not None and q_g is not None # Division should always be exact
 
-        return Poly([(1 / coeff_f, q_f)]) * f - Poly([(1 / coeff_g, q_g)]) * g
+        coeff_f = Fraction(1, coeff_f) if isinstance(coeff_f, int) else 1 / coeff_f
+        coeff_g = Fraction(1, coeff_g) if isinstance(coeff_g, int) else 1 / coeff_g
+        return Poly([(coeff_f, q_f)]) * f - Poly([(coeff_g, q_g)]) * g
 
     def reduce(self, poly: Poly) -> Poly:
         """Reduce a polynomial with respect to a Gröbner basis.
-        
+
         TODO
         """
 
@@ -525,7 +527,12 @@ class GroebnerBasis:
                 coeff_b, lt_b = self.degrevlex_leading(b)
                 quotient = lt.divide(lt_b)
                 if quotient:
-                    poly -= Poly([(coeff / coeff_b, quotient)]) * b
+                    coeff = (
+                        Fraction(coeff, coeff_b)
+                        if isinstance(coeff, (int, Fraction)) and isinstance(coeff_b, (int, Fraction))
+                        else coeff / coeff_b
+                    )
+                    poly -= Poly([(coeff, quotient)]) * b
                     break
             else:
                 term = Poly([(coeff, lt)])

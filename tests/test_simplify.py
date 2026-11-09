@@ -506,7 +506,7 @@ class TestSimplify(unittest.TestCase):
             g0 = g.copy()
             to_clifford_normal_form_graph(g)
             self.assertTrue(compare_tensors(g0, g, preserve_scalar=True))
-    
+
     def test_copy_simp(self):
         g = Graph()
 
@@ -529,7 +529,6 @@ class TestSimplify(unittest.TestCase):
         self.assertTrue(g1.num_vertices() == 4)
         self.assertTrue(compare_tensors(g1.to_tensor(),g.to_tensor()))
 
-    
     def test_copy_simp_full_reduce(self):
         g = Graph()
 
@@ -554,36 +553,36 @@ class TestSimplify(unittest.TestCase):
 
     def test_reduce_symbolic_phases(self):
         """Verify that symbolic phase reduction prioritises the intended variables."""
-        
+
         a, b, c, x, y, z,d  = Var("a"), Var("b"), Var("c"), Var("x"), Var("y"), Var("z"), Var("d")
-        
+
         g = Graph()
-        
+
         v1 = g.add_vertex(VertexType.Z, 0, 0, phase=Poly([
             (1, Term([(a, 1)]))
         ])) # a
-        
+
         v2 = g.add_vertex(VertexType.Z, 0, 0, phase=Poly([
             (4, Term([(b, 2)]))
         ])) # 4b^2
-        
+
         v3 = g.add_vertex(VertexType.Z, 0, 0, phase=Poly([
             (8, Term([(a, 2)])),
             (-4, Term([(c, 4)]))
         ])) # 8a^2 - 4c^4
-        
+
         v4 = g.add_vertex(VertexType.Z, 0, 0, phase=Poly([
             (4, Term([(a, 1), (b, 1), (c, 2)]))
         ])) # 4abc^2
-        
+
         v5 = g.add_vertex(VertexType.Z, 0, 0, phase=Poly([
             (3, Term([(x, 10)]))
         ])) # 3x^10
-        
+
         v6 = g.add_vertex(VertexType.Z, 0, 0, phase=Poly([
             (1, Term([(d, 1)]))
         ])) # d
-        
+
         g.scalar.add_node(Poly([
             (1, Term([(a, 1)])),
             (1, Term([(x, 1)]))
