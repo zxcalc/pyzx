@@ -19,8 +19,7 @@ import itertools
 import sys
 import unittest
 
-from pyzx.symbolic import (Poly, Term, Var, degrevlex_leading, groebner_basis,
-                           groebner_reduce, s_polynomial)
+from pyzx.symbolic import GroebnerBasis, Poly, Term, Var
 
 if __name__ == "__main__":
     sys.path.append("..")
@@ -32,25 +31,25 @@ class TestPoly(unittest.TestCase):
         """Leading term of a polynomial in degree reverse lexicographic order works with respect to various variable orderings."""
 
         x, y, z = Var("x"), Var("y"), Var("z")
+
         t1 = (1, Term([(x, 2), (y, 2)]))
         t2 = (2, Term([(x, 2), (y, 1), (z, 1)]))
         t3 = (3, Term([(y, 1), (z, 3)]))
         t4 = (-1, Term([(x, 1), (y, 1), (z, 1)])) # Smaller degree -- should never be largest
         p = Poly([t1, t2, t3, t4])
 
-        self.assertEqual(degrevlex_leading(p, [x, y, z]), t1)
-        self.assertEqual(degrevlex_leading(p, [x, z, y]), t2)
-        self.assertEqual(degrevlex_leading(p, [y, x, z]), t1)
-        self.assertEqual(degrevlex_leading(p, [y, z, x]), t3)
-        self.assertEqual(degrevlex_leading(p, [z, x, y]), t3)
-        self.assertEqual(degrevlex_leading(p, [z, y, x]), t3)
+        self.assertEqual(GroebnerBasis([], [x, y, z]).degrevlex_leading(p), t1)
+        self.assertEqual(GroebnerBasis([], [x, z, y]).degrevlex_leading(p), t2)
+        self.assertEqual(GroebnerBasis([], [y, x, z]).degrevlex_leading(p), t1)
+        self.assertEqual(GroebnerBasis([], [y, z, x]).degrevlex_leading(p), t3)
+        self.assertEqual(GroebnerBasis([], [z, x, y]).degrevlex_leading(p), t3)
+        self.assertEqual(GroebnerBasis([], [z, y, x]).degrevlex_leading(p), t3)
 
     def test_s_polynomial(self):
         """Verify S-polynomial computation of two polynomials."""
 
         x, y, z = Var("x"), Var("y"), Var("z")
-        vars = [x, y, z]
-
+        basis = GroebnerBasis([], [x, y, z])
         # Leading monomials share factors
         f = Poly([
             (2, Term([(x, 2)])),
@@ -64,7 +63,7 @@ class TestPoly(unittest.TestCase):
             (-1, Term([(x, 1), (z, 1)])),
             (1, Term([(y, 2)])),
         ])  # -xz + y^2
-        self.assertEqual(s_polynomial(f, g, vars), expected)
+        self.assertEqual(basis.s_polynomial(f, g), expected)
 
         # Leading monomial of g divides leading monomial of f
         f = Poly([
@@ -79,7 +78,7 @@ class TestPoly(unittest.TestCase):
             (-2, Term([(x, 1), (z, 2)])),
             (2, Term([(z, 1)])),
         ])  # -2xz^2 + 2z
-        self.assertEqual(s_polynomial(f, g, vars), expected)
+        self.assertEqual(basis.s_polynomial(f, g), expected)
 
         # Coprime leading monomials
         f = Poly([
@@ -94,15 +93,17 @@ class TestPoly(unittest.TestCase):
             (2, Term([(y, 2)])),
             (-1, Term([(x, 1), (z, 1)])),
         ])  # 2y^2 - xz
-        self.assertEqual(s_polynomial(f, g, vars), expected)
+        self.assertEqual(basis.s_polynomial(f, g), expected)
 
     def test_groebner_reduce(self):
         """Gröbner basis reduction works correctly on a set of polynomials."""
 
         x, y, z = Var("x"), Var("y"), Var("z")
-        vars = [x, y, z]
-        
-        basis = [
+
+        # Directly set the basis instead of relying on GroebnerBasis.__init__
+        # We only want to test the reduction function, not the basis creation
+        basis = GroebnerBasis([], [x, y, z])
+        basis.basis = [
             Poly([
                 (1, Term([(x, 2)])),
                 (-1, Term([(y, 1)])),
@@ -124,22 +125,22 @@ class TestPoly(unittest.TestCase):
         # x^2 -> y
         p = Poly([(1, Term([(x, 2)]))])
         expected = Poly([(1, Term([(y, 1)]))])
-        self.assertEqual(groebner_reduce(p, basis, vars), expected)
+        self.assertEqual(basis.reduce(p), expected)
 
         # xy -> z
         p = Poly([(1, Term([(x, 1), (y, 1)]))])
         expected = Poly([(1, Term([(z, 1)]))])
-        self.assertEqual(groebner_reduce(p, basis, vars), expected)
+        self.assertEqual(basis.reduce(p), expected)
 
         # y^2 -> xz
         p = Poly([(1, Term([(y, 2)]))])
         expected = Poly([(1, Term([(x, 1), (z, 1)]))])
-        self.assertEqual(groebner_reduce(p, basis, vars), expected)
+        self.assertEqual(basis.reduce(p), expected)
 
         # z^2 -> 1
         p = Poly([(1, Term([(z, 2)]))])
         expected = Poly([(1, Term([]))])
-        self.assertEqual(groebner_reduce(p, basis, vars), expected)
+        self.assertEqual(basis.reduce(p), expected)
 
         # x^2 + xy + y^2 + z^2 -> xz + y + z + 1
         p = Poly([
@@ -154,7 +155,7 @@ class TestPoly(unittest.TestCase):
             (1, Term([(x, 1), (z, 1)])),
             (1, Term([])),
         ])
-        self.assertEqual(groebner_reduce(p, basis, vars), expected)
+        self.assertEqual(basis.reduce(p), expected)
 
         # 2x^2y + 3xy^2 - 4z^2 -> 2xz + 3yz - 4
         p = Poly([
@@ -167,14 +168,12 @@ class TestPoly(unittest.TestCase):
             (3, Term([(y, 1), (z, 1)])),
             (-4, Term([])),
         ])
-        self.assertEqual(groebner_reduce(p, basis, vars), expected)
+        self.assertEqual(basis.reduce(p), expected)
 
     def test_groebner_basis(self):
         """Verify property of Gröbner basis of a set of polynomials."""
 
         w, x, y, z = Var("w"), Var("x"), Var("y"), Var("z")
-        vars = [w, x, y, z]
-
         polys = [
             Poly([
                 (1, Term([(x, 2)])),
@@ -198,16 +197,16 @@ class TestPoly(unittest.TestCase):
             ]), # wz - y + x
         ]
 
-        basis = groebner_basis(polys, vars)
+        basis = GroebnerBasis(polys, [w, x, y, z])
 
         # Each input and output polynomial should reduce to 0 under the basis
-        for poly in set(polys) | set(basis):
-            self.assertEqual(groebner_reduce(poly, basis, vars), 0)
+        for poly in set(polys) | set(basis.basis):
+            self.assertEqual(basis.reduce(poly), 0)
 
         # Each S-polynomial should reduce to 0 under the basis
-        for f, g in itertools.combinations(basis, 2):
-            s = s_polynomial(f, g, vars)
-            self.assertEqual(groebner_reduce(s, basis, vars), 0)
+        for f, g in itertools.combinations(basis.basis, 2):
+            s = basis.s_polynomial(f, g)
+            self.assertEqual(basis.reduce(s), 0)
 
 if __name__ == "__main__":
     unittest.main()

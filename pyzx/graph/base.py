@@ -26,7 +26,7 @@ from typing import (TYPE_CHECKING, Any, ClassVar, Generic, Literal, Optional,
 
 import numpy as np
 
-from ..symbolic import Poly, Var, VarRegistry, groebner_basis, groebner_reduce
+from ..symbolic import GroebnerBasis, Poly, Var, VarRegistry
 from ..tensor import TensorStrategy, tensor_to_matrix, tensorfy
 from ..utils import (EdgeType, FloatInt, FractionLike, VertexType,
                      assert_phase_real, get_h_box_label, get_z_box_label,
@@ -1288,25 +1288,24 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
         of the provided symbolic variables where possible. Substitutions are made by inferring
         equalities from the diagram scalar and performing a Gröbner basis reduction using degrevlex
         ordering. These rewrites first favour reducing the degree of any polynomial phases and then
-        favour including terms involving the priority variales.
+        favour including terms involving the priority variables.
         
         TODO
         """
 
         # "Larger" monomials are eliminated first, so put the omitted variables before the priority variables
-        # The largest priority variable (the first one provided) should go last in the order
+        # The highest-priority variable (the first one provided) should go last in the order
         all_vars = {var.name: var for var in self.scalar.free_vars()}
         lex_order = (
             *(all_vars[var] for var in all_vars if var not in priority_vars),
             *(all_vars[var] for var in reversed(priority_vars) if var in all_vars),
         )
 
-        basis = groebner_basis([node for node in self.scalar.phasenodes if isinstance(node, Poly)], lex_order)
-
+        basis = GroebnerBasis([node for node in self.scalar.phasenodes if isinstance(node, Poly)], lex_order)
         for v in self.vertices():
             phase = self.phase(v)
             if isinstance(phase, Poly):
-                new_phase = simplify_poly(groebner_reduce(phase, basis, lex_order))
+                new_phase = simplify_poly(basis.reduce(phase))
                 assert not isinstance(new_phase, complex) # TODO
                 if isinstance(new_phase, float):
                     new_phase = Fraction(new_phase)
@@ -1315,7 +1314,7 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
             if self.type(v) == VertexType.Z_BOX:
                 label = get_z_box_label(self, v)
                 if isinstance(label, Poly):
-                    new_label = simplify_poly(groebner_reduce(label, basis, lex_order))
+                    new_label = simplify_poly(basis.reduce(label))
                     set_z_box_label(self, v, new_label)
 
     def __deepcopy__(self, memo: dict[int, Any]) -> Self:
