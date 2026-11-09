@@ -149,7 +149,7 @@ class Term:
         """The exponent of the specified variable in the term.
 
         :param var: The variable whose degree to return.
-        :return: The exponent of the variable in the term, or 0 if not present.
+        :returns: The exponent of the variable in the term, or 0 if not present.
         """
         return next((power for v, power in self.vars if v == var), 0)
 
@@ -157,7 +157,7 @@ class Term:
         """Compute the least common multiple of this and another term.
 
         :param other: The other term.
-        :return: A term whose variables have the maximum exponent of each
+        :returns: A term whose variables have the maximum exponent of each
             variable in the two terms.
         """
 
@@ -509,7 +509,7 @@ class GroebnerBasis:
         """Get the leading term of a polynomial in degree reverse lexicographic order.
 
         :param poly: The polynomial whose leading term should be selected.
-        :returns: A ``(coefficient, term)`` pair for the leading term. For
+        :return: A ``(coefficient, term)`` pair for the leading term. For
             the zero polynomial, returns ``(0, Term([]))``.
         """
 
