@@ -29,7 +29,7 @@ if __name__ == '__main__':
 from pyzx.graph import EdgeType, Graph
 from pyzx.circuit import Circuit
 from pyzx.circuit.qasmparser import qasm
-from pyzx.symbolic import Poly
+from pyzx.symbolic import Poly, Term, Var
 from fractions import Fraction
 from pyzx.generate import cliffordT
 from pyzx.simplify import *
@@ -506,7 +506,7 @@ class TestSimplify(unittest.TestCase):
             g0 = g.copy()
             to_clifford_normal_form_graph(g)
             self.assertTrue(compare_tensors(g0, g, preserve_scalar=True))
-    
+
     def test_copy_simp(self):
         g = Graph()
 
@@ -529,7 +529,6 @@ class TestSimplify(unittest.TestCase):
         self.assertTrue(g1.num_vertices() == 4)
         self.assertTrue(compare_tensors(g1.to_tensor(),g.to_tensor()))
 
-    
     def test_copy_simp_full_reduce(self):
         g = Graph()
 
@@ -551,6 +550,92 @@ class TestSimplify(unittest.TestCase):
 
         self.assertTrue(g.num_vertices() == g1.num_vertices())
         self.assertTrue(compare_tensors(g1.to_tensor(),g.to_tensor()))
+
+    def test_reduce_symbolic_phases(self):
+        """Verify that symbolic phase reduction prioritises the intended variables."""
+
+        a, b, c, x, y, z,d  = Var("a"), Var("b"), Var("c"), Var("x"), Var("y"), Var("z"), Var("d")
+
+        g = Graph()
+
+        v1 = g.add_vertex(VertexType.Z, 0, 0, phase=Poly([
+            (1, Term([(a, 1)]))
+        ])) # a
+
+        v2 = g.add_vertex(VertexType.Z, 0, 0, phase=Poly([
+            (4, Term([(b, 2)]))
+        ])) # 4b^2
+
+        v3 = g.add_vertex(VertexType.Z, 0, 0, phase=Poly([
+            (8, Term([(a, 2)])),
+            (-4, Term([(c, 4)]))
+        ])) # 8a^2 - 4c^4
+
+        v4 = g.add_vertex(VertexType.Z, 0, 0, phase=Poly([
+            (4, Term([(a, 1), (b, 1), (c, 2)]))
+        ])) # 4abc^2
+
+        v5 = g.add_vertex(VertexType.Z, 0, 0, phase=Poly([
+            (3, Term([(x, 10)]))
+        ])) # 3x^10
+
+        v6 = g.add_vertex(VertexType.Z, 0, 0, phase=Poly([
+            (1, Term([(d, 1)]))
+        ])) # d
+
+        g.scalar.add_node(Poly([
+            (1, Term([(a, 1)])),
+            (1, Term([(x, 1)]))
+        ])) # a + x
+        g.scalar.add_node(Poly([
+            (2, Term([(b, 1)])),
+            (1, Term([(y, 1)])),
+            (1, Term([(z, 1)]))
+        ])) # 2b + y + z
+        g.scalar.add_node(Poly([
+            (1, Term([(c, 2)])),
+            (1, Term([(a, 1), (b, 1)]))
+        ])) # c^2 + ab
+        g.scalar.add_node(Poly([
+            (1, Term([(d, 1)])),
+            (1, Term([(a, 10)]))
+        ])) # d + a^10
+        g.scalar.add_node(Poly([
+            (1, Term([(a, 10)])),
+            (1, Term([(x, 1)]))
+        ])) # a^10 + x
+
+        g.reduce_symbolic_phases("x", "y", "z")
+
+        self.assertEqual(
+            g.phase(v1),
+            Poly([(-1, Term([(x, 1)]))])
+        ) # -x
+
+        self.assertEqual(
+            g.phase(v2),
+            Poly([(1, Term([(y, 2)])), (2, Term([(y, 1), (z, 1)])), (1, Term([(z, 2)]))])
+        ) # y^2 + 2yz + z^2
+
+        self.assertEqual(
+            g.phase(v3),
+            Poly([(-1, Term([(x, 2), (y, 2)])), (-2, Term([(x, 2), (y, 1), (z, 1)])), (-1, Term([(x, 2), (z, 2)])), (8, Term([(x, 2)]))])
+        ) # -x^2y^2 + -2x^2yz + -1x^2z^2 + 8x^2
+
+        self.assertEqual(
+            g.phase(v4),
+            Poly([(-1, Term([(x, 2), (y, 2)])), (-2, Term([(x, 2), (y, 1), (z, 1)])), (-1, Term([(x, 2), (z, 2)]))])
+        ) # -x^2y^2 + -2x^2yz + -1x^2z^2
+
+        self.assertEqual(
+            g.phase(v5),
+            Poly([(-3, Term([(x, 1)]))])
+        ) # -3x
+
+        self.assertEqual(
+            g.phase(v6),
+            Poly([(1, Term([(x, 1)]))])
+        ) # x
 
     def test_measurement_outcomes_survive_reduction(self):
         """Symbolic measurement outcomes must survive full_reduce.

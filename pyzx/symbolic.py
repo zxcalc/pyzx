@@ -21,7 +21,8 @@ and Poly is a sum of terms.
 Lark is used to define a parser that can translate a string into a Poly.
 """
 
-from collections.abc import Callable, Mapping
+from collections import defaultdict
+from collections.abc import Callable, Mapping, Sequence
 from fractions import Fraction
 from typing import Any
 
@@ -119,6 +120,53 @@ class Term:
 
     def free_vars(self) -> set[Var]:
         return set(var for var, _ in self.vars)
+
+    def divide(self, other: 'Term') -> 'Term | None':
+        """Divide this monomial term by another monomial term when possible.
+
+        :param other: The monomial divisor.
+        :returns: The quotient term if every exponent in this term is greater
+            than the corresponding exponent in ``other``; otherwise ``None``.
+        """
+
+        self_vars = defaultdict(int, self.vars) # Defaults to 0
+        other_vars = defaultdict(int, other.vars)
+        if any(self_vars[var] < power for var, power in other.vars):
+            return None
+
+        return Term([
+            (var, power - other_vars[var])
+            for var, power in self.vars
+            if power > other_vars[var]
+        ])
+
+    @property
+    def degree(self) -> int:
+        """The total degree of the term."""
+        return sum(power for _, power in self.vars)
+
+    def degree_of(self, var: Var) -> int:
+        """The exponent of the specified variable in the term.
+
+        :param var: The variable whose degree to return.
+        :returns: The exponent of the variable in the term, or 0 if not present.
+        """
+        return next((power for v, power in self.vars if v == var), 0)
+
+    def lcm(self, other: 'Term') -> 'Term':
+        """Compute the least common multiple of this and another term.
+
+        :param other: The other term.
+        :returns: A term whose variables have the maximum exponent of each
+            variable in the two terms.
+        """
+
+        self_vars = defaultdict(int, self.vars) # Defaults to 0
+        other_vars = defaultdict(int, other.vars)
+        return Term([
+            (var, max(self_vars[var], other_vars[var]))
+            for var in set(self_vars.keys()) | set(other_vars.keys())
+        ])
 
     def __repr__(self) -> str:
         vs = []
@@ -337,7 +385,7 @@ class Poly:
 
     @property
     def degree(self) -> int:
-        powers = [sum(c for _, c in t.vars) for coeff, t in self.terms if coeff != 0]
+        powers = [t.degree for c, t in self.terms if c != 0]
         if powers:
             return max(powers)
         return 0
@@ -422,6 +470,120 @@ def new_var(name: str, is_bool: bool, registry: VarRegistry | None = None) -> Po
 def new_const(coeff: int | Fraction) -> Poly:
     """Create a constant polynomial with the given coefficient."""
     return Poly([(coeff, Term([]))])
+
+
+class GroebnerBasis:
+    """A Gröbner basis for a collection of multivariate polynomials.
+
+    The basis is constructed with Buchberger's algorithm using degree reverse
+    lexicographic monomial ordering. The supplied variable sequence determines
+    the variable ordering used.
+    """
+
+    def __init__(self, polys: Sequence[Poly], vars: Sequence[Var]):
+        """Construct a Gröbner basis from a sequence of polynomials using
+        degree reverse lexicographic monomial ordering with respect to the
+        provided variable ordering.
+
+        :param polys: Polynomials whose ideal defines the basis. Zero
+            polynomials are ignored.
+        :param vars: Variables defining the degree reverse lexicographic
+            ordering. Variables not present in this sequence have no effect
+            on leading-term comparisons.
+        """
+        self.vars = list(vars)
+        self.basis = [poly for poly in polys if poly != 0]
+
+        # New elements can be added to the basis in the middle of the loop
+        # For that reason, we use an outer while loop instead of a for loop
+        i = 1
+        while i < len(self.basis):
+            for j in range(i):
+                s = self.s_polynomial(self.basis[i], self.basis[j])
+                remainder = self.reduce(s)
+                if remainder != 0:
+                    self.basis.append(remainder)
+            i += 1
+
+    def degrevlex_leading(self, poly: Poly) -> tuple[int | float | complex | Fraction, Term]:
+        """Get the leading term of a polynomial in degree reverse lexicographic order.
+
+        :param poly: The polynomial whose leading term should be selected.
+        :return: A ``(coefficient, term)`` pair for the leading term. For
+            the zero polynomial, returns ``(0, Term([]))``.
+        """
+
+        if not poly.terms:
+            return 0, Term([])
+
+        rev = list(reversed(self.vars))
+        def key(term: tuple[int | float | complex | Fraction, Term]) -> tuple[int, tuple[int, ...]]:
+            return term[1].degree, tuple(-term[1].degree_of(v) for v in rev)
+
+        return max(poly.terms, key=key)
+
+    def s_polynomial(self, f: Poly, g: Poly) -> Poly:
+        """Compute the S-polynomial of two polynomials.
+
+        The S-polynomial cancels the leading terms of ``f`` and ``g`` after
+        multiplying them by the minimal monomial factors required to match
+        their leading monomials.
+
+        :param f: The first polynomial.
+        :param g: The second polynomial.
+        :returns: The S-polynomial of ``f`` and ``g``. If either input is
+            zero, the result is the zero polynomial.
+        """
+
+        if not f.terms or not g.terms:
+            return Poly([])
+
+        coeff_f, lt_f = self.degrevlex_leading(f)
+        coeff_g, lt_g = self.degrevlex_leading(g)
+
+        lcm = lt_f.lcm(lt_g)
+        q_f = lcm.divide(lt_f)
+        q_g = lcm.divide(lt_g)
+        assert q_f is not None and q_g is not None # Division should always be exact
+
+        coeff_f = Fraction(1, coeff_f) if isinstance(coeff_f, int) else 1 / coeff_f
+        coeff_g = Fraction(1, coeff_g) if isinstance(coeff_g, int) else 1 / coeff_g
+        return Poly([(coeff_f, q_f)]) * f - Poly([(coeff_g, q_g)]) * g
+
+    def reduce(self, poly: Poly) -> Poly:
+        """Reduce a polynomial with respect to this Gröbner basis.
+
+        Repeatedly cancels a reducible leading term using the first basis
+        polynomial whose leading monomial divides it. Terms that cannot be
+        reduced are moved into the remainder.
+
+        :param poly: The polynomial to reduce.
+        :returns: The remainder after multivariate polynomial division by this
+            basis.
+        """
+
+        remainder = Poly([])
+
+        while poly != 0:
+            coeff, lt = self.degrevlex_leading(poly)
+
+            for b in self.basis:
+                coeff_b, lt_b = self.degrevlex_leading(b)
+                quotient = lt.divide(lt_b)
+                if quotient:
+                    coeff = (
+                        Fraction(coeff, coeff_b)
+                        if isinstance(coeff, (int, Fraction)) and isinstance(coeff_b, (int, Fraction))
+                        else coeff / coeff_b
+                    )
+                    poly -= Poly([(coeff, quotient)]) * b
+                    break
+            else:
+                term = Poly([(coeff, lt)])
+                remainder += term
+                poly -= term
+
+        return remainder
 
 
 poly_grammar = Lark("""
