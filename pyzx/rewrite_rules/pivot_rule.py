@@ -46,7 +46,7 @@ __all__ = [
 
 from collections import Counter
 
-from ..utils import VertexType, EdgeType, is_graphlike, is_graphlike, phase_is_pauli, phase_is_clifford
+from ..utils import VertexType, EdgeType, is_graphlike, phase_is_pauli, phase_is_clifford
 from ..graph.base import BaseGraph, VT, ET
 
 MatchPivotType = tuple[tuple[VT, VT], tuple[list[VT], list[VT]]]
@@ -82,33 +82,36 @@ def check_pivot(
     :param w: The target vertex of the edge  to check.
     """
 
-    types = g.types()
+    if v not in g.vertices() or w not in g.vertices():
+        return False
+
+    if not g.connected(v, w):
+        return False
+
     phases = g.phases()
-    if not (v in g.vertices() and w in g.vertices()): return False
-    if not g.connected(v, w): return False
+    if not phase_is_pauli(phases[v]) or not phase_is_pauli(phases[w]):
+        return False
 
-    # Pivot acts on a HADAMARD edge; reject if any SIMPLE parallel exists
-    # alongside or if no HADAMARD edge is present.
-    if g.num_edges(v, w, EdgeType.SIMPLE) > 0: return False
-    if g.num_edges(v, w, EdgeType.HADAMARD) == 0: return False
+    # w must have exactly one boundary neighbour.
+    v_boundaries = boundary_list_for_vertex(g, v)
+    w_boundaries = boundary_list_for_vertex(g, w)
+    if v_boundaries is None or w_boundaries is None or len(v_boundaries) + len(w_boundaries) > 1:
+        return False
 
-    if not (types[v] == VertexType.Z and types[w] == VertexType.Z): return False
+    boundary = v_boundaries[0] if v_boundaries else w_boundaries[0] if w_boundaries else None
+    if boundary in (v, w):
+        return False
 
-    v0a = phases[v]
-    v1a = phases[w]
-    if not ((v0a in (0,1)) and (v1a in (0,1))): return False
+    v_neighbors = g.neighbors(v)
+    w_neighbors = g.neighbors(w)
+    vs = {v, w, *v_neighbors, *w_neighbors} - {boundary}
+    if not is_graphlike(g, vs):
+        return False
+
     if g.is_ground(v) or g.is_ground(w):
         return False
 
-    maybe_v0b = boundary_list_for_vertex(g, v)
-    if maybe_v0b is None: return False
-    b0: list[VT] = maybe_v0b
-
-    maybe_v1b = boundary_list_for_vertex(g, w)
-    if maybe_v1b is None: return False
-    b1: list[VT] = maybe_v1b
-
-    return len(b0) + len(b1) <= 1
+    return True
 
 
 def check_pivot_boundary(
@@ -142,7 +145,7 @@ def check_pivot_boundary(
     v_neighbors = g.neighbors(v)
     w_neighbors = g.neighbors(w)
     w_boundary = w_boundaries[0]
-    vs = {*v_neighbors, *w_neighbors} - {w_boundary} # Necessarily includes v and w by connectedness check
+    vs = {v, w, *v_neighbors, *w_neighbors} - {w_boundary}
     if not is_graphlike(g, vs):
         return False
 
@@ -177,7 +180,7 @@ def check_pivot_gadget(
 
     v_neighbors = g.neighbors(v)
     w_neighbors = g.neighbors(w)
-    vs = {*v_neighbors, *w_neighbors} # Necessarily includes v and w by connectedness check
+    vs = {v, w, *v_neighbors, *w_neighbors}
     if not is_graphlike(g, vs):
         return False
 
