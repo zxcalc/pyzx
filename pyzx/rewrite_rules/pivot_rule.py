@@ -46,8 +46,9 @@ __all__ = [
 
 from collections import Counter
 
-from ..utils import VertexType, EdgeType, is_graphlike, phase_is_pauli, phase_is_clifford
-from ..graph.base import BaseGraph, VT, ET
+from ..graph.base import ET, VT, BaseGraph
+from ..utils import (EdgeType, VertexType, is_subgraph_graph_like,
+                     phase_is_clifford, phase_is_pauli)
 
 MatchPivotType = tuple[tuple[VT, VT], tuple[list[VT], list[VT]]]
 
@@ -105,7 +106,7 @@ def check_pivot(
     v_neighbors = g.neighbors(v)
     w_neighbors = g.neighbors(w)
     vs = {v, w, *v_neighbors, *w_neighbors} - {boundary}
-    if not is_graphlike(g, vs):
+    if not is_subgraph_graph_like(g, vs):
         return False
 
     if g.is_ground(v) or g.is_ground(w):
@@ -146,7 +147,7 @@ def check_pivot_boundary(
     w_neighbors = g.neighbors(w)
     w_boundary = w_boundaries[0]
     vs = {v, w, *v_neighbors, *w_neighbors} - {w_boundary}
-    if not is_graphlike(g, vs):
+    if not is_subgraph_graph_like(g, vs):
         return False
 
     if any(g.is_ground(n) for n in v_neighbors):
@@ -181,7 +182,7 @@ def check_pivot_gadget(
     v_neighbors = g.neighbors(v)
     w_neighbors = g.neighbors(w)
     vs = {v, w, *v_neighbors, *w_neighbors}
-    if not is_graphlike(g, vs):
+    if not is_subgraph_graph_like(g, vs):
         return False
 
     if g.is_ground(v) or g.is_ground(w):
