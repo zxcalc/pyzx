@@ -1,4 +1,4 @@
-# PyZX - Python library for quantum circuit rewriting 
+# PyZX - Python library for quantum circuit rewriting
 #        and optimization using the ZX-calculus
 # Copyright (C) 2018 - Aleks Kissinger and John van de Wetering
 
@@ -27,7 +27,7 @@ if __name__ == '__main__':
     sys.path.append('.')
 
 from pyzx.graph import Graph
-from pyzx.utils import EdgeType, VertexType
+from pyzx.utils import EdgeType, VertexType, is_subgraph_graph_like
 from pyzx.generate import identity
 
 import numpy as np
@@ -337,6 +337,44 @@ class TestGraphBasicMethods(unittest.TestCase):
         phase = Poly([((3+2j), Term([(var, 1)]))])
         with self.assertRaises(TypeError):
             g.add_vertex(VertexType.Z, phase=phase)
+
+    def test_is_subgraph_graph_like(self):
+        """Verify that the graph-like check for subgraphs works correctly."""
+        from pyzx.graph.multigraph import Multigraph
+        g = Multigraph()
+        g.set_auto_simplify(False)
+
+        vs = []
+        for i in range(6):
+            type = VertexType.X if i == 5 else VertexType.Z
+            vs.append(g.add_vertex(type))
+
+        g.add_edge((vs[0], vs[1]), EdgeType.HADAMARD)
+        g.add_edge((vs[0], vs[2]), EdgeType.HADAMARD)
+        g.add_edge((vs[0], vs[3]), EdgeType.HADAMARD)
+        g.add_edge((vs[0], vs[3]), EdgeType.HADAMARD)
+        g.add_edge((vs[1], vs[2]), EdgeType.SIMPLE)
+        g.add_edge((vs[2], vs[3]), EdgeType.HADAMARD)
+        g.add_edge((vs[4], vs[4]), EdgeType.HADAMARD)
+        print(g)
+
+        failure_conditions: dict[frozenset[int], str] = {
+            frozenset([vs[0], vs[3]]): f"vertices {vs[0]} and {vs[3]} are connected by parallel edges",
+            frozenset([vs[1], vs[2]]): f"vertices {vs[1]} and {vs[2]} are connected by a non-Hadamard edge",
+            frozenset([vs[4]]): f"vertex {vs[4]} contains a self-loop",
+            frozenset([vs[5]]): f"vertex {vs[5]} is not a Z-spider"
+        }
+
+        for i in range(2**6):
+            subgraph = set(vs[j] for j in range(6) if (i & (1 << j)))
+            value = is_subgraph_graph_like(g, subgraph)
+            failure_reasons = ', '.join(
+                reason for (vertices, reason) in failure_conditions.items() if vertices <= subgraph
+            )
+            if failure_reasons:
+                self.assertFalse(value, f"Subgraph {subgraph} should not be considered graph-like: {failure_reasons}.")
+            else:
+                self.assertTrue(value, f"Subgraph {subgraph} should be considered graph-like.")
 
     @unittest.skipUnless(np, "numpy needs to be installed for this to run")
     def test_remove_isolated_vertex_preserves_semantics(self):
