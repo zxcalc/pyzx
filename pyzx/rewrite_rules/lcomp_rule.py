@@ -33,7 +33,7 @@ __all__ = [
 from fractions import Fraction
 
 from ..graph.base import ET, VT, BaseGraph
-from ..utils import is_graphlike
+from ..utils import is_subgraph_graph_like
 
 
 def check_lcomp(
@@ -50,7 +50,7 @@ def check_lcomp(
         return False
 
     vs = {v, *g.neighbors(v)}
-    if not is_graphlike(g, vs):
+    if not is_subgraph_graph_like(g, vs):
         return False
 
     phase = g.phase(v)

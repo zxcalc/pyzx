@@ -46,8 +46,9 @@ from .rewrite import *
 from .rewrite_rules import *
 from .symbolic import Poly
 from .tensor import compare_tensors
-from .utils import (EdgeType, VertexType, get_z_box_label, phase_is_clifford,
-                    toggle_edge, vertex_is_zx)
+from .utils import (EdgeType, VertexType, get_z_box_label,
+                    is_subgraph_graph_like, phase_is_clifford, toggle_edge,
+                    vertex_is_zx)
 
 MatchObject = TypeVar('MatchObject')
 
@@ -598,43 +599,34 @@ def tcount(g: BaseGraph[VT, ET] | Circuit) -> int:
             count += 1
     return count
 
-
 def is_graph_like(g: BaseGraph[VT, ET], strict: bool = False) -> bool:
     """Checks if a ZX-diagram is graph-like:
     only contains Z-spiders which are connected by Hadamard edges.
     If `strict` is True, then also checks that each boundary vertex is connected to a Z-spider,
-    and that each Z-spider is connected to at most one boundary."""
+    and that each Z-spider is connected to at most one boundary.
 
-    # checks that all spiders are Z-spiders
-    for v in g.vertices():
-        if g.type(v) not in [VertexType.Z, VertexType.BOUNDARY]:
-            return False
+    :param g: The graph to check.
+    :param strict: If True, perform the strict checks.
+    :return: True if the graph is graph-like, False otherwise.
+    """
 
-    for v1, v2 in itertools.combinations(g.vertices(), 2):
-        if not g.connected(v1, v2):
-            continue
+    # Checks that all spiders are Z-spiders
+    if any(g.type(v) not in [VertexType.Z, VertexType.BOUNDARY] for v in g.vertices()):
+        return False
 
-        # Z-spiders are only connected via Hadamard edges
-        if g.type(v1) == VertexType.Z and g.type(v2) == VertexType.Z \
-           and g.edge_type(g.edge(v1, v2)) != EdgeType.HADAMARD:
-            return False
-
-        # FIXME: no parallel edges
-
-    # no self-loops
-    for v in g.vertices():
-        if g.connected(v, v):
-            return False
+    # Checks that the Z-spiders form a simple graph with Hadamard edges only
+    zs = [v for v in g.vertices() if g.type(v) == VertexType.Z]
+    if not is_subgraph_graph_like(g, zs):
+        return False
 
     if strict:
-        # every I/O is connected to a Z-spider
+        # Checks that every I/O is connected to a Z-spider
         bs = [v for v in g.vertices() if g.type(v) == VertexType.BOUNDARY]
         for b in bs:
             if g.vertex_degree(b) != 1 or g.type(list(g.neighbors(b))[0]) != VertexType.Z:
                 return False
 
-        # every Z-spider is connected to at most one I/O
-        zs = [v for v in g.vertices() if g.type(v) == VertexType.Z]
+        # Checks that every Z-spider is connected to at most one I/O
         for z in zs:
             b_neighbors = [n for n in g.neighbors(z) if g.type(n) == VertexType.BOUNDARY]
             if len(b_neighbors) > 1:

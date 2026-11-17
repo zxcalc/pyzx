@@ -418,12 +418,15 @@ def hbox_has_complex_label(g: 'BaseGraph[VT, ET]', v: 'VT') -> bool:
 def ave_pos(a: float, b: float, perc: float = 1/2) -> float:
     return (abs(a - b))*(perc) + min(a, b)
 
-def is_graphlike(g: 'BaseGraph[VT, ET]', vs: Collection['VT']) -> bool:
-    """
-    Check whether a subgraph of the given graph is graph-like.
-    
-    All vertices should be Z-spiders and connected by Hadamard edges, with no parallel edges or self-loops.
-    """
+
+def is_subgraph_graph_like(g: 'BaseGraph[VT, ET]', vs: Collection['VT']) -> bool:
+    """Check whether a subgraph of the given graph is graph-like. All vertices
+    should be Z-spiders and connected by Hadamard edges, with no parallel edges
+    or self-loops.
+
+    :param g: The graph to check.
+    :param vs: The vertices to include in the subgraph.
+    :return: True if the subgraph is graph-like, False otherwise."""
 
     types = g.types()
     for v in vs:
