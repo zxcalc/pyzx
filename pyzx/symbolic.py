@@ -125,7 +125,7 @@ class Term:
         """Divide this monomial term by another monomial term when possible.
 
         :param other: The monomial divisor.
-        :returns: The quotient term if every exponent in this term is greater
+        :return: The quotient term if every exponent in this term is greater
             than the corresponding exponent in ``other``; otherwise ``None``.
         """
 
@@ -149,7 +149,7 @@ class Term:
         """The exponent of the specified variable in the term.
 
         :param var: The variable whose degree to return.
-        :returns: The exponent of the variable in the term, or 0 if not present.
+        :return: The exponent of the variable in the term, or 0 if not present.
         """
         return next((power for v, power in self.vars if v == var), 0)
 
@@ -157,7 +157,7 @@ class Term:
         """Compute the least common multiple of this and another term.
 
         :param other: The other term.
-        :returns: A term whose variables have the maximum exponent of each
+        :return: A term whose variables have the maximum exponent of each
             variable in the two terms.
         """
 
@@ -531,7 +531,7 @@ class GroebnerBasis:
 
         :param f: The first polynomial.
         :param g: The second polynomial.
-        :returns: The S-polynomial of ``f`` and ``g``. If either input is
+        :return: The S-polynomial of ``f`` and ``g``. If either input is
             zero, the result is the zero polynomial.
         """
 
@@ -558,7 +558,7 @@ class GroebnerBasis:
         reduced are moved into the remainder.
 
         :param poly: The polynomial to reduce.
-        :returns: The remainder after multivariate polynomial division by this
+        :return: The remainder after multivariate polynomial division by this
             basis.
         """
 
