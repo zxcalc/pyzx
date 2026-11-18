@@ -8,6 +8,9 @@ Hence, occasionally changes will be backwards incompatible (although they will a
 
 ## [Unreleased]
 
+### Added
+- `PauliExponential` circuit gate for signed Pauli strings. (by @pmitos)
+
 ## [0.10.8] - 2026-11-01
 
 ### Added
