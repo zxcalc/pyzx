@@ -34,12 +34,6 @@ Circuit API
 .. autoclass:: pyzx.circuit.Circuit
    :members:
 
-Pauli exponentials
-------------------
-
-.. autoclass:: pyzx.circuit.gates.PauliExponential
-   :members: to_graph, tcount, to_basic_gates
-
 
 Flow finding
 ------------
