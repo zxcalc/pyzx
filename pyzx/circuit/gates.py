@@ -22,11 +22,12 @@ quantum gates for use in the Circuit class.
 import copy
 import math
 from fractions import Fraction
-from typing import TYPE_CHECKING, ClassVar, Generic, TypeVar
+from typing import TYPE_CHECKING, ClassVar, Generic, TypeVar, overload
 
 from ..graph.base import ET, VT, BaseGraph
 from ..symbolic import Poly, new_const, new_var
-from ..utils import EdgeType, FractionLike, VertexType, half_phase, settings
+from ..utils import (EdgeType, FractionLike, VertexType, assert_phase_real,
+                     half_phase, normalize_phase, phase_is_clifford, settings)
 
 if TYPE_CHECKING:
     from . import Circuit
@@ -944,6 +945,155 @@ class PhaseGadget(ParityPhase):
         super().__init__(phase, *targets, as_gadget=True)
 
 
+class PauliExponential(Gate):
+    r"""The unitary :math:`\exp(-i\pi a P/2)` where P is a (signed) Pauli string.
+
+    ``pauli`` specifies :math:`P` as a nonempty string of ``I``, ``X``, ``Y``
+    and ``Z``, with an optional leading sign. The leftmost Pauli is wire zero.
+    Pauli ``I`` skips the wire. ``angle`` is :math:`a`, in multiples of
+    :math:`\pi`, and may be symbolic. Text export requires a bound angle.
+
+    With ``gadget_phase=True``, uses the phase convention of
+    :class:`PhaseGadget`. This multiplies the exponential by
+    :math:`\exp(i\pi t/2)`, where :math:`t` is the angle after
+    absorbing the leading sign of the string.
+    """
+
+    name = "PauliExponential"
+    as_gadget = True
+
+    def __init__(self, pauli: str, angle: FractionLike, *, gadget_phase: bool = False) -> None:
+        if not isinstance(pauli, str):
+            raise TypeError("pauli must be a string")
+        pauli = pauli if pauli.startswith(("+", "-")) else "+" + pauli
+        if len(pauli) == 1 or any(axis not in "IXYZ" for axis in pauli[1:]):
+            raise ValueError("pauli must contain I, X, Y, or Z axes after an optional sign")
+        angle = normalize_phase(angle)
+        if not isinstance(angle, (int, Fraction, Poly)):
+            raise TypeError("angle must be an integer, Fraction, or symbolic phase")
+        assert_phase_real(angle)
+        self.pauli = pauli
+        self.angle = angle
+        self.gadget_phase = gadget_phase
+
+    def __str__(self) -> str:
+        convention = ", gadget_phase=True" if self.gadget_phase else ""
+        return f"{self.name}({self.pauli!r}, {self.angle}{convention})"
+
+    def __eq__(self, other: object) -> bool:
+        return (isinstance(other, PauliExponential) and self.index == other.index
+                and self.pauli == other.pauli and self.angle == other.angle
+                and self.gadget_phase == other.gadget_phase)
+
+    def _max_target(self) -> int:
+        return len(self.pauli) - 2
+
+    def to_adjoint(self) -> 'PauliExponential':
+        gate = self.copy()
+        gate.angle = -gate.angle
+        return gate
+
+    def reposition(self, mask: list[int], bit_mask: list[int] | None = None) -> 'PauliExponential':
+        targets = [mask[q] for q in range(len(self.pauli) - 1)]
+        if min(targets) < 0 or len(set(targets)) != len(targets):
+            raise ValueError("Pauli exponential wires must map to distinct, nonnegative indices")
+        axes = ["I"] * (max(targets) + 1)
+        for target, axis in zip(targets, self.pauli[1:]):
+            axes[target] = axis
+        gate = self.copy()
+        gate.pauli = self.pauli[0] + "".join(axes)
+        return gate
+
+    def tcount(self) -> int:
+        """Counts as one if angle is non-Clifford and string is not identity.
+        """
+        angle = self.angle if isinstance(self.angle, Poly) else self.angle % 2
+        return int(not phase_is_clifford(angle) and any(axis != "I" for axis in self.pauli[1:]))
+
+    @overload
+    def to_graph(self, g: BaseGraph[VT, ET], q_mapper: TargetMapper[VT], c_mapper: TargetMapper[VT]) -> None: ...
+
+    @overload
+    def to_graph(self, backend: str | None, /) -> BaseGraph: ...
+
+    @overload
+    def to_graph(self, *, backend: str | None = None) -> BaseGraph: ...
+
+    def to_graph(
+        self,
+        g: BaseGraph[VT, ET] | str | None = None,
+        q_mapper: TargetMapper[VT] | None = None,
+        c_mapper: TargetMapper[VT] | None = None,
+        *,
+        backend: str | None = None,
+    ) -> BaseGraph | None:
+        """Return a standalone ZX diagram or append to a graph with wire mappers.
+
+        The diagram includes the global phase.
+        """
+        if isinstance(g, BaseGraph):
+            if q_mapper is None or c_mapper is None or backend is not None:
+                raise TypeError("supply a graph and both wire mappers to append to a graph")
+            for gate in self._rotation_gates(as_gadget=True):
+                gate.to_graph(g, q_mapper, c_mapper)
+            if not self.gadget_phase:
+                # The gadget has eigenvalues 1 and exp(i*pi*angle).
+                g.scalar.add_phase(Fraction(-1, 2) * self._signed_angle())
+            return None
+        if q_mapper is not None or c_mapper is not None or (g is not None and backend is not None):
+            raise TypeError("supply at most one backend to build a standalone graph")
+
+        from . import Circuit
+
+        circuit = Circuit(self._max_target() + 1)
+        circuit.add_gate(self)
+        return circuit.to_graph(backend=backend if g is None else g)
+
+    def to_basic_gates(self) -> list[Gate]:
+        """Return basis changes and a CNOT ladder in the gadget phase convention."""
+        return self._rotation_gates(as_gadget=False)
+
+    def to_qasm(self) -> str:
+        """Export the elementary gates up to global phase."""
+        return self._export("to_qasm")
+
+    def to_qc(self) -> str:
+        """Export supported Clifford+T angles up to global phase."""
+        return self._export("to_qc")
+
+    def to_quipper(self) -> str:
+        """Export the elementary gates up to global phase."""
+        return self._export("to_quipper")
+
+    def _export(self, method: str) -> str:
+        if isinstance(self.angle, Poly):
+            raise TypeError("bind the Pauli exponential angle before exporting")
+        return "\n".join(getattr(gate, method)() for gate in self._rotation_gates(as_gadget=True))
+
+    def _signed_angle(self) -> FractionLike:
+        return -self.angle if self.pauli[0] == "-" else self.angle
+
+    def _rotation_gates(self, *, as_gadget: bool) -> list[Gate]:
+        axes = self.pauli[1:]
+        angle = self._signed_angle()
+        if not self.gadget_phase and not isinstance(angle, Poly):
+            angle %= 2
+        targets = [q for q, axis in enumerate(axes) if axis != "I"]
+        if not targets or (angle == 0 and not self.gadget_phase):
+            return []
+
+        basis: list[Gate] = []
+        for q in targets:
+            if axes[q] == "Y":
+                basis.append(S(q, adjoint=True))
+            if axes[q] in "XY":
+                basis.append(HAD(q))
+        inverse_basis = [gate.to_adjoint() for gate in reversed(basis)]
+        gadget = PhaseGadget(angle, *targets)
+        rotation = [gadget] if as_gadget else gadget.to_basic_gates()
+        return basis + rotation + inverse_basis
+
+
 class RZZ(ParityPhase):
     name = 'RZZ'
     qasm_name = 'rzz'
@@ -1686,6 +1836,7 @@ gate_types: dict[str, type[Gate]] = {
     "CZ": CZ,
     "ParityPhase": ParityPhase,
     "PhaseGadget": PhaseGadget,
+    "PauliExponential": PauliExponential,
     "XCX": XCX,
     "SWAP": SWAP,
     "CSWAP": CSWAP,
