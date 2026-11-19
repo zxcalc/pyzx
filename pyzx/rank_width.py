@@ -546,9 +546,14 @@ def ldexp_complex(Psi: NDArray[np.complex128], exponent: int) -> None:
     Args:
         Psi: complex np.ndarray, which is modified
         exponent: power of two to multiply by
+
+    Raises:
+        OverflowError: if an entry overflows to infinity
     """
     np.ldexp(Psi.real, exponent, out=Psi.real)
     np.ldexp(Psi.imag, exponent, out=Psi.imag)
+    if np.any(np.isinf(Psi)):
+        raise OverflowError('math range error')
 
 
 def normalise_tensor(Psi: NDArray[np.complex128]) -> int:
@@ -594,7 +599,6 @@ def scalar_to_number_exp2(s: Scalar) -> tuple[complex, int]:
         factors.append(sum_of_phases)
     m = 1 + 0j
     for f in factors:
-        # Multiply in one factor at a time, moving the power of two of m into e.
         m *= f
         if m == 0:
             return 0j, 0
@@ -696,7 +700,6 @@ def tensorfy_rw_subtree_exp2(
     Psi_u, swapped = conv(Psi_v, Psi_w, E_vw, E_vu, E_wu, verbose=verbose)
     pw = Cout.sum() - U.sum() - V.sum() + r_u
     pw += Cin_v.sum() + Cin_w.sum() - E_vw.sum() - B.sum()
-    # Divide by sqrt(2)^pw as 2^(pw // 2) * sqrt(2)^(pw % 2), with the power of two kept in e_u.
     half_pw, odd_pw = divmod(int(pw), 2)
     Psi_u /= sqrt(2) ** odd_pw
     e_u = e_v + e_w + normalise_tensor(Psi_u) - half_pw
@@ -732,7 +735,9 @@ def tensorfy_rw(
     s_val, s_exp = scalar_to_number_exp2(g.scalar) if preserve_scalar else (1 + 0j, 0)
     decomp = generate_decomposition(g, strategy=strategy, verbose=verbose)
     if decomp is None:
-        return np.array(complex(math.ldexp(s_val.real, s_exp), math.ldexp(s_val.imag, s_exp)))
+        scalar = np.array(s_val, dtype=np.complex128)
+        ldexp_complex(scalar, s_exp)
+        return scalar
     result, e, _, _, boundary = tensorfy_rw_subtree_exp2(g, decomp, verbose=verbose)
     result *= s_val
     ldexp_complex(result, e + s_exp)

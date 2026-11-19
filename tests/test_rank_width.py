@@ -178,6 +178,18 @@ class TestRankWidth(unittest.TestCase):
         g.scalar.add_power(-2150)
         self.check_amplitude(tensorfy(g), 2.0 ** 25)
 
+    def test_tensorfy_rw_result_too_large_raises(self):
+        # The combined value is still outside the float range, so this raises rather
+        # than returning inf. The first graph keeps a decomposition; the second does not.
+        g = self.complete_graph(4)
+        g.scalar.add_power(4000)
+        with self.assertRaises(OverflowError):
+            tensorfy(g)
+        empty = zx.Graph()
+        empty.scalar.add_power(4000)
+        with self.assertRaises(OverflowError):
+            tensorfy(empty)
+
     def test_tensorfy_rw_large_scalar_not_preserved(self):
         # With preserve_scalar=False the scalar is ignored, so its size should not matter.
         for g in (self.complete_graph(1), self.complete_graph(6)):
@@ -200,8 +212,9 @@ class TestRankWidth(unittest.TestCase):
             top = max(np.abs(Psi.real).max(), np.abs(Psi.imag).max())
             self.assertTrue(0.5 <= top < 1, f'largest part of the rescaled tensor is {top}')
             plain = tensorfy_rw_subtree(g, decomp)[0]
-            self.assertTrue(np.array_equal(np.ldexp(Psi.real, e), plain.real))
-            self.assertTrue(np.array_equal(np.ldexp(Psi.imag, e), plain.imag))
+            # A second contraction of the same diagram can differ in the last bits.
+            self.assertTrue(np.allclose(np.ldexp(Psi.real, e), plain.real))
+            self.assertTrue(np.allclose(np.ldexp(Psi.imag, e), plain.imag))
 
 
 if __name__ == '__main__':
