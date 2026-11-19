@@ -8,6 +8,9 @@ Hence, occasionally changes will be backwards incompatible (although they will a
 
 ## [Unreleased]
 
+### Fixed
+- `tensorfy` with a rank-width strategy no longer raises an `OverflowError` or returns 0 when the diagram's scalar or the contracted tensor is outside the float range but their product is not, as can happen for large closed diagrams. The contraction now keeps the power of two in a separate integer, and the scalar is converted the same way, so they are only combined at the end. `preserve_scalar=False` no longer evaluates the scalar at all (#575) (by @gauthamkanagaraj).
+
 ## [0.10.8] - 2026-11-01
 
 ### Added
