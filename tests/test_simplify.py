@@ -649,6 +649,9 @@ class TestSimplify(unittest.TestCase):
         g = c.to_graph()
         full_reduce(g)
 
+        # Ensure measurement outcomes take priority over reset variables
+        g.reduce_symbolic_phases('c[0]', 'c[1]', 'c[2]')
+
         # Collect measurement-outcome vertices by phase label, keeping
         # all matches so duplicate labels can be detected. Filter to
         # ``Poly`` phases since numeric phases (``int``/``Fraction``)
@@ -716,6 +719,9 @@ class TestSimplify(unittest.TestCase):
         """)
         g = c.to_graph()
         full_reduce(g)
+
+        # Ensure measurement outcomes take priority over reset variables
+        g.reduce_symbolic_phases('c[0]', 'c[1]')
 
         # Both c[0] and c[1] must appear in a remaining symbolic phase
         # (possibly XOR-combined in a single Poly, e.g. ``c[0] + c[1]``,
