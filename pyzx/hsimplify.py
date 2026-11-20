@@ -21,7 +21,7 @@ from .rewrite import *
 from .rewrite_rules import *
 from .simplify import (copy_simp, id_simp, lcomp_simp, pivot_boundary_simp,
                        pivot_gadget_simp, pivot_simp, spider_simp, to_gh)
-from .utils import EdgeType, VertexType
+from .utils import EdgeType, VertexType, hbox_has_complex_label
 
 
 def hadamard_simp(g: BaseGraph[VT, ET], quiet: bool = False) -> int:
@@ -112,7 +112,7 @@ def from_hypergraph_form(g: BaseGraph[VT, ET]) -> None:
     phases = g.phases()
     hs = [h for h in g.vertices() if types[h] == VertexType.H_BOX]
     for h in hs:
-        if g.vertex_degree(h) == 1:
+        if g.vertex_degree(h) == 1 and not hbox_has_complex_label(g, h):
             n = next(iter(g.neighbors(h)))
             if types[n] == VertexType.Z:
                 g.set_phase(n, phases[n] + phases[h])

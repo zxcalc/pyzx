@@ -26,6 +26,11 @@ class Decomp(Enum):
     CUT_EDGE     = "cut_edge"
     CUT_VERTEX   = "cut_vertex"
     CUT_WISHBONE = "cut_wishbone"
+    LONE_PHASE_1 = "lone_phase_1"
+    LONE_PHASE_2 = "lone_phase_2"
+    MULTI_CAT3_1 = "multi_cat3_1"
+    MULTI_CAT3_2 = "multi_cat3_2"
+
 
 class DecompSpec:
     def __init__(
@@ -158,4 +163,5 @@ def get_decomp_spec(kind: Decomp) -> DecompSpec:
 # Import decomposition modules so their @register_decomp decorators run #
 #########################################################################
 from . import (bss, cat_3, cat_4, cat_5, cat_6, cat_n, cut_edge, cut_vertex,
-               cut_wishbone, magic_2, magic_5)
+               cut_wishbone, magic_2, magic_5, lone_phase_1, lone_phase_2,
+               multicat3_1, multicat3_2)

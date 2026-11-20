@@ -15,6 +15,7 @@ class Strategy(Enum):
     BSS        = "bss"
     CUT_RANDOM = "cut_random"
     MAGIC_CAT  = "magic_cat"
+    LP_MC3     = "lp_mc3"
 
 class StrategySpec:
     def __init__(self, fn: Callable[..., Any] | None = None, reference: str = "") -> None:
@@ -93,4 +94,4 @@ def get_strategy_spec(kind: Strategy) -> StrategySpec:
 ######################################################################
 # Import strategy modules so their @register_strategy decorators run #
 ######################################################################
-from . import bss, cut_random, magic_cat
+from . import bss, cut_random, magic_cat, lpmc3

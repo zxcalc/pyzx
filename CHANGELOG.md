@@ -8,11 +8,17 @@ Hence, occasionally changes will be backwards incompatible (although they will a
 
 ## [Unreleased]
 
+### Fixed
+- `Circuit.adjoint` now adjoints the inner gate of a `ConditionalGate`, so `if(c==1) s q[0];` becomes `if(c==1) sdg q[0];`. (by @anubhavlal07)
+
+## [0.10.8] - 2026-11-01
+
 ### Added
 - Cubic flow finding for XY, X, and Y measurements, with the previous finder available as `method="legacy"`. (by @pmitos)
 - `pyzx.flow.pauli_flow` as the entry point for Pauli flow on XY, X, and Y measurements. (by @pmitos)
 - Optional `layers_only=True` on cubic flow finders, returning partial order layers without correction sets. (by @pmitos)
 - The X-H bialgebra rule now supports H-box with phases and complex labels. Automatic simplification remains restricted to standard H-boxes. (by @RazinShaikh)
+- Added decompositions from https://arxiv.org/pdf/2412.17182, including a strategy that uses them, and tests.
 
 ### Changed
 - The default flow finder always returns focused correction sets, which can differ from those returned by the legacy finder. Use `method="legacy", focus=False` to retain the previous choice. In the cubic method, the ground constraints for focused flow are selected separately with `include_ground_constraints`. `focus` is legacy only. (by @pmitos)
@@ -24,6 +30,9 @@ Hence, occasionally changes will be backwards incompatible (although they will a
 
 ### Fixed
 - Corrected scalar evaluation for opposite non-Clifford spider phases by converting pi units to radians in `Scalar.add_spider_pair`.
+- `Circuit.to_basic_gates` now properly decomposes `PhaseGadget` and `ParityPhase(as_gadget=True)` into basic CNOT and ZPhase gates, while `Circuit.to_graph` preserves phase gadgets as native ZX-diagram gadgets.
+- `ParityPhase.to_graph` now adds the missing scalar correction factor $\sqrt{2}^{k-1}$ when `as_gadget=True` (and for `PhaseGadget`), ensuring that diagrams representing phase gadgets have the correct global scalar and unitary matrix semantics under `to_matrix()` and `compare_tensors(..., preserve_scalar=True)`.
+- `basic_optimization`, and with it `full_optimize` and `phase_block_optimize`, applied an `XPhase` gate to the wrong qubit once it had rewritten a CNOT pair into a SWAP, returning a circuit that is not equivalent to the input (e.g. `CNOT(1,0)`, `CNOT(0,1)`, `XPhase(1, 1/2)`). The gates it passes back to `parse_gate` for an `XPhase` now use the unmapped qubit. (by @Shakhtar-Sankur)
 - `graph_to_circuit()` in `graphparser.py` now raises a `NotImplementedError` when extracting conditional gates instead of silently returning a circuit with potentially incorrect gate ordering (by @akshaysoftware).
 - `Var.rebind_to_registry` no longer loses a variable's Boolean type when the target registry does not know the variable yet (it read the type *after* switching registries). Copying a graph whose Boolean variables were created outside its registry silently turned them continuous, also on the original graph, so Pauli checks on symbolic phases failed.
 - `Circuit.from_graph` no longer changes the measurement basis after a colour change of the measurement leaf (e.g. by `to_gh`). The edge to the leaf is not part of the qubit wire, so a Hadamard edge there no longer emits a `HAD` gate; instead the basis is read from the colours of the leaf and the on-wire spider (#520). (by @a6hinandh)
@@ -33,9 +42,15 @@ Hence, occasionally changes will be backwards incompatible (although they will a
 - `Mat2.gauss` no longer shares pivot columns between calls; extraction and routing helpers avoid mutable defaults, and genetic optimizers copy caller-supplied action lists. (by @pmitos)
 - Symbolic expression parsing now preserves mixed Boolean/continuous products regardless of multiplication order (#539). (by @mourya-17)
 - `Poly.__mod__` no longer leaves a zero-coefficient term behind for Boolean phases, so fusing spiders with phases `(a+1)π` and `π` now gives `a` instead of `a + 0` (#544). (by @Nitesh71332)
+- `PhaseGadget` and `RZZ` now copy, invert (`adjoint`), and tensor correctly without raising `TypeError`. `RZZ.reposition` now updates `control` and `target` attributes alongside `targets`, `ParityPhase.__eq__` distinguishes `RZZ` from `ParityPhase`/`PhaseGadget`, and `PhaseGadget` can now be exported to QASM, .qc, and Quipper formats.
+- Multigraph phase addition now reduces Boolean polynomial phases modulo 2, fixing fused phases that could retain an even constant term (#544). (by @mourya-17)
 
 ### Removed
 - Python 3.10 is no longer supported because it has reached end-of-life.
+- The deprecated function `extract.streaming_extract()` was removed. Use `extract.extract_circuit()` instead.
+- The deprecated functions `jsonparser.json_to_graph_old()` and `jsonparser.graph_to_dict_old()` were removed and are no longer used as a fallback when parsing JSON using `jsonparser.json_to_graph()`. This means that the old Quantomatic format can no longer be loaded.
+- The deprecated function `d3.draw()` was removed. Use `drawing.draw_d3()` or `drawing.draw()` instead.
+- The module `gadget_extract` was removed because it was experimental and incomplete.
 
 ## [0.10.7] - 2026-10-01
 

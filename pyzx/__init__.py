@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__version__ = "0.10.7"
+__version__ = "0.10.8"
 
 from .graph.graph import Graph
 from .circuit import Circuit, gates, id
@@ -42,7 +42,6 @@ from . import optimize
 from . import simplify
 from . import hsimplify
 from . import ft_simplify
-from . import d3
 from . import tikz
 from . import simulate
 from . import editor

@@ -148,6 +148,18 @@ rx(pi*0.545344) q[1];
         optimized = basic_optimization(c.to_basic_gates())
         self.assertTrue(c.verify_equality(optimized))
 
+    def test_xphase_after_cnot_swap(self):
+        """XPhase on a qubit that basic_optimization has swapped: CNOT(1,0) CNOT(0,1) is
+        rewritten as CNOT(0,1) SWAP, so the rotation has to follow the swapped qubit."""
+        for phase in (Fraction(1, 2), Fraction(1, 4), Fraction(3, 4)):
+            for qubit in (0, 1):
+                c = Circuit(2)
+                c.add_gate(CNOT(1, 0))
+                c.add_gate(CNOT(0, 1))
+                c.add_gate(XPhase(qubit, phase))
+                optimized = basic_optimization(c.to_basic_gates())
+                self.assertTrue(c.verify_equality(optimized), (phase, qubit))
+
 
 if __name__ == '__main__':
     unittest.main()

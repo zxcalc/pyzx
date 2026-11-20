@@ -756,5 +756,95 @@ class TestParHboxMultiplyRuleEdgeTypes(unittest.TestCase):
         self.assertEqual(len(matches), 0)
 
 
+class TestHboxIdentitySimp(unittest.TestCase):
+    """Tests verifying that H-boxes with phase 0 or complex label 0 are never
+    treated as identity spiders and removed."""
+
+    def test_check_remove_id_preserves_hbox_phase_0(self):
+        from pyzx.rewrite_rules.remove_id_rule import check_remove_id
+        from pyzx.simplify import id_simp
+        g = Graph()
+        v0 = g.add_vertex(VertexType.BOUNDARY, 0, 0)
+        v1 = g.add_vertex(VertexType.BOUNDARY, 0, 2)
+        h = g.add_vertex(VertexType.H_BOX, 0, 1, phase=0)
+        g.add_edge((v0, h))
+        g.add_edge((h, v1))
+        self.assertFalse(check_remove_id(g, h))
+        id_simp(g)
+        self.assertIn(h, g.vertices())
+
+    def test_check_remove_id_preserves_hbox_label_0(self):
+        from pyzx.rewrite_rules.remove_id_rule import check_remove_id
+        from pyzx.simplify import id_simp
+        g = Graph()
+        v0 = g.add_vertex(VertexType.BOUNDARY, 0, 0)
+        v1 = g.add_vertex(VertexType.BOUNDARY, 0, 2)
+        h = g.add_vertex(VertexType.H_BOX, 0, 1)
+        g.add_edge((v0, h))
+        g.add_edge((h, v1))
+        set_h_box_label(g, h, 0)
+        self.assertFalse(check_remove_id(g, h))
+        id_simp(g)
+        self.assertIn(h, g.vertices())
+
+    def test_check_remove_id_preserves_hbox_complex_label(self):
+        from pyzx.rewrite_rules.remove_id_rule import check_remove_id
+        from pyzx.simplify import id_simp
+        g = Graph()
+        v0 = g.add_vertex(VertexType.BOUNDARY, 0, 0)
+        v1 = g.add_vertex(VertexType.BOUNDARY, 0, 2)
+        h = g.add_vertex(VertexType.H_BOX, 0, 1)
+        g.add_edge((v0, h))
+        g.add_edge((h, v1))
+        set_h_box_label(g, h, 2 + 3j)
+        self.assertFalse(check_remove_id(g, h))
+        id_simp(g)
+        self.assertIn(h, g.vertices())
+
+    def test_zh_simp_zero_label_hbox_preserves_tensor(self):
+        from pyzx.hsimplify import zh_simp
+        g = Graph()
+        v0 = g.add_vertex(VertexType.BOUNDARY, 0, 0)
+        v1 = g.add_vertex(VertexType.BOUNDARY, 0, 2)
+        h = g.add_vertex(VertexType.H_BOX, 0, 1)
+        g.add_edge((v0, h))
+        g.add_edge((h, v1))
+        g.set_inputs((v0,))
+        g.set_outputs((v1,))
+        set_h_box_label(g, h, 0)
+
+        g_copy = g.clone()
+        zh_simp(g_copy)
+        self.assertIn(h, g_copy.vertices())
+        self.assertTrue(compare_tensors(g, g_copy, preserve_scalar=True))
+
+    def test_zh_simp_zero_phase_hbox_preserves_tensor(self):
+        from pyzx.hsimplify import zh_simp
+        g = Graph()
+        v0 = g.add_vertex(VertexType.BOUNDARY, 0, 0)
+        v1 = g.add_vertex(VertexType.BOUNDARY, 0, 2)
+        h = g.add_vertex(VertexType.H_BOX, 0, 1, phase=0)
+        g.add_edge((v0, h))
+        g.add_edge((h, v1))
+        g.set_inputs((v0,))
+        g.set_outputs((v1,))
+
+        g_copy = g.clone()
+        zh_simp(g_copy)
+        self.assertIn(h, g_copy.vertices())
+        self.assertTrue(compare_tensors(g, g_copy, preserve_scalar=True))
+
+    def test_from_hypergraph_form_preserves_complex_label_arity_1(self):
+        from pyzx.hsimplify import from_hypergraph_form
+        g = Graph()
+        z = g.add_vertex(VertexType.Z, 0, 0)
+        h = g.add_vertex(VertexType.H_BOX, 0, 1)
+        g.add_edge((z, h))
+        set_h_box_label(g, h, 0)
+
+        from_hypergraph_form(g)
+        self.assertIn(h, g.vertices())
+
+
 if __name__ == '__main__':
     unittest.main()

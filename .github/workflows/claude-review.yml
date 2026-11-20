@@ -19,8 +19,10 @@ jobs:
     timeout-minutes: 30
     if: contains(github.event.comment.body, '@claude')
     env:
-      # Defense in depth: best-effort removal of secrets from subprocess environments.
-      CLAUDE_CODE_SUBPROCESS_ENV_SCRUB: "1"
+      # Scrubbing runs Claude's commands in a bubblewrap sandbox that cannot reach the Docker
+      # daemon, which breaks run-sandboxed. Isolation of PR code comes from that container instead,
+      # and none of Claude's allowed commands (git diff/log, run-sandboxed) expose the environment.
+      CLAUDE_CODE_SUBPROCESS_ENV_SCRUB: "0"
     steps:
       # On issue_comment events this is the default branch, i.e. trusted code.
       - uses: actions/checkout@v7
