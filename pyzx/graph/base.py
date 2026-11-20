@@ -26,7 +26,7 @@ from typing import (TYPE_CHECKING, Any, ClassVar, Generic, Literal, Optional,
 
 import numpy as np
 
-from ..symbolic import Poly, Var, VarRegistry
+from ..symbolic import GroebnerBasis, Poly, Var, VarRegistry
 from ..tensor import TensorStrategy, tensor_to_matrix, tensorfy
 from ..utils import (EdgeType, FloatInt, FractionLike, VertexType,
                      assert_phase_real, get_h_box_label, get_z_box_label,
@@ -1282,6 +1282,48 @@ class BaseGraph(Generic[VT, ET], metaclass=DocstringMeta):
             result.rebind_variables_to_registry()
 
         return result
+
+    def reduce_symbolic_phases(self, *priority_vars: str) -> None:
+        """Reduce all phases in the graph into a simpler form, preferring
+        expressions in terms of the provided symbolic variables where
+        possible. Substitutions are made by inferring equalities from the
+        diagram scalar and performing a Gröbner basis reduction using a
+        degree reverse lexicographic monomial ordering. These rewrites
+        first favour reducing the degree of any polynomial phases and then
+        favour including terms involving the priority variables.
+
+        The graph is modified in place. Symbolic phases on vertices and
+        symbolic Z-box labels are reduced; scalar phase nodes are used as
+        polynomial relations but are not themselves modified.
+
+        :param priority_vars: Variable names ordered from highest to lowest
+            priority. Variables omitted from this sequence are placed before
+            them in the monomial ordering. Unknown names are ignored.
+        """
+
+        # "Larger" monomials are eliminated first, so put omitted variables before priority variables
+        # The highest-priority variable (the first one provided) should go last in the order
+        all_vars = {var.name: var for var in self.scalar.free_vars()}
+        lex_order = (
+            *sorted(all_vars[var] for var in all_vars if var not in priority_vars),
+            *(all_vars[var] for var in reversed(priority_vars) if var in all_vars),
+        )
+
+        basis = GroebnerBasis([node for node in self.scalar.phasenodes if isinstance(node, Poly)], lex_order)
+        for v in self.vertices():
+            phase = self.phase(v)
+            if isinstance(phase, Poly):
+                new_phase = simplify_poly(basis.reduce(phase))
+                assert not isinstance(new_phase, complex) # TODO
+                if isinstance(new_phase, float):
+                    new_phase = Fraction(new_phase)
+                self.set_phase(v, new_phase)
+
+            if self.type(v) == VertexType.Z_BOX:
+                label = get_z_box_label(self, v)
+                if isinstance(label, Poly):
+                    new_label = simplify_poly(basis.reduce(label))
+                    set_z_box_label(self, v, new_label)
 
     def __deepcopy__(self, memo: dict[int, Any]) -> Self:
         """Custom deepcopy implementation to ensure variable registry is properly handled
