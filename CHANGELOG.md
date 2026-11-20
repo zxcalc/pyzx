@@ -10,6 +10,7 @@ Hence, occasionally changes will be backwards incompatible (although they will a
 
 ### Fixed
 - `Circuit.adjoint` now adjoints the inner gate of a `ConditionalGate`, so `if(c==1) s q[0];` becomes `if(c==1) sdg q[0];`. (by @anubhavlal07)
+- Corrected scalar evaluation for opposite non-Clifford spider phases by converting pi units to radians in `Scalar.add_spider_pair`.
 
 ## [0.10.8] - 2026-11-01
 

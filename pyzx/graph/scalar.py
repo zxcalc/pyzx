@@ -438,7 +438,7 @@ class Scalar:
                     self.add_phase(Fraction(1))
                 return
             self.add_power(1)
-            self.add_float(math.cos(p1))
+            self.add_float(math.cos(math.pi*p1))
             return
 
         # Generic case
