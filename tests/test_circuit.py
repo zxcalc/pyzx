@@ -224,6 +224,31 @@ class TestCircuit(unittest.TestCase):
                 if not isinstance(gate, (CU3, CU)):
                     self.assertTrue(c.verify_equality(c.copy()))
 
+    def test_adjoint_of_conditional_gate(self):
+        header = 'OPENQASM 2.0;\ninclude "qelib1.inc";\nqreg q[1];\ncreg c[2];\n'
+        cases = [
+            ("s q[0];", "sdg q[0];"),
+            ("sdg q[0];", "s q[0];"),
+            ("t q[0];", "tdg q[0];"),
+            ("rz(pi/4) q[0];", "rz(-0.25*pi) q[0];"),
+        ]
+        for inner, expected in cases:
+            with self.subTest(inner=inner):
+                c = Circuit.from_qasm(header + "if(c==2) " + inner)
+                gate = c.gates[0]
+                before = gate.to_qasm()
+                adj = c.adjoint().gates[0]
+                self.assertEqual(adj.to_qasm(), "if(c==2) " + expected)
+                self.assertEqual(adj.condition_register, gate.condition_register)
+                self.assertEqual(adj.condition_value, gate.condition_value)
+                self.assertEqual(adj.register_size, gate.register_size)
+                self.assertEqual(adj.target, gate.target)
+                self.assertEqual(gate.to_qasm(), before)
+                check = Circuit(1)
+                check.add_gate(gate.inner_gate)
+                check.add_gate(adj.inner_gate)
+                self.assertTrue(compare_tensors(check.to_matrix(), Circuit(1).to_matrix(), preserve_scalar=False))
+
     def test_verify_equality_u3(self):
         header = 'OPENQASM 2.0;\ninclude "qelib1.inc";\nqreg q[1];\n'
         left = Circuit.from_qasm(header + "u3(pi/2,pi/4,-pi/2) q[0];")
