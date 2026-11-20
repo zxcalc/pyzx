@@ -1659,6 +1659,11 @@ class ConditionalGate(Gate):
             self.condition_register, self.condition_value,
             self.inner_gate.copy(), self.register_size)
 
+    def to_adjoint(self) -> 'ConditionalGate':
+        g = self.copy()
+        g.inner_gate = g.inner_gate.to_adjoint()
+        return g
+
     def reposition(self, mask: list[int], bit_mask: list[int] | None = None) -> 'ConditionalGate':
         g = self.copy()
         g.inner_gate = g.inner_gate.reposition(mask, bit_mask)
