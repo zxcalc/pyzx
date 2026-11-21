@@ -30,7 +30,7 @@ mydir = os.path.dirname(__file__)
 from pyzx.generate import cliffordT, cliffords
 from pyzx.simplify import clifford_simp
 from pyzx.extract import extract_circuit
-from pyzx.circuit import Circuit, PauliExponential, PhaseGadget
+from pyzx.circuit import Circuit, ParityPhase, PauliExponential, PhaseGadget
 from pyzx.circuit.gates import ParityPhase, FSim, U2, U3, CU3, CU, CSX, RZZ, CNOT, ZPhase
 from pyzx.utils import VertexType, EdgeType
 from fractions import Fraction
@@ -540,54 +540,61 @@ class TestPhaseGadgetGate(unittest.TestCase):
 @unittest.skipUnless(np, "numpy needs to be installed for this to run")
 class TestPauliExponential(unittest.TestCase):
     def test_mixed_axis_graph_and_adjoint(self):
-        angle = Fraction(9, 4)
+        angle = -Fraction(9, 4)
         x = np.array([[0, 1], [1, 0]])
         y = np.array([[0, -1j], [1j, 0]])
         z = np.diag([1, -1])
         pauli = np.kron(np.kron(x, np.eye(2)), np.kron(y, z))
         theta = np.pi * float(angle) / 2
-        exact = np.cos(theta) * np.eye(16) + 1j * np.sin(theta) * pauli
+        expected = np.cos(theta) * np.eye(16) - 1j * np.sin(theta) * pauli
 
-        for gadget_phase in (False, True):
-            with self.subTest(gadget_phase=gadget_phase):
-                circuit = Circuit(4)
-                circuit.add_gate("PauliExponential", "-XIYZ", angle, gadget_phase=gadget_phase)
-                graph = circuit.to_graph()
-                gadget_degrees = [graph.vertex_degree(v) for v in graph.vertices() if graph.is_phase_gadget(v)]
-                self.assertEqual(gadget_degrees, [4])
-                expected = np.exp(-1j * theta) * exact if gadget_phase else exact
-                np.testing.assert_allclose(graph.to_matrix(), expected, atol=1e-12)
-                np.testing.assert_allclose(circuit.adjoint().to_matrix(), expected.conj().T, atol=1e-12)
-                self.assertEqual(circuit.tcount(), 1)
+        circuit = Circuit(4)
+        circuit.add_gate("PauliExponential", ["X", "Y", "Z"], angle, 0, 2, 3)
+        graph = circuit.to_graph()
+        gadget_degrees = [graph.vertex_degree(v) for v in graph.vertices() if graph.is_phase_gadget(v)]
+        self.assertEqual(gadget_degrees, [4])
+        np.testing.assert_allclose(graph.to_matrix(), expected, atol=1e-12)
+        np.testing.assert_allclose(circuit.adjoint().to_matrix(), expected.conj().T, atol=1e-12)
+        self.assertEqual(circuit.tcount(), 1)
 
-                remapped = Circuit(4)
-                remapped.add_circuit(circuit, mask=[3, 2, 0, 1])
-                self.assertEqual(remapped.gates, [PauliExponential("-YZIX", angle, gadget_phase=gadget_phase)])
+        remapped = Circuit(4)
+        remapped.add_circuit(circuit, mask=[3, 2, 0, 1])
+        self.assertEqual(remapped.gates, [PauliExponential("XYZ", angle, 3, 0, 1)])
 
-    def test_gadget_phase_matches_phase_gadget(self):
-        angle = Fraction(1, 4)
-        rotation = PauliExponential("-ZIZ", angle, gadget_phase=True)
-        gadget = PhaseGadget(-angle, 0, 2)
-        circuit = Circuit(3)
-        circuit.add_gate(gadget)
-        self.assertEqual(rotation.to_graph().to_dict(), circuit.to_graph().to_dict())
-        self.assertEqual(rotation.to_basic_gates(), gadget.to_basic_gates())
-        self.assertEqual(rotation.to_qasm(), gadget.to_qasm())
-        self.assertEqual(rotation.to_qc(), gadget.to_qc())
-        self.assertEqual(rotation.to_quipper(), gadget.to_quipper())
+        prefix = Circuit(1)
+        prefix.add_gate("HAD", 0)
+        tensored = prefix @ circuit
+        self.assertEqual(tensored.gates[-1], PauliExponential("XYZ", angle, 1, 3, 4))
+        np.testing.assert_allclose(tensored.to_matrix(), np.kron(prefix.to_matrix(), expected), atol=1e-12)
+
+    def test_all_z_scalar_relative_to_parity_gates(self):
+        for angle, tcount in ((Fraction(-1, 2), 0), (Fraction(1, 4), 1)):
+            rotation = PauliExponential("ZZ", angle, 0, 2)
+            expected = np.exp(1j * np.pi * float(angle) / 2) * rotation.to_graph().to_matrix()
+            self.assertEqual(rotation.tcount(), tcount)
+            for gate_class in (ParityPhase, PhaseGadget):
+                with self.subTest(angle=angle, gate_class=gate_class):
+                    circuit = Circuit(3)
+                    circuit.add_gate(gate_class(angle, 0, 2))
+                    np.testing.assert_allclose(circuit.to_matrix(), expected, atol=1e-12)
 
     def test_basic_gates_and_exports_up_to_global_phase(self):
-        for pauli, angle in (("-XY", Fraction(1, 4)), ("II", Fraction(1, 3))):
-            with self.subTest(pauli=pauli):
+        for pauli, angle in (("XY", Fraction(-1, 4)), ("ZZ", Fraction(0))):
+            with self.subTest(pauli=pauli, angle=angle):
                 circuit = Circuit(2)
-                circuit.add_gate(PauliExponential(pauli, angle))
+                gate = PauliExponential(pauli, angle, 0, 1)
+                circuit.add_gate(gate)
                 expected = circuit.to_matrix()
+                quipper = circuit.to_quipper()
+                self.assertIn('QRot["exp(-i%Z)",', quipper)
+                if angle == 0:
+                    self.assertEqual(gate.to_basic_gates(), PhaseGadget(angle, 0, 1).to_basic_gates())
                 for alternative in (
                     circuit.to_basic_gates(),
                     Circuit.from_qasm(circuit.to_qasm()),
                     Circuit.from_qasm(circuit.to_qasm(version=3)),
                     Circuit.from_qc(circuit.to_qc()),
-                    Circuit.from_quipper(circuit.to_quipper()),
+                    Circuit.from_quipper(quipper),
                 ):
                     actual = alternative.to_matrix()
                     phase = np.vdot(expected, actual) / len(expected)
@@ -598,28 +605,31 @@ class TestPauliExponential(unittest.TestCase):
         from pyzx.symbolic import new_var
 
         angle = new_var("theta", is_bool=False)
-        for pauli, expected in (("Y", np.array([[0, -1], [1, 0]])), ("-II", 1j * np.eye(4))):
-            with self.subTest(pauli=pauli):
-                graph = PauliExponential(pauli, angle).to_graph()
-                bound = graph.substitute_variables({"theta": Fraction(1)})
-                np.testing.assert_allclose(bound.to_matrix(), expected, atol=1e-12)
+        graph = PauliExponential("Y", angle, 0).to_graph()
+        bound = graph.substitute_variables({"theta": Fraction(1)})
+        np.testing.assert_allclose(bound.to_matrix(), [[0, -1], [1, 0]], atol=1e-12)
 
     def test_text_export_rejects_unbound_angle(self):
         from pyzx.symbolic import new_var
 
         angle = new_var("theta", is_bool=False) / 2
-        for gadget_phase in (False, True):
-            circuit = Circuit(2)
-            circuit.add_gate(PauliExponential("ZZ", angle, gadget_phase=gadget_phase))
-            for export in (circuit.to_qasm, circuit.to_qc, circuit.to_quipper):
-                with self.subTest(gadget_phase=gadget_phase, export=export.__name__):
-                    with self.assertRaisesRegex(TypeError, "bind the Pauli exponential angle"):
-                        export()
+        circuit = Circuit(2)
+        circuit.add_gate(PauliExponential("ZZ", angle, 0, 1))
+        for export in (circuit.to_qasm, circuit.to_qc, circuit.to_quipper):
+            with self.subTest(export=export.__name__):
+                with self.assertRaisesRegex(TypeError, "bind the Pauli exponential angle"):
+                    export()
 
-    def test_rejects_malformed_pauli_strings(self):
-        for text in ("", "-", "XX-", "A", "++X"):
-            with self.subTest(text=text), self.assertRaises(ValueError):
-                PauliExponential(text, Fraction(1, 3))
+    def test_rejects_invalid_paulis_and_targets(self):
+        cases = (("I", [0]), ("-X", [0, 1]), (["XY"], [0]), ("ZZ", [0]),
+                 ("ZZ", [0, 0]), ("Z", [-1]), ("Z", [0.5]), ("", []))
+        for pauli, targets in cases:
+            with self.subTest(pauli=pauli, targets=targets), self.assertRaises(ValueError):
+                PauliExponential(pauli, Fraction(1, 3), *targets)
+        gate = PauliExponential("ZY", Fraction(1, 3), 0, 1)
+        for mask in ([0, 0], [0, -1]):
+            with self.subTest(mask=mask), self.assertRaises(ValueError):
+                gate.reposition(mask)
 
 
 if __name__ == '__main__':

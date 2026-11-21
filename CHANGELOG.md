@@ -9,7 +9,7 @@ Hence, occasionally changes will be backwards incompatible (although they will a
 ## [Unreleased]
 
 ### Added
-- `PauliExponential` circuit gate for signed Pauli strings. (by @pmitos)
+- `PauliExponential` circuit gate for Pauli rotations on specified qubits. (by @pmitos)
 
 ### Fixed
 - `Circuit.adjoint` now adjoints the inner gate of a `ConditionalGate`, so `if(c==1) s q[0];` becomes `if(c==1) sdg q[0];`. (by @anubhavlal07)
