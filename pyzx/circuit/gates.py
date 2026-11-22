@@ -722,7 +722,7 @@ class XCX(CZ):
         return [HAD(self.control), CNOT(self.control,self.target), HAD(self.control)]
 
 
-CX = XCX
+CX = CNOT
 
 
 class SWAP(CZ):
@@ -1691,7 +1691,7 @@ gate_types: dict[str, type[Gate]] = {
     "ParityPhase": ParityPhase,
     "PhaseGadget": PhaseGadget,
     "XCX": XCX,
-    "CX": XCX,
+    "CX": CNOT,
     "SWAP": SWAP,
     "CSWAP": CSWAP,
     "CRZ": CRZ,

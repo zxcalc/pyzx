@@ -93,10 +93,16 @@ class TestCircuit(unittest.TestCase):
                 self.assertTrue(compare_tensors(c.to_matrix(), c2.to_matrix(), preserve_scalar=False))
 
     def test_xcx_graph_and_quipper_roundtrip(self):
+        # CX is an alias for CNOT
+        self.assertIs(CX, CNOT)
+        c_cx = Circuit(2)
+        c_cx.add_gate("CX", 0, 1)
+        self.assertIsInstance(c_cx.gates[0], CNOT)
+
+        # XCX gate roundtrip
         c = Circuit(2)
-        c.add_gate("CX", 0, 1)
+        c.add_gate("XCX", 0, 1)
         self.assertIsInstance(c.gates[0], XCX)
-        self.assertIs(CX, XCX)
 
         # Graph roundtrip with zh=True preserving XCX gate
         g = c.to_graph(zh=True)
