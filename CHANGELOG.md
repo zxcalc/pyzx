@@ -9,6 +9,15 @@ Hence, occasionally changes will be backwards incompatible (although they will a
 ## [Unreleased]
 
 ### Added
+- `PauliExponential` circuit gate for Pauli rotations on specified qubits. (by @pmitos)
+
+### Fixed
+- `Circuit.adjoint` now adjoints the inner gate of a `ConditionalGate`, so `if(c==1) s q[0];` becomes `if(c==1) sdg q[0];`. (by @anubhavlal07)
+- Corrected scalar evaluation for opposite non-Clifford spider phases by converting pi units to radians in `Scalar.add_spider_pair`.
+
+## [0.10.8] - 2026-11-01
+
+### Added
 - Cubic flow finding for XY, X, and Y measurements, with the previous finder available as `method="legacy"`. (by @pmitos)
 - `pyzx.flow.pauli_flow` as the entry point for Pauli flow on XY, X, and Y measurements. (by @pmitos)
 - Optional `layers_only=True` on cubic flow finders, returning partial order layers without correction sets. (by @pmitos)
