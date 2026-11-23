@@ -455,7 +455,7 @@ class QASMParser:
             poly.terms[0][0] if poly.terms else 0
         if isinstance(const, complex):
             raise TypeError("Phase expression {!r} is not real".format(val))
-        if 'pi' not in val:
+        if 'pi' not in val and 'π' not in val:
             # Value without ``pi`` is in radians; normalise by pi.
             const = float(const) / math.pi
         return Fraction(const).limit_denominator(
