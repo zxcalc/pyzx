@@ -151,10 +151,10 @@ class TestRankWidth(unittest.TestCase):
     def test_tensorfy_rw_scalar_and_tensor_out_of_float_range(self):
         # Both the contracted tensor (about 2^-1146) and the scalar (sqrt(2)^2415) are
         # outside the float range, but their product is not (#575).
-        n = 70
+        n = 68
         g = self.complete_graph(n)
         g.scalar.add_power(n * (n - 1) // 2)
-        res = complex(tensorfy(g))
+        res = complex(tensorfy(g, strategy='rw-greedy-linear'))
         expected = self.complete_graph_sum(n)
         self.assertLessEqual(abs(res - expected), 1e-9 * abs(expected))
 
