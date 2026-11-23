@@ -112,7 +112,7 @@ def parse_quipper_block(lines: list[str]) -> Circuit:
         ctrl = int(ctrls[1:])
         if gname == "not": c.add_gate("CNOT", ctrl, t)
         elif gname == "Z": c.add_gate("CZ", ctrl, t)
-        elif gname == "X": c.add_gate("CX", ctrl, t)
+        elif gname == "X": c.add_gate("XCX", ctrl, t)
         else:
             raise TypeError("Unsupported controlled gate: " + gname)
     return c

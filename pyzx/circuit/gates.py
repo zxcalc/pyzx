@@ -723,6 +723,10 @@ class XCX(CZ):
     def to_basic_gates(self) -> list[Gate]:
         return [HAD(self.control), CNOT(self.control,self.target), HAD(self.control)]
 
+
+CX = CNOT
+
+
 class SWAP(CZ):
     name = 'SWAP'
     qasm_name = 'swap'
@@ -1851,6 +1855,7 @@ gate_types: dict[str, type[Gate]] = {
     "PhaseGadget": PhaseGadget,
     "PauliExponential": PauliExponential,
     "XCX": XCX,
+    "CX": CNOT,
     "SWAP": SWAP,
     "CSWAP": CSWAP,
     "CRZ": CRZ,
