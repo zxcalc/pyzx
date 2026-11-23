@@ -902,9 +902,9 @@ class ParityPhase(Gate):
 
     def __str__(self) -> str:
         if self.as_gadget:
-            return "ParityPhase({!s}, {!s}, as_gadget=True)".format(
-                self.phase, ", ".join(str(t) for t in self.targets))
-        return "ParityPhase({!s}, {!s})".format(self.phase, ", ".join(str(t) for t in self.targets))
+            return "{}({!s}, {!s}, as_gadget=True)".format(
+                self.name, self.phase, ", ".join(str(t) for t in self.targets))
+        return "{}({!s}, {!s})".format(self.name, self.phase, ", ".join(str(t) for t in self.targets))
 
     def _max_target(self) -> int:
         return max(self.targets)
@@ -959,8 +959,13 @@ class PhaseGadget(ParityPhase):
     its equivalent CNOT ladder and ZPhase rotation, as these formats do not have a
     native phase gadget instruction.
     """
+    name = 'PhaseGadget'
     def __init__(self, phase: FractionLike, *targets: int) -> None:
         super().__init__(phase, *targets, as_gadget=True)
+
+    def __str__(self) -> str:
+        return "PhaseGadget({!s}, {!s})".format(
+            self.phase, ", ".join(str(t) for t in self.targets))
 
 
 class PauliExponential(Gate):
@@ -1109,6 +1114,7 @@ class PauliExponential(Gate):
 class RZZ(ParityPhase):
     name = 'RZZ'
     qasm_name = 'rzz'
+    print_phase = True
     def __init__(self, control: int, target: int, phase: FractionLike) -> None:
         if control == target:
             raise ValueError("RZZ control and target qubits must be distinct.")
@@ -1117,6 +1123,9 @@ class RZZ(ParityPhase):
         self.targets = (control, target)
         self.phase = phase
         self.as_gadget = False
+
+    def __str__(self) -> str:
+        return Gate.__str__(self)
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, RZZ): return False

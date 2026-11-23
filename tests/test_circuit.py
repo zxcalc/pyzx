@@ -301,13 +301,13 @@ class TestCircuit(unittest.TestCase):
 @unittest.skipUnless(np, "numpy needs to be installed for this to run")
 class TestPhaseGadgetGate(unittest.TestCase):
     def test_gate_creation(self):
-        # PhaseGadget is a convenience function that returns ParityPhase with as_gadget=True.
         pg = PhaseGadget(Fraction(1, 4), 0, 1, 2)
         self.assertIsInstance(pg, ParityPhase)
-        self.assertEqual(pg.name, 'ParityPhase')
+        self.assertEqual(pg.name, 'PhaseGadget')
         self.assertEqual(pg.phase, Fraction(1, 4))
         self.assertEqual(pg.targets, (0, 1, 2))
         self.assertTrue(pg.as_gadget)
+        self.assertEqual(str(pg), 'PhaseGadget(1/4, 0, 1, 2)')
 
     def test_as_gadget_parameter(self):
         # Test direct use of as_gadget parameter on ParityPhase.
@@ -465,17 +465,47 @@ class TestPhaseGadgetGate(unittest.TestCase):
 
     def test_rzz_gate_operations(self):
         rzz = RZZ(0, 1, Fraction(1, 4))
+        self.assertEqual(rzz.name, 'RZZ')
+        self.assertEqual(str(rzz), 'RZZ(0,1,phase=1/4)')
+        self.assertEqual(repr(rzz), 'RZZ(0,1,phase=1/4)')
         rzz_copy = rzz.copy()
         self.assertIsInstance(rzz_copy, RZZ)
+        self.assertEqual(rzz_copy.name, 'RZZ')
+        self.assertEqual(str(rzz_copy), 'RZZ(0,1,phase=1/4)')
         self.assertEqual(rzz_copy.control, 0)
         self.assertEqual(rzz_copy.target, 1)
         self.assertEqual(rzz_copy.targets, (0, 1))
         self.assertEqual(rzz_copy.phase, Fraction(1, 4))
 
         rzz_adj = rzz.to_adjoint()
+        self.assertEqual(rzz_adj.name, 'RZZ')
+        self.assertEqual(str(rzz_adj), 'RZZ(0,1,phase=-1/4)')
         self.assertEqual(rzz_adj.phase, -Fraction(1, 4))
         self.assertEqual(rzz_adj.control, 0)
         self.assertEqual(rzz_adj.target, 1)
+
+    def test_gate_string_representations(self):
+        pp = ParityPhase(Fraction(1, 4), 0, 1)
+        self.assertEqual(str(pp), 'ParityPhase(1/4, 0, 1)')
+        self.assertEqual(repr(pp), 'ParityPhase(1/4, 0, 1)')
+
+        pp_gadget = ParityPhase(Fraction(1, 4), 0, 1, as_gadget=True)
+        self.assertEqual(str(pp_gadget), 'ParityPhase(1/4, 0, 1, as_gadget=True)')
+        self.assertEqual(repr(pp_gadget), 'ParityPhase(1/4, 0, 1, as_gadget=True)')
+
+        pg = PhaseGadget(Fraction(1, 4), 0, 1)
+        self.assertEqual(pg.name, 'PhaseGadget')
+        self.assertEqual(str(pg), 'PhaseGadget(1/4, 0, 1)')
+        self.assertEqual(repr(pg), 'PhaseGadget(1/4, 0, 1)')
+        self.assertEqual(str(pg.copy()), 'PhaseGadget(1/4, 0, 1)')
+        self.assertEqual(str(pg.to_adjoint()), 'PhaseGadget(-1/4, 0, 1)')
+
+        rzz = RZZ(0, 1, Fraction(1, 4))
+        self.assertEqual(rzz.name, 'RZZ')
+        self.assertEqual(str(rzz), 'RZZ(0,1,phase=1/4)')
+        self.assertEqual(repr(rzz), 'RZZ(0,1,phase=1/4)')
+        self.assertEqual(str(rzz.copy()), 'RZZ(0,1,phase=1/4)')
+        self.assertEqual(str(rzz.to_adjoint()), 'RZZ(0,1,phase=-1/4)')
 
     def test_rzz_reposition(self):
         rzz = RZZ(0, 1, Fraction(1, 4))
