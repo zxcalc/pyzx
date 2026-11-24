@@ -160,6 +160,99 @@ class TestGraphBasicMethods(unittest.TestCase):
         self.assertEqual(g.num_edges(v1, v2, EdgeType.HADAMARD), 0)
         self.assertEqual(g.num_edges(v1, v2, EdgeType.SIMPLE), 1)
 
+    def test_graphlike_rewrites_reject_simple_edges_in_neighborhood(self):
+        """Regression test for #434. Rewrites which require graph-like
+        neighbourhoods (local complementation, pivoting) reject parallel edges
+        between their neighbours."""
+        from pyzx.graph.multigraph import Multigraph
+        from pyzx.rewrite_rules.lcomp_rule import check_lcomp
+        from pyzx.rewrite_rules.pivot_rule import check_pivot, check_pivot_boundary, check_pivot_gadget
+
+        g = Multigraph()
+        g.set_auto_simplify(False)
+        v1 = g.add_vertex(VertexType.Z, 0, 0)
+        v2 = g.add_vertex(VertexType.Z, 0, 1)
+        v3 = g.add_vertex(VertexType.Z, 1, 0)
+        v4 = g.add_vertex(VertexType.Z, 1, 1)
+        
+        g.add_edge((v1, v2), EdgeType.HADAMARD)
+        
+        g.add_edge((v1, v3), EdgeType.HADAMARD)
+        g.add_edge((v1, v4), EdgeType.HADAMARD)
+        g.add_edge((v2, v3), EdgeType.HADAMARD)
+        g.add_edge((v2, v4), EdgeType.HADAMARD)
+        
+        g.add_edge((v3, v4), EdgeType.SIMPLE)
+
+        self.assertFalse(
+            check_pivot(g, v1, v2),
+            "check_pivot should reject vertices whose neighbourhoods have simple edges."
+        )
+
+        g.set_phase(v2, Fraction(1, 2))
+        self.assertFalse(
+            check_lcomp(g, v2),
+            "check_lcomp should reject vertices whose neighbourhoods have simple edges."
+        )
+        self.assertFalse(
+            check_pivot_gadget(g, v1, v2),
+            "check_pivot_gadget should reject vertices whose neighbourhoods have simple edges."
+        )
+
+        b = g.add_vertex(VertexType.BOUNDARY)
+        g.add_edge((v2, b), EdgeType.SIMPLE)
+        self.assertFalse(
+            check_pivot_boundary(g, v1, v2),
+            "check_pivot_boundary should reject vertices whose neighbourhoods have simple edges."
+        )
+
+    def test_graphlike_rewrites_reject_multigraphs(self):
+        """Regression test for #434. Rewrites which require graph-like
+        neighbourhoods (local complementation, pivoting) reject parallel edges
+        between the neighbours of the matched vertices."""
+        from pyzx.graph.multigraph import Multigraph
+        from pyzx.rewrite_rules.lcomp_rule import check_lcomp
+        from pyzx.rewrite_rules.pivot_rule import check_pivot, check_pivot_boundary, check_pivot_gadget
+
+        g = Multigraph()
+        g.set_auto_simplify(False)
+        v1 = g.add_vertex(VertexType.Z, 0, 0)
+        v2 = g.add_vertex(VertexType.Z, 0, 1)
+        v3 = g.add_vertex(VertexType.Z, 1, 0)
+        v4 = g.add_vertex(VertexType.Z, 1, 1)
+        
+        g.add_edge((v1, v2), EdgeType.HADAMARD)
+        
+        g.add_edge((v1, v3), EdgeType.HADAMARD)
+        g.add_edge((v1, v4), EdgeType.HADAMARD)
+        g.add_edge((v2, v3), EdgeType.HADAMARD)
+        g.add_edge((v2, v4), EdgeType.HADAMARD)
+        
+        g.add_edge((v3, v4), EdgeType.HADAMARD)
+        g.add_edge((v3, v4), EdgeType.HADAMARD)
+
+        self.assertFalse(
+            check_pivot(g, v1, v2),
+            "check_pivot should reject vertices whose neighbourhoods are multigraphs."
+        )
+
+        g.set_phase(v2, Fraction(1, 2))
+        self.assertFalse(
+            check_lcomp(g, v2),
+            "check_lcomp should reject vertices whose neighbourhoods are multigraphs."
+        )
+        self.assertFalse(
+            check_pivot_gadget(g, v1, v2),
+            "check_pivot_gadget should reject vertices whose neighbourhoods are multigraphs."
+        )
+
+        b = g.add_vertex(VertexType.BOUNDARY)
+        g.add_edge((v2, b), EdgeType.SIMPLE)
+        self.assertFalse(
+            check_pivot_boundary(g, v1, v2),
+            "check_pivot_boundary should reject vertices whose neighbourhoods are multigraphs."
+        )
+
     def test_check_pivot_rejects_mixed_parallels(self):
         """``check_pivot`` rejects a vertex pair that has a SIMPLE parallel
         alongside a HADAMARD edge, since pivot is only defined on a clean
