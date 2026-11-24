@@ -33,7 +33,7 @@ __all__ = [
 from fractions import Fraction
 
 from ..graph.base import ET, VT, BaseGraph
-from ..utils import is_subgraph_graph_like
+from ..utils import is_subgraph_graph_like, phase_is_clifford, phase_is_pauli
 
 
 def check_lcomp(
@@ -53,8 +53,9 @@ def check_lcomp(
     if not is_subgraph_graph_like(g, vs):
         return False
 
+    # Phase must be 1/2 or 3/2
     phase = g.phase(v)
-    if phase not in (1/2, 3/2):
+    if not phase_is_clifford(phase) or phase_is_pauli(phase):
         return False
 
     if g.is_ground(v):
