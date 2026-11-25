@@ -39,7 +39,7 @@ from pyzx_cflow.circuit.gates import CNOT
 from pyzx_cflow.generate import cliffordT, cliffords
 from pyzx_cflow.simplify import clifford_simp
 from pyzx_cflow.extract import extract_circuit, extract_simple
-from pyzx_cflow.flow import cflow, full_cflow
+from pyzx_cflow.flow import cflow, full_cflow, gflow
 from pyzx_cflow.utils import EdgeType, VertexType
 
 SEED = 1337
@@ -110,6 +110,23 @@ class TestExtract(unittest.TestCase):
                 g2 = g.clone()
                 g2.remove_vertices(gadget)
                 self.assertTrue(full_cflow(g2) is not None)
+
+
+    def test_gflow_none(self):
+        """Tests that gflow returns None for a diagram without gflow rather than looping."""
+        g = Graph()
+        ins = [g.add_vertex(VertexType.BOUNDARY,q,0) for q in range(2)]
+        a = [g.add_vertex(VertexType.Z,q,1) for q in range(2)]
+        b = g.add_vertex(VertexType.Z,0,2)
+        out = g.add_vertex(VertexType.BOUNDARY,0,3)
+        g.set_inputs(tuple(ins))
+        g.set_outputs((out,))
+        g.add_edges([(ins[0],a[0]),(ins[1],a[1]),(b,out)])
+        g.add_edges([(a[0],b),(a[1],b)],EdgeType.HADAMARD)
+        self.assertTrue(gflow(g) is None)
+        g.remove_vertices([ins[1],a[1]])
+        g.set_inputs((ins[0],))
+        self.assertTrue(gflow(g) is not None)
 
 
 if __name__ == '__main__':
