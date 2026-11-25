@@ -61,6 +61,7 @@ def gflow(g: BaseGraph[VT, ET]) -> Optional[Tuple[Dict[VT, int], Dict[VT, Set[VT
     if not order.keys() - processed:
       if vertices.difference(processed) == inputs.difference(pattern_inputs):
         return order, gflow, depth
+      return None
     else:
       processed.update(order.keys())
       depth += 1
