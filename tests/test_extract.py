@@ -20,6 +20,7 @@ import random
 import sys
 import os
 import json
+from fractions import Fraction
 if __name__ == '__main__':
     sys.path.append('..')
     sys.path.append('.')
@@ -39,6 +40,7 @@ from pyzx_cflow.generate import cliffordT, cliffords
 from pyzx_cflow.simplify import clifford_simp
 from pyzx_cflow.extract import extract_circuit, extract_simple
 from pyzx_cflow.flow import cflow, full_cflow
+from pyzx_cflow.utils import EdgeType, VertexType
 
 SEED = 1337
 
@@ -83,6 +85,31 @@ class TestExtract(unittest.TestCase):
         c = extract_circuit(g.copy())
         c2 = extract_simple(g.copy(), synth_phase_polys=True)
         self.assertTrue(c.verify_equality(c2))
+
+    def test_full_cflow_gadget_cycle(self):
+        """Tests that full_cflow rejects phase gadgets whose order relations form a cycle through three gadgets."""
+        g = Graph()
+        ins = [g.add_vertex(VertexType.BOUNDARY,q,0) for q in range(3)]
+        a = [g.add_vertex(VertexType.Z,q,1) for q in range(3)]
+        b = [g.add_vertex(VertexType.Z,q,2) for q in range(3)]
+        outs = [g.add_vertex(VertexType.BOUNDARY,q,3) for q in range(3)]
+        g.set_inputs(tuple(ins))
+        g.set_outputs(tuple(outs))
+        for q in range(3):
+            g.add_edges([(ins[q],a[q]),(b[q],outs[q])])
+            g.add_edge((a[q],b[q]),EdgeType.HADAMARD)
+        gadgets = []
+        for q in range(3):
+            base = g.add_vertex(VertexType.Z,q+0.5,1)
+            leaf = g.add_vertex(VertexType.Z,q+0.5,2,Fraction(1,4))
+            g.add_edges([(base,leaf),(base,a[q]),(base,b[(q+1)%3])],EdgeType.HADAMARD)
+            gadgets.append((base,leaf))
+        self.assertTrue(full_cflow(g) is None)
+        for i,gadget in enumerate(gadgets):
+            with self.subTest(i=i):
+                g2 = g.clone()
+                g2.remove_vertices(gadget)
+                self.assertTrue(full_cflow(g2) is not None)
 
 
 if __name__ == '__main__':
