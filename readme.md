@@ -1,15 +1,28 @@
 ## PyZX-cflow
 
-This is a fork of [PyZX](https://github.com/Quantomatic/pyzx) (version 0.8.0) implementing the causal flow preserving optimisation of [Causal flow preserving optimisation of quantum circuits in the ZX-calculus](https://arxiv.org/abs/2312.02793). It is imported as `pyzx_cflow` so that it can be installed alongside PyZX.
+This is a fork of [PyZX](https://github.com/Quantomatic/pyzx) (version 0.8.0) implementing the causal flow preserving optimisation of [Causal flow preserving optimisation of quantum circuits in the ZX-calculus](https://arxiv.org/abs/2312.02793). It is imported as `pyzx_cflow` so that it can be installed alongside PyZX. It was renamed from `pyzx` in November 2026.
 
-Install from source, including the dependencies used for benchmarking:
+Install from source, including the dependencies used for benchmarking and the demo notebooks:
 ```
     git clone https://github.com/calumholker/pyzx-cflow.git
     cd pyzx-cflow
     pip install -e ".[benchmarking]"
+    jupyter notebook demos/circuit_optimisation
 ```
 
-The optimisation is `zx.flow_2Q_simp`, applied after `zx.teleport_reduce` and `zx.to_graph_like`. Demo notebooks reproducing the results of the paper are in [demos/circuit_optimisation](demos/circuit_optimisation).
+The optimisation is applied as follows:
+```python
+import pyzx_cflow as zx
+g = circuit.to_graph()
+zx.teleport_reduce(g)
+zx.to_graph_like(g)
+zx.flow_2Q_simp(g)
+c = zx.basic_optimization(zx.extract_simple(g).to_basic_gates())
+```
+
+Demo notebooks for Table 1 and the QFT example of the paper, and a tutorial for the `Benchmark` class, are in [demos/circuit_optimisation](demos/circuit_optimisation).
+
+The rest of this readme is upstream's; in this fork use `pyzx_cflow` in place of `pyzx`.
 
 ## PyZX
 
