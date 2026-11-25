@@ -28,17 +28,17 @@ mydir = os.path.dirname(__file__)
 
 try:
     import numpy as np
-    from pyzx.tensor import tensorfy, compare_tensors
+    from pyzx_cflow.tensor import tensorfy, compare_tensors
 except ImportError:
     np = None
 
-from pyzx.graph import Graph
-from pyzx.circuit import Circuit
-from pyzx.circuit.gates import CNOT
-from pyzx.generate import cliffordT, cliffords
-from pyzx.simplify import clifford_simp
-from pyzx.extract import extract_circuit, extract_simple
-from pyzx.flow import cflow, full_cflow
+from pyzx_cflow.graph import Graph
+from pyzx_cflow.circuit import Circuit
+from pyzx_cflow.circuit.gates import CNOT
+from pyzx_cflow.generate import cliffordT, cliffords
+from pyzx_cflow.simplify import clifford_simp
+from pyzx_cflow.extract import extract_circuit, extract_simple
+from pyzx_cflow.flow import cflow, full_cflow
 
 SEED = 1337
 

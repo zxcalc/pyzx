@@ -28,7 +28,7 @@ So what has been done with the ZX-calculus?
 
 A bunch of things! Below I list just the things related to quantum computing where there are concrete numbers to back-up the benefits of using it over standard quantum circuits.
 
-- Using the rewrite strategy :func:`~pyzx.simplify.full_reduce` that is implemented in PyZX, a Clifford circuit can be brought into a `normal form <https://arxiv.org/abs/1902.03178>`_ that has some nice properties.
+- Using the rewrite strategy :func:`~pyzx_cflow.simplify.full_reduce` that is implemented in PyZX, a Clifford circuit can be brought into a `normal form <https://arxiv.org/abs/1902.03178>`_ that has some nice properties.
 - Using this same rewrite strategy, all the Clifford measurements in a measurement-based quantum computation can be `removed <https://arxiv.org/abs/2003.01664>`_.
 - Using this same rewrite strategy, we can optimise the `T-count <https://arxiv.org/abs/1903.10477>`_ of a circuit.
 - Using ZX-diagrams, `several <https://arxiv.org/abs/1812.01238>`_ surface code `constructions <https://arxiv.org/abs/1905.08916>`_ have `succesfully <https://arxiv.org/abs/1912.11503>`_ been `optimised <https://arxiv.org/abs/2206.12780>`_.

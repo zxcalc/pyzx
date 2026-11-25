@@ -18,9 +18,9 @@ import sys
 import sphinx_rtd_theme
 
 sys.path.insert(0, os.path.abspath('..'))
-sys.path.insert(0, os.path.abspath('pyzx'))
+sys.path.insert(0, os.path.abspath('pyzx_cflow'))
 
-import pyzx
+import pyzx_cflow
 
 
 # -- Project information -----------------------------------------------------

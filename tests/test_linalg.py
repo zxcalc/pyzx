@@ -21,7 +21,7 @@ if __name__ == '__main__':
     sys.path.append('..')
     sys.path.append('.')
 
-from pyzx.linalg import Mat2
+from pyzx_cflow.linalg import Mat2
 
 
 class TestMat2(unittest.TestCase):

@@ -25,15 +25,15 @@ if __name__ == "__main__":
 import numpy as np
 from fractions import Fraction
 
-from pyzx.routing import architecture
-from pyzx.routing.architecture import create_architecture
-from pyzx.routing.cnot_mapper import ElimMode
-from pyzx.routing.parity_maps import CNOT_tracker, Parity
-from pyzx.linalg import Mat2
-from pyzx.routing.phase_poly import PhasePoly
-from pyzx.circuit import Circuit, HAD, CNOT, ZPhase, XPhase
-from pyzx.tensor import compare_tensors
-from pyzx.extract import permutation_as_swaps
+from pyzx_cflow.routing import architecture
+from pyzx_cflow.routing.architecture import create_architecture
+from pyzx_cflow.routing.cnot_mapper import ElimMode
+from pyzx_cflow.routing.parity_maps import CNOT_tracker, Parity
+from pyzx_cflow.linalg import Mat2
+from pyzx_cflow.routing.phase_poly import PhasePoly
+from pyzx_cflow.circuit import Circuit, HAD, CNOT, ZPhase, XPhase
+from pyzx_cflow.tensor import compare_tensors
+from pyzx_cflow.extract import permutation_as_swaps
 
 SEED = 42
 

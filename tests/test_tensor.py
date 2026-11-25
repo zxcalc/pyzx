@@ -25,13 +25,13 @@ if __name__ == '__main__':
 
 try:
     import numpy as np
-    from pyzx.tensor import tensorfy, compare_tensors, compose_tensors, adjoint
+    from pyzx_cflow.tensor import tensorfy, compare_tensors, compose_tensors, adjoint
 except ImportError:
     np = None
 
-from pyzx.graph import Graph
-from pyzx.generate import cliffords
-from pyzx.circuit import Circuit
+from pyzx_cflow.graph import Graph
+from pyzx_cflow.generate import cliffords
+from pyzx_cflow.circuit import Circuit
 
 SEED = 1337
 

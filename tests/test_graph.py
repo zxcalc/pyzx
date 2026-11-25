@@ -24,12 +24,12 @@ if __name__ == '__main__':
     sys.path.append('..')
     sys.path.append('.')
 
-from pyzx.graph import Graph
-from pyzx.utils import EdgeType, VertexType
-from pyzx.generate import identity
+from pyzx_cflow.graph import Graph
+from pyzx_cflow.utils import EdgeType, VertexType
+from pyzx_cflow.generate import identity
 
 import numpy as np
-from pyzx.tensor import compare_tensors
+from pyzx_cflow.tensor import compare_tensors
 
 
 

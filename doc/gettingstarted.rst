@@ -16,15 +16,15 @@ The best way to get started if you have cloned the repository is to run the `Get
 
 Let's start by importing the library::
 	
-	>>> import pyzx as zx
+	>>> import pyzx_cflow as zx
 
 For all the examples in this documentation we will assume you have imported PyZX in this manner.
 
-Quantum circuits in PyZX are represented by the :class:`~pyzx.circuit.Circuit` class. File in the supported formats (QASM, QC, Quipper) can easily be imported into PyZX::
+Quantum circuits in PyZX are represented by the :class:`~pyzx_cflow.circuit.Circuit` class. File in the supported formats (QASM, QC, Quipper) can easily be imported into PyZX::
 
 	circuit = zx.Circuit.load("path/to/circuit.extension")
 
-PyZX tries to automatically figure out in which format the circuit is represented. The :mod:`~pyzx.generate` module supplies several ways to generate random circuits::
+PyZX tries to automatically figure out in which format the circuit is represented. The :mod:`~pyzx_cflow.generate` module supplies several ways to generate random circuits::
 	
 	>>> circuit = zx.generate.CNOT_HAD_PHASE_circuit(qubits=4,depth=20,clifford=True)
 
@@ -38,12 +38,12 @@ If you are running inside a Jupyter notebook, circuits can be easily visualized:
 The default drawing method is to use the D3 Javascript library. When not running in a Jupyter notebook ``zx.draw`` returns a matplotlib figure instead. 
 In PyZX, Hadamard gates are stored as edges between vertices, which here are shown as blue lines.
 
-There are two main data structures in PyZX, Circuits and Graphs. A :class:`~pyzx.circuit.Circuit` is essentially just a list of gates. The above is an example of a ``Circuit``::
+There are two main data structures in PyZX, Circuits and Graphs. A :class:`~pyzx_cflow.circuit.Circuit` is essentially just a list of gates. The above is an example of a ``Circuit``::
 
 	>>>print(circuit.gates)
 	[CNOT(2,3), CNOT(0,1), CNOT(1,3), CNOT(1,2), CNOT(1,3), S(0), S(1), S(3), HAD(2), HAD(3), CNOT(2,1), HAD(3), CNOT(2,0), S(3), CNOT(1,3), S(3), HAD(0), HAD(1), CNOT(3,1), CNOT(3,2)]
 
-Most of the functionality in PyZX works on Graphs instead, which directly represent ZX-diagrams (the drawing function ``zx.draw`` above for instance first converted the circuit into a Graph before drawing it). ZX-diagrams are represented by instances of :class:`~pyzx.graph.base.BaseGraph`. To convert a circuit into a ZX-diagram, simply do::
+Most of the functionality in PyZX works on Graphs instead, which directly represent ZX-diagrams (the drawing function ``zx.draw`` above for instance first converted the circuit into a Graph before drawing it). ZX-diagrams are represented by instances of :class:`~pyzx_cflow.graph.base.BaseGraph`. To convert a circuit into a ZX-diagram, simply do::
 
 	g = circuit.to_graph()
 
@@ -149,9 +149,9 @@ Optimizing random circuits is of course not very useful, so let us do some optim
 The circuit file-formats supported by ``Circuit.load`` are curently *qasm*, *qc* or *quipper*. 
 PyZX can also be run from the command-line for some easy circuit-to-circuit manipulation. In order to optimize a circuit you can run the command::
 	
-	python -m pyzx opt input_circuit.qasm
+	python -m pyzx_cflow opt input_circuit.qasm
 
-For more information regarding the command-line tools, run ``python -m pyzx --help``.
+For more information regarding the command-line tools, run ``python -m pyzx_cflow --help``.
 
 This concludes this tutorial. For more information about the simplification procedures see :ref:`simplify`. 
 The different representations of the graphs and circuits is detailed in :ref:`representations`. How to create and modify ZX-diagrams is explained in :ref:`graphs`.

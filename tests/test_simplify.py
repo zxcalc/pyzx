@@ -24,18 +24,18 @@ if __name__ == '__main__':
 
 try:
     import numpy as np
-    from pyzx.tensor import tensorfy, compare_tensors
+    from pyzx_cflow.tensor import tensorfy, compare_tensors
 except ImportError:
     np = None
 
-from pyzx.graph import Graph
-from pyzx.circuit import Circuit
-from pyzx.circuit.qasmparser import qasm
+from pyzx_cflow.graph import Graph
+from pyzx_cflow.circuit import Circuit
+from pyzx_cflow.circuit.qasmparser import qasm
 from fractions import Fraction
-from pyzx.generate import cliffordT
-from pyzx.simplify import *
-from pyzx.simplify import supplementarity_simp
-from pyzx.extract import extract_simple
+from pyzx_cflow.generate import cliffordT
+from pyzx_cflow.simplify import *
+from pyzx_cflow.simplify import supplementarity_simp
+from pyzx_cflow.extract import extract_simple
 
 SEED = 1337
 

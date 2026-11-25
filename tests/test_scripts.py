@@ -24,7 +24,7 @@ if __name__ == '__main__':
 
 import io
 
-from pyzx.scripts import main
+from pyzx_cflow.scripts import main
 
 
 class TestScripts(unittest.TestCase):

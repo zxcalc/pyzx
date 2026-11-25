@@ -5,19 +5,19 @@ Some functionality of PyZX is still experimental or not well-tested (like the ZH
 
 Graph API
 ---------
-ZX-graphs are internally represented by instances of classes that implement the methods of :class:`~pyzx.graph.base.BaseGraph`. These methods are listed below. The only complete implementation currently is :class:`~pyzx.graph.graph_s.GraphS`.
+ZX-graphs are internally represented by instances of classes that implement the methods of :class:`~pyzx_cflow.graph.base.BaseGraph`. These methods are listed below. The only complete implementation currently is :class:`~pyzx_cflow.graph.graph_s.GraphS`.
 
 .. module:: graph
 
-.. autoclass:: pyzx.graph.graph_s.GraphS
+.. autoclass:: pyzx_cflow.graph.graph_s.GraphS
 
 To create a graph of a specific backend a convenience method ``Graph`` is supplied:
 
-.. autofunction:: pyzx.graph.graph.Graph(backend=None)
+.. autofunction:: pyzx_cflow.graph.graph.Graph(backend=None)
 
 Below you can find full documentation of all the functions supplied by a Graph in PyZX.
 
-.. autoclass:: pyzx.graph.base.BaseGraph
+.. autoclass:: pyzx_cflow.graph.base.BaseGraph
    :members:
 
 Circuit API
@@ -27,7 +27,7 @@ Circuit API
 
 .. _circuit:
 
-.. autoclass:: pyzx.circuit.Circuit
+.. autoclass:: pyzx_cflow.circuit.Circuit
    :members:
 
 .. _generate:
@@ -36,7 +36,7 @@ Generating Circuits
 -------------------
 The following are some methods to generate (random) quantum circuits.
 
-.. automodule:: pyzx.generate
+.. automodule:: pyzx_cflow.generate
    :members:
    :undoc-members:
 
@@ -49,20 +49,20 @@ Circuit extraction and matrices over Z2
 
 There is a single function that performs the most general extraction of a circuit from a ZX-diagram:
 
-.. autofunction:: pyzx.extract.extract_circuit
+.. autofunction:: pyzx_cflow.extract.extract_circuit
 
 For graphs which admit a causal flow there is a simpler function for circuit extraction:
 
-.. autofunction:: pyzx.extract.extract_simple
+.. autofunction:: pyzx_cflow.extract.extract_simple
 
-The function :func:`~pyzx.extract.extract_circuit` uses some reasoning over matrices over the field Z2. This functionality is implemented in the following class.
+The function :func:`~pyzx_cflow.extract.extract_circuit` uses some reasoning over matrices over the field Z2. This functionality is implemented in the following class.
 
-.. autoclass:: pyzx.linalg.Mat2
+.. autoclass:: pyzx_cflow.linalg.Mat2
 	:members:
 
-The function :func:`~pyzx.extract.extract_simple` uses a phase polynomial synthesis algorithm based on https://arxiv.org/abs/2004.06052 to extract phase gadgets fufilling causal flow conditons. This is implemented in the following function.
+The function :func:`~pyzx_cflow.extract.extract_simple` uses a phase polynomial synthesis algorithm based on https://arxiv.org/abs/2004.06052 to extract phase gadgets fufilling causal flow conditons. This is implemented in the following function.
 
-.. autofunction:: pyzx.extract.phase_poly_synth
+.. autofunction:: pyzx_cflow.extract.phase_poly_synth
 
 .. _simplify:
 
@@ -72,9 +72,9 @@ Below is listed the content of ``simplify.py``.
 
 .. module:: simplify
 
-.. automodule:: pyzx.simplify
+.. automodule:: pyzx_cflow.simplify
 
-   The following functions iteratively apply a single rewrite rule frum rules_ using the helper function :func:`~pyzx.simplify.simp`
+   The following functions iteratively apply a single rewrite rule frum rules_ using the helper function :func:`~pyzx_cflow.simplify.simp`
 
    .. autofunction:: simp
 
@@ -118,7 +118,7 @@ Below is listed the content of ``simplify.py``.
 
    .. autofunction:: teleport_reduce
 
-   The following implements a more selective simplification strategy using the helper function :func:`~pyzx.simplify.selective_simp`
+   The following implements a more selective simplification strategy using the helper function :func:`~pyzx_cflow.simplify.selective_simp`
 
    .. autofunction:: selective_simp
 
@@ -150,7 +150,7 @@ Below is listed the content of ``rules.py``.
 
 .. module:: rules
 
-.. automodule:: pyzx.rules
+.. automodule:: pyzx_cflow.rules
    :members:
    :undoc-members:
 
@@ -162,7 +162,7 @@ Below is listed the content of ``heuristics.py``.
 
 .. module:: heuristics
 
-.. automodule:: pyzx.heuristics
+.. automodule:: pyzx_cflow.heuristics
    :members:
    :undoc-members:
 
@@ -174,7 +174,7 @@ Below is listed the content of ``flow.py``.
 
 .. module:: flow
 
-.. automodule:: pyzx.flow
+.. automodule:: pyzx_cflow.flow
    :members:
 
 .. _optimize:
@@ -185,7 +185,7 @@ Below is listed the content of ``optimize.py``.
 
 .. module:: optimize
 
-.. automodule:: pyzx.optimize
+.. automodule:: pyzx_cflow.optimize
    :members:
    :undoc-members:
 
@@ -197,7 +197,7 @@ Below is listed the content of ``routing.py``.
 
 .. module:: routing
 
-.. automodule:: pyzx.routing
+.. automodule:: pyzx_cflow.routing
    :members:
    :undoc-members:
    :member-order: bysource
@@ -210,7 +210,7 @@ Below is listed the content of ``tensor.py``.
 
 .. module:: tensor
 
-.. automodule:: pyzx.tensor
+.. automodule:: pyzx_cflow.tensor
    :members:
    :undoc-members:
 
@@ -223,7 +223,7 @@ Below is listed the content of ``drawing.py``.
 
 .. module:: drawing
 
-.. automodule:: pyzx.drawing
+.. automodule:: pyzx_cflow.drawing
    :members:
    :undoc-members:
 
@@ -236,7 +236,7 @@ Below is listed the content of ``tikz.py``.
 
 .. module:: tikz
 
-.. automodule:: pyzx.tikz
+.. automodule:: pyzx_cflow.tikz
    :members:
    :undoc-members:
 
@@ -246,7 +246,7 @@ Below is listed the content of ``quantomatic.py``.
 
 .. module:: quantomatic
 
-.. automodule:: pyzx.quantomatic
+.. automodule:: pyzx_cflow.quantomatic
    :members:
    :undoc-members:
 

@@ -23,12 +23,12 @@ if __name__ == '__main__':
 
 try:
     import numpy as np
-    from pyzx.tensor import tensorfy, compare_tensors
+    from pyzx_cflow.tensor import tensorfy, compare_tensors
 except ImportError:
     np = None
 
-from pyzx.circuit import Circuit
-from pyzx.simulate import replace_magic_states
+from pyzx_cflow.circuit import Circuit
+from pyzx_cflow.simulate import replace_magic_states
 
 @unittest.skipUnless(np, "numpy needs to be installed for this to run")
 class TestSimulate(unittest.TestCase):

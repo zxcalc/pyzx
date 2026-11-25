@@ -13,7 +13,7 @@ Edges in a PyZX graph come in two flavors. The first is the default edge type wh
 Accessing and setting vertex and edge type
 ------------------------------------------
 
-The type of a vertex ``v`` in a graph ``g`` can be retrieved by ``g.type(v)``. This returns an integer representing the type. These integers are stored in :class:`pyzx.utils.VertexType` and is one of the following:
+The type of a vertex ``v`` in a graph ``g`` can be retrieved by ``g.type(v)``. This returns an integer representing the type. These integers are stored in :class:`pyzx_cflow.utils.VertexType` and is one of the following:
 
 - ``VertexType.BOUNDARY``
 - ``VertexType.Z``
@@ -26,14 +26,14 @@ To get the type of all the vertices at once you call ``g.types()``. This returns
 	if ty[vertex] == VertexType.BOUNDARY:
 		#It is a boundary
 
-Similarly, the type of an edge is stored as one of the integers ``EdgeType.SIMPLE`` or ``EdgeType.HADAMARD``, where ``EdgeType`` can be found as :class:`pyzx.utils.EdgeType`. The edge type of a given edge can be retrieved by ``g.edge_type(edge)``.
+Similarly, the type of an edge is stored as one of the integers ``EdgeType.SIMPLE`` or ``EdgeType.HADAMARD``, where ``EdgeType`` can be found as :class:`pyzx_cflow.utils.EdgeType`. The edge type of a given edge can be retrieved by ``g.edge_type(edge)``.
 
 .. _graph_api:
 
 Backends
 --------
 
-ZX-graphs can be represented internally in different ways. The only fully functioning backend right now is :class:`pyzx.graph.graph_s.GraphS`, which is written entirely in Python. A partial implementation using the ``python-igraph`` package is also available as :class:`pyzx.graph.graph_ig.GraphIG`. A new backend can be constructed by subclassing :class:`pyzx.graph.base.BaseGraph`.
+ZX-graphs can be represented internally in different ways. The only fully functioning backend right now is :class:`pyzx_cflow.graph.graph_s.GraphS`, which is written entirely in Python. A partial implementation using the ``python-igraph`` package is also available as :class:`pyzx_cflow.graph.graph_ig.GraphIG`. A new backend can be constructed by subclassing :class:`pyzx_cflow.graph.base.BaseGraph`.
 
 Creating and modifying ZX-diagrams
 ----------------------------------
@@ -41,7 +41,7 @@ Creating and modifying ZX-diagrams
 To create an empty ZX-diagram call ``g=zx.Graph()``. 
 You can then add a vertex and set its data by calling for example ``v = g.add_vertex(zx.VertexType.Z, qubit=0, row=1, phase=1)``. To add an edge between vertices ``v`` and ``w`` you call ``g.add_edge(g.edge(v,w),edgetype=zx.EdgeType.SIMPLE)``.
 
-These functions are probably best used in some type of loop or function so that you don't have to set everything by hand. If you wish to create a ZX-diagram in the shape of a circuit it is probably better to use the :class:`~pyzx.circuit.Circuit`, or if you don't care about the exact structure of the circuit, one of the functions in :mod:`~pyzx.generate`.
+These functions are probably best used in some type of loop or function so that you don't have to set everything by hand. If you wish to create a ZX-diagram in the shape of a circuit it is probably better to use the :class:`~pyzx_cflow.circuit.Circuit`, or if you don't care about the exact structure of the circuit, one of the functions in :mod:`~pyzx_cflow.generate`.
 
 The ZX-diagram editor
 ---------------------

@@ -8,11 +8,11 @@ notebooks/.ipynb_checkpoints
 doc/_build
 build
 dist
-pyzx.egg-info
+pyzx_cflow.egg-info
 *.pyc
 .vscode
 *.class
 *.ipynb_checkpoints
-pyzx/js/d3.v5.js
+pyzx_cflow/js/d3.v5.js
 *~
 .DS_Store

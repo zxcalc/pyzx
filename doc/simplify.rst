@@ -6,7 +6,7 @@ The main functionality of PyZX is the ability to optimize quantum circuits. The 
 Optimizing circuits using the ZX-calculus
 -----------------------------------------
 
-PyZX allows the simplification of quantum circuits via a translation to the ZX-calculus. To demonstrate this functionality, let us generate a random circuit using :func:`~pyzx.generate.CNOT_HAD_PHASE_circuit`::
+PyZX allows the simplification of quantum circuits via a translation to the ZX-calculus. To demonstrate this functionality, let us generate a random circuit using :func:`~pyzx_cflow.generate.CNOT_HAD_PHASE_circuit`::
 
 	c = zx.generate.CNOT_HAD_PHASE_circuit(qubits=8, depth=100)
 	print(c.stats())
@@ -15,20 +15,20 @@ To use the ZX-diagram simplification routines, the circuit must first be convert
 
 	g = c.to_graph()
 
-We can now use any of the built-in simplification strategies for ZX-diagrams. The most powerful of these is :func:`~pyzx.simplify.full_reduce`::
+We can now use any of the built-in simplification strategies for ZX-diagrams. The most powerful of these is :func:`~pyzx_cflow.simplify.full_reduce`::
 
 	zx.full_reduce(g, quiet=False) # simplifies the Graph in-place, and show the rewrite steps taken.
 	g.normalize() # Makes the graph more suitable for displaying
 	zx.draw(g) # Display the resulting diagram
 
 This rewrite strategy implements a variant of the algorithm described in `this paper <https://arxiv.org/abs/1903.10477>`__.
-The resulting diagram most-likely does not resemble the structure of a circuit. In order to extract an equivalent circuit from the diagram, we use the function :func:`~pyzx.extract.extract_circuit`.
+The resulting diagram most-likely does not resemble the structure of a circuit. In order to extract an equivalent circuit from the diagram, we use the function :func:`~pyzx_cflow.extract.extract_circuit`.
 
 Simply use it like so::
 
 	c_opt = zx.extract_circuit(g.copy())
 
-For some circuits, :func:`~pyzx.extract.extract_circuit` can result in quite large circuits involving many CNOT gates. If one is only interested in optimizing the T-count of a circuit, the extraction stage can be skipped by using the *phase-teleportation* method of `this paper <https://arxiv.org/abs/1903.10477>`__. This applies ``full_reduce`` in such a way that only phases are moved around the circuit, and all other structure remains intact::
+For some circuits, :func:`~pyzx_cflow.extract.extract_circuit` can result in quite large circuits involving many CNOT gates. If one is only interested in optimizing the T-count of a circuit, the extraction stage can be skipped by using the *phase-teleportation* method of `this paper <https://arxiv.org/abs/1903.10477>`__. This applies ``full_reduce`` in such a way that only phases are moved around the circuit, and all other structure remains intact::
 
 	g = c.to_graph()
 	zx.teleport_reduce(g)
@@ -43,7 +43,7 @@ These can then be checked for equality::
 
 	zx.compare_tensors(c,c_opt) # Returns True if c and c_opt implement the same circuit (up to global phase)
 
-You can also inspect the linear map itself by calling :meth:`c.to_matrix() <pyzx.circuit.Circuit.to_matrix>`. 
+You can also inspect the linear map itself by calling :meth:`c.to_matrix() <pyzx_cflow.circuit.Circuit.to_matrix>`. 
 For larger circuits calculating the linear map directly is not feasible. 
 For those circuits PyZX allows you to check equality of the circuits using the built-in ZX-diagram rewrite strategy. 
 This is done by composing one circuit with the adjoint of the other and simplifying the resulting circuit. 
@@ -55,26 +55,26 @@ If this is reducable to the identity, this is strong evidence that the circuits 
 Gate-level optimization
 -----------------------
 
-Besides the advanced simplification strategies based on the ZX-calculus, PyZX also supplies some optimization methods that work directly on :class:`~pyzx.circuit.Circuit`\ s. The most straightforward of these is :func:`~pyzx.optimize.basic_optimization`.
+Besides the advanced simplification strategies based on the ZX-calculus, PyZX also supplies some optimization methods that work directly on :class:`~pyzx_cflow.circuit.Circuit`\ s. The most straightforward of these is :func:`~pyzx_cflow.optimize.basic_optimization`.
 
-A more advanced optimization technique involves splitting up the circuit into `phase polynomial <https://arxiv.org/abs/1303.2042>`_ subcircuits, optimizing each of these, and then resynthesising the circuit, which can be done using :func:`~pyzx.optimize.phase_block_optimize`.
+A more advanced optimization technique involves splitting up the circuit into `phase polynomial <https://arxiv.org/abs/1303.2042>`_ subcircuits, optimizing each of these, and then resynthesising the circuit, which can be done using :func:`~pyzx_cflow.optimize.phase_block_optimize`.
 
-The :func:`~pyzx.optimize.basic_optimization` and :func:`~pyzx.optimize.phase_block_optimize` functions are also combined into a single function :func:`~pyzx.optimize.full_optimize`.
+The :func:`~pyzx_cflow.optimize.basic_optimization` and :func:`~pyzx_cflow.optimize.phase_block_optimize` functions are also combined into a single function :func:`~pyzx_cflow.optimize.full_optimize`.
 
 Architecture-aware circuit routing
 ----------------------------------
 
-The :func:`~pyzx.extract.extract_circuit` function does not take into account
+The :func:`~pyzx_cflow.extract.extract_circuit` function does not take into account
 the architecture of the quantum computer that the circuit will be run on. When
 targeting a specific architecture it is often beneficial to resynthesize the
 circuit to that architecture by following the qubit connectivity when deciding
 which multi-qubit gates to use.
 
 First, we need to define the specific architecture we want to target. The
-function :func:`~pyzx.routing.create_architecture` can create a number of
-pre-defined :class:`~pyzx.routing.Architecture` objects.::
+function :func:`~pyzx_cflow.routing.create_architecture` can create a number of
+pre-defined :class:`~pyzx_cflow.routing.Architecture` objects.::
 
-	import pyzx.routing.architecture
+	import pyzx_cflow.routing.architecture
 	
 	# Create a 9-qubit square grid architecture
 	grid_arch = architecture.create_architecture(architecture.SQUARE, 9)
@@ -84,7 +84,7 @@ pre-defined :class:`~pyzx.routing.Architecture` objects.::
 
 PyZX provides a function for routing phase-polynomial circuits. These circuits
 are composed of CNOT, XCX, and ZPhase gates, which can be directly translated
-to phase gadgets in ZX. The module :mod:`~pyzx.generate` provides a function
+to phase gadgets in ZX. The module :mod:`~pyzx_cflow.generate` provides a function
 for creating such circuits to an architecture.::
 
 	c_pp = zx.generate.phase_poly(n_qubits=16, n_phase_layers=10, cnots_per_layer=10)

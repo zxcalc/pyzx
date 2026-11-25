@@ -19,7 +19,7 @@ import unittest
 
 try:
     import numpy as np
-    from pyzx.tensor import compare_tensors
+    from pyzx_cflow.tensor import compare_tensors
     import math
 except ImportError:
     np = None
@@ -31,9 +31,9 @@ try:
 except ImportError:
     QuantumCircuit = None
 
-from pyzx.simplify import full_reduce
-from pyzx.extract import extract_circuit
-from pyzx.circuit import Circuit
+from pyzx_cflow.simplify import full_reduce
+from pyzx_cflow.extract import extract_circuit
+from pyzx_cflow.circuit import Circuit
 from fractions import Fraction
 import os
 
@@ -42,7 +42,7 @@ import os
 class TestQASM(unittest.TestCase):
 
     def test_parser_state_reset(self):
-        from pyzx.circuit.qasmparser import QASMParser
+        from pyzx_cflow.circuit.qasmparser import QASMParser
         s = """
         OPENQASM 2.0;
         include "qelib1.inc";

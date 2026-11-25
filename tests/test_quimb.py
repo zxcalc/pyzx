@@ -24,7 +24,7 @@ if __name__ == '__main__':
 
 try:
     import numpy as np
-    from pyzx.tensor import tensorfy, compare_tensors
+    from pyzx_cflow.tensor import tensorfy, compare_tensors
 except ImportError:
     np = None
 
@@ -34,10 +34,10 @@ try:
 except ImportError:
     qu = None
 
-from pyzx.graph import Graph
-from pyzx.utils import EdgeType, VertexType
-from pyzx.quimb import to_quimb_tensor
-from pyzx.simplify import full_reduce
+from pyzx_cflow.graph import Graph
+from pyzx_cflow.utils import EdgeType, VertexType
+from pyzx_cflow.quimb import to_quimb_tensor
+from pyzx_cflow.simplify import full_reduce
 
 @unittest.skipUnless(np, "numpy needs to be installed for this to run")
 @unittest.skipUnless(qu, "quimb needs to be installed for this to run")

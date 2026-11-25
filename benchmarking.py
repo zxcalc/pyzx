@@ -2,7 +2,7 @@ import os
 import sys
 import dill # type: ignore
 import numpy as np
-from pyzx.circuit import Circuit
+from pyzx_cflow.circuit import Circuit
 import random
 from typing import Callable, Dict, List, Set, Tuple, Optional, Union
 import pandas as pd
@@ -10,7 +10,7 @@ from IPython.display import display
 from tqdm import tqdm # type: ignore
 from time import perf_counter
 import matplotlib.pyplot as plt
-import pyzx as zx
+import pyzx_cflow as zx
 
 plt.style.use('seaborn-whitegrid')
 pd.set_option('display.max_columns', None)

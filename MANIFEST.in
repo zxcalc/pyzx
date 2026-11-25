@@ -1,8 +1,8 @@
-include pyzx/js/zx_editor_model.js
-include pyzx/js/zx_editor_widget.js
-include pyzx/js/zx_viewer.js
-include pyzx/js/d3.v5.min.js
-include pyzx/js/zx_viewer.inline.js
-include pyzx/py.typed
+include pyzx_cflow/js/zx_editor_model.js
+include pyzx_cflow/js/zx_editor_widget.js
+include pyzx_cflow/js/zx_viewer.js
+include pyzx_cflow/js/d3.v5.min.js
+include pyzx_cflow/js/zx_viewer.inline.js
+include pyzx_cflow/py.typed
 include readme.md
 include LICENSE

@@ -23,11 +23,11 @@ if __name__ == '__main__':
 
 import numpy as np
 
-from pyzx.tensor import compare_tensors
-from pyzx.generate import CNOT_HAD_PHASE_circuit
-from pyzx.simplify import clifford_simp, full_reduce, reduce_scalar
-from pyzx.simulate import calculate_path_sum
-from pyzx.circuit import Circuit
+from pyzx_cflow.tensor import compare_tensors
+from pyzx_cflow.generate import CNOT_HAD_PHASE_circuit
+from pyzx_cflow.simplify import clifford_simp, full_reduce, reduce_scalar
+from pyzx_cflow.simulate import calculate_path_sum
+from pyzx_cflow.circuit import Circuit
 
 SEED = 1337
 random.seed(SEED)
