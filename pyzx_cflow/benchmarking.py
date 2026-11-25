@@ -2,7 +2,7 @@ import os
 import sys
 import dill # type: ignore
 import numpy as np
-from pyzx_cflow.circuit import Circuit
+from .circuit import Circuit
 import random
 from typing import Callable, Dict, List, Set, Tuple, Optional, Union
 import pandas as pd
@@ -10,9 +10,9 @@ from IPython.display import display
 from tqdm import tqdm # type: ignore
 from time import perf_counter
 import matplotlib.pyplot as plt
-import pyzx_cflow as zx
+from .simplify import full_reduce
 
-plt.style.use('seaborn-whitegrid')
+plt.style.use('seaborn-v0_8-whitegrid')
 pd.set_option('display.max_columns', None)
 pd.set_option('display.max_rows', None)
 pd.set_option('display.max_colwidth', None)
@@ -171,7 +171,7 @@ class Benchmark:
                     c_id = self.circuits[circ_name]['Original'][0].adjoint() # type: ignore
                     c_id.add_circuit(opt_circ)
                     g = c_id.to_graph()
-                    zx.simplify.full_reduce(g)
+                    full_reduce(g)
                     if g.num_vertices() != 2*len(g.inputs()):
                         print(f'Circuit resulting from {func_name} on {circ_name} not verified',flush=True)
                         continue

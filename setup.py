@@ -40,5 +40,6 @@ setup(
                       "tqdm>=4.56.0",
                       "ipywidgets>=7.5,<8",
                       "lark~=1.1.7"],
+    extras_require={"benchmarking": ["matplotlib", "pandas", "dill", "ipython"]},
     include_package_data=True,
 )
