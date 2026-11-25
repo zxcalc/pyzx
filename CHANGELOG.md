@@ -11,6 +11,15 @@ Hence, occasionally changes will be backwards incompatible (although they will a
 ### Fixed
 - `tensorfy` with a rank-width strategy no longer raises an `OverflowError` or returns 0 when the diagram's scalar or the contracted tensor is outside the float range but their product is not, as can happen for large closed diagrams. The contraction now keeps the power of two in a separate integer, and the scalar is converted the same way, so they are only combined at the end. `preserve_scalar=False` no longer evaluates the scalar at all (#575) (by @gauthamkanagaraj).
 
+### Added
+- `PauliExponential` circuit gate for Pauli rotations on specified qubits. (by @pmitos)
+
+### Fixed
+- `Circuit.adjoint` now adjoints the inner gate of a `ConditionalGate`, so `if(c==1) s q[0];` becomes `if(c==1) sdg q[0];`. (by @anubhavlal07)
+- Corrected scalar evaluation for opposite non-Clifford spider phases by converting pi units to radians in `Scalar.add_spider_pair`.
+- `graph_to_circuit` and `parse_quipper_block` now add `XCX` gates correctly instead of raising `KeyError: 'CX'`, and `"CX"` is registered as an alias for `CNOT` in `gate_types` and exported in `pyzx.circuit`.
+- `Circuit.from_qasm` now reads phases written with the OpenQASM 3 `π` constant, such as `rz(π/4)`, as multiples of π instead of dividing them by π a second time. (by @anubhavlal07)
+
 ## [0.10.8] - 2026-11-01
 
 ### Added

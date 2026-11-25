@@ -113,6 +113,19 @@ class TestQASM(unittest.TestCase):
         self.assertEqual(c.qubits, qasm3.qubits)
         self.assertListEqual(c.gates, qasm3.gates)
 
+    def test_parse_qasm3_pi_symbol(self):
+        qasm3 = Circuit.from_qasm("""
+        OPENQASM 3.0;
+        include "stdgates.inc";
+        qubit[1] q;
+        rz(π/4) q[0];
+        rx(-π/2) q[0];
+        """)
+        c = Circuit(1)
+        c.add_gate("ZPhase", 0, Fraction(1, 4))
+        c.add_gate("XPhase", 0, Fraction(-1, 2))
+        self.assertListEqual(c.gates, qasm3.gates)
+
     def test_load_qasm_from_file(self):
         c = Circuit(1)
         c.add_gate("YPhase", 0, Fraction(1, 4))

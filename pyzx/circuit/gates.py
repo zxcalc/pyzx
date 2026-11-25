@@ -21,12 +21,14 @@ quantum gates for use in the Circuit class.
 
 import copy
 import math
+from collections.abc import Sequence
 from fractions import Fraction
-from typing import TYPE_CHECKING, ClassVar, Generic, TypeVar
+from typing import TYPE_CHECKING, ClassVar, Generic, TypeVar, overload
 
 from ..graph.base import ET, VT, BaseGraph
 from ..symbolic import Poly, new_const, new_var
-from ..utils import EdgeType, FractionLike, VertexType, half_phase, settings
+from ..utils import (EdgeType, FractionLike, VertexType, assert_phase_real,
+                     half_phase, normalize_phase, phase_is_clifford, settings)
 
 if TYPE_CHECKING:
     from . import Circuit
@@ -721,6 +723,10 @@ class XCX(CZ):
     def to_basic_gates(self) -> list[Gate]:
         return [HAD(self.control), CNOT(self.control,self.target), HAD(self.control)]
 
+
+CX = CNOT
+
+
 class SWAP(CZ):
     name = 'SWAP'
     qasm_name = 'swap'
@@ -851,6 +857,28 @@ class CHAD(Gate):
         for gate in self.to_basic_gates():
             gate.to_graph(g, q_mapper, c_mapper)
 
+def _decompose_parity_phase(phase: FractionLike, targets: tuple[int, ...]) -> list[Gate]:
+    cnots: list[Gate] = [CNOT(control, target) for control, target in zip(targets, targets[1:])]
+    rotation = ZPhase(targets[-1], phase)
+    return cnots + [rotation] + list(reversed(cnots))
+
+
+def _add_parity_phase_gadget(
+    gate: Gate,
+    g: BaseGraph[VT, ET],
+    q_mapper: TargetMapper[VT],
+    phase: FractionLike,
+    targets: tuple[int, ...],
+) -> None:
+    anchors = []
+    for target in targets:
+        anchor = gate.graph_add_node(g, q_mapper, VertexType.Z, target, q_mapper.next_row(target))
+        anchors.append(anchor)
+        q_mapper.advance_next_row(target)
+    g.add_phase_gadget(phase, anchors)
+    g.scalar.add_power(len(targets) - 1)
+
+
 class ParityPhase(Gate):
     name = 'ParityPhase'
     print_phase = True
@@ -887,9 +915,7 @@ class ParityPhase(Gate):
         return g
 
     def _decompose_cnots(self) -> list[Gate]:
-        cnots: list[Gate] = [CNOT(self.targets[i],self.targets[i+1]) for i in range(len(self.targets)-1)]
-        p = ZPhase(self.targets[-1], self.phase)
-        return cnots + [p] + list(reversed(cnots))
+        return _decompose_parity_phase(self.phase, self.targets)
 
     def to_basic_gates(self) -> list[Gate]:
         return self._decompose_cnots()
@@ -914,14 +940,7 @@ class ParityPhase(Gate):
     
     def to_graph(self, g: BaseGraph[VT, ET], q_mapper: TargetMapper[VT], c_mapper: TargetMapper[VT]) -> None:
         if self.as_gadget:
-            # Create phase gadget structure directly in the graph.
-            anchors = []
-            for t in self.targets:
-                v = self.graph_add_node(g, q_mapper, VertexType.Z, t, q_mapper.next_row(t))
-                anchors.append(v)
-                q_mapper.advance_next_row(t)
-            g.add_phase_gadget(self.phase, anchors)
-            g.scalar.add_power(len(self.targets) - 1)
+            _add_parity_phase_gadget(self, g, q_mapper, self.phase, self.targets)
         else:
             # Decompose to CNOTs + ZPhase.
             for gate in self.to_basic_gates():
@@ -942,6 +961,149 @@ class PhaseGadget(ParityPhase):
     """
     def __init__(self, phase: FractionLike, *targets: int) -> None:
         super().__init__(phase, *targets, as_gadget=True)
+
+
+class PauliExponential(Gate):
+    r"""The unitary :math:`\exp(-i\pi a P/2)` for a product of Pauli operators.
+
+    ``pauli`` specifies one ``X``, ``Y``, or ``Z`` per target, in the order
+    given by ``targets``. It can be a string or a sequence of single letters.
+    Targets must be distinct and nonnegative.
+    ``angle`` is :math:`a`, in multiples of :math:`\pi`, and may be
+    symbolic.
+
+    For an all ``Z`` product, :class:`ParityPhase` and :class:`PhaseGadget`
+    include an additional scalar :math:`\exp(i\pi a/2)`. Basic gate
+    decomposition and text export agree with the exponential up to global
+    phase. Text export requires a bound angle.
+    """
+
+    name = "PauliExponential"
+    as_gadget = True
+
+    def __init__(self, pauli: Sequence[str], angle: FractionLike, *targets: int) -> None:
+        if not targets:
+            raise ValueError("PauliExponential requires at least one target qubit.")
+        if any(not isinstance(target, int) or target < 0 for target in targets):
+            raise ValueError("PauliExponential target qubits must be nonnegative integers.")
+        if len(set(targets)) != len(targets):
+            raise ValueError("PauliExponential target qubits must be distinct.")
+        if len(pauli) != len(targets) or any(axis not in ("X", "Y", "Z") for axis in pauli):
+            raise ValueError("PauliExponential requires one X, Y, or Z per target.")
+        angle = normalize_phase(angle)
+        if not isinstance(angle, (int, Fraction, Poly)):
+            raise TypeError("PauliExponential angle must be an integer, Fraction, or symbolic phase.")
+        assert_phase_real(angle)
+        self.pauli = "".join(pauli)
+        self.angle = angle
+        self.targets = targets
+
+    def __str__(self) -> str:
+        targets = ", ".join(str(target) for target in self.targets)
+        return f"{self.name}({self.pauli!r}, {self.angle}, {targets})"
+
+    def __eq__(self, other: object) -> bool:
+        return (isinstance(other, PauliExponential) and self.index == other.index
+                and self.pauli == other.pauli and self.angle == other.angle
+                and self.targets == other.targets)
+
+    def _max_target(self) -> int:
+        return max(self.targets)
+
+    def to_adjoint(self) -> 'PauliExponential':
+        gate = self.copy()
+        gate.angle = -gate.angle
+        return gate
+
+    def reposition(self, mask: list[int], bit_mask: list[int] | None = None) -> 'PauliExponential':
+        targets = tuple(mask[target] for target in self.targets)
+        if min(targets) < 0 or len(set(targets)) != len(targets):
+            raise ValueError("PauliExponential target qubits must map to distinct, nonnegative indices.")
+        gate = self.copy()
+        gate.targets = targets
+        return gate
+
+    def tcount(self) -> int:
+        """Count one for a non-Clifford rotation."""
+        return int(not phase_is_clifford(self._gadget_angle()))
+
+    @overload
+    def to_graph(self, g: BaseGraph[VT, ET], q_mapper: TargetMapper[VT], c_mapper: TargetMapper[VT]) -> None: ...
+
+    @overload
+    def to_graph(self, backend: str | None, /) -> BaseGraph: ...
+
+    @overload
+    def to_graph(self, *, backend: str | None = None) -> BaseGraph: ...
+
+    def to_graph(
+        self,
+        g: BaseGraph[VT, ET] | str | None = None,
+        q_mapper: TargetMapper[VT] | None = None,
+        c_mapper: TargetMapper[VT] | None = None,
+        *,
+        backend: str | None = None,
+    ) -> BaseGraph | None:
+        """Return a standalone ZX diagram or append to a graph with wire mappers.
+
+        The diagram includes the global phase.
+        """
+        if isinstance(g, BaseGraph):
+            if q_mapper is None or c_mapper is None or backend is not None:
+                raise TypeError("supply a graph and both wire mappers to append to a graph")
+            basis, inverse_basis = self._basis_changes()
+            for gate in basis:
+                gate.to_graph(g, q_mapper, c_mapper)
+            _add_parity_phase_gadget(self, g, q_mapper, self._gadget_angle(), self.targets)
+            for gate in inverse_basis:
+                gate.to_graph(g, q_mapper, c_mapper)
+            # Remove the phase factor of the gadget to obtain the exact exponential.
+            g.scalar.add_phase(Fraction(-1, 2) * self.angle)
+            return None
+        if q_mapper is not None or c_mapper is not None or (g is not None and backend is not None):
+            raise TypeError("supply at most one backend to build a standalone graph")
+
+        from . import Circuit
+
+        circuit = Circuit(self._max_target() + 1)
+        circuit.add_gate(self)
+        return circuit.to_graph(backend=backend if g is None else g)
+
+    def to_basic_gates(self) -> list[Gate]:
+        """Return basis changes and a CNOT ladder in the gadget phase convention."""
+        basis, inverse_basis = self._basis_changes()
+        rotation = _decompose_parity_phase(self._gadget_angle(), self.targets)
+        return basis + rotation + inverse_basis
+
+    def to_qasm(self) -> str:
+        """Export the elementary gates up to global phase."""
+        return self._export("to_qasm")
+
+    def to_qc(self) -> str:
+        """Export supported Clifford+T angles up to global phase."""
+        return self._export("to_qc")
+
+    def to_quipper(self) -> str:
+        """Export the elementary gates up to global phase."""
+        return self._export("to_quipper")
+
+    def _export(self, method: str) -> str:
+        if isinstance(self.angle, Poly):
+            raise TypeError("bind the Pauli exponential angle before exporting")
+        return "\n".join(getattr(gate, method)() for gate in self.to_basic_gates())
+
+    def _gadget_angle(self) -> FractionLike:
+        return self.angle if isinstance(self.angle, Poly) else self.angle % 2
+
+    def _basis_changes(self) -> tuple[list[Gate], list[Gate]]:
+        basis: list[Gate] = []
+        for target, axis in zip(self.targets, self.pauli):
+            if axis == "Y":
+                basis.append(S(target, adjoint=True))
+            if axis in "XY":
+                basis.append(HAD(target))
+        inverse_basis = [gate.to_adjoint() for gate in reversed(basis)]
+        return basis, inverse_basis
 
 
 class RZZ(ParityPhase):
@@ -1509,6 +1671,11 @@ class ConditionalGate(Gate):
             self.condition_register, self.condition_value,
             self.inner_gate.copy(), self.register_size)
 
+    def to_adjoint(self) -> 'ConditionalGate':
+        g = self.copy()
+        g.inner_gate = g.inner_gate.to_adjoint()
+        return g
+
     def reposition(self, mask: list[int], bit_mask: list[int] | None = None) -> 'ConditionalGate':
         g = self.copy()
         g.inner_gate = g.inner_gate.reposition(mask, bit_mask)
@@ -1686,7 +1853,9 @@ gate_types: dict[str, type[Gate]] = {
     "CZ": CZ,
     "ParityPhase": ParityPhase,
     "PhaseGadget": PhaseGadget,
+    "PauliExponential": PauliExponential,
     "XCX": XCX,
+    "CX": CNOT,
     "SWAP": SWAP,
     "CSWAP": CSWAP,
     "CRZ": CRZ,
