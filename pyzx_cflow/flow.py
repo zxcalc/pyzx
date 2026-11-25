@@ -167,23 +167,23 @@ def full_cflow(g: BaseGraph[VT, ET]) -> Optional[Tuple[Dict[VT,VT], Dict[VT,VT],
     sup = compute_suprema(g_without_gadgets, successor_function, P, L)
     if not sup: return None
     
+    gadget_order: Dict[VT, Set[VT]] = {n: set() for n in gadgets.keys()}
     for n in gadgets.keys():
         connecting = gadget_connections[n]
         for m in gadgets.keys():
             connecting_m = gadget_connections[m]
-            first = None
             for v_n in connecting:
                 for v_m in connecting_m:
                     if v_n == v_m: continue
                     if v_n not in P.keys() or v_m not in P.keys(): return None # gadgets are connected
                     if n == m and P[v_n] == P[v_m]: return None
-                    if v_n in g.inputs() or v_m in g.inputs(): continue
-                    if sup[(P[path_cover.prev(v_m)], v_n)] <= L[path_cover.prev(v_m)]: #v_n < F.prev(v_m)
-                        if first == 'm': return None
-                        first = 'n'
-                    if sup[(P[path_cover.prev(v_n)], v_m)] <= L[path_cover.prev(v_n)]: #v_m < F.prev(v_n)
-                        if first == 'n': return None
-                        first = 'm'
+                    if v_m in g.inputs(): continue
+                    if sup[(P[path_cover.prev(v_m)], v_n)] <= L[path_cover.prev(v_m)]: gadget_order[n].add(m) #v_n < F.prev(v_m)
+
+    while gadget_order:
+        minimal = [n for n in gadget_order.keys() if not any(n in later for later in gadget_order.values())]
+        if not minimal: return None # gadgets form a causal cycle
+        for n in minimal: del gadget_order[n]
     return successor_function, P, L, sup
 
 class Dipaths:
