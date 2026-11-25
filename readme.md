@@ -1,3 +1,16 @@
+## PyZX-cflow
+
+This is a fork of [PyZX](https://github.com/Quantomatic/pyzx) (version 0.8.0) implementing the causal flow preserving optimisation of [Causal flow preserving optimisation of quantum circuits in the ZX-calculus](https://arxiv.org/abs/2312.02793). It is imported as `pyzx_cflow` so that it can be installed alongside PyZX.
+
+Install from source, including the dependencies used for benchmarking:
+```
+    git clone https://github.com/calumholker/pyzx-cflow.git
+    cd pyzx-cflow
+    pip install -e ".[benchmarking]"
+```
+
+The optimisation is `zx.flow_2Q_simp`, applied after `zx.teleport_reduce` and `zx.to_graph_like`. Demo notebooks reproducing the results of the paper are in [demos/circuit_optimisation](demos/circuit_optimisation).
+
 ## PyZX
 
 [![Unitary Fund](https://img.shields.io/badge/Supported%20By-UNITARY%20FUND-brightgreen.svg?style=for-the-badge)](http://unitary.fund)
