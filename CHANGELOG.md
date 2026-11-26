@@ -20,6 +20,7 @@ Hence, occasionally changes will be backwards incompatible (although they will a
 - `graph_to_circuit` and `parse_quipper_block` now add `XCX` gates correctly instead of raising `KeyError: 'CX'`, and `"CX"` is registered as an alias for `CNOT` in `gate_types` and exported in `pyzx.circuit`.
 - `Circuit.from_qasm` now reads phases written with the OpenQASM 3 `π` constant, such as `rz(π/4)`, as multiples of π instead of dividing them by π a second time. (by @anubhavlal07)
 - The graph-like matchers `check_lcomp`, `check_pivot`, `check_pivot_boundary`, and `check_pivot_gadget` now properly check that the neighbourhoods of the selected vertices are graph-like.
+- `generate.phase_poly_from_gadgets` no longer raises `TypeError` for numpy integer parities, and caps `n_gadgets` at the number of available parities instead of raising `ValueError` (#589). (by @0xrichardlu)
 
 ## [0.10.8] - 2026-11-01
 
