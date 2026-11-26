@@ -16,6 +16,8 @@
 
 
 import unittest
+import cmath
+import math
 import random
 import sys
 import numpy as np
@@ -27,6 +29,7 @@ if __name__ == '__main__':
 
 import pyzx as zx
 from pyzx.rank_width import conv_uv, conv_vw, conv_naive
+from pyzx.rank_width import generate_decomposition, tensorfy_rw_subtree, tensorfy_rw_subtree_exp2
 from pyzx.tensor import tensorfy
 
 
@@ -120,6 +123,98 @@ class TestRankWidth(unittest.TestCase):
                                     '1-', '-1')
         self.check_circuit_tensorfy(zx.generate.CNOT_HAD_PHASE_circuit(qubits=2, depth=1),
                                     '--', '11')
+
+    @staticmethod
+    def complete_graph(n):
+        """The complete graph on n T-spiders, connected by Hadamard edges."""
+        g = zx.Graph()
+        vs = [g.add_vertex(zx.VertexType.Z, phase=Fraction(1, 4)) for _ in range(n)]
+        for i in range(n):
+            for j in range(i + 1, n):
+                g.add_edge((vs[i], vs[j]), zx.EdgeType.HADAMARD)
+        return g
+
+    @staticmethod
+    def complete_graph_sum(n):
+        """The value of complete_graph(n) times sqrt(2)^(number of edges): sum over the
+        Hamming weight w of the spider assignment, which is all the value depends on."""
+        return sum(math.comb(n, w) * cmath.exp(1j * math.pi * w / 4) * (-1) ** (w * (w - 1) // 2)
+                   for w in range(n + 1))
+
+    def test_tensorfy_rw_complete_graph(self):
+        for n in range(2, 9):
+            g = self.complete_graph(n)
+            self.check_graph_tensorfy(g)
+            expected = self.complete_graph_sum(n) / math.sqrt(2) ** (n * (n - 1) // 2)
+            self.check_amplitude(tensorfy(g), expected, f'complete graph on {n} vertices')
+
+    def test_tensorfy_rw_scalar_and_tensor_out_of_float_range(self):
+        # Both the contracted tensor (about 2^-1146) and the scalar (sqrt(2)^2415) are
+        # outside the float range, but their product is not (#575).
+        n = 68
+        g = self.complete_graph(n)
+        g.scalar.add_power(n * (n - 1) // 2)
+        res = complex(tensorfy(g, strategy='rw-greedy-linear'))
+        expected = self.complete_graph_sum(n)
+        self.assertLessEqual(abs(res - expected), 1e-9 * abs(expected))
+
+    def test_tensorfy_rw_large_scalar_without_decomposition(self):
+        # A diagram that full_reduce removes completely, leaving only a scalar that
+        # does not fit in a float on its own: sqrt(2)^2200 * 2^-1000 = 2^100.
+        g = zx.Graph()
+        g.scalar.add_power(2200)
+        g.scalar.add_float(2.0 ** -1000)
+        res = tensorfy(g)
+        self.assertIsInstance(res, np.ndarray)
+        self.check_amplitude(res, 2.0 ** 100)
+
+    def test_tensorfy_rw_scalar_factors_out_of_float_range(self):
+        # Not only the power of sqrt(2) can leave the float range: here 2200 legless
+        # spiders with phase pi/2 contribute (1 + i)^2200 = 2^1100 and the power of
+        # sqrt(2) gives 2^-1075.
+        g = zx.Graph()
+        for _ in range(2200):
+            g.scalar.add_node(Fraction(1, 2))
+        g.scalar.add_power(-2150)
+        self.check_amplitude(tensorfy(g), 2.0 ** 25)
+
+    def test_tensorfy_rw_result_too_large_raises(self):
+        # The combined value is still outside the float range, so this raises rather
+        # than returning inf. The first graph keeps a decomposition; the second does not.
+        g = self.complete_graph(4)
+        g.scalar.add_power(4000)
+        with self.assertRaises(OverflowError):
+            tensorfy(g)
+        empty = zx.Graph()
+        empty.scalar.add_power(4000)
+        with self.assertRaises(OverflowError):
+            tensorfy(empty)
+
+    def test_tensorfy_rw_large_scalar_not_preserved(self):
+        # With preserve_scalar=False the scalar is ignored, so its size should not matter.
+        for g in (self.complete_graph(1), self.complete_graph(6)):
+            expected = tensorfy(g, preserve_scalar=False)
+            g.scalar.add_power(5000)
+            self.check_amplitude(tensorfy(g, preserve_scalar=False), expected)
+
+    def test_tensorfy_rw_subtree_exp2_is_rescaled(self):
+        # The contraction rescales the tensor at every step, so the largest real or
+        # imaginary part of what it returns is in [0.5, 1), and putting the power of
+        # two back gives the tensor of tensorfy_rw_subtree.
+        # full_reduce removes the complete graphs on fewer than 3 vertices completely.
+        graphs = [self.complete_graph(n) for n in range(3, 9)]
+        graphs.append(zx.generate.CNOT_HAD_PHASE_circuit(qubits=4, depth=40).to_graph())
+        for g in graphs:
+            zx.simplify.full_reduce(g)
+            decomp = generate_decomposition(g)
+            self.assertIsNotNone(decomp)
+            Psi, e, _, _, _ = tensorfy_rw_subtree_exp2(g, decomp)
+            top = max(np.abs(Psi.real).max(), np.abs(Psi.imag).max())
+            self.assertTrue(0.5 <= top < 1, f'largest part of the rescaled tensor is {top}')
+            plain = tensorfy_rw_subtree(g, decomp)[0]
+            # A second contraction of the same diagram can differ in the last bits.
+            self.assertTrue(np.allclose(np.ldexp(Psi.real, e), plain.real))
+            self.assertTrue(np.allclose(np.ldexp(Psi.imag, e), plain.imag))
 
 
 if __name__ == '__main__':

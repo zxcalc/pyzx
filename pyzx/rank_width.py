@@ -19,6 +19,7 @@
 # The method's complexity depends on the cut-rank structure of the ZX diagram.
 # Additionally, several heuristics were implemented for finding good rank-decompositions.
 
+import math
 from collections.abc import Iterable, Sequence
 from copy import deepcopy
 from itertools import product
@@ -29,6 +30,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 from .graph.base import BaseGraph
+from .graph.scalar import Scalar, cexp
 from .linalg import REF, generalised_inverse, rank_factorise
 from .simplify import full_reduce
 from .symbolic import Poly
@@ -536,6 +538,76 @@ def conv(
         return conv_uv(Psi_v, Psi_w, E_vw, E_vu, E_wu), False
 
 
+def ldexp_complex(Psi: NDArray[np.complex128], exponent: int) -> None:
+    """
+    Multiply Psi by 2^exponent in place, without forming 2^exponent as a float,
+    so that it does not overflow when the product itself fits in a float.
+
+    Args:
+        Psi: complex np.ndarray, which is modified
+        exponent: power of two to multiply by
+
+    Raises:
+        OverflowError: if an entry overflows to infinity
+    """
+    np.ldexp(Psi.real, exponent, out=Psi.real)
+    np.ldexp(Psi.imag, exponent, out=Psi.imag)
+    if np.any(np.isinf(Psi)):
+        raise OverflowError('math range error')
+
+
+def normalise_tensor(Psi: NDArray[np.complex128]) -> int:
+    """
+    Rescale Psi in place by a power of two, so that its largest real or imaginary
+    part has magnitude in [0.5, 1). Only the floating-point exponents change, so
+    no precision is lost.
+
+    Args:
+        Psi: complex np.ndarray, which is modified
+
+    Returns:
+        k such that the original Psi equals the rescaled Psi * 2^k
+    """
+    # The largest |real| or |imag| part, without allocating a copy of Psi.
+    top = float(max(np.max(Psi.real), -np.min(Psi.real), np.max(Psi.imag), -np.min(Psi.imag)))
+    if top == 0 or not np.isfinite(top):
+        return 0
+    k = math.frexp(top)[1]
+    ldexp_complex(Psi, -k)
+    return k
+
+
+def scalar_to_number_exp2(s: Scalar) -> tuple[complex, int]:
+    """
+    Compute the value of a Scalar as m * 2^e, without forming sqrt(2)^power2 or the
+    product of its other factors as a single float, so that this does not overflow
+    when the value is outside the float range. Follows :meth:`Scalar.to_number`.
+
+    Args:
+        s: Scalar
+
+    Returns:
+        tuple (m, e) with s.to_number() == m * 2^e
+    """
+    if s.is_zero:
+        return 0j, 0
+    e, odd = divmod(s.power2, 2)
+    factors = [cexp(s.phase), sqrt(2) ** odd, complex(s.floatfactor)]
+    factors += [1 + cexp(node) for node in s.phasenodes]
+    sum_of_phases = sum((coeff * cexp(phase) for phase, coeff in s.sum_of_phases.items()), 0j)
+    if sum_of_phases != 0:
+        factors.append(sum_of_phases)
+    m = 1 + 0j
+    for f in factors:
+        m *= f
+        if m == 0:
+            return 0j, 0
+        k = math.frexp(abs(m))[1]
+        m = complex(math.ldexp(m.real, -k), math.ldexp(m.imag, -k))
+        e += k
+    return m, e
+
+
 def tensorfy_rw_subtree(
     g: GraphT,
     subtree: DecompList | int,
@@ -556,6 +628,30 @@ def tensorfy_rw_subtree(
         - M_u (binary matrix of shape (r_u, n)) is the parity map to the rest of the graph
         - S_u is the set of vertices in the subdiagram
         - B_u is the order of boundary vertices in the subdiagram
+    """
+    Psi_u, e_u, M_u, S_u, B_u = tensorfy_rw_subtree_exp2(g, subtree, verbose=verbose)
+    ldexp_complex(Psi_u, e_u)
+    return Psi_u, M_u, S_u, B_u
+
+
+def tensorfy_rw_subtree_exp2(
+    g: GraphT,
+    subtree: DecompList | int,
+    verbose: bool = False
+) -> tuple[NDArray[np.complex128], int, NDArray[np.int8], NDArray[np.bool_], list[int]]:
+    """
+    Same as :func:`tensorfy_rw_subtree`, but the tensor is returned as Psi_u * 2^e_u,
+    with Psi_u rescaled after every contraction step. This keeps the intermediate
+    tensors from overflowing or underflowing on large diagrams.
+
+    Args:
+        g: ZX diagram
+        subtree: subtree of the rank-decomposition
+        verbose: print additional info
+
+    Returns:
+        tuple (Psi_u, e_u, M_u, S_u, B_u), where Psi_u * 2^e_u is the tensorfication
+        of the subdiagram and the rest is as in :func:`tensorfy_rw_subtree`
     """
     n = g.num_vertices()
     v_all = np.array(list(g.vertices()))
@@ -584,10 +680,10 @@ def tensorfy_rw_subtree(
         M_u = adjacency_matrix(g, [subtree], v_all)
         S_u = np.zeros(n, dtype=np.bool_)
         S_u[v_id[subtree]] = True
-        return Psi_u, M_u, S_u, B_u
+        return Psi_u, 0, M_u, S_u, B_u
 
-    Psi_v, M_v, S_v, B_v = tensorfy_rw_subtree(g, subtree[0], verbose=verbose)
-    Psi_w, M_w, S_w, B_w = tensorfy_rw_subtree(g, subtree[1], verbose=verbose)
+    Psi_v, e_v, M_v, S_v, B_v = tensorfy_rw_subtree_exp2(g, subtree[0], verbose=verbose)
+    Psi_w, e_w, M_w, S_w, B_w = tensorfy_rw_subtree_exp2(g, subtree[1], verbose=verbose)
     Cin_v = M_v[:, S_w]
     Cin_w = M_w[:, S_v]
     Cout = np.concatenate((M_v, M_w))
@@ -604,11 +700,13 @@ def tensorfy_rw_subtree(
     Psi_u, swapped = conv(Psi_v, Psi_w, E_vw, E_vu, E_wu, verbose=verbose)
     pw = Cout.sum() - U.sum() - V.sum() + r_u
     pw += Cin_v.sum() + Cin_w.sum() - E_vw.sum() - B.sum()
-    Psi_u /= sqrt(2) ** pw
+    half_pw, odd_pw = divmod(int(pw), 2)
+    Psi_u /= sqrt(2) ** odd_pw
+    e_u = e_v + e_w + normalise_tensor(Psi_u) - half_pw
 
     S_u = S_v | S_w  # type: ignore
     B_u = B_v + B_w if not swapped else B_w + B_v
-    return Psi_u, M_u, S_u, B_u
+    return Psi_u, e_u, M_u, S_u, B_u
 
 
 def tensorfy_rw(
@@ -631,11 +729,18 @@ def tensorfy_rw(
     """
     g = g.copy()
     full_reduce(g)
+    # The scalar and the contracted tensor can each be far outside the float range
+    # even when their product is not, so both are kept as (value, power of two)
+    # and only combined at the end.
+    s_val, s_exp = scalar_to_number_exp2(g.scalar) if preserve_scalar else (1 + 0j, 0)
     decomp = generate_decomposition(g, strategy=strategy, verbose=verbose)
     if decomp is None:
-        return np.array(g.scalar.to_number() ** preserve_scalar)
-    result, _, _, boundary = tensorfy_rw_subtree(g, decomp, verbose=verbose)
-    result *= g.scalar.to_number() ** preserve_scalar
+        scalar = np.array(s_val, dtype=np.complex128)
+        ldexp_complex(scalar, s_exp)
+        return scalar
+    result, e, _, _, boundary = tensorfy_rw_subtree_exp2(g, decomp, verbose=verbose)
+    result *= s_val
+    ldexp_complex(result, e + s_exp)
     order = list(g.outputs()) + list(g.inputs())
     boundary_idx = {v: i for i, v in enumerate(boundary)}
     perm = [boundary_idx[v] for v in order]
