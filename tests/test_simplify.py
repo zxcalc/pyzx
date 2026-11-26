@@ -385,6 +385,20 @@ class TestSimplify(unittest.TestCase):
                 c2 = Circuit.from_graph(teleport_reduce(g))
                 self.assertTrue(c.verify_equality(c2))
 
+    def test_teleport_reduce_non_clifford_t_phases(self):
+        """Regression test for #586: phase teleportation must keep track of the sign of a
+        non-Clifford phase that was already fused into a Clifford vertex, which only shows up
+        with phases that are not multiples of pi/4."""
+        template = ("OPENQASM 2.0;\ninclude \"qelib1.inc\";\nqreg q[2];\n"
+                    "t q[1];\nx q[1];\nt q[0];\nt q[1];\ncx q[0], q[1];\nt q[1];\n"
+                    "h q[0];\ncz q[1], q[0];\nh q[0];\np(PHASE*pi) q[0];\n")
+        for phase in ["1/8", "3/8", "1/3", "1/4"]:
+            with self.subTest(phase=phase):
+                c = qasm(template.replace("PHASE", phase))
+                g = teleport_reduce(c.to_graph())
+                self.assertTrue(compare_tensors(c, g))
+                self.assertTrue(compare_tensors(c, Circuit.from_graph(g)))
+
     def test_to_graph_like_introduce_boundary_vertices(self):
         c = qasm(qasm_5)
         g = c.to_graph()
