@@ -661,11 +661,14 @@ def to_graph_like(g: BaseGraph[VT, ET]) -> None:
                 z1 = g.add_vertex(ty=VertexType.Z)
                 z2 = g.add_vertex(ty=VertexType.Z)
                 z3 = g.add_vertex(ty=VertexType.Z)
-                g.remove_edge(g.edge(v, n))
+                e = g.edge(v, n)
+                et = g.edge_type(e)
+                g.remove_edge(e)
                 g.add_edge((v, z1), edgetype=EdgeType.SIMPLE)
                 g.add_edge((z1, z2), edgetype=EdgeType.HADAMARD)
                 g.add_edge((z2, z3), edgetype=EdgeType.HADAMARD)
-                g.add_edge((z3, n), edgetype=EdgeType.SIMPLE)
+                # keep the original edge type, so a Hadamard wire is not dropped
+                g.add_edge((z3, n), edgetype=et)
             else: # g.type(n) == VertexType.H_BOX
                 z = g.add_vertex(ty=VertexType.Z)
                 g.remove_edge(g.edge(v, n))

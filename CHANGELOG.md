@@ -9,6 +9,7 @@ Hence, occasionally changes will be backwards incompatible (although they will a
 ## [Unreleased]
 
 ### Fixed
+- `to_graph_like` no longer drops a Hadamard on a wire that connects an input directly to an output. It replaced such an edge with a chain equal to the identity regardless of the edge type, so a qubit that reduced to a single `H` (e.g. after `full_reduce`) lost it, and the extracted circuit and `GeneticOptimizer` results were wrong. (by @0xrichardlu)
 - `tensorfy` with a rank-width strategy no longer raises an `OverflowError` or returns 0 when the diagram's scalar or the contracted tensor is outside the float range but their product is not, as can happen for large closed diagrams. The contraction now keeps the power of two in a separate integer, and the scalar is converted the same way, so they are only combined at the end. `preserve_scalar=False` no longer evaluates the scalar at all (#575) (by @gauthamkanagaraj).
 
 ### Added
