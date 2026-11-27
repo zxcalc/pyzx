@@ -429,16 +429,25 @@ def is_subgraph_graph_like(g: 'BaseGraph[VT, ET]', vs: Collection['VT']) -> bool
     :return: True if the subgraph is graph-like, False otherwise."""
 
     types = g.types()
-    for v in vs:
+    vset = vs if isinstance(vs, (set, frozenset)) else set(vs)
+    checked: set['VT'] = set()
+    for v in vset:
         if types.get(v) is not VertexType.Z:
             return False
 
-        for w in vs:
+        # Only v itself and its neighbours can share an edge with v, so it is
+        # enough to look at those instead of at every pair in ``vs``. This keeps
+        # the cost proportional to the number of edges rather than to |vs|^2.
+        # A pair whose other vertex was already handled has been checked then.
+        for w in (v, *g.neighbors(v)):
+            if w not in vset or w in checked:
+                continue
             if g.num_edges(v, w, EdgeType.SIMPLE) != 0:
                 return False
 
             allowed_edges = 0 if v == w else 1
             if g.num_edges(v, w, EdgeType.HADAMARD) > allowed_edges:
                 return False
+        checked.add(v)
 
     return True

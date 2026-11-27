@@ -469,6 +469,80 @@ class TestGraphBasicMethods(unittest.TestCase):
             else:
                 self.assertTrue(value, f"Subgraph {subgraph} should be considered graph-like.")
 
+    def test_is_subgraph_graph_like_matches_pairwise_check(self):
+        """The graph-like check must agree with checking every pair of vertices."""
+        import random
+        from pyzx.graph.multigraph import Multigraph
+
+        def pairwise(g, vs):
+            for v in vs:
+                if g.type(v) != VertexType.Z:
+                    return False
+                for w in vs:
+                    if g.num_edges(v, w, EdgeType.SIMPLE) != 0:
+                        return False
+                    if g.num_edges(v, w, EdgeType.HADAMARD) > (0 if v == w else 1):
+                        return False
+            return True
+
+        rng = random.Random(42)
+        for _ in range(200):
+            g = Multigraph()
+            g.set_auto_simplify(False)
+            vs = [g.add_vertex(VertexType.Z if rng.random() < 0.95 else VertexType.X)
+                  for _ in range(7)]
+            for _ in range(rng.randint(0, 12)):
+                v, w = rng.choice(vs), rng.choice(vs)
+                et = EdgeType.HADAMARD if rng.random() < 0.85 else EdgeType.SIMPLE
+                g.add_edge((v, w), et)
+            subgraph = [v for v in vs if rng.random() < 0.6]
+            self.assertEqual(is_subgraph_graph_like(g, subgraph), pairwise(g, subgraph))
+
+    def test_is_subgraph_graph_like_cost_is_linear_in_edges(self):
+        """The graph-like check should only look at actual edges, not at all pairs
+        of vertices. On a star with k leaves, checking every pair takes ~2*k^2
+        edge queries, which made full_reduce several times slower."""
+        g = Graph()
+        k = 100
+        centre = g.add_vertex(VertexType.Z)
+        leaves = [g.add_vertex(VertexType.Z) for _ in range(k)]
+        for l in leaves:
+            g.add_edge((centre, l), EdgeType.HADAMARD)
+
+        # Count every query about the edges of the graph.
+        calls = 0
+        def counting(method):
+            def wrapper(*args, **kwargs):
+                nonlocal calls
+                calls += 1
+                return method(*args, **kwargs)
+            return wrapper
+        for name in ('num_edges', 'connected', 'edge_type', 'edge_st', 'edges',
+                     'incident_edges', 'neighbors'):
+            setattr(g, name, counting(getattr(g, name)))
+
+        self.assertTrue(is_subgraph_graph_like(g, {centre, *leaves}))
+        # A few queries per vertex and per edge, instead of per pair of vertices.
+        self.assertLessEqual(calls, 8 * ((k + 1) + k))
+
+    def test_check_lcomp_skips_graph_like_check_for_non_clifford_phase(self):
+        """check_lcomp should reject a non-Clifford vertex without checking its
+        whole neighbourhood for being graph-like."""
+        from unittest import mock
+        from pyzx.rewrite_rules import lcomp_rule
+
+        g = Graph()
+        v = g.add_vertex(VertexType.Z, phase=Fraction(1, 4))
+        for _ in range(5):
+            g.add_edge((v, g.add_vertex(VertexType.Z)), EdgeType.HADAMARD)
+        with mock.patch.object(lcomp_rule, 'is_subgraph_graph_like',
+                               wraps=lcomp_rule.is_subgraph_graph_like) as check:
+            self.assertFalse(lcomp_rule.check_lcomp(g, v))
+            check.assert_not_called()
+            g.set_phase(v, Fraction(1, 2))
+            self.assertTrue(lcomp_rule.check_lcomp(g, v))
+            check.assert_called_once()
+
     @unittest.skipUnless(np, "numpy needs to be installed for this to run")
     def test_remove_isolated_vertex_preserves_semantics(self):
         g = Graph()
