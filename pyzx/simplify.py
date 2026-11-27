@@ -457,17 +457,19 @@ class Simplifier(Generic[VT, ET]):
                 p2 = self.mastergraph.phase(v2)
             else: return
         if phase_is_clifford(p1): # Need to save non-Clifford location
-            self.simplifygraph.phase_mult[i1] = 1
             if v1 in self.phantom_phases: # Already fused with non-Clifford before
                 v3,i3 = self.phantom_phases[v1]
                 self.mastergraph.phase_index[v3] = i1
                 del self.mastergraph.phase_index[v1]
                 p1 = self.mastergraph.phase(v3)
-                if phase_is_clifford(p1 + p2):
+                m1 = cast(Literal[1, -1], m1*self.simplifygraph.phase_mult[i3])
+                # v3 is now referenced through index i1, so keep its effective multiplier there
+                self.simplifygraph.phase_mult[i1] = m1
+                if phase_is_clifford(p1 + p2 if m1*m2 == 1 else p1 - p2):
                     del self.phantom_phases[v1]
                 v1,i1 = v3,i3
-                m1 = cast(Literal[1, -1], m1*self.simplifygraph.phase_mult[i3])
             else:
+                self.simplifygraph.phase_mult[i1] = 1
                 self.phantom_phases[v1] = (v2,i2)
                 self.simplifygraph.phase_mult[i2] = m2
                 return
