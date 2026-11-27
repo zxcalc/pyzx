@@ -44,6 +44,56 @@ The default is ``False`` to handle programmatically-built circuits where inputs 
 not be |0⟩.
 
 
+Classical control and ground vertices
+-------------------------------------
+
+OpenQASM measurements and classically controlled rotations can be imported as
+circuits. The measurement outcome becomes a Boolean symbolic phase, and a
+conditional rotation has a phase depending on that outcome::
+
+    qasm = """OPENQASM 2.0;
+    include "qelib1.inc";
+    qreg q[2];
+    creg c[1];
+    h q[0];
+    measure q[0] -> c[0];
+    if (c==1) x q[1];
+    """
+    graph = zx.Circuit.from_qasm(qasm).to_graph()
+    assert graph.var_registry.types["c[0]"] is True
+    branch_zero = graph.substitute_variables({"c[0]": 0})
+    branch_one = graph.substitute_variables({"c[0]": 1})
+
+``substitute_variables`` returns a copy by default, so the symbolic graph
+remains available after inspecting either outcome. Conditional ``Z`` and ``X``
+rotations are supported by :class:`~pyzx.circuit.gates.ConditionalGate`;
+other controlled gates may raise ``NotImplementedError`` when converted to a
+graph.
+
+Ground markers are a separate, graph-level feature for ZX-ground diagrams with
+discarded outputs. To discard a classical bit after feedforward, append
+:class:`~pyzx.circuit.gates.DiscardBit` to the circuit before calling
+``to_graph()``::
+
+    from pyzx.circuit.gates import DiscardBit
+    circuit = zx.Circuit.from_qasm(qasm)
+    circuit.gates.append(DiscardBit(0))
+    hybrid_graph = circuit.to_graph()
+    assert hybrid_graph.is_hybrid()
+
+For diagrams constructed directly, add a ground connection to a spider with
+the ``ground=True`` argument of :meth:`~pyzx.graph.base.BaseGraph.add_vertex`,
+or mark an existing vertex with :meth:`~pyzx.graph.base.BaseGraph.set_ground`. Use
+:meth:`~pyzx.graph.base.BaseGraph.grounds` and
+:meth:`~pyzx.graph.base.BaseGraph.is_hybrid` to inspect the result. A ground
+marker is not a Boolean measurement variable: measurements and resets are
+represented with symbolic outcome leaves instead.
+Hybrid graphs cannot currently be passed to ``tensorfy`` or ``extract_circuit``.
+The `mixed classical-quantum demo
+<https://github.com/zxcalc/pyzx/blob/master/demos/MixedClassicalQuantum.ipynb>`_
+shows both representations and their supported operations.
+
+
 Importing and exporting ZX-diagrams
 -----------------------------------
 
