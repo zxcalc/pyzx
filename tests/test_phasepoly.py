@@ -158,6 +158,19 @@ class TestPhasePoly(unittest.TestCase):
         self.assertCircuitEquivalent(old_cnots, new_cnots)
         return old_cnots, new_cnots
 
+    def test_phase_poly_from_gadgets(self):
+        # Regression test: np.random.choice returns numpy integers, which Parity used to reject,
+        # and n_gadgets == 2**n_qubits exceeded the number of available parities.
+        from pyzx.generate import phase_poly_from_gadgets
+        for n_qubits in range(2, 6):
+            for n_gadgets in [1, 2, 2**n_qubits - 1, 2**n_qubits, 2**n_qubits + 2]:
+                with self.subTest(n_qubits=n_qubits, n_gadgets=n_gadgets):
+                    circuit = phase_poly_from_gadgets(n_qubits, n_gadgets)
+                    self.assertIsInstance(circuit, Circuit)
+                    self.assertEqual(circuit.qubits, n_qubits)
+        circuit = phase_poly_from_gadgets(30, 3)
+        self.assertEqual(circuit.qubits, 30)
+
     """ Matroid partitioning is not a good algorithm
     def test_partitions(self):
         for i in range(self.n_tests):

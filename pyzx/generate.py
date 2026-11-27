@@ -703,16 +703,17 @@ def phase_poly_from_gadgets(n_qubits: int, n_gadgets: int) -> Circuit:
     :return: A random phase polynomial circuit.
     """
     parities: set[Parity] = set()
-    if n_gadgets > 2**n_qubits:
-        n_gadgets = n_qubits ^ 3
+    # There are only 2**n_qubits - 1 non-empty parities.
+    n_gadgets = min(n_gadgets, 2**n_qubits - 1)
     if n_qubits < 26:
         for integer in np.random.choice(
             2**n_qubits - 1, replace=False, size=n_gadgets
         ):
-            parities.add(Parity(integer + 1, n_qubits))
+            # Parity only accepts a Python int, not a numpy integer
+            parities.add(Parity(int(integer) + 1, n_qubits))
     elif n_qubits < 64:
         while len(parities) < n_gadgets:
-            parities.add(Parity(np.random.randint(1, 2**n_qubits), n_qubits))
+            parities.add(Parity(int(np.random.randint(1, 2**n_qubits)), n_qubits))
     else:
         while len(parities) < n_gadgets:
             par: Parity = Parity([])
