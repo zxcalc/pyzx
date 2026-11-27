@@ -300,8 +300,14 @@ class TestCircuit(unittest.TestCase):
     def test_csx_adjoint_to_qasm(self):
         c = Circuit(2)
         c.add_gate(CSX(0, 1, adjoint=True))
-        self.assertNotIn('undefined', c.to_qasm())
-        c2 = Circuit.from_qasm(c.to_qasm())
+        qasm = c.to_qasm()
+        self.assertNotIn('undefined', qasm)
+        self.assertIn('csxdg q[0], q[1];', qasm)
+        c2 = Circuit.from_qasm(qasm)
+        self.assertEqual(len(c2.gates), 1)
+        self.assertIsInstance(c2.gates[0], CSX)
+        self.assertTrue(c2.gates[0].adjoint)
+        self.assertEqual(c.gates, c2.gates)
         self.assertTrue(c.verify_equality(c2))
 
     def test_csx_adjoint_to_qc(self):

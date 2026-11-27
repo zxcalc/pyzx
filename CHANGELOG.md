@@ -43,6 +43,7 @@ Hence, occasionally changes will be backwards incompatible (although they will a
 - `gflow(..., pauli=True)` issues a `DeprecationWarning`; use `pauli_flow(...)` instead. The alias remains supported. (by @pmitos)
 
 ### Fixed
+- OpenQASM export and parsing now support the `csxdg` gate (adjoint of `csx`).
 - `RZZ` and `PhaseGadget` now print correct string representations instead of misleading `ParityPhase` strings, and `PhaseGadget.name` is now `'PhaseGadget'`.
 - `Circuit.to_basic_gates` now properly decomposes `PhaseGadget` and `ParityPhase(as_gadget=True)` into basic CNOT and ZPhase gates, while `Circuit.to_graph` preserves phase gadgets as native ZX-diagram gadgets.
 - `ParityPhase.to_graph` now adds the missing scalar correction factor $\sqrt{2}^{k-1}$ when `as_gadget=True` (and for `PhaseGadget`), ensuring that diagrams representing phase gadgets have the correct global scalar and unitary matrix semantics under `to_matrix()` and `compare_tensors(..., preserve_scalar=True)`.
