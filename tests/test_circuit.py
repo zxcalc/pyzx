@@ -252,6 +252,19 @@ class TestCircuit(unittest.TestCase):
                 if not isinstance(gate, (CU3, CU)):
                     self.assertTrue(c.verify_equality(c.copy()))
 
+    def test_fsim_adjoint_not_silently_wrong(self):
+        # FSim stores its angles in theta/phi, so the generic to_adjoint returned the gate unchanged
+        # and verify_equality reported non-equivalent circuits as equal.
+        c1 = Circuit(2)
+        c1.add_gate(FSim(0, 1, Fraction(1, 2), Fraction(1, 2)))
+        c2 = Circuit(2)
+        for _ in range(3):
+            c2.add_gate(FSim(0, 1, Fraction(1, 2), Fraction(1, 2)))
+        with self.assertRaises(NotImplementedError):
+            c1.adjoint()
+        with self.assertRaises(NotImplementedError):
+            c1.verify_equality(c2)
+
     def test_adjoint_of_conditional_gate(self):
         header = 'OPENQASM 2.0;\ninclude "qelib1.inc";\nqreg q[1];\ncreg c[2];\n'
         cases = [

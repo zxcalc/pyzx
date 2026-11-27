@@ -1166,6 +1166,12 @@ class FSim(Gate):
     def __str__(self) -> str:
         return "FSim({!s}, {!s}, {!s}, {!s})".format(self.control, self.target, self.theta, self.phi)
 
+    def to_adjoint(self) -> 'FSim':
+        # The adjoint of FSim(theta, phi) is FSim(-theta, -phi), but only theta = pi/2 is supported
+        # (see __init__ and to_graph). Raise instead of falling back to Gate.to_adjoint, which only
+        # negates .phase and would return this gate unchanged.
+        raise NotImplementedError("The adjoint of FSim is not supported, since FSim only supports theta = pi/2.")
+
     def reposition(self, mask: list[int], bit_mask: list[int] | None = None) -> 'FSim':
         g = self.copy()
         g.control = mask[self.control]
