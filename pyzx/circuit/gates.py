@@ -520,6 +520,7 @@ class SX(XPhase):
 class CSX(Gate):
     name = 'CSX'
     qasm_name = 'csx'
+    qasm_name_adjoint = 'csxdg'
     def __init__(self, control: int, target: int, adjoint: bool = False) -> None:
         self.target = target
         self.control = control
@@ -1908,6 +1909,7 @@ qasm_gate_table: dict[str, type[Gate]] = {
     "sx": SX,
     "sxdg": SX,
     "csx": CSX,
+    "csxdg": CSX,
     "h": HAD,
     "rx": XPhase,
     "ry": YPhase,

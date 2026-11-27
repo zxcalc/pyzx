@@ -414,7 +414,11 @@ class QASMParser:
             elif gtype is U3:
                 if len(phases) != 3: raise TypeError("Invalid specification {}".format(c))
                 gates.append(gtype(argset[0], phases[0], phases[1], phases[2]))
-            elif gtype in (CNOT, CY, CZ, CHAD, CSX, SWAP):
+            elif gtype is CSX:
+                if len(phases) != 0: raise TypeError("Invalid specification {}".format(c))
+                g = CSX(control=argset[0], target=argset[1], adjoint=(name == 'csxdg'))
+                gates.append(g)
+            elif gtype in (CNOT, CY, CZ, CHAD, SWAP):
                 if len(phases) != 0: raise TypeError("Invalid specification {}".format(c))
                 g = gtype(control=argset[0],target=argset[1])
                 gates.append(g)
