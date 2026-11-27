@@ -15,6 +15,7 @@
 # limitations under the License.
 
 
+import math
 import unittest
 import os
 import sys
@@ -27,7 +28,7 @@ if __name__ == '__main__':
 from pyzx.simplify import full_reduce, drop_orphan_reset_discards
 from pyzx.extract import extract_circuit
 from pyzx.circuit import Circuit
-from pyzx.circuit.gates import ConditionalGate
+from pyzx.circuit.gates import ConditionalGate, ZPhase
 from pyzx.graph.base import BaseGraph
 from pyzx.symbolic import Poly
 from pyzx.utils import VertexType
@@ -125,6 +126,25 @@ class TestQASM(unittest.TestCase):
         c.add_gate("ZPhase", 0, Fraction(1, 4))
         c.add_gate("XPhase", 0, Fraction(-1, 2))
         self.assertListEqual(c.gates, qasm3.gates)
+
+    def test_phase_mixing_pi_and_radians(self):
+        """Terms without pi are radians, even when another term contains pi."""
+        def phase(expr: str, body: str = "") -> float:
+            c = Circuit.from_qasm('OPENQASM 2.0;\ninclude "qelib1.inc";\n' + body
+                                  + 'qreg q[1];\n' + expr + ' q[0];\n')
+            gate = c.gates[0]
+            assert isinstance(gate, ZPhase)
+            assert isinstance(gate.phase, Fraction)
+            return float(gate.phase)
+        self.assertAlmostEqual(phase("rz(pi/2 + 0.5)"), 0.5 + 0.5 / math.pi)
+        self.assertAlmostEqual(phase("rz(2*pi - 0.5)"), 2 - 0.5 / math.pi)
+        self.assertAlmostEqual(phase("rz(0.5)"), 0.5 / math.pi)
+        self.assertAlmostEqual(phase("rz(-pi/4)"), -0.25)
+        self.assertAlmostEqual(phase("rz(pi*pi)"), math.pi)
+        # a radian constant inside a parametrised gate body
+        body = "gate myrz(theta) a { rz(theta + 0.5) a; }\n"
+        self.assertAlmostEqual(phase("myrz(pi/4)", body), 0.25 + 0.5 / math.pi)
+        self.assertAlmostEqual(phase("myrz(1.0)", body), 1.5 / math.pi)
 
     def test_load_qasm_from_file(self):
         c = Circuit(1)

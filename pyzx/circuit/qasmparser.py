@@ -438,28 +438,50 @@ class QASMParser:
                 raise TypeError("Invalid specification: {}".format(c))
         return gates
 
+    _PI_MARKER = "__qasm_pi__"
+    _PI_TOKEN_RE = re.compile(r"\\pi|π|\bpi\b")
+
+    def _phase_from_expr(self, val: str, subst: dict[str, Fraction] | None) -> Fraction:
+        """Evaluate a QASM angle expression and return it in units of pi.
+
+        ``pi`` is parsed as a marker variable so that every term is handled on
+        its own: a term containing ``pi`` is a multiple of pi, and a term
+        without it is in radians. Bound gate parameters (``subst``) are already
+        in units of pi, so they are substituted as ``value * pi``.
+        """
+        marked = self._PI_TOKEN_RE.sub(self._PI_MARKER, val)
+        try:
+            poly = parse_symbolic_expr(marked, lambda n: new_var(n, False))
+            pi_poly = new_var(self._PI_MARKER, False)
+            if subst:
+                poly = poly.substitute({Var(n): v * pi_poly for n, v in subst.items()})
+        except Exception as exc:
+            raise TypeError("Invalid specification {}: {}".format(
+                val, str(exc).replace(self._PI_MARKER, "pi"))) from exc
+        if any(v.name != self._PI_MARKER for v in poly.free_vars()):
+            raise TypeError(
+                "Phase expression {!r} contains unbound variables".format(val))
+        exact = Fraction(0)
+        approx = 0.0
+        for coeff, term in poly.terms:
+            if isinstance(coeff, complex):
+                raise TypeError("Phase expression {!r} is not real".format(val))
+            degree = sum(power for _, power in term.vars)
+            if degree == 1:
+                exact += Fraction(coeff)
+            else:
+                # radians * pi^(degree): convert to units of pi
+                approx += float(coeff) * math.pi ** (degree - 1)
+        return Fraction(exact + Fraction(approx)).limit_denominator(
+            settings.float_to_fraction_max_denominator)
+
     def parse_phase_arg(self, val: str) -> Fraction:
         val = val.strip()
         if self._param_subst is not None:
             bound = self._bind_phase_parameters(val)
             if bound is not None:
                 return bound
-        try:
-            poly = parse_symbolic_expr(val, lambda n: new_var(n, False))
-        except Exception as exc:
-            raise TypeError("Invalid specification {}: {}".format(val, exc))
-        if poly.free_vars():
-            raise TypeError(
-                "Phase expression {!r} contains unbound variables".format(val))
-        const: int | float | complex | Fraction = \
-            poly.terms[0][0] if poly.terms else 0
-        if isinstance(const, complex):
-            raise TypeError("Phase expression {!r} is not real".format(val))
-        if 'pi' not in val and 'π' not in val:
-            # Value without ``pi`` is in radians; normalise by pi.
-            const = float(const) / math.pi
-        return Fraction(const).limit_denominator(
-            settings.float_to_fraction_max_denominator)
+        return self._phase_from_expr(val, None)
 
     def _bind_phase_parameters(self, val: str) -> Fraction | None:
         """Resolve a gate-body phase expression that uses bound parameters.
@@ -472,25 +494,7 @@ class QASMParser:
         if not names or not re.search(
                 r'\b(' + '|'.join(re.escape(n) for n in names) + r')\b', val):
             return None
-        try:
-            poly = parse_symbolic_expr(val, lambda n: new_var(n, False))
-            result = poly.substitute({Var(n): v for n, v in names.items()})
-        except Exception as exc:
-            raise TypeError(
-                "Unsupported parametrized gate-body phase {!r}: {}".format(
-                    val, exc)) from exc
-        if result.free_vars():
-            raise TypeError(
-                "Parametrized gate-body phase {!r} does not reduce to a "
-                "constant after binding {}".format(val, dict(names)))
-        const: int | float | complex | Fraction = \
-            result.terms[0][0] if result.terms else 0
-        if isinstance(const, complex):
-            raise TypeError(
-                "Parametrized gate-body phase {!r} bound to a non-real "
-                "value".format(val))
-        return Fraction(const).limit_denominator(
-            settings.float_to_fraction_max_denominator)
+        return self._phase_from_expr(val, names)
 
 
 def qasm(s: str) -> Circuit:
