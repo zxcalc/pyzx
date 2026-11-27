@@ -35,6 +35,7 @@ from pyzx.generate import cliffordT
 from pyzx.simplify import *
 from pyzx.simplify import supplementarity_simp, to_clifford_normal_form_graph, copy_simp
 from pyzx import compare_tensors
+from pyzx.extract import extract_circuit
 from pyzx.generate import cliffordT
 from tests import STEANE_X_STABILISER_QASM
 
@@ -404,6 +405,19 @@ class TestSimplify(unittest.TestCase):
         g = c.to_graph()
         to_graph_like(g)
         self.assertTrue(compare_tensors(c,g))
+
+    def test_to_graph_like_keeps_boundary_hadamard_edge(self):
+        # full_reduce leaves input 0 connected to output 0 by a Hadamard edge
+        c = Circuit(2)
+        c.add_gate("HAD", 0)
+        c.add_gate("T", 1)
+        g = c.to_graph()
+        full_reduce(g)
+        to_graph_like(g)
+        self.assertTrue(is_graph_like(g, strict=True))
+        self.assertTrue(compare_tensors(c, g, preserve_scalar=False))
+        c2 = extract_circuit(g.copy())
+        self.assertTrue(compare_tensors(c, c2, preserve_scalar=False))
 
     def test_full_reduce_with_h_box(self):
         """Test that calls to :func:`full_reduce` with a graph containing general H-boxes raises an error.
