@@ -33,7 +33,7 @@ __all__ = [
 from fractions import Fraction
 
 from ..graph.base import ET, VT, BaseGraph
-from ..utils import is_subgraph_graph_like, phase_is_clifford, phase_is_pauli
+from ..utils import VertexType, is_subgraph_graph_like, phase_is_clifford, phase_is_pauli
 
 
 def check_lcomp(
@@ -49,8 +49,9 @@ def check_lcomp(
     if v not in g.vertices():
         return False
 
-    vs = {v, *g.neighbors(v)}
-    if not is_subgraph_graph_like(g, vs):
+    # Run the cheap local checks before the graph-like check on the whole
+    # neighbourhood, which costs time proportional to its number of edges.
+    if g.type(v) != VertexType.Z:
         return False
 
     # Phase must be 1/2 or 3/2
@@ -59,6 +60,10 @@ def check_lcomp(
         return False
 
     if g.is_ground(v):
+        return False
+
+    vs = {v, *g.neighbors(v)}
+    if not is_subgraph_graph_like(g, vs):
         return False
 
     return True
